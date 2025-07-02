@@ -352,6 +352,16 @@ int32_t InputMethodController::Attach(sptr<OnTextChangedListener> listener, cons
     return ErrorCode::NO_ERROR;
 }
 
+bool InputMethodController::IsKeyboardCallingProcess(int32_t pid)
+{
+    auto proxy = GetSystemAbilityProxy();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("proxy is nullptr!");
+        return ErrorCode::ERROR_EX_NULL_POINTER;
+    }
+    return proxy->IsKeyboardCallingProcess(pid);
+}
+
 int32_t InputMethodController::ShowTextInputInner(const AttachOptions &attachOptions, ClientType type)
 {
     InputMethodSyncTrace tracer("IMC_ShowTextInput");

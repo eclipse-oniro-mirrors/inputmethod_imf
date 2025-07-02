@@ -93,6 +93,7 @@ public:
     int32_t UnregisterProxyIme(uint64_t displayId) override;
     ErrCode IsDefaultImeScreen(uint64_t displayId, bool &resultValue) override;
     ErrCode IsCapacitySupport(int32_t capacity, bool &isSupport) override;
+    bool IsKeyboardCallingProcess(int32_t pid) override;
     int32_t GetCallingUserId();
 
 protected:

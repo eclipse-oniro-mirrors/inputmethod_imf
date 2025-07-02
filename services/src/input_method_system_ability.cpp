@@ -1435,6 +1435,16 @@ ErrCode InputMethodSystemAbility::GetCurrentInputMethod(Property& resultValue)
     return ERR_OK;
 }
 
+bool InputMethodSystemAbility::IsKeyboardCallingProcess(int32_t pid)
+{
+    int32_t userId = GetCallingUserId();
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+    if (session == nullptr) {
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    return session->IsKeyboardCallingProcess(pid);
+}
+
 ErrCode InputMethodSystemAbility::IsDefaultImeSet(bool& resultValue)
 {
     resultValue = ImeInfoInquirer::GetInstance().IsDefaultImeSet(GetCallingUserId());

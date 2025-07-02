@@ -1116,6 +1116,23 @@ std::shared_ptr<ImeNativeCfg> PerUserSession::GetRealCurrentIme(bool needSwitchT
     return ImeInfoInquirer::GetInstance().GetImeToStart(userId_);
 }
 
+bool PerUserSession::IsKeyboardCallingProcess(int32_t pid)
+{
+    auto clientGroup = GetClientGroup(ImeType::IME);
+    auto clientInfo = clientGroup != nullptr ? clientGroup->GetCurrentClientInfo() : nullptr;
+    if (clientInfo == nullptr) {
+        IMSA_HILOGE("failed to get cur client info!");
+        return false;
+    }
+    auto identityChecker = std::make_shared<IdentityCheckerImpl>();
+    if (clientInfo->uiExtensionTokenId != IMF_INVALID_TOKENID
+        && identityChecker->IsFocusedUIExtension(clientInfo->uiExtensionTokenId)) {
+        IMSA_HILOGI("UIExtension focused");
+        return true;
+    }
+    return clientInfo->pid == pid;
+}
+
 int32_t PerUserSession::StartCurrentIme(bool isStopCurrentIme)
 {
     auto imeToStart = GetRealCurrentIme(true);

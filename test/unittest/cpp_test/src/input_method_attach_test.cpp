@@ -736,7 +736,6 @@ HWTEST_F(InputMethodAttachTest, testImeCallbackInAttach, TestSize.Level0)
     EXPECT_TRUE(KeyboardListenerTestImpl::WaitSelectionChange(selectionRange.start));
     EXPECT_TRUE(KeyboardListenerTestImpl::WaitCursorUpdate());
     EXPECT_TRUE(KeyboardListenerTestImpl::WaitEditorAttributeChange(attribute));
-    EXPECT_TRUE(InputMethodEngineListenerImpl::WaitSetCallingWindow(config.windowId));
 }
 
 /**

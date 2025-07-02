@@ -579,6 +579,69 @@ HWTEST_F(InputMethodControllerTest, testIMCAttach002, TestSize.Level0)
 }
 
 /**
+ * @tc.name: testIMCAttach003
+ * @tc.desc: IMC Attach.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, testIMCAttach003, TestSize.Level0)
+{
+    PanelInfo info = { .panelType = SOFT_KEYBOARD, .panelFlag = FLG_FLOATING };
+    auto panel = std::make_shared<InputMethodPanel>();
+    auto ret = inputMethodAbility_->CreatePanel(nullptr, info, panel);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    TextListener::ResetParam();
+    CursorInfo cursorInfo = { 1, 1, 1, 1 };
+    Range selectionRange = { 1, 2 };
+    InputAttribute attribute = { 1, 1 };
+    uint32_t windowId = 10;
+    TextConfig textConfig = {
+        .inputAttribute = attribute, .cursorInfo = cursorInfo, .range = selectionRange, .windowId = windowId
+    };
+
+    inputMethodController_->Attach(textListener_, true, textConfig);
+    InputMethodControllerTest::CheckTextConfig(textConfig);
+    EXPECT_EQ(imeListener_->windowId_, textConfig.windowId);
+
+    TextListener::ResetParam();
+    cursorInfo = { 2, 2, 2, 2 };
+    selectionRange = { 3, 4 };
+    attribute = { 2, 2 };
+    windowId = 11;
+    textConfig = {
+        .inputAttribute = attribute, .cursorInfo = cursorInfo, .range = selectionRange, .windowId = windowId
+    };
+    inputMethodController_->Attach(textListener_, true, textConfig);
+    InputMethodControllerTest::CheckTextConfig(textConfig);
+    inputMethodAbility_->DestroyPanel(panel);
+    EXPECT_EQ(imeListener_->windowId_, textConfig.windowId);
+}
+
+/**
+ * @tc.name: testIsKeyboardCallingProcess
+ * @tc.desc: IMC Attach.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, IsKeyboardCallingProcess, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC IsKeyboardCallingProcess Test START");
+    IMSA_HILOGI("IMC testIsKeyboardCallingProcess Test START");
+    auto ret = inputMethodController_->IsKeyboardCallingProcess(0);
+    EXPECT_FALSE(ret);
+ 
+    imeListener_->isInputStart_ = false;
+    TextListener::ResetParam();
+    inputMethodController_->Attach(textListener_, true);
+    ret = inputMethodController_->IsKeyboardCallingProcess(getpid());
+    EXPECT_TRUE(ret);
+ 
+    TextListener::ResetParam();
+    inputMethodController_->DeactivateClient();
+}
+
+/**
  * @tc.name: testIMCSetCallingWindow
  * @tc.desc: IMC SetCallingWindow.
  * @tc.type: FUNC

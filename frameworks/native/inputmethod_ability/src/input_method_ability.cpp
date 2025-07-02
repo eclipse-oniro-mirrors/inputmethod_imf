@@ -608,9 +608,6 @@ int32_t InputMethodAbility::InvokeStartInputCallback(const TextTotalConfig &text
                 textConfig.textSelection.newBegin, textConfig.textSelection.newEnd);
         }
     }
-    if (textConfig.windowId != INVALID_WINDOW_ID) {
-        imeListener_->OnSetCallingWindow(textConfig.windowId);
-    }
     return ErrorCode::NO_ERROR;
 }
 
@@ -885,7 +882,6 @@ bool InputMethodAbility::NotifyInfoToWmsInStartInput(const TextTotalConfig &text
             if (type == SOFT_KEYBOARD && panel->GetPanelFlag() == FLG_FIXED && panel->IsShowing()) {
                 panel->SetTextFieldAvoidInfo(textConfig.positionY, textConfig.height);
             }
-            panel->SetCallingWindow(textConfig.windowId);
             return false;
         });
     };
@@ -1129,7 +1125,13 @@ int32_t InputMethodAbility::ShowPanel(
             IMSA_HILOGE("failed to set keyBoard, ret: %{public}d!", ret);
         }
     }
-    auto ret = inputMethodPanel->ShowPanel();
+    TextTotalConfig textConfig;
+    auto ret = GetTextConfig(textConfig);
+    if (ret != ErrorCode::NO_ERROR) {
+        MSA_HILOGI("failed to get window id, ret: %{public}d!", ret);
+        return ErrorCode::ERROR_GET_TEXT_CONFIG;
+    }
+    ret = inputMethodPanel->ShowPanel(textConfig.windowId);
     if (ret == ErrorCode::NO_ERROR) {
         NotifyPanelStatus(false);
         PanelStatusInfo info;
@@ -1138,6 +1140,9 @@ int32_t InputMethodAbility::ShowPanel(
         info.visible = true;
         info.trigger = trigger;
         NotifyPanelStatusInfo(info);
+        if (imeListener_ != nullptr) {
+            imeListener_->OnSetCallingWindow(textConfig.windowId);
+        }
     }
     return ret;
 }
