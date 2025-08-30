@@ -73,6 +73,7 @@ public:
                                                     "[{\"style\": [\"fix\",\"default\",\"landscape\"],"
                                                     "\"top\": 1,\"left\": 2,\"right\": 3,\"bottom\": 4}]}";
     static constexpr const char *IGNORE_SYS_PANEL_ADJUST = "{\"ignoreSysPanelAdjust\":{\"inputType\": [0, 1, 3]}}";
+    static constexpr const char *INPUT_SYS_CGF_UID_LIST = "{\"systemConfig\": {\"proxyImeUidList\": [7101, 5521]}}";
     static void SetUpTestCase() { }
     static void TearDownTestCase() { }
     void SetUp() { }
@@ -410,6 +411,28 @@ HWTEST_F(JsonOperateTest, testIsDynamicStartIme, TestSize.Level1)
 
     instance.systemConfig_.dynamicStartImeValue = "";
     instance.systemConfig_.dynamicStartImeSysParam = "";
+}
+
+/**
+ * @tc.name: testParseSystemConfigUidList
+ * @tc.desc: parse systemConfig
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.author: chenyu
+ */
+HWTEST_F(JsonOperateTest, testParseSystemConfigUidList, TestSize.Level1)
+{
+    IMSA_HILOGI("JsonOperateTest testParseSystemConfigUidList START");
+    ImeSystemConfig imeSystemConfig;
+    auto ret = imeSystemConfig.Unmarshall(INPUT_SYS_CGF_UID_LIST);
+    ASSERT_TRUE(ret);
+    auto systemConfig = imeSystemConfig.systemConfig;
+    int32_t uid = 0;
+    EXPECT_FALSE(systemConfig.proxyImeUidList.find(uid) != systemConfig.proxyImeUidList.end());
+    uid = 7101;
+    EXPECT_TRUE(systemConfig.proxyImeUidList.find(uid) != systemConfig.proxyImeUidList.end());
+    uid = 5521;
+    EXPECT_TRUE(systemConfig.proxyImeUidList.find(uid) != systemConfig.proxyImeUidList.end());
 }
 } // namespace MiscServices
 } // namespace OHOS

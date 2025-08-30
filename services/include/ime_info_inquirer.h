@@ -89,7 +89,7 @@ public:
     bool IsEnableSecurityMode();
     bool IsEnableAppAgent();
     bool IsEnableNumKey();
-    bool IsVirtualProxyIme(int32_t callingUid);
+    bool IsProxyIme(int32_t callingUid);
     bool IsSpecialSaUid(int32_t callingUid);
     void InitSystemConfig();
     SystemConfig GetSystemConfig();
@@ -104,8 +104,12 @@ public:
     bool IsDefaultImeSet(int32_t userId);
     bool IsImeInstalled(const int32_t userId, const std::string &bundleName, const std::string &extName);
     bool IsInputMethodExtension(pid_t pid);
-    bool IsDefaultImeScreen(uint64_t displayId);
+    bool IsRestrictedDefaultImeByDisplay(uint64_t displayId);
+    bool IsRestrictedMainDisplayId(uint64_t displayId);
     bool IsDynamicStartIme();
+    std::unordered_set<std::string> GetDisableNumKeyAppDeviceTypes();
+    bool IsCapacitySupport(const std::string &capacityName);
+    bool GetCompatibleDeviceType(const std::string &bundleName, std::string &compatibleDeviceType);
 
 private:
     ImeInfoInquirer() = default;

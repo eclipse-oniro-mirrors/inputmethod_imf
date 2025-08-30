@@ -18,9 +18,13 @@
 
 #include "global.h"
 #include "native_inputmethod_types.h"
+#include "mock_input_method_system_ability_proxy.h"
+#include "input_method_controller.h"
 
 using namespace testing::ext;
 using namespace OHOS;
+using namespace OHOS::MiscServices;
+using namespace testing;
 class InputMethodControllerCapiTest : public testing::Test { };
 namespace {
 /**

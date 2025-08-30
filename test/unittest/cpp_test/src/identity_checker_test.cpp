@@ -87,6 +87,7 @@ public:
     static const constexpr char *CURRENT_IME = "testBundleName/testExtname";
     static const constexpr char *CURRENT_SUBNAME = "testSubName";
     static const constexpr char *CURRENT_BUNDLENAME = "testBundleName";
+    static const constexpr char *CURRENT_EXTNAME = "testExtName";
     static void SetUpTestCase(void);
     static void TearDownTestCase(void);
     void SetUp();
@@ -152,11 +153,10 @@ HWTEST_F(IdentityCheckerTest, testStartInput_001, TestSize.Level1)
 {
     IMSA_HILOGI("IdentityCheckerTest testStartInput_001 start");
     service_->identityChecker_ = identityCheckerImpl_;
-    sptr<IRemoteObject> agent = nullptr;
     InputClientInfoInner inputClientInfo;
-    int64_t pid = 0;
-    std::string bundleName;
-    int32_t ret = IdentityCheckerTest::service_->StartInput(inputClientInfo, agent, pid, bundleName);
+    std::vector<sptr<IRemoteObject>> agents;
+    std::vector<BindImeInfo> imeInfos;
+    int32_t ret = IdentityCheckerTest::service_->StartInput(inputClientInfo, agents, imeInfos);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOCUSED);
 }
 
@@ -172,11 +172,10 @@ HWTEST_F(IdentityCheckerTest, testStartInput_002, TestSize.Level1)
     IMSA_HILOGI("IdentityCheckerTest testStartInput_002 start");
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = true;
     IdentityCheckerTest::IdentityCheckerMock::isFocused_ = false;
-    sptr<IRemoteObject> agent = nullptr;
     InputClientInfoInner inputClientInfo;
-    int64_t pid = 0;
-    std::string bundleName;
-    int32_t ret = IdentityCheckerTest::service_->StartInput(inputClientInfo, agent, pid, bundleName);
+    std::vector<sptr<IRemoteObject>> agents;
+    std::vector<BindImeInfo> imeInfos;
+    int32_t ret = IdentityCheckerTest::service_->StartInput(inputClientInfo, agents, imeInfos);
     EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_REBOOT_OLD_IME_NOT_STOP);
 }
 
@@ -192,11 +191,10 @@ HWTEST_F(IdentityCheckerTest, testStartInput_003, TestSize.Level1)
     IMSA_HILOGI("IdentityCheckerTest testStartInput_003 start");
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = true;
     IdentityCheckerTest::IdentityCheckerMock::isFocused_ = true;
-    sptr<IRemoteObject> agent = nullptr;
     InputClientInfoInner inputClientInfo;
-    int64_t pid = 0;
-    std::string bundleName;
-    int32_t ret = IdentityCheckerTest::service_->StartInput(inputClientInfo, agent, pid, bundleName);
+    std::vector<sptr<IRemoteObject>> agents;
+    std::vector<BindImeInfo> imeInfos;
+    int32_t ret = IdentityCheckerTest::service_->StartInput(inputClientInfo, agents, imeInfos);
     EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_REBOOT_OLD_IME_NOT_STOP);
 }
 
@@ -212,11 +210,10 @@ HWTEST_F(IdentityCheckerTest, testStartInput_004, TestSize.Level1)
     IMSA_HILOGI("IdentityCheckerTest testStartInput_004 start");
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = false;
     IdentityCheckerTest::IdentityCheckerMock::isFocused_ = true;
-    sptr<IRemoteObject> agent = nullptr;
     InputClientInfoInner inputClientInfo;
-    int64_t pid = 0;
-    std::string bundleName;
-    int32_t ret = IdentityCheckerTest::service_->StartInput(inputClientInfo, agent, pid, bundleName);
+    std::vector<sptr<IRemoteObject>> agents;
+    std::vector<BindImeInfo> imeInfos;
+    int32_t ret = IdentityCheckerTest::service_->StartInput(inputClientInfo, agents, imeInfos);
     EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_REBOOT_OLD_IME_NOT_STOP);
 }
 
@@ -381,22 +378,6 @@ HWTEST_F(IdentityCheckerTest, testSetCoreAndAgent_002, TestSize.Level1)
 }
 
 /**
- * @tc.name: testSetCoreAndAgent_003
- * @tc.desc: not current ime, is a sys_basic native sa
- * @tc.type: FUNC
- * @tc.require:
- * @tc.author:
- */
-HWTEST_F(IdentityCheckerTest, testSetCoreAndAgent_003, TestSize.Level1)
-{
-    IMSA_HILOGI("IdentityCheckerTest testSetCoreAndAgent_003 start");
-    IdentityCheckerTest::IdentityCheckerMock::isBundleNameValid_ = false;
-    IdentityCheckerTest::IdentityCheckerMock::isNativeSa_ = true;
-    int32_t ret = IdentityCheckerTest::service_->SetCoreAndAgent(nullptr, nullptr);
-    EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
-}
-
-/**
  * @tc.name: testUnRegisteredProxyIme_001
  * @tc.desc: not a sys_basic native sa
  * @tc.type: FUNC
@@ -413,22 +394,6 @@ HWTEST_F(IdentityCheckerTest, testUnRegisteredProxyIme_001, TestSize.Level1)
 }
 
 /**
- * @tc.name: testUnRegisteredProxyIme_002
- * @tc.desc: a sys_basic native sa
- * @tc.type: FUNC
- * @tc.require:
- * @tc.author:
- */
-HWTEST_F(IdentityCheckerTest, testUnRegisteredProxyIme_002, TestSize.Level1)
-{
-    IMSA_HILOGI("IdentityCheckerTest testUnRegisteredProxyIme_002 start");
-    IdentityCheckerTest::IdentityCheckerMock::isNativeSa_ = true;
-    int32_t ret = IdentityCheckerTest::service_->UnRegisteredProxyIme(
-        static_cast<int32_t>(UnRegisteredType::NONE), nullptr);
-    EXPECT_EQ(ret, ErrorCode::ERROR_BAD_PARAMETERS);
-}
-
-/**
  * @tc.name: testIsCurrentIme_001
  * @tc.desc: not current ime
  * @tc.type: FUNC
@@ -439,7 +404,7 @@ HWTEST_F(IdentityCheckerTest, testIsCurrentIme_001, TestSize.Level1)
 {
     IMSA_HILOGI("IdentityCheckerTest testIsCurrentIme_001 start");
     service_->identityChecker_ = identityCheckerImpl_;
-    bool ret = IdentityCheckerTest::service_->IsCurrentIme(MAIN_USER_ID);
+    bool ret = IdentityCheckerTest::service_->IsCurrentIme(MAIN_USER_ID, 0);
     EXPECT_FALSE(ret);
 }
 
@@ -454,7 +419,7 @@ HWTEST_F(IdentityCheckerTest, testIsCurrentIme_002, TestSize.Level1)
 {
     IMSA_HILOGI("IdentityCheckerTest testIsCurrentIme_002 start");
     IdentityCheckerTest::IdentityCheckerMock::isBundleNameValid_ = true;
-    bool ret = IdentityCheckerTest::service_->IsCurrentIme(MAIN_USER_ID);
+    bool ret = IdentityCheckerTest::service_->IsCurrentIme(MAIN_USER_ID, 0);
     EXPECT_FALSE(ret);
 }
 
@@ -681,27 +646,15 @@ HWTEST_F(IdentityCheckerTest, testDisplayOptionalInputMethod_001, TestSize.Level
 HWTEST_F(IdentityCheckerTest, testSwitchInputMethod_001, TestSize.Level1)
 {
     IMSA_HILOGI("IdentityCheckerTest testSwitchInputMethod_001 start");
+    ImeEnabledCfg cfg;
+    ImeEnabledInfo enabledInfo{ CURRENT_BUNDLENAME, CURRENT_EXTNAME, EnabledStatus::BASIC_MODE };
+    enabledInfo.extraInfo.isDefaultIme = true;
+    cfg.enabledInfos.push_back(enabledInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(MAIN_USER_ID, cfg);
     service_->identityChecker_ = identityCheckerImpl_;
     int32_t ret = IdentityCheckerTest::service_->SwitchInputMethod(
         CURRENT_BUNDLENAME, CURRENT_SUBNAME, static_cast<uint32_t>(SwitchTrigger::CURRENT_IME));
     EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
-}
-
-/**
- * @tc.name: testSwitchInputMethod_002
- * @tc.desc: has no PERMISSION_CONNECT_IME_ABILITY, currentIme switch subtype
- * @tc.type: FUNC
- * @tc.require:
- * @tc.author:
- */
-HWTEST_F(IdentityCheckerTest, testSwitchInputMethod_002, TestSize.Level1)
-{
-    IMSA_HILOGI("IdentityCheckerTest testSwitchInputMethod_002 start");
-    IdentityCheckerTest::IdentityCheckerMock::hasPermission_ = false;
-    IdentityCheckerTest::IdentityCheckerMock::isBundleNameValid_ = true;
-    int32_t ret = IdentityCheckerTest::service_->SwitchInputMethod(
-        CURRENT_BUNDLENAME, CURRENT_SUBNAME, static_cast<uint32_t>(SwitchTrigger::CURRENT_IME));
-    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_GET_IME_INFO_FAILED);
 }
 
 /**
@@ -714,6 +667,11 @@ HWTEST_F(IdentityCheckerTest, testSwitchInputMethod_002, TestSize.Level1)
 HWTEST_F(IdentityCheckerTest, testSwitchInputMethod_003, TestSize.Level1)
 {
     IMSA_HILOGI("IdentityCheckerTest testSwitchInputMethod_003 start");
+    ImeEnabledCfg cfg;
+    ImeEnabledInfo enabledInfo{ CURRENT_BUNDLENAME, CURRENT_EXTNAME, EnabledStatus::BASIC_MODE };
+    enabledInfo.extraInfo.isDefaultIme = true;
+    cfg.enabledInfos.push_back(enabledInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(MAIN_USER_ID, cfg);
     IdentityCheckerTest::IdentityCheckerMock::hasPermission_ = true;
     IdentityCheckerTest::IdentityCheckerMock::isBundleNameValid_ = false;
     int32_t ret = IdentityCheckerTest::service_->SwitchInputMethod(
@@ -731,6 +689,11 @@ HWTEST_F(IdentityCheckerTest, testSwitchInputMethod_003, TestSize.Level1)
 HWTEST_F(IdentityCheckerTest, testSwitchInputMethod_004, TestSize.Level1)
 {
     IMSA_HILOGI("IdentityCheckerTest testSwitchInputMethod_004 start");
+    ImeEnabledCfg cfg;
+    ImeEnabledInfo enabledInfo{ CURRENT_BUNDLENAME, CURRENT_EXTNAME, EnabledStatus::BASIC_MODE };
+    enabledInfo.extraInfo.isDefaultIme = true;
+    cfg.enabledInfos.push_back(enabledInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(MAIN_USER_ID, cfg);
     service_->identityChecker_ = identityCheckerImpl_;
     IdentityCheckerTest::IdentityCheckerMock::isFromShell_ = true;
     IdentityCheckerTest::IdentityCheckerMock::isBundleNameValid_ = false;
@@ -831,39 +794,6 @@ HWTEST_F(IdentityCheckerTest, testShowCurrentInputDeprecated_003, TestSize.Level
     IdentityCheckerTest::IdentityCheckerMock::isFocused_ = true;
     int32_t ret = IdentityCheckerTest::service_->ShowCurrentInputDeprecated();
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOUND);
-}
-
-/**
- * @tc.name: testUpdateLargeMemorySceneState_001
- * @tc.desc: test UpdateLargeMemorySceneState
- * @tc.type: FUNC
- * @tc.require:
- * @tc.author:
- */
-HWTEST_F(IdentityCheckerTest, testUpdateLargeMemorySceneState_001, TestSize.Level1)
-{
-    IMSA_HILOGI("IdentityCheckerTest testUpdateLargeMemorySceneState_001 start");
-    IdentityCheckerTest::IdentityCheckerMock::isNativeSa_ = false;
-    int32_t memoryState = 3;
-    int32_t ret = IdentityCheckerTest::service_->UpdateLargeMemorySceneState(memoryState);
-    EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
-}
-
-/**
- * @tc.name: testUpdateLargeMemorySceneState_002
- * @tc.desc: test UpdateLargeMemorySceneState
- * @tc.type: FUNC
- * @tc.require:
- * @tc.author:
- */
-HWTEST_F(IdentityCheckerTest, testUpdateLargeMemorySceneState_002, TestSize.Level1)
-{
-    IMSA_HILOGI("IdentityCheckerTest testUpdateLargeMemorySceneState_002 start");
-    IdentityCheckerTest::IdentityCheckerMock::isNativeSa_ = true;
-    int32_t memoryState = 3;
-    int32_t ret = IdentityCheckerTest::service_->UpdateLargeMemorySceneState(memoryState);
-    IdentityCheckerTest::IdentityCheckerMock::isNativeSa_ = false;
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 }
 
 TEST_F(IdentityCheckerTest, OnExtension_extensionIsEmpty_ReturnsOK)

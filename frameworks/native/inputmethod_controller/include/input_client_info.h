@@ -31,11 +31,13 @@ enum class UpdateFlag : uint32_t {
     TEXT_CONFIG,
     UIEXTENSION_TOKENID,
     CLIENT_TYPE,
+    BIND_IME_PID,
 };
 enum class ImeType : int32_t {
     IME = 0,
     PROXY_IME,
     PROXY_AGENT_IME,
+    IME_MIRROR,
     NONE
 };
 enum class ClientState : uint32_t {
@@ -75,6 +77,7 @@ struct InputClientInfo {
     RequestKeyboardReason requestKeyboardReason { RequestKeyboardReason::NONE }; // show keyboard reason
     ClientType type{ INNER_KIT };                                               // for hiSysEvent
     std::string name; // for hiSysEvent, client name:SA/processName app/bundleName
+    pid_t bindImePid { -1 };
 };
 
 struct InputClientInfoInner : public Parcelable {

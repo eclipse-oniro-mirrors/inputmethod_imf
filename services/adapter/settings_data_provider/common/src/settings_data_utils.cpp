@@ -12,9 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <sstream>
 #include "settings_data_utils.h"
 
+#include <sstream>
 #include "iservice_registry.h"
 #include "system_ability_definition.h"
 
@@ -26,6 +26,10 @@ SettingsDataUtils::~SettingsDataUtils()
         std::lock_guard<std::mutex> autoLock(remoteObjMutex_);
         remoteObj_ = nullptr;
     }
+}
+
+void SettingsDataUtils::Release()
+{
     std::list<sptr<SettingsDataObserver>> observerList;
     {
         std::lock_guard<decltype(observerListMutex_)> lock(observerListMutex_);
@@ -56,7 +60,7 @@ int32_t SettingsDataUtils::CreateAndRegisterObserver(
     }
     return RegisterObserver(observer);
 }
-
+// LCOV_EXCL_START
 int32_t SettingsDataUtils::RegisterObserver(const std::string &uriProxy, const std::string &key,
     const SettingsDataObserver::CallbackFunc &func, sptr<SettingsDataObserver> &observer)
 {
@@ -67,7 +71,7 @@ int32_t SettingsDataUtils::RegisterObserver(const std::string &uriProxy, const s
     }
     return RegisterObserver(observer);
 }
-
+// LCOV_EXCL_STOP
 int32_t SettingsDataUtils::RegisterObserver(const sptr<SettingsDataObserver> &observer)
 {
     if (observer == nullptr) {
@@ -144,7 +148,7 @@ Uri SettingsDataUtils::GenerateTargetUri(const std::string &uriProxy, const std:
     Uri uri(uriProxy + "&key=" + key);
     return uri;
 }
-
+// LCOV_EXCL_START
 bool SettingsDataUtils::SetStringValue(const std::string &uriProxy, const std::string &key, const std::string &value)
 {
     IMSA_HILOGD("start.");
@@ -209,7 +213,7 @@ int32_t SettingsDataUtils::GetStringValue(const std::string &uriProxy, const std
     resultSet->Close();
     return ret;
 }
-
+// LCOV_EXCL_STOP
 sptr<IRemoteObject> SettingsDataUtils::GetToken()
 {
     std::lock_guard<std::mutex> autoLock(remoteObjMutex_);

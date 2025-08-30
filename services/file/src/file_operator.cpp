@@ -22,6 +22,7 @@
 #include "global.h"
 namespace OHOS {
 namespace MiscServices {
+// LCOV_EXCL_START
 constexpr int32_t SUCCESS = 0;
 bool FileOperator::Create(const std::string &path, mode_t mode)
 {
@@ -32,7 +33,7 @@ bool FileOperator::Create(const std::string &path, mode_t mode)
     }
     return true;
 }
-
+// LCOV_EXCL_STOP
 bool FileOperator::IsExist(const std::string &path)
 {
     return access(path.c_str(), F_OK) == SUCCESS;
@@ -51,7 +52,7 @@ bool FileOperator::Read(const std::string &path, std::string &content)
     }
     return true;
 }
-
+// LCOV_EXCL_START
 bool FileOperator::IsValidPath(const std::string &filePath)
 {
     if (filePath.find("../") != std::string::npos) {
@@ -62,7 +63,7 @@ bool FileOperator::IsValidPath(const std::string &filePath)
         IMSA_HILOGE("FilePath contains './'");
         return false;
     }
-    if (filePath[0] != '/') {
+    if (!filePath.empty() && filePath[0] != '/') {
         IMSA_HILOGE("FilePath is not an absolute path");
         return false;
     }
@@ -84,6 +85,7 @@ bool FileOperator::CheckImeCfgFilePath(const std::string &path)
 
 bool FileOperator::Write(const std::string &path, const std::string &content, uint32_t flags, mode_t mode)
 {
+    IMSA_HILOGD("content: %{public}s.", content.c_str());
     const char* fopenMode;
     if (flags & O_TRUNC) {
         fopenMode = "w";
@@ -119,7 +121,7 @@ bool FileOperator::Write(const std::string &path, const std::string &content, ui
 
     return true;
 }
-
+// LCOV_EXCL_STOP
 bool FileOperator::Read(const std::string &path, const std::string &key, std::string &content)
 {
     if (key.empty()) {

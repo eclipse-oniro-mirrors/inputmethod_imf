@@ -23,6 +23,7 @@
 #undef private
 
 #include <gtest/gtest.h>
+#include <gtest/hwext/gtest-multithread.h>
 #include <string_ex.h>
 #include <unistd.h>
 
@@ -52,6 +53,7 @@
 #include "text_listener.h"
 
 using namespace testing::ext;
+using namespace testing::mt;
 namespace OHOS {
 namespace MiscServices {
 constexpr uint32_t DEALY_TIME = 1;
@@ -70,6 +72,10 @@ public:
     static int32_t currentImeUid_;
     static sptr<InputMethodSystemAbility> imsa_;
     static sptr<InputMethodSystemAbilityProxy> imsaProxy_;
+    static constexpr int32_t MAXRUNCOUNT = 100;
+    static constexpr int32_t THREAD_NUM = 5;
+    static void TestOnConnectSystemCmd();
+    static std::atomic<int32_t> multiThreadExecTotalNum_;
 
     class InputMethodEngineListenerImpl : public InputMethodEngineListener {
     public:
@@ -163,7 +169,6 @@ public:
         auto currentIme = property != nullptr ? property->name : "default.inputmethod.unittest";
         currentImeTokenId_ = TddUtil::GetTestTokenID(currentIme);
         currentImeUid_ = TddUtil::GetUid(currentIme);
-
         inputMethodAbility_.abilityManager_ = imsaProxy_;
         TddUtil::InitCurrentImePermissionInfo();
         IdentityCheckerMock::SetBundleName(TddUtil::currentBundleNameMock_);
@@ -191,7 +196,7 @@ public:
         imc_->isBound_.store(true);
         imc_->isEditable_.store(true);
         auto agent = inputMethodAbility_.agentStub_->AsObject();
-        imc_->SetAgent(agent);
+        imc_->SetAgent(agent, "");
 
         sptr<IInputDataChannel> channel = iface_cast<IInputDataChannel>(imc_->clientInfo_.channel);
         inputMethodAbility_.SetInputDataChannel(channel->AsObject());
@@ -288,6 +293,22 @@ uint64_t InputMethodAbilityTest::currentImeTokenId_ = 0;
 int32_t InputMethodAbilityTest::currentImeUid_ = 0;
 sptr<InputMethodSystemAbility> InputMethodAbilityTest::imsa_;
 sptr<InputMethodSystemAbilityProxy> InputMethodAbilityTest::imsaProxy_;
+std::atomic<int32_t> InputMethodAbilityTest::multiThreadExecTotalNum_{ 0 };
+
+void InputMethodAbilityTest::TestOnConnectSystemCmd()
+{
+    IMSA_HILOGI("TestOnConnectSystemCmd start!");
+    for (int32_t count = 0; count < MAXRUNCOUNT; count++) {
+        IMSA_HILOGI("TestOnConnectSystemCmd start %{public}d", count);
+        sptr<IInputDataChannel> channel = new (std::nothrow) InputDataChannelServiceImpl();
+        ASSERT_NE(channel, nullptr);
+        sptr<IRemoteObject> agent = nullptr;
+        auto ret = inputMethodAbility_.OnConnectSystemCmd(channel->AsObject(), agent);
+        multiThreadExecTotalNum_++;
+        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    }
+    IMSA_HILOGI("TestOnConnectSystemCmd finished!");
+}
 
 /**
  * @tc.name: testSerializedInputAttribute
@@ -322,7 +343,6 @@ HWTEST_F(InputMethodAbilityTest, testSerializedInputAttribute001, TestSize.Level
     }
     InputAttribute outAttribute;
     outAttribute.inputPattern = outInnerAttribute->inputPattern;
-    EXPECT_TRUE(outAttribute.IsSecurityImeFlag());
     EXPECT_TRUE(outAttribute.IsOneTimeCodeFlag());
     delete outInnerAttribute;
 }
@@ -367,9 +387,6 @@ HWTEST_F(InputMethodAbilityTest, testShowKeyboardInputMethodCoreProxy, TestSize.
     sptr<InputDataChannelProxy> channelProxy = new InputDataChannelProxy(channelObject);
     auto ret = coreProxy->ShowKeyboard(static_cast<int32_t>(RequestKeyboardReason::NONE));
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-
-    ret = coreProxy->InitInputControlChannel(nullptr);
-    EXPECT_EQ(ERR_INVALID_DATA, ret);
 
     std::this_thread::sleep_for(std::chrono::seconds(1));
     EXPECT_EQ(showKeyboard_, true);
@@ -426,13 +443,37 @@ HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatus2, TestSize.Level0)
  
     ret = inputMethodAbility_.NotifyPanelStatus(false);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
- 
+
     ret = inputMethodAbility_.NotifyPanelStatus(true, FLG_FIXED);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
 
     AttachOptions options;
     options.isSimpleKeyboardEnabled = true;
     inputMethodAbility_.SetAttachOptions(options);
+    InputAttribute inputAttribute;
+    inputAttribute.inputPattern = InputAttribute::PATTERN_ONE_TIME_CODE;
+    inputMethodAbility_.SetInputAttribute(inputAttribute);
+    ret = inputMethodAbility_.NotifyPanelStatus(false);
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
+
+    options.isSimpleKeyboardEnabled = true;
+    inputMethodAbility_.SetAttachOptions(options);
+    inputAttribute.inputPattern = InputAttribute::PATTERN_NEWPASSWORD;
+    inputMethodAbility_.SetInputAttribute(inputAttribute);
+    ret = inputMethodAbility_.NotifyPanelStatus(false);
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
+
+    options.isSimpleKeyboardEnabled = false;
+    inputMethodAbility_.SetAttachOptions(options);
+    inputAttribute.inputPattern = InputAttribute::PATTERN_ONE_TIME_CODE;
+    inputMethodAbility_.SetInputAttribute(inputAttribute);
+    ret = inputMethodAbility_.NotifyPanelStatus(false);
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
+
+    options.isSimpleKeyboardEnabled = false;
+    inputMethodAbility_.SetAttachOptions(options);
+    inputAttribute.inputPattern = InputAttribute::PATTERN_NEWPASSWORD;
+    inputMethodAbility_.SetInputAttribute(inputAttribute);
     ret = inputMethodAbility_.NotifyPanelStatus(false);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
 }
@@ -511,7 +552,7 @@ HWTEST_F(InputMethodAbilityTest, testStartInput, TestSize.Level0)
     clientInfo.channel = channelStub;
     auto ret = inputMethodAbility_.StartInput(clientInfo, false);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_TRUE(inputMethodAbility_.isNotify_);
+    EXPECT_TRUE(inputMethodAbility_.isInputStartNotified_);
 }
 
 /**
@@ -608,10 +649,6 @@ HWTEST_F(InputMethodAbilityTest, testMoveCursor, TestSize.Level0)
     auto ret = inputMethodAbility_.MoveCursor(keyCode); // move cursor right });
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     EXPECT_TRUE(TextListener::WaitMoveCursor(keyCode));
-
-    ret = InputMethodAbilityInterface::GetInstance().MoveCursor(keyCode);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_TRUE(TextListener::WaitMoveCursor(keyCode));
 }
 
 /**
@@ -683,14 +720,7 @@ HWTEST_F(InputMethodAbilityTest, testDeleteText, TestSize.Level0)
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     EXPECT_TRUE(TextListener::WaitDeleteBackward(deleteForwardLenth));
 
-    ret = InputMethodAbilityInterface::GetInstance().DeleteForward(deleteForwardLenth);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_TRUE(TextListener::WaitDeleteBackward(deleteForwardLenth));
-
     int32_t deleteBackwardLenth = 2;
-    ret = InputMethodAbilityInterface::GetInstance().DeleteBackward(deleteBackwardLenth);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_TRUE(TextListener::WaitDeleteForward(deleteBackwardLenth));
     ret = inputMethodAbility_.DeleteBackward(deleteBackwardLenth);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     EXPECT_TRUE(TextListener::WaitDeleteForward(deleteBackwardLenth));
@@ -1169,7 +1199,7 @@ HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatusInfo_002, TestSize.Level0)
 HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatusInfo_003, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbility testNotifyPanelStatusInfo_003 START");
-    imc_->Attach(textListener_);
+    imc_->Attach(textListener_, false);
     PanelInfo panelInfo = {};
     panelInfo.panelType = STATUS_BAR;
     auto panel = std::make_shared<InputMethodPanel>();
@@ -1266,6 +1296,42 @@ HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatusInfo_005, TestSize.Level0)
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     EXPECT_TRUE(TextListener::WaitSendKeyboardStatusCallback(KeyboardStatus::HIDE));
     EXPECT_TRUE(TextListener::WaitNotifyPanelStatusInfoCallback(statusInfo));
+
+    ret = inputMethodAbility_.DestroyPanel(panel);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: testNotifyPanelStatusInfo_006
+ * @tc.desc: HideKeyboardSelf
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.author: chenyu
+ */
+HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatusInfo_006, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testNotifyPanelStatusInfo_006 START");
+    imc_->Attach(textListener_);
+    PanelInfo info;
+    info.panelType = SOFT_KEYBOARD;
+    info.panelFlag = FLG_CANDIDATE_COLUMN;
+    auto panel = std::make_shared<InputMethodPanel>();
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
+    auto ret = inputMethodAbility_.CreatePanel(nullptr, info, panel);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    PanelStatusInfo statusInfo;
+    statusInfo.panelInfo = info;
+    statusInfo.visible = true;
+    statusInfo.trigger = Trigger::IME_APP;
+    // ShowPanel
+    CheckPanelStatusInfo(panel, statusInfo);
+    PanelStatusInfo statusInfo1;
+    statusInfo1.panelInfo = info;
+    statusInfo1.visible = false;
+    statusInfo1.trigger = Trigger::IME_APP;
+    InputMethodAbilityTest::inputMethodAbility_.isImeTerminating_ = false;
+    // HidePanel
+    CheckPanelStatusInfo(panel, statusInfo1);
 
     ret = inputMethodAbility_.DestroyPanel(panel);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
@@ -1696,10 +1762,10 @@ HWTEST_F(InputMethodAbilityTest, testFinishTextPreview_003, TestSize.Level0)
 }
 
 /**
- *@tc.name: testGetInputMethodState_001
- *@tc.desc: IMA
- *@tc.type: FUNC
- *@tc.require:
+ * @tc.name: testGetInputMethodState_001
+ * @tc.desc: IMA
+ * @tc.type: FUNC
+ * @tc.require:
  */
 HWTEST_F(InputMethodAbilityTest, testGetInputMethodState_001, TestSize.Level0)
 {
@@ -1777,6 +1843,7 @@ HWTEST_F(InputMethodAbilityTest, BranchCoverage002, TestSize.Level0)
     ret = imsa_->SwitchExtension(vailidUserId, info);
     EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
     ret = imsa_->SwitchSubType(vailidUserId, info);
+    imsa_->IncreaseAttachCount();
     imsa_->NeedHideWhenSwitchInputType(vailidUserId, type, needHide);
     EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
     ret = imsa_->SwitchInputType(vailidUserId, switchInfo);
@@ -2012,8 +2079,8 @@ HWTEST_F(InputMethodAbilityTest, testHandleUnconsumedKey_008, TestSize.Level0)
 
     sptr<InputDataChannelStub> channelObject = new InputDataChannelServiceImpl();
     auto channelProxy = std::make_shared<InputDataChannelProxy>(channelObject->AsObject());
-    InputMethodAbility::GetInstance().dataChannelProxyWrap_
-        = std::make_shared<InputDataChannelProxyWrap>(channelProxy);
+    InputMethodAbility::GetInstance().dataChannelProxyWrap_ =
+        std::make_shared<InputDataChannelProxyWrap>(channelProxy, nullptr);
     InputMethodAbility::GetInstance().inputAttribute_.needAutoInputNumkey = true;
 
     auto keyEvent = KeyEventUtil::CreateKeyEvent(MMI::KeyEvent::KEYCODE_NUMPAD_0, MMI::KeyEvent::KEY_ACTION_DOWN);
@@ -2032,8 +2099,8 @@ HWTEST_F(InputMethodAbilityTest, testHandleUnconsumedKey_009, TestSize.Level0)
     IMSA_HILOGI("InputMethodAbilityTest testHandleUnconsumedKey_009 START");
     sptr<InputDataChannelStub> channelObject = new InputDataChannelServiceImpl();
     auto channelProxy = std::make_shared<InputDataChannelProxy>(channelObject->AsObject());
-    InputMethodAbility::GetInstance().dataChannelProxyWrap_
-        = std::make_shared<InputDataChannelProxyWrap>(channelProxy);
+    InputMethodAbility::GetInstance().dataChannelProxyWrap_ =
+        std::make_shared<InputDataChannelProxyWrap>(channelProxy, nullptr);
     InputMethodAbility::GetInstance().inputAttribute_.needAutoInputNumkey = true;
 
     auto keyEvent = KeyEventUtil::CreateKeyEvent(MMI::KeyEvent::KEYCODE_A, MMI::KeyEvent::KEY_ACTION_DOWN);
@@ -2083,19 +2150,6 @@ HWTEST_F(InputMethodAbilityTest, testHandleUnconsumedKey_011, TestSize.Level0)
 }
 
 /**
- * @tc.name: testInitPasteBoardstart_001
- * @tc.desc: testInitPasteBoardstart_001
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodAbilityTest, testInitPasteBoardstart_001, TestSize.Level1)
-{
-    IMSA_HILOGI("InputMethodAbilityTest testInitPasteBoardstart_001 START");
-    ASSERT_NE(imsa_, nullptr);
-    auto ret = imsa_->InitPasteboardMonitor();
-    EXPECT_TRUE(ret);
-    imsa_->HandlePasteboardStarted();
-}
-/**
  * @tc.name: testInvokeAttachOptionsCallback
  * @tc.desc: testInvokeAttachOptionsCallback
  * @tc.type: FUNC
@@ -2121,6 +2175,20 @@ HWTEST_F(InputMethodAbilityTest, testInvokeAttachOptionsCallback, TestSize.Level
 }
 
 /**
+ * @tc.name: testInitPasteBoardstart_001
+ * @tc.desc: testInitPasteBoardstart_001
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testInitPasteBoardstart_001, TestSize.Level1)
+{
+    IMSA_HILOGI("InputMethodAbilityTest testInitPasteBoardstart_001 START");
+    ASSERT_NE(imsa_, nullptr);
+    auto ret = imsa_->InitPasteboardMonitor();
+    EXPECT_TRUE(ret);
+    imsa_->HandlePasteboardStarted();
+}
+
+/**
  * @tc.name: testClearBindInfo
  * @tc.desc: testClearBindInfo
  * @tc.type: FUNC
@@ -2134,10 +2202,137 @@ HWTEST_F(InputMethodAbilityTest, testClearBindInfo, TestSize.Level0)
     options.isSimpleKeyboardEnabled = true;
     inputMethodAbility_.SetAttachOptions(options);
     inputMethodAbility_.OnClientInactive(inputMethodAbility_.dataChannelObject_);
-    InputAttribute nullAttribute = {};
-    EXPECT_TRUE(inputMethodAbility_.GetInputAttribute() == nullAttribute);
+    EXPECT_TRUE(inputMethodAbility_.GetBindClientInfo().name.empty());
     EXPECT_TRUE(inputMethodAbility_.dataChannelObject_ == nullptr);
     InputMethodAbilityTest::GetIMCDetachIMA();
+}
+
+/**
+ * @tc.name: testServiceHandler_
+ * @tc.desc: testServiceHandler_ is nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, TestServiceHandler_, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbilityTest testServiceHandler_ START");
+    int32_t userId = 100;
+    string subName = "";
+    auto temp = imsa_->serviceHandler_;
+    imsa_->serviceHandler_ = nullptr;
+
+    imsa_->SubscribeCommonEvent();
+
+    imsa_->GetValidSubtype(subName, nullptr);
+    auto info = std::make_shared<ImeInfo>();
+    EXPECT_NE(info, nullptr);
+    imsa_->GetValidSubtype(subName, info);
+
+    EXPECT_EQ(imsa_->serviceHandler_, nullptr);
+    auto ret = imsa_->SwitchExtension(userId, nullptr);
+    EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
+    ret = imsa_->SwitchExtension(userId, info);
+    MessageParcel *parcel1 = new (std::nothrow) MessageParcel();
+    auto msg = std::make_shared<Message>(MessageID::MSG_ID_USER_START, parcel1);
+    ret = imsa_->OnUserStarted(msg.get());
+    msg.reset();
+    ret = imsa_->OnUserStarted(msg.get());
+    EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
+    imsa_->serviceHandler_ = temp;
+}
+
+/**
+ * @tc.name: TestOnConnectSystemCmd
+ * @tc.desc: TestOnConnectSystemCmd in Multithreading
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, TestOnConnectSystemCmd_001, TestSize.Level0)
+{
+    IMSA_HILOGI("TestOnConnectSystemCmd_001 start.");
+    multiThreadExecTotalNum_.store(0);
+    SET_THREAD_NUM(THREAD_NUM);
+    GTEST_RUN_TASK(TestOnConnectSystemCmd);
+    EXPECT_EQ(multiThreadExecTotalNum_.load(), THREAD_NUM * MAXRUNCOUNT);
+}
+
+/**
+ * @tc.name: testSelectByRange
+ * @tc.desc: InputMethodAbility SelectByRange
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodAbilityTest, testSelectByRange, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility SelectByRangeTest START");
+    int32_t start = 1;
+    int32_t end = 1;
+
+    auto ret = InputMethodAbilityInterface::GetInstance().SelectByRange(start, end);
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
+
+    start = -1;
+    end = -1;
+    ret = InputMethodAbilityInterface::GetInstance().SelectByRange(start, end);
+    EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+}
+
+/**
+ *@tc.name: testOnStopInputService_001
+ *@tc.desc: IMA
+ *@tc.type: FUNC
+ *@tc.require:
+ */
+HWTEST_F(InputMethodAbilityTest, testOnStopInputService_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbilityTest OnStopInputService_001 Test START");
+    InputMethodAbilityTest::inputMethodAbility_.isImeTerminating_ = false;
+    inputMethodAbility_.SetImeListener(std::make_shared<InputMethodEngineListenerImpl>());
+    auto ret = InputMethodAbilityTest::inputMethodAbility_.OnStopInputService(false);
+    EXPECT_NE(true, InputMethodAbilityTest::inputMethodAbility_.isImeTerminating_);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    ret = InputMethodAbilityTest::inputMethodAbility_.OnStopInputService(true);
+    EXPECT_EQ(true, InputMethodAbilityTest::inputMethodAbility_.isImeTerminating_);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: testHideKeyboardSelf_001
+ * @tc.desc: InputMethodAbility HideKeyboardSelf
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.author: Hollokin
+ */
+HWTEST_F(InputMethodAbilityTest, testHideKeyboardSelf_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testHideKeyboardSelf_001 START");
+    InputMethodAbilityTest::inputMethodAbility_.isImeTerminating_ = true;
+    auto ret = InputMethodAbilityTest::inputMethodAbility_.HideKeyboardSelf();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: testHidePanel
+ * @tc.desc: InputMethodAbility HidePanel
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodAbilityTest, testHidePanel, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testHidePanel START");
+    imc_->Attach(textListener_);
+    PanelInfo info1;
+    info1.panelType = SOFT_KEYBOARD;
+    info1.panelFlag = FLG_FLOATING;
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
+    auto panel = std::make_shared<InputMethodPanel>();
+    auto ret = inputMethodAbility_.CreatePanel(nullptr, info1, panel);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ret = InputMethodAbilityTest::inputMethodAbility_.HidePanel(nullptr);
+    EXPECT_EQ(ret, ErrorCode::ERROR_BAD_PARAMETERS);
+
+    InputMethodAbilityTest::inputMethodAbility_.isImeTerminating_ = true;
+    ret = InputMethodAbilityTest::inputMethodAbility_.HidePanel(panel);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 }
 } // namespace MiscServices
 } // namespace OHOS

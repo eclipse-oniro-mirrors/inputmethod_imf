@@ -26,12 +26,12 @@
 #include "on_demand_start_stop_sa.h"
 #include "input_method_system_ability.h"
 #undef private
-#include "iremote_object.h"
-#include "inputmethod_message_handler.h"
+#include "fuzzer/FuzzedDataProvider.h"
 #include "input_method_controller.h"
 #include "input_method_core_service_impl.h"
+#include "inputmethod_message_handler.h"
+#include "iremote_object.h"
 #include "system_cmd_channel_service_impl.h"
-
 using namespace OHOS::MiscServices;
 using namespace MessageID;
 namespace OHOS {
@@ -61,7 +61,8 @@ void FuzzOnDemandStartStopSa(const uint8_t *data, size_t size)
     sptr<OnDemandStartStopSa::SaLoadCallback> callback =
         new (std::nothrow) OnDemandStartStopSa::SaLoadCallback(onDemandStartStopSa);
     sptr<IRemoteObject> object {nullptr};
-    auto fuzzedInt32 = static_cast<int32_t>(size);
+    FuzzedDataProvider provider(data, size);
+    int32_t fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
     callback->OnLoadSystemAbilitySuccess(fuzzedInt32, object);
     callback->OnLoadSystemAbilityFail(fuzzedInt32);
     OnDemandStartStopSa::IncreaseProcessingIpcCnt();
@@ -71,53 +72,42 @@ void FuzzOnDemandStartStopSa(const uint8_t *data, size_t size)
 
 void FuzzSwitchOperation(const uint8_t *data, size_t size)
 {
-    auto fuzzedUint64 = static_cast<uint64_t>(size);
-    auto fuzzedUint32 = static_cast<uint32_t>(size);
-    auto fuzzedInt32 = static_cast<int32_t>(size);
+    FuzzedDataProvider provider(data, size);
+    auto fuzzedUint64 = provider.ConsumeIntegral<uint64_t>();
+    auto fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
     sptr<IInputMethodCore> core = new InputMethodCoreServiceImpl();
     sptr<SystemCmdChannelStub> stub = new SystemCmdChannelServiceImpl();
     auto info = std::make_shared<ImeInfo>();
-
+ 
     MessageParcel messData;
     messData.WriteRemoteObject(stub->AsObject());
     sptr<IRemoteObject> remoteObject = messData.ReadRemoteObject();
     auto fuzzedBool = static_cast<bool>(data[0] % 2);
     std::string fuzzedString(reinterpret_cast<const char *>(data), size);
 
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->InitMemMgrMonitor();
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->HandleUserSwitched(fuzzedInt32);
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->InitFocusChangedMonitor();
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->InitWmsConnectionMonitor();
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->IsValidBundleName(fuzzedString);
     DelayedSingleton<InputMethodSystemAbility>::GetInstance()->UpdateUserInfo(fuzzedInt32);
-
+ 
     DelayedSingleton<InputMethodSystemAbility>::GetInstance()->RegisterProxyIme(fuzzedUint64, core, remoteObject);
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->SwitchByCombinationKey(fuzzedUint32);
+    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->SwitchExtension(fuzzedInt32, info);
+    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->SwitchSubType(fuzzedInt32, info);
     DelayedSingleton<InputMethodSystemAbility>::GetInstance()->HandleFocusChanged(fuzzedBool,
         fuzzedUint64, fuzzedInt32, fuzzedInt32);
 }
-
+ 
 void FuzzHandleOperation(const uint8_t *data, size_t size)
 {
-    auto fuzzedInt32 = static_cast<int32_t>(size);
+    FuzzedDataProvider provider(data, size);
+    auto fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
     InputType inputType = static_cast<InputType>(size);
     InputClientInfo clientInfo {};
-
+ 
     auto fuzzedBool = static_cast<bool>(data[0] % 2);
     std::string fuzzedString(reinterpret_cast<const char *>(data), size);
-
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->HandleUserSwitched(fuzzedInt32);
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->StopImeInBackground();
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->HandleOsAccountStarted();
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->HandleMemStarted();
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->HandleWmsStarted();
-
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->HandleWmsConnected(fuzzedInt32, fuzzedInt32);
+ 
     DelayedSingleton<InputMethodSystemAbility>::GetInstance()->HandleScbStarted(fuzzedInt32, fuzzedInt32);
     DelayedSingleton<InputMethodSystemAbility>::GetInstance()->HandleWmsDisconnected(fuzzedInt32, fuzzedInt32);
     DelayedSingleton<InputMethodSystemAbility>::GetInstance()->NeedHideWhenSwitchInputType(fuzzedInt32, inputType,
         fuzzedBool);
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->GetAlternativeIme(fuzzedInt32, fuzzedString);
 }
 } // namespace OHOS
 /* Fuzzer entry point */

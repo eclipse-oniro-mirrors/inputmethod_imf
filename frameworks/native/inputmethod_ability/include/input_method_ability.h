@@ -42,6 +42,7 @@
 #include "system_cmd_channel_proxy.h"
 #include "inputmethod_message_handler.h"
 #include "input_data_channel_proxy_wrap.h"
+#include "ime_mirror_manager.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -53,6 +54,8 @@ public:
     int32_t UnRegisteredProxyIme(UnRegisteredType type);
     int32_t RegisterProxyIme(uint64_t displayId = DEFAULT_DISPLAY_ID);
     int32_t UnregisterProxyIme(uint64_t displayId);
+    int32_t BindImeMirror();
+    int32_t UnbindImeMirror();
     int32_t InsertText(const std::string &text, const AsyncIpcCallBack &callback = nullptr);
     void SetImeListener(std::shared_ptr<InputMethodEngineListener> imeListener);
     std::shared_ptr<InputMethodEngineListener> GetImeListener();
@@ -69,7 +72,8 @@ public:
     int32_t MoveCursor(int32_t keyCode, const AsyncIpcCallBack &callback = nullptr);
     int32_t SelectByRange(int32_t start, int32_t end, const AsyncIpcCallBack &callback = nullptr);
     int32_t SelectByMovement(int32_t direction, const AsyncIpcCallBack &callback = nullptr);
-    int32_t DispatchKeyEvent(const std::shared_ptr<MMI::KeyEvent> &keyEvent, sptr<KeyEventConsumerProxy> &consumer);
+    int32_t DispatchKeyEvent(
+        const std::shared_ptr<MMI::KeyEvent> &keyEvent, uint64_t cbId, const sptr<IRemoteObject> &channelObject);
     void SetCallingWindow(uint32_t windowId);
     int32_t GetEnterKeyType(int32_t &keyType);
     int32_t GetInputPattern(int32_t &inputPattern);
@@ -111,6 +115,7 @@ public:
     int32_t OnResponse(uint64_t msgId, int32_t code, const ResponseData &data);
     int32_t IsCapacitySupport(int32_t capacity, bool &isSupport);
     AttachOptions GetAttachOptions();
+    int32_t HandleKeyEventResult(uint64_t cbId, bool consumeResult, const sptr<IRemoteObject> &channelObject);
 
 public:
     /* called from TaskManager worker thread */
@@ -119,14 +124,17 @@ public:
     int32_t ShowKeyboard(int32_t requestKeyboardReason);
     int32_t HideKeyboard();
     int32_t OnDiscardTypingText();
+    int32_t OnNotifyPreemption();
 
     void OnInitInputControlChannel(sptr<IRemoteObject> channelObj);
     void OnSetSubtype(SubProperty subProperty);
     void OnCursorUpdate(int32_t positionX, int32_t positionY, int32_t height);
     void OnSelectionChange(std::u16string text, int32_t oldBegin, int32_t oldEnd, int32_t newBegin, int32_t newEndg);
     void OnAttributeChange(InputAttribute attribute);
+    void OnFunctionKey(int32_t funcKey);
 
     int32_t OnStopInputService(bool isTerminateIme);
+    HiSysEventClientInfo GetBindClientInfo();
 private:
     std::mutex controlChannelLock_;
     std::shared_ptr<InputControlChannelProxy> controlChannel_ = nullptr;
@@ -187,21 +195,10 @@ private:
     void ClearInputType();
     std::shared_ptr<MsgHandlerCallbackInterface> GetMsgHandlerCallback();
     int32_t StartInputInner(const InputClientInfo &clientInfo, bool isBindFromClient);
-    int32_t InsertTextInner(const std::string &text, const AsyncIpcCallBack &callback = nullptr);
-    int32_t SetPreviewTextInner(
-        const std::string &text, const Range &range, const AsyncIpcCallBack &callback = nullptr);
-    int32_t DeleteForwardInner(int32_t length, const AsyncIpcCallBack &callback = nullptr);
-    int32_t DeleteBackwardInner(int32_t length, const AsyncIpcCallBack &callback = nullptr);
-    int32_t FinishTextPreviewInner(const AsyncIpcCallBack &callback = nullptr);
-    int32_t GetTextBeforeCursorInner(int32_t number, std::u16string &text, const AsyncIpcCallBack &callback = nullptr);
-    int32_t GetTextAfterCursorInner(int32_t number, std::u16string &text, const AsyncIpcCallBack &callback = nullptr);
-    int32_t GetTextIndexAtCursorInner(int32_t &index, const AsyncIpcCallBack &callback = nullptr);
     bool NotifyInfoToWmsInStartInput(const TextTotalConfig &textConfig);
     void SetBindClientInfo(const InputClientInfo &clientInfo);
-    HiSysEventClientInfo GetBindClientInfo();
     void ClearBindClientInfo();
     void ReportImeStartInput(int32_t eventCode, int32_t errCode, bool isShowKeyboard, int64_t consumeTime = -1);
-    void ReportBaseTextOperation(int32_t eventCode, int32_t errCode, int64_t consumeTime);
     void ClearBindInfo(const sptr<IRemoteObject> &channel);
 
     ConcurrentMap<PanelType, std::shared_ptr<InputMethodPanel>> panels_ {};
@@ -228,7 +225,7 @@ private:
 
     std::mutex inputTypeLock_;
     InputType inputType_ = InputType::NONE;
-    std::atomic<bool> isImeTerminating = false;
+    std::atomic<bool> isImeTerminating_ = false;
     std::atomic_bool isShowAfterCreate_ { false };
     std::atomic<int32_t> securityMode_ = -1;
     std::mutex msgHandlerMutex_;
@@ -239,7 +236,8 @@ private:
     
     std::mutex bindClientInfoLock_;
     HiSysEventClientInfo bindClientInfo_;
-    bool isNotify_ = false;
+    bool isInputStartNotified_ = false;
+    ImeMirrorManager imeMirrorMgr_;
 
     bool IsDisplayChanged(uint64_t oldDisplayId, uint64_t newDisplayId);
 };

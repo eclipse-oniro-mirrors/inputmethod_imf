@@ -31,6 +31,7 @@ constexpr uint32_t INVALID_WINDOW_ID = 0;
 constexpr int32_t INVALID_VALUE = -1;
 constexpr size_t MAX_PRIVATE_COMMAND_SIZE = 32 * 1024; // 32K
 constexpr size_t MAX_PRIVATE_COMMAND_COUNT = 5;
+constexpr size_t MAX_SYS_PRIVATE_COMMAND_COUNT = MAX_PRIVATE_COMMAND_COUNT + 1;
 constexpr size_t MAX_VALUE_MAP_COUNT = 256;
 constexpr size_t MAX_ARRAY_BUFFER_MSG_ID_SIZE = 256; // 256B
 constexpr size_t MAX_ARRAY_BUFFER_MSG_PARAM_SIZE = 128 * 1024; // 128KB
@@ -192,7 +193,6 @@ enum Trigger : int32_t {
     IMF,
     END
 };
-
 struct PanelStatusInfo {
     PanelInfo panelInfo;
     bool visible { false };
@@ -305,6 +305,14 @@ enum PrivateDataValueType : int32_t {
     VALUE_TYPE_NUMBER
 };
 using PrivateDataValue = std::variant<std::string, bool, int32_t>;
+
+enum class RequestKeyboardReason : int32_t {
+    NONE = 0,          // no event reason
+    MOUSE = 1,         // user triggered mouse event
+	TOUCH = 2,         // user triggered touch event
+    OTHER = 20         // other reason
+};
+
 using ValueMap = std::unordered_map<std::string, PrivateDataValue>;
 
 struct Value : public Parcelable {
@@ -324,14 +332,6 @@ struct KeyEventValue : public Parcelable {
 
     std::shared_ptr<MMI::KeyEvent> event;
 };
-
-enum class RequestKeyboardReason : int32_t {
-    NONE = 0,          // no event reason
-    MOUSE = 1,         // user triggered mouse event
-	TOUCH = 2,         // user triggered touch event
-    OTHER = 20         // other reason
-};
-
 struct TextTotalConfig {
 public:
     InputAttribute inputAttribute = {};
@@ -423,7 +423,7 @@ struct TextConfig {
     {
         size_t privateCommandSize = privateCommand.size();
         size_t maxSize =
-            IsSystemPrivateCommand(privateCommand) ? (MAX_PRIVATE_COMMAND_COUNT + 1) : MAX_PRIVATE_COMMAND_COUNT;
+            IsSystemPrivateCommand(privateCommand) ? MAX_SYS_PRIVATE_COMMAND_COUNT : MAX_PRIVATE_COMMAND_COUNT;
         if (privateCommandSize == 0 || privateCommandSize > maxSize) {
             IMSA_HILOGE("privateCommand size must more than 0 and less than 5.");
             return false;
@@ -484,7 +484,6 @@ enum class InputType : int32_t {
     SECURITY_INPUT,
     VOICE_INPUT,
     VOICEKB_INPUT,
-    ONE_TIME_CODE = 13,
     END
 };
 
@@ -515,7 +514,6 @@ struct ArrayBuffer : public Parcelable {
     {
         return jsArgc == arrayBuffer.jsArgc && msgId == arrayBuffer.msgId && msgParam == arrayBuffer.msgParam;
     }
-
     bool ReadFromParcel(Parcel &in);
     bool Marshalling(Parcel &out) const;
     static ArrayBuffer *Unmarshalling(Parcel &in);

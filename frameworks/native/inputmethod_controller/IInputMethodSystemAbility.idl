@@ -21,11 +21,11 @@ sequenceable input_method_utils..OHOS.MiscServices.Value;
 sequenceable panel_info..OHOS.MiscServices.PanelInfo;
 sequenceable element_name..OHOS.AppExecFwk.ElementName;
 sequenceable OHOS.IRemoteObject;
+import InputMethodClientTypes;
 interface OHOS.MiscServices.IInputClient;
 interface OHOS.MiscServices.IInputMethodCore;
 interface OHOS.MiscServices.IInputMethodSystemAbility {
-    void StartInput([in] InputClientInfoInner inputClientInfoInner,
-        [out] IRemoteObject agent, [out] long pid, [out] String bundleName);
+    void StartInput([in] InputClientInfoInner inputClientInfoInner, [out] IRemoteObject[] agents, [out] BindImeInfo[] imeInfos);
     void ShowCurrentInput([in] unsigned int type);
     void HideCurrentInput();
     void StopInputSession();
@@ -52,12 +52,12 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void IsInputTypeSupported([in] int type, [out] boolean resultValue);
     void IsCurrentImeByPid([in] int pid, [out] boolean resultValue);
     void StartInputType([in] int type);
+    [oneway] void StartInputTypeAsync([in] int type);
     void ExitCurrentInputType();
     void IsPanelShown([in] PanelInfo panelInfo, [out] boolean isShown);
     void GetSecurityMode([out] int security);
     void IsDefaultIme();
     void IsDefaultImeSet([out] boolean resultValue);
-    void UpdateLargeMemorySceneState([in] int memoryState);
     void EnableIme([in] String bundleName, [in] String extensionName, [in] int status);
     void ConnectSystemCmd([in] IRemoteObject channel, [out] IRemoteObject agent);
     void GetInputMethodState([out] int state);
@@ -70,7 +70,9 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void RegisterProxyIme([in] unsigned long displayId, [in] IInputMethodCore core, [in] IRemoteObject agent);
     void UnregisterProxyIme([in] unsigned long displayId);
     void SendPrivateData([in] Value value);
-    void IsDefaultImeScreen([in] unsigned long displayId, [out] boolean resultValue);
+    void IsRestrictedDefaultImeByDisplay([in] unsigned long displayId, [out] boolean resultValue);
+    void IsKeyboardCallingProcess([in] int pid, [out] boolean isKeyboardCallingProcess);
     void IsCapacitySupport([in] int capacity, [out] boolean isSupport);
-    bool IsKeyboardCallingProcess(int32_t pid);
+    void BindImeMirror([in] IInputMethodCore core, [in] IRemoteObject agent);
+    void UnbindImeMirror();
 }

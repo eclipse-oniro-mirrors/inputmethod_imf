@@ -26,6 +26,7 @@ int32_t KeyboardListenerTestImpl::cursorHeight_ { -1 };
 int32_t KeyboardListenerTestImpl::newBegin_{ -1 };
 std::string KeyboardListenerTestImpl::text_{ "-1" };
 InputAttribute KeyboardListenerTestImpl::inputAttribute_ { 0, 0, 0 };
+int32_t KeyboardListenerTestImpl::funcKey_ { -1 };
 bool KeyboardListenerTestImpl::OnKeyEvent(int32_t keyCode, int32_t keyStatus, sptr<KeyEventConsumerProxy> &consumer)
 {
     keyCode_ = keyCode;
@@ -33,13 +34,11 @@ bool KeyboardListenerTestImpl::OnKeyEvent(int32_t keyCode, int32_t keyStatus, sp
 }
 
 bool KeyboardListenerTestImpl::OnDealKeyEvent(
-    const std::shared_ptr<MMI::KeyEvent> &keyEvent, sptr<KeyEventConsumerProxy> &consumer)
+    const std::shared_ptr<MMI::KeyEvent> &keyEvent, uint64_t cbId, const sptr<IRemoteObject> &channelObject)
 {
-    bool isKeyCodeConsume = OnKeyEvent(keyEvent->GetKeyCode(), keyEvent->GetKeyAction(), consumer);
-    bool isKeyEventConsume = OnKeyEvent(keyEvent, consumer);
-    if (consumer != nullptr) {
-        consumer->OnKeyEventResult(isKeyEventConsume || isKeyCodeConsume);
-    }
+    sptr<KeyEventConsumerProxy> consumer = new (std::nothrow) KeyEventConsumerProxy(nullptr);
+    OnKeyEvent(keyEvent->GetKeyCode(), keyEvent->GetKeyAction(), consumer);
+    OnKeyEvent(keyEvent, consumer);
     return true;
 }
 
@@ -67,6 +66,12 @@ void KeyboardListenerTestImpl::OnEditorAttributeChange(const InputAttribute &inp
     kdListenerCv_.notify_one();
 }
 
+void KeyboardListenerTestImpl::OnFunctionKey(int32_t funcKey)
+{
+    funcKey_ = funcKey;
+    kdListenerCv_.notify_one();
+}
+
 void KeyboardListenerTestImpl::ResetParam()
 {
     keyCode_ = -1;
@@ -76,6 +81,7 @@ void KeyboardListenerTestImpl::ResetParam()
     inputAttribute_.inputPattern = 0;
     inputAttribute_.enterKeyType = 0;
     inputAttribute_.inputOption = 0;
+    funcKey_ = -1;
 }
 
 bool KeyboardListenerTestImpl::WaitKeyEvent(int32_t keyCode)
@@ -121,6 +127,15 @@ bool KeyboardListenerTestImpl::WaitEditorAttributeChange(const InputAttribute &i
         return inputAttribute == inputAttribute_;
     });
     return inputAttribute == inputAttribute_;
+}
+
+bool KeyboardListenerTestImpl::WaitFunctionKey(int32_t funcKey)
+{
+    std::unique_lock<std::mutex> lock(kdListenerLock_);
+    kdListenerCv_.wait_for(lock, std::chrono::seconds(1), [&funcKey]() {
+        return funcKey == funcKey_;
+    });
+    return funcKey == funcKey_;
 }
 } // namespace MiscServices
 } // namespace OHOS

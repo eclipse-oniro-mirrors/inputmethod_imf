@@ -315,10 +315,6 @@ napi_value JsGetInputMethodController::JsConstructor(napi_env env, napi_callback
         return nullptr;
     }
 
-    if (controllerObject->loop_ == nullptr) {
-        napi_get_uv_event_loop(env, &controllerObject->loop_);
-    }
-
     return thisVar;
 }
 
@@ -383,6 +379,9 @@ void JsGetInputMethodController::RegisterListener(napi_value callback, std::stri
 
     auto callbacks = jsCbMap_[type];
     bool ret = std::any_of(callbacks.begin(), callbacks.end(), [&callback](std::shared_ptr<JSCallbackObject> cb) {
+        if (cb == nullptr) {
+            return false;
+        }
         return JsUtils::Equals(cb->env_, callback, cb->callback_, cb->threadId_);
     });
     if (ret) {
@@ -473,12 +472,12 @@ napi_value JsGetInputMethodController::UnSubscribe(napi_env env, napi_callback_i
         return nullptr;
     }
 
-    // if the second param is not napi_function/napi_null/napi_undefined, return.
+    // if the second param is not napi_function/napi_null/napi_undefined, return
     auto paramType = JsUtil::GetType(env, argv[1]);
     if (paramType != napi_function && paramType != napi_null && paramType != napi_undefined) {
         return nullptr;
     }
-    // if the second param is napi_function, delete it, else delete all.
+    // if the second param is napi_function, delete it, else delete all
     argv[1] = paramType == napi_function ? argv[1] : nullptr;
 
     IMSA_HILOGD("unsubscribe type: %{public}s.", type.c_str());
@@ -646,11 +645,7 @@ napi_value JsGetInputMethodController::Attach(napi_env env, napi_callback_info i
         }
         // requestKeyboardReason not must
         if (argc > 2) {
-            napi_valuetype valueType = napi_undefined;
-            napi_typeof(env, argv[2], &valueType);
-            if (valueType != napi_function) {
-                JsUtil::GetValue(env, argv[2], ctxt->requestKeyboardReason);
-            }
+            JsUtil::GetValue(env, argv[2], ctxt->requestKeyboardReason);
         }
         ctxt->info = { std::chrono::system_clock::now(), ctxt->attribute};
         attachQueue_.Push(ctxt->info);
@@ -724,15 +719,10 @@ napi_value JsGetInputMethodController::GetAttachOptionsValue(
     NAPI_CALL(env, napi_get_cb_info(env, cbinfo, &argc, argv, &thisVar, &data));
     int32_t requestKeyboardReason = 0;
     if (argc > 0) {
-        napi_valuetype valueType = napi_undefined;
-        napi_typeof(env, argv[0], &valueType);
-        if (valueType != napi_function) {
-            JsUtil::GetValue(env, argv[0], requestKeyboardReason);
-        }
+        JsUtil::GetValue(env, argv[0], requestKeyboardReason);
     }
     IMSA_HILOGI("run in. requestKeyboardReason=%{public}d", requestKeyboardReason);
     attachOptions.requestKeyboardReason = static_cast<OHOS::MiscServices::RequestKeyboardReason>(requestKeyboardReason);
-
     return result;
 }
 
@@ -756,8 +746,8 @@ napi_value JsGetInputMethodController::DiscardTypingText(napi_env env, napi_call
 {
     InputMethodSyncTrace tracer("JsGetInputMethodController_DiscardTypingText");
     return HandleSoftKeyboard(
-        env, info
-        , [] {
+        env, info,
+        [] {
             auto instance = InputMethodController::GetInstance();
             if (instance == nullptr) {
                 IMSA_HILOGE("GetInstance return nullptr!");
@@ -1279,29 +1269,21 @@ int32_t JsGetInputMethodController::SetPreviewText(const std::u16string &text, c
         IMSA_HILOGD("failed to get uv entry!");
         return ErrorCode::ERROR_NULL_POINTER;
     }
-    auto eventHandler = GetEventHandler();
-    if (eventHandler == nullptr) {
-        IMSA_HILOGE("eventHandler is nullptr!");
-        return ErrorCode::ERROR_NULL_POINTER;
-    }
     IMSA_HILOGI("previewText start.");
-    auto task = [entry]() {
-        auto getPreviewTextProperty = [entry](napi_env env, napi_value *args, uint8_t argc) -> bool {
-            // 2 means the callback has two params.
-            if (argc < 2) {
-                return false;
-            }
-            // 0 means the first param of callback.
-            args[0] = JsUtil::GetValue(env, entry->text);
-            // 1 means the second param of callback.
-            args[1] = CreateSelectRange(env, entry->start, entry->end);
-            return true;
-        };
-
-        // 2 means the callback has two param.
-        JsCallbackHandler::Traverse(entry->vecCopy, { 2, getPreviewTextProperty });
+    auto getPreviewTextProperty = [entry](napi_env env, napi_value *args, uint8_t argc) -> bool {
+        // 2 means the callback has two params.
+        if (argc < 2) {
+            return false;
+        }
+        // 0 means the first param of callback.
+        args[0] = JsUtil::GetValue(env, entry->text);
+        // 1 means the second param of callback.
+        args[1] = CreateSelectRange(env, entry->start, entry->end);
+        return true;
     };
-    eventHandler->PostTask(task, type, 0, AppExecFwk::EventQueue::Priority::VIP);
+
+    // 2 means the callback has two param.
+    JsCallbackHandler::Traverse(entry->vecCopy, { 2, getPreviewTextProperty });
     return ErrorCode::NO_ERROR;
 }
 

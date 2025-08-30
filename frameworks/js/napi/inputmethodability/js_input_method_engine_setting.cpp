@@ -334,9 +334,6 @@ napi_value JsInputMethodEngineSetting::JsConstructor(napi_env env, napi_callback
         IMSA_HILOGE("JsInputMethodEngineSetting napi_wrap failed: %{public}d", status);
         return nullptr;
     }
-    if (setting->loop_ == nullptr) {
-        napi_get_uv_event_loop(env, &setting->loop_);
-    }
     return thisVar;
 };
 
@@ -375,6 +372,9 @@ void JsInputMethodEngineSetting::RegisterListener(napi_value callback, std::stri
     }
     auto callbacks = jsCbMap_[type];
     bool ret = std::any_of(callbacks.begin(), callbacks.end(), [&callback](std::shared_ptr<JSCallbackObject> cb) {
+        if (cb == nullptr) {
+            return false;
+        }
         return JsUtils::Equals(cb->env_, callback, cb->callback_, cb->threadId_);
     });
     if (ret) {
@@ -595,12 +595,12 @@ napi_value JsInputMethodEngineSetting::UnSubscribe(napi_env env, napi_callback_i
         JsUtils::ThrowException(env, JsUtils::Convert(ErrorCode::ERROR_NOT_DEFAULT_IME), "default ime check failed",
             TYPE_NONE);
     }
-    // if the second param is not napi_function/napi_null/napi_undefined, return.
+    // if the second param is not napi_function/napi_null/napi_undefined, return
     auto paramType = JsUtil::GetType(env, argv[1]);
     if (paramType != napi_function && paramType != napi_null && paramType != napi_undefined) {
         return nullptr;
     }
-    // if the second param is napi_function, delete it, else delete all.
+    // if the second param is napi_function, delete it, else delete all
     argv[1] = paramType == napi_function ? argv[1] : nullptr;
 
     IMSA_HILOGD("unsubscribe type: %{public}s.", type.c_str());
@@ -882,36 +882,6 @@ void JsInputMethodEngineSetting::ReceivePrivateCommand(
     eventHandler->PostTask(task, type, 0, AppExecFwk::EventQueue::Priority::VIP);
 }
 
-uv_work_t *JsInputMethodEngineSetting::GetUVwork(const std::string &type, EntrySetter entrySetter)
-{
-    IMSA_HILOGD("run in, type: %{public}s.", type.c_str());
-    UvEntry *entry = nullptr;
-    {
-        std::lock_guard<std::recursive_mutex> lock(mutex_);
-
-        if (jsCbMap_[type].empty()) {
-            IMSA_HILOGD("%{public}s cb-vector is empty.", type.c_str());
-            return nullptr;
-        }
-        entry = new (std::nothrow) UvEntry(jsCbMap_[type], type);
-        if (entry == nullptr) {
-            IMSA_HILOGE("entry is nullptr!");
-            return nullptr;
-        }
-        if (entrySetter != nullptr) {
-            entrySetter(*entry);
-        }
-    }
-    uv_work_t *work = new (std::nothrow) uv_work_t;
-    if (work == nullptr) {
-        IMSA_HILOGE("work is nullptr!");
-        delete entry;
-        return nullptr;
-    }
-    work->data = entry;
-    return work;
-}
-
 std::shared_ptr<AppExecFwk::EventHandler> JsInputMethodEngineSetting::GetEventHandler()
 {
     std::lock_guard<std::mutex> lock(eventHandlerMutex_);
@@ -946,18 +916,6 @@ bool JsInputMethodEngineSetting::IsCallbackRegistered(const std::string &type)
         return false;
     }
     return true;
-}
-
-void JsInputMethodEngineSetting::FreeWorkIfFail(int ret, uv_work_t *work)
-{
-    if (ret == 0 || work == nullptr) {
-        return;
-    }
-
-    UvEntry *data = static_cast<UvEntry *>(work->data);
-    delete data;
-    delete work;
-    IMSA_HILOGE("uv_queue_work failed retCode: %{public}d!", ret);
 }
 
 bool JsInputMethodEngineSetting::PostTaskToEventHandler(std::function<void()> task, const std::string &taskName)

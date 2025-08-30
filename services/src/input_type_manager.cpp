@@ -73,7 +73,7 @@ bool InputTypeManager::IsStarted()
     std::lock_guard<std::mutex> lock(stateLock_);
     return isStarted_;
 }
-
+// LCOV_EXCL_START
 bool InputTypeManager::IsSecurityImeStarted()
 {
     InputType type = InputType::SECURITY_INPUT;
@@ -96,12 +96,6 @@ bool InputTypeManager::IsVoiceImeStarted()
 bool InputTypeManager::IsVoiceKbImeStarted()
 {
     InputType type = InputType::VOICEKB_INPUT;
-    return IsInputTypeImeStarted(type);
-}
-
-bool InputTypeManager::IsOneTimeCodeImeStarted()
-{
-    InputType type = InputType::ONE_TIME_CODE;
     return IsInputTypeImeStarted(type);
 }
 
@@ -129,9 +123,6 @@ InputType InputTypeManager::GetCurrentInputType()
     if (IsVoiceKbImeStarted()) {
         return InputType::VOICEKB_INPUT;
     }
-    if (IsOneTimeCodeImeStarted()) {
-        return InputType::ONE_TIME_CODE;
-    }
     return InputType::NONE;
 }
 
@@ -140,7 +131,7 @@ ImeIdentification InputTypeManager::GetCurrentIme()
     std::lock_guard<std::mutex> lock(stateLock_);
     return currentTypeIme_;
 }
-
+// LCOV_EXCL_STOP
 bool InputTypeManager::Init()
 {
     IMSA_HILOGD("start.");

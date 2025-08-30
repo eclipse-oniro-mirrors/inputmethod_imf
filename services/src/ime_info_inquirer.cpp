@@ -27,8 +27,7 @@
 #include "parameters.h"
 #include "singleton.h"
 #include "system_ability_definition.h"
-#include "display_manager_lite.h"
-#include "display_info.h"
+#include "display_adapter.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -63,12 +62,22 @@ bool ImeInfoInquirer::IsEnableAppAgent()
     return systemConfig_.enableAppAgentFeature;
 }
 
+bool ImeInfoInquirer::IsCapacitySupport(const std::string &capacityName)
+{
+    return systemConfig_.supportedCapacityList.find(capacityName) != systemConfig_.supportedCapacityList.end();
+}
+
 bool ImeInfoInquirer::IsEnableNumKey()
 {
     return systemConfig_.enableNumKeyFeature;
 }
 
-bool ImeInfoInquirer::IsVirtualProxyIme(int32_t callingUid)
+std::unordered_set<std::string> ImeInfoInquirer::GetDisableNumKeyAppDeviceTypes()
+{
+    return systemConfig_.disableNumKeyAppDeviceTypes;
+}
+
+bool ImeInfoInquirer::IsProxyIme(int32_t callingUid)
 {
     return systemConfig_.proxyImeUidList.find(callingUid) != systemConfig_.proxyImeUidList.end();
 }
@@ -159,8 +168,8 @@ std::shared_ptr<ImeInfo> ImeInfoInquirer::GetImeInfoFromCache(const int32_t user
     return info;
 }
 
-std::shared_ptr<ImeInfo> ImeInfoInquirer::GetImeInfoFromBundleMgr(
-    const int32_t userId, const std::string &bundleName, const std::string &subName)
+std::shared_ptr<ImeInfo> ImeInfoInquirer::GetImeInfoFromBundleMgr(const int32_t userId, const std::string &bundleName,
+    const std::string &subName)
 {
     IMSA_HILOGD("userId: %{public}d, bundleName: %{public}s, subName: %{public}s.", userId, bundleName.c_str(),
         subName.c_str());
@@ -568,10 +577,6 @@ int32_t ImeInfoInquirer::ListInputMethodSubtype(const int32_t userId, const Exte
 int32_t ImeInfoInquirer::ParseSubtype(const OHOS::AppExecFwk::ExtensionAbilityInfo &extInfo,
     std::vector<Subtype> &subtypes)
 {
-    if (extInfo.metadata.empty()) {
-        IMSA_HILOGE("metadata is empty!");
-        return ErrorCode::ERROR_BAD_PARAMETERS;
-    }
     auto iter = std::find_if(extInfo.metadata.begin(), extInfo.metadata.end(),
         [](const Metadata &metadata) { return metadata.name == SUBTYPE_PROFILE_METADATA_NAME; });
     if (iter == extInfo.metadata.end()) {
@@ -1088,7 +1093,7 @@ bool ImeInfoInquirer::IsInputMethod(int32_t userId, const std::string &bundleNam
     }
     return false;
 }
- 
+
 bool ImeInfoInquirer::IsTempInputMethod(const ExtensionAbilityInfo &extInfo)
 {
     auto iter = std::find_if(extInfo.metadata.begin(), extInfo.metadata.end(),
@@ -1215,20 +1220,17 @@ bool ImeInfoInquirer::IsInputMethodExtension(pid_t pid)
     return info.extensionType_ == ExtensionAbilityType::INPUTMETHOD;
 }
 
-bool ImeInfoInquirer::IsDefaultImeScreen(uint64_t displayId)
+bool ImeInfoInquirer::IsRestrictedDefaultImeByDisplay(uint64_t displayId)
 {
-    sptr<Rosen::DisplayLite> display = Rosen::DisplayManagerLite::GetInstance().GetDisplayById(displayId);
-    if (display == nullptr) {
-        IMSA_HILOGE("display is null!");
-        return false;
-    }
-    sptr<Rosen::DisplayInfo> displayInfo = display->GetDisplayInfo();
-    if (displayInfo == nullptr) {
-        IMSA_HILOGE("displayInfo is null!");
-        return false;
-    }
-    auto screenName = displayInfo->GetName();
+    auto screenName = DisplayAdapter::GetDisplayName(displayId);
     return systemConfig_.defaultImeScreenList.find(screenName) != systemConfig_.defaultImeScreenList.end();
+}
+
+bool ImeInfoInquirer::IsRestrictedMainDisplayId(uint64_t displayId)
+{
+    auto screenName = DisplayAdapter::GetDisplayName(displayId);
+    return systemConfig_.defaultMainDisplayScreenList.find(screenName) !=
+           systemConfig_.defaultMainDisplayScreenList.end();
 }
 
 bool ImeInfoInquirer::IsDynamicStartIme()
@@ -1238,6 +1240,24 @@ bool ImeInfoInquirer::IsDynamicStartIme()
     }
     std::string value = system::GetParameter(systemConfig_.dynamicStartImeSysParam, "");
     return value == systemConfig_.dynamicStartImeValue;
+}
+
+bool ImeInfoInquirer::GetCompatibleDeviceType(
+    const std::string &bundleName, std::string &compatibleDeviceType)
+{
+    auto bundleMgr = GetBundleMgr();
+    if (bundleMgr == nullptr) {
+        IMSA_HILOGE("bundleMgr is nullptr.");
+        return false;
+    }
+    std::string deviceType;
+    int32_t ret = static_cast<int32_t>(bundleMgr->GetCompatibleDeviceType(bundleName, deviceType));
+    if (ret != 0 || deviceType.empty()) {
+        IMSA_HILOGE("GetCompatibleDeviceType error: %{public}d", ret);
+        return false;
+    }
+    compatibleDeviceType = deviceType;
+    return true;
 }
 } // namespace MiscServices
 } // namespace OHOS

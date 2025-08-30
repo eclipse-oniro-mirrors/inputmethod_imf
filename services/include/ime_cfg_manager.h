@@ -20,9 +20,10 @@
 
 #include "input_method_utils.h"
 #include "serializable.h"
+#include "event_handler.h"
 #include "ime_enabled_info_manager.h"
 #include "enable_upgrade_manager.h"
-#include "event_handler.h"
+
 namespace OHOS {
 namespace MiscServices {
 
@@ -34,7 +35,7 @@ public:
     void ModifyImeCfg(const ImePersistInfo &cfg);
     void ModifyTempScreenLockImeCfg(int32_t userId, const std::string &ime);
     void DeleteImeCfg(int32_t userId);
-    std::shared_ptr<ImeNativeCfg> GetCurrentImeCfg(int32_t userId);
+    std::shared_ptr<ImeNativeCfg> GetCurrentImeCfg(int32_t userId);  // Return value is never nullptr.
     bool IsDefaultImeSet(int32_t userId);
     void SetEventHandler(const std::shared_ptr<AppExecFwk::EventHandler> &eventHandler);
 

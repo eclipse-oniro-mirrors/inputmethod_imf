@@ -45,6 +45,16 @@ int32_t InputMethodAbilityInterface::UnregisterProxyIme(uint64_t displayId)
     return InputMethodAbility::GetInstance().UnregisterProxyIme(displayId);
 }
 
+int32_t InputMethodAbilityInterface::BindImeMirror()
+{
+    return InputMethodAbility::GetInstance().BindImeMirror();
+}
+
+int32_t InputMethodAbilityInterface::UnbindImeMirror()
+{
+    return InputMethodAbility::GetInstance().UnbindImeMirror();
+}
+
 int32_t InputMethodAbilityInterface::InsertText(const std::string &text)
 {
     return InputMethodAbility::GetInstance().InsertText(text);
@@ -86,6 +96,11 @@ void InputMethodAbilityInterface::SetImeListener(std::shared_ptr<InputMethodEngi
 void InputMethodAbilityInterface::SetKdListener(std::shared_ptr<KeyboardListener> kdListener)
 {
     InputMethodAbility::GetInstance().SetKdListener(kdListener);
+}
+
+int32_t InputMethodAbilityInterface::SelectByRange(int32_t start, int32_t end)
+{
+    return InputMethodAbility::GetInstance().SelectByRange(start, end);
 }
 } // namespace MiscServices
 } // namespace OHOS

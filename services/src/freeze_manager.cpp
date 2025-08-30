@@ -24,7 +24,7 @@ namespace OHOS {
 namespace MiscServices {
 constexpr const char *INPUT_METHOD_SERVICE_SA_NAME = "inputmethod_service";
 constexpr const char *STOP_TASK_NAME = "ReportStop";
-constexpr const char *PASTEBOARD_STOP_IME_TASK = "PasteboardStopIme";
+constexpr int32_t DELAY_TIME = 3000; // 3s
 void FreezeManager::ControlIme(bool shouldApply)
 {
     if (eventHandler_ == nullptr) {
@@ -60,8 +60,8 @@ void FreezeManager::ReportRss(bool shouldFreeze, pid_t pid)
     IMSA_HILOGD("report RSS should freeze: %{public}d.", shouldFreeze);
     ResourceSchedule::ResSchedClient::GetInstance().ReportData(type, status, payload);
 }
-
-void FreezeManager::PasteBoardActiveIme(int32_t delayTime)
+// LCOV_EXCL_START
+void FreezeManager::TemporaryActiveIme()
 {
     std::lock_guard<std::mutex> lock(mutex_);
     if (!isFrozen_) {
@@ -69,33 +69,11 @@ void FreezeManager::PasteBoardActiveIme(int32_t delayTime)
         return;
     }
 
-    IMSA_HILOGI("Pasteboard active IME");
+    IMSA_HILOGI("temporary active IME");
     ReportRss(false, pid_);
-    if (eventHandler_ == nullptr) {
-        IMSA_HILOGE("eventHandler_ is nullptr.");
-        ReportRss(true, pid_);
-        return;
-    }
-
-    eventHandler_->RemoveTask(PASTEBOARD_STOP_IME_TASK);
-    std::weak_ptr<FreezeManager> self = shared_from_this();
-    eventHandler_->PostTask(
-        [self]() {
-            auto sharedSelf = self.lock();
-            if (sharedSelf == nullptr) {
-                IMSA_HILOGE("sharedSelf is nullptr.");
-                return;
-            }
-            std::lock_guard<std::mutex> lock(sharedSelf->mutex_);
-            if (!sharedSelf->isFrozen_) {
-                IMSA_HILOGI("Ime is not frozen, no need to freeze");
-                return;
-            }
-            IMSA_HILOGI("Pasteboard freeze IME");
-            ReportRss(true, sharedSelf->pid_);
-        },
-        PASTEBOARD_STOP_IME_TASK, delayTime);
+    ReportRss(true, pid_);
 }
+// LCOV_EXCL_STOP
 } // namespace MiscServices
 } // namespace OHOS
 #endif // FREEZE_MANAGER_H

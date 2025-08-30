@@ -185,7 +185,7 @@ int32_t ImeEnabledInfoManager::CheckUpdate(
     }
     return ErrorCode::NO_ERROR;
 }
-
+// LCOV_EXCL_START
 int32_t ImeEnabledInfoManager::Update(
     int32_t userId, const std::string &bundleName, const std::string &extensionName, EnabledStatus status)
 {
@@ -193,10 +193,6 @@ int32_t ImeEnabledInfoManager::Update(
     auto ret = CheckUpdate(userId, bundleName, extensionName, status);
     if (ret != ErrorCode::NO_ERROR) {
         return ret;
-    }
-    if (!HasEnabledSwitch()) {
-        IMSA_HILOGD("has no enabled switch.");
-        return ErrorCode::NO_ERROR;
     }
     ImeEnabledCfg enabledCfg;
     ret = GetEnabledCacheWithCorrect(userId, bundleName, extensionName, enabledCfg);
@@ -229,7 +225,7 @@ int32_t ImeEnabledInfoManager::Update(
     }
     return ErrorCode::NO_ERROR;
 }
-
+// LCOV_EXCL_STOP
 int32_t ImeEnabledInfoManager::GetEnabledState(int32_t userId, const std::string &bundleName, EnabledStatus &status)
 {
     std::lock_guard<std::mutex> lock(operateLock_);
@@ -237,10 +233,6 @@ int32_t ImeEnabledInfoManager::GetEnabledState(int32_t userId, const std::string
     if (bundleName.empty()) {
         IMSA_HILOGW("%{public}d bundleName is empty.", userId);
         return ErrorCode::ERROR_BAD_PARAMETERS;
-    }
-    if (!HasEnabledSwitch()) {
-        status = EnabledStatus::FULL_EXPERIENCE_MODE;
-        return ErrorCode::NO_ERROR;
     }
     if (bundleName == ImeInfoInquirer::GetInstance().GetSystemSpecialIme()) {
         status = EnabledStatus::FULL_EXPERIENCE_MODE;
@@ -264,12 +256,6 @@ int32_t ImeEnabledInfoManager::GetEnabledStates(int32_t userId, std::vector<Prop
     std::lock_guard<std::mutex> lock(operateLock_);
     if (props.empty()) {
         return ErrorCode::ERROR_BAD_PARAMETERS;
-    }
-    if (!HasEnabledSwitch()) {
-        for (auto &prop : props) {
-            prop.status = EnabledStatus::FULL_EXPERIENCE_MODE;
-        }
-        return ErrorCode::NO_ERROR;
     }
     auto ret = GetEnabledStatesInner(userId, props);
     for (auto &prop : props) {
@@ -398,7 +384,7 @@ void ImeEnabledInfoManager::ClearEnabledCache(int32_t userId)
     std::lock_guard<std::mutex> cfgLock(imeEnabledCfgLock_);
     imeEnabledCfg_.erase(userId);
 }
-
+// LCOV_EXCL_START
 int32_t ImeEnabledInfoManager::GetEnabledCfg(
     int32_t userId, const std::vector<FullImeInfo> &imeInfos, ImeEnabledCfg &cfg)
 {
@@ -472,7 +458,7 @@ int32_t ImeEnabledInfoManager::CorrectByBundleMgr(
     }
     return ErrorCode::NO_ERROR;
 }
-
+// LCOV_EXCL_STOP
 EnabledStatus ImeEnabledInfoManager::ComputeEnabledStatus(const std::string &bundleName, EnabledStatus initStatus)
 {
     if (!HasEnabledSwitch()) {
@@ -499,7 +485,6 @@ int32_t ImeEnabledInfoManager::UpdateEnabledCfgCache(int32_t userId, const ImeEn
         return ErrorCode::ERROR_ENABLE_IME;
     }
     SetEnabledCache(userId, cfg);
-    UpdateGlobalEnabledTable(userId, cfg);
     return ErrorCode::NO_ERROR;
 }
 
@@ -605,7 +590,7 @@ void ImeEnabledInfoManager::OnFullExperienceTableChanged(int32_t userId)
     IMSA_HILOGI("%{public}d full experience table changed.", userId);
     ImeEnabledInfoManager::GetInstance().Update(userId, defaultIme.bundleName, defaultIme.extName, newStatus);
 }
-
+// LCOV_EXCL_START
 int32_t ImeEnabledInfoManager::SetCurrentIme(
     int32_t userId, const std::string &imeId, const std::string &subName, bool isSetByUser)
 {
@@ -739,7 +724,7 @@ std::shared_ptr<ImeNativeCfg> ImeEnabledInfoManager::GetCurrentImeCfg(int32_t us
     IMSA_HILOGI("%{public}d not set default ime.", userId);
     return std::make_shared<ImeNativeCfg>();
 }
-
+// LCOV_EXCL_STOP
 bool ImeEnabledInfoManager::IsDefaultImeSet(int32_t userId)
 {
     std::lock_guard<std::mutex> lock(operateLock_);

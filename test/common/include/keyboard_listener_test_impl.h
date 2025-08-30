@@ -32,17 +32,20 @@ public:
     {
         return false;
     }
-    bool OnDealKeyEvent(const std::shared_ptr<MMI::KeyEvent> &keyEvent, sptr<KeyEventConsumerProxy> &consumer) override;
+    bool OnDealKeyEvent(const std::shared_ptr<MMI::KeyEvent> &keyEvent, uint64_t cbId,
+        const sptr<IRemoteObject> &channelObject) override;
     void OnCursorUpdate(int32_t positionX, int32_t positionY, int32_t height) override;
     void OnSelectionChange(int32_t oldBegin, int32_t oldEnd, int32_t newBegin, int32_t newEnd) override;
     void OnTextChange(const std::string &text) override;
     void OnEditorAttributeChange(const InputAttribute &inputAttribute) override;
+    void OnFunctionKey(int32_t funcKey) override;
     static void ResetParam();
     static bool WaitKeyEvent(int32_t keyCode);
     static bool WaitCursorUpdate();
     static bool WaitSelectionChange(int32_t newBegin);
     static bool WaitTextChange(const std::string &text);
     static bool WaitEditorAttributeChange(const InputAttribute &inputAttribute);
+    static bool WaitFunctionKey(int32_t funcKey);
 
 public:
     static std::mutex kdListenerLock_;
@@ -52,6 +55,7 @@ public:
     static int32_t newBegin_;
     static std::string text_;
     static InputAttribute inputAttribute_;
+    static int32_t funcKey_;
 };
 } // namespace MiscServices
 } // namespace OHOS

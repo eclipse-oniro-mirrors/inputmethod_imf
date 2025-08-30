@@ -80,6 +80,7 @@ ohos_shared_library("cj_inputmethod_extension_ffi") {
     "ability_runtime:ability_manager",
     "ability_runtime:ability_start_options",
     "ability_runtime:abilitykit_native",
+    "ability_runtime:abilitykit_utils",
     "ability_runtime:app_context",
     "ability_runtime:extensionkit_native",
     "ability_runtime:runtime",
@@ -87,11 +88,15 @@ ohos_shared_library("cj_inputmethod_extension_ffi") {
     "c_utils:utils",
     "eventhandler:libeventhandler",
     "hilog:libhilog",
+    "samgr:samgr_proxy",
     "window_manager:libdm",
     "napi:cj_bind_ffi",
     "napi:cj_bind_native",
+    "ipc:ipc_napi",
+    "ipc:ipc_single",
   ]
 
+  innerapi_tags = [ "platformsdk" ]
   subsystem_name = "inputmethod"
   part_name = "imf"
 }

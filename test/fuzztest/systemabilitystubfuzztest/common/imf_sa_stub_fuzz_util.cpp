@@ -16,17 +16,18 @@
 #include "imf_sa_stub_fuzz_util.h"
 
 #include "accesstoken_kit.h"
+#include "fuzzer/FuzzedDataProvider.h"
 #include "global.h"
 #include "ime_cfg_manager.h"
+#include "input_client_service_impl.h"
+#include "input_method_agent_service_impl.h"
+#include "input_method_core_service_impl.h"
 #include "iservice_registry.h"
 #include "message_parcel.h"
 #include "nativetoken_kit.h"
 #include "system_ability_definition.h"
 #include "text_listener.h"
 #include "token_setproc.h"
-#include "input_client_service_impl.h"
-#include "input_method_agent_service_impl.h"
-#include "input_method_core_service_impl.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -61,48 +62,56 @@ void ImfSaStubFuzzUtil::GrantNativePermission()
 
 bool ImfSaStubFuzzUtil::SwitchIpcCode(IInputMethodSystemAbilityIpcCode code, MessageParcel &datas, int32_t fuzzedInt32)
 {
+    auto writeInputClient = [&datas]() {
+        sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+        if (client == nullptr || !datas.WriteRemoteObject(client->AsObject())) {
+            return false;
+        }
+        return true;
+    };
+
+    auto writeInputMethodCore = [&datas]() {
+        sptr<IInputMethodCore> core = new (std::nothrow) InputMethodCoreServiceImpl();
+        if (core == nullptr || !datas.WriteRemoteObject(core->AsObject())) {
+            return false;
+        }
+        return true;
+    };
+
+    auto writeInputMethodAgent = [&datas]() {
+        sptr<IInputMethodAgent> agent = new (std::nothrow) InputMethodAgentServiceImpl();
+        if (agent == nullptr || !datas.WriteRemoteObject(agent->AsObject())) {
+            return false;
+        }
+        return true;
+    };
     switch (code) {
         case IInputMethodSystemAbilityIpcCode::COMMAND_START_INPUT: {
             InputClientInfoInner clientInfoInner = {};
             if (!datas.WriteParcelable(&clientInfoInner)) {
                 return false;
             }
+            break;
         }
-        case IInputMethodSystemAbilityIpcCode::COMMAND_SHOW_INPUT: {
-            sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
-            if (client == nullptr || !datas.WriteRemoteObject(client->AsObject())) {
+        case IInputMethodSystemAbilityIpcCode::COMMAND_SHOW_INPUT:
+            return writeInputClient();
+        case IInputMethodSystemAbilityIpcCode::COMMAND_SET_CORE_AND_AGENT:
+            return writeInputMethodCore() && writeInputMethodAgent();
+        case IInputMethodSystemAbilityIpcCode::COMMAND_UN_REGISTERED_PROXY_IME:
+            if (!datas.WriteInt32(fuzzedInt32)) {
                 return false;
             }
-        }
-        case IInputMethodSystemAbilityIpcCode::COMMAND_SET_CORE_AND_AGENT: {
-            sptr<IInputMethodCore> core = new InputMethodCoreServiceImpl();
-            sptr<IInputMethodAgent> agent = new (std::nothrow) InputMethodAgentServiceImpl();
-            if (core == nullptr || agent == nullptr || !datas.WriteRemoteObject(core->AsObject())
-                || !datas.WriteRemoteObject(agent->AsObject())) {
-                return false;
-            }
-        }
-        case IInputMethodSystemAbilityIpcCode::COMMAND_UN_REGISTERED_PROXY_IME: {
-            sptr<IInputMethodCore> core = new InputMethodCoreServiceImpl();
-            if (core == nullptr || !datas.WriteInt32(fuzzedInt32) || !datas.WriteRemoteObject(core->AsObject())) {
-                return false;
-            }
-        }
-        case IInputMethodSystemAbilityIpcCode::COMMAND_RELEASE_INPUT: {
-            sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
-            if (client == nullptr || !datas.WriteRemoteObject(client->AsObject())) {
-                return false;
-            }
-        }
-        case IInputMethodSystemAbilityIpcCode::COMMAND_HIDE_INPUT: {
-            sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
-            if (client == nullptr || !datas.WriteRemoteObject(client->AsObject())) {
-                return false;
-            }
-        }
+            return writeInputMethodCore();
+        case IInputMethodSystemAbilityIpcCode::COMMAND_RELEASE_INPUT:
+            return writeInputClient();
+        case IInputMethodSystemAbilityIpcCode::COMMAND_HIDE_INPUT:
+            return writeInputClient();
+        case IInputMethodSystemAbilityIpcCode::COMMAND_BIND_IME_MIRROR:
+            return writeInputMethodCore() && writeInputMethodAgent();
         default:
             return true;
     }
+    return true;
 }
 
 bool ImfSaStubFuzzUtil::FuzzInputMethodSystemAbility(const uint8_t *rawData, size_t size,
@@ -111,7 +120,8 @@ bool ImfSaStubFuzzUtil::FuzzInputMethodSystemAbility(const uint8_t *rawData, siz
     if (!isInitialize_) {
         Initialize();
     }
-    auto fuzzedInt32 = static_cast<int32_t>(size);
+    FuzzedDataProvider provider(rawData, size);
+    auto fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
     GrantNativePermission();
 
     MessageParcel datas;
@@ -140,6 +150,7 @@ void ImfSaStubFuzzUtil::Initialize()
     int32_t ret = DelayedSingleton<InputMethodSystemAbility>::GetInstance()->InitKeyEventMonitor();
     IMSA_HILOGI("init KeyEvent monitor %{public}s", ret == ErrorCode::NO_ERROR ? "success" : "failed");
     ret = DelayedSingleton<InputMethodSystemAbility>::GetInstance()->InitWmsMonitor();
+    ImeInfoInquirer::GetInstance().InitSystemConfig();
     IMSA_HILOGI("init wms monitor %{public}s", ret ? "success" : "failed");
     isInitialize_ = true;
 }

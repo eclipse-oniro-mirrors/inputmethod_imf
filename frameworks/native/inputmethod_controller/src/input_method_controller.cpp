@@ -53,19 +53,34 @@ std::mutex InputMethodController::instanceLock_;
 std::mutex InputMethodController::logLock_;
 int InputMethodController::keyEventCountInPeriod_ = 0;
 std::chrono::system_clock::time_point InputMethodController::startLogTime_ = system_clock::now();
+std::mutex InputMethodController::printTextChangeMutex_;
+int32_t InputMethodController::textChangeCountInPeriod_ = 0;
+std::chrono::steady_clock::time_point InputMethodController::textChangeStartLogTime_ = steady_clock::now();
 constexpr int32_t LOOP_COUNT = 5;
 constexpr int32_t LOG_MAX_TIME = 20;
+constexpr int32_t LOG_INSERT_MAX_TIME = 20; // 20s
+constexpr int32_t LOG_INSERT_MIN_TIME = 5; // 5s
 constexpr int64_t DELAY_TIME = 100;
 constexpr int32_t ACE_DEAL_TIME_OUT = 200;
 constexpr int32_t MAX_PLACEHOLDER_SIZE = 255; // 256 utf16 char
 constexpr int32_t MAX_ABILITY_NAME_SIZE = 127; // 127 utf16 char
 static constexpr int32_t MAX_TIMEOUT = 2500;
+constexpr int64_t DISPATCH_KEYBOARD_TIME_OUT = 5; // 5ms
+constexpr size_t MAX_AGENT_NUMBER = 2;
+const std::string IME_MIRROR_NAME = "proxyIme_IME_MIRROR";
 InputMethodController::InputMethodController()
 {
     IMSA_HILOGD("IMC structure.");
 }
 
 InputMethodController::~InputMethodController() { }
+#ifdef OHOS_IMF_TEST
+void InputMethodController::SetImsaProxyForTest(sptr<IInputMethodSystemAbility> proxy)
+{
+    std::lock_guard<std::mutex> autoLock(abilityLock_);
+    abilityManager_ = proxy;
+}
+#endif // OHOS_IMF_TEST
 
 sptr<InputMethodController> InputMethodController::GetInstance()
 {
@@ -231,16 +246,14 @@ void InputMethodController::CalibrateImmersiveParam(InputAttribute &inputAttribu
 void InputMethodController::SaveTextConfig(const TextConfig &textConfig)
 {
     IMSA_HILOGD("textConfig: %{public}s.", textConfig.ToString().c_str());
-    int32_t x = textConfig.cursorInfo.left;
-    int32_t y = textConfig.cursorInfo.top;
+    CursorInfo cursorInfo = textConfig.cursorInfo;
     uint32_t windowId = textConfig.windowId;
-    GetWindowScaleCoordinate(x, y, windowId);
+    GetWindowScaleCoordinate(windowId, cursorInfo);
     {
         std::lock_guard<std::mutex> lock(textConfigLock_);
         textConfig_ = textConfig;
         CalibrateImmersiveParam(textConfig_.inputAttribute);
-        textConfig_.cursorInfo.left = x;
-        textConfig_.cursorInfo.top = y;
+        textConfig_.cursorInfo = cursorInfo;
         StringUtils::TruncateUtf16String(textConfig_.inputAttribute.placeholder, MAX_PLACEHOLDER_SIZE);
         StringUtils::TruncateUtf16String(textConfig_.inputAttribute.abilityName, MAX_ABILITY_NAME_SIZE);
     }
@@ -329,10 +342,9 @@ int32_t InputMethodController::Attach(sptr<OnTextChangedListener> listener, cons
     GetTextConfig(clientInfo_.config);
     clientInfo_.requestKeyboardReason = attachOptions.requestKeyboardReason;
     clientInfo_.type = type;
-
-    sptr<IRemoteObject> agent = nullptr;
-    std::pair<int64_t, std::string> imeInfo{ 0, "" };
-    int32_t ret = StartInput(clientInfo_, agent, imeInfo);
+    std::vector<sptr<IRemoteObject>> agents;
+    std::vector<BindImeInfo> imeInfos;
+    int32_t ret = StartInput(clientInfo_, agents, imeInfos);
     if (ret != ErrorCode::NO_ERROR) {
         auto evenInfo = HiSysOriginalInfo::Builder()
                             .SetErrCode(ret)
@@ -341,10 +353,11 @@ int32_t InputMethodController::Attach(sptr<OnTextChangedListener> listener, cons
                             .SetClientType(type)
                             .Build();
         ImcHiSysEventReporter::GetInstance().ReportEvent(ImfEventType::CLIENT_ATTACH, *evenInfo);
+        SetTextListener(nullptr);
         return ret;
     }
     clientInfo_.state = ClientState::ACTIVE;
-    OnInputReady(agent, imeInfo);
+    SetInputReady(agents, imeInfos);
     if (attachOptions.isShowKeyboard) {
         InputMethodSysEvent::GetInstance().OperateSoftkeyboardBehaviour(OperateIMEInfoCode::IME_SHOW_ATTACH);
     }
@@ -359,7 +372,12 @@ bool InputMethodController::IsKeyboardCallingProcess(int32_t pid)
         IMSA_HILOGE("proxy is nullptr!");
         return ErrorCode::ERROR_EX_NULL_POINTER;
     }
-    return proxy->IsKeyboardCallingProcess(pid);
+    bool isKeyboardCallingProcess = false;
+    auto ret = proxy->IsKeyboardCallingProcess(pid, isKeyboardCallingProcess);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("IsKeyboardCallingProcess failed: %{public}d.", ret);
+    }
+    return isKeyboardCallingProcess;
 }
 
 int32_t InputMethodController::ShowTextInputInner(const AttachOptions &attachOptions, ClientType type)
@@ -626,7 +644,7 @@ int32_t InputMethodController::EnableIme(
 }
 
 int32_t InputMethodController::StartInput(
-    InputClientInfo &inputClientInfo, sptr<IRemoteObject> &agent, std::pair<int64_t, std::string> &imeInfo)
+    InputClientInfo &inputClientInfo, std::vector<sptr<IRemoteObject>> &agents, std::vector<BindImeInfo> &imeInfos)
 {
     IMSA_HILOGD("InputMethodController::StartInput start.");
     auto proxy = GetSystemAbilityProxy();
@@ -635,7 +653,7 @@ int32_t InputMethodController::StartInput(
         return ErrorCode::ERROR_SERVICE_START_FAILED;
     }
     InputClientInfoInner inner = InputMethodTools::GetInstance().InputClientInfoToInner(inputClientInfo);
-    int32_t ret = proxy->StartInput(inner, agent, imeInfo.first, imeInfo.second);
+    int32_t ret = proxy->StartInput(inner, agents, imeInfos);
     return ret;
 }
 
@@ -691,6 +709,7 @@ void InputMethodController::OnRemoteSaDied(const wptr<IRemoteObject> &remote)
         std::lock_guard<std::mutex> lock(abilityLock_);
         abilityManager_ = nullptr;
     }
+    ClearAgentInfo();
     if (handler_ == nullptr) {
         IMSA_HILOGE("handler_ is nullptr!");
         return;
@@ -735,9 +754,12 @@ void InputMethodController::RestoreClientInfoInSaDied()
         {
             std::lock_guard<std::mutex> lock(textConfigLock_);
             tempConfig = textConfig_;
-            tempConfig.cursorInfo = cursorInfo_;
             tempConfig.range.start = selectNewBegin_;
             tempConfig.range.end = selectNewEnd_;
+        }
+        {
+            std::lock_guard<std::mutex> lock(cursorInfoMutex_);
+            tempConfig.cursorInfo = cursorInfo_;
         }
         auto listener = GetTextListener();
         bool isShowKeyboard = false;
@@ -770,12 +792,10 @@ int32_t InputMethodController::DiscardTypingText()
         IMSA_HILOGE("not bound.");
         return ErrorCode::ERROR_CLIENT_NOT_BOUND;
     }
-    auto agent = GetAgent();
-    if (agent == nullptr) {
-        IMSA_HILOGE("agent is nullptr!");
-        return ErrorCode::ERROR_CLIENT_NULL_POINTER;
-    }
-    return agent->DiscardTypingText();
+
+    return SendRequestToAllAgents([](std::shared_ptr<IInputMethodAgent> agent) -> int32_t {
+        return agent->DiscardTypingText();
+    });
 }
 
 int32_t InputMethodController::OnCursorUpdate(CursorInfo cursorInfo)
@@ -788,16 +808,12 @@ int32_t InputMethodController::OnCursorUpdate(CursorInfo cursorInfo)
         IMSA_HILOGD("not editable.");
         return ErrorCode::ERROR_CLIENT_NOT_EDITABLE;
     }
-    int32_t x = cursorInfo.left;
-    int32_t y = cursorInfo.top;
     uint32_t windowId = 0;
     {
         std::lock_guard<std::mutex> lock(textConfigLock_);
         windowId = textConfig_.windowId;
     }
-    GetWindowScaleCoordinate(x, y, windowId);
-    cursorInfo.left = x;
-    cursorInfo.top = y;
+    GetWindowScaleCoordinate(windowId, cursorInfo);
     {
         std::lock_guard<std::mutex> lock(textConfigLock_);
         textConfig_.cursorInfo = cursorInfo;
@@ -810,15 +826,12 @@ int32_t InputMethodController::OnCursorUpdate(CursorInfo cursorInfo)
         }
         cursorInfo_ = cursorInfo;
     }
-    auto agent = GetAgent();
-    if (agent == nullptr) {
-        IMSA_HILOGE("agent is nullptr!");
-        return ErrorCode::ERROR_IME_NOT_STARTED;
-    }
     IMSA_HILOGI("left: %{public}d, top: %{public}d, height: %{public}d.", static_cast<int32_t>(cursorInfo.left),
         static_cast<int32_t>(cursorInfo.top), static_cast<int32_t>(cursorInfo.height));
-    agent->OnCursorUpdate(cursorInfo.left, cursorInfo.top, cursorInfo.height);
-    return ErrorCode::NO_ERROR;
+    return SendRequestToAllAgents([cursorInfo](std::shared_ptr<IInputMethodAgent> agent) -> int32_t {
+        agent->OnCursorUpdate(cursorInfo.left, cursorInfo.top, cursorInfo.height);
+        return ErrorCode::NO_ERROR;
+    });
 }
 
 int32_t InputMethodController::OnSelectionChange(std::u16string text, int start, int end)
@@ -836,25 +849,27 @@ int32_t InputMethodController::OnSelectionChange(std::u16string text, int start,
         textConfig_.range.start = start;
         textConfig_.range.end = end;
     }
-    if (isTextNotified_.exchange(true) && textString_ == text && selectNewBegin_ == start && selectNewEnd_ == end) {
-        IMSA_HILOGD("same to last update.");
-        return ErrorCode::NO_ERROR;
-    }
-    textString_ = text;
-    selectOldBegin_ = selectNewBegin_;
-    selectOldEnd_ = selectNewEnd_;
-    selectNewBegin_ = start;
-    selectNewEnd_ = end;
-    auto agent = GetAgent();
-    if (agent == nullptr) {
-        IMSA_HILOGE("agent is nullptr!");
-        return ErrorCode::ERROR_IME_NOT_STARTED;
+    {
+        std::lock_guard<std::mutex> lock(editorContentLock_);
+        if (isTextNotified_.exchange(true) && textString_ == text && selectNewBegin_ == start && selectNewEnd_ == end) {
+            IMSA_HILOGD("same to last update.");
+            return ErrorCode::NO_ERROR;
+        }
+        textString_ = text;
+        selectOldBegin_ = selectNewBegin_;
+        selectOldEnd_ = selectNewEnd_;
+        selectNewBegin_ = start;
+        selectNewEnd_ = end;
     }
     IMSA_HILOGI("IMC size: %{public}zu, range: %{public}d/%{public}d/%{public}d/%{public}d.", text.size(),
         selectOldBegin_, selectOldEnd_, start, end);
-    std::string testString = Str16ToStr8(textString_);
-    agent->OnSelectionChange(testString, selectOldBegin_, selectOldEnd_, selectNewBegin_, selectNewEnd_);
-    return ErrorCode::NO_ERROR;
+    std::string testString = Str16ToStr8(text);
+    return SendRequestToAllAgents(
+        [testString, selectOldBegin = selectOldBegin_, selectOldEnd = selectOldEnd_, selectNewBegin = selectNewBegin_,
+            selectNewEnd = selectNewEnd_](std::shared_ptr<IInputMethodAgent> agent) -> int32_t {
+            agent->OnSelectionChange(testString, selectOldBegin, selectOldEnd, selectNewBegin, selectNewEnd);
+            return ErrorCode::NO_ERROR;
+        });
 }
 
 int32_t InputMethodController::OnConfigurationChange(Configuration info)
@@ -879,14 +894,15 @@ int32_t InputMethodController::OnConfigurationChange(Configuration info)
         "IMC enterKeyType: %{public}d, textInputType: %{public}d.", attribute.enterKeyType, attribute.inputPattern);
     if (oldSecurityFlag != attribute.GetSecurityFlag()) {
         GetTextConfig(clientInfo_.config);
-        sptr<IRemoteObject> agent = nullptr;
-        std::pair<int64_t, std::string> imeInfo{ 0, "" };
-        int32_t ret = StartInput(clientInfo_, agent, imeInfo);
+        std::vector<sptr<IRemoteObject>> agents;
+        std::vector<BindImeInfo> imeInfos;
+        int32_t ret = StartInput(clientInfo_, agents, imeInfos);
         if (ret != ErrorCode::NO_ERROR) {
             return ret;
         }
-        OnInputReady(agent, imeInfo);
+        SetInputReady(agents, imeInfos);
     }
+
     auto agent = GetAgent();
     if (agent == nullptr) {
         IMSA_HILOGE("agent is nullptr!");
@@ -964,6 +980,7 @@ void InputMethodController::PrintKeyEventLog()
 
 int32_t InputMethodController::DispatchKeyEvent(std::shared_ptr<MMI::KeyEvent> keyEvent, KeyEventCallback callback)
 {
+    int64_t startTime = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
     PrintKeyEventLog();
     KeyEventInfo keyEventInfo = { std::chrono::system_clock::now(), keyEvent };
     keyEventQueue_.Push(keyEventInfo);
@@ -986,20 +1003,35 @@ int32_t InputMethodController::DispatchKeyEvent(std::shared_ptr<MMI::KeyEvent> k
         return ErrorCode::ERROR_IME_NOT_STARTED;
     }
     IMSA_HILOGD("start.");
-    sptr<IKeyEventConsumer> consumer = new (std::nothrow) KeyEventConsumerServiceImpl(callback, keyEvent);
-    if (consumer == nullptr) {
-        IMSA_HILOGE("consumer is nullptr!");
+    sptr<IRemoteObject> channelObject = nullptr;
+    {
+        std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
+        channelObject = clientInfo_.channel;
+    }
+    if (channelObject == nullptr) {
+        IMSA_HILOGE("channelObject is nullptr!");
         keyEventQueue_.Pop();
         return ErrorCode::ERROR_EX_NULL_POINTER;
     }
+    auto cbId = keyEventRetHandler_.AddKeyEventCbInfo({ keyEvent, callback });
     KeyEventValue keyEventValue;
     keyEventValue.event = keyEvent;
-    auto ret = agent->DispatchKeyEvent(keyEventValue, consumer);
+    auto ret = agent->DispatchKeyEvent(keyEventValue, cbId, channelObject);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("failed to DispatchKeyEvent: %{public}d", ret);
+        keyEventRetHandler_.RemoveKeyEventCbInfo(cbId);
     }
     keyEventQueue_.Pop();
+    int64_t endTime = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    if (endTime - startTime > DISPATCH_KEYBOARD_TIME_OUT) {
+        IMSA_HILOGW("DispatchKeyEvent timeout: [%{public}" PRId64 ", %{public}" PRId64 "].", startTime, endTime);
+    }
     return ret;
+}
+
+void InputMethodController::HandleKeyEventResult(uint64_t cbId, bool consumeResult)
+{
+    keyEventRetHandler_.HandleKeyEventResult(cbId, consumeResult);
 }
 
 int32_t InputMethodController::GetEnterKeyType(int32_t &keyType)
@@ -1170,27 +1202,39 @@ int32_t InputMethodController::SetSimpleKeyboardEnabled(bool enable)
     return ErrorCode::NO_ERROR;
 }
 
-void InputMethodController::OnInputReady(
-    sptr<IRemoteObject> agentObject, const std::pair<int64_t, std::string> &imeInfo)
+void InputMethodController::OnInputReady(sptr<IRemoteObject> agentObject, const BindImeInfo &imeInfo)
 {
     IMSA_HILOGD("InputMethodController start.");
-    SetBindImeInfo(imeInfo);
-    isBound_.store(true);
-    isEditable_.store(true);
+    if (imeInfo.bundleName != IME_MIRROR_NAME) {
+        SetBindImeInfo(std::make_pair(imeInfo.pid, imeInfo.bundleName));
+        isBound_.store(true);
+        isEditable_.store(true);
+    } else {
+        IMSA_HILOGD("[ImeMirrorTag] proxyIme_IME_MIRROR no need to set bindImeInfo");
+    }
+
     if (agentObject == nullptr) {
         IMSA_HILOGE("agentObject is nullptr!");
         return;
     }
-    SetAgent(agentObject);
+    SetAgent(agentObject, imeInfo.bundleName);
+}
+
+void InputMethodController::SetInputReady(
+    const std::vector<sptr<IRemoteObject>> &agentObjects, const std::vector<BindImeInfo> &imeInfos)
+{
+    if (agentObjects.size() != imeInfos.size()) {
+        IMSA_HILOGE("[ImeMirrorTag]agentObjects.size() != imeInfos.size()!");
+        return;
+    }
+    for (size_t i = 0; i < agentObjects.size(); i++) {
+        OnInputReady(agentObjects[i], imeInfos[i]);
+    }
 }
 
 void InputMethodController::OnInputStop(bool isStopInactiveClient, sptr<IRemoteObject> proxy)
 {
-    {
-        std::lock_guard<std::mutex> autoLock(agentLock_);
-        agent_ = nullptr;
-        agentObject_ = nullptr;
-    }
+    ClearAgentInfo();
     auto listener = GetTextListener();
     if (listener != nullptr) {
         IMSA_HILOGD("listener is not nullptr!");
@@ -1205,13 +1249,42 @@ void InputMethodController::OnInputStop(bool isStopInactiveClient, sptr<IRemoteO
     isBound_.store(false);
     isEditable_.store(false);
     isTextNotified_.store(false);
-    textString_ = Str8ToStr16("");
-    selectOldBegin_ = INVALID_VALUE;
-    selectOldEnd_ = INVALID_VALUE;
-    selectNewBegin_ = INVALID_VALUE;
-    selectNewEnd_ = INVALID_VALUE;
+    keyEventRetHandler_.ClearKeyEventCbInfo();
+    {
+        std::lock_guard<std::mutex> lock(editorContentLock_);
+        textString_ = Str8ToStr16("");
+        selectOldBegin_ = INVALID_VALUE;
+        selectOldEnd_ = INVALID_VALUE;
+        selectNewBegin_ = INVALID_VALUE;
+        selectNewEnd_ = INVALID_VALUE;
+    }
+    auto now = steady_clock::now();
+    if (std::chrono::duration_cast<seconds>(now - textChangeStartLogTime_).count() > LOG_INSERT_MIN_TIME &&
+        std::chrono::duration_cast<seconds>(now - textChangeStartLogTime_).count() < LOG_INSERT_MAX_TIME) {
+        IMSA_HILOGW("unbind before insertText PrintTextChangeLogCount: %{public}d !", textChangeCountInPeriod_);
+    }
+    if (proxy == nullptr) {
+        IMSA_HILOGD("proxy is nullptr.");
+        return;
+    }
     auto channelProxy = std::make_shared<OnInputStopNotifyProxy>(proxy);
     channelProxy->NotifyOnInputStopFinished();
+}
+
+void InputMethodController::OnImeMirrorStop(sptr<IRemoteObject> object)
+{
+    std::lock_guard guard(agentLock_);
+    auto pos = find_if(agentInfoList_.begin(), agentInfoList_.end(), [object](const AgentInfo &agentInfo) {
+        return agentInfo.agentObject == object;
+    });
+    if (pos == agentInfoList_.end()) {
+        IMSA_HILOGE("[ImeMirrorTag] object is not in agentInfoList.");
+        return;
+    }
+    pos->agentObject = nullptr;
+    pos->agent = nullptr;
+    agentInfoList_.erase(pos);
+    IMSA_HILOGI("[ImeMirrorTag]remove agent");
 }
 
 void InputMethodController::ClearEditorCache(bool isNewEditor, sptr<OnTextChangedListener> lastListener)
@@ -1354,7 +1427,7 @@ int32_t InputMethodController::InsertText(const std::u16string &text)
         IMSA_HILOGD("ACE InsertText.");
         listener->InsertTextV2(text);
     }
-
+    PrintTextChangeLog();
     PrintLogIfAceTimeout(start);
     return ErrorCode::NO_ERROR;
 }
@@ -1469,6 +1542,9 @@ int32_t InputMethodController::SendFunctionKey(int32_t functionKey)
     FunctionKey funcKey;
     funcKey.SetEnterKeyType(static_cast<EnterKeyType>(functionKey));
     listener->SendFunctionKeyV2(funcKey);
+    SendRequestToImeMirrorAgent([&functionKey](std::shared_ptr<IInputMethodAgent> agent) -> int32_t {
+        return agent->OnFunctionKey(functionKey);
+    });
     return ErrorCode::NO_ERROR;
 }
 
@@ -1508,6 +1584,17 @@ int32_t InputMethodController::StartInputType(InputType type)
     return proxy->StartInputType(static_cast<int32_t>(type));
 }
 
+int32_t InputMethodController::StartInputTypeAsync(InputType type)
+{
+    auto proxy = GetSystemAbilityProxy();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("proxy is nullptr!");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    IMSA_HILOGI("type: %{public}d.", static_cast<int32_t>(type));
+    return proxy->StartInputTypeAsync(static_cast<int32_t>(type));
+}
+
 int32_t InputMethodController::IsPanelShown(const PanelInfo &panelInfo, bool &isShown)
 {
     auto proxy = GetSystemAbilityProxy();
@@ -1520,28 +1607,60 @@ int32_t InputMethodController::IsPanelShown(const PanelInfo &panelInfo, bool &is
     return proxy->IsPanelShown(panelInfo, isShown);
 }
 
-void InputMethodController::SetAgent(const sptr<IRemoteObject> &agentObject)
+void InputMethodController::SetAgent(const sptr<IRemoteObject> &agentObject, const std::string &bundleName)
 {
     std::lock_guard<std::mutex> autoLock(agentLock_);
-    if (agent_ != nullptr && agentObject_.GetRefPtr() == agentObject.GetRefPtr()) {
-        IMSA_HILOGD("agent has already been set.");
-        return;
+    for (auto &agentInfo : agentInfoList_) {
+        if (agentInfo.agent != nullptr && agentInfo.agentObject.GetRefPtr() == agentObject.GetRefPtr()) {
+            IMSA_HILOGD("[ImeMirrorTag]agent has already been set.");
+            return;
+        }
     }
-    agent_ = std::make_shared<InputMethodAgentProxy>(agentObject);
-    agentObject_ = agentObject;
+
+    if (agentInfoList_.size() >= MAX_AGENT_NUMBER) {
+        IMSA_HILOGW("[ImeMirrorTag]agent num is too many");
+    }
+    AgentInfo agentInfo;
+    agentInfo.agent = std::make_shared<InputMethodAgentProxy>(agentObject);
+    agentInfo.agentObject = agentObject;
+    agentInfo.imeType = (bundleName == IME_MIRROR_NAME) ? ImeType::IME_MIRROR : ImeType::NONE;
+    agentInfoList_.push_back(agentInfo);
 }
 
 std::shared_ptr<IInputMethodAgent> InputMethodController::GetAgent()
 {
     std::lock_guard<std::mutex> autoLock(agentLock_);
-    return agent_;
+    for (auto &agentInfo : agentInfoList_) {
+        if (agentInfo.agent != nullptr && agentInfo.imeType != ImeType::IME_MIRROR) {
+            return agentInfo.agent;
+        }
+    }
+    IMSA_HILOGE("no agent found!");
+    return nullptr;
 }
 
 void InputMethodController::PrintLogIfAceTimeout(int64_t start)
 {
     int64_t end = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    if (end < start || start < 0) {
+        return;
+    }
     if (end - start > ACE_DEAL_TIME_OUT) {
         IMSA_HILOGW("timeout: [%{public}" PRId64 ", %{public}" PRId64 "].", start, end);
+    }
+}
+
+void InputMethodController::PrintTextChangeLog()
+{
+    std::lock_guard<std::mutex> lock(printTextChangeMutex_);
+    auto now = steady_clock::now();
+    if (textChangeCountInPeriod_ == 0) {
+        textChangeStartLogTime_ = now;
+    }
+    textChangeCountInPeriod_++;
+    if (std::chrono::duration_cast<seconds>(now - textChangeStartLogTime_).count() >= LOG_INSERT_MAX_TIME) {
+        IMSA_HILOGW("PrintTextChangeLogCount: %{public}d, ACE_InsertText success!", textChangeCountInPeriod_);
+        textChangeCountInPeriod_ = 0;
     }
 }
 
@@ -1618,6 +1737,7 @@ int32_t InputMethodController::SetPreviewTextInner(const std::string &text, cons
         InputMethodSyncTrace aceTracer("ACE_SetPreviewText");
         ret = listener->SetPreviewTextV2(Str8ToStr16(text), range);
     }
+    PrintTextChangeLog();
     PrintLogIfAceTimeout(start);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("failed to SetPreviewText: %{public}d!", ret);
@@ -1648,17 +1768,6 @@ int32_t InputMethodController::FinishTextPreview()
         listener->FinishTextPreviewV2();
     }
     return ErrorCode::NO_ERROR;
-}
-
-int32_t InputMethodController::UpdateLargeMemorySceneState(const int32_t memoryState)
-{
-    IMSA_HILOGI("UpdateLargeMemorySceneState %{public}d.", memoryState);
-    auto proxy = GetSystemAbilityProxy();
-    if (proxy == nullptr) {
-        IMSA_HILOGE("proxy is nullptr");
-        return ErrorCode::ERROR_NULL_POINTER;
-    }
-    return proxy->UpdateLargeMemorySceneState(memoryState);
 }
 
 int32_t InputMethodController::SendMessage(const ArrayBuffer &arrayBuffer)
@@ -1817,7 +1926,7 @@ int32_t InputMethodController::RegisterWindowScaleCallbackHandler(WindowScaleCal
     return static_cast<int32_t>(ErrorCode::NO_ERROR);
 }
 
-void InputMethodController::GetWindowScaleCoordinate(int32_t& x, int32_t& y, uint32_t windowId)
+void InputMethodController::GetWindowScaleCoordinate(uint32_t windowId, CursorInfo &cursorInfo)
 {
     WindowScaleCallback handler = nullptr;
     {
@@ -1828,260 +1937,491 @@ void InputMethodController::GetWindowScaleCoordinate(int32_t& x, int32_t& y, uin
         IMSA_HILOGD("handler is nullptr");
         return;
     }
-    handler(x, y, windowId);
+    handler(windowId, cursorInfo);
 }
 
-int32_t InputMethodController::ResponseDataChannel(uint64_t msgId, int32_t code, const ResponseData &data)
+int32_t InputMethodController::ResponseDataChannel(
+    const sptr<IRemoteObject> &agentObject, uint64_t msgId, int32_t code, const ResponseData &data)
 {
-    auto agent = GetAgent();
-    if (agent == nullptr) {
-        IMSA_HILOGD("agent is nullptr!");
+    if (agentObject == nullptr) {
+        IMSA_HILOGE("agentObject is nullptr!");
         return ErrorCode::ERROR_IME_NOT_STARTED;
     }
+    auto agent = std::make_shared<InputMethodAgentProxy>(agentObject);
     ResponseDataInner inner;
     inner.rspData = data;
     return agent->ResponseDataChannel(msgId, code, inner);
 }
 
+void InputMethodController::ClearAgentInfo()
+{
+    std::lock_guard guard(agentLock_);
+    for (auto &agentInfo : agentInfoList_) {
+        agentInfo.agent = nullptr;
+        agentInfo.agentObject = nullptr;
+    }
+
+    IMSA_HILOGD("Clear all agent info");
+    agentInfoList_.clear();
+}
+
+int32_t InputMethodController::SendRequestToAllAgents(std::function<int32_t(std::shared_ptr<IInputMethodAgent>)> task)
+{
+    std::lock_guard guard(agentLock_);
+    int32_t finalRet = ErrorCode::NO_ERROR;
+    for (auto &agentInfo : agentInfoList_) {
+        if (agentInfo.imeType == ImeType::IME_MIRROR && textConfig_.inputAttribute.IsSecurityImeFlag()) {
+            IMSA_HILOGW("password not allow send to ime mirror");
+            continue;
+        }
+        if (agentInfo.agent == nullptr) {
+            if (agentInfo.imeType == ImeType::IME_MIRROR) {
+                IMSA_HILOGW("ime mirror agent is null");
+                continue;
+            }
+            IMSA_HILOGE("agent is null");
+            return ErrorCode::ERROR_CLIENT_NULL_POINTER;
+        }
+        auto ret = task(agentInfo.agent);
+        if (ret != ErrorCode::NO_ERROR) {
+            IMSA_HILOGE("failed, ret = %{public}d", ret);
+        }
+        // Only update final return code for non-imeMirror IMEs
+        // ImeMirror IME errors don't affect the overall result
+        if (agentInfo.imeType != ImeType::IME_MIRROR) {
+            finalRet = ret;
+        }
+    }
+    IMSA_HILOGD("end, finalRet = %{public}d", finalRet);
+    return finalRet;
+}
+
+int32_t InputMethodController::SendRequestToImeMirrorAgent(
+    std::function<int32_t(std::shared_ptr<IInputMethodAgent>)> task)
+{
+    std::lock_guard guard(agentLock_);
+    auto itr = std::find_if(agentInfoList_.begin(), agentInfoList_.end(), [](const AgentInfo &info) {
+        return info.imeType == ImeType::IME_MIRROR;
+    });
+    if (itr == agentInfoList_.end()) {
+        IMSA_HILOGD("ime mirror agent is not exist");
+        return ErrorCode::ERROR_IME_NOT_FOUND;
+    }
+
+    if (textConfig_.inputAttribute.IsSecurityImeFlag()) {
+        IMSA_HILOGE("text type is security, can not send function key");
+        return ErrorCode::ERROR_STATUS_PERMISSION_DENIED;
+    }
+
+    return task(itr->agent);
+}
+
 void OnTextChangedListener::InsertTextV2(const std::u16string &text)
 {
-    auto task = [this, text]() { InsertText(text); };
     auto eventHandler = GetEventHandler();
-    if (eventHandler != nullptr) {
-        eventHandler->PostTask(task, "InsertTextV2", 0, AppExecFwk::EventQueue::Priority::VIP);
-    } else {
-        task();
+    if (eventHandler == nullptr) {
+        InsertText(text);
+        return;
     }
+    auto weakPtr = wptr<OnTextChangedListener>(this);
+    auto task = [weakPtr, text]() {
+        auto listener = weakPtr.promote();
+        if (listener == nullptr) {
+            IMSA_HILOGE("InsertTextV2 listener is nullptr.");
+            return;
+        }
+        listener->InsertText(text);
+    };
+    eventHandler->PostTask(task, "InsertTextV2", 0, AppExecFwk::EventQueue::Priority::VIP);
 }
+
 void OnTextChangedListener::DeleteForwardV2(int32_t length)
 {
-    auto task = [this, length]() { DeleteForward(length); };
     auto eventHandler = GetEventHandler();
-    if (eventHandler != nullptr) {
-        eventHandler->PostTask(task, "DeleteForwardV2", 0, AppExecFwk::EventQueue::Priority::VIP);
-    } else {
-        task();
+    if (eventHandler == nullptr) {
+        DeleteForward(length);
+        return;
     }
+    auto weakPtr = wptr<OnTextChangedListener>(this);
+    auto task = [weakPtr, length]() {
+        auto listener = weakPtr.promote();
+        if (listener == nullptr) {
+            IMSA_HILOGE("DeleteForwardV2 listener is nullptr.");
+            return;
+        }
+        listener->DeleteForward(length);
+    };
+    eventHandler->PostTask(task, "DeleteForwardV2", 0, AppExecFwk::EventQueue::Priority::VIP);
 }
 
 void OnTextChangedListener::DeleteBackwardV2(int32_t length)
 {
-    auto task = [this, length]() { DeleteBackward(length); };
     auto eventHandler = GetEventHandler();
-    if (eventHandler != nullptr) {
-        eventHandler->PostTask(task, "DeleteBackwardV2", 0, AppExecFwk::EventQueue::Priority::VIP);
-    } else {
-        task();
+    if (eventHandler == nullptr) {
+        DeleteBackward(length);
+        return;
     }
+    auto weakPtr = wptr<OnTextChangedListener>(this);
+    auto task = [weakPtr, length]() {
+        auto listener = weakPtr.promote();
+        if (listener == nullptr) {
+            IMSA_HILOGE("DeleteBackwardV2 listener is nullptr.");
+            return;
+        }
+        listener->DeleteBackward(length);
+    };
+    eventHandler->PostTask(task, "DeleteBackwardV2", 0, AppExecFwk::EventQueue::Priority::VIP);
 }
 
 void OnTextChangedListener::SendKeyboardStatusV2(const KeyboardStatus &keyboardStatus)
 {
-    auto task = [this, keyboardStatus]() { SendKeyboardStatus(keyboardStatus); };
     auto eventHandler = GetEventHandler();
-    if (eventHandler != nullptr) {
-        eventHandler->PostTask(task, "SendKeyboardStatusV2", 0, AppExecFwk::EventQueue::Priority::VIP);
-    } else {
-        task();
+    if (eventHandler == nullptr) {
+        SendKeyboardStatus(keyboardStatus);
+        return;
     }
+    auto weakPtr = wptr<OnTextChangedListener>(this);
+    auto task = [weakPtr, keyboardStatus]() {
+        auto listener = weakPtr.promote();
+        if (listener == nullptr) {
+            IMSA_HILOGE("SendKeyboardStatusV2 listener is nullptr.");
+            return;
+        }
+        listener->SendKeyboardStatus(keyboardStatus);
+    };
+    eventHandler->PostTask(task, "SendKeyboardStatusV2", 0, AppExecFwk::EventQueue::Priority::VIP);
 }
 
 void OnTextChangedListener::SendFunctionKeyV2(const FunctionKey &functionKey)
 {
-    auto task = [this, functionKey]() { SendFunctionKey(functionKey); };
     auto eventHandler = GetEventHandler();
-    if (eventHandler != nullptr) {
-        eventHandler->PostTask(task, "SendFunctionKeyV2", 0, AppExecFwk::EventQueue::Priority::VIP);
-    } else {
-        task();
+    if (eventHandler == nullptr) {
+        SendFunctionKey(functionKey);
+        return;
     }
+    auto weakPtr = wptr<OnTextChangedListener>(this);
+    auto task = [weakPtr, functionKey]() {
+        auto listener = weakPtr.promote();
+        if (listener == nullptr) {
+            IMSA_HILOGE("SendFunctionKeyV2 listener is nullptr.");
+            return;
+        }
+        listener->SendFunctionKey(functionKey);
+    };
+    eventHandler->PostTask(task, "SendFunctionKeyV2", 0, AppExecFwk::EventQueue::Priority::VIP);
 }
 
 void OnTextChangedListener::MoveCursorV2(const Direction &direction)
 {
-    auto task = [this, direction]() { MoveCursor(direction); };
     auto eventHandler = GetEventHandler();
-    if (eventHandler != nullptr) {
-        eventHandler->PostTask(task, "MoveCursorV2", 0, AppExecFwk::EventQueue::Priority::VIP);
-    } else {
-        task();
+    if (eventHandler == nullptr) {
+        MoveCursor(direction);
+        return;
     }
+    auto weakPtr = wptr<OnTextChangedListener>(this);
+    auto task = [weakPtr, direction]() {
+        auto listener = weakPtr.promote();
+        if (listener == nullptr) {
+            IMSA_HILOGE("MoveCursorV2 listener is nullptr.");
+            return;
+        }
+        listener->MoveCursor(direction);
+    };
+    eventHandler->PostTask(task, "MoveCursorV2", 0, AppExecFwk::EventQueue::Priority::VIP);
 }
 
 void OnTextChangedListener::HandleExtendActionV2(int32_t action)
 {
-    auto task = [this, action]() { HandleExtendAction(action); };
     auto eventHandler = GetEventHandler();
-    if (eventHandler != nullptr) {
-        eventHandler->PostTask(task, "HandleExtendActionV2", 0, AppExecFwk::EventQueue::Priority::VIP);
-    } else {
-        task();
+    if (eventHandler == nullptr) {
+        HandleExtendAction(action);
+        return;
     }
+    auto weakPtr = wptr<OnTextChangedListener>(this);
+    auto task = [weakPtr, action]() {
+        auto listener = weakPtr.promote();
+        if (listener == nullptr) {
+            IMSA_HILOGE("HandleExtendActionV2 listener is nullptr.");
+            return;
+        }
+        listener->HandleExtendAction(action);
+    };
+    eventHandler->PostTask(task, "HandleExtendActionV2", 0, AppExecFwk::EventQueue::Priority::VIP);
 }
 
 std::u16string OnTextChangedListener::GetLeftTextOfCursorV2(int32_t number)
 {
-    std::u16string text;
     auto eventHandler = GetEventHandler();
-    if (eventHandler != nullptr) {
-        auto textResultHandler = std::make_shared<BlockData<std::u16string>>(MAX_TIMEOUT);
-        auto task = [this, textResultHandler, number]() {
-            std::u16string info = GetLeftTextOfCursor(number);
-            if (textResultHandler != nullptr) {
-                textResultHandler->SetValue(info);
-            }
-        };
-        eventHandler->PostTask(task, "GetLeftTextOfCursorV2", 0, AppExecFwk::EventQueue::Priority::VIP);
-        if (!textResultHandler->GetValue(text)) {
-            IMSA_HILOGW("GetLeftTextOfCursorV2 timeout");
+    if (eventHandler == nullptr) {
+        return GetLeftTextOfCursor(number);
+    }
+    auto textResultHandler = std::make_shared<BlockData<std::u16string>>(MAX_TIMEOUT);
+    auto weakPtr = wptr<OnTextChangedListener>(this);
+    auto task = [weakPtr, textResultHandler, number]() {
+        std::u16string text;
+        auto listener = weakPtr.promote();
+        if (listener == nullptr) {
+            IMSA_HILOGE("GetLeftTextOfCursorV2 listener is nullptr.");
+        } else {
+            text = listener->GetLeftTextOfCursor(number);
         }
-    } else {
-        text = GetLeftTextOfCursor(number);
+        if (textResultHandler != nullptr) {
+            textResultHandler->SetValue(text);
+        }
+    };
+    eventHandler->PostTask(task, "GetLeftTextOfCursorV2", 0, AppExecFwk::EventQueue::Priority::VIP);
+    std::u16string text;
+    if (!textResultHandler->GetValue(text)) {
+        IMSA_HILOGW("GetLeftTextOfCursorV2 timeout");
     }
     return text;
 }
 
 std::u16string OnTextChangedListener::GetRightTextOfCursorV2(int32_t number)
 {
-    std::u16string text;
     auto eventHandler = GetEventHandler();
-    if (eventHandler != nullptr) {
-        auto textResultHandler = std::make_shared<BlockData<std::u16string>>(MAX_TIMEOUT);
-        auto task = [this, textResultHandler, number]() {
-            std::u16string info = GetRightTextOfCursor(number);
-            if (textResultHandler != nullptr) {
-                textResultHandler->SetValue(info);
-            }
-        };
-        eventHandler->PostTask(task, "GetRightTextOfCursorV2", 0, AppExecFwk::EventQueue::Priority::VIP);
-        if (!textResultHandler->GetValue(text)) {
-            IMSA_HILOGW("GetRightTextOfCursorV2 timeout");
+    if (eventHandler == nullptr) {
+        return GetRightTextOfCursor(number);
+    }
+    auto textResultHandler = std::make_shared<BlockData<std::u16string>>(MAX_TIMEOUT);
+    auto weakPtr = wptr<OnTextChangedListener>(this);
+    auto task = [weakPtr, textResultHandler, number]() {
+        std::u16string text;
+        auto listener = weakPtr.promote();
+        if (listener == nullptr) {
+            IMSA_HILOGE("GetRightTextOfCursorV2 listener is nullptr.");
+        } else {
+            text = listener->GetRightTextOfCursor(number);
         }
-    } else {
-        text = GetRightTextOfCursor(number);
+        if (textResultHandler != nullptr) {
+            textResultHandler->SetValue(text);
+        }
+    };
+    eventHandler->PostTask(task, "GetRightTextOfCursorV2", 0, AppExecFwk::EventQueue::Priority::VIP);
+    std::u16string text;
+    if (!textResultHandler->GetValue(text)) {
+        IMSA_HILOGW("GetRightTextOfCursorV2 timeout");
     }
     return text;
 }
 
 int32_t OnTextChangedListener::GetTextIndexAtCursorV2()
 {
-    int32_t index = -1;
     auto eventHandler = GetEventHandler();
-    if (eventHandler != nullptr) {
-        auto textResultHandler = std::make_shared<BlockData<int32_t>>(MAX_TIMEOUT, -1);
-        auto task = [this, textResultHandler]() {
-            int32_t textIndex = GetTextIndexAtCursor();
-            if (textResultHandler != nullptr) {
-                textResultHandler->SetValue(textIndex);
-            }
-        };
-        eventHandler->PostTask(task, "GetTextIndexAtCursorV2", 0, AppExecFwk::EventQueue::Priority::VIP);
-        if (!textResultHandler->GetValue(index)) {
-            IMSA_HILOGW("GetTextIndexAtCursorV2 timeout");
+    if (eventHandler == nullptr) {
+        return GetTextIndexAtCursor();
+    }
+    auto textResultHandler = std::make_shared<BlockData<int32_t>>(MAX_TIMEOUT, -1);
+    auto weakPtr = wptr<OnTextChangedListener>(this);
+    auto task = [weakPtr, textResultHandler]() {
+        int32_t index = -1;
+        auto listener = weakPtr.promote();
+        if (listener == nullptr) {
+            IMSA_HILOGE("GetTextIndexAtCursorV2 listener is nullptr.");
+        } else {
+            index = listener->GetTextIndexAtCursor();
         }
-    } else {
-        index = GetTextIndexAtCursor();
+        if (textResultHandler != nullptr) {
+            textResultHandler->SetValue(index);
+        }
+    };
+    eventHandler->PostTask(task, "GetTextIndexAtCursorV2", 0, AppExecFwk::EventQueue::Priority::VIP);
+    int32_t index = -1;
+    if (!textResultHandler->GetValue(index)) {
+        IMSA_HILOGW("GetTextIndexAtCursorV2 timeout");
     }
     return index;
 }
 
 void OnTextChangedListener::SendKeyEventFromInputMethodV2(const KeyEvent &event)
 {
-    auto task = [this, event]() { SendKeyEventFromInputMethod(event); };
     auto eventHandler = GetEventHandler();
-    if (eventHandler != nullptr) {
-        eventHandler->PostTask(task, "SendKeyEventFromInputMethodV2", 0, AppExecFwk::EventQueue::Priority::VIP);
-    } else {
-        task();
+    if (eventHandler == nullptr) {
+        SendKeyEventFromInputMethod(event);
+        return;
     }
+    auto weakPtr = wptr<OnTextChangedListener>(this);
+    auto task = [weakPtr, event]() {
+        auto listener = weakPtr.promote();
+        if (listener == nullptr) {
+            IMSA_HILOGE("SendKeyEventFromInputMethodV2 listener is nullptr.");
+            return;
+        }
+        listener->SendKeyEventFromInputMethod(event);
+    };
+    eventHandler->PostTask(task, "SendKeyEventFromInputMethodV2", 0, AppExecFwk::EventQueue::Priority::VIP);
 }
 
 void OnTextChangedListener::NotifyPanelStatusInfoV2(const PanelStatusInfo &info)
 {
-    auto task = [this, info]() { NotifyPanelStatusInfo(info); };
     auto eventHandler = GetEventHandler();
-    if (eventHandler != nullptr) {
-        eventHandler->PostTask(task, "NotifyPanelStatusInfoV2", 0, AppExecFwk::EventQueue::Priority::VIP);
-    } else {
-        task();
+    if (eventHandler == nullptr) {
+        NotifyPanelStatusInfo(info);
+        return;
     }
+    auto weakPtr = wptr<OnTextChangedListener>(this);
+    auto task = [weakPtr, info]() {
+        auto listener = weakPtr.promote();
+        if (listener == nullptr) {
+            IMSA_HILOGE("NotifyPanelStatusInfoV2 listener is nullptr.");
+            return;
+        }
+        listener->NotifyPanelStatusInfo(info);
+    };
+    eventHandler->PostTask(task, "NotifyPanelStatusInfoV2", 0, AppExecFwk::EventQueue::Priority::VIP);
 }
 
 void OnTextChangedListener::NotifyKeyboardHeightV2(uint32_t height)
 {
-    auto task = [this, height]() { NotifyKeyboardHeight(height); };
     auto eventHandler = GetEventHandler();
-    if (eventHandler != nullptr) {
-        eventHandler->PostTask(task, "NotifyKeyboardHeightV2", 0, AppExecFwk::EventQueue::Priority::VIP);
-    } else {
-        task();
+    if (eventHandler == nullptr) {
+        NotifyKeyboardHeight(height);
+        return;
     }
+    auto weakPtr = wptr<OnTextChangedListener>(this);
+    auto task = [weakPtr, height]() {
+        auto listener = weakPtr.promote();
+        if (listener == nullptr) {
+            IMSA_HILOGE("NotifyKeyboardHeightV2 listener is nullptr.");
+            return;
+        }
+        listener->NotifyKeyboardHeight(height);
+    };
+    eventHandler->PostTask(task, "NotifyKeyboardHeightV2", 0, AppExecFwk::EventQueue::Priority::VIP);
 }
 
 void OnTextChangedListener::SetKeyboardStatusV2(bool status)
 {
-    auto task = [this, status]() { SetKeyboardStatus(status); };
     auto eventHandler = GetEventHandler();
-    if (eventHandler != nullptr) {
-        eventHandler->PostTask(task, "SetKeyboardStatusV2", 0, AppExecFwk::EventQueue::Priority::VIP);
-    } else {
-        task();
+    if (eventHandler == nullptr) {
+        SetKeyboardStatus(status);
+        return;
     }
+    auto weakPtr = wptr<OnTextChangedListener>(this);
+    auto task = [weakPtr, status]() {
+        auto listener = weakPtr.promote();
+        if (listener == nullptr) {
+            IMSA_HILOGE("SetKeyboardStatusV2 listener is nullptr.");
+            return;
+        }
+        listener->SetKeyboardStatus(status);
+    };
+    eventHandler->PostTask(task, "SetKeyboardStatusV2", 0, AppExecFwk::EventQueue::Priority::VIP);
 }
 
 void OnTextChangedListener::HandleSetSelectionV2(int32_t start, int32_t end)
 {
-    auto task = [this, start, end]() { HandleSetSelection(start, end); };
     auto eventHandler = GetEventHandler();
-    if (eventHandler != nullptr) {
-        eventHandler->PostTask(task, "HandleSetSelectionV2", 0, AppExecFwk::EventQueue::Priority::VIP);
-    } else {
-        task();
+    if (eventHandler == nullptr) {
+        HandleSetSelection(start, end);
+        return;
     }
+    auto weakPtr = wptr<OnTextChangedListener>(this);
+    auto task = [weakPtr, start, end]() {
+        auto listener = weakPtr.promote();
+        if (listener == nullptr) {
+            IMSA_HILOGE("HandleSetSelectionV2 listener is nullptr.");
+            return;
+        }
+        listener->HandleSetSelection(start, end);
+    };
+    eventHandler->PostTask(task, "HandleSetSelectionV2", 0, AppExecFwk::EventQueue::Priority::VIP);
 }
 
 void OnTextChangedListener::HandleSelectV2(int32_t keyCode, int32_t cursorMoveSkip)
 {
-    auto task = [this, keyCode, cursorMoveSkip]() { HandleSelect(keyCode, cursorMoveSkip); };
     auto eventHandler = GetEventHandler();
-    if (eventHandler != nullptr) {
-        eventHandler->PostTask(task, "HandleSelectV2", 0, AppExecFwk::EventQueue::Priority::VIP);
-    } else {
-        task();
+    if (eventHandler == nullptr) {
+        HandleSelect(keyCode, cursorMoveSkip);
+        return;
     }
+    auto weakPtr = wptr<OnTextChangedListener>(this);
+    auto task = [weakPtr, keyCode, cursorMoveSkip]() {
+        auto listener = weakPtr.promote();
+        if (listener == nullptr) {
+            IMSA_HILOGE("HandleSelectV2 listener is nullptr.");
+            return;
+        }
+        listener->HandleSelect(keyCode, cursorMoveSkip);
+    };
+    eventHandler->PostTask(task, "HandleSelectV2", 0, AppExecFwk::EventQueue::Priority::VIP);
 }
 
 int32_t OnTextChangedListener::ReceivePrivateCommandV2(
     const std::unordered_map<std::string, PrivateDataValue> &privateCommand)
 {
-    return ReceivePrivateCommand(privateCommand);
+    auto eventHandler = GetEventHandler();
+    if (eventHandler == nullptr) {
+        return ReceivePrivateCommand(privateCommand);
+    }
+    auto weakPtr = wptr<OnTextChangedListener>(this);
+    auto task = [weakPtr, privateCommand]() {
+        auto listener = weakPtr.promote();
+        if (listener == nullptr) {
+            IMSA_HILOGE("ReceivePrivateCommandV2 listener is nullptr.");
+            return;
+        }
+        listener->ReceivePrivateCommand(privateCommand);
+    };
+    eventHandler->PostTask(task, "ReceivePrivateCommandV2", 0, AppExecFwk::EventQueue::Priority::VIP);
+    return ErrorCode::NO_ERROR;
 }
 
 int32_t OnTextChangedListener::SetPreviewTextV2(const std::u16string &text, const Range &range)
 {
-    return SetPreviewText(text, range);
+    auto eventHandler = GetEventHandler();
+    if (eventHandler == nullptr) {
+        return SetPreviewText(text, range);
+    }
+    auto weakPtr = wptr<OnTextChangedListener>(this);
+    auto task = [weakPtr, text, range]() {
+        auto listener = weakPtr.promote();
+        if (listener == nullptr) {
+            IMSA_HILOGE("SetPreviewTextV2 listener is nullptr.");
+            return;
+        }
+        listener->SetPreviewText(text, range);
+    };
+    eventHandler->PostTask(task, "SetPreviewTextV2", 0, AppExecFwk::EventQueue::Priority::VIP);
+    return ErrorCode::NO_ERROR;
 }
 
 void OnTextChangedListener::FinishTextPreviewV2()
 {
-    auto task = [this]() { FinishTextPreview(); };
     auto eventHandler = GetEventHandler();
-    if (eventHandler != nullptr) {
-        eventHandler->PostTask(task, "FinishTextPreviewV2", 0, AppExecFwk::EventQueue::Priority::VIP);
-    } else {
-        task();
+    if (eventHandler == nullptr) {
+        FinishTextPreview();
+        return;
     }
+    auto weakPtr = wptr<OnTextChangedListener>(this);
+    auto task = [weakPtr]() {
+        auto listener = weakPtr.promote();
+        if (listener == nullptr) {
+            IMSA_HILOGE("FinishTextPreviewV2 listener is nullptr.");
+            return;
+        }
+        listener->FinishTextPreview();
+    };
+    eventHandler->PostTask(task, "FinishTextPreviewV2", 0, AppExecFwk::EventQueue::Priority::VIP);
 }
 
 void OnTextChangedListener::OnDetachV2()
 {
-    auto task = [this]() { OnDetach(); };
     auto eventHandler = GetEventHandler();
-    if (eventHandler != nullptr) {
-        eventHandler->PostTask(task, "OnDetachV2", 0, AppExecFwk::EventQueue::Priority::VIP);
-    } else {
-        task();
+    if (eventHandler == nullptr) {
+        OnDetach();
+        return;
     }
+    auto weakPtr = wptr<OnTextChangedListener>(this);
+    auto task = [weakPtr]() {
+        auto listener = weakPtr.promote();
+        if (listener == nullptr) {
+            IMSA_HILOGE("OnDetachV2 listener is nullptr.");
+            return;
+        }
+        listener->OnDetach();
+    };
+    eventHandler->PostTask(task, "OnDetachV2", 0, AppExecFwk::EventQueue::Priority::VIP);
 }
 } // namespace MiscServices
 } // namespace OHOS

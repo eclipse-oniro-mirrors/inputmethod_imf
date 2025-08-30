@@ -99,7 +99,7 @@ void ClientGroup::RemoveClientInfo(const sptr<IRemoteObject> &client, bool isCli
 }
 
 void ClientGroup::UpdateClientInfo(const sptr<IRemoteObject> &client, const std::unordered_map<UpdateFlag,
-    std::variant<bool, uint32_t, ImeType, ClientState, TextTotalConfig, ClientType>> &updateInfos)
+    std::variant<bool, uint32_t, ImeType, ClientState, TextTotalConfig, ClientType, pid_t>> &updateInfos)
 {
     if (client == nullptr) {
         IMSA_HILOGE("client is nullptr!");
@@ -141,12 +141,16 @@ void ClientGroup::UpdateClientInfo(const sptr<IRemoteObject> &client, const std:
                 VariantUtil::GetValue(updateInfo.second, it->second->type);
                 break;
             }
+            case UpdateFlag::BIND_IME_PID: {
+                VariantUtil::GetValue(updateInfo.second, it->second->bindImePid);
+                break;
+            }
             default:
                 break;
         }
     }
 }
-
+// LCOV_EXCL_START
 std::shared_ptr<InputClientInfo> ClientGroup::GetClientInfo(pid_t pid)
 {
     auto iter = std::find_if(
@@ -158,7 +162,7 @@ std::shared_ptr<InputClientInfo> ClientGroup::GetClientInfo(pid_t pid)
     std::lock_guard<std::recursive_mutex> lock(mtx_);
     return iter->second;
 }
-
+// LCOV_EXCL_STOP
 std::shared_ptr<InputClientInfo> ClientGroup::GetCurrentClientInfo()
 {
     auto client = GetCurrentClient();
@@ -168,7 +172,7 @@ std::shared_ptr<InputClientInfo> ClientGroup::GetCurrentClientInfo()
     }
     return GetClientInfo(client->AsObject());
 }
-
+// LCOV_EXCL_START
 int64_t ClientGroup::GetCurrentClientPid()
 {
     auto clientInfo = GetCurrentClientInfo();
@@ -193,7 +197,7 @@ int64_t ClientGroup::GetInactiveClientPid()
     }
     return clientInfo->pid;
 }
-
+// LCOV_EXCL_STOP
 bool ClientGroup::IsClientExist(sptr<IRemoteObject> inputClient)
 {
     std::lock_guard<std::recursive_mutex> lock(mtx_);
@@ -230,7 +234,7 @@ sptr<IInputClient> ClientGroup::GetInactiveClient()
     std::lock_guard<std::mutex> lock(inactiveClientLock_);
     return inactiveClient_;
 }
-
+// LCOV_EXCL_START
 void ClientGroup::SetInactiveClient(sptr<IInputClient> client)
 {
     IMSA_HILOGD("set inactive client.");
@@ -254,6 +258,22 @@ bool ClientGroup::IsCurClientFocused(int32_t pid, int32_t uid)
     return clientInfo->pid == pid && clientInfo->uid == uid;
 }
 
+bool ClientGroup::IsCurClientUnFocused(int32_t pid, int32_t uid)
+{
+    auto clientInfo = GetCurrentClientInfo();
+    if (clientInfo == nullptr) {
+        IMSA_HILOGE("failed to get cur client info!");
+        return false;
+    }
+    auto identityChecker = std::make_shared<IdentityCheckerImpl>();
+    if (clientInfo->uiExtensionTokenId != IMF_INVALID_TOKENID
+        && !identityChecker->IsFocusedUIExtension(clientInfo->uiExtensionTokenId)) {
+        IMSA_HILOGI("UIExtension UnFocused.");
+        return true;
+    }
+    return clientInfo->pid == pid && clientInfo->uid == uid;
+}
+// LCOV_EXCL_STOP
 int32_t ClientGroup::NotifyInputStartToClients(uint32_t callingWndId, int32_t requestKeyboardReason)
 {
     IMSA_HILOGD("NotifyInputStartToClients enter");
@@ -293,7 +313,7 @@ int32_t ClientGroup::NotifyInputStopToClients()
     }
     return ErrorCode::NO_ERROR;
 }
-
+// LCOV_EXCL_START
 int32_t ClientGroup::NotifyPanelStatusChange(const InputWindowStatus &status, const ImeWindowInfo &info)
 {
     auto clientMap = GetClientMap();
@@ -319,7 +339,7 @@ int32_t ClientGroup::NotifyPanelStatusChange(const InputWindowStatus &status, co
     }
     return ErrorCode::NO_ERROR;
 }
-
+// LCOV_EXCL_STOP
 int32_t ClientGroup::NotifyImeChangeToClients(const Property &property, const SubProperty &subProperty)
 {
     auto clientMap = GetClientMap();
@@ -337,22 +357,6 @@ int32_t ClientGroup::NotifyImeChangeToClients(const Property &property, const Su
         }
     }
     return ErrorCode::NO_ERROR;
-}
-
-bool ClientGroup::IsCurClientUnFocused(int32_t pid, int32_t uid)
-{
-    auto clientInfo = GetCurrentClientInfo();
-    if (clientInfo == nullptr) {
-        IMSA_HILOGE("failed to get cur client info!");
-        return false;
-    }
-    auto identityChecker = std::make_shared<IdentityCheckerImpl>();
-    if (clientInfo->uiExtensionTokenId != IMF_INVALID_TOKENID
-        && !identityChecker->IsFocusedUIExtension(clientInfo->uiExtensionTokenId)) {
-        IMSA_HILOGI("UIExtension UnFocused.");
-        return true;
-    }
-    return clientInfo->pid == pid && clientInfo->uid == uid;
 }
 
 std::shared_ptr<InputClientInfo> ClientGroup::GetClientInfo(sptr<IRemoteObject> inputClient)
@@ -380,7 +384,7 @@ bool ClientGroup::IsSameClient(sptr<IInputClient> source, sptr<IInputClient> des
 {
     return source != nullptr && dest != nullptr && source->AsObject() == dest->AsObject();
 }
-
+// LCOV_EXCL_START
 void ClientGroup::OnClientDied(sptr<IInputClient> remote)
 {
     std::lock_guard<std::mutex> lock(clientDiedLock_);
@@ -389,5 +393,6 @@ void ClientGroup::OnClientDied(sptr<IInputClient> remote)
     }
     clientDiedHandler_(remote);
 }
+// LCOV_EXCL_STOP
 } // namespace MiscServices
 } // namespace OHOS

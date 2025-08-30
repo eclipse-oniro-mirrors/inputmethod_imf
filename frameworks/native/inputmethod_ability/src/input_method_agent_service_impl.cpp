@@ -31,10 +31,9 @@ InputMethodAgentServiceImpl::InputMethodAgentServiceImpl() {}
 InputMethodAgentServiceImpl::~InputMethodAgentServiceImpl() {}
 
 ErrCode InputMethodAgentServiceImpl::DispatchKeyEvent(
-    const MiscServices::KeyEventValue &keyEvent, const sptr<IKeyEventConsumer> &consumer)
+    const MiscServices::KeyEventValue &keyEvent, uint64_t cbId, const sptr<IRemoteObject> &channelObject)
 {
-    sptr<KeyEventConsumerProxy> proxyConsumer = new (std::nothrow) KeyEventConsumerProxy(consumer->AsObject());
-    return InputMethodAbility::GetInstance().DispatchKeyEvent(keyEvent.event, proxyConsumer);
+    return InputMethodAbility::GetInstance().DispatchKeyEvent(keyEvent.event, cbId, channelObject);
 }
 
 ErrCode InputMethodAgentServiceImpl::SetCallingWindow(uint32_t windowId)
@@ -99,6 +98,13 @@ ErrCode InputMethodAgentServiceImpl::DiscardTypingText()
     auto task = std::make_shared<TaskImsaDiscardTypingText>();
     TaskManager::GetInstance().PostTask(task);
     return ErrorCode::NO_ERROR;
+}
+
+ErrCode InputMethodAgentServiceImpl::OnFunctionKey(int32_t funcKey)
+{
+    auto task = std::make_shared<TaskImsaOnFunctionKey>(funcKey);
+    TaskManager::GetInstance().PostTask(task);
+    return ERR_OK;
 }
 
 ErrCode InputMethodAgentServiceImpl::ResponseDataChannel(uint64_t msgId, int code, const ResponseDataInner &msg)

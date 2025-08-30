@@ -18,8 +18,8 @@
 
 #include <atomic>
 #include <chrono>
-#include <ctime>
 #include <condition_variable>
+#include <ctime>
 #include <mutex>
 #include <thread>
 #include <variant>
@@ -36,11 +36,12 @@
 #include "input_method_property.h"
 #include "input_method_status.h"
 #include "input_method_utils.h"
+#include "inputmethod_message_handler.h"
 #include "ipc_skeleton.h"
 #include "iremote_object.h"
 #include "key_event.h"
+#include "key_event_result_handler.h"
 #include "msg_handler_callback_interface.h"
-#include "inputmethod_message_handler.h"
 #include "panel_info.h"
 #include "private_command_interface.h"
 #include "visibility.h"
@@ -145,7 +146,7 @@ private:
 };
 using PrivateDataValue = std::variant<std::string, bool, int32_t>;
 using KeyEventCallback = std::function<void(std::shared_ptr<MMI::KeyEvent> &keyEvent, bool isConsumed)>;
-using WindowScaleCallback = std::function<int32_t(int32_t& x, int32_t& y, uint32_t windowId)>;
+using WindowScaleCallback = std::function<int32_t(uint32_t windowId, CursorInfo &cursorInfo)>;
 class InputMethodController : public RefBase, public PrivateCommandInterface {
 public:
     /**
@@ -232,7 +233,7 @@ public:
      *                                  text selection,windowId.
      * @param type                      Indicates the type of caller.
      * @return Returns 0 for success, others for failure.
-     * @since 15
+     * @since 16
      */
     IMF_API int32_t Attach(sptr<OnTextChangedListener> listener, const AttachOptions &attachOptions,
         const TextConfig &textConfig, ClientType type = ClientType::INNER_KIT);
@@ -253,7 +254,7 @@ public:
      *
      * @param attachOptions   Indicates the attachOptions, such as requestKeyboardReason
      * @return Returns 0 for success, others for failure.
-     * @since 15
+     * @since 16
      */
     IMF_API int32_t ShowTextInput(const AttachOptions &attachOptions, ClientType type = ClientType::INNER_KIT);
     /**
@@ -470,7 +471,7 @@ public:
      * @return Returns true or false.
      * @since 20
      */
-    IMF_API bool IsKeyboardCallingProcess(int32_t pid)
+    IMF_API bool IsKeyboardCallingProcess(int32_t pid);
 
     /**
      * @brief Set calling window id.
@@ -631,7 +632,7 @@ public:
      *
      * @since 10
      */
-    void OnInputReady(sptr<IRemoteObject> agentObject, const std::pair<int64_t, std::string> &imeInfo = {});
+    void OnInputReady(sptr<IRemoteObject> agentObject, const BindImeInfo &imeInfo);
 
     /**
      * @brief Unbind IMC with Service.
@@ -641,6 +642,7 @@ public:
      * @since 10
      */
     void OnInputStop(bool isStopInactiveClient = false, sptr<IRemoteObject> proxy = nullptr);
+    void OnImeMirrorStop(sptr<IRemoteObject> object);
 
     /**
      * @brief Insert text.
@@ -830,6 +832,17 @@ public:
     IMF_API int32_t StartInputType(InputType type);
 
     /**
+     * @brief Start the input method which provides the specific input type.
+     *
+     * This function is used to start the input method which provides the specific input type.
+     *
+     * @param type Indicates the input type being specified.
+     * @return Returns 0 for success, others for failure.
+     * @since 21
+     */
+    IMF_API int32_t StartInputTypeAsync(InputType type);
+
+    /**
      * @brief Query whether the specific type panel is shown.
      *
      * This function is used to query whether the specific type panel is shown.
@@ -929,19 +942,6 @@ public:
         EnabledStatus status = EnabledStatus::BASIC_MODE);
 
     /**
-     * @brief Update state of large memory app.
-     *
-     * This function is used to update the large memory state to control
-     * the restart of the input method.
-     *
-     * @param memoryState Current memory state from memmgr.
-     *                    LARGE_MEMORY_NEED or LARGE_MEMORY_NOT_NEED.
-     * @return Return 0 for success, other for failure.
-     * @since 18
-     */
-    IMF_API int32_t UpdateLargeMemorySceneState(const int32_t memoryState);
-
-    /**
      * @brief Send ArrayBuffer message to ime.
      *
      * This function is used to Send ArrayBuffer message to ime.
@@ -1003,8 +1003,11 @@ public:
      */
     IMF_API int32_t RegisterWindowScaleCallbackHandler(WindowScaleCallback&& callback);
 
-    void SetAgent(const sptr<IRemoteObject> &agentObject);
+    void HandleKeyEventResult(uint64_t cbId, bool consumeResult);
 
+#ifdef OHOS_IMF_TEST
+    void SetImsaProxyForTest(sptr<IInputMethodSystemAbility> proxy);
+#endif // OHOS_IMF_TEST
 private:
     InputMethodController();
     ~InputMethodController();
@@ -1014,7 +1017,7 @@ private:
     sptr<IInputMethodSystemAbility> TryGetSystemAbilityProxy();
     void RemoveDeathRecipient();
     int32_t StartInput(
-        InputClientInfo &inputClientInfo, sptr<IRemoteObject> &agent, std::pair<int64_t, std::string> &imeInfo);
+        InputClientInfo &inputClientInfo, std::vector<sptr<IRemoteObject>> &agents, std::vector<BindImeInfo> &imeInfos);
     int32_t ShowInput(
         sptr<IInputClient> &client, ClientType type = ClientType::INNER_KIT, int32_t requestKeyboardReason = 0);
     int32_t HideInput(sptr<IInputClient> &client);
@@ -1030,8 +1033,10 @@ private:
     void SetTextListener(sptr<OnTextChangedListener> listener);
     bool IsEditable();
     bool IsBound();
+    void SetAgent(const sptr<IRemoteObject> &agentObject, const std::string &bundleName);
     std::shared_ptr<IInputMethodAgent> GetAgent();
     void PrintLogIfAceTimeout(int64_t start);
+    void PrintTextChangeLog();
     void PrintKeyEventLog();
     std::shared_ptr<MsgHandlerCallbackInterface> GetMsgHandlerCallback();
     int32_t IsValidTextConfig(const TextConfig &textConfig);
@@ -1041,18 +1046,29 @@ private:
     int32_t ShowTextInputInner(const AttachOptions &attachOptions, ClientType type);
     int32_t ShowSoftKeyboardInner(ClientType type);
     void ReportClientShow(int32_t eventCode, int32_t errCode, ClientType type);
-    void GetWindowScaleCoordinate(int32_t& x, int32_t& y, uint32_t windowId);
-    int32_t ResponseDataChannel(uint64_t msgId, int32_t code, const ResponseData &data);
+    void GetWindowScaleCoordinate(uint32_t windowId, CursorInfo &cursorInfo);
+    int32_t ResponseDataChannel(
+        const sptr<IRemoteObject> &agentObject, uint64_t msgId, int32_t code, const ResponseData &data);
     void CalibrateImmersiveParam(InputAttribute &inputAttribute);
+    void ClearAgentInfo();
+    int32_t SendRequestToAllAgents(std::function<int32_t(std::shared_ptr<IInputMethodAgent>)> task);
+    int32_t SendRequestToImeMirrorAgent(std::function<int32_t(std::shared_ptr<IInputMethodAgent>)> task);
+    void SetInputReady(const std::vector<sptr<IRemoteObject>> &agentObjects, const std::vector<BindImeInfo> &imeInfos);
 
     friend class InputDataChannelServiceImpl;
     std::shared_ptr<ControllerListener> controllerListener_;
     std::mutex abilityLock_;
     sptr<IInputMethodSystemAbility> abilityManager_ = nullptr;
     sptr<InputDeathRecipient> deathRecipient_;
+
+    struct AgentInfo {
+        sptr<IRemoteObject> agentObject = nullptr;
+        std::shared_ptr<IInputMethodAgent> agent = nullptr;
+        ImeType imeType = ImeType::NONE;
+    };
     std::mutex agentLock_;
-    sptr<IRemoteObject> agentObject_ = nullptr;
-    std::shared_ptr<IInputMethodAgent> agent_ = nullptr;
+    std::vector<AgentInfo> agentInfoList_;
+
     std::mutex textListenerLock_;
     sptr<OnTextChangedListener> textListener_ = nullptr;
     std::atomic_bool isDiedAttached_{ false };
@@ -1075,6 +1091,9 @@ private:
     static std::mutex logLock_;
     static int keyEventCountInPeriod_;
     static std::chrono::system_clock::time_point startLogTime_;
+    static std::mutex printTextChangeMutex_;
+    static int32_t textChangeCountInPeriod_;
+    static std::chrono::steady_clock::time_point textChangeStartLogTime_;
 
     std::atomic_bool isEditable_{ false };
     std::atomic_bool isBound_{ false };
@@ -1108,6 +1127,7 @@ private:
 
     std::mutex windowScaleCallbackMutex_;
     WindowScaleCallback windowScaleCallback_ = nullptr;
+    KeyEventResultHandler keyEventRetHandler_;
 };
 } // namespace MiscServices
 } // namespace OHOS

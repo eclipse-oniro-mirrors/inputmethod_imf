@@ -27,7 +27,7 @@ constexpr size_t ARGC_MAX = 6;
 constexpr int32_t MAX_WAIT_TIME = 500; // ms
 static inline uint64_t GetTimeStamp()
 {
-    return duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    return duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
 }
 AsyncCall::AsyncCall(napi_env env, napi_callback_info info, std::shared_ptr<Context> context, size_t maxParamCount)
     : env_(env)
@@ -46,6 +46,10 @@ AsyncCall::AsyncCall(napi_env env, napi_callback_info info, std::shared_ptr<Cont
             napi_create_reference(env, argv[argc - 1], 1, &context_->callback);
             argc = argc - 1;
         }
+    }
+    if (context == nullptr) {
+        IMSA_HILOGE("context is nullptr!");
+        return;
     }
     NAPI_CALL_RETURN_VOID(env, (*context)(env, argc, argv, self));
     context_->ctx = std::move(context);
@@ -203,6 +207,10 @@ void AsyncCall::OnComplete(napi_env env, napi_status status, void *data)
 
 void AsyncCall::DeleteContext(napi_env env, AsyncContext *context)
 {
+    if (context == nullptr) {
+        IMSA_HILOGE("context is nullptr!");
+        return;
+    }
     if (env != nullptr) {
         napi_delete_reference(env, context->callback);
         napi_delete_reference(env, context->self);

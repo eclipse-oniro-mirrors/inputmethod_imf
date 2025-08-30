@@ -299,7 +299,6 @@ napi_value JsPanel::GetDisplayId(napi_env env, napi_callback_info info)
             ctxt->SetErrorCode(ret);
             return;
         }
-
         if (ctxt->displayId > UINT32_MAX) {
             IMSA_HILOGE("displayId is too large, displayId: %{public}" PRIu64 "", ctxt->displayId);
             ctxt->SetErrorCode(ErrorCode::ERROR_WINDOW_MANAGER);
@@ -459,10 +458,6 @@ napi_value JsPanel::Subscribe(napi_env env, napi_callback_info info)
         return nullptr;
     }
     IMSA_HILOGD("subscribe type: %{public}s.", type.c_str());
-    if (type == "sizeUpdate") {
-        RESULT_CHECK_RETURN(env, InputMethodAbility::GetInstance().IsSystemApp(), EXCEPTION_SYSTEM_PERMISSION, "",
-            TYPE_NONE, nullptr);
-    }
     std::shared_ptr<PanelListenerImpl> observer = PanelListenerImpl::GetInstance();
     auto inputMethodPanel = UnwrapPanel(env, thisVar);
     if (inputMethodPanel == nullptr) {
@@ -496,7 +491,7 @@ napi_value JsPanel::UnSubscribe(napi_env env, napi_callback_info info)
     PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, argv[0], type), "type must be string!", TYPE_NONE, nullptr);
     PARAM_CHECK_RETURN(env, EventChecker::IsValidEventType(EventSubscribeModule::PANEL, type),
         "type should be show/hide/sizeChange!", TYPE_NONE, nullptr);
-    // if the second param is not napi_function/napi_null/napi_undefined, return.
+    // if the second param is not napi_function/napi_null/napi_undefined, return
     auto paramType = JsUtil::GetType(env, argv[1]);
     PARAM_CHECK_RETURN(env, (paramType == napi_function || paramType == napi_null || paramType == napi_undefined),
         "callback should be function or null or undefined!", TYPE_NONE, nullptr);
@@ -752,7 +747,14 @@ bool JsPanelRect::Read(napi_env env, napi_value object, LayoutParams &layoutPara
 
 bool JsImmersiveEffect::Read(napi_env env, napi_value object, ImmersiveEffect &effect)
 {
-    auto ret = JsUtil::Object::ReadProperty(env, object, "gradientHeight", effect.gradientHeight);
+    int32_t gradientHeight = 0;
+    auto ret = JsUtil::Object::ReadProperty(env, object, "gradientHeight", gradientHeight);
+    if (!ret || gradientHeight < 0) {
+        IMSA_HILOGE("ret is false or gradientHeight is invalid, gradientHeight:%{public}d", gradientHeight);
+        return false;
+    }
+
+    effect.gradientHeight = static_cast<uint32_t>(gradientHeight);
     int32_t gradientMode = 0;
     ret = ret && JsUtil::Object::ReadProperty(env, object, "gradientMode", gradientMode);
     if (gradientMode < static_cast<int32_t>(GradientMode::NONE) ||

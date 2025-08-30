@@ -19,8 +19,10 @@
 #include "ime_enabled_info_manager.h"
 #include "ime_info_inquirer.h"
 #include "input_data_channel_stub.h"
+#include "input_method_panel.h"
 #include "input_method_ability.h"
 #include "input_method_system_ability.h"
+#include "key_event_result_handler.h"
 #include "task_manager.h"
 #undef private
 
@@ -33,6 +35,7 @@
 #include <csignal>
 #include <cstdint>
 #include <functional>
+#include <gtest/hwext/gtest-multithread.h>
 #include <mutex>
 #include <string>
 #include <thread>
@@ -49,6 +52,7 @@
 #include "input_client_stub.h"
 #include "input_client_service_impl.h"
 #include "input_death_recipient.h"
+#include "input_event_callback.h"
 #include "input_method_ability.h"
 #include "input_method_engine_listener_impl.h"
 #include "input_data_channel_service_impl.h"
@@ -58,7 +62,6 @@
 #include "key_event_util.h"
 #include "keyboard_listener.h"
 #include "message_parcel.h"
-#include "notify_service_impl.h"
 #include "scope_utils.h"
 #include "system_ability.h"
 #include "system_ability_definition.h"
@@ -66,6 +69,7 @@
 #include "text_listener.h"
 using namespace testing;
 using namespace testing::ext;
+using namespace testing::mt;
 namespace OHOS {
 namespace MiscServices {
 constexpr uint32_t RETRY_TIME = 200 * 1000;
@@ -130,6 +134,10 @@ public:
     static bool WaitKeyEventCallback();
     static void CheckTextConfig(const TextConfig &config);
     static void ResetKeyboardListenerTextConfig();
+    static void EditorContentMultiTest();
+    static sptr<InputMethodController> GetController();
+    static sptr<OnTextChangedListener> GetTextListener();
+    static std::mutex controllerMutex_;
     static sptr<InputMethodController> inputMethodController_;
     static InputMethodAbility &inputMethodAbility_;
     static sptr<InputMethodSystemAbility> imsa_;
@@ -137,11 +145,13 @@ public:
     static std::shared_ptr<MMI::KeyEvent> keyEvent_;
     static std::shared_ptr<InputMethodEngineListenerImpl> imeListener_;
     static std::shared_ptr<SelectListenerMock> controllerListener_;
+    static std::mutex textListenerMutex_;
     static sptr<OnTextChangedListener> textListener_;
     static std::mutex keyboardListenerMutex_;
     static std::condition_variable keyboardListenerCv_;
     static BlockData<std::shared_ptr<MMI::KeyEvent>> blockKeyEvent_;
     static BlockData<std::shared_ptr<MMI::KeyEvent>> blockFullKeyEvent_;
+    static BlockData<bool> isNotifyFinished_;
     static std::mutex onRemoteSaDiedMutex_;
     static std::condition_variable onRemoteSaDiedCv_;
     static sptr<InputDeathRecipient> deathRecipient_;
@@ -161,6 +171,9 @@ public:
     static constexpr uint32_t DELAY_TIME = 1;
     static constexpr uint32_t KEY_EVENT_DELAY_TIME = 100;
     static constexpr int32_t TASK_DELAY_TIME = 10;
+    static constexpr int32_t EACH_THREAD_CIRCULATION_TIME = 100;
+    static constexpr int32_t THREAD_NUM = 5;
+    static std::atomic<int32_t> multiThreadExecTotalNum_;
 
     class KeyboardListenerImpl : public KeyboardListener {
     public:
@@ -194,15 +207,15 @@ public:
             blockFullKeyEvent_.SetValue(fullKey);
             return true;
         }
-        bool OnDealKeyEvent(
-            const std::shared_ptr<MMI::KeyEvent> &keyEvent, sptr<KeyEventConsumerProxy> &consumer) override
+        bool OnDealKeyEvent(const std::shared_ptr<MMI::KeyEvent> &keyEvent, uint64_t cbId,
+            const sptr<IRemoteObject> &channelObject) override
         {
             IMSA_HILOGI("KeyboardListenerImpl run in");
+            sptr<KeyEventConsumerProxy> consumer = new (std::nothrow) KeyEventConsumerProxy(nullptr);
             bool isKeyCodeConsume = OnKeyEvent(keyEvent->GetKeyCode(), keyEvent->GetKeyAction(), consumer);
             bool isKeyEventConsume = OnKeyEvent(keyEvent, consumer);
-            if (consumer != nullptr) {
-                consumer->OnKeyEventResult(isKeyEventConsume | isKeyCodeConsume);
-            }
+            InputMethodAbility::GetInstance().HandleKeyEventResult(
+                cbId, isKeyEventConsume | isKeyCodeConsume, channelObject);
             return true;
         }
         void OnCursorUpdate(int32_t positionX, int32_t positionY, int32_t height) override
@@ -238,6 +251,7 @@ public:
         }
     };
 };
+std::mutex InputMethodControllerTest::controllerMutex_;
 sptr<InputMethodController> InputMethodControllerTest::inputMethodController_;
 InputMethodAbility &InputMethodControllerTest::inputMethodAbility_ = InputMethodAbility::GetInstance();
 sptr<InputMethodSystemAbility> InputMethodControllerTest::imsa_;
@@ -245,6 +259,7 @@ sptr<InputMethodSystemAbilityProxy> InputMethodControllerTest::imsaProxy_;
 std::shared_ptr<MMI::KeyEvent> InputMethodControllerTest::keyEvent_;
 std::shared_ptr<InputMethodEngineListenerImpl> InputMethodControllerTest::imeListener_;
 std::shared_ptr<SelectListenerMock> InputMethodControllerTest::controllerListener_;
+std::mutex InputMethodControllerTest::textListenerMutex_;
 sptr<OnTextChangedListener> InputMethodControllerTest::textListener_;
 CursorInfo InputMethodControllerTest::cursorInfo_ = {};
 int32_t InputMethodControllerTest::oldBegin_ = 0;
@@ -264,12 +279,16 @@ BlockData<std::shared_ptr<MMI::KeyEvent>> InputMethodControllerTest::blockKeyEve
 BlockData<std::shared_ptr<MMI::KeyEvent>> InputMethodControllerTest::blockFullKeyEvent_ {
     InputMethodControllerTest::KEY_EVENT_DELAY_TIME, nullptr
 };
+BlockData<bool> InputMethodControllerTest::isNotifyFinished_ {
+    false, PerUserSession::MAX_NOTIFY_TIME
+};
 bool InputMethodControllerTest::doesKeyEventConsume_ { false };
 bool InputMethodControllerTest::doesFUllKeyEventConsume_ { false };
 std::condition_variable InputMethodControllerTest::keyEventCv_;
 std::mutex InputMethodControllerTest::keyEventLock_;
 bool InputMethodControllerTest::consumeResult_ { false };
 std::shared_ptr<AppExecFwk::EventHandler> InputMethodControllerTest::textConfigHandler_ { nullptr };
+std::atomic<int32_t> InputMethodControllerTest::multiThreadExecTotalNum_{ 0 };
 
 void InputMethodControllerTest::SetUpTestCase(void)
 {
@@ -489,7 +508,6 @@ void InputMethodControllerTest::TriggerSelectionChangeCallback(std::u16string &t
 void InputMethodControllerTest::CheckTextConfig(const TextConfig &config)
 {
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    EXPECT_EQ(imeListener_->windowId_, config.windowId);
     EXPECT_EQ(cursorInfo_.left, config.cursorInfo.left);
     EXPECT_EQ(cursorInfo_.top, config.cursorInfo.top);
     EXPECT_EQ(cursorInfo_.height, config.cursorInfo.height);
@@ -524,6 +542,36 @@ void InputMethodControllerTest::ResetKeyboardListenerTextConfig()
     newEnd_ = INVALID_VALUE;
     text_ = "";
     inputAttribute_ = {};
+}
+
+void InputMethodControllerTest::EditorContentMultiTest()
+{
+    for (int32_t i = 0; i < EACH_THREAD_CIRCULATION_TIME; i++) {
+        InputAttribute inputAttribute = { .isTextPreviewSupported = true };
+        auto controller = GetController();
+        ASSERT_NE(controller, nullptr);
+        auto listener = GetTextListener();
+        ASSERT_NE(listener, nullptr);
+        controller->Attach(listener, false, inputAttribute);
+        std::u16string text = Str8ToStr16("testSelect");
+        int start = 1;
+        int end = 2;
+        controller->OnSelectionChange(text, start, end);
+        controller->OnInputStop();
+        multiThreadExecTotalNum_.fetch_add(1, std::memory_order_relaxed);
+    }
+}
+
+sptr<InputMethodController> InputMethodControllerTest::GetController()
+{
+    std::lock_guard<std::mutex> lock(controllerMutex_);
+    return inputMethodController_;
+}
+
+sptr<OnTextChangedListener> InputMethodControllerTest::GetTextListener()
+{
+    std::lock_guard<std::mutex> lock(textListenerMutex_);
+    return textListener_;
 }
 
 /**
@@ -586,9 +634,11 @@ HWTEST_F(InputMethodControllerTest, testIMCAttach002, TestSize.Level0)
  */
 HWTEST_F(InputMethodControllerTest, testIMCAttach003, TestSize.Level0)
 {
-    PanelInfo info = { .panelType = SOFT_KEYBOARD, .panelFlag = FLG_FLOATING };
+    PanelInfo info;
+    info.panelType = SOFT_KEYBOARD;
+    info.panelFlag = FLG_FLOATING;
     auto panel = std::make_shared<InputMethodPanel>();
-    auto ret = inputMethodAbility_->CreatePanel(nullptr, info, panel);
+    auto ret = inputMethodAbility_.CreatePanel(nullptr, info, panel);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 
     TextListener::ResetParam();
@@ -614,7 +664,7 @@ HWTEST_F(InputMethodControllerTest, testIMCAttach003, TestSize.Level0)
     };
     inputMethodController_->Attach(textListener_, true, textConfig);
     InputMethodControllerTest::CheckTextConfig(textConfig);
-    inputMethodAbility_->DestroyPanel(panel);
+    inputMethodAbility_.DestroyPanel(panel);
     EXPECT_EQ(imeListener_->windowId_, textConfig.windowId);
 }
 
@@ -1425,6 +1475,20 @@ HWTEST_F(InputMethodControllerTest, testStartInputType, TestSize.Level0)
 }
 
 /**
+ * @tc.name: testStartInputTypeAsync
+ * @tc.desc: StartInputTypeAsync
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.author: chenyu
+ */
+HWTEST_F(InputMethodControllerTest, testStartInputTypeAsync, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testStartInputTypeAsync Test START");
+    auto ret = inputMethodController_->StartInputTypeAsync(InputType::NONE);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
  * @tc.name: testSendPrivateCommand_001
  * @tc.desc: IMC SendPrivateCommand without default ime
  * @tc.type: FUNC
@@ -1685,7 +1749,10 @@ HWTEST_F(InputMethodControllerTest, testOnInputReady, TestSize.Level0)
     InputAttribute inputAttribute = { .isTextPreviewSupported = true };
     inputMethodController_->Attach(textListener_, false, inputAttribute);
     sptr<IRemoteObject> agentObject = nullptr;
-    inputMethodController_->OnInputReady(agentObject);
+    BindImeInfo imeInfo;
+    imeInfo.pid = 0;
+    imeInfo.bundleName = "";
+    inputMethodController_->OnInputReady(agentObject, imeInfo);
     TextListener::ResetParam();
     inputMethodController_->DeactivateClient();
     EXPECT_FALSE(TextListener::isFinishTextPreviewCalled_);
@@ -1818,7 +1885,7 @@ HWTEST_F(InputMethodControllerTest, testGetInputMethodState_002, TestSize.Level0
     EnabledStatus status = EnabledStatus::DISABLED;
     auto ret = inputMethodController_->GetInputMethodState(status);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_TRUE(status == EnabledStatus::FULL_EXPERIENCE_MODE);
+    EXPECT_TRUE(status == EnabledStatus::BASIC_MODE);
 }
 
 /**
@@ -1867,23 +1934,6 @@ HWTEST_F(InputMethodControllerTest, testGetInputMethodState_004, TestSize.Level0
     auto ret = inputMethodController_->GetInputMethodState(status);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     EXPECT_TRUE(status == EnabledStatus::BASIC_MODE);
-}
-
-/**
- * @tc.name: testGetInputMethodState_005
- * @tc.desc: IMA
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(InputMethodControllerTest, testGetInputMethodState_005, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodControllerTest testGetInputMethodState_005 Test START");
-    EnabledStatus status = EnabledStatus::DISABLED;
-    ImeInfoInquirer::GetInstance().systemConfig_.enableFullExperienceFeature = false;
-    ImeInfoInquirer::GetInstance().systemConfig_.enableInputMethodFeature = false;
-    auto ret = inputMethodController_->GetInputMethodState(status);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_TRUE(status == EnabledStatus::FULL_EXPERIENCE_MODE);
 }
 
 /**
@@ -2077,7 +2127,7 @@ HWTEST_F(InputMethodControllerTest, RegisterWindowScaleCallbackHandler, TestSize
     IMSA_HILOGI("IMC RegisterWindowScaleCallbackHandler Test START");
     ASSERT_NE(inputMethodController_, nullptr);
     EXPECT_EQ(inputMethodController_->windowScaleCallback_, nullptr);
-    auto callback = [] (int32_t& x, int32_t& y, uint32_t windowId) {
+    auto callback = [] (uint32_t windowId, CursorInfo &cursorInfo) {
         return 0;
     };
     auto res = inputMethodController_->RegisterWindowScaleCallbackHandler(std::move(callback));
@@ -2095,22 +2145,31 @@ HWTEST_F(InputMethodControllerTest, GetWindowScaleCoordinate, TestSize.Level0)
 {
     IMSA_HILOGI("IMC GetWindowScaleCoordinate Test START");
     ASSERT_NE(inputMethodController_, nullptr);
-    int32_t x = 100;
-    int32_t y = 100;
+    CursorInfo cursorInfo;
+    cursorInfo.left = 100;
+    cursorInfo.top = 100;
+    cursorInfo.width = 100;
+    cursorInfo.height = 100;
     uint32_t windowId = 100;
-    inputMethodController_->GetWindowScaleCoordinate(x, y, windowId);
-    EXPECT_EQ(x, 100);
-    EXPECT_EQ(y, 100);
-    auto callback = [] (int32_t& x, int32_t& y, uint32_t windowId) {
-        x++;
-        y++;
+    inputMethodController_->GetWindowScaleCoordinate(windowId, cursorInfo);
+    EXPECT_NEAR(cursorInfo.left, 100, 0.00001f);
+    EXPECT_NEAR(cursorInfo.top, 100, 0.00001f);
+    EXPECT_NEAR(cursorInfo.width, 100, 0.00001f);
+    EXPECT_NEAR(cursorInfo.height, 100, 0.00001f);
+    auto callback = [] (uint32_t windowId, CursorInfo &cursorInfo) {
+        cursorInfo.left++;
+        cursorInfo.top++;
+        cursorInfo.width++;
+        cursorInfo.height++;
         return 0;
     };
     auto res = inputMethodController_->RegisterWindowScaleCallbackHandler(std::move(callback));
     EXPECT_EQ(res, 0);
-    inputMethodController_->GetWindowScaleCoordinate(x, y, windowId);
-    EXPECT_EQ(x, 101);
-    EXPECT_EQ(y, 101);
+    inputMethodController_->GetWindowScaleCoordinate(windowId, cursorInfo);
+    EXPECT_NEAR(cursorInfo.left, 101, 0.00001f);
+    EXPECT_NEAR(cursorInfo.top, 101, 0.00001f);
+    EXPECT_NEAR(cursorInfo.width, 101, 0.00001f);
+    EXPECT_NEAR(cursorInfo.height, 101, 0.00001f);
 }
 
 /**
@@ -2145,19 +2204,6 @@ HWTEST_F(InputMethodControllerTest, TestSetSimpleKeyboardEnabled, TestSize.Level
 }
 
 /**
- * @tc.name: TestUpdateLargeMemorySceneState
- * @tc.desc: Test UpdateLargeMemorySceneState
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodControllerTest, TestUpdateLargeMemorySceneState, TestSize.Level0)
-{
-    IMSA_HILOGI("IMC TestUpdateLargeMemorySceneState Test start");
-    int memoryState = 3;
-    auto ret = inputMethodController_->UpdateLargeMemorySceneState(memoryState);
-    EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
-}
-
-/**
  * @tc.name: TestNotifyOnInputStopFinished001
  * @tc.desc: Test NotifyOnInputStopFinished in 20ms
  * @tc.type: FUNC
@@ -2165,7 +2211,7 @@ HWTEST_F(InputMethodControllerTest, TestUpdateLargeMemorySceneState, TestSize.Le
 HWTEST_F(InputMethodControllerTest, TestNotifyOnInputStopFinished001, TestSize.Level0)
 {
     IMSA_HILOGI("TestNotifyOnInputStopFinished001 START");
-    sptr<OnInputStopNotifyStub> proxy = new (std::nothrow) OnInputStopNotifyServiceImpl();
+    sptr<OnInputStopNotifyStub> proxy = new (std::nothrow) OnInputStopNotifyServiceImpl(getpid());
     ASSERT_NE(proxy, nullptr);
     std::shared_ptr<OnInputStopNotifyProxy> channelProxy = std::make_shared<OnInputStopNotifyProxy>(proxy);
     auto sessionTemp = std::make_shared<PerUserSession>(0, nullptr);
@@ -2173,6 +2219,195 @@ HWTEST_F(InputMethodControllerTest, TestNotifyOnInputStopFinished001, TestSize.L
     auto ret = channelProxy->NotifyOnInputStopFinished();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     UserSessionManager::GetInstance().userSessions_.clear();
+}
+ 
+/**
+ * @tc.name: testOnInputStopAsync
+ * @tc.desc: Bind IMSA.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, TestOnInputStopAsync, TestSize.Level0)
+{
+    IMSA_HILOGI("TestOnInputStopAsync START");
+    auto sessionTemp = std::make_shared<PerUserSession>(0, nullptr);
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    InputClientInfo clientInfo = { .client = client };
+    std::shared_ptr<InputClientInfo> sharedClientInfo = std::make_shared<InputClientInfo>(clientInfo);
+    isNotifyFinished_.SetValue(false);
+    sessionTemp->StopClientInput(sharedClientInfo, false, false);
+    isNotifyFinished_.SetValue(true);
+    sessionTemp->StopClientInput(sharedClientInfo, false, false);
+    EXPECT_TRUE(isNotifyFinished_.GetValue());
+}
+
+/**
+ * @tc.name: TestResponseDataChannel
+ * @tc.desc: Test ResponseDataChannel： agent channel isnullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, TestResponseDataChannel, TestSize.Level0)
+{
+    IMSA_HILOGI("TestResponseDataChannel START");
+    uint64_t msgId = 10;
+    int32_t code = 5;
+    ResponseData data = std::monostate{};
+    auto ret = inputMethodController_->ResponseDataChannel(nullptr, msgId, code, data);
+    EXPECT_NE(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: TestEditorContentLock
+ * @tc.desc: Test editorContentLock_
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, TestEditorContentLock, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodControllerTest::TestEditorContentLock START");
+    multiThreadExecTotalNum_.store(0);
+    SET_THREAD_NUM(InputMethodControllerTest::THREAD_NUM);
+    GTEST_RUN_TASK(InputMethodControllerTest::EditorContentMultiTest);
+    EXPECT_EQ(multiThreadExecTotalNum_.load(), THREAD_NUM * EACH_THREAD_CIRCULATION_TIME);
+}
+
+/**
+ * @tc.name: TestClientNullptr
+ * @tc.desc: Test clientInfo.client is nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, TestClientNullptr, TestSize.Level0)
+{
+    IMSA_HILOGI("TestClientNullptr START");
+    auto sessionTemp = std::make_shared<PerUserSession>(0, nullptr);
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    InputClientInfo clientInfo = { .client = nullptr };
+
+    sessionTemp->GetWant(nullptr);
+    auto ret = sessionTemp->OnUpdateListenEventFlag(clientInfo);
+    EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
+
+    sessionTemp->HandleBindImeChanged(clientInfo, nullptr);
+    std::shared_ptr<InputClientInfo> ptr = nullptr;
+    sessionTemp->ClearRequestKeyboardReason(ptr);
+    auto info = std::make_shared<InputClientInfo>();
+    EXPECT_NE(info, nullptr);
+    sessionTemp->ClearRequestKeyboardReason(info);
+}
+
+/**
+ * @tc.name: TestEventCallback
+ * @tc.desc: Test TestEventCallback
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, TestEventCallback, TestSize.Level0)
+{
+    IMSA_HILOGI("TestEventCallback START");
+    auto eventcallback = std::make_shared<InputEventCallback>();
+    std::shared_ptr<MMI::KeyEvent> keyevent = nullptr;
+    eventcallback->OnInputEvent(keyevent);
+    EXPECT_EQ(keyevent, nullptr);
+    eventcallback->OnInputEvent(keyEvent_);
+}
+
+/**
+ * @tc.name: TestGetKeyEventCbInfo
+ * @tc.desc: Test GetKeyEventCbInfo
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, TestGetKeyEventCbInfo, TestSize.Level0)
+{
+    IMSA_HILOGI("TestGetKeyEventCbInfo START");
+    KeyEventResultHandler keyEventRetHandler;
+    keyEventRetHandler.keyEventCbHandlers_.clear();
+    uint64_t cbId = 13;
+    KeyEventCbInfo info;
+    auto ret = keyEventRetHandler.GetKeyEventCbInfo(cbId, info);
+    EXPECT_NE(ret, ErrorCode::NO_ERROR);
+
+    KeyEventCbInfo cbInfo;
+    keyEventRetHandler.keyEventCbHandlers_.insert_or_assign(cbId, cbInfo);
+    ret = keyEventRetHandler.GetKeyEventCbInfo(cbId, info);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_EQ(info.callback, nullptr);
+
+    auto cb = [](std::shared_ptr<MMI::KeyEvent> &keyEvent, bool isConsumed) {};
+    cbInfo.callback = cb;
+    keyEventRetHandler.keyEventCbHandlers_.insert_or_assign(cbId, cbInfo);
+    ret = keyEventRetHandler.GetKeyEventCbInfo(cbId, info);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_NE(info.callback, nullptr);
+}
+
+/**
+ * @tc.name: TestRemoveKeyEventCbInfo
+ * @tc.desc: Test RemoveKeyEventCbInfo
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, TestRemoveKeyEventCbInfo, TestSize.Level0)
+{
+    IMSA_HILOGI("TestRemoveKeyEventCbInfo START");
+    KeyEventResultHandler keyEventRetHandler;
+    keyEventRetHandler.keyEventCbHandlers_.clear();
+    uint64_t cbId = 13;
+    auto cb = [](std::shared_ptr<MMI::KeyEvent> &keyEvent, bool isConsumed) {};
+    KeyEventCbInfo cbInfo{ nullptr, cb };
+    keyEventRetHandler.keyEventCbHandlers_.insert_or_assign(cbId, cbInfo);
+    EXPECT_EQ(keyEventRetHandler.keyEventCbHandlers_.size(), 1);
+
+    uint64_t cbId1 = 14;
+    keyEventRetHandler.RemoveKeyEventCbInfo(cbId1);
+    EXPECT_EQ(keyEventRetHandler.keyEventCbHandlers_.size(), 1);
+
+    keyEventRetHandler.RemoveKeyEventCbInfo(cbId);
+    EXPECT_TRUE(keyEventRetHandler.keyEventCbHandlers_.empty());
+}
+
+/**
+ * @tc.name: TestHandleKeyEventResult
+ * @tc.desc: Test HandleKeyEventResult
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, TestHandleKeyEventResult, TestSize.Level0)
+{
+    IMSA_HILOGI("TestHandleKeyEventResult START");
+    KeyEventResultHandler keyEventRetHandler;
+    keyEventRetHandler.keyEventCbHandlers_.clear();
+    uint64_t cbId = 13;
+    KeyEventCbInfo cbInfo;
+    keyEventRetHandler.keyEventCbHandlers_.insert_or_assign(cbId, cbInfo);
+
+    uint64_t cbId1 = 15;
+    keyEventRetHandler.HandleKeyEventResult(cbId1, true);
+    EXPECT_EQ(keyEventRetHandler.keyEventCbHandlers_.size(), 1);
+
+    keyEventRetHandler.HandleKeyEventResult(cbId, true);
+    EXPECT_TRUE(keyEventRetHandler.keyEventCbHandlers_.empty());
+
+    auto cb = [](std::shared_ptr<MMI::KeyEvent> &keyEvent, bool isConsumed) {};
+    cbInfo.callback = cb;
+    keyEventRetHandler.keyEventCbHandlers_.insert_or_assign(cbId, cbInfo);
+    keyEventRetHandler.HandleKeyEventResult(cbId, true);
+    EXPECT_TRUE(keyEventRetHandler.keyEventCbHandlers_.empty());
+}
+
+/**
+ * @tc.name: TestClearKeyEventCbInfo
+ * @tc.desc: Test ClearKeyEventCbInfo
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, TestClearKeyEventCbInfo, TestSize.Level0)
+{
+    IMSA_HILOGI("TestClearKeyEventCbInfo START");
+    KeyEventResultHandler keyEventRetHandler;
+    keyEventRetHandler.keyEventCbHandlers_.clear();
+    uint64_t cbId = 13;
+    KeyEventCbInfo cbInfo;
+    keyEventRetHandler.keyEventCbHandlers_.insert_or_assign(cbId, cbInfo);
+    uint64_t cbId1 = 15;
+    auto cb = [](std::shared_ptr<MMI::KeyEvent> &keyEvent, bool isConsumed) {};
+    cbInfo.callback = cb;
+    keyEventRetHandler.keyEventCbHandlers_.insert_or_assign(cbId1, cbInfo);
+    keyEventRetHandler.ClearKeyEventCbInfo();
+    EXPECT_TRUE(keyEventRetHandler.keyEventCbHandlers_.empty());
 }
 } // namespace MiscServices
 } // namespace OHOS

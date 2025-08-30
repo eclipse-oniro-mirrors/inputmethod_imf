@@ -24,13 +24,13 @@
 #include <string_ex.h>
 
 #include "accesstoken_kit.h"
+#include "fuzzer/FuzzedDataProvider.h"
 #include "global.h"
 #include "ime_cfg_manager.h"
 #include "input_method_controller.h"
 #include "inputmethodsystemability_fuzzer.h"
 #include "input_method_core_service_impl.h"
 #include "system_cmd_channel_service_impl.h"
-#include "ime_enabled_info_manager.h"
 #include "iservice_registry.h"
 #include "message_parcel.h"
 #include "nativetoken_kit.h"
@@ -91,7 +91,8 @@ void FuzzOnScreenUnlock()
 
 void SystemAbility(const uint8_t *data, size_t size)
 {
-    auto fuzzedUint32 = static_cast<uint32_t>(size);
+    FuzzedDataProvider provider(data, size);
+    auto fuzzedUint32 = provider.ConsumeIntegral<uint32_t>();
     DelayedSingleton<InputMethodSystemAbility>::GetInstance()->ReleaseInput(nullptr, fuzzedUint32);
 }
 } // namespace OHOS
@@ -99,7 +100,8 @@ void SystemAbility(const uint8_t *data, size_t size)
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     /* Run your code on data */
-    const int32_t userId = static_cast<int32_t>(size);
+    FuzzedDataProvider provider(data, size);
+    const int32_t userId = provider.ConsumeIntegral<int32_t>();
     std::string fuzzedString(reinterpret_cast<const char *>(data), size);
 
     OHOS::FuzzOnUser(userId, fuzzedString);

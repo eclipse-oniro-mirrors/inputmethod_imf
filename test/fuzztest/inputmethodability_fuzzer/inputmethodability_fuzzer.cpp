@@ -22,8 +22,10 @@
 #include "input_method_ability.h"
 #undef private
 
+#include "fuzzer/FuzzedDataProvider.h"
 #include "input_client_service_impl.h"
 #include "input_method_engine_listener_impl.h"
+#include "ime_mirror_manager.h"
 
 using namespace OHOS::MiscServices;
 namespace OHOS {
@@ -37,7 +39,8 @@ class KeyboardListenerImpl : public KeyboardListener {
     {
         return true;
     }
-    bool OnDealKeyEvent(const std::shared_ptr<MMI::KeyEvent> &keyEvent, sptr<KeyEventConsumerProxy> &consumer)
+    bool OnDealKeyEvent(
+        const std::shared_ptr<MMI::KeyEvent> &keyEvent, uint64_t cbId, const sptr<IRemoteObject> &channelObject)
     {
         return true;
     }
@@ -126,8 +129,7 @@ void TestDispatchKeyEvent(int32_t fuzzedInt32)
     std::shared_ptr<MMI::KeyEvent> keyEvent = MMI::KeyEvent::Create();
     keyEvent->SetKeyCode(fuzzedInt32);
     keyEvent->SetKeyAction(fuzzedInt32);
-    sptr<KeyEventConsumerProxy> consumer = new (std::nothrow) KeyEventConsumerProxy(nullptr);
-    InputMethodAbility::GetInstance().DispatchKeyEvent(keyEvent, consumer);
+    InputMethodAbility::GetInstance().DispatchKeyEvent(keyEvent, fuzzedInt32, nullptr);
 }
 
 void TestSetCallingWindow(int32_t fuzzedInt32)
@@ -190,7 +192,18 @@ void TestInterfaceCoverage(int32_t dataInt32, bool dataBool, std::u16string &tex
     InputMethodAbility::GetInstance().GetSecurityMode(dataInt32);
     InputMethodAbility::GetInstance().FinishTextPreview();
     InputMethodAbility::GetInstance().GetTextBeforeCursor(dataInt32, text);
-    InputMethodAbility::GetInstance().ReportBaseTextOperation(dataInt32, dataInt32, consumeTime);
+}
+
+void TestImeMirrorManager(FuzzedDataProvider &provider)
+{
+    ImeMirrorManager mgr;
+    mgr.SetImeMirrorEnable(provider.ConsumeBool());
+    mgr.IsImeMirrorEnable();
+    mgr.SubscribeSaStart([]() { }, provider.ConsumeIntegral<int32_t>());
+    mgr.UnSubscribeSaStart(provider.ConsumeIntegral<int32_t>());
+
+    InputMethodAbility::GetInstance().BindImeMirror();
+    InputMethodAbility::GetInstance().UnbindImeMirror();
 }
 } // namespace OHOS
 
@@ -198,21 +211,16 @@ void TestInterfaceCoverage(int32_t dataInt32, bool dataBool, std::u16string &tex
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     /* Run your code on data */
+    FuzzedDataProvider provider(data, size);
     std::string fuzzedString(reinterpret_cast<const char *>(data), size);
-    auto fuzzedInt32 = static_cast<int32_t>(size);
-    auto fuzzedUint64 = static_cast<uint64_t>(size);
-    auto fuzzedInt64 = static_cast<int64_t>(size);
+    auto fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
+    auto fuzzedUint64 = provider.ConsumeIntegral<uint64_t>();
+    auto fuzzedInt64 = provider.ConsumeIntegral<int64_t>();
     InputClientInfo clientInfo;
     if (!OHOS::InitializeClientInfo(clientInfo)) {
         return false;
     }
     auto fuzzedBool = static_cast<bool>(data[0] % 2);
-
-    uint64_t dataValue;
-    memcpy(&dataValue, data, sizeof(uint64_t));
-
-    int32_t int32Value;
-    memcpy(&int32Value, data, sizeof(int32_t));
 
     std::u16string fuzzedU16String = u"insert text";
 
@@ -244,9 +252,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     OHOS::TestRegisterProxyIme(fuzzedUint64);
     OHOS::TestUnregisterProxyIme(fuzzedUint64);
     OHOS::TestStartInput(clientInfo, fuzzedBool);
-    OHOS::TestIsDisplayChanged(dataValue, fuzzedUint64);
-    OHOS::TestOnSelectionChange(fuzzedU16String, fuzzedInt32, fuzzedInt32, int32Value, int32Value);
-    OHOS::TestOperationKeyboard(fuzzedInt32, int32Value);
+    OHOS::TestIsDisplayChanged(fuzzedUint64, fuzzedUint64);
+    OHOS::TestOnSelectionChange(fuzzedU16String, fuzzedInt32, fuzzedInt32, fuzzedInt32, fuzzedInt32);
+    OHOS::TestOperationKeyboard(fuzzedInt32, fuzzedInt32);
     OHOS::TestInterfaceCoverage(fuzzedInt32, fuzzedBool, fuzzedU16String, fuzzedInt64);
+    OHOS::TestImeMirrorManager(provider);
     return 0;
 }

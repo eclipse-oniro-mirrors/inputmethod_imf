@@ -101,9 +101,6 @@ napi_value JsGetInputMethodSetting::JsConstructor(napi_env env, napi_callback_in
         IMSA_HILOGE("failed to wrap: %{public}d", status);
         return nullptr;
     }
-    if (delegate->loop_ == nullptr) {
-        napi_get_uv_event_loop(env, &delegate->loop_);
-    }
     return thisVar;
 }
 
@@ -574,6 +571,9 @@ int32_t JsGetInputMethodSetting::RegisterListener(napi_value callback, std::stri
 
     auto callbacks = jsCbMap_[type];
     bool ret = std::any_of(callbacks.begin(), callbacks.end(), [&callback](std::shared_ptr<JSCallbackObject> cb) {
+        if (cb == nullptr) {
+            return false;
+        }
         return JsUtils::Equals(cb->env_, callback, cb->callback_, cb->threadId_);
     });
     if (ret) {
@@ -673,12 +673,12 @@ napi_value JsGetInputMethodSetting::UnSubscribe(napi_env env, napi_callback_info
         return nullptr;
     }
 
-    // if the second param is not napi_function/napi_null/napi_undefined, return.
+    // if the second param is not napi_function/napi_null/napi_undefined, return
     auto paramType = JsUtil::GetType(env, argv[1]);
     if (paramType != napi_function && paramType != napi_null && paramType != napi_undefined) {
         return nullptr;
     }
-    // if the second param is napi_function, delete it, else delete all.
+    // if the second param is napi_function, delete it, else delete all
     argv[1] = paramType == napi_function ? argv[1] : nullptr;
 
     IMSA_HILOGD("unsubscribe type: %{public}s.", type.c_str());

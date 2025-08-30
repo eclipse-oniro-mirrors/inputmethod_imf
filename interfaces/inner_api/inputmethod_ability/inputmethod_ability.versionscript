@@ -22,6 +22,7 @@
     *SystemCmdChannelProxy*;
     *Task*;
     *TaskManager*;
+    *ImeMirrorManager*;
   local:
     *;
 };

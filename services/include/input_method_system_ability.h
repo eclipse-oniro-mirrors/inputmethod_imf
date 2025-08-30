@@ -39,8 +39,8 @@ public:
     ~InputMethodSystemAbility();
     int32_t OnRemoteRequest(uint32_t code, MessageParcel &data, MessageParcel &reply, MessageOption &option) override;
 
-    ErrCode StartInput(const InputClientInfoInner &inputClientInfoInner, sptr<IRemoteObject> &agent,
-        int64_t &pid, std::string &bundleName) override;
+    ErrCode StartInput(const InputClientInfoInner &inputClientInfoInner, std::vector<sptr<IRemoteObject>> &agents,
+        std::vector<BindImeInfo> &imeInfos) override;
     ErrCode ShowCurrentInput(uint32_t type = static_cast<uint32_t>(ClientType::INNER_KIT)) override;
     ErrCode HideCurrentInput() override;
     ErrCode ShowInput(const sptr<IInputClient>& client, uint32_t type = static_cast<uint32_t>(ClientType::INNER_KIT),
@@ -61,7 +61,6 @@ public:
         const std::string &bundleName, const std::string &subName, uint32_t trigger) override;
     ErrCode DisplayOptionalInputMethod() override;
     ErrCode SetCoreAndAgent(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent) override;
-    ErrCode UpdateLargeMemorySceneState(const int32_t memoryState) override;
     ErrCode InitConnect() override;
     ErrCode UnRegisteredProxyIme(int32_t type, const sptr<IInputMethodCore> &core) override;
     ErrCode PanelStatusChange(uint32_t status, const ImeWindowInfo &info) override;
@@ -74,6 +73,7 @@ public:
     ErrCode IsInputTypeSupported(int32_t type, bool& resultValue) override;
     ErrCode IsCurrentImeByPid(int32_t pid, bool& resultValue) override;
     ErrCode StartInputType(int32_t type) override;
+    ErrCode StartInputTypeAsync(int32_t type) override;
     ErrCode ExitCurrentInputType() override;
     ErrCode IsPanelShown(const PanelInfo &panelInfo, bool &isShown) override;
     ErrCode GetSecurityMode(int32_t &security) override;
@@ -91,9 +91,11 @@ public:
     int32_t RegisterProxyIme(
         uint64_t displayId, const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent) override;
     int32_t UnregisterProxyIme(uint64_t displayId) override;
-    ErrCode IsDefaultImeScreen(uint64_t displayId, bool &resultValue) override;
+    ErrCode IsRestrictedDefaultImeByDisplay(uint64_t displayId, bool &resultValue) override;
+    ErrCode IsKeyboardCallingProcess(int32_t pid, bool &isKeyboardCallingProcess) override;
     ErrCode IsCapacitySupport(int32_t capacity, bool &isSupport) override;
-    bool IsKeyboardCallingProcess(int32_t pid) override;
+    ErrCode BindImeMirror(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent) override;
+    ErrCode UnbindImeMirror() override;
     int32_t GetCallingUserId();
 
 protected:
@@ -121,6 +123,7 @@ private:
     int32_t OnUserRemoved(const Message *msg);
     int32_t OnUserStop(const Message *msg);
     int32_t OnHideKeyboardSelf(const Message *msg);
+    void OnSysMemChanged();
     bool IsNeedSwitch(int32_t userId, const std::string &bundleName, const std::string &subName);
     int32_t CheckEnableAndSwitchPermission();
     int32_t CheckSwitchPermission(int32_t userId, const SwitchInfo &switchInfo, SwitchTrigger trigger);
@@ -130,8 +133,10 @@ private:
         const std::shared_ptr<PerUserSession> &session);
     int32_t OnStartInputType(int32_t userId, const SwitchInfo &switchInfo, bool isCheckPermission);
     int32_t HandlePackageEvent(const Message *msg);
+    int32_t HandleUpdateLargeMemoryState(const Message *msg);
     int32_t OnPackageRemoved(int32_t userId, const std::string &packageName);
     void OnScreenUnlock(const Message *msg);
+    void OnScreenLock(const Message *msg);
     int32_t OnDisplayOptionalInputMethod();
     void SubscribeCommonEvent();
     int32_t Switch(int32_t userId, const std::string &bundleName, const std::shared_ptr<ImeInfo> &info);
@@ -176,15 +181,15 @@ private:
     int32_t CheckInputTypeOption(int32_t userId, InputClientInfo &inputClientInfo);
     int32_t IsDefaultImeFromTokenId(int32_t userId, uint32_t tokenId);
     void DealSwitchRequest();
-    bool IsCurrentIme(int32_t userId);
+    bool IsCurrentIme(int32_t userId, uint32_t tokenId);
     int32_t StartInputType(int32_t userId, InputType type);
     // if switch input type need to switch ime, then no need to hide panel first.
     void NeedHideWhenSwitchInputType(int32_t userId, InputType type, bool &needHide);
     bool GetDeviceFunctionKeyState(int32_t functionKey, bool &isEnable);
     bool ModifyImeCfgWithWrongCaps();
     void HandleBundleScanFinished();
-    int32_t StartInputInner(
-        InputClientInfo &inputClientInfo, sptr<IRemoteObject> &agent, std::pair<int64_t, std::string> &imeInfo);
+    int32_t StartInputInner(InputClientInfo &inputClientInfo, std::vector<sptr<IRemoteObject>> &agents,
+        std::vector<BindImeInfo> &imeInfos);
     int32_t ShowInputInner(sptr<IInputClient> client, int32_t requestKeyboardReason = 0);
     int32_t ShowCurrentInputInner();
     std::pair<int64_t, std::string> GetCurrentImeInfoForHiSysEvent(int32_t userId);
@@ -205,7 +210,25 @@ private:
     bool IsValidBundleName(const std::string &bundleName);
     std::string GetRestoreBundleName(MessageParcel &data);
     int32_t RestoreInputmethod(std::string &bundleName);
-    bool IsOneTimeCodeSwitchSubtype(std::shared_ptr<PerUserSession> session, const SwitchInfo &switchInfo);
+    void IncreaseAttachCount();
+    void DecreaseAttachCount();
+    bool IsTmpIme(int32_t userId, uint32_t tokenId);
+    bool IsTmpImeSwitchSubtype(int32_t userId, uint32_t tokenId, const SwitchInfo &switchInfo);
+
+    class AttachStateGuard {
+    public:
+        explicit AttachStateGuard(InputMethodSystemAbility &ability) : ability_(ability)
+        {
+            ability_.IncreaseAttachCount();
+        }
+        ~AttachStateGuard()
+        {
+            ability_.DecreaseAttachCount();
+        }
+
+    private:
+        InputMethodSystemAbility &ability_;
+    };
 
     std::atomic<bool> isBundleScanFinished_ = false;
     std::atomic<bool> isScbEnable_ = false;
