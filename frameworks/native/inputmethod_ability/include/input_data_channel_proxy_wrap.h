@@ -37,7 +37,7 @@ struct ResponseInfo {
     ResponseData data_{ std::monostate{} };
 };
 struct ResponseHandler {
-    static constexpr uint32_t SYNC_REPLY_TIMEOUT = 3000; // unit ms
+    static constexpr uint32_t SYNC_REPLY_TIMEOUT = 3000; // 3s
     int32_t eventCode = 0;
     uint64_t msgId = 0;
     int64_t reportStartTime =

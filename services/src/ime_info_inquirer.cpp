@@ -743,10 +743,9 @@ bool ImeInfoInquirer::IsImeInstalled(const int32_t userId, const std::string &bu
             return extInfo.bundleName == bundleName && extName == extInfo.name;
         });
     if (iter == extInfos.end()) {
-        IMSA_HILOGE("false");
+        IMSA_HILOGW("%{public}d/%{public}s/%{public}s is not installed.", userId, bundleName.c_str(), extName.c_str());
         return false;
     }
-    IMSA_HILOGI("true");
     return true;
 }
 
