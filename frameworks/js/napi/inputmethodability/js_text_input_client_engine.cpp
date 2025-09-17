@@ -16,6 +16,7 @@
 #include "js_text_input_client_engine.h"
 
 #include "event_checker.h"
+#include "extra_config_napi.h"
 #include "input_method_ability.h"
 #include "inputmethod_trace.h"
 #include "js_callback_handler.h"
@@ -1162,6 +1163,36 @@ bool JsRange::Read(napi_env env, napi_value jsObject, Range &nativeObject)
     return ret;
 }
 
+bool JsExtraConfigInfo::Write(napi_env env, napi_value &jsObject, const ExtraConfig &nativeObject)
+{
+    napi_value jsExtraConfig = nullptr;
+    auto status = napi_create_object(env, &jsExtraConfig);
+    if (status != napi_ok) {
+        return false;
+    }
+    status = JsExtraConfig::GetJsExtraConfig(env, nativeObject, jsExtraConfig);
+    if (status != napi_ok) {
+        return false;
+    }
+    std::string name = "extraConfig";
+    return napi_set_named_property(env, jsObject, name.c_str(), jsExtraConfig) == napi_ok;
+}
+
+bool JsExtraConfigInfo::Read(napi_env env, napi_value jsObject, ExtraConfig &nativeObject)
+{
+    napi_valuetype valueType = napi_undefined;
+    napi_status status = napi_typeof(env, jsObject, &valueType);
+    CHECK_RETURN(valueType != napi_undefined, "napi_typeof error", false);
+
+    napi_value value = nullptr;
+    std::string name = "extraConfig";
+    status = napi_get_named_property(env, jsObject, name.c_str(), &value);
+    CHECK_RETURN(status == napi_ok, "ExtraConfig get_named_property", false);
+    status = JsExtraConfig::GetValue(env, value, nativeObject);
+    CHECK_RETURN(status == napi_ok, "ExtraConfig covert failed", false);
+    return true;
+}
+
 napi_value JsInputAttribute::Write(napi_env env, const InputAttribute &nativeObject)
 {
     napi_value jsObject = nullptr;
@@ -1184,6 +1215,7 @@ napi_value JsInputAttribute::Write(napi_env env, const InputAttribute &nativeObj
     if (InputMethodAbility::GetInstance().IsSystemApp()) {
         ret = ret && JsUtil::Object::WriteProperty(env, jsObject, "fluidLightMode", nativeObject.fluidLightMode);
     }
+    ret = ret && JsExtraConfigInfo::Write(env, jsObject, nativeObject.extraConfig);
     return ret ? jsObject : JsUtil::Const::Null(env);
 }
 
@@ -1210,6 +1242,7 @@ bool JsInputAttribute::Read(napi_env env, napi_value jsObject, InputAttribute &n
     if (InputMethodAbility::GetInstance().IsSystemApp()) {
         ret = ret && JsUtil::Object::ReadProperty(env, jsObject, "fluidLightMode", nativeObject.fluidLightMode);
     }
+    ret = ret && JsExtraConfigInfo::Read(env, jsObject, nativeObject.extraConfig);
     return ret;
 }
 

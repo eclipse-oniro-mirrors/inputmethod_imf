@@ -58,6 +58,11 @@ struct JsRange {
     static bool Read(napi_env env, napi_value jsObject, Range &nativeObject);
 };
 
+struct JsExtraConfigInfo {
+    static bool Write(napi_env env, napi_value &jsObject, const ExtraConfig &nativeObject);
+    static bool Read(napi_env env, napi_value jsObject, ExtraConfig &nativeObject);
+};
+
 struct JsInputAttribute {
     static napi_value Write(napi_env env, const InputAttribute &nativeObject);
     static bool Read(napi_env env, napi_value jsObject, InputAttribute &nativeObject);

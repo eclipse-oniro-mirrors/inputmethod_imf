@@ -24,6 +24,20 @@ InputMethodTools &InputMethodTools::GetInstance()
     return instance;
 }
 
+ExtraConfigInner InputMethodTools::ExtraConfigToInner(const ExtraConfig &extraConfig)
+{
+    ExtraConfigInner inner;
+    inner.customSettings = extraConfig.customSettings;
+    return inner;
+}
+
+ExtraConfig InputMethodTools::InnerToExtraConfig(const ExtraConfigInner &inner)
+{
+    ExtraConfig extraConfig;
+    extraConfig.customSettings = inner.customSettings;
+    return extraConfig;
+}
+
 InputAttributeInner InputMethodTools::AttributeToInner(const InputAttribute &attribute)
 {
     InputAttributeInner inner;
@@ -41,6 +55,7 @@ InputAttributeInner InputMethodTools::AttributeToInner(const InputAttribute &att
     inner.abilityName = attribute.abilityName;
     inner.capitalizeMode = attribute.capitalizeMode;
     inner.needAutoInputNumkey = attribute.needAutoInputNumkey;
+    inner.extraConfig = ExtraConfigToInner(attribute.extraConfig);
     return inner;
 }
 
@@ -61,6 +76,7 @@ InputAttribute InputMethodTools::InnerToAttribute(const InputAttributeInner &inn
     inputAttribute.abilityName = inner.abilityName;
     inputAttribute.capitalizeMode = inner.capitalizeMode;
     inputAttribute.needAutoInputNumkey = inner.needAutoInputNumkey;
+    inputAttribute.extraConfig = InnerToExtraConfig(inner.extraConfig);
     return inputAttribute;
 }
 

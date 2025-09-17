@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <sstream>
 
+#include "extra_config.h"
 #include "parcel.h"
 
 namespace OHOS {
@@ -28,6 +29,91 @@ enum class CapitalizeMode : int32_t {
     SENTENCES,
     WORDS,
     CHARACTERS
+};
+
+struct ExtraConfigInner : public Parcelable {
+    CustomSettings customSettings = {};
+    bool ReadFromParcel(Parcel &in)
+    {
+        uint32_t size = in.ReadUint32();
+        if (size == 0) {
+            return true;
+        }
+        customSettings.clear();
+
+        for (uint32_t index = 0; index < size; index++) {
+            std::string key = in.ReadString();
+            int32_t valueType = in.ReadInt32();
+            if (valueType == static_cast<int32_t>(CustomValueTypeValue::CUSTOM_VALUE_TYPE_STRING)) {
+                std::string strValue = in.ReadString();
+                customSettings.insert(std::make_pair(key, strValue));
+            } else if (valueType == static_cast<int32_t>(CustomValueTypeValue::CUSTOM_VALUE_TYPE_BOOL)) {
+                bool boolValue = false;
+                boolValue = in.ReadBool();
+                customSettings.insert(std::make_pair(key, boolValue));
+            } else if (valueType == static_cast<int32_t>(CustomValueTypeValue::CUSTOM_VALUE_TYPE_NUMBER)) {
+                int32_t intValue = 0;
+                intValue = in.ReadInt32();
+                customSettings.insert(std::make_pair(key, intValue));
+            }
+        }
+        return true;
+    }
+
+    bool Marshalling(Parcel &out) const
+    {
+        if (!out.WriteUint32(customSettings.size())) {
+            return false;
+        }
+        if (customSettings.size() == 0) {
+            return true;
+        }
+        for (auto &it : customSettings) {
+            std::string key = it.first;
+            if (!out.WriteString(key)) {
+                return false;
+            }
+            auto value = it.second;
+            bool ret = false;
+            int32_t valueType = static_cast<int32_t>(value.index());
+            if (!out.WriteInt32(valueType)) {
+                return false;
+            }
+            if (valueType == static_cast<int32_t>(CustomValueTypeValue::CUSTOM_VALUE_TYPE_STRING)) {
+                auto stringValue = std::get_if<std::string>(&value);
+                if (stringValue != nullptr) {
+                    ret = out.WriteString(*stringValue);
+                }
+            } else if (valueType == static_cast<int32_t>(CustomValueTypeValue::CUSTOM_VALUE_TYPE_BOOL)) {
+                auto boolValue = std::get_if<bool>(&value);
+                if (boolValue != nullptr) {
+                    ret = out.WriteBool(*boolValue);
+                }
+            } else if (valueType == static_cast<int32_t>(CustomValueTypeValue::CUSTOM_VALUE_TYPE_NUMBER)) {
+                auto numberValue = std::get_if<int32_t>(&value);
+                if (numberValue != nullptr) {
+                    ret = out.WriteInt32(*numberValue);
+                }
+            }
+            if (ret == false) {
+                return ret;
+            }
+        }
+        return true;
+    }
+    static ExtraConfigInner *Unmarshalling(Parcel &in)
+    {
+        ExtraConfigInner *data = new (std::nothrow) ExtraConfigInner();
+        if (data && !data->ReadFromParcel(in)) {
+            delete data;
+            data = nullptr;
+        }
+        return data;
+    }
+    bool operator==(const ExtraConfigInner &info) const
+    {
+        return customSettings == info.customSettings;
+    }
 };
 
 struct InputAttribute {
@@ -51,6 +137,7 @@ struct InputAttribute {
     std::u16string abilityName { u"" };
     CapitalizeMode capitalizeMode = CapitalizeMode::NONE;
     bool needAutoInputNumkey { false }; // number keys need to be automatically handled by imf
+    ExtraConfig extraConfig = {};
 
     bool GetSecurityFlag() const
     {
@@ -83,6 +170,7 @@ struct InputAttribute {
         << "immersiveMode:" << immersiveMode << "windowId:" << windowId
         << "callingDisplayId:" << callingDisplayId
         << "needNumInput: " << needAutoInputNumkey
+        << "extraConfig.customSettings.size: " << extraConfig.customSettings.size()
         << "]";
         return ss.str();
     }
@@ -108,6 +196,7 @@ struct InputAttributeInner : public Parcelable {
     std::u16string abilityName { u"" };
     CapitalizeMode capitalizeMode = CapitalizeMode::NONE;
     bool needAutoInputNumkey { false }; // number keys need to be automatically handled by imf
+    ExtraConfigInner extraConfig;
 
     bool ReadFromParcel(Parcel &in)
     {
@@ -130,6 +219,11 @@ struct InputAttributeInner : public Parcelable {
         needAutoInputNumkey = in.ReadBool();
         gradientMode = in.ReadInt32();
         fluidLightMode = in.ReadInt32();
+        std::unique_ptr<ExtraConfigInner> extraConfigInfo(in.ReadParcelable<ExtraConfigInner>());
+        if (extraConfigInfo == nullptr) {
+            return false;
+        }
+        extraConfig = *extraConfigInfo;
         return true;
     }
 
@@ -164,6 +258,9 @@ struct InputAttributeInner : public Parcelable {
         ret = ret && out.WriteBool(needAutoInputNumkey);
         ret = ret && out.WriteInt32(gradientMode);
         ret = ret && out.WriteInt32(fluidLightMode);
+        if (!out.WriteParcelable(&extraConfig)) {
+            return false;
+        }
         return ret;
     }
 
@@ -177,7 +274,7 @@ struct InputAttributeInner : public Parcelable {
         return data;
     }
 
-    bool operator==(const InputAttribute &info) const
+    bool operator==(const InputAttributeInner &info) const
     {
         return inputPattern == info.inputPattern && enterKeyType == info.enterKeyType &&
             inputOption == info.inputOption && isTextPreviewSupported == info.isTextPreviewSupported;

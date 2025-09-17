@@ -19,6 +19,7 @@
 #include <map>
 
 #include "ability.h"
+#include "extra_config.h"
 #include "global.h"
 #include "input_method_panel.h"
 #include "input_method_utils.h"
