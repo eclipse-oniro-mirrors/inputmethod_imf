@@ -400,6 +400,12 @@ void InputMethodAbility::ClearDataChannel(const sptr<IRemoteObject> &channel)
         return;
     }
     if (dataChannelObject_.GetRefPtr() == channel.GetRefPtr()) {
+        if (dataChannelDeathRecipient_ != nullptr) {
+            if (!dataChannelObject_->RemoveDeathRecipient(dataChannelDeathRecipient_)) {
+                IMSA_HILOGE("RemoveDeathRecipient failed");
+            }
+            dataChannelDeathRecipient_ = nullptr;
+        }
         dataChannelObject_ = nullptr;
         if (dataChannelProxyWrap_ != nullptr) {
             dataChannelProxyWrap_->ClearRspHandlers();
@@ -915,6 +921,10 @@ int32_t InputMethodAbility::GetTextConfig(TextTotalConfig &textConfig)
 void InputMethodAbility::SetInputDataChannel(const sptr<IRemoteObject> &object)
 {
     IMSA_HILOGD("SetInputDataChannel start.");
+    if (object == nullptr) {
+        IMSA_HILOGE("object is nullptr.");
+        return;
+    }
     std::lock_guard<std::mutex> lock(dataChannelLock_);
     if (dataChannelObject_ != nullptr && object != nullptr && object.GetRefPtr() == dataChannelObject_.GetRefPtr()) {
         IMSA_HILOGD("datachannel has already been set.");
@@ -937,8 +947,30 @@ void InputMethodAbility::SetInputDataChannel(const sptr<IRemoteObject> &object)
     if (dataChannelProxyWrap_ != nullptr) {
         dataChannelProxyWrap_->ClearRspHandlers();
     }
+    if (dataChannelObject_ != nullptr && dataChannelDeathRecipient_ != nullptr) {
+        if (!dataChannelObject_->RemoveDeathRecipient(dataChannelDeathRecipient_)) {
+            IMSA_HILOGE("RemoveDeathRecipient failed");
+        }
+        dataChannelDeathRecipient_ = nullptr;
+    }
+
     dataChannelProxyWrap_ = channelWrap;
     dataChannelObject_ = object;
+
+    dataChannelDeathRecipient_ = new (std::nothrow) InputDeathRecipient();
+    if (dataChannelDeathRecipient_ != nullptr) {
+        dataChannelDeathRecipient_->SetDeathRecipient(
+            [this, object](const wptr<IRemoteObject> &remote) { OnInputDataChannelDied(object); });
+        if (object->IsProxyObject() && !object->AddDeathRecipient(dataChannelDeathRecipient_)) {
+            IMSA_HILOGE("failed to add death recipient!");
+        }
+    }
+}
+
+void InputMethodAbility::OnInputDataChannelDied(const sptr<IRemoteObject> &dataChannelObject)
+{
+    IMSA_HILOGW("data channel died!");
+    ClearDataChannel(dataChannelObject);
 }
 
 bool InputMethodAbility::NotifyInfoToWmsInStartInput(const TextTotalConfig &textConfig)
@@ -1485,6 +1517,9 @@ void InputMethodAbility::OnClientInactive(const sptr<IRemoteObject> &channel)
         imeListener_->OnKeyboardStatus(false);
     }
     panels_.ForEach([this, &channelProxy](const PanelType &panelType, const std::shared_ptr<InputMethodPanel> &panel) {
+        if (panel == nullptr) {
+            return false;
+        }
         if (panelType == PanelType::SOFT_KEYBOARD && panel->GetPanelFlag() == PanelFlag::FLG_FIXED) {
             return false;
         }

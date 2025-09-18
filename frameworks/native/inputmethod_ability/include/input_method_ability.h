@@ -143,6 +143,7 @@ private:
     std::mutex dataChannelLock_;
     sptr<IRemoteObject> dataChannelObject_ = nullptr;
     std::shared_ptr<InputDataChannelProxyWrap> dataChannelProxyWrap_ = nullptr;
+    sptr<InputDeathRecipient> dataChannelDeathRecipient_{ nullptr };
 
     std::mutex systemCmdChannelLock_;
     sptr<SystemCmdChannelProxy> systemCmdChannelProxy_ = nullptr;
@@ -201,6 +202,7 @@ private:
     void ClearBindClientInfo();
     void ReportImeStartInput(int32_t eventCode, int32_t errCode, bool isShowKeyboard, int64_t consumeTime = -1);
     void ClearBindInfo(const sptr<IRemoteObject> &channel);
+    void OnInputDataChannelDied(const sptr<IRemoteObject> &dataChannelObject);
 
     ConcurrentMap<PanelType, std::shared_ptr<InputMethodPanel>> panels_ {};
     std::atomic_bool isBound_ { false };

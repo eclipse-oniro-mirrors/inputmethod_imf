@@ -55,7 +55,11 @@ public:
     ErrCode FinishTextPreview(uint64_t msgId, const sptr<IRemoteObject> &agent) override;
     ErrCode SendMessage(const ArrayBuffer &arraybuffer) override;
     ErrCode HandleKeyEventResult(uint64_t cbId, bool consumeResult) override;
+
+private:
+    int32_t ResponseDataChannel(const sptr<IRemoteObject> &agentObject, uint64_t msgId, int32_t code,
+        const ResponseData &data = std::monostate{});
 };
-}  // namespace MiscServices
-}  // namespace OHOS
+} // namespace MiscServices
+} // namespace OHOS
 #endif // FRAMEWORKS_INPUTMETHOD_CONTROLLER_INCLUDE_INPUT_DATA_CHANNEL_IMPL_H

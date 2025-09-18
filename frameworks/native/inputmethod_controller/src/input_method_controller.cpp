@@ -1918,19 +1918,6 @@ void InputMethodController::GetWindowScaleCoordinate(uint32_t windowId, CursorIn
     handler(windowId, cursorInfo);
 }
 
-int32_t InputMethodController::ResponseDataChannel(
-    const sptr<IRemoteObject> &agentObject, uint64_t msgId, int32_t code, const ResponseData &data)
-{
-    if (agentObject == nullptr) {
-        IMSA_HILOGE("agentObject is nullptr!");
-        return ErrorCode::ERROR_IME_NOT_STARTED;
-    }
-    auto agent = std::make_shared<InputMethodAgentProxy>(agentObject);
-    ResponseDataInner inner;
-    inner.rspData = data;
-    return agent->ResponseDataChannel(msgId, code, inner);
-}
-
 void InputMethodController::ClearAgentInfo()
 {
     std::lock_guard guard(agentLock_);

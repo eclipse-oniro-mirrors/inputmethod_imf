@@ -23,6 +23,7 @@
 #include "itypes_util.h"
 #include "message.h"
 #include "input_method_tools.h"
+#include "input_method_agent_proxy.h"
 namespace OHOS {
 namespace MiscServices {
 InputDataChannelServiceImpl::InputDataChannelServiceImpl() {}
@@ -36,11 +37,11 @@ ErrCode InputDataChannelServiceImpl::InsertText(
     auto instance = InputMethodController::GetInstance();
     if (instance == nullptr) {
         IMSA_HILOGE("failed to get InputMethodController instance!");
-        return ErrorCode::ERROR_EX_NULL_POINTER;
+        ResponseDataChannel(agent, msgId, ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL);
+        return ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL;
     }
     int32_t ret = instance->InsertText(Str8ToStr16(text));
-    ResponseData data = std::monostate{};
-    instance->ResponseDataChannel(agent, msgId, ret, data);
+    ResponseDataChannel(agent, msgId, ret);
     IMSA_HILOGD("end.");
     return ret;
 }
@@ -50,11 +51,11 @@ ErrCode InputDataChannelServiceImpl::DeleteForward(int32_t length, uint64_t msgI
     auto instance = InputMethodController::GetInstance();
     if (instance == nullptr) {
         IMSA_HILOGE("failed to get InputMethodController instance!");
-        return ErrorCode::ERROR_EX_NULL_POINTER;
+        ResponseDataChannel(agent, msgId, ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL);
+        return ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL;
     }
     int32_t ret = instance->DeleteForward(length);
-    ResponseData data = std::monostate{};
-    instance->ResponseDataChannel(agent, msgId, ret, data);
+    ResponseDataChannel(agent, msgId, ret);
     return ret;
 }
 
@@ -63,55 +64,61 @@ ErrCode InputDataChannelServiceImpl::DeleteBackward(int32_t length, uint64_t msg
     auto instance = InputMethodController::GetInstance();
     if (instance == nullptr) {
         IMSA_HILOGE("failed to get InputMethodController instance!");
-        return ErrorCode::ERROR_EX_NULL_POINTER;
+        ResponseDataChannel(agent, msgId, ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL);
+        return ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL;
     }
     int32_t ret = instance->DeleteBackward(length);
-    ResponseData data = std::monostate{};
-    instance->ResponseDataChannel(agent, msgId, ret, data);
+    ResponseDataChannel(agent, msgId, ret);
     return ret;
 }
 
 ErrCode InputDataChannelServiceImpl::GetTextBeforeCursor(
     int32_t number, uint64_t msgId, const sptr<IRemoteObject> &agent)
 {
+    std::u16string text;
+    ResponseData data = Str16ToStr8(text);
     auto instance = InputMethodController::GetInstance();
     if (instance == nullptr) {
         IMSA_HILOGE("failed to get InputMethodController instance!");
-        return ErrorCode::ERROR_EX_NULL_POINTER;
+        ResponseDataChannel(agent, msgId, ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL, data);
+        return ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL;
     }
-    std::u16string text;
     int32_t ret = instance->GetLeft(number, text);
-    ResponseData data = Str16ToStr8(text);
-    instance->ResponseDataChannel(agent, msgId, ret, data);
+    data = Str16ToStr8(text);
+    ResponseDataChannel(agent, msgId, ret, data);
     return ret;
 }
 
 ErrCode InputDataChannelServiceImpl::GetTextAfterCursor(
     int32_t number, uint64_t msgId, const sptr<IRemoteObject> &agent)
 {
+    std::u16string text;
+    ResponseData data = Str16ToStr8(text);
     auto instance = InputMethodController::GetInstance();
     if (instance == nullptr) {
         IMSA_HILOGE("failed to get InputMethodController instance!");
-        return ErrorCode::ERROR_EX_NULL_POINTER;
+        ResponseDataChannel(agent, msgId, ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL, data);
+        return ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL;
     }
-    std::u16string text;
     auto ret = instance->GetRight(number, text);
-    ResponseData data = Str16ToStr8(text);
-    instance->ResponseDataChannel(agent, msgId, ret, data);
+    data = Str16ToStr8(text);
+    ResponseDataChannel(agent, msgId, ret, data);
     return ret;
 }
 
 ErrCode InputDataChannelServiceImpl::GetTextIndexAtCursor(uint64_t msgId, const sptr<IRemoteObject> &agent)
 {
     int32_t index = 0;
+    ResponseData data = index;
     auto instance = InputMethodController::GetInstance();
     if (instance == nullptr) {
         IMSA_HILOGE("failed to get InputMethodController instance!");
-        return ErrorCode::ERROR_EX_NULL_POINTER;
+        ResponseDataChannel(agent, msgId, ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL, data);
+        return ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL;
     }
     auto ret = instance->GetTextIndexAtCursor(index);
-    ResponseData data = index;
-    instance->ResponseDataChannel(agent, msgId, ret, data);
+    data = index;
+    ResponseDataChannel(agent, msgId, ret, data);
     return ret;
 }
 // LCOV_EXCL_STOP
@@ -165,11 +172,11 @@ ErrCode InputDataChannelServiceImpl::SendFunctionKey(int32_t funcKey, uint64_t m
     auto instance = InputMethodController::GetInstance();
     if (instance == nullptr) {
         IMSA_HILOGE("failed to get InputMethodController instance!");
-        return ErrorCode::ERROR_EX_NULL_POINTER;
+        ResponseDataChannel(agent, msgId, ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL);
+        return ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL;
     }
     auto ret = instance->SendFunctionKey(funcKey);
-    ResponseData data = std::monostate{};
-    instance->ResponseDataChannel(agent, msgId, ret, data);
+    ResponseDataChannel(agent, msgId, ret);
     return ret;
 }
 
@@ -178,11 +185,11 @@ ErrCode InputDataChannelServiceImpl::MoveCursor(int32_t keyCode, uint64_t msgId,
     auto instance = InputMethodController::GetInstance();
     if (instance == nullptr) {
         IMSA_HILOGE("failed to get InputMethodController instance!");
-        return ErrorCode::ERROR_EX_NULL_POINTER;
+        ResponseDataChannel(agent, msgId, ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL);
+        return ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL;
     }
     auto ret = instance->MoveCursor(static_cast<Direction>(keyCode));
-    ResponseData data = std::monostate{};
-    instance->ResponseDataChannel(agent, msgId, ret, data);
+    ResponseDataChannel(agent, msgId, ret);
     return ret;
 }
 
@@ -192,12 +199,12 @@ ErrCode InputDataChannelServiceImpl::SelectByRange(
     auto instance = InputMethodController::GetInstance();
     if (instance == nullptr) {
         IMSA_HILOGE("failed to get InputMethodController instance!");
-        return ErrorCode::ERROR_EX_NULL_POINTER;
+        ResponseDataChannel(agent, msgId, ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL);
+        return ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL;
     }
 
     instance->SelectByRange(start, end);
-    ResponseData data = std::monostate{};
-    instance->ResponseDataChannel(agent, msgId, ERR_OK, data);
+    ResponseDataChannel(agent, msgId, ErrorCode::NO_ERROR);
     return ERR_OK;
 }
 
@@ -207,11 +214,11 @@ ErrCode InputDataChannelServiceImpl::SelectByMovement(
     auto instance = InputMethodController::GetInstance();
     if (instance == nullptr) {
         IMSA_HILOGW("failed to get InputMethodController instance!");
-        return ErrorCode::ERROR_EX_NULL_POINTER;
+        ResponseDataChannel(agent, msgId, ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL);
+        return ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL;
     }
     instance->SelectByMovement(direction, cursorMoveSkip);
-    ResponseData data = std::monostate{};
-    instance->ResponseDataChannel(agent, msgId, ERR_OK, data);
+    ResponseDataChannel(agent, msgId, ErrorCode::NO_ERROR);
     return ERR_OK;
 }
 
@@ -221,11 +228,11 @@ ErrCode InputDataChannelServiceImpl::HandleExtendAction(
     auto instance = InputMethodController::GetInstance();
     if (instance == nullptr) {
         IMSA_HILOGE("failed to get InputMethodController instance!");
-        return ErrorCode::ERROR_EX_NULL_POINTER;
+        ResponseDataChannel(agent, msgId, ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL);
+        return ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL;
     }
     auto ret = instance->HandleExtendAction(action);
-    ResponseData data = std::monostate{};
-    instance->ResponseDataChannel(agent, msgId, ret, data);
+    ResponseDataChannel(agent, msgId, ret);
     return ret;
 }
 // LCOV_EXCL_STOP
@@ -271,11 +278,11 @@ ErrCode InputDataChannelServiceImpl::SetPreviewText(
     auto instance = InputMethodController::GetInstance();
     if (instance == nullptr) {
         IMSA_HILOGE("failed to get InputMethodController instance!");
-        return ErrorCode::ERROR_EX_NULL_POINTER;
+        ResponseDataChannel(agent, msgId, ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL);
+        return ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL;
     }
     auto ret = instance->SetPreviewText(text, range);
-    ResponseData data = std::monostate{};
-    instance->ResponseDataChannel(agent, msgId, ret, data);
+    ResponseDataChannel(agent, msgId, ret);
     return ret;
 }
 
@@ -284,11 +291,11 @@ ErrCode InputDataChannelServiceImpl::FinishTextPreview(uint64_t msgId, const spt
     auto instance = InputMethodController::GetInstance();
     if (instance == nullptr) {
         IMSA_HILOGE("failed to get InputMethodController instance!");
-        return ErrorCode::ERROR_EX_NULL_POINTER;
+        ResponseDataChannel(agent, msgId, ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL);
+        return ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL;
     }
     auto ret = instance->FinishTextPreview();
-    ResponseData data = std::monostate{};
-    instance->ResponseDataChannel(agent, msgId, ret, data);
+    ResponseDataChannel(agent, msgId, ret);
     return ret;
 }
 // LCOV_EXCL_STOP
@@ -311,6 +318,19 @@ ErrCode InputDataChannelServiceImpl::HandleKeyEventResult(uint64_t cbId, bool co
     }
     instance->HandleKeyEventResult(cbId, consumeResult);
     return ERR_OK;
+}
+
+int32_t InputDataChannelServiceImpl::ResponseDataChannel(
+    const sptr<IRemoteObject> &agentObject, uint64_t msgId, int32_t code, const ResponseData &data)
+{
+    if (agentObject == nullptr) {
+        IMSA_HILOGE("agentObject is nullptr!");
+        return ErrorCode::ERROR_IME_NOT_STARTED;
+    }
+    auto agent = std::make_shared<InputMethodAgentProxy>(agentObject);
+    ResponseDataInner inner;
+    inner.rspData = data;
+    return agent->ResponseDataChannel(msgId, code, inner);
 }
 } // namespace MiscServices
 } // namespace OHOS
