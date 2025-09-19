@@ -23,6 +23,7 @@
 #include "input_method_system_ability.h"
 #include "key_event_result_handler.h"
 #include "task_manager.h"
+#include "input_data_channel_service_impl.h"
 #undef private
 
 #include <event_handler.h>
@@ -2186,7 +2187,8 @@ HWTEST_F(InputMethodControllerTest, TestResponseDataChannel, TestSize.Level0)
     uint64_t msgId = 10;
     int32_t code = 5;
     ResponseData data = std::monostate{};
-    auto ret = inputMethodController_->ResponseDataChannel(nullptr, msgId, code, data);
+    InputDataChannelServiceImpl impl;
+    auto ret = impl.ResponseDataChannel(nullptr, msgId, code, data);
     EXPECT_NE(ret, ErrorCode::NO_ERROR);
 }
 

@@ -306,7 +306,11 @@ int32_t InputDataChannelProxyWrap::WaitResponse(
     if (handler == nullptr || handler->syncBlockData == nullptr) {
         return ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL;
     }
-    ResponseInfo rspInfo = handler->syncBlockData->GetValueWithoutTimeout();
+    ResponseInfo rspInfo;
+    if (!handler->syncBlockData->GetValue(rspInfo)) {
+        IMSA_HILOGW("eventCode:%{public}d msgId:%{public}" PRIu64 " rsp timeout.", handler->eventCode, handler->msgId);
+        return ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL;
+    }
     IMSA_HILOGD("rsp info id: %{public}" PRIu64 " ret: %{public}d", handler->msgId, rspInfo.dealRet_);
     if (rspInfo.dealRet_ != ErrorCode::NO_ERROR) {
         return rspInfo.dealRet_;
