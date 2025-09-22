@@ -1448,7 +1448,7 @@ describe('InputMethodTest', function () {
         done();
       }).catch((err) => {
         console.error(`Failed to enableInputMethod. Code: ${err.code}, message: ${err.message}`);
-        expect(err.code === 12800018).assertTrue();
+        expect(err.code === 12800019).assertTrue();
         done();
       })
     } catch (err) {

@@ -1856,7 +1856,7 @@ void InputMethodController::ReportClientShow(int32_t eventCode, int32_t errCode,
         HiSysOriginalInfo::Builder().SetClientType(type).SetEventCode(eventCode).SetErrCode(errCode).Build();
     ImcHiSysEventReporter::GetInstance().ReportEvent(ImfEventType::CLIENT_SHOW, *evenInfo);
 }
-// LCOV_EXCL_START
+
 void InputMethodController::ReportBaseTextOperation(int32_t eventCode, int32_t errCode)
 {
     auto imeInfo = GetBindImeInfo();
@@ -1869,7 +1869,7 @@ void InputMethodController::ReportBaseTextOperation(int32_t eventCode, int32_t e
                         .Build();
     ImcHiSysEventReporter::GetInstance().ReportEvent(ImfEventType::BASE_TEXT_OPERATOR, *evenInfo);
 }
-// LCOV_EXCL_STOP
+
 void InputMethodController::UpdateTextPreviewState(bool isSupport)
 {
     if (textConfig_.inputAttribute.isTextPreviewSupported == isSupport) {
