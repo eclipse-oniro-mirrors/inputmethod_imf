@@ -695,6 +695,28 @@ InputMethod_ErrorCode OH_TextEditorProxy_GetSetPreviewTextFunc(
  */
 InputMethod_ErrorCode OH_TextEditorProxy_GetFinishTextPreviewFunc(
     InputMethod_TextEditorProxy *proxy, OH_TextEditorProxy_FinishTextPreviewFunc *finishTextPreviewFunc);
+
+/**
+ * @brief Configure the execution thread (main thread/IPC thread) for the callback functions of
+ * {@link InputMethod_TextEditorProxy}.
+ * This interface only controls all callbacks in {@link InputMethod_TextEditorProxy} except
+ * {@link OH_TextEditorProxy_GetTextConfigFunc}.
+ * The execution thread of {@link OH_TextEditorProxy_GetTextConfigFunc} is determined by the thread that calls
+ * {@link OH_InputMethodController_Attach} and is not affected by this interface.
+ *
+ * @param proxy Pointer to the target {@link InputMethod_TextEditorProxy} instance.
+ * @param isCallbackInMainThread Thread execution strategy
+ *                              - true: The callback function is switched to the main thread for execution (to avoid
+ * multi-thread concurrency)
+ *                              - false: The callback function is executed in the IPC thread (there may be multi-thread
+ * concurrency)
+ * @return Execution result.
+ *     {@link IME_ERR_OK} - Configuration succeeded.
+ *     {@link IME_ERR_NULL_POINTER} - Returned when proxy is NULL.
+ * @since 22
+ */
+InputMethod_ErrorCode OH_TextEditorProxy_SetCallbackInMainThread(
+    InputMethod_TextEditorProxy *proxy, bool isCallbackInMainThread);
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */
