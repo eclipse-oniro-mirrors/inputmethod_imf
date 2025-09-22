@@ -35,6 +35,7 @@ using namespace testing::mt;
 namespace OHOS {
 namespace MiscServices {
 constexpr int32_t INVALID_UID = -1;
+constexpr uint32_t ATTACH_WAIT_TIME = 20;
 class ImeMirrorTest : public testing::Test {
 public:
     static sptr<InputMethodController> imc_;
@@ -402,6 +403,7 @@ HWTEST_F(ImeMirrorTest, multiThreadAttachRegisterTest_001, TestSize.Level1)
     SET_THREAD_NUM(1);
     auto attachTask = []() {
         auto ret = ImeMirrorTest::Attach();
+        std::this_thread::sleep_for(std::chrono::milliseconds(ATTACH_WAIT_TIME));
         EXPECT_EQ(ret, ErrorCode::NO_ERROR);
         ret = ImeMirrorTest::imc_->OnSelectionChange(u"1234567890", 1, 1);
         EXPECT_EQ(ret, ErrorCode::NO_ERROR);

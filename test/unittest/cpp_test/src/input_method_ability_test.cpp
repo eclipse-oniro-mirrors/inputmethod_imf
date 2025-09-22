@@ -338,9 +338,7 @@ HWTEST_F(InputMethodAbilityTest, testSerializedInputAttribute001, TestSize.Level
     Parcel data;
     EXPECT_TRUE(inAttribute.Marshalling(data));
     InputAttributeInner* outInnerAttribute = InputAttributeInner::Unmarshalling(data);
-    if (outInnerAttribute == nullptr) {
-        return;
-    }
+    ASSERT_NE(outInnerAttribute, nullptr);
     InputAttribute outAttribute;
     outAttribute.inputPattern = outInnerAttribute->inputPattern;
     EXPECT_TRUE(outAttribute.IsOneTimeCodeFlag());
@@ -1873,10 +1871,7 @@ HWTEST_F(InputMethodAbilityTest, testOnCallingDisplayIdChanged, TestSize.Level0)
     data.WriteRemoteObject(core->AsObject());
     sptr<IRemoteObject> coreObject = data.ReadRemoteObject();
     sptr<InputMethodCoreProxy> coreProxy = new InputMethodCoreProxy(coreObject);
-    if (coreProxy == nullptr) {
-        IMSA_HILOGI("coreProxy is null");
-        return;
-    }
+    ASSERT_NE(coreProxy, nullptr);
     coreProxy->OnCallingDisplayIdChanged(0);
     EXPECT_TRUE(coreProxy != nullptr);
 }
