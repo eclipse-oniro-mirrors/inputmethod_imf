@@ -68,6 +68,7 @@ group("system_ability_stub_fuzztest") {
 }
 
 common_external_deps = [
+  "ability_runtime:ability_connect_callback_stub",
   "ability_runtime:ability_manager",
   "access_token:libaccesstoken_sdk",
   "bundle_framework:appexecfwk_core",
