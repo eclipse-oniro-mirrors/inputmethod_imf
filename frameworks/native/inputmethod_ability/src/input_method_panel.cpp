@@ -1324,7 +1324,7 @@ int32_t InputMethodPanel::SetCallingWindow(uint32_t windowId)
         callingWindowId_ = windowId;
         return ErrorCode::NO_ERROR;
     }
-    auto ret = window_->SetCallingWindow(callingWindowId_);
+    auto ret = window_->SetParentWindow(callingWindowId_);
     if (ret == WMError::WM_OK) {
         callingWindowId_ = windowId;
     }
