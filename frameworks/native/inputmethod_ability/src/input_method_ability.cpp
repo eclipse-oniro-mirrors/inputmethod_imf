@@ -18,6 +18,7 @@
 #include <unistd.h>
 #include <utility>
 
+#include "common_timer_errors.h"
 #include "global.h"
 #include "ima_hisysevent_reporter.h"
 #include "input_method_agent_service_impl.h"
@@ -48,6 +49,7 @@ constexpr int32_t INVALID_SELECTION_VALUE = -1;
 constexpr uint32_t FIND_PANEL_RETRY_INTERVAL = 10;
 constexpr uint32_t MAX_RETRY_TIMES = 100;
 constexpr uint32_t START_INPUT_CALLBACK_TIMEOUT_MS = 1000;
+constexpr uint32_t WAIT_TIME = 20000; // 20s
 constexpr uint32_t INVALID_SECURITY_MODE = -1;
 
 InputMethodAbility::InputMethodAbility()
@@ -58,6 +60,7 @@ InputMethodAbility::InputMethodAbility()
 InputMethodAbility::~InputMethodAbility()
 {
     IMSA_HILOGI("InputMethodAbility::~InputMethodAbility.");
+    StopTimer();
 }
 
 InputMethodAbility &InputMethodAbility::GetInstance()
@@ -735,7 +738,7 @@ int32_t InputMethodAbility::InsertText(const std::string &text, const AsyncIpcCa
         IMSA_HILOGE("channel is nullptr!");
         return ErrorCode::ERROR_IMA_CHANNEL_NULLPTR;
     }
-
+    ResetTimer();
     return channel->InsertText(text, callback);
 }
 
@@ -748,6 +751,7 @@ int32_t InputMethodAbility::DeleteForward(int32_t length, const AsyncIpcCallBack
         IMSA_HILOGE("channel is nullptr!");
         return ErrorCode::ERROR_IMA_CHANNEL_NULLPTR;
     }
+    ResetTimer();
     return channel->DeleteForward(length, callback);
 }
 
@@ -759,6 +763,7 @@ int32_t InputMethodAbility::DeleteBackward(int32_t length, const AsyncIpcCallBac
         IMSA_HILOGE("channel is nullptr!");
         return ErrorCode::ERROR_IMA_CHANNEL_NULLPTR;
     }
+    ResetTimer();
     return channel->DeleteBackward(length, callback);
 }
 
@@ -769,6 +774,7 @@ int32_t InputMethodAbility::SendFunctionKey(int32_t funcKey, const AsyncIpcCallB
         IMSA_HILOGE("channel is nullptr!");
         return ErrorCode::ERROR_CLIENT_NULL_POINTER;
     }
+    ResetTimer();
     return channel->SendFunctionKey(funcKey, callback);
 }
 
@@ -1240,6 +1246,10 @@ int32_t InputMethodAbility::ShowPanel(
     }
     auto ret = inputMethodPanel->ShowPanel();
     if (ret == ErrorCode::NO_ERROR) {
+        ImmersiveEffect immersiveEffect = inputMethodPanel->LoadImmersiveEffect();
+        if (immersiveEffect.fluidLightMode == FluidLightMode::BACKGROUND_FLUID_LIGHT) {
+            StartTimer();
+        }
         NotifyPanelStatus(false);
         PanelStatusInfo info;
         info.panelInfo.panelType = inputMethodPanel->GetPanelType();
@@ -1262,6 +1272,7 @@ int32_t InputMethodAbility::HidePanel(
         IMSA_HILOGD("failed, ret: %{public}d", ret);
         return ret;
     }
+    StopTimer();
     PanelStatusInfo info;
     info.panelInfo.panelType = inputMethodPanel->GetPanelType();
     info.panelInfo.panelFlag = flag;
@@ -1612,6 +1623,7 @@ int32_t InputMethodAbility::SetPreviewText(
         return ErrorCode::ERROR_IMA_CHANNEL_NULLPTR;
     }
     RangeInner rangeInner = InputMethodTools::GetInstance().RangeToInner(range);
+    ResetTimer();
     return dataChannel->SetPreviewText(text, rangeInner, callback);
 }
 
@@ -1623,6 +1635,7 @@ int32_t InputMethodAbility::FinishTextPreview(const AsyncIpcCallBack &callback)
         IMSA_HILOGE("dataChannel is nullptr!");
         return ErrorCode::ERROR_IMA_CHANNEL_NULLPTR;
     }
+    ResetTimer();
     return dataChannel->FinishTextPreview(callback);
 }
 
@@ -1928,6 +1941,61 @@ void InputMethodAbility::RemoveDeathRecipient()
 
     if (!remoteObject->RemoveDeathRecipient(deathRecipient_)) {
         IMSA_HILOGE("RemoveDeathRecipient failed");
+    }
+}
+
+void InputMethodAbility::ResetTimer()
+{
+    std::lock_guard<std::mutex> lock(timerLock_);
+    if (timerId_ != 0) {
+        timer_.Unregister(timerId_);
+        auto callback = [this]() {
+            TimerCallback();
+        };
+        timerId_ = timer_.Register(callback, WAIT_TIME, true);
+    }
+}
+
+void InputMethodAbility::StartTimer()
+{
+    IMSA_HILOGD("start");
+    std::lock_guard<std::mutex> lock(timerLock_);
+    if (timerId_ != 0) {
+        return;
+    }
+    uint32_t ret = timer_.Setup();
+    if (ret != Utils::TIMER_ERR_OK) {
+        IMSA_HILOGE("failed to create timer!");
+        return;
+    }
+    auto callback = [this]() {
+        TimerCallback();
+    };
+    timerId_ = timer_.Register(callback, WAIT_TIME, true);
+}
+
+void InputMethodAbility::TimerCallback()
+{
+    std::unordered_map<std::string, PrivateDataValue> privateCommand = {
+        { "sys_cmd", 1 },
+        { "flowLightPause", true }
+    };
+    auto ret = SendPrivateCommand(privateCommand);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("send private command failed!");
+        return;
+    }
+    IMSA_HILOGD("send private command success.");
+}
+
+void InputMethodAbility::StopTimer()
+{
+    IMSA_HILOGD("start");
+    std::lock_guard<std::mutex> lock(timerLock_);
+    if (timerId_ != 0) {
+        timer_.Unregister(timerId_);
+        timer_.Shutdown();
+        timerId_ = 0;
     }
 }
 } // namespace MiscServices
