@@ -1033,15 +1033,12 @@ private:
     int32_t ShowSoftKeyboardInner(ClientType type);
     void ReportClientShow(int32_t eventCode, int32_t errCode, ClientType type);
     void GetWindowScaleCoordinate(uint32_t windowId, CursorInfo &cursorInfo);
-    int32_t ResponseDataChannel(
-        const sptr<IRemoteObject> &agentObject, uint64_t msgId, int32_t code, const ResponseData &data);
     void CalibrateImmersiveParam(InputAttribute &inputAttribute);
     void ClearAgentInfo();
     int32_t SendRequestToAllAgents(std::function<int32_t(std::shared_ptr<IInputMethodAgent>)> task);
     int32_t SendRequestToImeMirrorAgent(std::function<int32_t(std::shared_ptr<IInputMethodAgent>)> task);
     void SetInputReady(const std::vector<sptr<IRemoteObject>> &agentObjects, const std::vector<BindImeInfo> &imeInfos);
 
-    friend class InputDataChannelServiceImpl;
     std::shared_ptr<ControllerListener> controllerListener_;
     std::mutex abilityLock_;
     sptr<IInputMethodSystemAbility> abilityManager_ = nullptr;

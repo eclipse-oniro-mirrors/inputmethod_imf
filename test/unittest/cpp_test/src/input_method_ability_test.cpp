@@ -338,9 +338,7 @@ HWTEST_F(InputMethodAbilityTest, testSerializedInputAttribute001, TestSize.Level
     Parcel data;
     EXPECT_TRUE(inAttribute.Marshalling(data));
     InputAttributeInner* outInnerAttribute = InputAttributeInner::Unmarshalling(data);
-    if (outInnerAttribute == nullptr) {
-        return;
-    }
+    ASSERT_NE(outInnerAttribute, nullptr);
     InputAttribute outAttribute;
     outAttribute.inputPattern = outInnerAttribute->inputPattern;
     EXPECT_TRUE(outAttribute.IsOneTimeCodeFlag());
@@ -1873,10 +1871,7 @@ HWTEST_F(InputMethodAbilityTest, testOnCallingDisplayIdChanged, TestSize.Level0)
     data.WriteRemoteObject(core->AsObject());
     sptr<IRemoteObject> coreObject = data.ReadRemoteObject();
     sptr<InputMethodCoreProxy> coreProxy = new InputMethodCoreProxy(coreObject);
-    if (coreProxy == nullptr) {
-        IMSA_HILOGI("coreProxy is null");
-        return;
-    }
+    ASSERT_NE(coreProxy, nullptr);
     coreProxy->OnCallingDisplayIdChanged(0);
     EXPECT_TRUE(coreProxy != nullptr);
 }
@@ -2333,6 +2328,70 @@ HWTEST_F(InputMethodAbilityTest, testHidePanel, TestSize.Level0)
     InputMethodAbilityTest::inputMethodAbility_.isImeTerminating_ = true;
     ret = InputMethodAbilityTest::inputMethodAbility_.HidePanel(panel);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: testClearDataChannel
+ * @tc.desc: InputMethodAbility ClearDataChannel
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodAbilityTest, testClearDataChannel, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testClearDataChannel START");
+    sptr<IInputDataChannel> dataChannel = new (std::nothrow) InputDataChannelServiceImpl();
+    ASSERT_NE(dataChannel, nullptr);
+    auto dataChannelObject = dataChannel->AsObject();
+    InputMethodAbilityTest::inputMethodAbility_.dataChannelObject_ = dataChannelObject;
+    InputMethodAbilityTest::inputMethodAbility_.dataChannelDeathRecipient_ = nullptr;
+    InputMethodAbilityTest::inputMethodAbility_.ClearDataChannel(dataChannelObject);
+    EXPECT_EQ(InputMethodAbilityTest::inputMethodAbility_.dataChannelObject_, nullptr);
+}
+
+/**
+ * @tc.name: testSetInputDataChannel
+ * @tc.desc: InputMethodAbility SetInputDataChannel
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodAbilityTest, testSetInputDataChannel, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testSetInputDataChannel START");
+
+    sptr<IInputDataChannel> dataChannel = new (std::nothrow) InputDataChannelServiceImpl();
+    ASSERT_NE(dataChannel, nullptr);
+    auto dataChannelObject = dataChannel->AsObject();
+    sptr<IInputDataChannel> dataChannel1 = new (std::nothrow) InputDataChannelServiceImpl();
+    ASSERT_NE(dataChannel1, nullptr);
+    auto dataChannelObject1 = dataChannel1->AsObject();
+
+    InputMethodAbilityTest::inputMethodAbility_.dataChannelObject_ = dataChannelObject;
+    InputMethodAbilityTest::inputMethodAbility_.SetInputDataChannel(nullptr);
+    EXPECT_EQ(
+        InputMethodAbilityTest::inputMethodAbility_.dataChannelObject_.GetRefPtr(), dataChannelObject.GetRefPtr());
+
+    InputMethodAbilityTest::inputMethodAbility_.dataChannelObject_ = nullptr;
+    InputMethodAbilityTest::inputMethodAbility_.dataChannelDeathRecipient_ = nullptr;
+    InputMethodAbilityTest::inputMethodAbility_.SetInputDataChannel(dataChannelObject);
+    EXPECT_NE(InputMethodAbilityTest::inputMethodAbility_.dataChannelObject_, nullptr);
+
+    InputMethodAbilityTest::inputMethodAbility_.dataChannelObject_ = dataChannelObject;
+    InputMethodAbilityTest::inputMethodAbility_.dataChannelDeathRecipient_ = nullptr;
+    InputMethodAbilityTest::inputMethodAbility_.SetInputDataChannel(dataChannelObject1);
+    EXPECT_EQ(
+        InputMethodAbilityTest::inputMethodAbility_.dataChannelObject_.GetRefPtr(), dataChannelObject1.GetRefPtr());
+
+    InputMethodAbilityTest::inputMethodAbility_.dataChannelObject_ = nullptr;
+    InputMethodAbilityTest::inputMethodAbility_.dataChannelDeathRecipient_ = new (std::nothrow) InputDeathRecipient();
+    InputMethodAbilityTest::inputMethodAbility_.SetInputDataChannel(dataChannelObject);
+    EXPECT_EQ(
+        InputMethodAbilityTest::inputMethodAbility_.dataChannelObject_.GetRefPtr(), dataChannelObject.GetRefPtr());
+
+    InputMethodAbilityTest::inputMethodAbility_.dataChannelObject_ = dataChannelObject;
+    InputMethodAbilityTest::inputMethodAbility_.dataChannelDeathRecipient_ = new (std::nothrow) InputDeathRecipient();
+    InputMethodAbilityTest::inputMethodAbility_.SetInputDataChannel(dataChannelObject1);
+    EXPECT_EQ(
+        InputMethodAbilityTest::inputMethodAbility_.dataChannelObject_.GetRefPtr(), dataChannelObject1.GetRefPtr());
 }
 } // namespace MiscServices
 } // namespace OHOS

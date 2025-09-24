@@ -297,6 +297,7 @@ ohos_source_set("input_method_client_types") {
   sources = filter_include(output_values, [ "*input_method_client_types.cpp" ])
   deps = [ ":input_method_system_ability_interface" ]
   external_deps = [
+    "c_utils:utils",
     "hilog:libhilog",
     "ipc:ipc_single",
   ]
