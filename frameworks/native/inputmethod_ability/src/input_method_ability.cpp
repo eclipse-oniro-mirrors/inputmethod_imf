@@ -652,7 +652,7 @@ int32_t InputMethodAbility::InvokeStartInputCallback(const TextTotalConfig &text
     height_ = textConfig.height;
     NotifyInfoToWmsInStartInput(textConfig);
     IMSA_HILOGI("attributeInfo:%{public}s, isNotifyInputStartInfo:%{public}d/%{public}d.",
-        textConfig.inputAttribute.ToString().c_str(), isNotifyInputStart, isInputStartNotified_);
+        textConfig.inputAttribute.InfoLog().c_str(), isNotifyInputStart, isInputStartNotified_);
     SetInputAttribute(textConfig.inputAttribute);
     if (kdListener_ != nullptr) {
         kdListener_->OnEditorAttributeChange(textConfig.inputAttribute);

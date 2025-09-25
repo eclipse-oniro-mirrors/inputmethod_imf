@@ -86,6 +86,16 @@ struct InputAttribute {
         << "]";
         return ss.str();
     }
+
+    inline std::string InfoLog() const
+    {
+        std::string info;
+        info.append("pattern/enterKey:" + std::to_string(inputPattern) + "/" + std::to_string(enterKeyType));
+        info.append(" windowId/displayId:" + std::to_string(windowId) + "/" + std::to_string(callingDisplayId));
+        info.append(" textPreview/immersiveMode:" + std::to_string(static_cast<int32_t>(isTextPreviewSupported)) +
+                    "/" + std::to_string(immersiveMode));
+        return info;
+    }
 };
 
 struct InputAttributeInner : public Parcelable {
