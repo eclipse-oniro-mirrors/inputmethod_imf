@@ -31,6 +31,7 @@ public:
     bool IsNativeSa(Security::AccessToken::AccessTokenID tokenId) override;
     bool IsFormShell(Security::AccessToken::AccessTokenID tokenId) override;
     std::string GetBundleNameByToken(uint32_t tokenId) override;
+    uint32_t GetUIExtensionWindowId(sptr<IRemoteObject> abilityToken = nullptr) override;
     bool IsFocusedUIExtension(uint32_t callingTokenId, sptr<IRemoteObject> abilityToken = nullptr) override;
     uint64_t GetDisplayIdByWindowId(int32_t callingWindowId) override;
     uint64_t GetDisplayIdByPid(int64_t callingPid, sptr<IRemoteObject> abilityToken = nullptr) override;
