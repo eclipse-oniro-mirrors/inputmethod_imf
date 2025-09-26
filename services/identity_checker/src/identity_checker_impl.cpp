@@ -108,16 +108,32 @@ bool IdentityCheckerImpl::IsFormShell(AccessTokenID tokenId)
     return AccessTokenKit::GetTokenTypeFlag(tokenId) == TypeATokenTypeEnum::TOKEN_SHELL;
 }
 
+uint32_t IdentityCheckerImpl::GetUIExtensionWindowId(sptr<IRemoteObject> abilityToken)
+{
+    if (abilityToken == nullptr) {
+        IMSA_HILOGD("abilityToken is nullptr");
+        return INVALID_WINDOW_ID;
+    }
+    AAFwk::UIExtensionSessionInfo info;
+    auto ret = AAFwk::AbilityManagerClient::GetInstance()->GetUIExtensionSessionInfo(abilityToken, info);
+    if (ret != ERR_OK) {
+        IMSA_HILOGD("failed to GetUIExtensionSessionInfo, ret: %{public}d", ret);
+        return INVALID_WINDOW_ID;
+    }
+    return info.hostWindowId;
+}
+
 bool IdentityCheckerImpl::IsFocusedUIExtension(uint32_t callingTokenId, sptr<IRemoteObject> abilityToken)
 {
-    AAFwk::UIExtensionSessionInfo info;
-    AAFwk::AbilityManagerClient::GetInstance()->GetUIExtensionSessionInfo(abilityToken, info);
-    auto windowId = info.hostWindowId;
-    auto displayIdByWindow = WindowAdapter::GetDisplayIdByWindowId(windowId);
-    if (displayIdByWindow != DEFAULT_DISPLAY_ID) {
-        FocusChangeInfo focusInfo;
-        WindowAdapter::GetFocusInfo(focusInfo, displayIdByWindow);
-        return windowId == static_cast<uint32_t>(focusInfo.windowId_);
+    uint32_t windowId = GetUIExtensionWindowId(abilityToken);
+    if (windowId != INVALID_WINDOW_ID) {
+        auto displayIdByWindow = WindowAdapter::GetDisplayIdByWindowId(windowId);
+        IMSA_HILOGD("windowId is: %{public}d, displayId is %{public}" PRIu64 "", windowId, displayIdByWindow);
+        if (displayIdByWindow != DEFAULT_DISPLAY_ID) {
+            FocusChangeInfo focusInfo;
+            WindowAdapter::GetFocusInfo(focusInfo, displayIdByWindow);
+            return windowId == static_cast<uint32_t>(focusInfo.windowId_);
+        }
     }
 
     bool isFocused = false;
