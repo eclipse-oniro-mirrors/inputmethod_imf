@@ -82,6 +82,7 @@ public:
     ImmersiveMode GetImmersiveMode();
     bool IsInMainDisplay();
     int32_t SetImmersiveEffect(const ImmersiveEffect &effect);
+    ImmersiveEffect LoadImmersiveEffect();
     int32_t SetKeepScreenOn(bool isKeepScreenOn);
     int32_t GetSystemPanelCurrentInsets(uint64_t displayId, SystemPanelInsets &systemPanelInsets);
     uint32_t windowId_ = INVALID_WINDOW_ID;
@@ -191,7 +192,6 @@ private:
     void SetEnhancedLayoutParams(EnhancedLayoutParams params);
     std::vector<int32_t> GetIgnoreAdjustInputTypes();
     void SetIgnoreAdjustInputTypes(const std::vector<int32_t> &inputTypes);
-    ImmersiveEffect LoadImmersiveEffect();
     void StoreImmersiveEffect(ImmersiveEffect effect);
     HotAreas GetHotAreas();
     void SetHotAreas(const HotAreas &hotAreas);

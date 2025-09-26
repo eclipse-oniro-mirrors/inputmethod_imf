@@ -17,6 +17,7 @@
 #include "input_method_ability.h"
 
 #include "input_method_controller.h"
+#include "input_method_panel.h"
 #include "input_method_system_ability.h"
 #include "key_event_util.h"
 #include "task_manager.h"
@@ -1125,9 +1126,14 @@ HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatusInfo_001, TestSize.Level0)
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 
     TextListener::ResetParam();
+    panel1->immersiveEffect_.fluidLightMode = FluidLightMode::BACKGROUND_FLUID_LIGHT;
     ret = inputMethodAbility_.ShowKeyboard(static_cast<int32_t>(RequestKeyboardReason::NONE));
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     EXPECT_TRUE(TextListener::WaitSendKeyboardStatusCallback(KeyboardStatus::SHOW));
+    EXPECT_NE(inputMethodAbility_.timerId_, 0);
+    std::string text = "text";
+    ret = inputMethodAbility_.InsertText(text);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     PanelStatusInfo statusInfo;
     statusInfo.panelInfo = info1;
     statusInfo.visible = true;
@@ -2392,6 +2398,21 @@ HWTEST_F(InputMethodAbilityTest, testSetInputDataChannel, TestSize.Level0)
     InputMethodAbilityTest::inputMethodAbility_.SetInputDataChannel(dataChannelObject1);
     EXPECT_EQ(
         InputMethodAbilityTest::inputMethodAbility_.dataChannelObject_.GetRefPtr(), dataChannelObject1.GetRefPtr());
+}
+
+/**
+ * @tc.name: testTimer_001
+ * @tc.desc: InputMethodAbility Timer_001
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodAbilityTest, testTimer_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testTimer_001 START");
+    inputMethodAbility_.StartTimer();
+    EXPECT_NE(inputMethodAbility_.timerId_, 0);
+    inputMethodAbility_.StopTimer();
+    EXPECT_EQ(inputMethodAbility_.timerId_, 0);
 }
 } // namespace MiscServices
 } // namespace OHOS
