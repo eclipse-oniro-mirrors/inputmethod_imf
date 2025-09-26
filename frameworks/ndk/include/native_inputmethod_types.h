@@ -80,6 +80,7 @@ struct InputMethod_TextEditorProxy {
     OH_TextEditorProxy_ReceivePrivateCommandFunc receivePrivateCommandFunc;
     OH_TextEditorProxy_SetPreviewTextFunc setPreviewTextFunc;
     OH_TextEditorProxy_FinishTextPreviewFunc finishTextPreviewFunc;
+    std::atomic_bool isCallbackInMainThread = false;
 };
 
 struct InputMethod_AttachOptions {

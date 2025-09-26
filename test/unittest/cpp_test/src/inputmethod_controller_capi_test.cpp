@@ -1881,9 +1881,8 @@ HWTEST_F(InputMethodControllerCapiTest, TestAttachWithPlaceholderAndAbility_001,
     auto textEditorProxy2 = OH_TextEditorProxy_Create();
     EXPECT_NE(nullptr, textEditorProxy2);
     ConstructTextEditorProxy(textEditorProxy2);
-    auto fnGetTextConfigFunc = [](InputMethod_TextEditorProxy *textEditorProxy,
-     InputMethod_TextConfig *config) {
-        std::u16string  placeholder = u"test placeholder";
+    auto fnGetTextConfigFunc = [](InputMethod_TextEditorProxy *textEditorProxy, InputMethod_TextConfig *config) {
+        std::u16string placeholder = u"test placeholder";
         std::u16string abilityName = u"test ability name";
         OH_TextConfig_SetPlaceholder(config, placeholder.data(), placeholder.size());
         OH_TextConfig_SetAbilityName(config, abilityName.data(), abilityName.size());
@@ -1907,7 +1906,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetPlaceholder_001, TestSi
 {
     auto config = OH_TextConfig_Create();
     ASSERT_NE(nullptr, config);
-    std::u16string input= u"test";
+    std::u16string input = u"test";
     auto ret = OH_TextConfig_SetPlaceholder(config, input.data(), input.size());
     EXPECT_EQ(ret, IME_ERR_OK);
     ret = OH_TextConfig_GetPlaceholder(nullptr, nullptr, nullptr);
@@ -1921,11 +1920,11 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetPlaceholder_001, TestSi
     outLen = 1;
     ret = OH_TextConfig_GetPlaceholder(config, pOut, &outLen);
     EXPECT_EQ(ret, IME_ERR_PARAMCHECK);
-    EXPECT_EQ(outLen -1, input.size());
+    EXPECT_EQ(outLen - 1, input.size());
     outLen = 513;
     ret = OH_TextConfig_GetPlaceholder(config, pOut, &outLen);
     EXPECT_EQ(ret, IME_ERR_OK);
-    EXPECT_EQ(outLen -1, input.size());
+    EXPECT_EQ(outLen - 1, input.size());
     outLen = input.size();
     ret = OH_TextConfig_GetPlaceholder(config, pOut, &outLen);
     EXPECT_EQ(ret, IME_ERR_PARAMCHECK);
@@ -1942,10 +1941,11 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetPlaceholder_001, TestSi
  * @tc.desc: Invalid test input parameter
  * @tc.type: FUNC
  */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetPlaceholder_002, TestSize.Level0) {
+HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetPlaceholder_002, TestSize.Level0)
+{
     auto config = OH_TextConfig_Create();
     ASSERT_NE(nullptr, config);
-    std::u16string input= u"test";
+    std::u16string input = u"test";
     auto ret = OH_TextConfig_SetPlaceholder(config, input.data(), input.size());
     EXPECT_EQ(ret, IME_ERR_OK);
     ret = OH_TextConfig_SetPlaceholder(config, nullptr, 0);
@@ -1963,7 +1963,8 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetPlaceholder_002, TestSi
  * @tc.desc: Invalid test input parameter
  * @tc.type: FUNC
  */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetPlaceholder_003, TestSize.Level0) {
+HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetPlaceholder_003, TestSize.Level0)
+{
     auto config = OH_TextConfig_Create();
     ASSERT_NE(nullptr, config);
     auto ret = OH_TextConfig_SetPlaceholder(config, nullptr, 257);
@@ -2006,10 +2007,11 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetPlaceholder_003, TestSi
  * @tc.desc: Input parameters are valid
  * @tc.type: FUNC
  */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetAbilityName_001, TestSize.Level0) {
+HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetAbilityName_001, TestSize.Level0)
+{
     auto config = OH_TextConfig_Create();
     ASSERT_NE(nullptr, config);
-    std::u16string input= u"test";
+    std::u16string input = u"test";
     auto ret = OH_TextConfig_SetAbilityName(config, input.data(), input.size());
     EXPECT_EQ(ret, IME_ERR_OK);
     ret = OH_TextConfig_GetAbilityName(nullptr, nullptr, nullptr);
@@ -2032,8 +2034,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetAbilityName_001, TestSi
     ret = OH_TextConfig_GetAbilityName(config, pOut, &outLen);
     EXPECT_EQ(ret, IME_ERR_OK);
     std::u16string out(pOut, outLen);
-    IMSA_HILOGI("outLen:%{public}zu,out:%{public}s,outSize:%{public}zu", outLen,
-        Str16ToStr8(out).c_str(), out.size());
+    IMSA_HILOGI("outLen:%{public}zu,out:%{public}s,outSize:%{public}zu", outLen, Str16ToStr8(out).c_str(), out.size());
     EXPECT_GT(out.size(), input.size());
     outLen = input.size();
     ret = OH_TextConfig_GetAbilityName(config, pOut, &outLen);
@@ -2046,10 +2047,11 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetAbilityName_001, TestSi
  * @tc.desc: Invalid test input parameter
  * @tc.type: FUNC
  */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetAbilityName_002, TestSize.Level0) {
+HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetAbilityName_002, TestSize.Level0)
+{
     auto config = OH_TextConfig_Create();
     ASSERT_NE(nullptr, config);
-    std::u16string input= u"test";
+    std::u16string input = u"test";
     auto ret = OH_TextConfig_SetAbilityName(config, input.data(), input.size());
     EXPECT_EQ(ret, IME_ERR_OK);
     ret = OH_TextConfig_SetAbilityName(config, nullptr, 0);
@@ -2068,7 +2070,8 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetAbilityName_002, TestSi
  * @tc.desc: Invalid test input parameter
  * @tc.type: FUNC
  */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetAbilityName_003, TestSize.Level0) {
+HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetAbilityName_003, TestSize.Level0)
+{
     auto config = OH_TextConfig_Create();
     ASSERT_NE(nullptr, config);
     auto ret = OH_TextConfig_SetAbilityName(config, nullptr, 128);
@@ -2090,7 +2093,8 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetAbilityName_003, TestSi
  * @tc.desc: Invalid test input parameter
  * @tc.type: FUNC
  */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetAbilityName_004, TestSize.Level0) {
+HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetAbilityName_004, TestSize.Level0)
+{
     auto config = OH_TextConfig_Create();
     ASSERT_NE(nullptr, config);
     std::u16string input = u"";
@@ -2119,7 +2123,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetAbilityName_004, TestSi
     ret = OH_TextConfig_GetAbilityName(config, out2.data(), &outLen);
     EXPECT_EQ(ret, IME_ERR_OK);
     EXPECT_EQ(out2[out2.size() - 1], 0);
-    input[input.size() -1] = u'\0';
+    input[input.size() - 1] = u'\0';
     EXPECT_EQ(out2.compare(input), 0);
     char16_t charInput[65] = u"123456789\0123456789\0012345678901\023456789";
     size_t charInputLen = 32;

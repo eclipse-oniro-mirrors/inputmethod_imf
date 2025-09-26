@@ -37,6 +37,7 @@ public:
     int32_t SetPreviewText(const std::u16string &text, const OHOS::MiscServices::Range &range) override;
     void FinishTextPreview() override;
     void OnDetach() override;
+    std::shared_ptr<AppExecFwk::EventHandler> GetEventHandler() override;
 
     // empty impl
     void SendKeyEventFromInputMethod(const KeyEvent &event) override {};
@@ -48,7 +49,11 @@ private:
     InputMethod_EnterKeyType ConvertToCEnterKeyType(OHOS::MiscServices::EnterKeyType enterKeyType);
     InputMethod_Direction ConvertToCDirection(OHOS::MiscServices::Direction direction);
     InputMethod_ExtendAction ConvertToCExtendAction(int32_t action);
+    std::shared_ptr<AppExecFwk::EventHandler> GetMainHandler();
+
     InputMethod_TextEditorProxy *textEditor_;
+    std::mutex mainHandlerMtx_;
+    std::shared_ptr<AppExecFwk::EventHandler> mainHandler_ { nullptr };
 };
 } // namespace MiscServices
 } // namespace OHOS

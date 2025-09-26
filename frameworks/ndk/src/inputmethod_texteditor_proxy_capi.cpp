@@ -504,3 +504,15 @@ InputMethod_ErrorCode OH_TextEditorProxy_GetFinishTextPreviewFunc(
     *finishTextPreviewFunc = proxy->finishTextPreviewFunc;
     return IME_ERR_OK;
 }
+
+InputMethod_ErrorCode OH_TextEditorProxy_SetCallbackInMainThread(
+    InputMethod_TextEditorProxy *proxy, bool isCallbackInMainThread)
+{
+    if (proxy == nullptr) {
+        IMSA_HILOGE("proxy is nullptr");
+        return IME_ERR_NULL_POINTER;
+    }
+    IMSA_HILOGI("isCallbackInMainThread: %{public}d", isCallbackInMainThread);
+    proxy->isCallbackInMainThread = isCallbackInMainThread;
+    return IME_ERR_OK;
+}
