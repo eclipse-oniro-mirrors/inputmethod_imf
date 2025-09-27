@@ -2017,10 +2017,12 @@ void InputMethodPanel::UpdateImmersiveHotArea()
         return;
     }
     FullPanelAdjustInfo adjustInfo;
-    auto ret = GetAdjustInfo(panelFlag_, adjustInfo);
-    if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("GetAdjustInfo failed ret: %{public}d", ret);
-        return;
+    if (IsNeedConfig()) {
+        auto ret = GetAdjustInfo(panelFlag_, adjustInfo);
+        if (ret != ErrorCode::NO_ERROR) {
+            IMSA_HILOGE("GetAdjustInfo failed ret: %{public}d", ret);
+            return;
+        }
     }
 
     CalculateHotAreas(GetEnhancedLayoutParams(), GetKeyboardLayoutParams(), adjustInfo, hotAreas);
