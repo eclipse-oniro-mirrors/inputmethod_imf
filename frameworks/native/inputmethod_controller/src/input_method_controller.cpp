@@ -56,6 +56,8 @@ std::chrono::system_clock::time_point InputMethodController::startLogTime_ = sys
 std::mutex InputMethodController::printTextChangeMutex_;
 int32_t InputMethodController::textChangeCountInPeriod_ = 0;
 std::chrono::steady_clock::time_point InputMethodController::textChangeStartLogTime_ = steady_clock::now();
+constexpr uint32_t MAX_ATTACH_TIMEOUT = 2500;   // 2.5s
+BlockQueue<InputMethodController::CtrlEventInfo> InputMethodController::ctrlEventQueue_ { MAX_ATTACH_TIMEOUT };
 constexpr int32_t LOOP_COUNT = 5;
 constexpr int32_t LOG_MAX_TIME = 20;
 constexpr int32_t LOG_INSERT_MAX_TIME = 20; // 20s
@@ -280,6 +282,26 @@ int32_t InputMethodController::Attach(
     return Attach(listener, isShowKeyboard, textConfig, type);
 }
 
+InputMethodController::QueueGuard::QueueGuard(const std::string &name) : needPop_(true)
+{
+    CtrlEventInfo info = { std::chrono::steady_clock::now(), name };
+    if (!ctrlEventQueue_.Push(info)) {
+        needPop_ = false;
+        IMSA_HILOGE("push %{public}s failed, queue size:%{public}zu", name.c_str(), ctrlEventQueue_.Size());
+        return;
+    }
+    if (!ctrlEventQueue_.Wait(info)) {
+        IMSA_HILOGE("%{public}s wait timeout, queue size:%{public}zu", name.c_str(), ctrlEventQueue_.Size());
+    }
+}
+InputMethodController::QueueGuard::~QueueGuard()
+{
+    if (!needPop_) {
+        return;
+    }
+    ctrlEventQueue_.Pop();
+}
+
 int32_t InputMethodController::Attach(
     sptr<OnTextChangedListener> listener, bool isShowKeyboard, const TextConfig &textConfig, ClientType type)
 {
@@ -310,6 +332,7 @@ int32_t InputMethodController::IsValidTextConfig(const TextConfig &textConfig)
 int32_t InputMethodController::Attach(sptr<OnTextChangedListener> listener, const AttachOptions &attachOptions,
     const TextConfig &textConfig, ClientType type)
 {
+    QueueGuard guard(__func__);
     IMSA_HILOGI("isShowKeyboard %{public}d.", attachOptions.isShowKeyboard);
     InputMethodSyncTrace tracer("InputMethodController Attach with textConfig trace.");
     if (IsValidTextConfig(textConfig) != ErrorCode::NO_ERROR) {
@@ -438,6 +461,9 @@ int32_t InputMethodController::ShowCurrentInput()
 
 int32_t InputMethodController::Close()
 {
+    {
+        QueueGuard guard(__func__);
+    }
     if (IsBound()) {
         IMSA_HILOGI("start.");
     }
