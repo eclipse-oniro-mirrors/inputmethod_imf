@@ -2947,8 +2947,7 @@ HWTEST_F(InputMethodPanelTest, testShowPanelWithAdjust01, TestSize.Level0)
     inputMethodPanel->isWaitSetUiContent_ = false;
     inputMethodPanel->keyboardLayoutParams_.PortraitKeyboardRect_.height_ = 100;
     inputMethodPanel->keyboardLayoutParams_.PortraitPanelRect_.height_ = 100;
-    auto ret = inputMethodPanel->ShowPanel();
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    InputMethodPanelTest::TestShowPanel(inputMethodPanel);
 
     InputMethodAbility::GetInstance().ClearInputAttribute();
     InputMethodAbility::GetInstance().ClearInputType();
@@ -2967,8 +2966,7 @@ HWTEST_F(InputMethodPanelTest, testShowPanelWithAdjust02, TestSize.Level0)
     ASSERT_NE(inputMethodPanel, nullptr);
     InputMethodAbility::GetInstance().inputAttribute_.callingDisplayId = 1000;
     inputMethodPanel->isWaitSetUiContent_ = false;
-    auto ret = inputMethodPanel->ShowPanel();
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    InputMethodPanelTest::TestShowPanel(inputMethodPanel);
 
     InputMethodAbility::GetInstance().ClearInputAttribute();
     InputMethodPanelTest::DestroyPanel(inputMethodPanel);
@@ -2987,8 +2985,7 @@ HWTEST_F(InputMethodPanelTest, testShowPanelWithAdjust03, TestSize.Level0)
     InputMethodAbility::GetInstance().inputAttribute_.callingDisplayId = 0;
     inputMethodPanel->isInEnhancedAdjust_.store(true);
     inputMethodPanel->isWaitSetUiContent_ = false;
-    auto ret = inputMethodPanel->ShowPanel();
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    InputMethodPanelTest::TestShowPanel(inputMethodPanel);
 
     InputMethodAbility::GetInstance().ClearInputAttribute();
     InputMethodPanelTest::DestroyPanel(inputMethodPanel);
@@ -3009,8 +3006,7 @@ HWTEST_F(InputMethodPanelTest, testShowPanelWithAdjust04, TestSize.Level0)
     inputMethodPanel->isWaitSetUiContent_ = false;
     inputMethodPanel->keyboardLayoutParams_.PortraitKeyboardRect_.height_ = 100;
     inputMethodPanel->keyboardLayoutParams_.PortraitPanelRect_.height_ = 101;
-    auto ret = inputMethodPanel->ShowPanel();
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    InputMethodPanelTest::TestShowPanel(inputMethodPanel);
 
     InputMethodAbility::GetInstance().ClearInputAttribute();
     InputMethodPanelTest::DestroyPanel(inputMethodPanel);
@@ -3034,8 +3030,7 @@ HWTEST_F(InputMethodPanelTest, testShowPanelWithAdjust05, TestSize.Level0)
     inputMethodPanel->keyboardLayoutParams_.PortraitPanelRect_.height_ = 100;
     inputMethodPanel->isIgnorePanelAdjustInitialized_.store(true);
     inputMethodPanel->ignoreAdjustInputTypes_.push_back(static_cast<int32_t>(InputType::VOICE_INPUT));
-    auto ret = inputMethodPanel->ShowPanel();
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    InputMethodPanelTest::TestShowPanel(inputMethodPanel);
 
     InputMethodAbility::GetInstance().ClearInputAttribute();
     InputMethodAbility::GetInstance().ClearInputType();
