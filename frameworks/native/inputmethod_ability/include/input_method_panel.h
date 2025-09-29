@@ -85,6 +85,7 @@ public:
     ImmersiveEffect LoadImmersiveEffect();
     int32_t SetKeepScreenOn(bool isKeepScreenOn);
     int32_t GetSystemPanelCurrentInsets(uint64_t displayId, SystemPanelInsets &systemPanelInsets);
+    bool IsKeyboardAtBottom();
     uint32_t windowId_ = INVALID_WINDOW_ID;
 
 private:

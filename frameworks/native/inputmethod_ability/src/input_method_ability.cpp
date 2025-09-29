@@ -1300,10 +1300,14 @@ int32_t InputMethodAbility::NotifyPanelStatus(bool isUseParameterFlag, PanelFlag
     PanelFlag curPanelFlag = isUseParameterFlag ? panelFlag : panel->GetPanelFlag();
     SysPanelStatus sysPanelStatus = { inputType_, curPanelFlag, keyboardSize.width, keyboardSize.height };
     if (!panel->IsInMainDisplay()) {
-        sysPanelStatus.isPanelRaised = false;
+        sysPanelStatus.isPanelRaised = true;
         sysPanelStatus.needFuncButton = false;
     }
     if (GetAttachOptions().isSimpleKeyboardEnabled && IsDefaultIme() && !GetInputAttribute().IsOneTimeCodeFlag()) {
+        sysPanelStatus.needFuncButton = false;
+    }
+    if (panel->IsKeyboardAtBottom() && sysPanelStatus.needFuncButton) {
+        IMSA_HILOGW("keyboard is at the bottom, hide the system panel button");
         sysPanelStatus.needFuncButton = false;
     }
     auto systemChannel = GetSystemCmdChannelProxy();
