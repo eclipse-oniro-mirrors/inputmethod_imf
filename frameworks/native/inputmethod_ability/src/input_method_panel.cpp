@@ -44,6 +44,7 @@ constexpr int32_t MAXWAITTIME = 30;
 constexpr int32_t WAITTIME = 10;
 InputMethodPanel::~InputMethodPanel() = default;
 constexpr float GRADIENT_HEIGHT_RATIO = 0.15;
+constexpr uint64_t MAIN_DISPLAY_ID = 0;
 
 int32_t InputMethodPanel::CreatePanel(
     const std::shared_ptr<AbilityRuntime::Context> &context, const PanelInfo &panelInfo)
@@ -1248,6 +1249,14 @@ int32_t InputMethodPanel::ShowPanel()
         return ErrorCode::NO_ERROR;
     }
     auto ret = WMError::WM_OK;
+    if (GetCurDisplayId() == MAIN_DISPLAY_ID && !isInEnhancedAdjust_.load()) {
+        if (IsKeyboardAtBottom() && IsNeedConfig()) {
+            auto enhancedParams = GetEnhancedLayoutParams();
+            LayoutParams layoutParams = { enhancedParams.landscape.rect, enhancedParams.portrait.rect };
+            auto result = AdjustPanelRect(panelFlag_, layoutParams);
+            IMSA_HILOGI("Correct AdjustPanelRect result: %{public}d", result);
+        }
+    }
     {
         KeyboardEffectOption option = ConvertToWmEffect(GetImmersiveMode(), LoadImmersiveEffect());
         InputMethodSyncTrace tracer("InputMethodPanel_ShowPanel");
@@ -2043,10 +2052,12 @@ void InputMethodPanel::UpdateImmersiveHotArea()
         return;
     }
     FullPanelAdjustInfo adjustInfo;
-    auto ret = GetAdjustInfo(panelFlag_, adjustInfo);
-    if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("GetAdjustInfo failed ret: %{public}d", ret);
-        return;
+    if (IsNeedConfig()) {
+        auto ret = GetAdjustInfo(panelFlag_, adjustInfo);
+        if (ret != ErrorCode::NO_ERROR) {
+            IMSA_HILOGE("GetAdjustInfo failed ret: %{public}d", ret);
+            return;
+        }
     }
 
     CalculateHotAreas(GetEnhancedLayoutParams(), GetKeyboardLayoutParams(), adjustInfo, hotAreas);
@@ -2160,13 +2171,7 @@ uint64_t InputMethodPanel::GetCurDisplayId()
 bool InputMethodPanel::IsInMainDisplay()
 {
     IMSA_HILOGD("enter!!");
-    uint64_t displayId = GetCurDisplayId();
-    auto primaryDisplay = Rosen::DisplayManager::GetInstance().GetPrimaryDisplaySync();
-    if (primaryDisplay == nullptr) {
-        IMSA_HILOGE("primaryDisplay failed!");
-        return true;
-    }
-    return primaryDisplay->GetId() == displayId;
+    return GetCurDisplayId() == MAIN_DISPLAY_ID;
 }
 
 void InputMethodPanel::SetIgnoreAdjustInputTypes(const std::vector<int32_t> &inputTypes)
@@ -2206,7 +2211,7 @@ bool InputMethodPanel::IsNeedConfig(bool ignoreIsMainDisplay)
     if (!ignoreIsMainDisplay && !IsInMainDisplay()) {
         needConfig = false;
     }
-    IMSA_HILOGD("isNeedConfig is %{public}d", needConfig);
+    IMSA_HILOGI("isNeedConfig is %{public}d", needConfig);
     return needConfig;
 }
 
@@ -2371,6 +2376,12 @@ int32_t InputMethodPanel::GetSystemPanelCurrentInsets(uint64_t displayId, System
     }
     IMSA_HILOGD("GetSystemPanelInsets success!!");
     return ErrorCode::NO_ERROR;
+}
+
+bool InputMethodPanel::IsKeyboardAtBottom()
+{
+    auto layoutParams = GetKeyboardLayoutParams();
+    return layoutParams.PortraitKeyboardRect_.height_ == layoutParams.PortraitPanelRect_.height_;
 }
 } // namespace MiscServices
 } // namespace OHOS

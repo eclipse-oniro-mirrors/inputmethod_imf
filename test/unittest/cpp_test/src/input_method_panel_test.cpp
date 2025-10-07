@@ -2909,6 +2909,135 @@ HWTEST_F(InputMethodPanelTest, testGetSystemPanelInsets11, TestSize.Level0)
 }
 
 /**
+ * @tc.name: testNotifyPanelStatus
+ * @tc.desc: Test Show panel.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testNotifyPanelStatus, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testNotifyPanelStatus start.");
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FIXED;
+    InputMethodPanelTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    inputMethodPanel->keyboardLayoutParams_.PortraitKeyboardRect_.height_ = 100;
+    inputMethodPanel->keyboardLayoutParams_.PortraitPanelRect_.height_ = 100;
+    InputMethodPanelTest::ima_.ClearInputAttribute();
+    InputMethodPanelTest::ima_.ClearAttachOptions();
+    InputMethodPanelTest::ima_.ClearSystemCmdChannel();
+    auto ret = InputMethodPanelTest::ima_.NotifyPanelStatus(false);
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
+    InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
+}
+
+/**
+ * @tc.name: testShowPanelWithAdjust01
+ * @tc.desc: Test Show panel.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testShowPanelWithAdjust01, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testShowPanelWithAdjust01 start.");
+    auto inputMethodPanel = InputMethodPanelTest::CreatePanel();
+    ASSERT_NE(inputMethodPanel, nullptr);
+    InputMethodAbility::GetInstance().inputAttribute_.callingDisplayId = 0;
+    InputMethodAbility::GetInstance().inputType_ = InputType::NONE;
+    inputMethodPanel->isInEnhancedAdjust_.store(false);
+    inputMethodPanel->isWaitSetUiContent_ = false;
+    inputMethodPanel->keyboardLayoutParams_.PortraitKeyboardRect_.height_ = 100;
+    inputMethodPanel->keyboardLayoutParams_.PortraitPanelRect_.height_ = 100;
+    InputMethodPanelTest::TestShowPanel(inputMethodPanel);
+
+    InputMethodAbility::GetInstance().ClearInputAttribute();
+    InputMethodAbility::GetInstance().ClearInputType();
+    InputMethodPanelTest::DestroyPanel(inputMethodPanel);
+}
+
+/**
+ * @tc.name: testShowPanelWithAdjust02
+ * @tc.desc: Test Show panel.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testShowPanelWithAdjust02, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testShowPanelWithAdjust02 start.");
+    auto inputMethodPanel = InputMethodPanelTest::CreatePanel();
+    ASSERT_NE(inputMethodPanel, nullptr);
+    InputMethodAbility::GetInstance().inputAttribute_.callingDisplayId = 1000;
+    inputMethodPanel->isWaitSetUiContent_ = false;
+    InputMethodPanelTest::TestShowPanel(inputMethodPanel);
+
+    InputMethodAbility::GetInstance().ClearInputAttribute();
+    InputMethodPanelTest::DestroyPanel(inputMethodPanel);
+}
+
+/**
+ * @tc.name: testShowPanelWithAdjust03
+ * @tc.desc: Test Show panel.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testShowPanelWithAdjust03, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testShowPanelWithAdjust03 start.");
+    auto inputMethodPanel = InputMethodPanelTest::CreatePanel();
+    ASSERT_NE(inputMethodPanel, nullptr);
+    InputMethodAbility::GetInstance().inputAttribute_.callingDisplayId = 0;
+    inputMethodPanel->isInEnhancedAdjust_.store(true);
+    inputMethodPanel->isWaitSetUiContent_ = false;
+    InputMethodPanelTest::TestShowPanel(inputMethodPanel);
+
+    InputMethodAbility::GetInstance().ClearInputAttribute();
+    InputMethodPanelTest::DestroyPanel(inputMethodPanel);
+}
+
+/**
+ * @tc.name: testShowPanelWithAdjust04
+ * @tc.desc: Test Show panel.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testShowPanelWithAdjust04, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testShowPanelWithAdjust04 start.");
+    auto inputMethodPanel = InputMethodPanelTest::CreatePanel();
+    ASSERT_NE(inputMethodPanel, nullptr);
+    InputMethodAbility::GetInstance().inputAttribute_.callingDisplayId = 0;
+    inputMethodPanel->isInEnhancedAdjust_.store(false);
+    inputMethodPanel->isWaitSetUiContent_ = false;
+    inputMethodPanel->keyboardLayoutParams_.PortraitKeyboardRect_.height_ = 100;
+    inputMethodPanel->keyboardLayoutParams_.PortraitPanelRect_.height_ = 101;
+    InputMethodPanelTest::TestShowPanel(inputMethodPanel);
+
+    InputMethodAbility::GetInstance().ClearInputAttribute();
+    InputMethodPanelTest::DestroyPanel(inputMethodPanel);
+}
+
+/**
+ * @tc.name: testShowPanelWithAdjust05
+ * @tc.desc: Test Show panel.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testShowPanelWithAdjust05, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testShowPanelWithAdjust05 start.");
+    auto inputMethodPanel = InputMethodPanelTest::CreatePanel();
+    ASSERT_NE(inputMethodPanel, nullptr);
+    InputMethodAbility::GetInstance().inputAttribute_.callingDisplayId = 0;
+    InputMethodAbility::GetInstance().inputType_ = InputType::VOICE_INPUT;
+    inputMethodPanel->isInEnhancedAdjust_.store(false);
+    inputMethodPanel->isWaitSetUiContent_ = false;
+    inputMethodPanel->keyboardLayoutParams_.PortraitKeyboardRect_.height_ = 100;
+    inputMethodPanel->keyboardLayoutParams_.PortraitPanelRect_.height_ = 100;
+    inputMethodPanel->isIgnorePanelAdjustInitialized_.store(true);
+    inputMethodPanel->ignoreAdjustInputTypes_.push_back(static_cast<int32_t>(InputType::VOICE_INPUT));
+    InputMethodPanelTest::TestShowPanel(inputMethodPanel);
+
+    InputMethodAbility::GetInstance().ClearInputAttribute();
+    InputMethodAbility::GetInstance().ClearInputType();
+    InputMethodPanelTest::DestroyPanel(inputMethodPanel);
+}
+
+/**
  * @tc.name: testGetInputWindowAvoidArea_01
  * @tc.desc: Test GetInputWindowAvoidArea with different isInEnhancedAdjust_ and panelFlag.
  * @tc.type: FUNC

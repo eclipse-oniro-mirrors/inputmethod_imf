@@ -161,17 +161,17 @@ std::u16string NativeTextChangedListener::GetLeftTextOfCursor(int32_t number)
         return u"";
     }
 
-    size_t length = static_cast<size_t>(number + 1);
-    char16_t *text = new (std::nothrow) char16_t[length];
-    if (text == nullptr) {
-        IMSA_HILOGE("text is nullptr");
+    size_t bufferSize = static_cast<size_t>(number + 1);
+    std::vector<char16_t> text(bufferSize);
+    size_t realLength = static_cast<size_t>(number);
+
+    textEditor_->getLeftTextOfCursorFunc(textEditor_, number, text.data(), &realLength);
+    if (realLength > static_cast<size_t>(number)) {
+        IMSA_HILOGE("realLength > number");
         return u"";
     }
 
-    textEditor_->getLeftTextOfCursorFunc(textEditor_, number, text, &length);
-
-    std::u16string textStr(text, length);
-    delete[] text;
+    std::u16string textStr(text.data(), realLength);
     return textStr;
 }
 
@@ -192,16 +192,16 @@ std::u16string NativeTextChangedListener::GetRightTextOfCursor(int32_t number)
         return u"";
     }
 
-    size_t length = static_cast<size_t>(number + 1);
-    char16_t *text = new (std::nothrow) char16_t[length];
-    if (text == nullptr) {
-        IMSA_HILOGE("text is nullptr");
+    size_t bufferSize = static_cast<size_t>(number + 1);
+    std::vector<char16_t> text(bufferSize);
+    size_t realLength = static_cast<size_t>(number);
+
+    textEditor_->getRightTextOfCursorFunc(textEditor_, number, text.data(), &realLength);
+    if (realLength > static_cast<size_t>(number)) {
+        IMSA_HILOGE("realLength > number");
         return u"";
     }
-
-    textEditor_->getRightTextOfCursorFunc(textEditor_, number, text, &length);
-    std::u16string textStr(text, length);
-    delete[] text;
+    std::u16string textStr(text.data(), realLength);
     return textStr;
 }
 
@@ -239,9 +239,21 @@ int32_t NativeTextChangedListener::ReceivePrivateCommand(
         return ErrorCode::ERROR_NULL_POINTER;
     }
 
+    auto freeCommand = [command](size_t index) {
+        for (size_t i = 0; i < index; i++) {
+            delete command[i];
+        }
+        delete[] command;
+    };
+
     size_t index = 0;
     for (const auto &item : privateCommand) {
-        command[index] = new InputMethod_PrivateCommand();
+        command[index] = new (std::nothrow) InputMethod_PrivateCommand();
+        if (command[index] == nullptr) {
+            IMSA_HILOGE("new InputMethod_PrivateCommand failed");
+            freeCommand(index);
+            return ErrorCode::ERROR_NULL_POINTER;
+        }
         command[index]->key = item.first;
         command[index]->value = item.second;
         ++index;
@@ -249,10 +261,7 @@ int32_t NativeTextChangedListener::ReceivePrivateCommand(
 
     auto errCode = textEditor_->receivePrivateCommandFunc(textEditor_, command, privateCommand.size());
 
-    for (size_t i = 0; i < index; ++i) {
-        delete command[i];
-    }
-    delete[] command;
+    freeCommand(index);
     return errCode;
 }
 
@@ -291,8 +300,21 @@ void NativeTextChangedListener::OnDetach()
     ClearInputMethodProxy();
 }
 
-InputMethod_KeyboardStatus NativeTextChangedListener::ConvertToCKeyboardStatus(
-    OHOS::MiscServices::KeyboardStatus status)
+std::shared_ptr<AppExecFwk::EventHandler> NativeTextChangedListener::GetEventHandler()
+{
+    if (textEditor_ == nullptr) {
+        IMSA_HILOGE("textEditor_ is nullptr");
+        return nullptr;
+    }
+
+    if (!textEditor_->isCallbackInMainThread) {
+        return nullptr;
+    }
+
+    return GetMainHandler();
+}
+
+InputMethod_KeyboardStatus NativeTextChangedListener::ConvertToCKeyboardStatus(KeyboardStatus status)
 {
     switch (status) {
         case OHOS::MiscServices::KeyboardStatus::HIDE:
@@ -362,6 +384,23 @@ InputMethod_ExtendAction NativeTextChangedListener::ConvertToCExtendAction(int32
             IMSA_HILOGE("invalid action:%{public}d", action);
             return IME_EXTEND_ACTION_SELECT_ALL;
     }
+}
+
+std::shared_ptr<AppExecFwk::EventHandler> NativeTextChangedListener::GetMainHandler()
+{
+    std::lock_guard<std::mutex> lock(mainHandlerMtx_);
+    if (mainHandler_ != nullptr) {
+        return mainHandler_;
+    }
+    auto mainRunner = AppExecFwk::EventRunner::GetMainEventRunner();
+    if (mainRunner == nullptr) {
+        IMSA_HILOGE("GetMainEventRunner failed");
+        return nullptr;
+    }
+
+    mainHandler_ = std::make_shared<AppExecFwk::EventHandler>(mainRunner);
+    IMSA_HILOGI("success");
+    return mainHandler_;
 }
 } // namespace MiscServices
 } // namespace OHOS

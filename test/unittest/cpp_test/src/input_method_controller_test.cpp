@@ -78,6 +78,7 @@ constexpr uint32_t WAIT_INTERVAL = 500;
 constexpr size_t PRIVATE_COMMAND_SIZE_MAX = 32 * 1024;
 constexpr uint32_t WAIT_SA_DIE_TIME_OUT = 3;
 const std::string IME_KEY = "settings.inputmethod.enable_ime";
+constexpr uint32_t MAX_ATTACH_TIMEOUT = 2500; // 2.5s
 
 class SelectListenerMock : public ControllerListener {
 public:
@@ -2346,5 +2347,85 @@ HWTEST_F(InputMethodControllerTest, TestClearKeyEventCbInfo, TestSize.Level0)
     keyEventRetHandler.ClearKeyEventCbInfo();
     EXPECT_TRUE(keyEventRetHandler.keyEventCbHandlers_.empty());
 }
+
+/**
+ * @tc.name: TestPushAndPoptoCtrlEventQueue_SUCCESS
+ * @tc.desc: Test PushAndPoptoCtrlEventQueue
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, TestPushAndPoptoCtrlEventQueue_SUCCESS, TestSize.Level0)
+{
+    IMSA_HILOGI("TestPushAndPoptoCtrlEventQueue_SUCCESS START");
+    {
+        InputMethodController::QueueGuard queueGuard1("test1");
+        EXPECT_EQ(InputMethodController::ctrlEventQueue_.Size(), 1);
+    }
+    EXPECT_EQ(InputMethodController::ctrlEventQueue_.Size(), 0);
+}
+
+/**
+ * @tc.name: TestWaitCtrlEventQueue_FAILED
+ * @tc.desc: Test wait CtrlEventQueue timeout
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, TestWaitCtrlEventQueue_FAILED, TestSize.Level0)
+{
+    uint32_t testTimeOut = 100; // 100ms
+    IMSA_HILOGI("TestWaitCtrlEventQueue_FAILED START");
+    InputMethodController::ctrlEventQueue_.timeout_ = testTimeOut; // 100ms
+    std::thread t1([]() {
+        InputMethodController::QueueGuard queueGuard1("test1");
+        std::this_thread::sleep_for(std::chrono::milliseconds(150));
+    });
+    // wait for t1 schedule
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    {
+        auto start = std::chrono::system_clock::now();
+        InputMethodController::QueueGuard queueGuard2("test2"); // will be blocked for more than testTimeOut ms
+        auto end = std::chrono::system_clock::now();
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+        EXPECT_GE(duration.count(), testTimeOut);
+    }
+
+    t1.join();
+    EXPECT_EQ(InputMethodController::ctrlEventQueue_.Size(), 0);
+    InputMethodController::ctrlEventQueue_.timeout_ = MAX_ATTACH_TIMEOUT;
+}
+
+/**
+ * @tc.name: TestPushCtrlEventQueue_FAILED
+ * @tc.desc: Test push CtrlEventQueue failed
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, TestPushCtrlEventQueue_FAILED, TestSize.Level0)
+{
+    InputMethodController::ctrlEventQueue_.maxQueueSize_ = 2;
+    uint32_t testTimeOut = 100; // 100ms
+    InputMethodController::ctrlEventQueue_.timeout_ = testTimeOut; // 100ms
+
+    std::thread t1([]() {
+        InputMethodController::QueueGuard queueGuard1("test1");
+        std::this_thread::sleep_for(std::chrono::milliseconds(90));
+    });
+
+    std::thread t2([]() {
+        InputMethodController::QueueGuard queueGuard2("test2");
+        std::this_thread::sleep_for(std::chrono::milliseconds(90));
+    });
+    // wait for t1 and t2 schedule
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    {
+        InputMethodController::QueueGuard queueGuard3("test3");
+        EXPECT_EQ(InputMethodController::ctrlEventQueue_.Size(), 2);
+    }
+    EXPECT_EQ(InputMethodController::ctrlEventQueue_.Size(), 2);
+
+    t1.join();
+    t2.join();
+    EXPECT_EQ(InputMethodController::ctrlEventQueue_.Size(), 0);
+    InputMethodController::ctrlEventQueue_.maxQueueSize_ = MAX_QUEUE_SIZE;
+    InputMethodController::ctrlEventQueue_.timeout_ = MAX_ATTACH_TIMEOUT;
+}
+
 } // namespace MiscServices
 } // namespace OHOS

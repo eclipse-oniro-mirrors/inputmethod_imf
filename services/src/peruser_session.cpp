@@ -2301,10 +2301,10 @@ bool PerUserSession::CheckPwdInputPatternConv(InputClientInfo &clientInfo, uint6
     }
     // if current input pattern differ from previous in pwd and normal, need hide panel first.
     if (clientInfo.config.inputAttribute.GetSecurityFlag()) {
-        IMSA_HILOGI("new input pattern is pwd.");
+        IMSA_HILOGD("new input pattern is pwd.");
         return !exClientInfo->config.inputAttribute.GetSecurityFlag();
     }
-    IMSA_HILOGI("new input pattern is normal.");
+    IMSA_HILOGD("new input pattern is normal.");
     return exClientInfo->config.inputAttribute.GetSecurityFlag();
 }
 

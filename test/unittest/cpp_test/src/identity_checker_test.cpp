@@ -18,6 +18,7 @@
 #include "input_method_system_ability.h"
 #undef private
 
+#include <gmock/gmock.h>
 #include <gtest/gtest.h>
 #include <sys/time.h>
 #include <unistd.h>
@@ -32,6 +33,30 @@ using namespace testing;
 using namespace testing::ext;
 namespace OHOS {
 namespace MiscServices {
+constexpr uint32_t INVAL_TOKEN_ID = -1;
+constexpr uint32_t INVAL_WINDOW_ID = 0;
+
+class MockIRemoteObject : public IRemoteObject {
+public:
+    MockIRemoteObject() : IRemoteObject(u"mock_i_remote_object") { }
+    ~MockIRemoteObject() { }
+    MOCK_METHOD(int, SendRequest, (uint32_t code, MessageParcel &data, MessageParcel &reply, MessageOption &option));
+    MOCK_METHOD(bool, IsProxyObject, (), (const, override));
+    MOCK_METHOD(bool, CheckObjectLegality, (), (const, override));
+    MOCK_METHOD(bool, AddDeathRecipient, (const sptr<DeathRecipient> &recipient), (override));
+    MOCK_METHOD(bool, RemoveDeathRecipient, (const sptr<DeathRecipient> &recipient), (override));
+    MOCK_METHOD(bool, Marshalling, (Parcel & parcel), (const, override));
+    MOCK_METHOD(sptr<IRemoteBroker>, AsInterface, (), (override));
+    MOCK_METHOD(int, Dump, (int fd, const std::vector<std::u16string> &args), (override));
+    MOCK_METHOD(int32_t, GetObjectRefCount, (), (override));
+
+    std::u16string GetObjectDescriptor() const
+    {
+        std::u16string descriptor = std::u16string();
+        return descriptor;
+    }
+};
+
 class IdentityCheckerTest : public testing::Test {
 public:
     class IdentityCheckerMock : public IdentityChecker {
@@ -75,6 +100,10 @@ public:
         {
             return true;
         }
+        bool IsFocusedUIExtension(uint32_t callingTokenId, sptr<IRemoteObject> abilityToken = nullptr) override
+        {
+            return isFocusedUIExtension_;
+        }
         static bool isFocused_;
         static bool isSystemApp_;
         static bool isBundleNameValid_;
@@ -82,6 +111,7 @@ public:
         static bool isBroker_;
         static bool isNativeSa_;
         static bool isFromShell_;
+        static bool isFocusedUIExtension_;
     };
     static constexpr uint32_t MAIN_USER_ID = 100;
     static const constexpr char *CURRENT_IME = "testBundleName/testExtname";
@@ -103,6 +133,7 @@ bool IdentityCheckerTest::IdentityCheckerMock::hasPermission_ = false;
 bool IdentityCheckerTest::IdentityCheckerMock::isBroker_ = false;
 bool IdentityCheckerTest::IdentityCheckerMock::isNativeSa_ = false;
 bool IdentityCheckerTest::IdentityCheckerMock::isFromShell_ = false;
+bool IdentityCheckerTest::IdentityCheckerMock::isFocusedUIExtension_ = false;
 
 void IdentityCheckerTest::SetUpTestCase(void)
 {
@@ -856,6 +887,40 @@ TEST_F(IdentityCheckerTest, GetRestoreBundleName_MissingTypeOrDetail_ReturnsEmpt
     data.WriteString("[{\"type\":\"default_input_method\"}]");
     std::string bundleName = service_->GetRestoreBundleName(data);
     EXPECT_EQ(bundleName, "");
+}
+
+/**
+ * @tc.name: testIsFocusedUIExtension
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.author:
+ */
+HWTEST_F(IdentityCheckerTest, testIsFocusedUIExtension, TestSize.Level1)
+{
+    IMSA_HILOGI("IdentityCheckerTest testIsFocusedUIExtension start");
+    sptr<IRemoteObject> abilityToken = nullptr;
+    uint32_t callingTokenId = INVAL_TOKEN_ID;
+    auto ret = identityCheckerImpl_->IsFocusedUIExtension(callingTokenId, abilityToken);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.name: testGetUIExtensionWindowId
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.author:
+ */
+HWTEST_F(IdentityCheckerTest, testGetUIExtensionWindowId, TestSize.Level1)
+{
+    IMSA_HILOGI("IdentityCheckerTest testGetUIExtensionWindowId start");
+    sptr<IRemoteObject> abilityToken = nullptr;
+    auto ret = identityCheckerImpl_->GetUIExtensionWindowId(abilityToken);
+    EXPECT_EQ(ret, INVAL_WINDOW_ID);
+
+    abilityToken = new (std::nothrow) MockIRemoteObject();
+    ASSERT_NE(abilityToken, nullptr);
+    ret = identityCheckerImpl_->GetUIExtensionWindowId(abilityToken);
+    EXPECT_EQ(ret, INVAL_WINDOW_ID);
 }
 } // namespace MiscServices
 } // namespace OHOS

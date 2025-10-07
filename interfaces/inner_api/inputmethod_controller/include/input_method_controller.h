@@ -1039,6 +1039,26 @@ private:
     int32_t SendRequestToImeMirrorAgent(std::function<int32_t(std::shared_ptr<IInputMethodAgent>)> task);
     void SetInputReady(const std::vector<sptr<IRemoteObject>> &agentObjects, const std::vector<BindImeInfo> &imeInfos);
 
+    struct CtrlEventInfo {
+        std::chrono::steady_clock::time_point timestamp;
+        std::string eventName;
+        bool operator==(const CtrlEventInfo &info) const
+        {
+            return (timestamp == info.timestamp && eventName == info.eventName);
+        }
+    };
+
+    static BlockQueue<CtrlEventInfo> ctrlEventQueue_;
+
+    class QueueGuard {
+    public:
+        explicit QueueGuard(const std::string &name);
+        ~QueueGuard();
+
+    private:
+        bool needPop_;
+    };
+
     std::shared_ptr<ControllerListener> controllerListener_;
     std::mutex abilityLock_;
     sptr<IInputMethodSystemAbility> abilityManager_ = nullptr;

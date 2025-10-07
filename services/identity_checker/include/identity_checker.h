@@ -24,6 +24,7 @@ class IdentityChecker {
 public:
     static constexpr uint64_t DEFAULT_DISPLAY_ID = 0;
     static constexpr int64_t INVALID_PID = -1;
+    static constexpr int64_t INVALID_WINDOW_ID = 0;
     virtual ~IdentityChecker() = default;
     virtual bool IsFocused(int64_t callingPid, uint32_t callingTokenId, int64_t focusedPid = INVALID_PID,
         bool isAttach = false, sptr<IRemoteObject> abilityToken = nullptr) = 0;
@@ -34,6 +35,10 @@ public:
     virtual bool IsNativeSa(Security::AccessToken::AccessTokenID tokenId) = 0;
     virtual bool IsFormShell(Security::AccessToken::AccessTokenID tokenId) = 0;
     virtual std::string GetBundleNameByToken(uint32_t tokenId);
+    virtual uint32_t GetUIExtensionWindowId(sptr<IRemoteObject> abilityToken = nullptr)
+    {
+        return false;
+    };
     virtual bool IsFocusedUIExtension(uint32_t callingTokenId, sptr<IRemoteObject> abilityToken = nullptr)
     {
         return false;
