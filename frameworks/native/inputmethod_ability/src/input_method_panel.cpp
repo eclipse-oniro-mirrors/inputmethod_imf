@@ -1435,7 +1435,7 @@ int32_t InputMethodPanel::GetInputWindowAvoidArea(PanelFlag panelFlag, Rosen::Re
         windowRect.posY_ = windowRect.posY_ + layoutParams.landscape.avoidY;
         windowRect.height_ = layoutParams.landscape.avoidHeight;
     }
-    IMSA_HILOGI("input window avoid area: %{public}s", windowRect.ToString().c_str());
+    IMSA_HILOGD("input window avoid area: %{public}s", windowRect.ToString().c_str());
     return ErrorCode::NO_ERROR;
 }
 
