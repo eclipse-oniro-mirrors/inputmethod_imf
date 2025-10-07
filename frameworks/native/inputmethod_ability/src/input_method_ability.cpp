@@ -1113,6 +1113,20 @@ int32_t InputMethodAbility::OnConnectSystemCmd(const sptr<IRemoteObject> &channe
         IMSA_HILOGE("failed to create channel proxy!");
         return ErrorCode::ERROR_CLIENT_NULL_POINTER;
     }
+    bool shouldSendCommand = false;
+    std::unordered_map<std::string, PrivateDataValue> colorPrivateCommand;
+    {
+        std::lock_guard<std::mutex> lock(colorPrivateCommandLock_);
+        if (colorPrivateCommand_.find("functionKeyColor") != colorPrivateCommand_.end() &&
+            colorPrivateCommand_.find("functionKeyPressColor") != colorPrivateCommand_.end()) {
+            shouldSendCommand = true;
+            colorPrivateCommand = colorPrivateCommand_;
+            colorPrivateCommand_.clear();
+        }
+    }
+    if (shouldSendCommand) {
+        cmdChannel->SendPrivateCommand(colorPrivateCommand);
+    }
     {
         std::lock_guard<std::mutex> lock(systemCmdChannelLock_);
         systemCmdChannelProxy_ = cmdChannel;
@@ -1592,6 +1606,7 @@ int32_t InputMethodAbility::SendPrivateCommand(const std::unordered_map<std::str
     if (TextConfig::IsSystemPrivateCommand(privateCommand)) {
         auto systemChannel = GetSystemCmdChannelProxy();
         if (systemChannel == nullptr) {
+            UpdateColorPrivateCommand(privateCommand);
             IMSA_HILOGE("channel is nullptr!");
             return ErrorCode::ERROR_SYSTEM_CMD_CHANNEL_ERROR;
         }
@@ -1605,6 +1620,17 @@ int32_t InputMethodAbility::SendPrivateCommand(const std::unordered_map<std::str
         }
         Value commandValueMap(privateCommand);
         return channel->SendPrivateCommand(commandValueMap);
+    }
+}
+
+void InputMethodAbility::UpdateColorPrivateCommand(
+    const std::unordered_map<std::string, PrivateDataValue> &privateCommand)
+{
+    std::lock_guard<std::mutex> lock(colorPrivateCommandLock_);
+    for (const auto& [key, value] : privateCommand) {
+        if (key == "functionKeyColor" || key == "functionKeyPressColor") {
+            colorPrivateCommand_[key] = value;
+        }
     }
 }
 
