@@ -1249,7 +1249,7 @@ int32_t InputMethodPanel::ShowPanel()
         return ErrorCode::NO_ERROR;
     }
     auto ret = WMError::WM_OK;
-    if (GetCurDisplayId() == MAIN_DISPLAY_ID && !isInEnhancedAdjust_.load()) {
+    if (GetCurDisplayId() == MAIN_DISPLAY_ID) {
         if (IsKeyboardAtBottom() && IsNeedConfig()) {
             auto enhancedParams = GetEnhancedLayoutParams();
             LayoutParams layoutParams = { enhancedParams.landscape.rect, enhancedParams.portrait.rect };
@@ -2355,7 +2355,8 @@ int32_t InputMethodPanel::GetSystemPanelCurrentInsets(uint64_t displayId, System
 bool InputMethodPanel::IsKeyboardAtBottom()
 {
     auto layoutParams = GetKeyboardLayoutParams();
-    return layoutParams.PortraitKeyboardRect_.height_ == layoutParams.PortraitPanelRect_.height_;
+    return layoutParams.PortraitKeyboardRect_.height_ == layoutParams.PortraitPanelRect_.height_ &&
+        !isInEnhancedAdjust_.load();
 }
 } // namespace MiscServices
 } // namespace OHOS
