@@ -37,16 +37,14 @@ napi_status JsExtraConfig::GetValue(napi_env env, napi_value in, CustomSettings 
 {
     napi_valuetype type = napi_undefined;
     napi_status status = napi_typeof(env, in, &type);
-    CHECK_RETURN(type != napi_undefined, "param is undefined.", napi_generic_failure);
+    CHECK_RETURN(type != napi_undefined, "param is undefined.", status);
 
     napi_value keys = nullptr;
-    napi_get_property_names(env, in, &keys);
+    status = napi_get_property_names(env, in, &keys);
+    CHECK_RETURN(status == napi_ok, "get_property_names error.", status);
     uint32_t arrLen = 0;
     status = napi_get_array_length(env, keys, &arrLen);
-    if (status != napi_ok) {
-        IMSA_HILOGE("napi_get_array_length error");
-        return status;
-    }
+    CHECK_RETURN(status == napi_ok, "napi_get_array_length error.", status);
     IMSA_HILOGD("length : %{public}u", arrLen);
     uint32_t totalSize = 0;
     for (size_t iter = 0; iter < arrLen; ++iter) {
@@ -107,7 +105,7 @@ napi_status JsExtraConfig::GetValue(napi_env env, napi_value in, CustomValueType
     return status;
 }
 
-napi_status JsExtraConfig::GetJsExtraConfig(napi_env env, const ExtraConfig &in, napi_value &out)
+napi_status JsExtraConfig::CreateExtraConfig(napi_env env, const ExtraConfig &in, napi_value &out)
 {
     napi_value jsObject = nullptr;
     CHECK_RETURN(napi_create_object(env, &jsObject) == napi_ok, "create_object error", napi_generic_failure);
@@ -137,11 +135,6 @@ napi_status JsExtraConfig::GetJsExtraConfig(napi_env env, const ExtraConfig &in,
     CHECK_RETURN(napi_set_named_property(env, out, name.c_str(), jsObject) == napi_ok, "set_named_property error",
         napi_generic_failure);
     return napi_ok;
-}
-
-napi_status JsExtraConfig::CreateExtraConfig(napi_env env, const ExtraConfig &in, napi_value &out)
-{
-    return GetJsExtraConfig(env, in, out);
 }
 
 napi_status JsExtraConfig::GetExtraConfig(napi_env env, napi_value in, ExtraConfig &out, uint32_t maxLen)

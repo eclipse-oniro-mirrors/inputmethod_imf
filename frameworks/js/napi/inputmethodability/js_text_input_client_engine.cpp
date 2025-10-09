@@ -1170,7 +1170,7 @@ bool JsExtraConfigInfo::Write(napi_env env, napi_value &jsObject, const ExtraCon
     if (status != napi_ok) {
         return false;
     }
-    status = JsExtraConfig::GetJsExtraConfig(env, nativeObject, jsExtraConfig);
+    status = JsExtraConfig::CreateExtraConfig(env, nativeObject, jsExtraConfig);
     if (status != napi_ok) {
         return false;
     }

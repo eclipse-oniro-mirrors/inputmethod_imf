@@ -32,7 +32,6 @@ public:
     static napi_status GetValue(napi_env env, napi_value in, CustomSettings &out,
         uint32_t maxLen = MAX_EXTRA_CONFIG_SIZE);
     static napi_status GetValue(napi_env env, napi_value in, CustomValueType &out, uint32_t &valueSize);
-    static napi_status GetJsExtraConfig(napi_env env, const ExtraConfig &in, napi_value &out);
     static napi_status CreateExtraConfig(napi_env env, const ExtraConfig &in, napi_value &out);
     static napi_status GetExtraConfig(napi_env env, napi_value in, ExtraConfig &out,
         uint32_t maxLen = DEFAULT_MAX_EXTRA_CONFIG_SIZE);
