@@ -1257,6 +1257,7 @@ int32_t InputMethodPanel::ShowPanel(uint32_t windowId)
         IMSA_HILOGE("ShowPanel error, err = %{public}d", ret);
         return ErrorCode::ERROR_OPERATE_PANEL;
     }
+    callingWindowId_ = windowId;
     IMSA_HILOGI("success, type/flag: %{public}d/%{public}d.", static_cast<int32_t>(panelType_),
         static_cast<int32_t>(panelFlag_));
     PanelStatusChange(InputWindowStatus::SHOW);
