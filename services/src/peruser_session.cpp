@@ -2051,7 +2051,7 @@ int32_t PerUserSession::StartIme(const std::shared_ptr<ImeNativeCfg> &ime, bool 
     std::unique_lock<std::mutex> lock(imeStartLock_, std::defer_lock);
     if (!lock.try_lock()) {
         IMSA_HILOGW("try_lock failed!");
-        return ErrorCode::ERROR_IME_START_INPUT_FAILED;
+        return ErrorCode::ERROR_TRY_IME_START_FAILED;
     }
     if (ime == nullptr) {
         return ErrorCode::ERROR_IMSA_IME_TO_START_NULLPTR;

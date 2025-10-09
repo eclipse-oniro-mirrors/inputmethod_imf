@@ -15,9 +15,9 @@
 
 #include "input_method_controller.h"
 
+#include "securec.h"
 #include <algorithm>
 #include <cinttypes>
-#include "securec.h"
 
 #include "block_data.h"
 #include "global.h"
@@ -29,19 +29,19 @@
 #include "input_method_property.h"
 #include "input_method_status.h"
 #include "input_method_system_ability_proxy.h"
+#include "input_method_tools.h"
 #include "inputmethod_sysevent.h"
 #include "inputmethod_trace.h"
 #include "iservice_registry.h"
 #include "keyevent_consumer_service_impl.h"
+#include "notify_service_impl.h"
 #include "on_demand_start_stop_sa.h"
+#include "on_input_stop_notify_proxy.h"
 #include "string_ex.h"
 #include "string_utils.h"
 #include "sys/prctl.h"
 #include "system_ability_definition.h"
 #include "system_cmd_channel_stub.h"
-#include "input_method_tools.h"
-#include "notify_service_impl.h"
-#include "on_input_stop_notify_proxy.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -56,15 +56,17 @@ std::chrono::system_clock::time_point InputMethodController::startLogTime_ = sys
 std::mutex InputMethodController::printTextChangeMutex_;
 int32_t InputMethodController::textChangeCountInPeriod_ = 0;
 std::chrono::steady_clock::time_point InputMethodController::textChangeStartLogTime_ = steady_clock::now();
-constexpr uint32_t MAX_ATTACH_TIMEOUT = 2500;   // 2.5s
+constexpr uint32_t MAX_ATTACH_TIMEOUT = 2500; // 2.5s
 BlockQueue<InputMethodController::CtrlEventInfo> InputMethodController::ctrlEventQueue_ { MAX_ATTACH_TIMEOUT };
 constexpr int32_t LOOP_COUNT = 5;
 constexpr int32_t LOG_MAX_TIME = 20;
-constexpr int32_t LOG_INSERT_MAX_TIME = 20; // 20s
-constexpr int32_t LOG_INSERT_MIN_TIME = 5; // 5s
+constexpr int32_t LOG_INSERT_MAX_TIME = 20;    // 20s
+constexpr int32_t LOG_INSERT_MIN_TIME = 5;     // 5s
+constexpr int32_t ATTACH_RETRY_INTERVAL = 50;  // 50ms
+constexpr int32_t ATTACH_MAX_RETRY_TIMES = 30; // 30 times
 constexpr int64_t DELAY_TIME = 100;
 constexpr int32_t ACE_DEAL_TIME_OUT = 200;
-constexpr int32_t MAX_PLACEHOLDER_SIZE = 255; // 256 utf16 char
+constexpr int32_t MAX_PLACEHOLDER_SIZE = 255;  // 256 utf16 char
 constexpr int32_t MAX_ABILITY_NAME_SIZE = 127; // 127 utf16 char
 static constexpr int32_t MAX_TIMEOUT = 2500;
 constexpr int64_t DISPATCH_KEYBOARD_TIME_OUT = 5; // 5ms
@@ -150,8 +152,7 @@ int32_t InputMethodController::Initialize()
     InputAttribute attribute;
     attribute.inputPattern = InputAttribute::PATTERN_TEXT;
     clientInfo_.attribute = attribute;
-    clientInfo_.client = client,
-    clientInfo_.channel = channel->AsObject();
+    clientInfo_.client = client, clientInfo_.channel = channel->AsObject();
 
     // make AppExecFwk::EventHandler handler
     handler_ = std::make_shared<AppExecFwk::EventHandler>(AppExecFwk::EventRunner::GetMainEventRunner());
@@ -330,6 +331,20 @@ int32_t InputMethodController::IsValidTextConfig(const TextConfig &textConfig)
 }
 
 int32_t InputMethodController::Attach(sptr<OnTextChangedListener> listener, const AttachOptions &attachOptions,
+    const TextConfig &textConfig, ClientType type)
+{
+    auto task = [listener, attachOptions, textConfig, type, this](int32_t &ret) {
+        ret = AttachExec(listener, attachOptions, textConfig, type);
+        return ret != ErrorCode::ERROR_TRY_IME_START_FAILED;
+    };
+    int32_t ret = ErrorCode::NO_ERROR;
+    if (BlockRetry(ATTACH_RETRY_INTERVAL, ATTACH_MAX_RETRY_TIMES, task, ret)) {
+        return ret;
+    }
+    return ret;
+}
+
+int32_t InputMethodController::AttachExec(sptr<OnTextChangedListener> listener, const AttachOptions &attachOptions,
     const TextConfig &textConfig, ClientType type)
 {
     QueueGuard guard(__func__);
@@ -528,8 +543,8 @@ bool InputMethodController::WasAttached()
     return isBound_.load();
 }
 
-int32_t InputMethodController::GetInputStartInfo(bool &isInputStart,
-    uint32_t &callingWndId, int32_t &requestKeyboardReason)
+int32_t InputMethodController::GetInputStartInfo(
+    bool &isInputStart, uint32_t &callingWndId, int32_t &requestKeyboardReason)
 {
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
@@ -741,8 +756,8 @@ void InputMethodController::RestoreListenInfoInSaDied()
         }
     };
     for (int i = 0; i < LOOP_COUNT; i++) {
-        handler_->PostTask(restoreListenTask, "OnRemoteSaDied", DELAY_TIME * (i + 1),
-            AppExecFwk::EventQueue::Priority::VIP);
+        handler_->PostTask(
+            restoreListenTask, "OnRemoteSaDied", DELAY_TIME * (i + 1), AppExecFwk::EventQueue::Priority::VIP);
     }
 }
 
@@ -1195,7 +1210,7 @@ int32_t InputMethodController::SwitchInputMethod(
     }
     IMSA_HILOGI("name: %{public}s, subName: %{public}s, trigger: %{public}d.", name.c_str(), subName.c_str(),
         static_cast<uint32_t>(trigger));
-        return proxy->SwitchInputMethod(name, subName, static_cast<uint32_t>(trigger));
+    return proxy->SwitchInputMethod(name, subName, static_cast<uint32_t>(trigger));
 }
 
 int32_t InputMethodController::SetSimpleKeyboardEnabled(bool enable)
@@ -1421,8 +1436,8 @@ int32_t InputMethodController::InsertText(const std::u16string &text)
     auto listener = GetTextListener();
     if (!IsEditable() || listener == nullptr) {
         IMSA_HILOGE("not editable or textListener is nullptr!");
-        ReportBaseTextOperation(static_cast<int32_t>(IInputDataChannelIpcCode::COMMAND_INSERT_TEXT),
-            ErrorCode::ERROR_CLIENT_NOT_EDITABLE);
+        ReportBaseTextOperation(
+            static_cast<int32_t>(IInputDataChannelIpcCode::COMMAND_INSERT_TEXT), ErrorCode::ERROR_CLIENT_NOT_EDITABLE);
         return ErrorCode::ERROR_CLIENT_NOT_EDITABLE;
     }
     int64_t start = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
@@ -1922,7 +1937,7 @@ int32_t InputMethodController::SendPrivateData(const std::unordered_map<std::str
     return proxy->SendPrivateData(value);
 }
 
-int32_t InputMethodController::RegisterWindowScaleCallbackHandler(WindowScaleCallback&& callback)
+int32_t InputMethodController::RegisterWindowScaleCallbackHandler(WindowScaleCallback &&callback)
 {
     IMSA_HILOGD("isRegister: %{public}d", callback != nullptr);
     std::lock_guard<std::mutex> lock(windowScaleCallbackMutex_);

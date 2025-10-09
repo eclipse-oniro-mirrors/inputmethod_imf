@@ -137,6 +137,7 @@ enum {
     ERROR_REQUEST_RATE_EXCEEDED,
     ERROR_INVALID_DISPLAYID,
     ERROR_IMSA_END,
+    ERROR_TRY_IME_START_FAILED,
 };
 }; // namespace ErrorCode
 
@@ -164,6 +165,8 @@ static constexpr HiviewDFX::HiLogLabel g_SMALL_SERVICES_LABEL = { LOG_CORE, 0xD0
         __FUNCTION__, ##__VA_ARGS__)
 using Function = std::function<bool()>;
 bool BlockRetry(uint32_t interval, uint32_t maxRetryTimes, Function func);
+using RetryFunction  = std::function<bool(int32_t &)>;
+bool BlockRetry(uint32_t interval, uint32_t maxRetryTimes, RetryFunction func, int32_t &ret);
 } // namespace MiscServices
 } // namespace OHOS
 #endif // SERVICES_INCLUDE_GLOBAL_H
