@@ -27,6 +27,8 @@ class InputMethodTools {
 public:
     static InputMethodTools &GetInstance();
     ~InputMethodTools() = default;
+    ExtraConfigInner ExtraConfigToInner(const ExtraConfig &extraConfig);
+    ExtraConfig InnerToExtraConfig(const ExtraConfigInner &inner);
     InputAttributeInner AttributeToInner(const InputAttribute &attribute);
     InputAttribute InnerToAttribute(const InputAttributeInner &inner);
     CursorInfoInner CursorInfoToInner(const CursorInfo &cursorInfo);

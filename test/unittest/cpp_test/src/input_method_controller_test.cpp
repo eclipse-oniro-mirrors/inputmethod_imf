@@ -1153,6 +1153,7 @@ HWTEST_F(InputMethodControllerTest, testOnEditorAttributeChanged02, TestSize.Lev
     InputAttribute attribute = { .inputPattern = static_cast<int32_t>(TextInputType::DATETIME),
         .enterKeyType = static_cast<int32_t>(EnterKeyType::GO),
         .isTextPreviewSupported = true };
+    attribute.extraConfig.customSettings.emplace("key", "test");
     auto ret = inputMethodController_->Attach(textListener_, false, attribute);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     Configuration info;
@@ -1163,6 +1164,7 @@ HWTEST_F(InputMethodControllerTest, testOnEditorAttributeChanged02, TestSize.Lev
     EXPECT_EQ(InputMethodControllerTest::inputAttribute_.inputPattern, static_cast<int32_t>(info.GetTextInputType()));
     EXPECT_EQ(InputMethodControllerTest::inputAttribute_.enterKeyType, static_cast<int32_t>(info.GetEnterKeyType()));
     EXPECT_EQ(InputMethodControllerTest::inputAttribute_.isTextPreviewSupported, attribute.isTextPreviewSupported);
+    EXPECT_EQ(InputMethodControllerTest::inputAttribute_.extraConfig, attribute.extraConfig);
 }
 
 /**
@@ -2047,6 +2049,7 @@ HWTEST_F(InputMethodControllerTest, testUpdateTextPreviewState, TestSize.Level0)
     IMSA_HILOGI("IMC testUpdateTextPreviewState Test START");
     ASSERT_NE(inputMethodController_, nullptr);
     inputMethodController_->textConfig_.inputAttribute.isTextPreviewSupported = false;
+    inputMethodController_->textConfig_.inputAttribute.extraConfig.customSettings.emplace("key", "test");
     inputMethodController_->UpdateTextPreviewState(true);
     EXPECT_TRUE(inputMethodController_->textConfig_.inputAttribute.isTextPreviewSupported);
     inputMethodController_->UpdateTextPreviewState(true);

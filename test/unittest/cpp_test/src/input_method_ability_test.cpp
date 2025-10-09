@@ -363,6 +363,22 @@ HWTEST_F(InputMethodAbilityTest, testSerializedInputAttribute_WithSpecificBundle
 }
 
 /**
+ * @tc.name: testSerializedInputAttribute
+ * @tc.desc: Checkout the serialization of InputAttribute.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testSerializedExtraConfig, TestSize.Level0)
+{
+    ExtraConfigInner extraConfig;
+    extraConfig.customSettings.emplace("key", true);
+    MessageParcel data;
+    EXPECT_TRUE(extraConfig.Marshalling(data));
+    auto ret = ExtraConfigInner::Unmarshalling(data);
+    EXPECT_NE(ret, nullptr);
+    EXPECT_EQ(extraConfig.customSettings["key"], ret->customSettings["key"]);
+}
+
+/**
  * @tc.name: testShowKeyboardInputMethodCoreProxy
  * @tc.desc: Test InputMethodCoreProxy ShowKeyboard
  * @tc.type: FUNC
