@@ -669,15 +669,14 @@ HWTEST_F(InputMethodControllerTest, testIMCAttach003, TestSize.Level0)
 }
 
 /**
- * @tc.name: testIsKeyboardCallingProcess
- * @tc.desc: IMC Attach.
+ * @tc.name: testIsKeyboardCallingProcess_001
+ * @tc.desc: IMC IsKeyboardCallingProcess.
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F(InputMethodControllerTest, IsKeyboardCallingProcess, TestSize.Level0)
+HWTEST_F(InputMethodControllerTest, testIsKeyboardCallingProcess_001, TestSize.Level0)
 {
-    IMSA_HILOGI("IMC IsKeyboardCallingProcess Test START");
-    IMSA_HILOGI("IMC testIsKeyboardCallingProcess Test START");
+    IMSA_HILOGI("IMC testIsKeyboardCallingProcess_001 Test START");
     auto ret = inputMethodController_->IsKeyboardCallingProcess(0);
     EXPECT_FALSE(ret);
  
@@ -689,6 +688,34 @@ HWTEST_F(InputMethodControllerTest, IsKeyboardCallingProcess, TestSize.Level0)
  
     TextListener::ResetParam();
     inputMethodController_->DeactivateClient();
+}
+
+/**
+ * @tc.name: testIsKeyboardCallingProcess_002
+ * @tc.desc: IMC IsKeyboardCallingProcess.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, testIsKeyboardCallingProcess_002, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testIsKeyboardCallingProcess_002 Test START");
+    auto sessionManager = UserSessionManager::GetInstance();
+    int32_t userId = imsa_.GetCallingUserId();
+
+    bool isKeyboardCallingProcess = false;
+    const auto errorCode = imsa->IsKeyboardCallingProcess(0, isKeyboardCallingProcess);
+    EXPECT_EQ(errorCode, ErrorCode::NO_ERROR);
+
+ 
+    // save and erase sessions in the map
+    const auto saveSession = sessionManager.userSessions_[userId];
+    sessionManager.userSessions_.erase(userId);
+
+    const auto errorCode2 = imsa->IsKeyboardCallingProcess(0, isKeyboardCallingProcess);
+    EXPECT_EQ(errorCode2, ErrorCode::ERROR_NULL_POINTER);
+
+    // restore session
+    sessionManager.userSessions_[userId] = saveSession;
 }
 
 /**
