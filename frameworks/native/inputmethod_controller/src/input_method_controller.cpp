@@ -370,12 +370,13 @@ bool InputMethodController::IsKeyboardCallingProcess(int32_t pid)
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
         IMSA_HILOGE("proxy is nullptr!");
-        return ErrorCode::ERROR_EX_NULL_POINTER;
+        return false;
     }
     bool isKeyboardCallingProcess = false;
     auto ret = proxy->IsKeyboardCallingProcess(pid, isKeyboardCallingProcess);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("IsKeyboardCallingProcess failed: %{public}d.", ret);
+        return false;
     }
     return isKeyboardCallingProcess;
 }
