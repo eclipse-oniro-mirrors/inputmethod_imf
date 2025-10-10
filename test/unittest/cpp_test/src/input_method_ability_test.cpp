@@ -1542,6 +1542,30 @@ HWTEST_F(InputMethodAbilityTest, testSendPrivateCommand_003, TestSize.Level0)
 }
 
 /**
+ * @tc.name: testSendPrivateCommand_004
+ * @tc.desc: IMA SendPrivateCommand with systemCmd is null.
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.author: zhangsaiyang
+ */
+HWTEST_F(InputMethodAbilityTest, testSendPrivateCommand_004, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testSendPrivateCommand_004 Test START");
+    std::unordered_map<std::string, PrivateDataValue> privateCommand;
+    privateCommand.emplace("sys_cmd", 1);
+    privateCommand.emplace("functionKeyColor", "#FF000000");
+    privateCommand.emplace("functionKeyPressColor", "#FF000000");
+    TextListener::ResetParam();
+    InputMethodAbilityTest::GetIMCAttachIMA();
+    IdentityCheckerMock::SetBundleNameValid(true);
+    inputMethodAbility_.systemCmdChannelProxy_ = nullptr;
+    auto ret = inputMethodAbility_.SendPrivateCommand(privateCommand);
+    EXPECT_EQ(ret, ErrorCode::ERROR_SYSTEM_CMD_CHANNEL_ERROR);
+    InputMethodAbilityTest::GetIMCDetachIMA();
+    IdentityCheckerMock::SetBundleNameValid(false);
+}
+
+/**
  * @tc.name: testGetCallingWindowInfo_001
  * @tc.desc: GetCallingWindowInfo with IMC not bound
  * @tc.type: FUNC

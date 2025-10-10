@@ -204,6 +204,7 @@ private:
     void ReportImeStartInput(int32_t eventCode, int32_t errCode, bool isShowKeyboard, int64_t consumeTime = -1);
     void ClearBindInfo(const sptr<IRemoteObject> &channel);
     void OnInputDataChannelDied(const sptr<IRemoteObject> &dataChannelObject);
+    void UpdateColorPrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand);
 
     ConcurrentMap<PanelType, std::shared_ptr<InputMethodPanel>> panels_ {};
     std::atomic_bool isBound_ { false };
@@ -250,6 +251,9 @@ private:
     std::mutex timerLock_;
     Utils::Timer timer_{ "OS_imfLightEventTimer" };
     uint32_t timerId_{ 0 };
+
+    std::mutex colorPrivateCommandLock_;
+    std::unordered_map<std::string, PrivateDataValue> colorPrivateCommand_ = { { "sys_cmd", 1 } };
 
     bool IsDisplayChanged(uint64_t oldDisplayId, uint64_t newDisplayId);
 };
