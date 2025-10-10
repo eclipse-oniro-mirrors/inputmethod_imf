@@ -85,6 +85,7 @@ public:
     ImmersiveEffect LoadImmersiveEffect();
     int32_t SetKeepScreenOn(bool isKeepScreenOn);
     int32_t GetSystemPanelCurrentInsets(uint64_t displayId, SystemPanelInsets &systemPanelInsets);
+    int32_t SetSystemPanelButtonColor(std::string fillColor, std::string backgroundColor);
     bool IsKeyboardAtBottom();
     uint32_t windowId_ = INVALID_WINDOW_ID;
 
@@ -203,6 +204,9 @@ private:
     CallbackFunc GetPanelHeightCallback();
     bool IsVectorsEqual(const std::vector<std::string>& vec1, const std::vector<std::string>& vec2);
     int32_t AreaInsets(SystemPanelInsets &systemPanelInsets, sptr<Rosen::Display> displayPtr);
+    bool Parse(const std::string& colorStr, uint32_t& colorValue);
+    bool IsValidHexString(const std::string& colorStr);
+    bool IsValidColorNoAlpha(const std::string& colorStr);
 
     sptr<OHOS::Rosen::Window> window_ = nullptr;
     sptr<OHOS::Rosen::WindowOption> winOption_ = nullptr;

@@ -2358,5 +2358,68 @@ bool InputMethodPanel::IsKeyboardAtBottom()
     return layoutParams.PortraitKeyboardRect_.height_ == layoutParams.PortraitPanelRect_.height_ &&
         !isInEnhancedAdjust_.load();
 }
+
+bool InputMethodPanel::Parse(const std::string& colorStr, uint32_t& colorValue)
+{
+    if (colorStr.empty()) {
+        return false;
+    }
+ 
+    if (colorStr[0] == '#') { // start with '#'
+        std::string color = colorStr.substr(1);
+        if (!IsValidHexString(color)) {
+            return false;
+        }
+        constexpr int HEX = 16;
+        colorValue = std::strtoul(color.c_str(), 0, HEX); // convert hex string to number
+        if (colorStr.size() == 7) { // 7 is color string length.#RRGGBB: RRGGBB -> AARRGGBB
+            colorValue |= 0xff000000;
+            return true;
+        }
+        if (colorStr.size() == 9) { // 9 is color string length.#AARRGGBB
+            return true;
+        }
+    }
+    return false;
+}
+ 
+bool InputMethodPanel::IsValidHexString(const std::string& colorStr)
+{
+    if (colorStr.empty()) {
+        return false;
+    }
+    for (char ch : colorStr) {
+        if ((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')) {
+            continue;
+        }
+        return false;
+    }
+    return true;
+}
+ 
+// check color string, format:#008EF5 or #FF008EF5. Alpha cannot be 0x00.
+bool InputMethodPanel::IsValidColorNoAlpha(const std::string& colorStr)
+{
+    uint32_t colorValue = 0;
+    if (Parse(colorStr, colorValue)) {
+        return (colorValue & 0x11000000) != 0x00000000;
+    }
+    return false;
+}
+ 
+int32_t InputMethodPanel::SetSystemPanelButtonColor(std::string fillColor, std::string backgroundColor)
+{
+    if (!IsValidColorNoAlpha(fillColor) || !IsValidColorNoAlpha(backgroundColor)) {
+        IMSA_HILOGE("IsValidColorNoAlpha failed!!");
+        return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+    }
+    std::unordered_map<std::string, PrivateDataValue> privateCommand
+        = { {"sys_cmd", 1}, {"functionKeyColor", fillColor}, {"functionKeyPressColor", backgroundColor}};
+    int32_t code = InputMethodAbility::GetInstance().SendPrivateCommand(privateCommand, false);
+    if (code != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("sendPrivateCommand failed!!");
+    }
+    return code;
+}
 } // namespace MiscServices
 } // namespace OHOS

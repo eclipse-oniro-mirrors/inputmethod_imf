@@ -45,6 +45,7 @@ enum class JsEvent : uint32_t {
     GET_IMMERSIVE_MODE,
     SET_IMMERSIVE_EFFECT,
     GET_SYSTEM_PANEL_CURRENT_INSETS,
+    SET_SYSTEM_PANEL_BUTTON_COLOR,
     EVENT_END,
 };
 
@@ -99,6 +100,7 @@ public:
     static napi_value SetImmersiveEffect(napi_env env, napi_callback_info info);
     static napi_value SetKeepScreenOn(napi_env env, napi_callback_info info);
     static napi_value GetSystemPanelCurrentInsets(napi_env env, napi_callback_info info);
+    static napi_value SetSystemPanelButtonColor(napi_env env, napi_callback_info info);
 
 private:
     struct PanelContentContext : public AsyncCall::Context {
@@ -116,6 +118,8 @@ private:
         uint64_t displayId = 0;
         bool isKeepScreenOn = false;
         SystemPanelInsets systemPanelInsets = {0, 0, 0};
+        std::string fillColor = "";
+        std::string backgroundColor = "";
         std::shared_ptr<InputMethodPanel> inputMethodPanel = nullptr;
         std::shared_ptr<NativeReference> contentStorage = nullptr;
         JsEventInfo info;

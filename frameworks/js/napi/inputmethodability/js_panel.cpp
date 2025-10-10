@@ -66,6 +66,7 @@ napi_value JsPanel::Init(napi_env env)
         DECLARE_NAPI_FUNCTION("setImmersiveEffect", SetImmersiveEffect),
         DECLARE_NAPI_FUNCTION("setKeepScreenOn", SetKeepScreenOn),
         DECLARE_NAPI_FUNCTION("getSystemPanelCurrentInsets", GetSystemPanelCurrentInsets),
+        DECLARE_NAPI_FUNCTION("setSystemPanelButtonColor", SetSystemPanelButtonColor),
     };
     NAPI_CALL(env, napi_define_class(env, CLASS_NAME.c_str(), CLASS_NAME.size(), JsNew, nullptr,
                        sizeof(properties) / sizeof(napi_property_descriptor), properties, &constructor));
@@ -970,6 +971,41 @@ napi_value JsPanel::GetSystemPanelCurrentInsets(napi_env env, napi_callback_info
     // 1 means JsAPI:getSystemPanelInsets has 1 params at most.
     AsyncCall asyncCall(env, info, ctxt, 1);
     return asyncCall.Call(env, exec, "getSystemPanelCurrentInsets");
+}
+
+napi_value JsPanel::SetSystemPanelButtonColor(napi_env env, napi_callback_info info)
+{
+    auto ctxt = std::make_shared<PanelContentContext>(env, info);
+    auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
+        PARAM_CHECK_RETURN(env, ctxt->inputMethodPanel != nullptr, "panel is null", TYPE_NONE, napi_generic_failure);
+        PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, argv[0], ctxt->fillColor),
+            "fillColor type must be string!!", TYPE_NONE, napi_generic_failure);
+        PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, argv[1], ctxt->backgroundColor),
+            "backgroundColor type must be string!!", TYPE_NONE, napi_generic_failure);
+        ctxt->info = { std::chrono::system_clock::now(), JsEvent::SET_SYSTEM_PANEL_BUTTON_COLOR };
+        jsQueue_.Push(ctxt->info);
+        return napi_ok;
+    };
+    auto exec = [ctxt](AsyncCall::Context *ctx) {
+        jsQueue_.Wait(ctxt->info);
+        if (ctxt->inputMethodPanel == nullptr) {
+            IMSA_HILOGE("inputMethodPanel_ is nullptr!");
+            jsQueue_.Pop();
+            return napi_generic_failure;
+        }
+        auto ret = ctxt->inputMethodPanel->SetSystemPanelButtonColor(ctxt->fillColor, ctxt->backgroundColor);
+        jsQueue_.Pop();
+        if (ret == ErrorCode::NO_ERROR) {
+            ctxt->SetState(napi_ok);
+            return napi_ok;
+        }
+        ctxt->SetErrorCode(ret);
+        return napi_generic_failure;
+    };
+    ctxt->SetAction(std::move(input));
+    // 2 means JsAPI:setFunctionKeyColor has 2 params at most.
+    AsyncCall asyncCall(env, info, ctxt, 2);
+    return asyncCall.Call(env, exec, "setFunctionKeyColor");
 }
 } // namespace MiscServices
 } // namespace OHOS
