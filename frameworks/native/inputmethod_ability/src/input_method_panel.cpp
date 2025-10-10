@@ -1325,11 +1325,11 @@ int32_t InputMethodPanel::SetCallingWindow(uint32_t windowId)
         callingWindowId_ = windowId;
         return ErrorCode::NO_ERROR;
     }
-    auto ret = window_->SetParentWindow(callingWindowId_);
+    auto ret = window_->ChangeCallingWindowId(windowId);
     if (ret == WMError::WM_OK) {
         callingWindowId_ = windowId;
     }
-    IMSA_HILOGI("ret: %{public}d, windowId: %{public}u", ret, callingWindowId_);
+    IMSA_HILOGI("ret: %{public}d, windowId: %{public}u", ret, windowId);
     return ret == WMError::WM_OK ? ErrorCode::NO_ERROR : ErrorCode::ERROR_WINDOW_MANAGER;
 }
 
