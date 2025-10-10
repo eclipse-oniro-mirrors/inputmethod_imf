@@ -85,7 +85,7 @@ public:
     ImmersiveEffect LoadImmersiveEffect();
     int32_t SetKeepScreenOn(bool isKeepScreenOn);
     int32_t GetSystemPanelCurrentInsets(uint64_t displayId, SystemPanelInsets &systemPanelInsets);
-    int32_t SetSystemPanelButtonColor(std::string fillColor, std::string backgroundColor);
+    int32_t SetSystemPanelButtonColor(const std::string& fillColor, const std::string& backgroundColor);
     bool IsKeyboardAtBottom();
     uint32_t windowId_ = INVALID_WINDOW_ID;
 
@@ -171,6 +171,7 @@ private:
     void OnPanelHeightChange(const Rosen::KeyboardPanelInfo &keyboardPanelInfo);
     int32_t GetKeyboardArea(PanelFlag panelFlag, const WindowSize &size, PanelAdjustInfo &keyboardArea);
     int32_t GetWindowOrientation(PanelFlag panelFlag, uint32_t windowWidth, bool &isPortrait);
+    int32_t GetInputWindowAvoidArea(PanelFlag panelFlag, Rosen::Rect &windowRect);
 
     sptr<Rosen::Display> GetCurDisplay();
     uint64_t GetCurDisplayId();

@@ -1395,22 +1395,48 @@ void InputMethodPanel::PanelStatusChangeToImc(const InputWindowStatus &status, c
         IMSA_HILOGE("proxy is nullptr!");
         return;
     }
-
     if (window_ == nullptr) {
         IMSA_HILOGE("window_ is nullptr!");
         return;
     }
-
+    auto panelRect = rect;
+    if (status == InputWindowStatus::SHOW &&
+        GetInputWindowAvoidArea(info.panelInfo.panelFlag, panelRect) != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetInputWindowAvoidArea failed");
+        return;
+    }
     std::string name = window_->GetWindowName() + "/" + std::to_string(window_->GetWindowId());
     info.windowInfo.name = std::move(name);
-    info.windowInfo.left = rect.posX_;
-    info.windowInfo.top = rect.posY_;
-    info.windowInfo.width = rect.width_;
-    info.windowInfo.height = rect.height_;
-    IMSA_HILOGD("rect[%{public}d, %{public}d, %{public}u, %{public}u], status: %{public}d, "
-                "panelFlag: %{public}d.",
-        rect.posX_, rect.posY_, rect.width_, rect.height_, status, info.panelInfo.panelFlag);
+    info.windowInfo.left = panelRect.posX_;
+    info.windowInfo.top = panelRect.posY_;
+    info.windowInfo.width = panelRect.width_;
+    info.windowInfo.height = panelRect.height_;
+    IMSA_HILOGD("rect: %{public}s, status: %{public}d, panelFlag: %{public}d.", panelRect.ToString().c_str(), status,
+        info.panelInfo.panelFlag);
     proxy->PanelStatusChange(static_cast<uint32_t>(status), info);
+}
+
+int32_t InputMethodPanel::GetInputWindowAvoidArea(PanelFlag panelFlag, Rosen::Rect &windowRect)
+{
+    if (!isInEnhancedAdjust_.load() || panelFlag != PanelFlag::FLG_FIXED) {
+        IMSA_HILOGD("ignore operation");
+        return ErrorCode::NO_ERROR;
+    }
+    bool isPortrait = false;
+    if (GetWindowOrientation(panelFlag, windowRect.width_, isPortrait) != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("failed to GetWindowOrientation");
+        return ErrorCode::ERROR_WINDOW_MANAGER;
+    }
+    auto layoutParams = GetEnhancedLayoutParams();
+    if (isPortrait) {
+        windowRect.posY_ = windowRect.posY_ + layoutParams.portrait.avoidY;
+        windowRect.height_ = layoutParams.portrait.avoidHeight;
+    } else {
+        windowRect.posY_ = windowRect.posY_ + layoutParams.landscape.avoidY;
+        windowRect.height_ = layoutParams.landscape.avoidHeight;
+    }
+    IMSA_HILOGD("input window avoid area: %{public}s", windowRect.ToString().c_str());
+    return ErrorCode::NO_ERROR;
 }
 
 bool InputMethodPanel::IsShowing()
@@ -2366,11 +2392,11 @@ bool InputMethodPanel::Parse(const std::string& colorStr, uint32_t& colorValue)
     }
  
     if (colorStr[0] == '#') { // start with '#'
-        std::string color = colorStr.substr(1);
+        auto color = colorStr.substr(1);
         if (!IsValidHexString(color)) {
             return false;
         }
-        constexpr int HEX = 16;
+        constexpr int32_t HEX = 16;
         colorValue = std::strtoul(color.c_str(), 0, HEX); // convert hex string to number
         if (colorStr.size() == 7) { // 7 is color string length.#RRGGBB: RRGGBB -> AARRGGBB
             colorValue |= 0xff000000;
@@ -2388,7 +2414,7 @@ bool InputMethodPanel::IsValidHexString(const std::string& colorStr)
     if (colorStr.empty()) {
         return false;
     }
-    for (char ch : colorStr) {
+    for (const auto& ch : colorStr) {
         if ((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')) {
             continue;
         }
@@ -2407,19 +2433,19 @@ bool InputMethodPanel::IsValidColorNoAlpha(const std::string& colorStr)
     return false;
 }
  
-int32_t InputMethodPanel::SetSystemPanelButtonColor(std::string fillColor, std::string backgroundColor)
+int32_t InputMethodPanel::SetSystemPanelButtonColor(const std::string& fillColor, const std::string& backgroundColor)
 {
     if (!IsValidColorNoAlpha(fillColor) || !IsValidColorNoAlpha(backgroundColor)) {
-        IMSA_HILOGE("IsValidColorNoAlpha failed!!");
+        IMSA_HILOGE("color is valid!");
         return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
     }
     std::unordered_map<std::string, PrivateDataValue> privateCommand
         = { {"sys_cmd", 1}, {"functionKeyColor", fillColor}, {"functionKeyPressColor", backgroundColor}};
-    int32_t code = InputMethodAbility::GetInstance().SendPrivateCommand(privateCommand, false);
-    if (code != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("sendPrivateCommand failed!!");
+    int32_t ret = InputMethodAbility::GetInstance().SendPrivateCommand(privateCommand, false);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("sendPrivateCommand failed!!, ret: %{public}d", ret);
     }
-    return code;
+    return ret;
 }
 } // namespace MiscServices
 } // namespace OHOS

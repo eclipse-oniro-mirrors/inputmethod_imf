@@ -977,11 +977,27 @@ napi_value JsPanel::SetSystemPanelButtonColor(napi_env env, napi_callback_info i
 {
     auto ctxt = std::make_shared<PanelContentContext>(env, info);
     auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
+        PARAM_CHECK_RETURN(env, argc >= 2, "at least one parameters is required", TYPE_NONE, napi_generic_failure);
         PARAM_CHECK_RETURN(env, ctxt->inputMethodPanel != nullptr, "panel is null", TYPE_NONE, napi_generic_failure);
-        PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, argv[0], ctxt->fillColor),
-            "fillColor type must be string!!", TYPE_NONE, napi_generic_failure);
-        PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, argv[1], ctxt->backgroundColor),
-            "backgroundColor type must be string!!", TYPE_NONE, napi_generic_failure);
+        napi_valuetype valueType = napi_undefined;
+        napi_valuetype valueTypeTwo = napi_undefined;
+        napi_status status = napi_generic_failure;
+        status = napi_typeof(env, argv[0], &valueType);
+        CHECK_RETURN(status == napi_ok, "get valueType failed!", status);
+        status = napi_typeof(env, argv[1], &valueTypeTwo);
+        CHECK_RETURN(status == napi_ok, "get valueTypeTwo failed!", status);
+        if(valueType == napi_undefined) {
+            ctxt->fillColor = "";
+        } else {
+            PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, argv[0], ctxt->fillColor),
+                "fillColor type must be string!!", TYPE_NONE, napi_generic_failure);
+        }
+        if (valueTypeTwo == napi_undefined) {
+            ctxt->backgroundColor = "";
+        } else {
+            PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, argv[1], ctxt->backgroundColor),
+                "backgroundColor type must be string!!", TYPE_NONE, napi_generic_failure);
+        }
         ctxt->info = { std::chrono::system_clock::now(), JsEvent::SET_SYSTEM_PANEL_BUTTON_COLOR };
         jsQueue_.Push(ctxt->info);
         return napi_ok;
@@ -1003,9 +1019,9 @@ napi_value JsPanel::SetSystemPanelButtonColor(napi_env env, napi_callback_info i
         return napi_generic_failure;
     };
     ctxt->SetAction(std::move(input));
-    // 2 means JsAPI:setFunctionKeyColor has 2 params at most.
+    // 2 means JsAPI:setSystemPanelButtonColor has 2 params at most.
     AsyncCall asyncCall(env, info, ctxt, 2);
-    return asyncCall.Call(env, exec, "setFunctionKeyColor");
+    return asyncCall.Call(env, exec, "setSystemPanelButtonColor");
 }
 } // namespace MiscServices
 } // namespace OHOS

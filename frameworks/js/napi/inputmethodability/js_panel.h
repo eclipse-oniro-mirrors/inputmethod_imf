@@ -118,8 +118,8 @@ private:
         uint64_t displayId = 0;
         bool isKeepScreenOn = false;
         SystemPanelInsets systemPanelInsets = {0, 0, 0};
-        std::string fillColor = "";
-        std::string backgroundColor = "";
+        std::string fillColor;
+        std::string backgroundColor;
         std::shared_ptr<InputMethodPanel> inputMethodPanel = nullptr;
         std::shared_ptr<NativeReference> contentStorage = nullptr;
         JsEventInfo info;
