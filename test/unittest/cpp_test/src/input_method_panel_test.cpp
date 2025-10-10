@@ -3036,5 +3036,66 @@ HWTEST_F(InputMethodPanelTest, testShowPanelWithAdjust05, TestSize.Level0)
     InputMethodAbility::GetInstance().ClearInputType();
     InputMethodPanelTest::DestroyPanel(inputMethodPanel);
 }
+
+/**
+ * @tc.name: testGetInputWindowAvoidArea_01
+ * @tc.desc: Test GetInputWindowAvoidArea with different isInEnhancedAdjust_ and panelFlag.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testGetInputWindowAvoidArea_01, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest testGetInputWindowAvoidArea_01 Test START");
+    std::shared_ptr<InputMethodPanel> inputMethodPanel = InputMethodPanelTest::CreatePanel();
+    ASSERT_NE(inputMethodPanel, nullptr);
+    inputMethodPanel->isInEnhancedAdjust_.store(false);
+    Rosen::Rect rect{};
+    auto ret = inputMethodPanel->GetInputWindowAvoidArea(PanelFlag::FLG_FIXED, rect);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    inputMethodPanel->isInEnhancedAdjust_.store(true);
+    ret = inputMethodPanel->GetInputWindowAvoidArea(PanelFlag::FLG_FLOATING, rect);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    InputMethodAbility::GetInstance().ClearInputAttribute();
+    inputMethodPanel->isInEnhancedAdjust_.store(true);
+    ret = inputMethodPanel->GetInputWindowAvoidArea(PanelFlag::FLG_FIXED, rect);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    InputAttribute attribute = { .callingDisplayId = INVALID_DISPLAY_ID };
+    InputMethodAbility::GetInstance().SetInputAttribute(attribute);
+    inputMethodPanel->isInEnhancedAdjust_.store(true);
+    ret = inputMethodPanel->GetInputWindowAvoidArea(PanelFlag::FLG_FIXED, rect);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    InputMethodAbility::GetInstance().ClearInputAttribute();
+    InputMethodPanelTest::DestroyPanel(inputMethodPanel);
+}
+
+/**
+ * @tc.name: testGetInputWindowAvoidArea_02
+ * @tc.desc: Test GetInputWindowAvoidArea in different orientation.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testGetInputWindowAvoidArea_02, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest testGetInputWindowAvoidArea_02 Test START");
+    std::shared_ptr<InputMethodPanel> inputMethodPanel = InputMethodPanelTest::CreatePanel();
+    ASSERT_NE(inputMethodPanel, nullptr);
+    inputMethodPanel->isInEnhancedAdjust_.store(true);
+    DisplaySize displaySize;
+    EXPECT_EQ(InputMethodPanelTest::GetDisplaySize(displaySize), ErrorCode::NO_ERROR);
+
+    // GetInputWindowAvoidArea when portrait
+    Rosen::Rect rect = { .width_ = displaySize.portrait.width };
+    auto ret = inputMethodPanel->GetInputWindowAvoidArea(PanelFlag::FLG_FIXED, rect);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    // GetInputWindowAvoidArea when landscape
+    rect = { .width_ = displaySize.landscape.width };
+    ret = inputMethodPanel->GetInputWindowAvoidArea(PanelFlag::FLG_FIXED, rect);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    InputMethodPanelTest::DestroyPanel(inputMethodPanel);
+}
 } // namespace MiscServices
 } // namespace OHOS

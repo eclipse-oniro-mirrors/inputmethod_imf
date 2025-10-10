@@ -170,6 +170,7 @@ private:
     void OnPanelHeightChange(const Rosen::KeyboardPanelInfo &keyboardPanelInfo);
     int32_t GetKeyboardArea(PanelFlag panelFlag, const WindowSize &size, PanelAdjustInfo &keyboardArea);
     int32_t GetWindowOrientation(PanelFlag panelFlag, uint32_t windowWidth, bool &isPortrait);
+    int32_t GetInputWindowAvoidArea(PanelFlag panelFlag, Rosen::Rect &windowRect);
 
     sptr<Rosen::Display> GetCurDisplay();
     uint64_t GetCurDisplayId();
