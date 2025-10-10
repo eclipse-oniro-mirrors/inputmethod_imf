@@ -1419,7 +1419,7 @@ void InputMethodPanel::PanelStatusChangeToImc(const InputWindowStatus &status, c
 int32_t InputMethodPanel::GetInputWindowAvoidArea(PanelFlag panelFlag, Rosen::Rect &windowRect)
 {
     if (!isInEnhancedAdjust_.load() || panelFlag != PanelFlag::FLG_FIXED) {
-        IMSA_HILOGD("no need");
+        IMSA_HILOGD("ignore operation");
         return ErrorCode::NO_ERROR;
     }
     bool isPortrait = false;
