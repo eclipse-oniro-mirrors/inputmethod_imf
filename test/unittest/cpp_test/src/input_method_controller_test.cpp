@@ -702,6 +702,10 @@ HWTEST_F(InputMethodControllerTest, testIsKeyboardCallingProcess_002, TestSize.L
     auto sessionManager = UserSessionManager::GetInstance();
     int32_t userId = imsa_.GetCallingUserId();
 
+    imeListener_->isInputStart_ = false;
+    TextListener::ResetParam();
+    inputMethodController_->Attach(textListener_, true);
+
     bool isKeyboardCallingProcess = false;
     const auto errorCode = imsa->IsKeyboardCallingProcess(0, isKeyboardCallingProcess);
     EXPECT_EQ(errorCode, ErrorCode::NO_ERROR);
