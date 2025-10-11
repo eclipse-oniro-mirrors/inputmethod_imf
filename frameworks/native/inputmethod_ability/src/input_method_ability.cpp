@@ -1202,13 +1202,7 @@ int32_t InputMethodAbility::ShowPanel(
             IMSA_HILOGE("failed to set keyBoard, ret: %{public}d!", ret);
         }
     }
-    TextTotalConfig textConfig;
-    auto ret = GetTextConfig(textConfig);
-    if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("failed to get window id, ret: %{public}d!", ret);
-        return ErrorCode::ERROR_GET_TEXT_CONFIG;
-    }
-    ret = inputMethodPanel->ShowPanel(textConfig.windowId);
+    ret = inputMethodPanel->ShowPanel(GetInputAttribute().windowId);
     if (ret == ErrorCode::NO_ERROR) {
         NotifyPanelStatus(false);
         PanelStatusInfo info;
