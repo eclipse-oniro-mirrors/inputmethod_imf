@@ -205,9 +205,6 @@ private:
     CallbackFunc GetPanelHeightCallback();
     bool IsVectorsEqual(const std::vector<std::string>& vec1, const std::vector<std::string>& vec2);
     int32_t AreaInsets(SystemPanelInsets &systemPanelInsets, sptr<Rosen::Display> displayPtr);
-    bool Parse(const std::string& colorStr, uint32_t& colorValue);
-    bool IsValidHexString(const std::string& colorStr);
-    bool IsValidColorNoAlpha(const std::string& colorStr);
 
     sptr<OHOS::Rosen::Window> window_ = nullptr;
     sptr<OHOS::Rosen::WindowOption> winOption_ = nullptr;

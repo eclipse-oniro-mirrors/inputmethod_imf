@@ -986,7 +986,7 @@ napi_value JsPanel::SetSystemPanelButtonColor(napi_env env, napi_callback_info i
         CHECK_RETURN(status == napi_ok, "get valueType failed!", status);
         status = napi_typeof(env, argv[1], &valueTypeTwo);
         CHECK_RETURN(status == napi_ok, "get valueTypeTwo failed!", status);
-        if(valueType == napi_undefined) {
+        if (valueType == napi_undefined) {
             ctxt->fillColor = "";
         } else {
             PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, argv[0], ctxt->fillColor),

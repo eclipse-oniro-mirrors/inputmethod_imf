@@ -50,6 +50,7 @@
 #include "scope_utils.h"
 #include "tdd_util.h"
 #include "text_listener.h"
+#include "color_parser.h"
 
 using namespace testing::ext;
 using namespace OHOS::Rosen;
@@ -3120,7 +3121,7 @@ HWTEST_F(InputMethodPanelTest, testSetSystemPanelButtonColor1, TestSize.Level0)
     EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
     InputMethodPanelTest::DestroyPanel(inputMethodPanel);
 }
- 
+
 /**
  * @tc.name: SetSystemPanelButtonColor2
  * @tc.desc: Test SetSystemPanelButtonColor.
@@ -3149,19 +3150,15 @@ HWTEST_F(InputMethodPanelTest, testIsValidColorNoAlpha1, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPanelTest::IsValidColorNoAlpha1 start.");
 
-    auto inputMethodPanel = InputMethodPanelTest::CreatePanel();
-    ASSERT_NE(inputMethodPanel, nullptr);
     std::string colorStr = "#FFFFFF";
-    auto ret = inputMethodPanel->IsValidColorNoAlpha(colorStr);
+    auto ret = ColorParser::IsValidColorNoAlpha(colorStr);
     EXPECT_EQ(ret, true);
 
     colorStr = "";
-    ret = inputMethodPanel->IsValidColorNoAlpha(colorStr);
+    ret = ColorParser::IsValidColorNoAlpha(colorStr);
     EXPECT_EQ(ret, false);
-
-    InputMethodPanelTest::DestroyPanel(inputMethodPanel);
 }
- 
+
 /**
  * @tc.name: Parse1
  * @tc.desc: Test Parse.
@@ -3171,18 +3168,14 @@ HWTEST_F(InputMethodPanelTest, testParse1, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPanelTest::testParse1 start.");
 
-    auto inputMethodPanel = InputMethodPanelTest::CreatePanel();
-    ASSERT_NE(inputMethodPanel, nullptr);
     std::string colorStr = "FFFFFF";
     uint32_t colorValue = 0;
-    auto ret = inputMethodPanel->Parse(colorStr, colorValue);
+    auto ret = ColorParser::Parse(colorStr, colorValue);
     EXPECT_EQ(ret, false);
 
     colorStr = "#@";
-    ret = inputMethodPanel->Parse(colorStr, colorValue);
+    ret = ColorParser::Parse(colorStr, colorValue);
     EXPECT_EQ(ret, false);
-
-    InputMethodPanelTest::DestroyPanel(inputMethodPanel);
 }
 
 /**
@@ -3193,24 +3186,21 @@ HWTEST_F(InputMethodPanelTest, testParse1, TestSize.Level0)
 HWTEST_F(InputMethodPanelTest, testParse2, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPanelTest::testParse2 start.");
- 
-    auto inputMethodPanel = InputMethodPanelTest::CreatePanel();
-    ASSERT_NE(inputMethodPanel, nullptr);
+
     std::string colorStr = "#FFFFFF";
     uint32_t colorValue = 0;
-    auto ret = inputMethodPanel->Parse(colorStr, colorValue);
+    auto ret = ColorParser::Parse(colorStr, colorValue);
     EXPECT_EQ(ret, true);
 
     colorStr = "#FFFFFF00";
-    ret = inputMethodPanel->Parse(colorStr, colorValue);
+    ret = ColorParser::Parse(colorStr, colorValue);
     EXPECT_EQ(ret, true);
 
     colorStr = "#FFFFFF0000";
-    ret = inputMethodPanel->Parse(colorStr, colorValue);
+    ret = ColorParser::Parse(colorStr, colorValue);
     EXPECT_EQ(ret, false);
-    InputMethodPanelTest::DestroyPanel(inputMethodPanel);
 }
- 
+
 /**
  * @tc.name: IsValidHexString1
  * @tc.desc: Test IsValidHexString.
@@ -3220,12 +3210,9 @@ HWTEST_F(InputMethodPanelTest, testIsValidHexString1, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPanelTest::testIsValidHexString1 start.");
 
-    auto inputMethodPanel = InputMethodPanelTest::CreatePanel();
-    ASSERT_NE(inputMethodPanel, nullptr);
     std::string colorStr = "";
-    auto ret = inputMethodPanel->IsValidHexString(colorStr);
+    auto ret = ColorParser::IsValidHexString(colorStr);
     EXPECT_EQ(ret, false);
-    InputMethodPanelTest::DestroyPanel(inputMethodPanel);
 }
 } // namespace MiscServices
 } // namespace OHOS
