@@ -13,11 +13,21 @@
  * limitations under the License.
  */
 
-sequenceable input_method_utils..OHOS.MiscServices.Value;
-sequenceable sys_panel_status..OHOS.MiscServices.SysPanelStatus;
-sequenceable sys_panel_status..OHOS.MiscServices.Shadow;
-interface OHOS.MiscServices.ISystemCmdChannel {
-    [ipccode 0, oneway] void SendPrivateCommand([in] Value value);
-    [oneway] void NotifyPanelStatus([in] SysPanelStatus sysPanelStatus);
-    [oneway] void SetPanelShadow([in] Shadow shadow);
-}
+#ifndef OHOS_INPUTMETHOD_COLOR_PARSER_H
+#define OHOS_INPUTMETHOD_COLOR_PARSER_H
+
+#include <string>
+
+namespace OHOS {
+namespace MiscServices {
+class ColorParser {
+public:
+    static bool Parse(const std::string &colorStr);
+
+private:
+    static bool IsValidHexString(const std::string &colorStr);
+};
+} // namespace MiscServices
+} // namespace OHOS
+
+#endif // OHOS_INPUTMETHOD_COLOR_PARSER_H

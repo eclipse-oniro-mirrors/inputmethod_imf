@@ -239,6 +239,17 @@ int32_t ImeSystemCmdChannel::NotifyPanelStatus(const SysPanelStatus &sysPanelSta
     return ErrorCode::NO_ERROR;
 }
 
+int32_t ImeSystemCmdChannel::SetPanelShadow(const Shadow &shadow)
+{
+    auto listener = GetSystemCmdListener();
+    if (listener == nullptr) {
+        IMSA_HILOGE("listener is nullptr!");
+        return ErrorCode::ERROR_EX_NULL_POINTER;
+    }
+    listener->SetPanelShadow(shadow);
+    return ErrorCode::NO_ERROR;
+}
+
 std::string ImeSystemCmdChannel::GetSmartMenuCfg()
 {
     std::shared_ptr<Property> defaultIme = nullptr;

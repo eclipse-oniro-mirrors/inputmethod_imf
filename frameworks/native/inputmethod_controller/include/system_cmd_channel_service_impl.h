@@ -33,6 +33,7 @@ public:
     ~SystemCmdChannelServiceImpl();
     ErrCode SendPrivateCommand(const Value &value) override;
     ErrCode NotifyPanelStatus(const SysPanelStatus &sysPanelStatus) override;
+    ErrCode SetPanelShadow(const Shadow &shadow) override;
 };
 }  // namespace MiscServices
 }  // namespace OHOS

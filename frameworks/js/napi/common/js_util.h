@@ -59,6 +59,7 @@ public:
     static napi_value GetValue(napi_env env, int32_t in);
     static napi_value GetValue(napi_env env, uint32_t in);
     static napi_value GetValue(napi_env env, int64_t in);
+    static napi_value GetValue(napi_env env, double in);
     static napi_value GetValue(napi_env env, bool in);
     static napi_value GetValueU16String(napi_env env, const std::u16string &in);
     template<typename T>
