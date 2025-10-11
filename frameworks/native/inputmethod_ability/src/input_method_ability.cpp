@@ -675,6 +675,9 @@ int32_t InputMethodAbility::InvokeStartInputCallback(const TextTotalConfig &text
                 textConfig.textSelection.newBegin, textConfig.textSelection.newEnd);
         }
     }
+    if (imeListener_ != nullptr) {
+        imeListener_->OnSetCallingWindow(textConfig.windowId);
+    }
     return ErrorCode::NO_ERROR;
 }
 
@@ -1211,9 +1214,6 @@ int32_t InputMethodAbility::ShowPanel(
         info.visible = true;
         info.trigger = trigger;
         NotifyPanelStatusInfo(info);
-        if (imeListener_ != nullptr) {
-            imeListener_->OnSetCallingWindow(textConfig.windowId);
-        }
     }
     return ret;
 }
