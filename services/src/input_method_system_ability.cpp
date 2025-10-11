@@ -1551,7 +1551,8 @@ ErrCode InputMethodSystemAbility::GetCurrentInputMethod(Property& resultValue)
     return ERR_OK;
 }
 
-ErrCode InputMethodSystemAbility::IsKeyboardCallingProcess(int32_t pid, bool &isKeyboardCallingProcess)
+ErrCode InputMethodSystemAbility::IsKeyboardCallingProcess(
+    int32_t pid, uint32_t windowId, bool &isKeyboardCallingProcess)
 {
     int32_t userId = GetCallingUserId();
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
@@ -1559,7 +1560,7 @@ ErrCode InputMethodSystemAbility::IsKeyboardCallingProcess(int32_t pid, bool &is
         IMSA_HILOGE("session is nullptr!");
         return ErrorCode::ERROR_NULL_POINTER;
     }
-    isKeyboardCallingProcess = session->IsKeyboardCallingProcess(pid);
+    isKeyboardCallingProcess = session->IsKeyboardCallingProcess(pid, windowId);
     return ERR_OK;
 }
 

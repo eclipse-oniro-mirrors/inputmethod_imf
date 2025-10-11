@@ -677,13 +677,13 @@ HWTEST_F(InputMethodControllerTest, testIMCAttach003, TestSize.Level0)
 HWTEST_F(InputMethodControllerTest, testIsKeyboardCallingProcess_001, TestSize.Level0)
 {
     IMSA_HILOGI("IMC testIsKeyboardCallingProcess_001 Test START");
-    auto ret = inputMethodController_->IsKeyboardCallingProcess(0);
+    auto ret = inputMethodController_->IsKeyboardCallingProcess(0, 0);
     EXPECT_FALSE(ret);
  
     imeListener_->isInputStart_ = false;
     TextListener::ResetParam();
     inputMethodController_->Attach(textListener_, true);
-    ret = inputMethodController_->IsKeyboardCallingProcess(getpid());
+    ret = inputMethodController_->IsKeyboardCallingProcess(getpid(), 0);
     EXPECT_TRUE(ret);
  
     TextListener::ResetParam();
@@ -707,7 +707,7 @@ HWTEST_F(InputMethodControllerTest, testIsKeyboardCallingProcess_002, TestSize.L
     inputMethodController_->Attach(textListener_, true);
 
     bool isKeyboardCallingProcess = false;
-    const auto errorCode = imsa_->IsKeyboardCallingProcess(0, isKeyboardCallingProcess);
+    const auto errorCode = imsa_->IsKeyboardCallingProcess(0, 0, isKeyboardCallingProcess);
     EXPECT_EQ(errorCode, ErrorCode::NO_ERROR);
 
  
@@ -715,7 +715,7 @@ HWTEST_F(InputMethodControllerTest, testIsKeyboardCallingProcess_002, TestSize.L
     const auto saveSession = sessionManager.userSessions_[userId];
     sessionManager.userSessions_.erase(userId);
 
-    const auto errorCode2 = imsa_->IsKeyboardCallingProcess(0, isKeyboardCallingProcess);
+    const auto errorCode2 = imsa_->IsKeyboardCallingProcess(0, 0, isKeyboardCallingProcess);
     EXPECT_EQ(errorCode2, ErrorCode::ERROR_NULL_POINTER);
 
     // restore session

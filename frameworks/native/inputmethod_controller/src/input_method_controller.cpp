@@ -365,7 +365,7 @@ int32_t InputMethodController::Attach(sptr<OnTextChangedListener> listener, cons
     return ErrorCode::NO_ERROR;
 }
 
-bool InputMethodController::IsKeyboardCallingProcess(int32_t pid)
+bool InputMethodController::IsKeyboardCallingProcess(int32_t pid, uint32_t windowId)
 {
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
@@ -373,7 +373,7 @@ bool InputMethodController::IsKeyboardCallingProcess(int32_t pid)
         return false;
     }
     bool isKeyboardCallingProcess = false;
-    auto ret = proxy->IsKeyboardCallingProcess(pid, isKeyboardCallingProcess);
+    auto ret = proxy->IsKeyboardCallingProcess(pid, windowId, isKeyboardCallingProcess);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("IsKeyboardCallingProcess failed: %{public}d.", ret);
         return false;

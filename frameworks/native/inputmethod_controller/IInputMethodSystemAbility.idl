@@ -71,7 +71,7 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void UnregisterProxyIme([in] unsigned long displayId);
     void SendPrivateData([in] Value value);
     void IsRestrictedDefaultImeByDisplay([in] unsigned long displayId, [out] boolean resultValue);
-    void IsKeyboardCallingProcess([in] int pid, [out] boolean isKeyboardCallingProcess);
+    void IsKeyboardCallingProcess([in] int pid, [in] unsigned int windowId, [out] boolean isKeyboardCallingProcess);
     void IsCapacitySupport([in] int capacity, [out] boolean isSupport);
     void BindImeMirror([in] IInputMethodCore core, [in] IRemoteObject agent);
     void UnbindImeMirror();

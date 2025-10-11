@@ -471,7 +471,7 @@ public:
      * @return Returns true or false.
      * @since 20
      */
-    IMF_API bool IsKeyboardCallingProcess(int32_t pid);
+    IMF_API bool IsKeyboardCallingProcess(int32_t pid, uint32_t windowId);
 
     /**
      * @brief Set calling window id.

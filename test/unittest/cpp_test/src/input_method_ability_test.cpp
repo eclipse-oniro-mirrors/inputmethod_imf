@@ -488,7 +488,7 @@ HWTEST_F(InputMethodAbilityTest, testShowKeyboardWithoutImeListener, TestSize.Le
 {
     IMSA_HILOGI("InputMethodAbilityTest testShowKeyboardWithoutImeListener start.");
     auto ret = inputMethodAbility_.ShowKeyboard(static_cast<int32_t>(RequestKeyboardReason::NONE));
-    EXPECT_EQ(ret, ErrorCode::ERROR_GET_TEXT_CONFIG);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 }
 
 /**

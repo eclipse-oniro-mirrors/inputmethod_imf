@@ -1327,7 +1327,7 @@ int32_t PerUserSession::NotifySubTypeChangedToIme(const std::string &bundleName,
     return ret;
 }
 
-bool PerUserSession::IsKeyboardCallingProcess(int32_t pid)
+bool PerUserSession::IsKeyboardCallingProcess(int32_t pid, uint32_t windowId)
 {
     auto clientGroup = GetClientGroup(ImeType::IME);
     auto clientInfo = clientGroup != nullptr ? clientGroup->GetCurrentClientInfo() : nullptr;
@@ -1335,13 +1335,10 @@ bool PerUserSession::IsKeyboardCallingProcess(int32_t pid)
         IMSA_HILOGE("failed to get cur client info!");
         return false;
     }
-    auto identityChecker = std::make_shared<IdentityCheckerImpl>();
-    if (clientInfo->uiExtensionTokenId != IMF_INVALID_TOKENID
-        && identityChecker->IsFocusedUIExtension(clientInfo->uiExtensionTokenId)) {
-        IMSA_HILOGI("UIExtension focused");
+    if (clientInfo->pid == pid) {
         return true;
     }
-    return clientInfo->pid == pid;
+    return clientInfo->config.inputAttribute.windowId == windowId;
 }
 
 int32_t PerUserSession::StartCurrentIme(bool isStopCurrentIme)

@@ -675,7 +675,7 @@ int32_t InputMethodAbility::InvokeStartInputCallback(const TextTotalConfig &text
                 textConfig.textSelection.newBegin, textConfig.textSelection.newEnd);
         }
     }
-    if (imeListener_ != nullptr) {
+    if (textConfig.windowId != INVALID_WINDOW_ID) {
         imeListener_->OnSetCallingWindow(textConfig.windowId);
     }
     return ErrorCode::NO_ERROR;
@@ -1205,7 +1205,7 @@ int32_t InputMethodAbility::ShowPanel(
             IMSA_HILOGE("failed to set keyBoard, ret: %{public}d!", ret);
         }
     }
-    ret = inputMethodPanel->ShowPanel(GetInputAttribute().windowId);
+    auto ret = inputMethodPanel->ShowPanel(GetInputAttribute().windowId);
     if (ret == ErrorCode::NO_ERROR) {
         NotifyPanelStatus(false);
         PanelStatusInfo info;

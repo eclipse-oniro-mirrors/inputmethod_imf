@@ -92,7 +92,7 @@ public:
         uint64_t displayId, const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent) override;
     int32_t UnregisterProxyIme(uint64_t displayId) override;
     ErrCode IsRestrictedDefaultImeByDisplay(uint64_t displayId, bool &resultValue) override;
-    ErrCode IsKeyboardCallingProcess(int32_t pid, bool &isKeyboardCallingProcess) override;
+    ErrCode IsKeyboardCallingProcess(int32_t pid, uint32_t windowId, bool &isKeyboardCallingProcess) override;
     ErrCode IsCapacitySupport(int32_t capacity, bool &isSupport) override;
     ErrCode BindImeMirror(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent) override;
     ErrCode UnbindImeMirror() override;

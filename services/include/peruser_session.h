@@ -157,7 +157,7 @@ public:
     std::shared_ptr<ImeNativeCfg> GetImeNativeCfg(int32_t userId, const std::string &bundleName,
         const std::string &subName);
     int32_t OnSetCallingWindow(uint32_t callingWindowId, uint64_t callingDisplayId, sptr<IInputClient> client);
-    bool IsKeyboardCallingProcess(int32_t pid);
+    bool IsKeyboardCallingProcess(int32_t pid, uint32_t windowId);
     int32_t GetInputStartInfo(
         uint64_t displayId, bool &isInputStart, uint32_t &callingWndId, int32_t &requestKeyboardReason);
     bool IsSaReady(int32_t saId);
