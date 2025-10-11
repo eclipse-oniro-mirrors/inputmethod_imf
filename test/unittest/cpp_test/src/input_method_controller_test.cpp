@@ -707,7 +707,7 @@ HWTEST_F(InputMethodControllerTest, testIsKeyboardCallingProcess_002, TestSize.L
     inputMethodController_->Attach(textListener_, true);
 
     bool isKeyboardCallingProcess = false;
-    const auto errorCode = imsa->IsKeyboardCallingProcess(0, isKeyboardCallingProcess);
+    const auto errorCode = imsa_->IsKeyboardCallingProcess(0, isKeyboardCallingProcess);
     EXPECT_EQ(errorCode, ErrorCode::NO_ERROR);
 
  
@@ -715,7 +715,7 @@ HWTEST_F(InputMethodControllerTest, testIsKeyboardCallingProcess_002, TestSize.L
     const auto saveSession = sessionManager.userSessions_[userId];
     sessionManager.userSessions_.erase(userId);
 
-    const auto errorCode2 = imsa->IsKeyboardCallingProcess(0, isKeyboardCallingProcess);
+    const auto errorCode2 = imsa_->IsKeyboardCallingProcess(0, isKeyboardCallingProcess);
     EXPECT_EQ(errorCode2, ErrorCode::ERROR_NULL_POINTER);
 
     // restore session
