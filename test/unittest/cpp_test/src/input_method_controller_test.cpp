@@ -699,7 +699,7 @@ HWTEST_F(InputMethodControllerTest, testIsKeyboardCallingProcess_001, TestSize.L
 HWTEST_F(InputMethodControllerTest, testIsKeyboardCallingProcess_002, TestSize.Level0)
 {
     IMSA_HILOGI("IMC testIsKeyboardCallingProcess_002 Test START");
-    auto sessionManager = UserSessionManager::GetInstance();
+    auto &sessionManager = UserSessionManager::GetInstance();
     int32_t userId = imsa_.GetCallingUserId();
 
     imeListener_->isInputStart_ = false;
