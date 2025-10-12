@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (C) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -18,39 +18,40 @@
 #include <cstdlib>
 
 namespace OHOS {
-namespace Rosen {
-
-bool ColorParser::Parse(const std::string& colorStr, uint32_t& colorValue)
+namespace MiscServices {
+constexpr int32_t COLOR_STRING_LENGTH_RGB = 7; // 7 is color string length.#RRGGBB
+constexpr int32_t COLOR_STRING_LENGTH_ARGB = 9; // 9 is color string length.#AARRGGBB
+bool ColorParser::Parse(const std::string &colorStr, uint32_t &colorValue)
 {
-    if (colorStr.empty()) {
+    if (colorStr.size() < COLOR_STRING_LENGTH_RGB) {
         return false;
     }
 
     if (colorStr[0] == '#') { // start with '#'
-        auto color = colorStr.substr(1);
+        std::string color = colorStr.substr(1);
         if (!IsValidHexString(color)) {
             return false;
         }
         constexpr int32_t HEX = 16;
         colorValue = std::strtoul(color.c_str(), 0, HEX); // convert hex string to number
-        if (colorStr.size() == 7) { // 7 is color string length.#RRGGBB: RRGGBB -> AARRGGBB
+        if (colorStr.size() == COLOR_STRING_LENGTH_RGB) {
             colorValue |= 0xff000000;
             return true;
         }
-        if (colorStr.size() == 9) { // 9 is color string length.#AARRGGBB
+        if (colorStr.size() == COLOR_STRING_LENGTH_ARGB) {
             return true;
         }
     }
     return false;
 }
 
-bool ColorParser::IsValidHexString(const std::string& colorStr)
+bool ColorParser::IsValidHexString(const std::string &colorStr)
 {
     if (colorStr.empty()) {
         return false;
     }
-    for (const auto& ch : colorStr) {
-        if ((ch >= '0' && ch <= '9') || (ch >= 'a' && ch <= 'f') || (ch >= 'A' && ch <= 'F')) {
+    for (const auto &ch : colorStr) {
+        if (std::isxdigit(ch)) {
             continue;
         }
         return false;
@@ -59,14 +60,9 @@ bool ColorParser::IsValidHexString(const std::string& colorStr)
 }
 
 // check color string, format:#008EF5 or #FF008EF5. Alpha cannot be 0x00.
-bool ColorParser::IsValidColorNoAlpha(const std::string& colorStr)
+bool ColorParser::IsColorFullyTransparent(uint32_t colorValue)
 {
-    uint32_t colorValue = 0;
-    if (Parse(colorStr, colorValue)) {
-        return (colorValue & 0x11000000) != 0x00000000;
-    }
-    return false;
+    return (colorValue & 0x11000000) == 0x00000000;
 }
-
-} // namespace Rosen
+} // namespace MiscServices
 } // namespace OHOS

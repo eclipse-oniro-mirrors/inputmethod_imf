@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -19,16 +19,16 @@
 #include <string>
 
 namespace OHOS {
-namespace Rosen {
+namespace MiscServices {
 class ColorParser {
 public:
-    static bool IsValidColorNoAlpha(const std::string& colorStr);
-    static bool Parse(const std::string& colorStr, uint32_t& colorValue);
-    static bool IsValidHexString(const std::string& colorStr);
+    static bool IsColorFullyTransparent(uint32_t colorStr);
+    static bool Parse(const std::string &colorStr, uint32_t &colorValue);
+    static bool IsValidHexString(const std::string &colorStr);
 
 private:
 };
-} // namespace Rosen
+} // namespace MiscServices
 } // namespace OHOS
 
 #endif // OHOS_INPUTMETHOD_COLOR_PARSER_H

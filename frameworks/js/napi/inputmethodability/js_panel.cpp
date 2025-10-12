@@ -67,6 +67,7 @@ napi_value JsPanel::Init(napi_env env)
         DECLARE_NAPI_FUNCTION("setKeepScreenOn", SetKeepScreenOn),
         DECLARE_NAPI_FUNCTION("getSystemPanelCurrentInsets", GetSystemPanelCurrentInsets),
         DECLARE_NAPI_FUNCTION("setSystemPanelButtonColor", SetSystemPanelButtonColor),
+        DECLARE_NAPI_FUNCTION("setShadow", SetShadow),
     };
     NAPI_CALL(env, napi_define_class(env, CLASS_NAME.c_str(), CLASS_NAME.size(), JsNew, nullptr,
                        sizeof(properties) / sizeof(napi_property_descriptor), properties, &constructor));
@@ -920,6 +921,38 @@ napi_value JsPanel::SetKeepScreenOn(napi_env env, napi_callback_info info)
     return asyncCall.Call(env, exec, "setKeepScreenOn");
 }
 
+napi_value JsPanel::SetShadow(napi_env env, napi_callback_info info)
+{
+    napi_value thisVar = nullptr;
+    napi_value retVal = JsUtil::Const::Null(env);
+    NAPI_CALL(env, napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr));
+    size_t argc = 4; // 4 means JsAPI:SetShadow need 4 params.
+    napi_value argv[4] = { nullptr };
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    auto panel = UnwrapPanel(env, thisVar);
+    RESULT_CHECK_RETURN(env, panel != nullptr, JsUtils::Convert(ErrorCode::ERROR_IME), "", TYPE_NONE, retVal);
+    JsEventInfo eventInfo = { std::chrono::system_clock::now(), JsEvent::SET_SHADOW };
+    jsQueue_.Push(eventInfo);
+    jsQueue_.Wait(eventInfo);
+    Shadow shadow;
+    PARAM_CHECK_RETURN(env, argc == 4, "four parameters is required!", TYPE_NONE, JsUtil::Const::Null(env));
+    PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, argv[0], shadow.radius), "radius covert failed!", TYPE_NONE,
+        JsUtil::Const::Null(env));
+    PARAM_CHECK_RETURN(
+        env, JsUtil::GetValue(env, argv[1], shadow.color), "color covert failed!", TYPE_NONE, JsUtil::Const::Null(env));
+    PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, argv[2], shadow.offsetX), "offsetX covert failed!", TYPE_NONE,
+        JsUtil::Const::Null(env));
+    PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, argv[3], shadow.offsetY), "offsetY covert failed!", TYPE_NONE,
+        JsUtil::Const::Null(env));
+    auto ret = panel->SetShadow(shadow);
+    jsQueue_.Pop();
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("failed to setShadow!");
+        RESULT_CHECK_RETURN(env, ret == ErrorCode::NO_ERROR, JsUtils::Convert(ret), "", TYPE_NONE, retVal);
+    }
+    return JsUtil::Const::Null(env);
+}
+
 napi_value JsPanel::WriteCurrentInsetsOutput(napi_env env, SystemPanelInsets systemPanelInsets)
 {
     napi_value jsObject = nullptr;
@@ -977,26 +1010,25 @@ napi_value JsPanel::SetSystemPanelButtonColor(napi_env env, napi_callback_info i
 {
     auto ctxt = std::make_shared<PanelContentContext>(env, info);
     auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
-        PARAM_CHECK_RETURN(env, argc >= 2, "at least one parameters is required", TYPE_NONE, napi_generic_failure);
+        PARAM_CHECK_RETURN(env, argc >= 2, "at least two parameters is required", TYPE_NONE, napi_generic_failure);
         PARAM_CHECK_RETURN(env, ctxt->inputMethodPanel != nullptr, "panel is null", TYPE_NONE, napi_generic_failure);
         napi_valuetype valueType = napi_undefined;
-        napi_valuetype valueTypeTwo = napi_undefined;
         napi_status status = napi_generic_failure;
         status = napi_typeof(env, argv[0], &valueType);
         CHECK_RETURN(status == napi_ok, "get valueType failed!", status);
-        status = napi_typeof(env, argv[1], &valueTypeTwo);
-        CHECK_RETURN(status == napi_ok, "get valueTypeTwo failed!", status);
         if (valueType == napi_undefined) {
             ctxt->fillColor = "";
         } else {
             PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, argv[0], ctxt->fillColor),
-                "fillColor type must be string!!", TYPE_NONE, napi_generic_failure);
+                "fillColor type must be string or undefined!!", TYPE_NONE, napi_generic_failure);
         }
-        if (valueTypeTwo == napi_undefined) {
+        status = napi_typeof(env, argv[1], &valueType);
+        CHECK_RETURN(status == napi_ok, "get valueTypeTwo failed!", status);
+        if (valueType == napi_undefined) {
             ctxt->backgroundColor = "";
         } else {
             PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, argv[1], ctxt->backgroundColor),
-                "backgroundColor type must be string!!", TYPE_NONE, napi_generic_failure);
+                "backgroundColor type must be string or undefined!!", TYPE_NONE, napi_generic_failure);
         }
         ctxt->info = { std::chrono::system_clock::now(), JsEvent::SET_SYSTEM_PANEL_BUTTON_COLOR };
         jsQueue_.Push(ctxt->info);

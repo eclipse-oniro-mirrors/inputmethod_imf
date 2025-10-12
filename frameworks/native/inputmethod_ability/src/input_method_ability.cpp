@@ -1303,6 +1303,16 @@ int32_t InputMethodAbility::HidePanel(
     return ErrorCode::NO_ERROR;
 }
 
+int32_t InputMethodAbility::SetPanelShadow(const Shadow &shadow)
+{
+    auto systemChannel = GetSystemCmdChannelProxy();
+    if (systemChannel == nullptr) {
+        IMSA_HILOGE("channel is nullptr!");
+        return ErrorCode::ERROR_CLIENT_NULL_POINTER;
+    }
+    return systemChannel->SetPanelShadow(shadow);
+}
+
 int32_t InputMethodAbility::NotifyPanelStatus(bool isUseParameterFlag, PanelFlag panelFlag)
 {
     auto panel = GetSoftKeyboardPanel();
@@ -1596,11 +1606,9 @@ void InputMethodAbility::NotifyKeyboardHeight(uint32_t panelHeight, PanelFlag pa
 int32_t InputMethodAbility::SendPrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand,
     bool validateDefaultIme)
 {
-    if (validateDefaultIme) {
-        if (!IsDefaultIme()) {
-            IMSA_HILOGE("current is not default ime!");
-            return ErrorCode::ERROR_NOT_DEFAULT_IME;
-        }
+    if (validateDefaultIme && !IsDefaultIme()) {
+        IMSA_HILOGE("current is not default ime!");
+        return ErrorCode::ERROR_NOT_DEFAULT_IME;
     }
     if (!TextConfig::IsPrivateCommandValid(privateCommand)) {
         IMSA_HILOGE("privateCommand is limit 32KB, count limit 5!");
