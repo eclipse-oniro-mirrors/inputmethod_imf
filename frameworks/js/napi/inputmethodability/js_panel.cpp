@@ -66,6 +66,7 @@ napi_value JsPanel::Init(napi_env env)
         DECLARE_NAPI_FUNCTION("setImmersiveEffect", SetImmersiveEffect),
         DECLARE_NAPI_FUNCTION("setKeepScreenOn", SetKeepScreenOn),
         DECLARE_NAPI_FUNCTION("getSystemPanelCurrentInsets", GetSystemPanelCurrentInsets),
+        DECLARE_NAPI_FUNCTION("setShadow", SetShadow),
     };
     NAPI_CALL(env, napi_define_class(env, CLASS_NAME.c_str(), CLASS_NAME.size(), JsNew, nullptr,
                        sizeof(properties) / sizeof(napi_property_descriptor), properties, &constructor));
@@ -917,6 +918,38 @@ napi_value JsPanel::SetKeepScreenOn(napi_env env, napi_callback_info info)
     // 1 means JsAPI:setKeepScreenOn has 1 params at most.
     AsyncCall asyncCall(env, info, ctxt, 1);
     return asyncCall.Call(env, exec, "setKeepScreenOn");
+}
+
+napi_value JsPanel::SetShadow(napi_env env, napi_callback_info info)
+{
+    napi_value thisVar = nullptr;
+    napi_value retVal = JsUtil::Const::Null(env);
+    NAPI_CALL(env, napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr));
+    size_t argc = 4; // 4 means JsAPI:SetShadow need 4 params.
+    napi_value argv[4] = { nullptr };
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    auto panel = UnwrapPanel(env, thisVar);
+    RESULT_CHECK_RETURN(env, panel != nullptr, JsUtils::Convert(ErrorCode::ERROR_IME), "", TYPE_NONE, retVal);
+    JsEventInfo eventInfo = { std::chrono::system_clock::now(), JsEvent::SET_SHADOW };
+    jsQueue_.Push(eventInfo);
+    jsQueue_.Wait(eventInfo);
+    Shadow shadow;
+    PARAM_CHECK_RETURN(env, argc == 4, "four parameters is required!", TYPE_NONE, JsUtil::Const::Null(env));
+    PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, argv[0], shadow.radius), "radius covert failed!", TYPE_NONE,
+        JsUtil::Const::Null(env));
+    PARAM_CHECK_RETURN(
+        env, JsUtil::GetValue(env, argv[1], shadow.color), "color covert failed!", TYPE_NONE, JsUtil::Const::Null(env));
+    PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, argv[2], shadow.offsetX), "offsetX covert failed!", TYPE_NONE,
+        JsUtil::Const::Null(env));
+    PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, argv[3], shadow.offsetY), "offsetY covert failed!", TYPE_NONE,
+        JsUtil::Const::Null(env));
+    auto ret = panel->SetShadow(shadow);
+    jsQueue_.Pop();
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("failed to setShadow!");
+        RESULT_CHECK_RETURN(env, ret == ErrorCode::NO_ERROR, JsUtils::Convert(ret), "", TYPE_NONE, retVal);
+    }
+    return JsUtil::Const::Null(env);
 }
 
 napi_value JsPanel::WriteCurrentInsetsOutput(napi_env env, SystemPanelInsets systemPanelInsets)

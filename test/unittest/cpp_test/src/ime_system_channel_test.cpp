@@ -29,6 +29,7 @@ namespace MiscServices {
 class OnSystemCmdListenerImpl : public OnSystemCmdListener {
     void ReceivePrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand) override { }
     void NotifyPanelStatus(const SysPanelStatus &sysPanelStatus) override { }
+    void SetPanelShadow(const Shadow &shadow) override { }
 };
 class ImeSystemChannelTest : public testing::Test {
 public:
@@ -102,6 +103,24 @@ HWTEST_F(ImeSystemChannelTest, testConnectSystemCmd002, TestSize.Level1)
 }
 
 /**
+ * @tc.name: testSetPanelShadow
+ * @tc.desc: SystemCmdChannel testSetPanelShadow.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(ImeSystemChannelTest, testSetPanelShadow, TestSize.Level1)
+{
+    IMSA_HILOGI("ImeSystemChannelTest testSetPanelShadow Test START");
+    TokenScope scope(ImeSystemChannelTest::permissionTokenId_);
+    auto ret = imeSystemChannel_->ConnectSystemCmd(sysCmdListener_);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    Shadow shadow = { 0.0, "#000000", 0.0, 0.0 };
+    ret = imeSystemChannel_->SetPanelShadow(shadow);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
  * @tc.name: testSendPrivateCommand001
  * @tc.desc: SystemCmdChannel SendPrivateCommand.
  * @tc.type: FUNC
@@ -135,6 +154,9 @@ HWTEST_F(ImeSystemChannelTest, testImeSystemChannel_nullptr, TestSize.Level1)
     EXPECT_EQ(ret, ErrorCode::ERROR_EX_NULL_POINTER);
     ret = imeSystemChannel_->NotifyPanelStatus({ InputType::NONE, 0, 0, 0 });
     EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
+    Shadow shadow = { 0.0, "#000000", 0.0, 0.0 };
+    ret = imeSystemChannel_->SetPanelShadow(shadow);
+    EXPECT_EQ(ret, ErrorCode::ERROR_EX_NULL_POINTER);
 }
 
 /**

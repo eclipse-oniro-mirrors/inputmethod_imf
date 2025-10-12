@@ -45,6 +45,7 @@ enum class JsEvent : uint32_t {
     GET_IMMERSIVE_MODE,
     SET_IMMERSIVE_EFFECT,
     GET_SYSTEM_PANEL_CURRENT_INSETS,
+    SET_SHADOW,
     EVENT_END,
 };
 
@@ -98,6 +99,7 @@ public:
     static napi_value GetImmersiveMode(napi_env env, napi_callback_info info);
     static napi_value SetImmersiveEffect(napi_env env, napi_callback_info info);
     static napi_value SetKeepScreenOn(napi_env env, napi_callback_info info);
+    static napi_value SetShadow(napi_env env, napi_callback_info info);
     static napi_value GetSystemPanelCurrentInsets(napi_env env, napi_callback_info info);
 
 private:

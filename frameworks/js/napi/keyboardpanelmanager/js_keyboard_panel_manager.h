@@ -66,6 +66,10 @@ struct JsPanelStatus {
     static napi_value Write(napi_env env, const SysPanelStatus &in);
 };
 
+struct JsPanelShadow {
+    static napi_value Write(napi_env env, const Shadow &in);
+};
+
 class JsKeyboardPanelManager : public OnSystemCmdListener {
 public:
     JsKeyboardPanelManager();
@@ -83,6 +87,7 @@ public:
 
     void ReceivePrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand) override;
     void NotifyPanelStatus(const SysPanelStatus &sysPanelStatus) override;
+    void SetPanelShadow(const Shadow &shadow) override;
 
 private:
     void RegisterListener(napi_value callback, std::string type, std::shared_ptr<JSCallbackObject> callbackObj);
@@ -94,12 +99,14 @@ private:
         SysPanelStatus sysPanelStatus;
         std::string smartMenu;
         std::unordered_map<std::string, PrivateDataValue> privateCommand;
+        Shadow shadow;
         explicit UvEntry(const std::vector<std::shared_ptr<JSCallbackObject>> &cbVec, const std::string &type)
             : vecCopy(cbVec),
               type(type),
               sysPanelStatus({ InputType::NONE, 0, 0, 0 }),
               smartMenu(""),
-              privateCommand({})
+              privateCommand({}),
+              shadow({ 0, "", 0, 0 })
         {
         }
     };
