@@ -40,6 +40,15 @@ ErrCode SystemCmdChannelServiceImpl::SendPrivateCommand(const Value &value)
     return channel->ReceivePrivateCommand(privateCommand);
 }
 
+ErrCode SystemCmdChannelServiceImpl::SetPanelShadow(const Shadow &shadow)
+{
+    auto channel = ImeSystemCmdChannel::GetInstance();
+    if (channel == nullptr) {
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    return channel->SetPanelShadow(shadow);
+}
+
 ErrCode SystemCmdChannelServiceImpl::NotifyPanelStatus(const SysPanelStatus &sysPanelStatus)
 {
     auto channel = ImeSystemCmdChannel::GetInstance();

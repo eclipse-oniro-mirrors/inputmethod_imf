@@ -109,6 +109,14 @@ napi_value JsUtil::GetValue(napi_env env, int64_t in)
     napi_create_int64(env, in, &out);
     return out;
 }
+
+napi_value JsUtil::GetValue(napi_env env, double in)
+{
+    napi_value out = nullptr;
+    napi_create_double(env, in, &out);
+    return out;
+}
+
 napi_value JsUtil::GetValue(napi_env env, bool in)
 {
     napi_value out = nullptr;

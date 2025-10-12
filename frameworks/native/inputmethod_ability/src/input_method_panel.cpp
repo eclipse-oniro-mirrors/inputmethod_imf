@@ -17,6 +17,7 @@
 
 #include <tuple>
 
+#include "color_parser.h"
 #include "display_info.h"
 #include "dm_common.h"
 #include "global.h"
@@ -206,6 +207,10 @@ int32_t InputMethodPanel::AdjustLayout(const Rosen::KeyboardLayoutParams &param,
     if (wmRet != WMError::WM_OK) {
         IMSA_HILOGE("AdjustKeyboardLayout failed, wmError is %{public}d!", wmRet);
         return ErrorCode::ERROR_WINDOW_MANAGER;
+    }
+    if (paramTmp.gravity_ == WindowGravity::WINDOW_GRAVITY_BOTTOM) {
+        Shadow shadow = { 0, "", 0, 0 };
+        SetShadow(shadow);
     }
     return ErrorCode::NO_ERROR;
 }
@@ -2213,6 +2218,72 @@ bool InputMethodPanel::IsNeedConfig(bool ignoreIsMainDisplay)
     }
     IMSA_HILOGI("isNeedConfig is %{public}d", needConfig);
     return needConfig;
+}
+
+int32_t InputMethodPanel::SetShadow(const Shadow &shadow)
+{
+    if (!InputMethodAbility::GetInstance().IsSystemApp()) {
+        return ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION;
+    }
+    if (panelType_ == PanelType::SOFT_KEYBOARD && panelFlag_ == PanelFlag::FLG_FIXED) {
+        return ErrorCode::ERROR_INVALID_PANEL_FLAG;
+    }
+    if (window_ == nullptr) {
+        IMSA_HILOGE("window_ is nullptr!");
+        return ErrorCode::ERROR_WINDOW_MANAGER;
+    }
+    if (shadow.radius == 0.0f) {
+        if (panelType_ == PanelType::SOFT_KEYBOARD && isScbEnable_) {
+            return InputMethodAbility::GetInstance().SetPanelShadow(shadow);
+        }
+        auto ret = window_->SetShadowRadius(shadow.radius);
+        if (ret != WMError::WM_OK) {
+            IMSA_HILOGE("SetShadowRadius error: %{public}d!", ret);
+            return ret == WMError::WM_ERROR_INVALID_PARAM ? ErrorCode::ERROR_PARAMETER_CHECK_FAILED :
+                                                            ErrorCode::ERROR_WINDOW_MANAGER;
+        }
+        return ErrorCode::NO_ERROR;
+    }
+    if (shadow.radius < 0.0f || !ColorParser::Parse(shadow.color)) {
+        return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+    }
+    if (panelType_ == PanelType::SOFT_KEYBOARD && isScbEnable_) {
+        return InputMethodAbility::GetInstance().SetPanelShadow(shadow);
+    }
+    return SetWindowShadow(shadow);
+}
+
+int32_t InputMethodPanel::SetWindowShadow(const Shadow &shadow)
+{
+    if (window_ == nullptr) {
+        IMSA_HILOGE("window_ is nullptr!");
+        return ErrorCode::ERROR_WINDOW_MANAGER;
+    }
+    auto ret = window_->SetShadowRadius(shadow.radius);
+    if (ret != WMError::WM_OK) {
+        IMSA_HILOGE("SetShadowRadius error: %{public}d!", ret);
+        return ret == WMError::WM_ERROR_INVALID_PARAM ? ErrorCode::ERROR_PARAMETER_CHECK_FAILED :
+                                                        ErrorCode::ERROR_WINDOW_MANAGER;
+    }
+    ret = window_->SetShadowColor(shadow.color);
+    if (ret != WMError::WM_OK) {
+        IMSA_HILOGE("SetShadowColor error: %{public}d!", ret);
+        return ret == WMError::WM_ERROR_INVALID_PARAM ? ErrorCode::ERROR_PARAMETER_CHECK_FAILED :
+                                                        ErrorCode::ERROR_WINDOW_MANAGER;
+    }
+    ret = window_->SetShadowOffsetX(shadow.offsetX);
+    if (ret != WMError::WM_OK) {
+        IMSA_HILOGE("SetShadowOffsetX error: %{public}d!", ret);
+        return ret == WMError::WM_ERROR_INVALID_PARAM ? ErrorCode::ERROR_PARAMETER_CHECK_FAILED :
+                                                        ErrorCode::ERROR_WINDOW_MANAGER;
+    }
+    ret = window_->SetShadowOffsetY(shadow.offsetY);
+    if (ret != WMError::WM_OK) {
+        IMSA_HILOGE("SetShadowOffsetY error: %{public}d!", ret);
+        return ret == WMError::WM_ERROR_INVALID_PARAM ? ErrorCode::ERROR_PARAMETER_CHECK_FAILED :
+                                                        ErrorCode::ERROR_WINDOW_MANAGER;
+    }
+    return ErrorCode::NO_ERROR;
 }
 
 int32_t InputMethodPanel::SetKeepScreenOn(bool isKeepScreenOn)

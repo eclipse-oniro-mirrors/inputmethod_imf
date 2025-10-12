@@ -1303,6 +1303,16 @@ int32_t InputMethodAbility::HidePanel(
     return ErrorCode::NO_ERROR;
 }
 
+int32_t InputMethodAbility::SetPanelShadow(const Shadow &shadow)
+{
+    auto systemChannel = GetSystemCmdChannelProxy();
+    if (systemChannel == nullptr) {
+        IMSA_HILOGE("channel is nullptr!");
+        return ErrorCode::ERROR_CLIENT_NULL_POINTER;
+    }
+    return systemChannel->SetPanelShadow(shadow);
+}
+
 int32_t InputMethodAbility::NotifyPanelStatus(bool isUseParameterFlag, PanelFlag panelFlag)
 {
     auto panel = GetSoftKeyboardPanel();

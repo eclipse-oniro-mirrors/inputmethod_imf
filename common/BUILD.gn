@@ -39,6 +39,7 @@ ohos_shared_library("inputmethod_common") {
     "-Os",
   ]
   sources = [
+    "src/color_parser.cpp",
     "src/global.cpp",
     "src/input_death_recipient.cpp",
     "src/inputmethod_dump.cpp",

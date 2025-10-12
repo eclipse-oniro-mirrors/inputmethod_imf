@@ -2909,6 +2909,145 @@ HWTEST_F(InputMethodPanelTest, testGetSystemPanelInsets11, TestSize.Level0)
 }
 
 /**
+ * @tc.name: testSetShadow_001
+ * @tc.desc: Test SetShadow.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testSetShadow_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testSetShadow_001 start.");
+    IdentityCheckerMock::SetSystemApp(false);
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FIXED;
+    auto ret = inputMethodPanel->CreatePanel(nullptr, panelInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    IdentityCheckerMock::SetSystemApp(false);
+    ima_.isSystemApp_ = false;
+    Shadow shadow = { 0.0, "#000000", 0.0, 0.0};
+    ret = inputMethodPanel->SetShadow(shadow);
+    EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+    InputMethodPanelTest::DestroyPanel(inputMethodPanel);
+}
+ 
+/**
+ * @tc.name: testSetShadow_002
+ * @tc.desc: Test SetShadow.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testSetShadow_002, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testSetShadow_002 start.");
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FIXED;
+    auto ret = inputMethodPanel->CreatePanel(nullptr, panelInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ima_.isSystemApp_ = true;
+    Shadow shadow = { 0.0, "#000000", 0.0, 0.0};
+    ret = inputMethodPanel->SetShadow(shadow);
+    EXPECT_EQ(ret, ErrorCode::ERROR_INVALID_PANEL_FLAG);
+    InputMethodPanelTest::DestroyPanel(inputMethodPanel);
+}
+ 
+/**
+ * @tc.name: testSetShadow_003
+ * @tc.desc: Test SetShadow.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testSetShadow_003, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testSetShadow_003 start.");
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FLOATING;
+    auto ret = inputMethodPanel->CreatePanel(nullptr, panelInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ima_.isSystemApp_ = true;
+    Shadow shadow = { 0.0, "#000000", 0.0, 0.0};
+    ret = inputMethodPanel->SetShadow(shadow);
+    if (isScbEnable_) {
+        EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
+    } else {
+        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    }
+ 
+    shadow = { 20.0, "#000000", 0.0, 0.0};
+    ret = inputMethodPanel->SetShadow(shadow);
+    if (isScbEnable_) {
+        EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
+    } else {
+        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    }
+    InputMethodPanelTest::DestroyPanel(inputMethodPanel);
+}
+ 
+/**
+ * @tc.name: testSetShadow_004
+ * @tc.desc: Test SetShadow.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testSetShadow_004, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testSetShadow_004 start.");
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = STATUS_BAR;
+    panelInfo.panelFlag = FLG_FLOATING;
+    auto ret = inputMethodPanel->CreatePanel(nullptr, panelInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ima_.isSystemApp_ = true;
+    Shadow shadow = { 0.0, "#000000", 0.0, 0.0};
+    ret = inputMethodPanel->SetShadow(shadow);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    InputMethodPanelTest::DestroyPanel(inputMethodPanel);
+}
+ 
+/**
+ * @tc.name: testSetShadow_005
+ * @tc.desc: Test SetShadow.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testSetShadow_005, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testSetShadow_005 start.");
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = STATUS_BAR;
+    panelInfo.panelFlag = FLG_FLOATING;
+    auto ret = inputMethodPanel->CreatePanel(nullptr, panelInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ima_.isSystemApp_ = true;
+    Shadow shadow = { -10, "", 0.0, 0.0};
+    ret = inputMethodPanel->SetShadow(shadow);
+    EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+ 
+    shadow = { 10.0, "", 0.0, 0.0};
+    ret = inputMethodPanel->SetShadow(shadow);
+    EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+ 
+    shadow = { 10.0, "#000000000", 0.0, 0.0};
+    ret = inputMethodPanel->SetShadow(shadow);
+    EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+ 
+    shadow = { 10.0, "#ssssss", 0.0, 0.0};
+    ret = inputMethodPanel->SetShadow(shadow);
+    EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+ 
+    shadow = { 10.0, "#000000", 0.0, 0.0};
+    ret = inputMethodPanel->SetShadow(shadow);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+ 
+    shadow = { 10.0, "#00000000", 10.0, 10.0};
+    ret = inputMethodPanel->SetShadow(shadow);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    InputMethodPanelTest::DestroyPanel(inputMethodPanel);
+}
+
+/**
  * @tc.name: testNotifyPanelStatus
  * @tc.desc: Test Show panel.
  * @tc.type: FUNC
