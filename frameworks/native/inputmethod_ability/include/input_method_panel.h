@@ -89,6 +89,7 @@ public:
     int32_t SetShadow(const Shadow &shadow);
     bool IsKeyboardAtBottom();
     uint32_t windowId_ = INVALID_WINDOW_ID;
+    std::atomic<bool> isNeedConfig_ { false };
 
 private:
     class KeyboardPanelInfoChangeListener : public Rosen::IKeyboardPanelInfoChangeListener {
@@ -268,6 +269,7 @@ private:
     ChangeY changeY_;
 
     std::mutex getInsetsMutex_;
+    std::mutex parseParamsMutex_;
 };
 } // namespace MiscServices
 } // namespace OHOS

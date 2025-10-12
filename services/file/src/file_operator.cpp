@@ -137,12 +137,16 @@ bool FileOperator::Read(const std::string &path, const std::string &key, std::st
     for (int32_t i = MAX_CFG_POLICY_DIRS_CNT - 1; i >= 0; i--) {
         auto realPath = GetRealPath(cfgFiles->paths[i]);
         if (realPath.empty()) {
+            IMSA_HILOGE("RealPath is empty, path: %{private}s, path index: %{public}d, key: %{public}s",
+                realPath.c_str(), i, key.c_str());
             continue;
         }
         content = Read(realPath, key);
         if (!content.empty()) {
             break;
         }
+        IMSA_HILOGE("content is empty, path: %{private}s, path index: %{public}d, key: %{public}s",
+            realPath.c_str(), i, key.c_str());
     }
     FreeCfgFiles(cfgFiles);
     return !content.empty();
@@ -157,7 +161,8 @@ std::string FileOperator::Read(const std::string &path, const std::string &key)
         return "";
     }
     if (content.find(key) == std::string::npos) {
-        IMSA_HILOGD("%{public}s not contain %{public}s!", path.c_str(), key.c_str());
+        IMSA_HILOGE("content: %{public}s, %{private}s not contain %{public}s!", content.c_str(), path.c_str(),
+            key.c_str());
         return "";
     }
     return content;

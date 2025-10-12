@@ -572,18 +572,21 @@ int32_t InputMethodPanel::AdjustPanelRect(
         return ErrorCode::ERROR_WINDOW_MANAGER;
     }
     KeyboardLayoutParams resultParams;
-    int32_t result = ParseParams(panelFlag, layoutParams, resultParams);
-    if (result != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("failed to parse panel rect, result: %{public}d!", result);
-        return result;
+    {
+        std::lock_guard<std::mutex> lock(parseParamsMutex_);
+        int32_t result = ParseParams(panelFlag, layoutParams, resultParams);
+        if (result != ErrorCode::NO_ERROR) {
+            IMSA_HILOGE("failed to parse panel rect, result: %{public}d!", result);
+            return result;
+        }
+        UpdateLayoutInfo(panelFlag, layoutParams, {}, resultParams, false);
+        UpdateResizeParams();
     }
     auto ret = AdjustLayout(resultParams);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("AdjustPanelRect error, err: %{public}d!", ret);
         return ErrorCode::ERROR_WINDOW_MANAGER;
     }
-    UpdateLayoutInfo(panelFlag, layoutParams, {}, resultParams, false);
-    UpdateResizeParams();
     if (needUpdateRegion) {
         UpdateHotAreas();
     }
@@ -657,35 +660,32 @@ int32_t InputMethodPanel::AdjustPanelRect(PanelFlag panelFlag, EnhancedLayoutPar
             return ret;
         }
     }
-    auto ret = ParseEnhancedParams(panelFlag, adjustInfo, params);
-    if (ret != ErrorCode::NO_ERROR) {
-        return ret;
+    Rosen::KeyboardLayoutParams wmsParams;
+    {
+        std::lock_guard<std::mutex> lock(parseParamsMutex_);
+        auto ret = ParseEnhancedParams(panelFlag, adjustInfo, params);
+        if (ret != ErrorCode::NO_ERROR) {
+            return ret;
+        }
+        wmsParams = ConvertToWMSParam(panelFlag, params);
+        UpdateLayoutInfo(panelFlag, {}, params, wmsParams, true);
+        UpdateResizeParams();
     }
     // adjust rect
-    auto lastWmsParam = GetKeyboardLayoutParams();
-    auto lastIsEnhanced = isInEnhancedAdjust_.load();
-    auto lastParams = GetEnhancedLayoutParams();
-    auto lastPanelFlag = panelFlag_;
-    auto wmsParams = ConvertToWMSParam(panelFlag, params);
-    ret = AdjustLayout(wmsParams);
+    auto ret = AdjustLayout(wmsParams);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("AdjustKeyboardLayout error, err: %{public}d!", ret);
         return ErrorCode::ERROR_WINDOW_MANAGER;
     }
-    UpdateLayoutInfo(panelFlag, {}, params, wmsParams, true);
     // set hot area
     CalculateHotAreas(params, wmsParams, adjustInfo, hotAreas);
     auto wmsHotAreas = ConvertToWMSHotArea(hotAreas);
     auto result = window_->SetKeyboardTouchHotAreas(wmsHotAreas);
     if (result != WMError::WM_OK) {
         IMSA_HILOGE("SetKeyboardTouchHotAreas error, err: %{public}d!", result);
-        ret = AdjustLayout(lastWmsParam);
-        UpdateLayoutInfo(lastPanelFlag, {}, lastParams, lastWmsParam, lastIsEnhanced);
-        IMSA_HILOGE("restore layout param, result: %{public}d", ret);
         return ErrorCode::ERROR_WINDOW_MANAGER;
     }
     SetHotAreas(hotAreas);
-    UpdateResizeParams();
     IMSA_HILOGI("success, type/flag: %{public}d/%{public}d.", static_cast<int32_t>(panelType_),
         static_cast<int32_t>(panelFlag_));
     return ErrorCode::NO_ERROR;
@@ -1253,15 +1253,19 @@ int32_t InputMethodPanel::ShowPanel()
         IMSA_HILOGI("panel already shown.");
         return ErrorCode::NO_ERROR;
     }
-    auto ret = WMError::WM_OK;
-    if (GetCurDisplayId() == MAIN_DISPLAY_ID) {
-        if (IsKeyboardAtBottom() && IsNeedConfig()) {
-            auto enhancedParams = GetEnhancedLayoutParams();
-            LayoutParams layoutParams = { enhancedParams.landscape.rect, enhancedParams.portrait.rect };
-            auto result = AdjustPanelRect(panelFlag_, layoutParams);
-            IMSA_HILOGI("Correct AdjustPanelRect result: %{public}d", result);
-        }
+
+    bool needAdjust = false;
+    {
+        std::lock_guard<std::mutex> lock(parseParamsMutex_);
+        needAdjust = GetCurDisplayId() == 0 && IsKeyboardAtBottom() && IsNeedConfig();
     }
+    if (needAdjust) {
+        auto enhancedParams = GetEnhancedLayoutParams();
+        LayoutParams layoutParams = { enhancedParams.landscape.rect, enhancedParams.portrait.rect };
+        auto result = AdjustPanelRect(panelFlag_, layoutParams);
+        IMSA_HILOGI("AdjustPanelRect result: %{public}d", result);
+    }
+    auto ret = WMError::WM_OK;
     {
         KeyboardEffectOption option = ConvertToWmEffect(GetImmersiveMode(), LoadImmersiveEffect());
         InputMethodSyncTrace tracer("InputMethodPanel_ShowPanel");
@@ -2217,6 +2221,7 @@ bool InputMethodPanel::IsNeedConfig(bool ignoreIsMainDisplay)
         needConfig = false;
     }
     IMSA_HILOGI("isNeedConfig is %{public}d", needConfig);
+    isNeedConfig_ = needConfig;
     return needConfig;
 }
 
