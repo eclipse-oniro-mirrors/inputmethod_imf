@@ -1266,7 +1266,7 @@ int32_t InputMethodAbility::ShowPanel(
         if (immersiveEffect.fluidLightMode == FluidLightMode::BACKGROUND_FLUID_LIGHT) {
             StartTimer();
         }
-        NotifyPanelStatus(false);
+        NotifyPanelStatus(false, FLG_FIXED, true);
         PanelStatusInfo info;
         info.panelInfo.panelType = inputMethodPanel->GetPanelType();
         info.panelInfo.panelFlag = flag;
@@ -1303,7 +1303,7 @@ int32_t InputMethodAbility::HidePanel(
     return ErrorCode::NO_ERROR;
 }
 
-int32_t InputMethodAbility::NotifyPanelStatus(bool isUseParameterFlag, PanelFlag panelFlag)
+int32_t InputMethodAbility::NotifyPanelStatus(bool isUseParameterFlag, PanelFlag panelFlag, bool isCheckFuncButton)
 {
     auto panel = GetSoftKeyboardPanel();
     if (panel == nullptr) {
@@ -1320,8 +1320,11 @@ int32_t InputMethodAbility::NotifyPanelStatus(bool isUseParameterFlag, PanelFlag
     if (GetAttachOptions().isSimpleKeyboardEnabled && IsDefaultIme() && !GetInputAttribute().IsOneTimeCodeFlag()) {
         sysPanelStatus.needFuncButton = false;
     }
-    if (panel->IsKeyboardAtBottom() && sysPanelStatus.needFuncButton) {
+    if (isCheckFuncButton && panel->IsKeyboardAtBottom() && sysPanelStatus.needFuncButton) {
         IMSA_HILOGW("keyboard is at the bottom, hide the system panel button");
+        sysPanelStatus.needFuncButton = false;
+    }
+    if (!panel->isNeedConfig_) {
         sysPanelStatus.needFuncButton = false;
     }
     auto systemChannel = GetSystemCmdChannelProxy();

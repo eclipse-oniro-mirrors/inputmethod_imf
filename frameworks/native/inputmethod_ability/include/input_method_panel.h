@@ -87,6 +87,7 @@ public:
     int32_t GetSystemPanelCurrentInsets(uint64_t displayId, SystemPanelInsets &systemPanelInsets);
     bool IsKeyboardAtBottom();
     uint32_t windowId_ = INVALID_WINDOW_ID;
+    std::atomic<bool> isNeedConfig_ { false };
 
 private:
     class KeyboardPanelInfoChangeListener : public Rosen::IKeyboardPanelInfoChangeListener {
@@ -265,6 +266,7 @@ private:
     ChangeY changeY_;
 
     std::mutex getInsetsMutex_;
+    std::mutex parseParamsMutex_;
 };
 } // namespace MiscServices
 } // namespace OHOS
