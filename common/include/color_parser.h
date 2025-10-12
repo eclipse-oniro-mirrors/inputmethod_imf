@@ -22,7 +22,7 @@ namespace OHOS {
 namespace MiscServices {
 class ColorParser {
 public:
-    static bool IsColorFullyTransparent(uint32_t colorStr);
+    static bool IsColorFullyTransparent(uint32_t colorValue);
     static bool Parse(const std::string &colorStr, uint32_t &colorValue);
     static bool IsValidHexString(const std::string &colorStr);
 

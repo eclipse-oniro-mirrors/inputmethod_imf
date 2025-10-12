@@ -3281,21 +3281,45 @@ HWTEST_F(InputMethodPanelTest, testSetSystemPanelButtonColor2, TestSize.Level0)
 }
 
 /**
- * @tc.name: IsValidColorNoAlpha1
- * @tc.desc: Test IsValidColorNoAlpha.
+ * @tc.name: SetSystemPanelButtonColor3
+ * @tc.desc: Test SetSystemPanelButtonColor.
  * @tc.type: FUNC
  */
-HWTEST_F(InputMethodPanelTest, testIsValidColorNoAlpha1, TestSize.Level0)
+HWTEST_F(InputMethodPanelTest, testSetSystemPanelButtonColor3, TestSize.Level0)
 {
-    IMSA_HILOGI("InputMethodPanelTest::IsValidColorNoAlpha1 start.");
+    IMSA_HILOGI("InputMethodPanelTest::SetSystemPanelButtonColor2 start.");
 
-    std::string colorStr = "#FFFFFF";
-    auto ret = ColorParser::IsValidColorNoAlpha(colorStr);
+    auto inputMethodPanel = InputMethodPanelTest::CreatePanel();
+    ASSERT_NE(inputMethodPanel, nullptr);
+    std::string fillColor = "#00FFFFFF";
+    std::string backgroundColor = "#FF000000";
+    auto ret = inputMethodPanel->SetSystemPanelButtonColor(fillColor, backgroundColor);
+    EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+
+    fillColor = "#FF000000";
+    backgroundColor = "#00FFFFFF";
+    ret = inputMethodPanel->SetSystemPanelButtonColor(fillColor, backgroundColor);
+    EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+
+    fillColor = "#00FF0000";
+    ret = inputMethodPanel->SetSystemPanelButtonColor(fillColor, backgroundColor);
+    EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+
+    InputMethodPanelTest::DestroyPanel(inputMethodPanel);
+}
+
+/**
+ * @tc.name: IsColorFullyTransparent1
+ * @tc.desc: Test IsColorFullyTransparent.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testIsColorFullyTransparent1, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::IsColorFullyTransparent1 start.");
+
+    uint32_t colorValue = 0x00000000;
+    auto ret = ColorParser::IsColorFullyTransparent(colorValue);
     EXPECT_EQ(ret, true);
-
-    colorStr = "";
-    ret = ColorParser::IsValidColorNoAlpha(colorStr);
-    EXPECT_EQ(ret, false);
 }
 
 /**

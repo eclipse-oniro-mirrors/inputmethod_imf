@@ -2463,11 +2463,12 @@ int32_t InputMethodPanel::SetSystemPanelButtonColor(const std::string &fillColor
     uint32_t colorValue = 0;
     uint32_t backgroundColorValue = 0;
     if (!ColorParser::Parse(fillColor, colorValue) || !ColorParser::Parse(backgroundColor, backgroundColorValue)) {
-        IMSA_HILOGE("color is valid!, fillColor: %{public}s, backgroundColor: %{public}s",
+        IMSA_HILOGE("color is invalid!, fillColor: %{public}s, backgroundColor: %{public}s",
             fillColor.c_str(), backgroundColor.c_str());
         return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
     }
-    if (ColorParser::IsColorFullyTransparent(fillColor) || ColorParser::IsColorFullyTransparent(backgroundColorValue)) {
+    if (ColorParser::IsColorFullyTransparent(colorValue)
+        || ColorParser::IsColorFullyTransparent(backgroundColorValue)) {
         IMSA_HILOGE("color is full transparent!, fillColor: %{public}s, backgroundColor: %{public}s",
             fillColor.c_str(), backgroundColor.c_str());
         return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
@@ -2477,8 +2478,9 @@ int32_t InputMethodPanel::SetSystemPanelButtonColor(const std::string &fillColor
     int32_t ret = InputMethodAbility::GetInstance().SendPrivateCommand(privateCommand, false);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("sendPrivateCommand failed!!, ret: %{public}d", ret);
+        return ret;
     }
-    IMSA_HILOGD("SetSystemPanelButtonColor success!!, fillColor: %{public}s, backgroundColor: %{public}s",
+    IMSA_HILOGI("SetSystemPanelButtonColor success!!, fillColor: %{public}s, backgroundColor: %{public}s",
         fillColor.c_str(), backgroundColor.c_str());
     return ret;
 }

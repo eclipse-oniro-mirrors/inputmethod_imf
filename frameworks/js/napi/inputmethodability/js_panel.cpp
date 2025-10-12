@@ -1015,7 +1015,7 @@ napi_value JsPanel::SetSystemPanelButtonColor(napi_env env, napi_callback_info i
         napi_valuetype valueType = napi_undefined;
         napi_status status = napi_generic_failure;
         status = napi_typeof(env, argv[0], &valueType);
-        CHECK_RETURN(status == napi_ok, "get valueType failed!", status);
+        CHECK_RETURN(status == napi_ok, "get fillColor failed!", status);
         if (valueType == napi_undefined) {
             ctxt->fillColor = "";
         } else {
@@ -1023,7 +1023,7 @@ napi_value JsPanel::SetSystemPanelButtonColor(napi_env env, napi_callback_info i
                 "fillColor type must be string or undefined!!", TYPE_NONE, napi_generic_failure);
         }
         status = napi_typeof(env, argv[1], &valueType);
-        CHECK_RETURN(status == napi_ok, "get valueTypeTwo failed!", status);
+        CHECK_RETURN(status == napi_ok, "get background color failed!", status);
         if (valueType == napi_undefined) {
             ctxt->backgroundColor = "";
         } else {
