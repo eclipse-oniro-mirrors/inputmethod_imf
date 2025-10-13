@@ -48,6 +48,8 @@
 #include "window_adapter.h"
 #include "input_method_tools.h"
 #include "ime_state_manager_factory.h"
+#include "imf_hook_manager.h"
+#include "imf_module_manager.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -428,6 +430,7 @@ void InputMethodSystemAbility::OnStop()
     Memory::MemMgrClient::GetInstance().NotifyProcessStatus(getpid(), 1, 0, INPUT_METHOD_SYSTEM_ABILITY_ID);
     NumkeyAppsManager::GetInstance().Release();
     SettingsDataUtils::GetInstance().Release();
+    ImfModuleMgr::GetInstance().Destroy(ImfModuleMgr::IMF_EXT_MODULE_PATH);
 }
 // LCOV_EXCL_STOP
 void InputMethodSystemAbility::InitServiceHandler()
@@ -2035,6 +2038,26 @@ void InputMethodSystemAbility::InitMonitors()
     IMSA_HILOGI("init Pasteboard monitor, ret: %{public}d.", ret);
     InitSystemLanguageMonitor();
 }
+
+bool InputMethodSystemAbility::InitHaMonitor()
+{
+    if (!ImeInfoInquirer::GetInstance().IsCapacitySupport(SystemConfig::IME_DAU_STATISTICS_CAP_NAME)) {
+        IMSA_HILOGD("ime dau statistics cap is not enable.");
+        return false;
+    }
+    SaInfo info;
+    if (!ImeInfoInquirer::GetInstance().GetSaInfo(SystemConfig::HA_SERVICE_NAME, info)) {
+        IMSA_HILOGE("get ha service info failed.");
+        return false;
+    }
+    auto commonEventMgr = ImCommonEventManager::GetInstance();
+    if (commonEventMgr == nullptr) {
+        IMSA_HILOGE("commonEventMgr is nullptr.");
+        return false;
+    }
+    return commonEventMgr->SubscribeHaService([]() { ImfHookMgr::GetInstance().OnHaServiceStart(); }, info.id);
+}
+
 // LCOV_EXCL_STOP
 void InputMethodSystemAbility::HandleDataShareReady()
 {

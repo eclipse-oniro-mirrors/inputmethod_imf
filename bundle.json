@@ -136,6 +136,15 @@
                   ],
                   "header_base": "//base/inputmethod/imf/interfaces/kits/js/"
                 }
+              },
+              {
+                  "name": "//base/inputmethod/imf/interfaces/inner_api/imf_hook:imf_hook",
+                  "header": {
+                      "header_files": [
+                          "imf_hook.h"
+                      ],
+                      "header_base": "//base/inputmethod/imf/interfaces/inner_api/imf_hook/include"
+                  }
               }
           ], 
           "test": [

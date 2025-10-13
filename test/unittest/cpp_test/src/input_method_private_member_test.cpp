@@ -3056,5 +3056,118 @@ HWTEST_F(InputMethodPrivateMemberTest, ImCommonEventManager_OnBundleResChanged, 
     subscriber->OnBundleResChanged(data);
     EXPECT_TRUE(msgHandler->mQueue.empty());
 }
+
+/**
+ * @tc.name: ImeInfoInquirer_GetSaInfo
+ * @tc.desc: ImeInfoInquirer_GetSaInfo
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+    HWTEST_F(InputMethodPrivateMemberTest, ImeInfoInquirer_GetSaInfo, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::ImeInfoInquirer_GetSaInfo start.");
+    ImeInfoInquirer::GetInstance().systemConfig_.dependentSaList.clear();
+    SaInfo info;
+    auto ret = ImeInfoInquirer::GetInstance().GetSaInfo(SystemConfig::HA_SERVICE_NAME, info);
+    EXPECT_FALSE(ret);
+
+    SaInfo infoParam;
+    infoParam.name = SystemConfig::HA_SERVICE_NAME;
+    infoParam.id = 777;
+    ImeInfoInquirer::GetInstance().systemConfig_.dependentSaList.push_back(infoParam);
+    ret = ImeInfoInquirer::GetInstance().GetSaInfo(SystemConfig::HA_SERVICE_NAME, info);
+    EXPECT_TRUE(ret);
+    EXPECT_EQ(info.name, infoParam.name);
+    EXPECT_EQ(info.id, infoParam.id);
+}
+
+/**
+ * @tc.name: ImeInfoInquirer_GetImeVersionName
+ * @tc.desc: ImeInfoInquirer_GetImeVersionName
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, ImeInfoInquirer_GetImeVersionName, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::ImeInfoInquirer_GetImeVersionName start.");
+    int32_t userId = 10;
+    std::string bundleName = "bundleName";
+    std::string versionName = "1.1.1";
+    FullImeInfo info;
+    info.versionName = versionName;
+    info.prop.name = bundleName;
+    FullImeInfoManager::GetInstance().fullImeInfos_.insert({ userId, { info } });
+
+    auto versionNameRet = ImeInfoInquirer::GetInstance().GetImeVersionName(userId, bundleName);
+    EXPECT_EQ(versionName, versionNameRet);
+
+    // not has cache
+    FullImeInfoManager::GetInstance().fullImeInfos_.clear();
+    versionNameRet = ImeInfoInquirer::GetInstance().GetImeVersionName(userId, bundleName);
+    EXPECT_TRUE(versionNameRet.empty());
+}
+
+/**
+ * @tc.name: IMSA_InitHaMonitor
+ * @tc.desc: IMSA_InitHaMonitor
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, IMSA_InitHaMonitor, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::IMSA_InitHaMonitor start.");
+    InputMethodSystemAbility systemAbility;
+    // cap not support
+    ImeInfoInquirer::GetInstance().systemConfig_.supportedCapacityList.clear();
+    ImeInfoInquirer::GetInstance().systemConfig_.dependentSaList.clear();
+    auto ret = systemAbility.InitHaMonitor();
+    EXPECT_FALSE(ret);
+
+    // saInfo not find
+    ImeInfoInquirer::GetInstance().systemConfig_.supportedCapacityList.insert(
+        SystemConfig::IME_DAU_STATISTICS_CAP_NAME);
+    ImeInfoInquirer::GetInstance().systemConfig_.dependentSaList.clear();
+    ret = systemAbility.InitHaMonitor();
+    EXPECT_FALSE(ret);
+
+    // saInfo find
+    ImeInfoInquirer::GetInstance().systemConfig_.supportedCapacityList.insert(
+        SystemConfig::IME_DAU_STATISTICS_CAP_NAME);
+    SaInfo infoParam;
+    infoParam.name = SystemConfig::HA_SERVICE_NAME;
+    infoParam.id = 777;
+    ImeInfoInquirer::GetInstance().systemConfig_.dependentSaList.push_back(infoParam);
+    systemAbility.InitHaMonitor();
+}
+
+/**
+ * @tc.name: PerUserSession_PostCurrentImeInfoReportHook
+ * @tc.desc: PerUserSession_PostCurrentImeInfoReportHook
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_PostCurrentImeInfoReportHook, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_PostCurrentImeInfoReportHook start.");
+    std::string bundleName = "bundleName";
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
+    // cap not support
+    ImeInfoInquirer::GetInstance().systemConfig_.supportedCapacityList.clear();
+    auto ret = userSession->PostCurrentImeInfoReportHook(bundleName);
+    EXPECT_EQ(ret, ErrorCode::ERROR_DEVICE_UNSUPPORTED);
+    // cap support, handler is nullptr
+    ImeInfoInquirer::GetInstance().systemConfig_.supportedCapacityList.insert(
+        SystemConfig::IME_DAU_STATISTICS_CAP_NAME);
+    ret = userSession->PostCurrentImeInfoReportHook(bundleName);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_NULLPTR);
+    // cap support, handler is not nullptr
+    auto runner = AppExecFwk::EventRunner::Create("test_PostCurrentImeInfoReportHook");
+    auto eventHandler = std::make_shared<AppExecFwk::EventHandler>(runner);
+    auto userSession1 = std::make_shared<PerUserSession>(MAIN_USER_ID, eventHandler);
+    ImeInfoInquirer::GetInstance().systemConfig_.supportedCapacityList.insert(
+        SystemConfig::IME_DAU_STATISTICS_CAP_NAME);
+    ret = userSession1->PostCurrentImeInfoReportHook(bundleName);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
 } // namespace MiscServices
 } // namespace OHOS

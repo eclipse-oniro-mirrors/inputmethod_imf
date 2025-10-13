@@ -155,6 +155,7 @@ struct FullImeInfo {
     uint32_t versionCode;
     Property prop;
     std::vector<SubProperty> subProps;
+    std::string versionName;
 };
 
 struct ImeInfo : public FullImeInfo {

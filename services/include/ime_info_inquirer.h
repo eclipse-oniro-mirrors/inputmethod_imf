@@ -79,6 +79,7 @@ public:
         const Condition &condition);
     bool GetImeAppId(int32_t userId, const std::string &bundleName, std::string &appId);
     bool GetImeVersionCode(int32_t userId, const std::string &bundleName, uint32_t &versionCode);
+    std::string GetImeVersionName(int32_t userId, const std::string &bundleName);
     int32_t GetDefaultInputMethod(const int32_t userId, std::shared_ptr<Property> &prop, bool isBrief = false);
     int32_t GetInputMethodConfig(const int32_t userId, AppExecFwk::ElementName &inputMethodConfig);
     int32_t ListInputMethod(int32_t userId, InputMethodStatus status, std::vector<Property> &props);
@@ -111,6 +112,7 @@ public:
     std::unordered_set<std::string> GetDisableNumKeyAppDeviceTypes();
     bool IsCapacitySupport(const std::string &capacityName);
     bool GetCompatibleDeviceType(const std::string &bundleName, std::string &compatibleDeviceType);
+    bool GetSaInfo(const std::string &saName, SaInfo &saInfo);
 
 private:
     ImeInfoInquirer() = default;

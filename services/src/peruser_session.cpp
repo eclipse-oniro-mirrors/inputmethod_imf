@@ -49,6 +49,7 @@
 #include "inputmethod_trace.h"
 #include "notify_service_impl.h"
 #include "display_adapter.h"
+#include "imf_hook_manager.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -660,6 +661,25 @@ int32_t PerUserSession::BindClientWithIme(
         clientGroup->NotifyInputStartToClients(
             clientInfo->config.windowId, static_cast<int32_t>(clientInfo->requestKeyboardReason));
     }
+    PostCurrentImeInfoReportHook(data->ime.first);
+    return ErrorCode::NO_ERROR;
+}
+
+int32_t PerUserSession::PostCurrentImeInfoReportHook(const std::string &bundleName)
+{
+    if (!ImeInfoInquirer::GetInstance().IsCapacitySupport(SystemConfig::IME_DAU_STATISTICS_CAP_NAME)) {
+        IMSA_HILOGD("ime dau statistics cap is not enable.");
+        return ErrorCode::ERROR_DEVICE_UNSUPPORTED;
+    }
+    if (eventHandler_ == nullptr) {
+        IMSA_HILOGE("eventHandler_ is nullptr.");
+        return ErrorCode::ERROR_IMSA_NULLPTR;
+    }
+    auto now = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    auto task = [userId = userId_, bundleName, now]() {
+        ImfHookMgr::GetInstance().ExecuteCurrentImeInfoReportHook(userId, bundleName, now);
+    };
+    eventHandler_->PostTask(task, "ExecuteCurrentImeInfoReportHook", 0, AppExecFwk::EventQueue::Priority::LOW);
     return ErrorCode::NO_ERROR;
 }
 

@@ -297,7 +297,7 @@ private:
     int32_t IsRequestOverLimit(TimeLimitType timeLimit, int32_t resetTimeOut, uint32_t restartNum);
     int32_t PrepareImeInfos(ImeType type, std::vector<sptr<IRemoteObject>> &agents,
         std::vector<BindImeInfo> &imeInfos);
-
+    int32_t PostCurrentImeInfoReportHook(const std::string &bundleName);
     std::mutex imeStartLock_;
 
     BlockData<bool> isImeStarted_{ MAX_IME_START_TIME, false };
