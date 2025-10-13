@@ -65,7 +65,7 @@ public:
     int32_t ChangePanelFlag(PanelFlag panelFlag);
     PanelType GetPanelType();
     PanelFlag GetPanelFlag();
-    int32_t ShowPanel();
+    int32_t ShowPanel(uint32_t windowId = 0);
     int32_t HidePanel();
     int32_t SizeChange(const WindowSize &size);
     WindowSize GetKeyboardSize();
@@ -219,6 +219,7 @@ private:
     bool sizeChangeRegistered_ = false;
     bool sizeUpdateRegistered_ = false;
     uint32_t invalidGravityPercent = 0;
+    uint32_t callingWindowId_ = 0;
     std::shared_ptr<PanelStatusListener> panelStatusListener_ = nullptr;
 
     static std::atomic<uint32_t> sequenceId_;

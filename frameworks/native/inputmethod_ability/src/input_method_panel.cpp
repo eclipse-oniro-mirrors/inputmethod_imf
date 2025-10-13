@@ -1237,7 +1237,7 @@ PanelFlag InputMethodPanel::GetPanelFlag()
     return panelFlag_;
 }
 
-int32_t InputMethodPanel::ShowPanel()
+int32_t InputMethodPanel::ShowPanel(uint32_t windowId)
 {
     IMSA_HILOGD("InputMethodPanel start.");
     int32_t waitTime = 0;
@@ -1250,7 +1250,7 @@ int32_t InputMethodPanel::ShowPanel()
         IMSA_HILOGE("window_ is nullptr!");
         return ErrorCode::ERROR_IMA_NULLPTR;
     }
-    if (IsShowing()) {
+    if (IsShowing() && callingWindowId_ == windowId) {
         IMSA_HILOGI("panel already shown.");
         return ErrorCode::NO_ERROR;
     }
@@ -1270,12 +1270,13 @@ int32_t InputMethodPanel::ShowPanel()
     {
         KeyboardEffectOption option = ConvertToWmEffect(GetImmersiveMode(), LoadImmersiveEffect());
         InputMethodSyncTrace tracer("InputMethodPanel_ShowPanel");
-        ret = window_->ShowKeyboard(option);
+        ret = window_->ShowKeyboard(windowId, option);
     }
     if (ret != WMError::WM_OK) {
         IMSA_HILOGE("ShowPanel error, err = %{public}d", ret);
         return ErrorCode::ERROR_OPERATE_PANEL;
     }
+    callingWindowId_ = windowId;
     IMSA_HILOGI("success, type/flag: %{public}d/%{public}d.", static_cast<int32_t>(panelType_),
         static_cast<int32_t>(panelFlag_));
     PanelStatusChange(InputWindowStatus::SHOW);
@@ -1331,11 +1332,22 @@ int32_t InputMethodPanel::HidePanel()
 int32_t InputMethodPanel::SetCallingWindow(uint32_t windowId)
 {
     IMSA_HILOGD("InputMethodPanel start, windowId: %{public}d.", windowId);
+    if (windowId == callingWindowId_) {
+        return ErrorCode::NO_ERROR;
+    }
     if (window_ == nullptr) {
         IMSA_HILOGE("window_ is nullptr!");
         return ErrorCode::ERROR_PANEL_NOT_FOUND;
     }
-    auto ret = window_->SetCallingWindow(windowId);
+    if (!IsShowing()) {
+        IMSA_HILOGW("the keyboard is not showing");
+        callingWindowId_ = windowId;
+        return ErrorCode::NO_ERROR;
+    }
+    auto ret = window_->ChangeCallingWindowId(windowId);
+    if (ret == WMError::WM_OK) {
+        callingWindowId_ = windowId;
+    }
     IMSA_HILOGI("ret: %{public}d, windowId: %{public}u", ret, windowId);
     return ret == WMError::WM_OK ? ErrorCode::NO_ERROR : ErrorCode::ERROR_WINDOW_MANAGER;
 }
@@ -1347,12 +1359,12 @@ int32_t InputMethodPanel::GetCallingWindowInfo(CallingWindowInfo &windowInfo)
         IMSA_HILOGE("window_ is nullptr!");
         return ErrorCode::ERROR_PANEL_NOT_FOUND;
     }
-    auto ret = window_->GetCallingWindowWindowStatus(windowInfo.status);
+    auto ret = window_->GetCallingWindowWindowStatus(callingWindowId_, windowInfo.status);
     if (ret != WMError::WM_OK) {
         IMSA_HILOGE("get status failed, ret: %{public}d!", ret);
         return ErrorCode::ERROR_WINDOW_MANAGER;
     }
-    ret = window_->GetCallingWindowRect(windowInfo.rect);
+    ret = window_->GetCallingWindowRect(callingWindowId_, windowInfo.rect);
     if (ret != WMError::WM_OK) {
         IMSA_HILOGE("get rect failed, ret: %{public}d!", ret);
         return ErrorCode::ERROR_WINDOW_MANAGER;

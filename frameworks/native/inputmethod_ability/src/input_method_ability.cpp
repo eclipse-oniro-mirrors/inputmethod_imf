@@ -996,7 +996,6 @@ bool InputMethodAbility::NotifyInfoToWmsInStartInput(const TextTotalConfig &text
             if (type == SOFT_KEYBOARD && panel->GetPanelFlag() == FLG_FIXED && panel->IsShowing()) {
                 panel->SetTextFieldAvoidInfo(textConfig.positionY, textConfig.height);
             }
-            panel->SetCallingWindow(textConfig.windowId);
             return false;
         });
     };
@@ -1260,7 +1259,7 @@ int32_t InputMethodAbility::ShowPanel(
             IMSA_HILOGE("failed to set keyBoard, ret: %{public}d!", ret);
         }
     }
-    auto ret = inputMethodPanel->ShowPanel();
+    auto ret = inputMethodPanel->ShowPanel(GetInputAttribute().windowId);
     if (ret == ErrorCode::NO_ERROR) {
         ImmersiveEffect immersiveEffect = inputMethodPanel->LoadImmersiveEffect();
         if (immersiveEffect.fluidLightMode == FluidLightMode::BACKGROUND_FLUID_LIGHT) {

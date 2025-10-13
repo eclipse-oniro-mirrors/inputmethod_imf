@@ -1327,6 +1327,20 @@ int32_t PerUserSession::NotifySubTypeChangedToIme(const std::string &bundleName,
     return ret;
 }
 
+bool PerUserSession::IsKeyboardCallingProcess(int32_t pid, uint32_t windowId)
+{
+    auto clientGroup = GetClientGroup(ImeType::IME);
+    auto clientInfo = clientGroup != nullptr ? clientGroup->GetCurrentClientInfo() : nullptr;
+    if (clientInfo == nullptr) {
+        IMSA_HILOGE("failed to get cur client info!");
+        return false;
+    }
+    if (clientInfo->pid == pid) {
+        return true;
+    }
+    return clientInfo->config.inputAttribute.windowId == windowId;
+}
+
 int32_t PerUserSession::StartCurrentIme(bool isStopCurrentIme)
 {
     IMSA_HILOGD("enter");

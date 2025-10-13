@@ -1553,6 +1553,19 @@ ErrCode InputMethodSystemAbility::GetCurrentInputMethod(Property& resultValue)
     return ERR_OK;
 }
 
+ErrCode InputMethodSystemAbility::IsKeyboardCallingProcess(
+    int32_t pid, uint32_t windowId, bool &isKeyboardCallingProcess)
+{
+    int32_t userId = GetCallingUserId();
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+    if (session == nullptr) {
+        IMSA_HILOGE("session is nullptr!");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    isKeyboardCallingProcess = session->IsKeyboardCallingProcess(pid, windowId);
+    return ERR_OK;
+}
+
 ErrCode InputMethodSystemAbility::IsDefaultImeSet(bool& resultValue)
 {
     resultValue = ImeInfoInquirer::GetInstance().IsDefaultImeSet(GetCallingUserId());

@@ -463,6 +463,17 @@ public:
     IMF_API int32_t GetInputMethodConfig(AppExecFwk::ElementName &inputMethodConfig);
 
     /**
+     * @brief Is keyboard calling process.
+     *
+     * This function is used to get is keyboard calling process for pid.
+     *
+     * @param pid Indicates the process id.
+     * @return Returns true or false.
+     * @since 20
+     */
+    IMF_API bool IsKeyboardCallingProcess(int32_t pid, uint32_t windowId);
+
+    /**
      * @brief Set calling window id.
      *
      * This function is used to set calling window id to input method.

@@ -19,6 +19,7 @@
 #include "ime_enabled_info_manager.h"
 #include "ime_info_inquirer.h"
 #include "input_data_channel_stub.h"
+#include "input_method_panel.h"
 #include "input_method_ability.h"
 #include "input_method_system_ability.h"
 #include "key_event_result_handler.h"
@@ -509,7 +510,6 @@ void InputMethodControllerTest::TriggerSelectionChangeCallback(std::u16string &t
 void InputMethodControllerTest::CheckTextConfig(const TextConfig &config)
 {
     std::this_thread::sleep_for(std::chrono::seconds(1));
-    EXPECT_EQ(imeListener_->windowId_, config.windowId);
     EXPECT_EQ(cursorInfo_.left, config.cursorInfo.left);
     EXPECT_EQ(cursorInfo_.top, config.cursorInfo.top);
     EXPECT_EQ(cursorInfo_.height, config.cursorInfo.height);
@@ -626,6 +626,102 @@ HWTEST_F(InputMethodControllerTest, testIMCAttach002, TestSize.Level0)
     };
     inputMethodController_->Attach(textListener_, true, textConfig);
     InputMethodControllerTest::CheckTextConfig(textConfig);
+}
+
+/**
+ * @tc.name: testIMCAttach003
+ * @tc.desc: IMC Attach.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, testIMCAttach003, TestSize.Level0)
+{
+    PanelInfo info;
+    info.panelType = SOFT_KEYBOARD;
+    info.panelFlag = FLG_FLOATING;
+    auto panel = std::make_shared<InputMethodPanel>();
+    auto ret = inputMethodAbility_.CreatePanel(nullptr, info, panel);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    TextListener::ResetParam();
+    CursorInfo cursorInfo = { 1, 1, 1, 1 };
+    Range selectionRange = { 1, 2 };
+    InputAttribute attribute = { 1, 1 };
+    uint32_t windowId = 10;
+    TextConfig textConfig = {
+        .inputAttribute = attribute, .cursorInfo = cursorInfo, .range = selectionRange, .windowId = windowId
+    };
+
+    inputMethodController_->Attach(textListener_, true, textConfig);
+    InputMethodControllerTest::CheckTextConfig(textConfig);
+    EXPECT_EQ(imeListener_->windowId_, textConfig.windowId);
+
+    TextListener::ResetParam();
+    cursorInfo = { 2, 2, 2, 2 };
+    selectionRange = { 3, 4 };
+    attribute = { 2, 2 };
+    windowId = 11;
+    textConfig = {
+        .inputAttribute = attribute, .cursorInfo = cursorInfo, .range = selectionRange, .windowId = windowId
+    };
+    inputMethodController_->Attach(textListener_, true, textConfig);
+    InputMethodControllerTest::CheckTextConfig(textConfig);
+    inputMethodAbility_.DestroyPanel(panel);
+    EXPECT_EQ(imeListener_->windowId_, textConfig.windowId);
+}
+
+/**
+ * @tc.name: testIsKeyboardCallingProcess_001
+ * @tc.desc: IMC IsKeyboardCallingProcess.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, testIsKeyboardCallingProcess_001, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testIsKeyboardCallingProcess_001 Test START");
+    auto ret = inputMethodController_->IsKeyboardCallingProcess(0, 0);
+    EXPECT_FALSE(ret);
+ 
+    imeListener_->isInputStart_ = false;
+    TextListener::ResetParam();
+    inputMethodController_->Attach(textListener_, true);
+    ret = inputMethodController_->IsKeyboardCallingProcess(getpid(), 0);
+    EXPECT_TRUE(ret);
+ 
+    TextListener::ResetParam();
+    inputMethodController_->DeactivateClient();
+}
+
+/**
+ * @tc.name: testIsKeyboardCallingProcess_002
+ * @tc.desc: IMC IsKeyboardCallingProcess.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, testIsKeyboardCallingProcess_002, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testIsKeyboardCallingProcess_002 Test START");
+    auto &sessionManager = UserSessionManager::GetInstance();
+    int32_t userId = imsa_->GetCallingUserId();
+
+    imeListener_->isInputStart_ = false;
+    TextListener::ResetParam();
+    inputMethodController_->Attach(textListener_, true);
+
+    bool isKeyboardCallingProcess = false;
+    const auto errorCode = imsa_->IsKeyboardCallingProcess(0, 0, isKeyboardCallingProcess);
+    EXPECT_EQ(errorCode, ErrorCode::NO_ERROR);
+
+ 
+    // save and erase sessions in the map
+    const auto saveSession = sessionManager.userSessions_[userId];
+    sessionManager.userSessions_.erase(userId);
+
+    const auto errorCode2 = imsa_->IsKeyboardCallingProcess(0, 0, isKeyboardCallingProcess);
+    EXPECT_EQ(errorCode2, ErrorCode::ERROR_NULL_POINTER);
+
+    // restore session
+    sessionManager.userSessions_[userId] = saveSession;
 }
 
 /**
