@@ -50,6 +50,8 @@ public:
     static constexpr int32_t EACH_THREAD_CIRCULATION_TIME = 100;
     static constexpr int32_t WAIT_TASK_EMPTY_TIMES = 100;
     static constexpr int32_t WAIT_TASK_EMPTY_INTERVAL = 20;
+    static constexpr int32_t ATTACH_RETRY_INTERVAL = 50; // 50ms
+    static constexpr int32_t ATTACH_MAX_RETRY_TIMES = 30;  // 30 times
     static bool timeout_;
     static std::shared_ptr<AppExecFwk::EventHandler> textConfigHandler_;
 
@@ -850,6 +852,37 @@ HWTEST_F(InputMethodAttachTest, testAttach009, TestSize.Level0)
     attachOptions.requestKeyboardReason = RequestKeyboardReason::NONE;
     inputMethodController_->clientInfo_.config.isSimpleKeyboardEnabled = true;
     auto ret = inputMethodController_->Attach(textListener, attachOptions, config);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: testBlockRetry001
+ * @tc.desc: test BlockRetry
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAttachTest, testBlockRetry001, TestSize.Level0)
+{
+    IMSA_HILOGI("test testBlockRetry001 after attach.");
+    sptr<OnTextChangedListener> textListener = new TextListener();
+    InputAttribute attribute;
+    attribute.inputPattern = 3;
+    attribute.enterKeyType = 2;
+    TextConfig config;
+    config.inputAttribute = attribute;
+    AttachOptions attachOptions;
+    attachOptions.isShowKeyboard = false;
+    attachOptions.requestKeyboardReason = RequestKeyboardReason::NONE;
+    auto task = [textListener, attachOptions, config, this](int32_t &res) {
+        res = inputMethodController_->Attach(textListener, attachOptions, config);
+        return res != ErrorCode::ERROR_TRY_IME_START_FAILED;
+    };
+    int32_t ret = ErrorCode::NO_ERROR;
+    OHOS::MiscServices::BlockRetry(ATTACH_RETRY_INTERVAL, ATTACH_MAX_RETRY_TIMES, task, ret);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    auto task1 = [textListener, attachOptions, config, this](int32_t &res) {
+        return res = false;
+    };
+    OHOS::MiscServices::BlockRetry(ATTACH_RETRY_INTERVAL, ATTACH_MAX_RETRY_TIMES, task1, ret);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 }
 

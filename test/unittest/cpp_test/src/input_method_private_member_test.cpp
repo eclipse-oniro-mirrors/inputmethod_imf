@@ -92,7 +92,7 @@ void InputMethodPrivateMemberTest::TestImfStartIme()
     auto imeToStart = std::make_shared<ImeNativeCfg>();
     int32_t startRet = session_->StartIme(imeToStart, false);
     IMSA_HILOGI("startRet is %{public}d.", startRet);
-    if (startRet == ErrorCode::ERROR_IME_START_INPUT_FAILED) {
+    if (startRet == ErrorCode::ERROR_TRY_IME_START_FAILED) {
         tryLockFailCount_++;
         IMSA_HILOGI("tryLockFailCount_ is  %{public}d.", tryLockFailCount_.load());
     }

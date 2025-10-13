@@ -35,5 +35,21 @@ bool BlockRetry(uint32_t interval, uint32_t maxRetryTimes, Function func)
     IMSA_HILOGI("retry failed");
     return false;
 }
+
+bool BlockRetry(uint32_t interval, uint32_t maxRetryTimes, RetryFunction func, int32_t &ret)
+{
+    IMSA_HILOGD("retry start");
+    uint32_t times = 0;
+    do {
+        times++;
+        if (func(ret)) {
+            IMSA_HILOGD("success, retry times is: %{public}d", times);
+            return true;
+        }
+        std::this_thread::sleep_for(std::chrono::milliseconds(interval));
+    } while (times < maxRetryTimes);
+    IMSA_HILOGI("retry failed");
+    return false;
+}
 } // namespace MiscServices
 } // namespace OHOS
