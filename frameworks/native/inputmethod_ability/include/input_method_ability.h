@@ -98,7 +98,8 @@ public:
     int32_t OnConnectSystemCmd(const sptr<IRemoteObject> &channel, sptr<IRemoteObject> &agent);
     void OnClientInactive(const sptr<IRemoteObject> &channel);
     void NotifyKeyboardHeight(uint32_t panelHeight, PanelFlag panelFlag);
-    int32_t SendPrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand) override;
+    int32_t SendPrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand,
+        bool validateDefaultIme = true) override;
     int32_t ReceivePrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand) override;
     bool IsDefaultIme();
     int32_t GetCallingWindowInfo(CallingWindowInfo &windowInfo);

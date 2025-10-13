@@ -21,7 +21,7 @@ namespace OHOS {
 namespace MiscServices {
 constexpr int32_t COLOR_STRING_LENGTH_RGB = 7; // 7 is color string length.#RRGGBB
 constexpr int32_t COLOR_STRING_LENGTH_ARGB = 9; // 9 is color string length.#AARRGGBB
-bool ColorParser::Parse(const std::string &colorStr)
+bool ColorParser::Parse(const std::string &colorStr, uint32_t &colorValue)
 {
     if (colorStr.size() < COLOR_STRING_LENGTH_RGB) {
         return false;
@@ -32,7 +32,10 @@ bool ColorParser::Parse(const std::string &colorStr)
         if (!IsValidHexString(color)) {
             return false;
         }
+        constexpr int32_t HEX = 16;
+        colorValue = std::strtoul(color.c_str(), 0, HEX); // convert hex string to number
         if (colorStr.size() == COLOR_STRING_LENGTH_RGB) {
+            colorValue |= 0xFF000000;
             return true;
         }
         if (colorStr.size() == COLOR_STRING_LENGTH_ARGB) {
@@ -54,6 +57,12 @@ bool ColorParser::IsValidHexString(const std::string &colorStr)
         return false;
     }
     return true;
+}
+
+// check color string, format:#008EF5 or #FF008EF5. Alpha cannot be 0x00.
+bool ColorParser::IsColorFullyTransparent(uint32_t colorValue)
+{
+    return (colorValue & 0xff000000) == 0x00000000;
 }
 } // namespace MiscServices
 } // namespace OHOS

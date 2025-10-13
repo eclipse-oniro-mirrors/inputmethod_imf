@@ -1701,7 +1701,7 @@ int32_t InputMethodController::ReceivePrivateCommand(
 }
 
 int32_t InputMethodController::SendPrivateCommand(
-    const std::unordered_map<std::string, PrivateDataValue> &privateCommand)
+    const std::unordered_map<std::string, PrivateDataValue> &privateCommand, bool validateDefaultIme)
 {
     if (!IsBound()) {
         IMSA_HILOGD("not bound.");

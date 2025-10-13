@@ -27,6 +27,7 @@
 #include "scene_board_judgement.h"
 #include "sys_cfg_parser.h"
 #include "ui/rs_surface_node.h"
+#include "color_parser.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -2249,7 +2250,8 @@ int32_t InputMethodPanel::SetShadow(const Shadow &shadow)
         }
         return ErrorCode::NO_ERROR;
     }
-    if (shadow.radius < 0.0f || !ColorParser::Parse(shadow.color)) {
+    uint32_t colorValue = 0;
+    if (shadow.radius < 0.0f || !ColorParser::Parse(shadow.color, colorValue)) {
         return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
     }
     if (panelType_ == PanelType::SOFT_KEYBOARD && isScbEnable_) {
@@ -2459,6 +2461,33 @@ bool InputMethodPanel::IsKeyboardAtBottom()
     auto layoutParams = GetKeyboardLayoutParams();
     return layoutParams.PortraitKeyboardRect_.height_ == layoutParams.PortraitPanelRect_.height_ &&
         !isInEnhancedAdjust_.load();
+}
+ 
+int32_t InputMethodPanel::SetSystemPanelButtonColor(const std::string &fillColor, const std::string &backgroundColor)
+{
+    uint32_t colorValue = 0;
+    uint32_t backgroundColorValue = 0;
+    if (!ColorParser::Parse(fillColor, colorValue) || !ColorParser::Parse(backgroundColor, backgroundColorValue)) {
+        IMSA_HILOGE("color is invalid!, fillColor: %{public}s, backgroundColor: %{public}s",
+            fillColor.c_str(), backgroundColor.c_str());
+        return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+    }
+    if (ColorParser::IsColorFullyTransparent(colorValue)
+        || ColorParser::IsColorFullyTransparent(backgroundColorValue)) {
+        IMSA_HILOGE("color is full transparent!, fillColor: %{public}s, backgroundColor: %{public}s",
+            fillColor.c_str(), backgroundColor.c_str());
+        return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+    }
+    std::unordered_map<std::string, PrivateDataValue> privateCommand
+        = { {"sys_cmd", 1}, {"functionKeyColor", fillColor}, {"functionKeyPressColor", backgroundColor}};
+    int32_t ret = InputMethodAbility::GetInstance().SendPrivateCommand(privateCommand, false);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("sendPrivateCommand failed!!, ret: %{public}d", ret);
+        return ret;
+    }
+    IMSA_HILOGI("SetSystemPanelButtonColor success!!, fillColor: %{public}s, backgroundColor: %{public}s",
+        fillColor.c_str(), backgroundColor.c_str());
+    return ret;
 }
 } // namespace MiscServices
 } // namespace OHOS

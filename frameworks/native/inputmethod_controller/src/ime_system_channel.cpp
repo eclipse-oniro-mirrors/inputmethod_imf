@@ -209,7 +209,8 @@ int32_t ImeSystemCmdChannel::ReceivePrivateCommand(
     return ErrorCode::NO_ERROR;
 }
 // LCOV_EXCL_START
-int32_t ImeSystemCmdChannel::SendPrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand)
+int32_t ImeSystemCmdChannel::SendPrivateCommand(
+    const std::unordered_map<std::string, PrivateDataValue> &privateCommand, bool validateDefaultIme)
 {
     IMSA_HILOGD("start.");
     if (TextConfig::IsSystemPrivateCommand(privateCommand)) {

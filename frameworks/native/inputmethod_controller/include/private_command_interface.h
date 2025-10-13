@@ -22,7 +22,8 @@ namespace OHOS {
 namespace MiscServices {
 class PrivateCommandInterface {
 public:
-    virtual int32_t SendPrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand) = 0;
+    virtual int32_t SendPrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand,
+        bool validateDefaultIme = true) = 0;
     virtual int32_t ReceivePrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand) = 0;
 };
 } // namespace MiscServices

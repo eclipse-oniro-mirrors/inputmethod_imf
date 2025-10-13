@@ -854,7 +854,8 @@ public:
      * @since 12
      */
     IMF_API int32_t SendPrivateCommand(
-        const std::unordered_map<std::string, PrivateDataValue> &privateCommand) override;
+        const std::unordered_map<std::string, PrivateDataValue> &privateCommand,
+        bool validateDefaultIme = true) override;
 
     /**
      * @brief Receive private command from ime.

@@ -1606,9 +1606,10 @@ void InputMethodAbility::NotifyKeyboardHeight(uint32_t panelHeight, PanelFlag pa
     channel->NotifyKeyboardHeight(panelHeight);
 }
 
-int32_t InputMethodAbility::SendPrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand)
+int32_t InputMethodAbility::SendPrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand,
+    bool validateDefaultIme)
 {
-    if (!IsDefaultIme()) {
+    if (validateDefaultIme && !IsDefaultIme()) {
         IMSA_HILOGE("current is not default ime!");
         return ErrorCode::ERROR_NOT_DEFAULT_IME;
     }

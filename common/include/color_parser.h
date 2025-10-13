@@ -22,10 +22,11 @@ namespace OHOS {
 namespace MiscServices {
 class ColorParser {
 public:
-    static bool Parse(const std::string &colorStr);
+    static bool IsColorFullyTransparent(uint32_t colorValue);
+    static bool Parse(const std::string &colorStr, uint32_t &colorValue);
+    static bool IsValidHexString(const std::string &colorStr);
 
 private:
-    static bool IsValidHexString(const std::string &colorStr);
 };
 } // namespace MiscServices
 } // namespace OHOS
