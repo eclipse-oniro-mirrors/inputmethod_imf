@@ -72,11 +72,13 @@ struct EnhancedLayoutParam {
 
 struct EnhancedLayoutParams {
     bool isFullScreen{ false };
+    uint64_t displayId{ 0 };
     EnhancedLayoutParam portrait;
     EnhancedLayoutParam landscape;
 };
 
 struct DisplaySize {
+    uint64_t displayId{ 0 };
     WindowSize portrait;
     WindowSize landscape;
 };

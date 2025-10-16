@@ -611,6 +611,7 @@ Rosen::KeyboardLayoutParams InputMethodPanel::ConvertToWMSParam(
     wmsParams.PortraitPanelRect_ = layoutParams.portrait.panelRect;
     wmsParams.portraitAvoidHeight_ = layoutParams.portrait.avoidHeight;
     wmsParams.landscapeAvoidHeight_ = layoutParams.landscape.avoidHeight;
+    wmsParams.displayId_ = layoutParams.displayId;
     return wmsParams;
 }
 
@@ -1093,6 +1094,7 @@ int32_t InputMethodPanel::ParseParams(PanelFlag panelFlag, const LayoutParams &i
         IMSA_HILOGD("get adjust info: %{public}d", ret);
     }
     EnhancedLayoutParams tempOutput;
+    tempOutput.displayId = displaySize.displayId;
     ParseParam(panelFlag, adjustInfo.portrait, displaySize.portrait, input.portraitRect, tempOutput.portrait);
     ParseParam(panelFlag, adjustInfo.landscape, displaySize.landscape, input.landscapeRect, tempOutput.landscape);
     output = ConvertToWMSParam(panelFlag, tempOutput);
@@ -1269,8 +1271,9 @@ int32_t InputMethodPanel::ShowPanel(uint32_t windowId)
     auto ret = WMError::WM_OK;
     {
         KeyboardEffectOption option = ConvertToWmEffect(GetImmersiveMode(), LoadImmersiveEffect());
+        const auto displayId = GetCurDisplayId();
         InputMethodSyncTrace tracer("InputMethodPanel_ShowPanel");
-        ret = window_->ShowKeyboard(windowId, option);
+        ret = window_->ShowKeyboard(windowId, displayId, option);
     }
     if (ret != WMError::WM_OK) {
         IMSA_HILOGE("ShowPanel error, err = %{public}d", ret);
@@ -1866,6 +1869,7 @@ int32_t InputMethodPanel::GetDisplaySize(DisplaySize &size)
         IMSA_HILOGE("GetDefaultDisplay failed!");
         return ErrorCode::ERROR_WINDOW_MANAGER;
     }
+    size.displayId = defaultDisplay->GetId();
     auto width = defaultDisplay->GetWidth();
     auto height = defaultDisplay->GetHeight();
     if (width < height) {
