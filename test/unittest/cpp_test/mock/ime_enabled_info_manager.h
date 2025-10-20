@@ -61,9 +61,11 @@ public:
     bool IsDefaultFullMode(int32_t userId, const std::string &bundleName);
     /* add for compatibility that sys ime mod full experience table in it's full experience switch changed */
     void OnFullExperienceTableChanged(int32_t userId);
+    void SetEnabledState(EnabledStatus status);
 private:
     ImeEnabledInfoManager() = default;
     ~ImeEnabledInfoManager();
+    EnabledStatus enabledStatus_{ EnabledStatus::DISABLED };
 };
 } // namespace MiscServices
 } // namespace OHOS

@@ -1826,3 +1826,38 @@ ohos_executable("ProxyImeTestDemo") {
   subsystem_name = "inputmethod"
   part_name = "imf"
 }
+
+ohos_unittest("ImfExtMockTest") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+    blocklist = "./inputmethod_blocklist.txt"
+  }
+  module_out_path = module_output_path
+
+  sources = [
+    "${inputmethod_path}/services/hook/src/imf_hook_manager.cpp",
+    "${inputmethod_path}/services/module/src/imf_module_manager.cpp",
+    "mock/ime_enabled_info_manager.cpp",
+    "mock/ime_info_inquirer.cpp",
+    "mock/imf_hook.cpp",
+    "mock/hookmgr.cpp",
+    "mock/modulemgr.cpp",
+    "src/imf_ext_mock_test.cpp",
+  ]
+  include_dirs = [
+    "${inputmethod_path}/common/include",
+    "${inputmethod_path}/frameworks/native/inputmethod_controller/include",
+    "${inputmethod_path}/services/hook/include",
+    "${inputmethod_path}/services/module/include",
+    "${inputmethod_path}/test/unittest/cpp_test/mock",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "eventhandler:libeventhandler",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+  ]
+}

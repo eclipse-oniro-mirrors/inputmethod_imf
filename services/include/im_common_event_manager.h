@@ -36,6 +36,7 @@ public:
     bool SubscribeMemMgrService(const Handler &handler);
     bool SubscribeAccountManagerService(Handler handle);
     bool SubscribePasteboardService(const Handler &handler);
+    bool SubscribeHaService(const Handler &handler, int32_t haServiceId);
     bool UnsubscribeEvent();
     // only public the status change of softKeyboard in FLG_FIXED or FLG_FLOATING
     int32_t PublishPanelStatusChangeEvent(int32_t userId, const InputWindowStatus &status, const ImeWindowInfo &info);

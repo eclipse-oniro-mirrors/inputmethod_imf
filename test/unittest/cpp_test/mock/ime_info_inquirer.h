@@ -16,6 +16,7 @@
 #ifndef SERVICES_INCLUDE_IME_INFO_ENQUIRER_H
 #define SERVICES_INCLUDE_IME_INFO_ENQUIRER_H
 
+#include <atomic>
 #include <map>
 #include <memory>
 #include <mutex>
@@ -44,6 +45,7 @@ struct SystemConfig {
     EnabledStatus initEnabledState{ EnabledStatus::DISABLED };
     bool enableAppAgentFeature = false;
     bool enableNumKeyFeature = false;
+    bool enableExtModuleFeature = false;
     std::unordered_set<std::string> disableNumKeyAppDeviceTypes;
     std::unordered_set<int32_t> proxyImeUidList;
     std::unordered_set<int32_t> specialSaUidList;
@@ -122,7 +124,8 @@ public:
     void SetDefaultInputMethod(const std::shared_ptr<ImeInfo> &imeInfo);
     void SetCurrentSubtype(int32_t userId, const std::shared_ptr<SubProperty> &subProp);
     void SetImeInfo(int32_t userId, const std::vector<std::shared_ptr<ImeInfo>> &imeInfos);
-
+    std::string GetImeVersionName(int32_t userId, const std::string &bundleName);
+    void SetImeVersionName(const std::string &versionName);
 private:
     bool isQueryAllFullImeInfosOk_{ false };
     std::vector<std::pair<int32_t, std::vector<FullImeInfo>>> allFullImeInfos_;
@@ -155,6 +158,7 @@ private:
     std::shared_ptr<ImeInfo> defaultImeInfo_;
     std::mutex imeInfosLock_;
     std::map<int32_t, std::vector<std::shared_ptr<ImeInfo>>> imeInfos_;
+    std::string versionName_;
 };
 } // namespace MiscServices
 } // namespace OHOS

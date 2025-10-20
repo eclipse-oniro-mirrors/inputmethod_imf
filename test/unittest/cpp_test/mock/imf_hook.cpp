@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,22 +13,13 @@
  * limitations under the License.
  */
 
-#ifndef INPUTMETHOD_IMF_INPUT_METHOD_STATUS_H
-#define INPUTMETHOD_IMF_INPUT_METHOD_STATUS_H
-
-#include <cstdint>
-
-namespace OHOS ::MiscServices {
-enum InputMethodStatus : uint32_t {
-    DISABLE = 0,
-    ENABLE,
-    ALL
-};
-
-enum class EnabledStatus : int32_t {
-    DISABLED = 0,
-    BASIC_MODE,
-    FULL_EXPERIENCE_MODE,
-};
-} // namespace OHOS::MiscServices
-#endif // namespace OHOS::INPUTMETHOD_IMF_INPUT_METHOD_STATUS_H
+#include "imf_hook.h"
+namespace OHOS {
+namespace MiscServices {
+HOOK_MGR *GetImfHookMgr()
+{
+    HOOK_MGR *mgr = nullptr;
+    return mgr;
+}
+} // namespace MiscServices
+} // namespace OHOS

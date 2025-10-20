@@ -166,9 +166,11 @@ private:
     bool IsCurrentIme(const std::string &bundleName, const std::vector<ImeEnabledInfo> &enabledInfos);
     /* add for compatibility that sys ime listen global table change for smart menu in tablet */
     void UpdateGlobalEnabledTable(int32_t userId, const ImeEnabledCfg &newEnabledCfg);
+    std::shared_ptr<AppExecFwk::EventHandler> GetEventHandler();
     std::mutex imeEnabledCfgLock_;
     std::map<int32_t, ImeEnabledCfg> imeEnabledCfg_;
     CurrentImeStatusChangedHandler currentImeStatusChangedHandler_;
+    std::mutex serviceHandlerLock_;
     std::shared_ptr<AppExecFwk::EventHandler> serviceHandler_{ nullptr };
     std::mutex operateLock_;
 };

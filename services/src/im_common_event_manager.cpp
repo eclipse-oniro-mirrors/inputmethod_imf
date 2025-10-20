@@ -157,6 +157,11 @@ bool ImCommonEventManager::SubscribePasteboardService(const Handler &handler)
     return SubscribeManagerServiceCommon(handler, PASTEBOARD_SERVICE_ID);
 }
 
+bool ImCommonEventManager::SubscribeHaService(const Handler &handler, int32_t haServiceId)
+{
+    return SubscribeManagerServiceCommon(handler, haServiceId);
+}
+
 bool ImCommonEventManager::UnsubscribeEvent()
 {
     return true;

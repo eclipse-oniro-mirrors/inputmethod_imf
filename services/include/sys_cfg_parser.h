@@ -21,7 +21,20 @@
 #include "serializable.h"
 namespace OHOS {
 namespace MiscServices {
+struct SaInfo : public Serializable {
+    std::string name;
+    int32_t id{ -1 };
+    bool Unmarshal(cJSON *node) override
+    {
+        auto ret = GetValue(node, GET_NAME(name), name);
+        ret = GetValue(node, GET_NAME(id), id) && ret;
+        return ret;
+    }
+};
+
 struct SystemConfig : public Serializable {
+    static constexpr const char *IME_DAU_STATISTICS_CAP_NAME = "ime_dau_statistics";
+    static constexpr const char *HA_SERVICE_NAME = "haService";
     std::string systemInputMethodConfigAbility;
     std::string defaultInputMethod;
     std::string systemSpecialInputMethod;
@@ -36,6 +49,7 @@ struct SystemConfig : public Serializable {
     std::unordered_set<std::string> defaultImeScreenList;
     std::unordered_set<std::string> defaultMainDisplayScreenList;
     std::unordered_set<std::string> supportedCapacityList;
+    std::vector<SaInfo> dependentSaList;
 
     bool Unmarshal(cJSON *node) override
     {
@@ -55,6 +69,7 @@ struct SystemConfig : public Serializable {
         GetValue(node, GET_NAME(defaultImeScreenList), defaultImeScreenList);
         GetValue(node, GET_NAME(defaultMainDisplayScreenList), defaultMainDisplayScreenList);
         GetValue(node, GET_NAME(supportedCapacityList), supportedCapacityList);
+        GetValue(node, GET_NAME(dependentSaList), dependentSaList);
         return true;
     }
 };

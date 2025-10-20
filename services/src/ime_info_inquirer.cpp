@@ -1081,6 +1081,7 @@ int32_t ImeInfoInquirer::GetFullImeInfo(int32_t userId,
     if (GetBundleInfoByBundleName(userId, imeInfo.prop.name, bundleInfo)) {
         imeInfo.appId = bundleInfo.signatureInfo.appIdentifier;
         imeInfo.versionCode = bundleInfo.versionCode;
+        imeInfo.versionName = bundleInfo.versionName;
     }
     return ErrorCode::NO_ERROR;
 }
@@ -1176,6 +1177,21 @@ bool ImeInfoInquirer::GetImeVersionCode(int32_t userId, const std::string &bundl
     }
     versionCode = bundleInfo.versionCode;
     return true;
+}
+
+std::string ImeInfoInquirer::GetImeVersionName(int32_t userId, const std::string &bundleName)
+{
+    FullImeInfo imeInfo;
+    if (FullImeInfoManager::GetInstance().Get(userId, bundleName, imeInfo)) {
+        IMSA_HILOGD("%{public}d/%{public}s get bundle info succeed.", userId, bundleName.c_str());
+        return imeInfo.versionName;
+    }
+    BundleInfo bundleInfo;
+    if (!GetBundleInfoByBundleName(userId, bundleName, bundleInfo)) {
+        IMSA_HILOGE("%{public}d/%{public}s get bundle info failed.", userId, bundleName.c_str());
+        return "";
+    }
+    return bundleInfo.versionName;
 }
 
 bool ImeInfoInquirer::GetBundleInfoByBundleName(
@@ -1276,6 +1292,18 @@ bool ImeInfoInquirer::GetCompatibleDeviceType(
         return false;
     }
     compatibleDeviceType = deviceType;
+    return true;
+}
+
+bool ImeInfoInquirer::GetSaInfo(const std::string &saName, SaInfo &saInfo)
+{
+    auto saInfoList = GetSystemConfig().dependentSaList;
+    auto iter = std::find_if(
+        saInfoList.begin(), saInfoList.end(), [&saName](const SaInfo &info) { return info.name == saName; });
+    if (iter == saInfoList.end()) {
+        return false;
+    }
+    saInfo = *iter;
     return true;
 }
 } // namespace MiscServices

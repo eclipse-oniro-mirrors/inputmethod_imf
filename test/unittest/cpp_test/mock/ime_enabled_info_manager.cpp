@@ -79,8 +79,14 @@ int32_t ImeEnabledInfoManager::Update(
     return ErrorCode::NO_ERROR;
 }
 
+void ImeEnabledInfoManager::SetEnabledState(EnabledStatus status)
+{
+    enabledStatus_ = status;
+}
+
 int32_t ImeEnabledInfoManager::GetEnabledState(int32_t userId, const std::string &bundleName, EnabledStatus &status)
 {
+    status = enabledStatus_;
     return ErrorCode::NO_ERROR;
 }
 

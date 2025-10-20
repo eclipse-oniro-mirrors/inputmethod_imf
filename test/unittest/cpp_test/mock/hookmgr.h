@@ -1,5 +1,5 @@
 /*
- * Copyright (C) 2022 Huawei Device Co., Ltd.
+ * Copyright (C) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,22 +13,22 @@
  * limitations under the License.
  */
 
-#ifndef INPUTMETHOD_IMF_INPUT_METHOD_STATUS_H
-#define INPUTMETHOD_IMF_INPUT_METHOD_STATUS_H
+#ifndef IMF_HOOK_MGR_MOCK_H
+#define IMF_HOOK_MGR_MOCK_H
 
 #include <cstdint>
+#include <string>
 
-namespace OHOS ::MiscServices {
-enum InputMethodStatus : uint32_t {
-    DISABLE = 0,
-    ENABLE,
-    ALL
-};
+namespace OHOS {
+namespace MiscServices {
 
-enum class EnabledStatus : int32_t {
-    DISABLED = 0,
-    BASIC_MODE,
-    FULL_EXPERIENCE_MODE,
-};
-} // namespace OHOS::MiscServices
-#endif // namespace OHOS::INPUTMETHOD_IMF_INPUT_METHOD_STATUS_H
+typedef struct HookMgr {
+} HOOK_MGR;
+typedef struct HookExecArgs {
+} HOOK_EXEC_OPTIONS;
+
+int HookMgrExecute(HOOK_MGR *hookMgr, int stage, void *executionContext, const HOOK_EXEC_OPTIONS *extraArgs);
+void SetHookMgrExecuteRet(int ret);
+} // namespace MiscServices
+} // namespace OHOS
+#endif // IMF_HOOK_MGR_MOCK_H

@@ -66,6 +66,7 @@ ohos_static_library("inputmethod_tdd_util") {
     "data_share:datashare_consumer",
     "eventhandler:libeventhandler",
     "hilog:libhilog",
+    "init:libbegetutil",
     "input:libmmi-client",
     "ipc:ipc_single",
     "os_account:os_account_innerkits",

@@ -46,7 +46,14 @@ void ImeEnabledInfoManager::SetCurrentImeStatusChangedHandler(CurrentImeStatusCh
 
 void ImeEnabledInfoManager::SetEventHandler(const std::shared_ptr<AppExecFwk::EventHandler> &eventHandler)
 {
+    std::lock_guard<std::mutex> lock(serviceHandlerLock_);
     serviceHandler_ = eventHandler;
+}
+
+std::shared_ptr<AppExecFwk::EventHandler> ImeEnabledInfoManager::GetEventHandler()
+{
+    std::lock_guard<std::mutex> lock(serviceHandlerLock_);
+    return serviceHandler_;
 }
 
 int32_t ImeEnabledInfoManager::Init(const std::map<int32_t, std::vector<FullImeInfo>> &fullImeInfos)
@@ -491,7 +498,8 @@ int32_t ImeEnabledInfoManager::UpdateEnabledCfgCache(int32_t userId, const ImeEn
 void ImeEnabledInfoManager::NotifyCurrentImeStatusChanged(
     int32_t userId, const std::string &bundleName, EnabledStatus newStatus)
 {
-    if (serviceHandler_ == nullptr) {
+    auto handler = GetEventHandler();
+    if (handler == nullptr) {
         return;
     }
     auto notifyTask = [this, userId, bundleName, newStatus]() {
@@ -499,7 +507,7 @@ void ImeEnabledInfoManager::NotifyCurrentImeStatusChanged(
             currentImeStatusChangedHandler_(userId, bundleName, newStatus);
         }
     };
-    serviceHandler_->PostTask(notifyTask, "NotifyCurrentImeStatusChanged", 0, AppExecFwk::EventQueue::Priority::VIP);
+    handler->PostTask(notifyTask, "NotifyCurrentImeStatusChanged", 0, AppExecFwk::EventQueue::Priority::VIP);
 }
 
 bool ImeEnabledInfoManager::HasEnabledSwitch()
@@ -559,13 +567,14 @@ bool ImeEnabledInfoManager::IsExpired(const std::string &expirationTime)
 void ImeEnabledInfoManager::UpdateGlobalEnabledTable(int32_t userId, const ImeEnabledCfg &newEnabledCfg)
 {
     IMSA_HILOGD("start.");
-    if (serviceHandler_ == nullptr) {
+    auto handler = GetEventHandler();
+    if (handler == nullptr) {
         return;
     }
     auto task = [userId, newEnabledCfg]() {
         EnableUpgradeManager::GetInstance().UpdateGlobalEnabledTable(userId, newEnabledCfg);
     };
-    serviceHandler_->PostTask(task, "UpdateGlobalEnabledTable", 0, AppExecFwk::EventQueue::Priority::LOW);
+    handler->PostTask(task, "UpdateGlobalEnabledTable", 0, AppExecFwk::EventQueue::Priority::LOW);
     IMSA_HILOGD("end.");
 }
 

@@ -480,5 +480,15 @@ ImeNativeCfg ImeInfoInquirer::GetDefaultIme()
     ImeNativeCfg imeCfg;
     return imeCfg;
 }
+
+std::string ImeInfoInquirer::GetImeVersionName(int32_t userId, const std::string &bundleName)
+{
+    return versionName_;
+}
+
+void ImeInfoInquirer::SetImeVersionName(const std::string &versionName)
+{
+    versionName_ = versionName;
+}
 } // namespace MiscServices
 } // namespace OHOS
