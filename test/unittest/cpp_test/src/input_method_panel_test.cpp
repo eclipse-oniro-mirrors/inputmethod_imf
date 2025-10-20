@@ -3252,12 +3252,12 @@ HWTEST_F(InputMethodPanelTest, testSetSystemPanelButtonColor1, TestSize.Level0)
     std::string fillColor = "#FFFFFF";
     std::string backgroundColor = "";
     auto ret = inputMethodPanel->SetSystemPanelButtonColor(fillColor, backgroundColor);
-    EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+    EXPECT_EQ(ret, ErrorCode::ERROR_SYSTEM_CMD_CHANNEL_ERROR);
 
     fillColor = "";
     backgroundColor = "#FFFFFF";
     ret = inputMethodPanel->SetSystemPanelButtonColor(fillColor, backgroundColor);
-    EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+    EXPECT_EQ(ret, ErrorCode::ERROR_SYSTEM_CMD_CHANNEL_ERROR);
     InputMethodPanelTest::DestroyPanel(inputMethodPanel);
 }
 
