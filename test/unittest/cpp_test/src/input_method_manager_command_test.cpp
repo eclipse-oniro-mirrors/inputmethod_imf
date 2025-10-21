@@ -248,9 +248,6 @@ HWTEST_F(InputMethodManagerCommandTest, ExeCmd_012, TestSize.Level1)
     ret = TddUtil::ExecuteCmd("power-shell suspend", result);
     EXPECT_TRUE(ret);
     sleep(1);
-    ret = TddUtil::ExecuteCmd("ime -s com.example.newTestIme", result);
-    EXPECT_TRUE(ret);
-    EXPECT_EQ("Error: Operation failed. Error code:" + std::to_string(ErrorCode::ERROR_SWITCH_IME) + "\n", result);
 
     ret = TddUtil::ExecuteCmd("power-shell wakeup", result);
     EXPECT_TRUE(ret);

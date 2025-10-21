@@ -744,8 +744,7 @@ int32_t InputMethodSystemAbility::CheckInputTypeOption(int32_t userId, InputClie
         session->RestoreCurrentImeSubType(DEFAULT_DISPLAY_ID);
     }
 #ifdef IMF_SCREENLOCK_MGR_ENABLE
-    auto screenLockMgr = ScreenLock::ScreenLockManager::GetInstance();
-    if (screenLockMgr != nullptr && screenLockMgr->IsScreenLocked()) {
+    if (session->IsDeviceLockAndScreenLocked()) {
         std::string ime;
         if (GetScreenLockIme(userId, ime) != ErrorCode::NO_ERROR) {
             IMSA_HILOGE("not ime screenlocked");
@@ -755,6 +754,7 @@ int32_t InputMethodSystemAbility::CheckInputTypeOption(int32_t userId, InputClie
         return session->StartUserSpecifiedIme(DEFAULT_DISPLAY_ID);
     }
 #endif
+    IMSA_HILOGD("Screen is unLocked!");
     if (session->IsPreconfiguredDefaultImeSpecified(inputClientInfo)) {
         auto [ret, status] = session->StartPreconfiguredDefaultIme(DEFAULT_DISPLAY_ID);
         return ret;

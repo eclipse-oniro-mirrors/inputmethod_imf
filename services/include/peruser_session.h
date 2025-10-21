@@ -182,6 +182,7 @@ public:
     void IncreaseScbStartCount();
     int32_t TryStartIme();
     int32_t TryDisconnectIme();
+    bool IsDeviceLockAndScreenLocked();
 
 private:
     struct ResetManager {

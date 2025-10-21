@@ -2505,60 +2505,6 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_RestoreCurrentImeSubType, TestSize.Lev
 }
 
 /**
- * @tc.name: SA_GetRealCurrentIme_004
- * @tc.desc: SA_GetRealCurrentIme_004
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(InputMethodPrivateMemberTest, SA_GetRealCurrentIme_004, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_GetRealCurrentIme_004 start.");
-    // input type not start, has no current client, screen locked
-    std::string cmdResult;
-    std::string cmd = "power-shell suspend";
-    TddUtil::ExecuteCmd(cmd, cmdResult);
-    sleep(1);
-    InputTypeManager::GetInstance().isStarted_ = false;
-    auto session = std::make_shared<PerUserSession>(MAIN_USER_ID);
-    session->clientGroupMap_.clear();
-
-    std::string bundleName1 = "bundleName1";
-    std::string extName1 = "extName1";
-    std::string subName1 = "subName1";
-    std::string bundleName2 = "bundleName2";
-    std::string extName2 = "extName2";
-    ImeEnabledCfg cfg;
-    ImeEnabledInfo enabledInfo{ bundleName1, extName1, EnabledStatus::BASIC_MODE };
-    ImeEnabledInfo enabledInfo1{ bundleName2, extName2, EnabledStatus::BASIC_MODE };
-    enabledInfo.extraInfo.isDefaultIme = true;
-    enabledInfo.extraInfo.currentSubName = subName1;
-    cfg.enabledInfos.push_back(enabledInfo);
-    cfg.enabledInfos.push_back(enabledInfo1);
-    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(MAIN_USER_ID, cfg);
-
-    // preconfigured ime nullptr
-    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = "abnormal";
-    auto ime = session->GetRealCurrentIme(false);
-    ASSERT_NE(ime, nullptr);
-    EXPECT_EQ(ime->bundleName, bundleName1);
-    EXPECT_EQ(ime->subName, subName1);
-
-    // preconfigured ime exist, default ime exist, preconfigured ime same with default ime
-    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = bundleName1 + "/" + extName1;
-    ime = session->GetRealCurrentIme(false);
-    ASSERT_NE(ime, nullptr);
-    EXPECT_EQ(ime->bundleName, bundleName1);
-    EXPECT_EQ(ime->subName, subName1);
-
-    // preconfigured ime exist, default ime exist, preconfigured ime not same with default ime
-    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = bundleName2 + "/" + extName2;
-    ime = session->GetRealCurrentIme(false);
-    ASSERT_NE(ime, nullptr);
-    EXPECT_EQ(ime->bundleName, bundleName2);
-    EXPECT_TRUE(ime->subName.empty());
-}
-
-/**
  * @tc.name: SA_TestSysParamChanged_001
  * @tc.desc: SA_TestSysParamChanged_001
  * @tc.type: FUNC

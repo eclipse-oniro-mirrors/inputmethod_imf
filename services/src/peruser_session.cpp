@@ -1290,8 +1290,7 @@ std::shared_ptr<ImeNativeCfg> PerUserSession::GetRealCurrentIme(bool needMinGuar
         }
     }
 #ifdef IMF_SCREENLOCK_MGR_ENABLE
-    auto screenLockMgr = ScreenLock::ScreenLockManager::GetInstance();
-    if (screenLockMgr != nullptr && screenLockMgr->IsScreenLocked()) {
+    if (IsDeviceLockAndScreenLocked()) {
         IMSA_HILOGD("get screen locked ime!");
         auto preconfiguredIme = ImeInfoInquirer::GetInstance().GetDefaultImeCfg();
         auto defaultIme = ImeCfgManager::GetInstance().GetCurrentImeCfg(userId_);
@@ -1404,7 +1403,7 @@ int32_t PerUserSession::ChangeToDefaultImeIfNeed(
     return ErrorCode::NO_ERROR;
 #endif
     auto screenLockMgr = ScreenLock::ScreenLockManager::GetInstance();
-    if (screenLockMgr != nullptr && !screenLockMgr->IsScreenLocked()) {
+    if (!IsDeviceLockAndScreenLocked()) {
         IMSA_HILOGD("no need");
         imeToStart = targetIme;
         return ErrorCode::NO_ERROR;
@@ -2614,7 +2613,7 @@ bool PerUserSession::SpecialScenarioCheck()
         IMSA_HILOGE("send failed, is collaborative input!");
         return false;
     }
-    if (ScreenLock::ScreenLockManager::GetInstance()->IsScreenLocked()) {
+    if (IsDeviceLockAndScreenLocked()) {
         IMSA_HILOGE("send failed, is screen locked");
         return false;
     }
@@ -2713,8 +2712,7 @@ void PerUserSession::SetImeUsedBeforeScreenLocked(const std::pair<std::string, s
 bool PerUserSession::IsImeSwitchForbidden()
 {
 #ifdef IMF_SCREENLOCK_MGR_ENABLE
-    auto screenLockMgr = ScreenLock::ScreenLockManager::GetInstance();
-    if (screenLockMgr != nullptr && screenLockMgr->IsScreenLocked()) {
+    if (IsDeviceLockAndScreenLocked()) {
         return true;
     }
 #endif
@@ -2731,6 +2729,23 @@ bool PerUserSession::IsImeSwitchForbidden()
     auto callingWindowInfo = GetCallingWindowInfo(*clientInfo);
     return ImeInfoInquirer::GetInstance().IsRestrictedDefaultImeByDisplay(callingWindowInfo.displayId) ||
         clientInfo->config.inputAttribute.IsSecurityImeFlag() || isSimpleKeyboard;
+}
+
+bool PerUserSession::IsDeviceLockAndScreenLocked()
+{
+    auto screenLockMgr = ScreenLock::ScreenLockManager::GetInstance();
+    if (screenLockMgr != nullptr) {
+        IMSA_HILOGE("ScreenLockManager is nullptr!");
+        return false;
+    }
+    bool isDeviceLocked = false;
+    int32_t retCode = screenLockMgr->IsDeviceLocked(userId_, isDeviceLocked);
+    if (retCode != ScreenLock::ScreenLockError::E_SCREENLOCK_OK) {
+        IMSA_HILOGE("ScreenLockManager get IsDeviceLocked error ret:%{public}d, userId:%{public}d", retCode, userId_);
+    }
+    bool isScreenLocked = screenLockMgr->IsScreenLocked();
+    IMSA_HILOGD("isDeviceLocked is %{public}d, isScreenLocked is %{public}d", isDeviceLocked, isScreenLocked);
+    return isScreenLocked && isDeviceLocked;
 }
 
 std::pair<int32_t, StartPreDefaultImeStatus> PerUserSession::StartPreconfiguredDefaultIme(
