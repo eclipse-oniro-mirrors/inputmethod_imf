@@ -211,7 +211,7 @@ int32_t InputMethodPanel::AdjustLayout(const Rosen::KeyboardLayoutParams &param,
     }
     if (paramTmp.gravity_ == WindowGravity::WINDOW_GRAVITY_BOTTOM) {
         Shadow shadow = { 0, "", 0, 0 };
-        SetShadow(shadow);
+        SetWindowShadow(shadow);
     }
     return ErrorCode::NO_ERROR;
 }
@@ -2270,14 +2270,14 @@ int32_t InputMethodPanel::SetShadow(const Shadow &shadow)
     if (shadow.radius < 0.0f || !ColorParser::Parse(shadow.color, colorValue)) {
         return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
     }
-    if (panelType_ == PanelType::SOFT_KEYBOARD && isScbEnable_) {
-        return InputMethodAbility::GetInstance().SetPanelShadow(shadow);
-    }
     return SetWindowShadow(shadow);
 }
 
 int32_t InputMethodPanel::SetWindowShadow(const Shadow &shadow)
 {
+    if (panelType_ == PanelType::SOFT_KEYBOARD && isScbEnable_) {
+        return InputMethodAbility::GetInstance().SetPanelShadow(shadow);
+    }
     if (window_ == nullptr) {
         IMSA_HILOGE("window_ is nullptr!");
         return ErrorCode::ERROR_WINDOW_MANAGER;
