@@ -3108,7 +3108,7 @@ HWTEST_F(InputMethodPanelTest, testShowPanelWithAdjust02, TestSize.Level0)
     IMSA_HILOGI("InputMethodPanelTest::testShowPanelWithAdjust02 start.");
     auto inputMethodPanel = InputMethodPanelTest::CreatePanel();
     ASSERT_NE(inputMethodPanel, nullptr);
-    InputMethodAbility::GetInstance().inputAttribute_.callingDisplayId = 1000;
+    InputMethodAbility::GetInstance().inputAttribute_.callingDisplayId = 0;
     inputMethodPanel->isWaitSetUiContent_ = false;
     InputMethodPanelTest::TestShowPanel(inputMethodPanel);
 
