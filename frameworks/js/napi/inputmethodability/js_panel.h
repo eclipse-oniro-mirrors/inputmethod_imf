@@ -164,6 +164,7 @@ private:
     static void AdjustLayoutParam(std::shared_ptr<PanelContentContext> ctxt);
     static void AdjustEnhancedLayoutParam(std::shared_ptr<PanelContentContext> ctxt);
     static napi_value WriteCurrentInsetsOutput(napi_env env, SystemPanelInsets systemPanelInsets);
+    static napi_status CheckButtonColor(napi_env env, std::shared_ptr<PanelContentContext> ctxt, napi_value *argv);
 
     static const std::string CLASS_NAME;
     static constexpr size_t ARGC_MAX = 6;
