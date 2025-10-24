@@ -1217,12 +1217,11 @@ int32_t InputMethodPanel::ChangePanelFlag(PanelFlag panelFlag)
         IMSA_HILOGI("flag: %{public}d, ret: %{public}d.", panelFlag, ret);
         return ret == WMError::WM_OK ? ErrorCode::NO_ERROR : ErrorCode::ERROR_OPERATE_PANEL;
     }
-    auto layoutParams = GetKeyboardLayoutParams();
-    layoutParams.gravity_ = gravity;
-    auto ret = AdjustLayout(layoutParams);
+    auto enhancedParams = GetEnhancedLayoutParams();
+    LayoutParams layoutParams = { enhancedParams.landscape.rect, enhancedParams.portrait.rect };
+    auto ret = AdjustPanelRect(panelFlag, layoutParams);
     if (ret == ErrorCode::NO_ERROR) {
         panelFlag_ = panelFlag;
-        SetKeyboardLayoutParams(layoutParams);
     }
     InputMethodAbility::GetInstance().NotifyPanelStatus(true, panelFlag);
     IMSA_HILOGI("flag: %{public}d, ret: %{public}d.", panelFlag, ret);
