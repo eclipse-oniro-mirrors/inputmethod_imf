@@ -1148,6 +1148,7 @@ ErrCode InputMethodSystemAbility::EnableIme(
 int32_t InputMethodSystemAbility::EnableIme(
     int32_t userId, const std::string &bundleName, const std::string &extensionName, EnabledStatus status)
 {
+    ImeInfoInquirer::GetInstance().SetProp(nullptr);
     return ImeEnabledInfoManager::GetInstance().Update(
         userId, bundleName, extensionName, static_cast<EnabledStatus>(status));
 }
@@ -1510,6 +1511,7 @@ void InputMethodSystemAbility::WorkThread()
             }
             case MSG_ID_SYS_LANGUAGE_CHANGED: {
                 FullImeInfoManager::GetInstance().Update();
+                ImeInfoInquirer::GetInstance().SetProp(nullptr);
                 break;
             }
             case MSG_ID_BOOT_COMPLETED:

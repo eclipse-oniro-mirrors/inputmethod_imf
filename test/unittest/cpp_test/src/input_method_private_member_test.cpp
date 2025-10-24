@@ -691,6 +691,7 @@ HWTEST_F(InputMethodPrivateMemberTest, III_TestGetCurrentIme_001, TestSize.Level
     ImeEnabledInfo imeInfo;
     cfg.enabledInfos.push_back(imeInfo);
     ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert({ currentUserId, cfg });
+    ImeInfoInquirer::GetInstance().SetProp(nullptr);
     auto prop = ImeInfoInquirer::GetInstance().GetCurrentInputMethod(currentUserId);
     EXPECT_TRUE(prop == nullptr);
 
