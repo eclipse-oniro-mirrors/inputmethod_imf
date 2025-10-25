@@ -453,13 +453,13 @@ void JsInputMethodExtension::CheckNeedAdjustKeyboard(Rosen::DisplayId displayId)
     auto width = displayInfo->GetWidth();
     auto height = displayInfo->GetHeight();
     auto rotation = displayInfo->GetRotation();
-    IMSA_HILOGD("display width: %{public}d, height: %{public}d, rotation: %{public}d, foldStatus: %{public}d",
-        width, height, rotation, foldStatus);
     if (!cacheDisplay_.IsEmpty()) {
         if ((cacheDisplay_.displayWidth != width ||
             cacheDisplay_.displayHeight != height) &&
             cacheDisplay_.displayFoldStatus == foldStatus &&
             cacheDisplay_.displayRotation == rotation) {
+            IMSA_HILOGI("display width: %{public}d, height: %{public}d, rotation: %{public}d, foldStatus: %{public}d",
+                width, height, rotation, foldStatus);
             InputMethodAbility::GetInstance().AdjustKeyboard();
         }
     }
