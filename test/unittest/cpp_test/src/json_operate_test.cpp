@@ -393,23 +393,23 @@ HWTEST_F(JsonOperateTest, testGetResMgr, TestSize.Level1)
 HWTEST_F(JsonOperateTest, testIsDynamicStartIme, TestSize.Level1)
 {
     IMSA_HILOGI("JsonOperateTest testIsDynamicStartIme START");
-    auto instance = ImeInfoInquirer::GetInstance();
+    ImeInfoInquirer* instance = &ImeInfoInquirer::GetInstance();
     // dynamicStartImeSysParam is empty
-    auto ret = instance.IsDynamicStartIme();
+    auto ret = instance->IsDynamicStartIme();
     EXPECT_FALSE(false);
 
     // dynamicStartImeValue is empty
-    instance.systemConfig_.dynamicStartImeSysParam = "123";
-    ret = instance.IsDynamicStartIme();
+    instance->systemConfig_.dynamicStartImeSysParam = "123";
+    ret = instance->IsDynamicStartIme();
     EXPECT_TRUE(ret);
 
     // dynamicStartImeValue is default
-    instance.systemConfig_.dynamicStartImeValue = "default";
-    ret = instance.IsDynamicStartIme();
+    instance->systemConfig_.dynamicStartImeValue = "default";
+    ret = instance->IsDynamicStartIme();
     EXPECT_FALSE(ret);
 
-    instance.systemConfig_.dynamicStartImeValue = "";
-    instance.systemConfig_.dynamicStartImeSysParam = "";
+    instance->systemConfig_.dynamicStartImeValue = "";
+    instance->systemConfig_.dynamicStartImeSysParam = "";
 }
 } // namespace MiscServices
 } // namespace OHOS

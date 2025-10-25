@@ -106,6 +106,8 @@ public:
     bool IsInputMethodExtension(pid_t pid);
     bool IsDefaultImeScreen(uint64_t displayId);
     bool IsDynamicStartIme();
+    int32_t SetProp(const std::shared_ptr<Property>& prop);
+    std::shared_ptr<Property> GetProp();
 
 private:
     ImeInfoInquirer() = default;
@@ -147,6 +149,8 @@ private:
 
     SystemConfig systemConfig_;
     bool IsTempInputMethod(const OHOS::AppExecFwk::ExtensionAbilityInfo &extInfo);
+    std::mutex propLock_;
+    std::shared_ptr<Property> prop_;
 };
 } // namespace MiscServices
 } // namespace OHOS

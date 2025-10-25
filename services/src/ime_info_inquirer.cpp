@@ -667,14 +667,33 @@ std::shared_ptr<Property> ImeInfoInquirer::GetImeProperty(
     return std::make_shared<Property>(prop);
 }
 
+int32_t ImeInfoInquirer::SetProp(const std::shared_ptr<Property>& prop)
+{
+    std::lock_guard<std::mutex> lock(propLock_);
+    prop_ = prop;
+    return ErrorCode::NO_ERROR;
+}
+
+std::shared_ptr<Property> ImeInfoInquirer::GetProp()
+{
+    std::lock_guard<std::mutex> lock(propLock_);
+    return prop_;
+}
+
 std::shared_ptr<Property> ImeInfoInquirer::GetCurrentInputMethod(int32_t userId)
 {
     auto currentImeCfg = ImeCfgManager::GetInstance().GetCurrentImeCfg(userId);
     IMSA_HILOGD("currentIme: %{public}s.", currentImeCfg->imeId.c_str());
+    auto property = GetProp();
+    if (property != nullptr && property->name == currentImeCfg->bundleName) {
+        IMSA_HILOGD("currentImeCfg not update, return prop_!");
+        return property;
+    }
     FullImeInfo imeInfo;
     if (FullImeInfoManager::GetInstance().Get(userId, currentImeCfg->bundleName, imeInfo)) {
         auto prop = std::make_shared<Property>(imeInfo.prop);
         prop->id = currentImeCfg->extName;
+        SetProp(prop);
         return prop;
     }
 
