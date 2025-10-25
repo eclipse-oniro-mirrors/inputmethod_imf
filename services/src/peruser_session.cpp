@@ -2734,7 +2734,7 @@ bool PerUserSession::IsImeSwitchForbidden()
 bool PerUserSession::IsDeviceLockAndScreenLocked()
 {
     auto screenLockMgr = ScreenLock::ScreenLockManager::GetInstance();
-    if (screenLockMgr != nullptr) {
+    if (screenLockMgr == nullptr) {
         IMSA_HILOGE("ScreenLockManager is nullptr!");
         return false;
     }
