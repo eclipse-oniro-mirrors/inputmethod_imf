@@ -752,6 +752,8 @@ int32_t InputMethodSystemAbility::CheckInputTypeOption(int32_t userId, InputClie
         }
         ImeCfgManager::GetInstance().ModifyTempScreenLockImeCfg(userId, ime);
         return session->StartUserSpecifiedIme(DEFAULT_DISPLAY_ID);
+    } else {
+        ImeCfgManager::GetInstance().ModifyTempScreenLockImeCfg(userId_, "");
     }
 #endif
     IMSA_HILOGD("Screen is unLocked!");
