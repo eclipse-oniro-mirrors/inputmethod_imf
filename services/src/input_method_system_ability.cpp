@@ -1562,7 +1562,7 @@ ErrCode InputMethodSystemAbility::IsKeyboardCallingProcess(
     int32_t userId = GetCallingUserId();
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
-        IMSA_HILOGE("session is nullptr!");
+        IMSA_HILOGE("%{public}d session is nullptr", userId);
         return ErrorCode::ERROR_NULL_POINTER;
     }
     isKeyboardCallingProcess = session->IsKeyboardCallingProcess(pid, windowId);
