@@ -117,6 +117,7 @@ public:
     void OnUnfocused(uint64_t displayId, int32_t pid, int32_t uid);
     void OnScreenUnlock();
     void OnScreenLock();
+    int32_t OnPackageUpdated(const std::string &bundleName);
     int64_t GetCurrentClientPid(uint64_t displayId);
     int64_t GetInactiveClientPid(uint64_t displayId);
     int32_t OnPanelStatusChange(const InputWindowStatus &status, const ImeWindowInfo &info, uint64_t displayId);
