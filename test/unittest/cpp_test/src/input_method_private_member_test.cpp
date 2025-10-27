@@ -3115,5 +3115,74 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_PostCurrentImeInfoReportHo
     ret = userSession1->PostCurrentImeInfoReportHook(bundleName);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 }
+
+/**
+ * @tc.name: SA_TestOnPackageUpdated
+ * @tc.desc: SA_TestOnPackageUpdated
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_TestOnPackageUpdated, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_TestOnPackageUpdated start.");
+    int32_t userId = 101;
+
+    // Update failed
+    int32_t ret = InputMethodPrivateMemberTest::service_->OnPackageUpdated(101, "");
+    EXPECT_EQ(ret, ErrorCode::ERROR_PACKAGE_MANAGER);
+
+    // not current userId
+    auto imeCfg = ImeCfgManager::GetInstance().GetCurrentImeCfg(MAIN_USER_ID);
+    ASSERT_NE(imeCfg, nullptr);
+    InputMethodPrivateMemberTest::service_->userId_ = userId;
+    ret = InputMethodPrivateMemberTest::service_->OnPackageUpdated(MAIN_USER_ID, imeCfg->bundleName);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    // add user session
+    InputMethodPrivateMemberTest::service_->userId_ = MAIN_USER_ID;
+    UserSessionManager::GetInstance().RemoveUserSession(MAIN_USER_ID);
+    ret = InputMethodPrivateMemberTest::service_->OnPackageUpdated(MAIN_USER_ID, imeCfg->bundleName);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: PerUserSession_OnPackageUpdated
+ * @tc.desc: PerUserSession_OnPackageUpdated
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnPackageUpdated, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_OnPackageUpdated start.");
+    // not current ime, no need
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
+    auto ret = userSession->OnPackageUpdated("");
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    // attaching, no need
+    userSession->attachingCount_ = 1;
+    auto imeCfg = ImeCfgManager::GetInstance().GetCurrentImeCfg(MAIN_USER_ID);
+    ASSERT_NE(imeCfg, nullptr);
+    ret = userSession->OnPackageUpdated(imeCfg->bundleName);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    // current client exists, no need
+    auto clientGroup = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
+    auto imc = InputMethodController::GetInstance();
+    clientGroup->SetCurrentClient(imc->clientInfo_.client);
+    userSession->clientGroupMap_.emplace(DEFAULT_DISPLAY_ID, clientGroup);
+    ret = userSession->OnPackageUpdated(imeCfg->bundleName);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    // cap not support
+    auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, 100);
+    imeData->imeStatus = ImeStatus::READY;
+    imeData->ime = std::make_pair(imeCfg->bundleName, imeCfg->extName);
+    std::vector<std::shared_ptr<ImeData>> imeDatas;
+    imeDatas.push_back(imeData);
+    userSession->imeData_.emplace(ImeType::IME, imeDatas);
+    ret = userSession->OnPackageUpdated(imeCfg->bundleName);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
 } // namespace MiscServices
 } // namespace OHOS

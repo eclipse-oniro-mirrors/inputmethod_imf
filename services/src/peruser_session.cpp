@@ -1239,6 +1239,29 @@ void PerUserSession::OnScreenLock()
     SetImeUsedBeforeScreenLocked(imeData->ime);
 }
 
+int32_t PerUserSession::OnPackageUpdated(const std::string &bundleName)
+{
+    IMSA_HILOGI("bundleName: %{public}s", bundleName.c_str());
+    auto currentImeCfg = ImeCfgManager::GetInstance().GetCurrentImeCfg(userId_);
+    if (currentImeCfg != nullptr && bundleName != currentImeCfg->bundleName) {
+        IMSA_HILOGD("not current ime, no need");
+        return ErrorCode::NO_ERROR;
+    }
+    if (GetAttachCount() != 0) {
+        IMSA_HILOGD("attaching, no need");
+        return ErrorCode::NO_ERROR;
+    }
+    auto clientGroup = GetClientGroup(ImeType::IME);
+    auto currentClient = clientGroup != nullptr ? clientGroup->GetCurrentClient() : nullptr;
+    if (currentClient != nullptr) {
+        IMSA_HILOGD("current client exists, no need");
+        return ErrorCode::NO_ERROR;
+    }
+    auto ret = StartUserSpecifiedIme(DEFAULT_DISPLAY_ID);
+    IMSA_HILOGI("start user specified ime result: %{public}d", ret);
+    return ret;
+}
+
 std::shared_ptr<InputClientInfo> PerUserSession::GetCurrentClientInfo(uint64_t displayId)
 {
     auto clientGroup = GetClientGroup(displayId);

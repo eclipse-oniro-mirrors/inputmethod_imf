@@ -135,6 +135,7 @@ private:
     int32_t HandlePackageEvent(const Message *msg);
     int32_t HandleUpdateLargeMemoryState(const Message *msg);
     int32_t OnPackageRemoved(int32_t userId, const std::string &packageName);
+    int32_t OnPackageUpdated(int32_t userId, const std::string &packageName);
     void OnScreenUnlock(const Message *msg);
     void OnScreenLock(const Message *msg);
     int32_t OnDisplayOptionalInputMethod();

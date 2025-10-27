@@ -1814,7 +1814,7 @@ int32_t InputMethodSystemAbility::HandlePackageEvent(const Message *msg)
         return ErrorCode::ERROR_EX_PARCELABLE;
     }
     if (msg->msgId_ == MSG_ID_PACKAGE_CHANGED) {
-        return FullImeInfoManager::GetInstance().Update(userId, packageName);
+        return OnPackageUpdated(userId, packageName);
     }
     if (msg->msgId_ == MSG_ID_PACKAGE_ADDED) {
         return FullImeInfoManager::GetInstance().Add(userId, packageName);
@@ -1822,6 +1822,29 @@ int32_t InputMethodSystemAbility::HandlePackageEvent(const Message *msg)
     if (msg->msgId_ == MSG_ID_PACKAGE_REMOVED) {
         return OnPackageRemoved(userId, packageName);
     }
+    return ErrorCode::NO_ERROR;
+}
+
+int32_t InputMethodSystemAbility::OnPackageUpdated(int32_t userId, const std::string &packageName)
+{
+    int32_t ret = FullImeInfoManager::GetInstance().Update(userId, packageName);
+    if (ret != ErrorCode::NO_ERROR) {
+        return ret;
+    }
+    if (userId != userId_) {
+        IMSA_HILOGD("not current user");
+        return ErrorCode::NO_ERROR;
+    }
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId_);
+    if (session == nullptr) {
+        UserSessionManager::GetInstance().AddUserSession(userId_);
+    }
+    session = UserSessionManager::GetInstance().GetUserSession(userId_);
+    if (session == nullptr) {
+        IMSA_HILOGE("%{public}d session is nullptr!", userId_);
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    session->OnPackageUpdated(packageName);
     return ErrorCode::NO_ERROR;
 }
 
