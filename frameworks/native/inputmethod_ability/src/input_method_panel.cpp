@@ -1755,6 +1755,10 @@ void InputMethodPanel::OnPanelHeightChange(const Rosen::KeyboardPanelInfo &keybo
         IMSA_HILOGE("failed to GetWindowOrientation");
         return;
     }
+    if (!keyboardPanelInfo.isShowing_) {
+        heightChangeHandler(0, panelFlag_);
+        return;
+    }
     if (isPortrait) {
         heightChangeHandler(GetEnhancedLayoutParams().portrait.avoidHeight, panelFlag_);
     } else {
