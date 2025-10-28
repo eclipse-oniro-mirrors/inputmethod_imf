@@ -106,6 +106,23 @@ bool WindowAdapter::ListWindowInfo(std::vector<sptr<OHOS::Rosen::WindowInfo>> &w
 #endif
 }
 
+uint64_t WindowAdapter::GetDisplayIdByToken(sptr<IRemoteObject> abilityToken)
+{
+#ifdef SCENE_BOARD_ENABLE
+    OHOS::Rosen::MainWindowInfo info;
+    WMError ret = WindowManagerLite::GetInstance().GetMainWindowInfoByToken(abilityToken, info);
+    if (ret != WMError::WM_OK) {
+        IMSA_HILOGE("GetMainWindowInfoByToken failed, ret: %{public}d", ret);
+        return DEFAULT_DISPLAY_ID;
+    }
+    IMSA_HILOGI("GetMainWindowInfoByToken, displayId: %{public}" PRIu64 "", info.displayId_);
+    return info.displayId_;
+#else
+    IMSA_HILOGE("capability not supported");
+    return DEFAULT_DISPLAY_ID;
+#endif
+}
+
 uint64_t WindowAdapter::GetDisplayIdByWindowId(int32_t callingWindowId)
 {
 #ifdef SCENE_BOARD_ENABLE
