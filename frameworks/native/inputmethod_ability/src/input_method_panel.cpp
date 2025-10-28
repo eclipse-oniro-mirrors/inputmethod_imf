@@ -656,11 +656,10 @@ int32_t InputMethodPanel::AdjustPanelRect(PanelFlag panelFlag, EnhancedLayoutPar
         return ErrorCode::ERROR_INVALID_PANEL_TYPE;
     }
     FullPanelAdjustInfo adjustInfo;
-    if (IsNeedConfig()) {
-        auto ret = GetAdjustInfo(panelFlag, adjustInfo);
-        if (ret != ErrorCode::NO_ERROR) {
-            return ret;
-        }
+    auto ret = GetAdjustInfo(panelFlag, adjustInfo);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetAdjustInfo failed ret: %{public}d", ret);
+        return ret;
     }
     Rosen::KeyboardLayoutParams wmsParams;
     {
@@ -674,7 +673,7 @@ int32_t InputMethodPanel::AdjustPanelRect(PanelFlag panelFlag, EnhancedLayoutPar
         UpdateResizeParams();
     }
     // adjust rect
-    auto ret = AdjustLayout(wmsParams);
+    ret = AdjustLayout(wmsParams);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("AdjustKeyboardLayout error, err: %{public}d!", ret);
         return ErrorCode::ERROR_WINDOW_MANAGER;
@@ -1089,9 +1088,9 @@ int32_t InputMethodPanel::ParseParams(PanelFlag panelFlag, const LayoutParams &i
 
     // 2 - calculate parameters
     FullPanelAdjustInfo adjustInfo;
-    if (IsNeedConfig()) {
-        ret = GetAdjustInfo(panelFlag, adjustInfo);
-        IMSA_HILOGD("get adjust info: %{public}d", ret);
+    ret = GetAdjustInfo(panelFlag, adjustInfo);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetAdjustInfo failed ret: %{public}d", ret);
     }
     EnhancedLayoutParams tempOutput;
     tempOutput.displayId = displaySize.displayId;
@@ -1159,6 +1158,10 @@ std::tuple<std::vector<std::string>, std::vector<std::string>> InputMethodPanel:
 
 int32_t InputMethodPanel::GetAdjustInfo(PanelFlag panelFlag, FullPanelAdjustInfo &fullPanelAdjustInfo)
 {
+    if (!IsNeedConfig()) {
+        fullPanelAdjustInfo = {};
+        return ErrorCode::NO_ERROR;
+    }
     int32_t ret = InitAdjustInfo();
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("failed to init adjust info, ret: %{public}d", ret);
@@ -2077,14 +2080,11 @@ void InputMethodPanel::UpdateImmersiveHotArea()
         return;
     }
     FullPanelAdjustInfo adjustInfo;
-    if (IsNeedConfig()) {
-        auto ret = GetAdjustInfo(panelFlag_, adjustInfo);
-        if (ret != ErrorCode::NO_ERROR) {
-            IMSA_HILOGE("GetAdjustInfo failed ret: %{public}d", ret);
-            return;
-        }
+    auto ret = GetAdjustInfo(panelFlag_, adjustInfo);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetAdjustInfo failed ret: %{public}d", ret);
+        return;
     }
-
     CalculateHotAreas(GetEnhancedLayoutParams(), GetKeyboardLayoutParams(), adjustInfo, hotAreas);
     auto wmsHotAreas = ConvertToWMSHotArea(hotAreas);
     WMError result = window_->SetKeyboardTouchHotAreas(wmsHotAreas);
