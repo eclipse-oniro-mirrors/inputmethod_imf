@@ -1742,6 +1742,52 @@ HWTEST_F(InputMethodPanelTest, testAdjustKeyboard_001, TestSize.Level0)
 }
 
 /**
+ * @tc.name: testAdjustKeyboard_002
+ * @tc.desc: Test AdjustKeyboard
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testAdjustKeyboard_002, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testAdjustKeyboard_002 start.");
+    InputMethodPanelTest::Attach();
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FLOATING;
+    InputMethodPanelTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    DisplaySize display;
+    ASSERT_EQ(InputMethodPanelTest::GetDisplaySize(display), ErrorCode::NO_ERROR);
+    PanelFlag panelFlag = PanelFlag::FLG_FIXED;
+    Rosen::Rect portraitRect = { 0, 0, 0, static_cast<uint32_t>(display.portrait.height * 0.8) };
+    Rosen::Rect landscapeRect = { 0, 0, 0, static_cast<uint32_t>(display.landscape.height * 0.8) };
+    uint32_t portraitAvoidHeight = display.portrait.height * FIXED_SOFT_KEYBOARD_PANEL_RATIO - 1;
+    uint32_t portraitAvoidY = display.portrait.height - portraitAvoidHeight;
+    uint32_t landscapeAvoidHeight = display.landscape.height * FIXED_SOFT_KEYBOARD_PANEL_RATIO - 1;
+    uint32_t landscapeAvoidY = display.landscape.height - landscapeAvoidHeight;
+    EnhancedLayoutParams params = {
+        .isFullScreen = false,
+        .portrait = { portraitRect, {}, static_cast<int32_t>(portraitAvoidY), 0 },
+        .landscape = { landscapeRect, {}, static_cast<int32_t>(landscapeAvoidY), 0 },
+    };
+    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, params, {});
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    std::this_thread::sleep_for(std::chrono::seconds(1));
+    ret = inputMethodPanel->AdjustKeyboard();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+ 
+ 
+    params = inputMethodPanel->GetEnhancedLayoutParams();
+    params.portrait.avoidHeight = 30000;
+    params.landscape.avoidHeight = 30000;
+    inputMethodPanel->SetEnhancedLayoutParams(params);
+    ret = inputMethodPanel->AdjustKeyboard();
+    EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+    InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
+    InputMethodPanelTest::imc_->Close();
+    TddUtil::DestroyWindow();
+}
+
+/**
  * @tc.name: testSetPrivacyMode
  * @tc.desc: Test SetPrivacyMode.
  * @tc.type: FUNC

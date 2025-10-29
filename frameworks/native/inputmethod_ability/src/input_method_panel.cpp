@@ -549,8 +549,11 @@ int32_t InputMethodPanel::AdjustKeyboard()
             IMSA_HILOGE("failed to GetDisplaySize ret: %{public}d", ret);
             return ret;
         }
-        params.portrait.avoidY = static_cast<int32_t>(displaySize.portrait.height - params.portrait.avoidHeight);
-        params.landscape.avoidY = static_cast<int32_t>(displaySize.landscape.height - params.landscape.avoidHeight);
+    if (displaySize.portrait.height < params.portrait.avoidHeight ||
+        displaySize.landscape.height < params.landscape.avoidHeight) {
+        IMSA_HILOGE("failed to adjust keyboard, display height is less than avoidHeight!");
+        return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+    }
         auto hotAreas = GetHotAreas();
         ret = AdjustPanelRect(panelFlag_, params, hotAreas);
     } else {
