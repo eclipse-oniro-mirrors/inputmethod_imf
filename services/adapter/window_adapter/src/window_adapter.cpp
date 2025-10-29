@@ -25,6 +25,9 @@ namespace OHOS {
 namespace MiscServices {
 using namespace OHOS::Rosen;
 using WMError = OHOS::Rosen::WMError;
+#ifdef SCENE_BOARD_ENABLE
+constexpr int32_t MAX_TIMEOUT = 5000; //5ms
+#endif
 // LCOV_EXCL_START
 WindowAdapter::~WindowAdapter()
 {
@@ -52,7 +55,15 @@ bool WindowAdapter::GetCallingWindowInfo(
     IMSA_HILOGD("[%{public}d,%{public}d] run in.", userId, windId);
     callingWindowInfo.windowId_ = static_cast<int32_t>(windId);
     callingWindowInfo.userId_ = userId;
+    int64_t start =  std::chrono::duration_cast<std::chrono::microseconds>
+        (std::chrono::system_clock::now().time_since_epoch()).count();
     auto wmErr = WindowManagerLite::GetInstance().GetCallingWindowInfo(callingWindowInfo);
+    int64_t end =  std::chrono::duration_cast<std::chrono::microseconds>
+        (std::chrono::system_clock::now().time_since_epoch()).count();
+    int64_t durTime = end - start;
+    if (durTime > MAX_TIMEOUT) {
+        IMSA_HILOGW("GetCallingWindowInfo cost [%{public}d]us", durTime);
+    }
     if (wmErr != WMError::WM_OK) {
         IMSA_HILOGE("[%{public}d,%{public}d,%{public}d] failed to get calling window info.", userId, windId, wmErr);
         return false;
