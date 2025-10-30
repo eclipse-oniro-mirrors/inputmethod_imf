@@ -1215,14 +1215,15 @@ void PerUserSession::OnScreenUnlock()
 {
     ImeCfgManager::GetInstance().ModifyTempScreenLockImeCfg(userId_, "");
     auto imeData = GetImeData(ImeType::IME);
-    if (imeData != nullptr && imeData->ime == GetImeUsedBeforeScreenLocked()) {
-        IMSA_HILOGD("no need to switch");
+    auto userCfgIme = ImeCfgManager::GetInstance().GetCurrentImeCfg(userId_);
+    if (imeData == nullptr || userCfgIme == nullptr || imeData->ime.first == userCfgIme->bundleName
+        || !imeData->isStartedInScreenLocked) {
         return;
     }
     IMSA_HILOGI("user %{public}d unlocked, start current ime", userId_);
 #ifndef IMF_ON_DEMAND_START_STOP_SA_ENABLE
     if (!ImeStateManagerFactory::GetInstance().GetDynamicStartIme()) {
-        AddRestartIme();
+        StartUserSpecifiedIme(DEFAULT_DISPLAY_ID);
     }
 #endif
 }
@@ -2008,6 +2009,9 @@ int32_t PerUserSession::InitImeData(
         return ErrorCode::NO_ERROR;
     }
     auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, -1);
+#ifdef IMF_SCREENLOCK_MGR_ENABLE
+    imeData->isStartedInScreenLocked = IsDeviceLockAndScreenLocked();
+#endif
     imeData->startTime = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
     imeData->ime = ime;
     imeData->imeStateManager = ImeStateManagerFactory::GetInstance().CreateImeStateManager(-1, [this] {

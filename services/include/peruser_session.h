@@ -71,6 +71,7 @@ struct ImeData {
     ImeStatus imeStatus{ ImeStatus::STARTING };
     std::pair<std::string, std::string> ime; // first: bundleName  second:extName
     int64_t startTime{ 0 };
+    bool isStartedInScreenLocked = false;
     ImeData(sptr<IInputMethodCore> core, sptr<IRemoteObject> agent, sptr<InputDeathRecipient> deathRecipient,
         pid_t imePid)
         : core(std::move(core)), agent(std::move(agent)), deathRecipient(std::move(deathRecipient)), pid(imePid)
