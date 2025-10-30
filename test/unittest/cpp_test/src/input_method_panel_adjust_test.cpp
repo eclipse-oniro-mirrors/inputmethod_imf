@@ -669,6 +669,10 @@ HWTEST_F(InputMethodPanelAdjustTest, testAdjustEnhancedPanelRect_016, TestSize.L
     HotAreas hotAreas;
     auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, params, hotAreas);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ima_.inputType_ = InputType::SECURITY_INPUT;
+    ret = inputMethodPanel->AdjustPanelRect(panelFlag, params, hotAreas);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ima_.inputType_ = InputType::NONE;
     InputMethodPanelAdjustTest::ImaDestroyPanel(inputMethodPanel);
 }
 

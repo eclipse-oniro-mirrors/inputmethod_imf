@@ -1394,6 +1394,10 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_006, TestSize.Level0)
     layoutParams.portraitRect = { 0, 0, displaySize.portrait.width, 0 };
     auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ima_.inputType_ = InputType::SECURITY_INPUT;
+    ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ima_.inputType_ = InputType::NONE;
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
     InputMethodPanelTest::imc_->Close();
     TddUtil::DestroyWindow();
@@ -2599,6 +2603,25 @@ HWTEST_F(InputMethodPanelTest, SetNoneWhenHeightZero, TestSize.Level0)
     EXPECT_EQ(panel->immersiveEffect_.gradientMode, GradientMode::NONE);
     EXPECT_EQ(panel->immersiveEffect_.fluidLightMode, FluidLightMode::NONE);
     EXPECT_EQ(panel->immersiveEffect_.gradientHeight, 0);
+}
+
+/**
+ * @tc.name: SetImmersiveEffectToNone
+ * @tc.desc: Tests return when Password Keyboard
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, PasswordKeyboardSetImmersive, TestSize.Level0)
+{
+    auto panel = std::make_shared<InputMethodPanel>();
+    panel->immersiveEffect_.gradientHeight = 100;
+    panel->immersiveEffect_.gradientMode = GradientMode::LINEAR_GRADIENT;
+    panel->immersiveEffect_.fluidLightMode = FluidLightMode::BACKGROUND_FLUID_LIGHT;
+    ima_.inputType_ = InputType::SECURITY_INPUT;
+    panel->SetImmersiveEffectToNone();
+    EXPECT_EQ(panel->immersiveEffect_.gradientMode, GradientMode::LINEAR_GRADIENT);
+    EXPECT_EQ(panel->immersiveEffect_.fluidLightMode, FluidLightMode::BACKGROUND_FLUID_LIGHT);
+    EXPECT_EQ(panel->immersiveEffect_.gradientHeight, 100);
+    ima_.inputType_ = InputType::NONE;
 }
 
 /**
