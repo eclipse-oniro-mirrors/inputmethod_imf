@@ -36,7 +36,13 @@ bool IdentityCheckerImpl::IsFocused(int64_t callingPid, uint32_t callingTokenId,
         IMSA_HILOGD("focused app, pid: %{public}" PRId64 "", callingPid);
         return true;
     }
-    auto displayId = WindowAdapter::GetDisplayIdByPid(callingPid);
+    uint64_t displayId;
+    if (abilityToken != nullptr) {
+        displayId = WindowAdapter::GetDisplayIdByToken(abilityToken);
+        IMSA_HILOGD("abilityToken not nullptr, displayId: %{public}" PRIu64 "", displayId);
+    } else {
+        displayId = WindowAdapter::GetDisplayIdByPid(callingPid);
+    }
     if (focusedPid == INVALID_PID) {
         FocusChangeInfo focusInfo;
         WindowAdapter::GetFocusInfo(focusInfo, displayId);

@@ -16,6 +16,7 @@
 #define private public
 #define protected public
 #include "input_method_system_ability.h"
+#include "window_adapter.h"
 #undef private
 
 #include <gmock/gmock.h>
@@ -922,5 +923,46 @@ HWTEST_F(IdentityCheckerTest, testGetUIExtensionWindowId, TestSize.Level1)
     ret = identityCheckerImpl_->GetUIExtensionWindowId(abilityToken);
     EXPECT_EQ(ret, INVAL_WINDOW_ID);
 }
+
+/**
+ * @tc.name: testIsFocused
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.author:
+ */
+HWTEST_F(IdentityCheckerTest, testIsFocused, TestSize.Level1)
+{
+    ASSERT_NE(identityCheckerImpl_, nullptr);
+    const auto demoPid = 10;
+    const auto demoUid = 10;
+    const auto focusedPid = 20;
+    IMSA_HILOGI("IdentityCheckerTest IsFocused with null token");
+    bool isFocusedResult1 = identityCheckerImpl_->IsFocused(demoPid, demoUid, focusedPid, true, nullptr);
+    EXPECT_FALSE(isFocusedResult1);
+
+    auto abilityToken = new (std::nothrow) MockIRemoteObject();
+    ASSERT_NE(abilityToken, nullptr);
+    IMSA_HILOGI("IdentityCheckerTest IsFocused with valid token");
+    bool isFocusedResult2 = identityCheckerImpl_->IsFocused(demoPid, demoUid, focusedPid, true, abilityToken);
+    EXPECT_FALSE(isFocusedResult2);
+}
+
+/**
+ * @tc.name: testWindowAdapter_GetDisplayIdByToken
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.author:
+ */
+HWTEST_F(IdentityCheckerTest, testWindowAdapter_GetDisplayIdByToken, TestSize.Level1)
+{
+    const auto displayId = WindowAdapter::GetDisplayIdByToken(nullptr);
+    EXPECT_EQ(displayId, DEFAULT_DISPLAY_ID);
+
+    auto abilityToken = new (std::nothrow) MockIRemoteObject();
+    ASSERT_NE(abilityToken, nullptr);
+    const auto displayId2 = WindowAdapter::GetDisplayIdByToken(abilityToken);
+    EXPECT_EQ(displayId2, DEFAULT_DISPLAY_ID);
+}
+
 } // namespace MiscServices
 } // namespace OHOS
