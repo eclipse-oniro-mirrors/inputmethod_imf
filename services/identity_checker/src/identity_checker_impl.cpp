@@ -23,7 +23,7 @@
 #include "ime_info_inquirer.h"
 #include "tokenid_kit.h"
 #include "window_adapter.h"
-
+#include "display_adapter.h"
 namespace OHOS {
 namespace MiscServices {
 using namespace Rosen;
@@ -44,11 +44,14 @@ bool IdentityCheckerImpl::IsFocused(int64_t callingPid, uint32_t callingTokenId,
         displayId = WindowAdapter::GetDisplayIdByPid(callingPid);
     }
     if (focusedPid == INVALID_PID) {
+        IMSA_HILOGD("isFocusable: %{public}u, isImeShowable: %{public}u", DisplayAdapter::IsFocusable(displayId),
+            DisplayAdapter::IsImeShowable(displayId));
         FocusChangeInfo focusInfo;
         WindowAdapter::GetFocusInfo(focusInfo, displayId);
         focusedPid = focusInfo.pid_;
         if (callingPid == focusedPid) {
-            IMSA_HILOGD("focused app, pid: %{public}" PRId64 ", display: %{public}" PRIu64 "", callingPid, displayId);
+            IMSA_HILOGD("focused app, pid: %{public}" PRId64 ", display: %{public}" PRIu64 ",windowId: %{public}d",
+                callingPid, displayId, focusInfo.windowId_);
             return true;
         }
     }

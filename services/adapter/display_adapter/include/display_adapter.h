@@ -19,12 +19,21 @@
 #include <cstdint>
 #include <string>
 
+#include "display_info.h"
+
 namespace OHOS {
 namespace MiscServices {
 class DisplayAdapter final {
 public:
+    static constexpr uint64_t DEFAULT_DISPLAY_ID = 0;
     static std::string GetDisplayName(uint64_t displayId);
     static uint64_t GetDefaultDisplayId();
+    static bool IsFocusable(uint64_t displayId);
+    static bool IsImeShowable(uint64_t displayId);
+    static uint64_t GetFinalDisplayId(uint64_t displayId);
+
+private:
+    static sptr<OHOS::Rosen::DisplayInfo> GetDisplayInfo(uint64_t displayId);
 };
 } // namespace MiscServices
 } // namespace OHOS

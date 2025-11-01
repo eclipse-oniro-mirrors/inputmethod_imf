@@ -15,9 +15,12 @@
 #ifndef INTERFACE_KITS_JS_INPUT_METHOD_H
 #define INTERFACE_KITS_JS_INPUT_METHOD_H
 
+#include <utility>
+
 #include "async_call.h"
 #include "element_name.h"
 #include "global.h"
+#include "imc_inner_listener.h"
 #include "input_method_controller.h"
 #include "native_engine/native_engine.h"
 #include "native_engine/native_value.h"
@@ -50,7 +53,7 @@ struct SwitchInputMethodContext : public AsyncCall::Context {
     }
 };
 
-class JsInputMethod {
+class JsInputMethod : public ImcInnerListener {
 public:
     JsInputMethod() = default;
     ~JsInputMethod() = default;
@@ -68,15 +71,40 @@ public:
     static napi_value GetJsInputMethodSubProperty(napi_env env, const SubProperty &subProperty);
     static napi_value GetJsInputConfigElement(napi_env env, const OHOS::AppExecFwk::ElementName &elementName);
     static napi_value SetSimpleKeyboardEnabled(napi_env env, napi_callback_info info);
+    static napi_value OnAttachmentDidFail(napi_env env, napi_callback_info info);
+    static napi_value OffAttachmentDidFail(napi_env env, napi_callback_info info);
+    static napi_value GetJsAttachFailureReasonProperty(napi_env env);
+    void OnAttachmentDidFail(AttachFailureReason reason) override;
 
 private:
     static napi_status GetInputMethodProperty(napi_env env, napi_value argv,
         std::shared_ptr<SwitchInputMethodContext> ctxt);
     static napi_status GetInputMethodSubProperty(napi_env env, napi_value argv,
         std::shared_ptr<SwitchInputMethodContext> ctxt);
+    static napi_value Subscribe(napi_env env, napi_callback_info info, const std::string &eventType);
+    static napi_value UnSubscribe(napi_env env, napi_callback_info info, const std::string &eventType);
+    static void AddCallback(napi_env env, napi_value callback, const std::string &eventType);
+    static void RemoveCallback(napi_value callback, const std::string &eventType);
     static constexpr std::int32_t MAX_VALUE_LEN = 4096;
     static constexpr size_t PARAM_POS_TWO = 2;
     static constexpr size_t PARAM_POS_ONE = 1;
+    static constexpr size_t ARGC_MAX = 6;
+    static constexpr const char *ATTACH_FAIL_CB_EVENT_TYPE = "attachmentDidFail";
+    struct UvEntry {
+        std::shared_ptr<JSCallbackObject> jsCbObject;
+        AttachFailureReason attachFailureReason{ AttachFailureReason::SERVICE_ABNORMAL };
+        explicit UvEntry(const std::shared_ptr<JSCallbackObject> &object) : jsCbObject(object)
+        {
+        }
+    };
+    using EntrySetter = std::function<void(UvEntry &)>;
+    std::shared_ptr<UvEntry> GetEntry(
+        const std::shared_ptr<JSCallbackObject> &jsCbObject, const EntrySetter &entrySetter = nullptr);
+    std::vector<std::shared_ptr<JSCallbackObject>> GetJsCbObjects(const std::string &type);
+    static void SetImcInnerListener();
+    void OnAttachmentDidFail(AttachFailureReason reason, const std::shared_ptr<JSCallbackObject> &jsCbObject);
+    static std::mutex jsCbsLock_;
+    static std::unordered_map<std::string, std::vector<std::shared_ptr<JSCallbackObject>>> jsCbs_;
 };
 } // namespace MiscServices
 } // namespace OHOS

@@ -385,6 +385,7 @@ int32_t InputMethodController::AttachExec(sptr<OnTextChangedListener> listener, 
                             .Build();
         ImcHiSysEventReporter::GetInstance().ReportEvent(ImfEventType::CLIENT_ATTACH, *evenInfo);
         SetTextListener(nullptr);
+        NotifyAttachFailure(ret);
         return ret;
     }
     clientInfo_.state = ClientState::ACTIVE;
@@ -2036,6 +2037,35 @@ int32_t InputMethodController::SendRequestToImeMirrorAgent(
     }
 
     return task(itr->agent);
+}
+
+void InputMethodController::NotifyAttachFailure(int32_t errCode)
+{
+    auto listener = GetImcInnerListener();
+    if (listener == nullptr) {
+        return;
+    }
+    AttachFailureReason reason{ AttachFailureReason::SERVICE_ABNORMAL };
+    auto iter = ATTACH_FAILURE_REASON_MAP.find(errCode);
+    if (iter != ATTACH_FAILURE_REASON_MAP.end()) {
+        reason = iter->second;
+    }
+    listener->OnAttachmentDidFail(reason);
+}
+
+void InputMethodController::SetImcInnerListener(const std::shared_ptr<ImcInnerListener> &imcInnerListener)
+{
+    std::lock_guard<std::mutex> lock(imcInnerListenerLock_);
+    if (imcInnerListener_ != nullptr) {
+        return;
+    }
+    imcInnerListener_ = imcInnerListener;
+}
+
+std::shared_ptr<ImcInnerListener> InputMethodController::GetImcInnerListener()
+{
+    std::lock_guard<std::mutex> lock(imcInnerListenerLock_);
+    return imcInnerListener_;
 }
 // LCOV_EXCL_START
 void OnTextChangedListener::InsertTextV2(const std::u16string &text)
