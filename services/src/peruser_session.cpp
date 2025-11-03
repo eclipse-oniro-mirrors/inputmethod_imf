@@ -640,6 +640,7 @@ int32_t PerUserSession::BindClientWithIme(
         InputMethodSysEvent::GetInstance().ReportImeState(
             ImeState::BIND, data->pid, ImeCfgManager::GetInstance().GetCurrentImeCfg(userId_)->bundleName);
         Memory::MemMgrClient::GetInstance().SetCritical(getpid(), true, INPUT_METHOD_SYSTEM_ABILITY_ID);
+        PostCurrentImeInfoReportHook(data->ime.first);
     }
     if (!isBindFromClient) {
         ret = SendAllReadyImeToClient(data, clientInfo);
@@ -661,7 +662,6 @@ int32_t PerUserSession::BindClientWithIme(
         clientGroup->NotifyInputStartToClients(
             clientInfo->config.windowId, static_cast<int32_t>(clientInfo->requestKeyboardReason));
     }
-    PostCurrentImeInfoReportHook(data->ime.first);
     return ErrorCode::NO_ERROR;
 }
 

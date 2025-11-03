@@ -18,6 +18,7 @@
 
 #include <atomic>
 #include <mutex>
+#include <unordered_map>
 #include <string>
 
 #include "imf_hook.h"
@@ -39,7 +40,7 @@ private:
     bool NeedReport(const ImeReportedInfo &info);
     void UpdateImeReportedInfo(const ImeReportedInfo &info);
     std::mutex imeReportedInfoLock_;
-    ImeReportedInfo imeReportedInfo_;
+    std::unordered_map<std::string, ImeReportedInfo> imeReportedInfos_;
     std::atomic<bool> needSetConfig_{ true };
 };
 } // namespace MiscServices

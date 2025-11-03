@@ -83,20 +83,27 @@ ImeReportedInfo ImfHookMgr::GenerateImeReportedInfo(int32_t userId, const std::s
 bool ImfHookMgr::NeedReport(const ImeReportedInfo &info)
 {
     std::lock_guard<std::mutex> lock(imeReportedInfoLock_);
-    if (info.timeStampMs > imeReportedInfo_.timeStampMs) {
-        auto timeDiffMs = info.timeStampMs - imeReportedInfo_.timeStampMs;
-        if (info == imeReportedInfo_ && timeDiffMs < REPEAT_REPORT_INTERVAL) {
+    auto iter = imeReportedInfos_.find(info.bundleName);
+    if (iter == imeReportedInfos_.end()) {
+        IMSA_HILOGD("%{public}s has not been reported", info.bundleName.c_str());
+        return true;
+    }
+    ImeReportedInfo lastReportInfo = iter->second;
+    if (info.timeStampMs > lastReportInfo.timeStampMs) {
+        auto timeDiffMs = info.timeStampMs - lastReportInfo.timeStampMs;
+        if (info == lastReportInfo && timeDiffMs < REPEAT_REPORT_INTERVAL) {
             IMSA_HILOGD("%{public}s is same in hourly, no need to report.", info.ToString().c_str());
             return false;
         }
     }
+    IMSA_HILOGD("need to report ime:%{public}s", info.bundleName.c_str());
     return true;
 }
 
 void ImfHookMgr::UpdateImeReportedInfo(const ImeReportedInfo &info)
 {
     std::lock_guard<std::mutex> lock(imeReportedInfoLock_);
-    imeReportedInfo_ = info;
+    imeReportedInfos_.insert_or_assign(info.bundleName, info);
 }
 } // namespace MiscServices
 } // namespace OHOS
