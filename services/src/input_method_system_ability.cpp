@@ -150,7 +150,7 @@ bool InputMethodSystemAbility::IsImeInUse()
 {
     auto session = UserSessionManager::GetInstance().GetUserSession(userId_);
     if (session == nullptr) {
-        IMSA_HILOGE("session is nullptr userId: %{public}d", userId_);
+        IMSA_HILOGE("session is nullptr userId: %{public}d", userId_.load());
         return false;
     }
 
@@ -398,7 +398,7 @@ int32_t InputMethodSystemAbility::Init()
 // LCOV_EXCL_STOP
 void InputMethodSystemAbility::UpdateUserInfo(int32_t userId)
 {
-    IMSA_HILOGI("%{public}d switch to %{public}d.", userId_, userId);
+    IMSA_HILOGI("%{public}d switch to %{public}d.", userId_.load(), userId);
     userId_ = userId;
     UserSessionManager::GetInstance().AddUserSession(userId_);
     InputMethodSysEvent::GetInstance().SetUserId(userId_);
@@ -478,7 +478,7 @@ void InputMethodSystemAbility::RestartSessionIme(std::shared_ptr<PerUserSession>
     }
     session = UserSessionManager::GetInstance().GetUserSession(userId_);
     if (session == nullptr) {
-        IMSA_HILOGE("%{public}d session is nullptr!", userId_);
+        IMSA_HILOGE("%{public}d session is nullptr!", userId_.load());
         return;
     }
 #ifndef IMF_ON_DEMAND_START_STOP_SA_ENABLE
@@ -537,7 +537,7 @@ int32_t InputMethodSystemAbility::SwitchByCondition(const Condition &condition,
     SwitchInfo switchInfo = { std::chrono::system_clock::now(), target->name, target->id };
     auto session = UserSessionManager::GetInstance().GetUserSession(userId_);
     if (session == nullptr) {
-        IMSA_HILOGE("%{public}d session is nullptr!", userId_);
+        IMSA_HILOGE("%{public}d session is nullptr!", userId_.load());
         return ErrorCode::ERROR_NULL_POINTER;
     }
     session->GetSwitchQueue().Push(switchInfo);
@@ -1841,7 +1841,7 @@ int32_t InputMethodSystemAbility::OnPackageUpdated(int32_t userId, const std::st
     }
     session = UserSessionManager::GetInstance().GetUserSession(userId_);
     if (session == nullptr) {
-        IMSA_HILOGE("%{public}d session is nullptr!", userId_);
+        IMSA_HILOGE("%{public}d session is nullptr!", userId_.load());
         return ErrorCode::ERROR_NULL_POINTER;
     }
     session->OnPackageUpdated(packageName);
@@ -1883,7 +1883,7 @@ void InputMethodSystemAbility::OnScreenUnlock(const Message *msg)
     }
     session = UserSessionManager::GetInstance().GetUserSession(userId_);
     if (session == nullptr) {
-        IMSA_HILOGE("%{public}d session is nullptr!", userId_);
+        IMSA_HILOGE("%{public}d session is nullptr!", userId_.load());
         return;
     }
     session->OnScreenUnlock();
@@ -1933,7 +1933,7 @@ int32_t InputMethodSystemAbility::SwitchByCombinationKey(uint32_t state)
     IMSA_HILOGD("InputMethodSystemAbility::SwitchByCombinationKey start.");
     auto session = UserSessionManager::GetInstance().GetUserSession(userId_);
     if (session == nullptr) {
-        IMSA_HILOGE("%{public}d session is nullptr!", userId_);
+        IMSA_HILOGE("%{public}d session is nullptr!", userId_.load());
         return ErrorCode::ERROR_NULL_POINTER;
     }
     if (session->IsProxyImeEnable()) {
@@ -2054,7 +2054,7 @@ int32_t InputMethodSystemAbility::SwitchType()
     nextSwitchInfo.timestamp = std::chrono::system_clock::now();
     auto session = UserSessionManager::GetInstance().GetUserSession(userId_);
     if (session == nullptr) {
-        IMSA_HILOGE("%{public}d session is nullptr!", userId_);
+        IMSA_HILOGE("%{public}d session is nullptr!", userId_.load());
         return ErrorCode::ERROR_NULL_POINTER;
     }
     session->GetSwitchQueue().Push(nextSwitchInfo);
@@ -2176,7 +2176,7 @@ void InputMethodSystemAbility::HandlePasteboardStarted()
     IMSA_HILOGI("pasteboard started");
     auto session = UserSessionManager::GetInstance().GetUserSession(userId_);
     if (session == nullptr) {
-        IMSA_HILOGE("%{public}d session is nullptr!", userId_);
+        IMSA_HILOGE("%{public}d session is nullptr!", userId_.load());
         return;
     }
 
@@ -2249,11 +2249,13 @@ void InputMethodSystemAbility::DataShareCallback(const std::string &key)
     if (key != SettingsDataUtils::SECURITY_MODE) {
         return;
     }
-    IMSA_HILOGI("%{public}d full experience change.", userId_);
+    IMSA_HILOGI("%{public}d full experience change.", userId_.load());
     if (serviceHandler_ == nullptr) {
         return;
     }
-    auto task = [userId = userId_]() { ImeEnabledInfoManager::GetInstance().OnFullExperienceTableChanged(userId); };
+    auto task = [userId = userId_.load()]() {
+        ImeEnabledInfoManager::GetInstance().OnFullExperienceTableChanged(userId);
+    };
     serviceHandler_->PostTask(task, "OnFullExperienceTableChanged", 0, AppExecFwk::EventQueue::Priority::IMMEDIATE);
 }
 
@@ -2642,7 +2644,7 @@ void InputMethodSystemAbility::NeedHideWhenSwitchInputType(int32_t userId, Input
     InputTypeManager::GetInstance().GetImeByInputType(type, ime);
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
-        IMSA_HILOGE("UserId: %{public}d session is nullptr!", userId_);
+        IMSA_HILOGE("UserId: %{public}d session is nullptr!", userId_.load());
         needHide = false;
         return;
     }
@@ -2720,7 +2722,7 @@ void InputMethodSystemAbility::HandleImeCfgCapsState()
     }
     auto session = UserSessionManager::GetInstance().GetUserSession(userId_);
     if (session == nullptr) {
-        IMSA_HILOGE("UserId: %{public}d session is nullptr!", userId_);
+        IMSA_HILOGE("UserId: %{public}d session is nullptr!", userId_.load());
         return;
     }
     if (!session->IsSaReady(MULTIMODAL_INPUT_SERVICE_ID)) {
@@ -2873,7 +2875,7 @@ ErrCode InputMethodSystemAbility::SendPrivateData(const Value &value)
     }
     auto session = UserSessionManager::GetInstance().GetUserSession(userId_);
     if (session == nullptr) {
-        IMSA_HILOGE("UserId: %{public}d session is nullptr!", userId_);
+        IMSA_HILOGE("UserId: %{public}d session is nullptr!", userId_.load());
         return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
     }
     if (!session->SpecialScenarioCheck()) {
