@@ -707,11 +707,11 @@ void InputMethodPanel::UpdateLayoutInfo(PanelFlag panelFlag, const LayoutParams 
             .landscape = { .rect = params.landscapeRect } };
         SetEnhancedLayoutParams(enhancedLayoutParams);
     }
-    if (panelFlag_ != panelFlag) {
+    isInEnhancedAdjust_.store(isEnhanced);
+    if (panelFlag_ != panelFlag || IsNeedNotify(panelFlag)) {
         InputMethodAbility::GetInstance().NotifyPanelStatus(true, panelFlag);
     }
     panelFlag_ = panelFlag;
-    isInEnhancedAdjust_.store(isEnhanced);
 }
 
 int32_t InputMethodPanel::ParseEnhancedParams(
@@ -1265,9 +1265,9 @@ int32_t InputMethodPanel::ShowPanel(uint32_t windowId)
     bool needAdjust = false;
     {
         std::lock_guard<std::mutex> lock(parseParamsMutex_);
-        needAdjust = GetCurDisplayId() == 0 && IsKeyboardAtBottom() && IsNeedConfig();
+        needAdjust = GetCurDisplayId() == 0 && IsKeyboardRectAtBottom() && IsNeedConfig();
     }
-    if (needAdjust) {
+    if (needAdjust && panelType_ == PanelType::SOFT_KEYBOARD && panelFlag_ != FLG_CANDIDATE_COLUMN) {
         auto enhancedParams = GetEnhancedLayoutParams();
         LayoutParams layoutParams = { enhancedParams.landscape.rect, enhancedParams.portrait.rect };
         auto result = AdjustPanelRect(panelFlag_, layoutParams);
@@ -2244,7 +2244,6 @@ bool InputMethodPanel::IsNeedConfig(bool ignoreIsMainDisplay)
         needConfig = false;
     }
     IMSA_HILOGI("isNeedConfig is %{public}d", needConfig);
-    isNeedConfig_ = needConfig;
     return needConfig;
 }
 
@@ -2478,11 +2477,11 @@ int32_t InputMethodPanel::GetSystemPanelCurrentInsets(uint64_t displayId, System
     return ErrorCode::NO_ERROR;
 }
 
-bool InputMethodPanel::IsKeyboardAtBottom()
+bool InputMethodPanel::IsKeyboardRectAtBottom()
 {
     auto layoutParams = GetKeyboardLayoutParams();
     return layoutParams.PortraitKeyboardRect_.height_ == layoutParams.PortraitPanelRect_.height_ &&
-        !isInEnhancedAdjust_.load();
+        layoutParams.PortraitKeyboardRect_.height_ > 0 && !isInEnhancedAdjust_.load();
 }
  
 int32_t InputMethodPanel::SetSystemPanelButtonColor(const std::string &fillColor, const std::string &backgroundColor)
@@ -2520,6 +2519,68 @@ int32_t InputMethodPanel::SetSystemPanelButtonColor(const std::string &fillColor
     IMSA_HILOGI("SetSystemPanelButtonColor success! fillColor: %{public}s, backgroundColor: %{public}s",
         fillColor.c_str(), backgroundColor.c_str());
     return ret;
+}
+
+bool InputMethodPanel::IsKeyboardBottomElevated(PanelFlag flag)
+{
+    if (panelType_ != PanelType::SOFT_KEYBOARD || flag == PanelFlag::FLG_CANDIDATE_COLUMN) {
+        IMSA_HILOGD("no elevation, type: %{public}d flag: %{public}d", panelType_, flag);
+        return false;
+    }
+    if (!IsNeedConfig(true)) {
+        IMSA_HILOGD("no elevation when no config");
+        return false;
+    }
+    FullPanelAdjustInfo adjustInfo;
+    auto ret = GetAdjustInfo(flag, adjustInfo);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetAdjustInfo failed: %{public}d", ret);
+        return false;
+    }
+    int32_t bottomConfigHeight = IsDisplayPortrait() ? adjustInfo.portrait.bottom : adjustInfo.landscape.bottom;
+    if (bottomConfigHeight < 0 || bottomConfigHeight == 0) {
+        IMSA_HILOGD("no elevation, no bottom height");
+        return false;
+    }
+    if (IsKeyboardRectAtBottom()) {
+        IMSA_HILOGW("no elevation, keyboard bottom is aligned with the panel bottom");
+        return false;
+    }
+    return true;
+}
+
+bool InputMethodPanel::IsFunctionButtonVisible(bool isKeyboardElevated)
+{
+    if (!isKeyboardElevated) {
+        IMSA_HILOGD("no function button when no elevation");
+        return false;
+    }
+    if (!IsInMainDisplay()) {
+        IMSA_HILOGD("not in main display");
+        return false;
+    }
+    if (InputMethodAbility::GetInstance().GetAttachOptions().isSimpleKeyboardEnabled &&
+        InputMethodAbility::GetInstance().IsDefaultIme() &&
+        !InputMethodAbility::GetInstance().GetInputAttribute().IsOneTimeCodeFlag()) {
+        IMSA_HILOGD("SimpleKeyboard enabled");
+        return false;
+    }
+    return true;
+}
+
+bool InputMethodPanel::IsNeedNotify(PanelFlag panelFlag)
+{
+    if (!IsShowing()) {
+        IMSA_HILOGD("the keyboard is not showing");
+        return false;
+    }
+    auto sysPanelStatus = InputMethodAbility::GetInstance().GetSysPanelStatus();
+    bool tmpIsEvevated = IsKeyboardBottomElevated(panelFlag);
+    if (sysPanelStatus.isPanelRaised != tmpIsEvevated ||
+        sysPanelStatus.needFuncButton != IsFunctionButtonVisible(tmpIsEvevated)) {
+        return true;
+    }
+    return false;
 }
 } // namespace MiscServices
 } // namespace OHOS

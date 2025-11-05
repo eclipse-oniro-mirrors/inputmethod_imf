@@ -137,6 +137,7 @@ public:
     void OnSelectionChange(std::u16string text, int32_t oldBegin, int32_t oldEnd, int32_t newBegin, int32_t newEndg);
     void OnAttributeChange(InputAttribute attribute);
     void OnFunctionKey(int32_t funcKey);
+    SysPanelStatus GetSysPanelStatus();
 
     int32_t OnStopInputService(bool isTerminateIme);
     HiSysEventClientInfo GetBindClientInfo();
@@ -208,6 +209,7 @@ private:
     void ClearBindInfo(const sptr<IRemoteObject> &channel);
     void OnInputDataChannelDied(const sptr<IRemoteObject> &dataChannelObject);
     void UpdateColorPrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand);
+    void SetSysPanelStatus(const SysPanelStatus &sysPanelStatus);
 
     ConcurrentMap<PanelType, std::shared_ptr<InputMethodPanel>> panels_ {};
     std::atomic_bool isBound_ { false };
@@ -257,6 +259,9 @@ private:
 
     std::mutex colorPrivateCommandLock_;
     std::unordered_map<std::string, PrivateDataValue> colorPrivateCommand_ = { { "sys_cmd", 1 } };
+
+    std::mutex sysPanelStatusLock_;
+    SysPanelStatus sysPanelStatus_ { InputType::NONE, 0, 0, 0 } ;
 
     bool IsDisplayChanged(uint64_t oldDisplayId, uint64_t newDisplayId);
 };

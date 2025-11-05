@@ -1322,25 +1322,14 @@ int32_t InputMethodAbility::NotifyPanelStatus(bool isUseParameterFlag, PanelFlag
     auto keyboardSize = panel->GetKeyboardSize();
     PanelFlag curPanelFlag = isUseParameterFlag ? panelFlag : panel->GetPanelFlag();
     SysPanelStatus sysPanelStatus = { inputType_, curPanelFlag, keyboardSize.width, keyboardSize.height };
-    if (!panel->IsInMainDisplay()) {
-        sysPanelStatus.isPanelRaised = true;
-        sysPanelStatus.needFuncButton = false;
-    }
-    if (GetAttachOptions().isSimpleKeyboardEnabled && IsDefaultIme() && !GetInputAttribute().IsOneTimeCodeFlag()) {
-        sysPanelStatus.needFuncButton = false;
-    }
-    if (isCheckFuncButton && panel->IsKeyboardAtBottom() && sysPanelStatus.needFuncButton) {
-        IMSA_HILOGW("keyboard is at the bottom, hide the system panel button");
-        sysPanelStatus.needFuncButton = false;
-    }
-    if (!panel->isNeedConfig_) {
-        sysPanelStatus.needFuncButton = false;
-    }
+    sysPanelStatus.isPanelRaised = panel->IsKeyboardBottomElevated(curPanelFlag);
+    sysPanelStatus.needFuncButton = panel->IsFunctionButtonVisible(sysPanelStatus.isPanelRaised);
     auto systemChannel = GetSystemCmdChannelProxy();
     if (systemChannel == nullptr) {
         IMSA_HILOGE("channel is nullptr!");
         return ErrorCode::ERROR_CLIENT_NULL_POINTER;
     }
+    SetSysPanelStatus(sysPanelStatus);
     return systemChannel->NotifyPanelStatus(sysPanelStatus);
 }
 
@@ -2042,6 +2031,18 @@ void InputMethodAbility::StopTimer()
         timer_.Shutdown();
         timerId_ = 0;
     }
+}
+
+void InputMethodAbility::SetSysPanelStatus(const SysPanelStatus &sysPanelStatus)
+{
+    std::lock_guard<std::mutex> lock(sysPanelStatusLock_);
+    sysPanelStatus_ = sysPanelStatus;
+}
+
+SysPanelStatus InputMethodAbility::GetSysPanelStatus()
+{
+    std::lock_guard<std::mutex> lock(sysPanelStatusLock_);
+    return sysPanelStatus_;
 }
 } // namespace MiscServices
 } // namespace OHOS
