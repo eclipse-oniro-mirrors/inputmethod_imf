@@ -162,7 +162,7 @@ private:
     void StopImeInBackground();
     int32_t InitAccountMonitor();
     static std::shared_ptr<AppExecFwk::EventHandler> serviceHandler_;
-    int32_t userId_;
+    std::atomic<int32_t> userId_;
     bool stop_ = false;
     void InitMonitors();
     int32_t InitKeyEventMonitor();
