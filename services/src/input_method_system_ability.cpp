@@ -1835,11 +1835,11 @@ int32_t InputMethodSystemAbility::OnPackageUpdated(int32_t userId, const std::st
         IMSA_HILOGD("not current user");
         return ErrorCode::NO_ERROR;
     }
-    auto session = UserSessionManager::GetInstance().GetUserSession(userId_);
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
-        UserSessionManager::GetInstance().AddUserSession(userId_);
+        UserSessionManager::GetInstance().AddUserSession(userId);
     }
-    session = UserSessionManager::GetInstance().GetUserSession(userId_);
+    session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
         IMSA_HILOGE("%{public}d session is nullptr!", userId_);
         return ErrorCode::ERROR_NULL_POINTER;

@@ -33,12 +33,14 @@ namespace OHOS {
 namespace MiscServices {
 constexpr int32_t HOOK_EXEC_RESULT_SUCCESS = 0;
 constexpr int32_t HOOK_EXEC_RESULT_FAILED = -1;
+constexpr int64_t DUPLICATE_REPORT_MS = 1 * 60 * 60 * 1000; // 1 hour
 class ImfExtMockTest : public testing::Test {
 public:
     static void SetUpTestCase(void);
     static void TearDownTestCase(void);
     void SetUp();
     void TearDown();
+    static int64_t GetLastReportTime(const std::string &bundleName);
 };
 
 void ImfExtMockTest::SetUpTestCase(void)
@@ -61,6 +63,16 @@ void ImfExtMockTest::TearDown(void)
     IMSA_HILOGI("ImfExtMockTest::TearDown");
 }
 
+int64_t ImfExtMockTest::GetLastReportTime(const std::string &bundleName)
+{
+    auto iter = ImfHookMgr::GetInstance().imeReportedInfos_.find(bundleName);
+    if (iter == ImfHookMgr::GetInstance().imeReportedInfos_.end()) {
+        IMSA_HILOGE("not found");
+        return -1;
+    }
+    return iter->second.timeStampMs;
+}
+
 /**
  * @tc.name: ImfHookMgr_ExecuteCurrentImeInfoReportHook
  * @tc.desc: ImfHookMgr_ExecuteCurrentImeInfoReportHook
@@ -69,46 +81,48 @@ void ImfExtMockTest::TearDown(void)
  */
 HWTEST_F(ImfExtMockTest, ImfHookMgr_ExecuteCurrentImeInfoReportHook, TestSize.Level1)
 {
-    IMSA_HILOGI("InputMethodPrivateMemberTest::ImfHookMgr_ExecuteCurrentImeInfoReportHook start.");
+    IMSA_HILOGI("ImfExtMockTest::ImfHookMgr_ExecuteCurrentImeInfoReportHook start.");
     std::string bundleName = "bundleName";
     std::string versionName = "versionName";
     int32_t securityMode = 1;
     int32_t userId = 10;
     int64_t timeStampMs = 0;
     int64_t timeStampMs1 = 10;
-    int64_t timeStampMs2 = 1 * 60 * 60 * 1000 + 1;
+    int64_t timeStampMs2 = DUPLICATE_REPORT_MS + 1;
     bool needSetConfig = true;
-    // NeedReport() is false:report info is same,  report interval is not more than one hour
-    ImfHookMgr::GetInstance().imeReportedInfo_ = { bundleName, versionName, securityMode, needSetConfig, timeStampMs };
+    // NeedReport() is false: report info is same, report interval is not more than one hour
+    ImeReportedInfo info = { bundleName, versionName, securityMode, needSetConfig, timeStampMs };
+    ImfHookMgr::GetInstance().imeReportedInfos_.emplace(info.bundleName, info);
     ImeInfoInquirer::GetInstance().SetImeVersionName(versionName);
     ImeEnabledInfoManager::GetInstance().SetEnabledState(static_cast<EnabledStatus>(securityMode));
     auto ret = ImfHookMgr::GetInstance().ExecuteCurrentImeInfoReportHook(userId, bundleName, timeStampMs1);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 
-    // NeedReport() is true:info != imeReportedInfo_
+    // NeedReport() is true: report info different
     // ExecuteHook() failed:scan failed
-    ImfHookMgr::GetInstance().imeReportedInfo_ = {};
+    ImfHookMgr::GetInstance().imeReportedInfos_.clear();
     ImfModuleMgr::GetInstance().modules_.clear();
     ImfHookMgr::GetInstance().needSetConfig_ = true;
     SetModulesCnt(0);
     ret = ImfHookMgr::GetInstance().ExecuteCurrentImeInfoReportHook(userId, bundleName, timeStampMs1);
     EXPECT_EQ(ret, ErrorCode::ERROR_EX_ILLEGAL_STATE);
     EXPECT_TRUE(ImfHookMgr::GetInstance().needSetConfig_);
-    EXPECT_NE(ImfHookMgr::GetInstance().imeReportedInfo_.timeStampMs, timeStampMs1);
+    EXPECT_NE(GetLastReportTime(bundleName), timeStampMs1);
 
-    // NeedReport() is true:info != imeReportedInfo_
+    // NeedReport() is true:info different
     // ExecuteHook() succeed, needSetConfig is false
-    ImfHookMgr::GetInstance().imeReportedInfo_ = {};
+    ImfHookMgr::GetInstance().imeReportedInfos_.clear();
     ImfHookMgr::GetInstance().needSetConfig_ = false;
     ImfModuleMgr::GetInstance().modules_.insert({ ImfModuleMgr::IMF_EXT_MODULE_PATH, nullptr });
     SetHookMgrExecuteRet(HOOK_EXEC_RESULT_SUCCESS);
     ret = ImfHookMgr::GetInstance().ExecuteCurrentImeInfoReportHook(userId, bundleName, timeStampMs1);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_EQ(ImfHookMgr::GetInstance().imeReportedInfo_.timeStampMs, timeStampMs1);
+    EXPECT_EQ(GetLastReportTime(bundleName), timeStampMs1);
 
-    // NeedReport() is true:report info is same,  but report interval is more than one hour
+    // NeedReport() is true:report info is same, but report interval is more than one hour
     // ExecuteHook() succeed, needSetConfig is true
-    ImfHookMgr::GetInstance().imeReportedInfo_ = { bundleName, versionName, securityMode, needSetConfig, timeStampMs };
+    ImfHookMgr::GetInstance().imeReportedInfos_.clear();
+    ImfHookMgr::GetInstance().imeReportedInfos_.emplace(info.bundleName, info);
     ImfHookMgr::GetInstance().needSetConfig_ = true;
     ImeInfoInquirer::GetInstance().SetImeVersionName(versionName);
     ImeEnabledInfoManager::GetInstance().SetEnabledState(static_cast<EnabledStatus>(securityMode));
@@ -117,7 +131,7 @@ HWTEST_F(ImfExtMockTest, ImfHookMgr_ExecuteCurrentImeInfoReportHook, TestSize.Le
     ret = ImfHookMgr::GetInstance().ExecuteCurrentImeInfoReportHook(userId, bundleName, timeStampMs2);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     EXPECT_FALSE(ImfHookMgr::GetInstance().needSetConfig_);
-    EXPECT_EQ(ImfHookMgr::GetInstance().imeReportedInfo_.timeStampMs, timeStampMs2);
+    EXPECT_EQ(GetLastReportTime(bundleName), timeStampMs2);
 }
 
 /**
@@ -128,7 +142,7 @@ HWTEST_F(ImfExtMockTest, ImfHookMgr_ExecuteCurrentImeInfoReportHook, TestSize.Le
  */
 HWTEST_F(ImfExtMockTest, ImfHookMgr_ExecuteHook, TestSize.Level1)
 {
-    IMSA_HILOGI("InputMethodPrivateMemberTest::ImfHookMgr_ExecuteHook start.");
+    IMSA_HILOGI("ImfExtMockTest::ImfHookMgr_ExecuteHook start.");
     // scan failed
     ImfModuleMgr::GetInstance().modules_.clear();
     SetModulesCnt(0);
@@ -149,6 +163,64 @@ HWTEST_F(ImfExtMockTest, ImfHookMgr_ExecuteHook, TestSize.Level1)
 }
 
 /**
+ * @tc.name: ImfHookMgr_NeedReport
+ * @tc.desc: ImfHookMgr_NeedReport
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(ImfExtMockTest, ImfHookMgr_NeedReport, TestSize.Level1)
+{
+    IMSA_HILOGI("ImfExtMockTest::ImfHookMgr_NeedReport start.");
+    ImfHookMgr::GetInstance().imeReportedInfos_.clear();
+    std::string bundleName1 = "bundleName";
+    std::string bundleName2 = "bundleName2";
+    std::string versionName1 = "versionName1";
+    std::string versionName2 = "versionName2";
+    int32_t securityMode = 1;
+    int64_t timeStampMs1 = 0;
+    bool needSetConfig = true;
+    // 1 - info has not been reported before, need to be reported.
+    ImfHookMgr::GetInstance().imeReportedInfos_.clear();
+    ImeReportedInfo info = { bundleName1, versionName1, securityMode, needSetConfig, timeStampMs1 };
+    EXPECT_TRUE(ImfHookMgr::GetInstance().NeedReport(info));
+
+    // 2 - bundle name different
+    ImfHookMgr::GetInstance().imeReportedInfos_.clear();
+    info = { bundleName1, versionName1, securityMode, needSetConfig, timeStampMs1 };
+    ImfHookMgr::GetInstance().imeReportedInfos_.emplace(info.bundleName, info);
+    info.bundleName = bundleName2;
+    EXPECT_TRUE(ImfHookMgr::GetInstance().NeedReport(info));
+
+    // 3 - versionName different
+    ImfHookMgr::GetInstance().imeReportedInfos_.clear();
+    info = { bundleName1, versionName1, securityMode, needSetConfig, timeStampMs1 };
+    ImfHookMgr::GetInstance().imeReportedInfos_.emplace(info.bundleName, info);
+    info.versionName = versionName2;
+    EXPECT_TRUE(ImfHookMgr::GetInstance().NeedReport(info));
+
+    // 4 - securityMode different
+    ImfHookMgr::GetInstance().imeReportedInfos_.clear();
+    info = { bundleName1, versionName1, securityMode, needSetConfig, timeStampMs1 };
+    ImfHookMgr::GetInstance().imeReportedInfos_.emplace(info.bundleName, info);
+    info.securityMode = 2;
+    EXPECT_TRUE(ImfHookMgr::GetInstance().NeedReport(info));
+
+    // 5 - time diff over 1 hour
+    ImfHookMgr::GetInstance().imeReportedInfos_.clear();
+    info = { bundleName1, versionName1, securityMode, needSetConfig, timeStampMs1 };
+    ImfHookMgr::GetInstance().imeReportedInfos_.emplace(info.bundleName, info);
+    info.timeStampMs += DUPLICATE_REPORT_MS + 1;
+    EXPECT_TRUE(ImfHookMgr::GetInstance().NeedReport(info));
+
+    // 6 - no need to report
+    ImfHookMgr::GetInstance().imeReportedInfos_.clear();
+    info = { bundleName1, versionName1, securityMode, needSetConfig, timeStampMs1 };
+    ImfHookMgr::GetInstance().imeReportedInfos_.emplace(info.bundleName, info);
+    info.timeStampMs += DUPLICATE_REPORT_MS - 1;
+    EXPECT_FALSE(ImfHookMgr::GetInstance().NeedReport(info));
+}
+
+/**
  * @tc.name: ImfModuleMgr_Scan
  * @tc.desc: ImfModuleMgr_Scan
  * @tc.type: FUNC
@@ -156,7 +228,7 @@ HWTEST_F(ImfExtMockTest, ImfHookMgr_ExecuteHook, TestSize.Level1)
  */
 HWTEST_F(ImfExtMockTest, ImfModuleMgr_Scan, TestSize.Level1)
 {
-    IMSA_HILOGI("InputMethodPrivateMemberTest::ImfModuleMgr_Scan start.");
+    IMSA_HILOGI("ImfExtMockTest::ImfModuleMgr_Scan start.");
     // HasScan is true
     ImfModuleMgr::GetInstance().modules_.insert({ ImfModuleMgr::IMF_EXT_MODULE_PATH, nullptr });
     auto ret = ImfModuleMgr::GetInstance().Scan(ImfModuleMgr::IMF_EXT_MODULE_PATH);
@@ -185,7 +257,7 @@ HWTEST_F(ImfExtMockTest, ImfModuleMgr_Scan, TestSize.Level1)
  */
 HWTEST_F(ImfExtMockTest, ImfModuleMgr_Destroy, TestSize.Level1)
 {
-    IMSA_HILOGI("InputMethodPrivateMemberTest::ImfModuleMgr_Destroy start.");
+    IMSA_HILOGI("ImfExtMockTest::ImfModuleMgr_Destroy start.");
     // not contain
     ImfModuleMgr::GetInstance().modules_.clear();
     ImfModuleMgr::GetInstance().Destroy(ImfModuleMgr::IMF_EXT_MODULE_PATH);
