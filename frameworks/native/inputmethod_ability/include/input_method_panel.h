@@ -88,9 +88,9 @@ public:
     int32_t GetSystemPanelCurrentInsets(uint64_t displayId, SystemPanelInsets &systemPanelInsets);
     int32_t SetSystemPanelButtonColor(const std::string &fillColor, const std::string &backgroundColor);
     int32_t SetShadow(const Shadow &shadow);
-    bool IsKeyboardAtBottom();
+    bool IsKeyboardBottomElevated(PanelFlag flag);
+    bool IsFunctionButtonVisible(bool isKeyboardElevated);
     uint32_t windowId_ = INVALID_WINDOW_ID;
-    std::atomic<bool> isNeedConfig_ { false };
 
 private:
     class KeyboardPanelInfoChangeListener : public Rosen::IKeyboardPanelInfoChangeListener {
@@ -209,6 +209,8 @@ private:
     bool IsVectorsEqual(const std::vector<std::string>& vec1, const std::vector<std::string>& vec2);
     int32_t AreaInsets(SystemPanelInsets &systemPanelInsets, sptr<Rosen::Display> displayPtr);
     int32_t SetWindowShadow(const Shadow &shadow);
+    bool IsKeyboardRectAtBottom();
+    bool IsNeedNotify(PanelFlag panelFlag);
 
     sptr<OHOS::Rosen::Window> window_ = nullptr;
     sptr<OHOS::Rosen::WindowOption> winOption_ = nullptr;
