@@ -138,6 +138,7 @@ int32_t PerUserSession::HideKeyboard(
     bool isShowKeyboard = false;
     clientGroup->UpdateClientInfo(currentClient->AsObject(), { { UpdateFlag::ISSHOWKEYBOARD, isShowKeyboard } });
     RestoreCurrentImeSubType(clientGroup->GetDisplayGroupId());
+    clientGroup->NotifyInputStopToClients();
     return ErrorCode::NO_ERROR;
 }
 
