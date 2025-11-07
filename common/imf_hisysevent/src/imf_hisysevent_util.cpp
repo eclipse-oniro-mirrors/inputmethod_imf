@@ -37,7 +37,7 @@ void ImfHiSysEventUtil::ReportClientAttachFault(
         "CLIENT_TYPE", info.clientType, "INPUT_PATTERN", info.inputPattern, "ISSHOWKEYBOARD", info.isShowKeyboard,
         "IME_NAME", info.imeName, "ERR_CODE", info.errCode, "FAULT_COUNT", faultNum);
     if (ret != HiviewDFX::SUCCESS) {
-        IMSA_HILOGE("report failed! ret: %{public}d", ret);
+        IMSA_HILOGE("report failed! ret: %{public}d.", ret);
     }
 }
 
@@ -50,7 +50,7 @@ void ImfHiSysEventUtil::ReportClientShowFault(
         "CLIENT_TYPE", info.clientType, "INPUT_PATTERN", info.inputPattern, "IME_NAME", info.imeName, "EVENT_CODE",
         info.eventCode, "ERR_CODE", info.errCode, "FAULT_COUNT", faultNum);
     if (ret != HiviewDFX::SUCCESS) {
-        IMSA_HILOGE("report failed! ret: %{public}d", ret);
+        IMSA_HILOGE("report failed! ret: %{public}d.", ret);
     }
 }
 
@@ -62,7 +62,7 @@ void ImfHiSysEventUtil::ReportImeStartInputFault(
         "SELF_NAME", selfName, "PEER_NAME", info.peerName, "PEER_PID", info.peerPid, "ISSHOWKEYBOARD",
         info.isShowKeyboard, "EVENT_CODE", info.eventCode, "ERR_CODE", info.errCode, "FAULT_COUNT", faultNum);
     if (ret != HiviewDFX::SUCCESS) {
-        IMSA_HILOGE("report failed! ret: %{public}d", ret);
+        IMSA_HILOGE("report failed! ret: %{public}d.", ret);
     }
 }
 
@@ -75,7 +75,7 @@ void ImfHiSysEventUtil::ReportBaseTextOperationFault(
         "CLIENT_TYPE", info.clientType, "EVENT_CODE", info.eventCode, "ERR_CODE", info.errCode, "FAULT_COUNT",
         faultNum);
     if (ret != HiviewDFX::SUCCESS) {
-        IMSA_HILOGE("report failed! ret: %{public}d", ret);
+        IMSA_HILOGE("report failed! ret: %{public}d.", ret);
     }
 }
 
@@ -90,7 +90,7 @@ void ImfHiSysEventUtil::ReportStatisticsEvent(const std::string &eventName, cons
     auto ret = HiSysEventWrite(HiSysEvent::Domain::INPUTMETHOD, eventName, HiSysEvent::EventType::STATISTIC,
         "IME_NAME", imeNames, "APP_NAME", appNames, "INFOS", statistics);
     if (ret != HiviewDFX::SUCCESS) {
-        IMSA_HILOGE("report failed! ret: %{public}d", ret);
+        IMSA_HILOGE("report failed! ret: %{public}d.", ret);
     }
 }
 
@@ -105,7 +105,7 @@ void ImfHiSysEventUtil::ReportStatisticsEvent(const std::string &eventName, cons
     auto ret = HiSysEventWrite(HiSysEvent::Domain::INPUTMETHOD, eventName, HiSysEvent::EventType::STATISTIC,
         "SELF_NAME", imeName, "APP_NAME", appNames, "INFOS", statistics);
     if (ret != HiviewDFX::SUCCESS) {
-        IMSA_HILOGE("report failed! ret: %{public}d", ret);
+        IMSA_HILOGE("report failed! ret: %{public}d.", ret);
     }
 }
 

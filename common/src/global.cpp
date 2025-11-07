@@ -22,7 +22,7 @@ namespace OHOS {
 namespace MiscServices {
 bool BlockRetry(uint32_t interval, uint32_t maxRetryTimes, Function func)
 {
-    IMSA_HILOGD("retry start");
+    IMSA_HILOGD("retry start.");
     uint32_t times = 0;
     do {
         times++;
@@ -32,13 +32,13 @@ bool BlockRetry(uint32_t interval, uint32_t maxRetryTimes, Function func)
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(interval));
     } while (times < maxRetryTimes);
-    IMSA_HILOGI("retry failed");
+    IMSA_HILOGI("retry failed!");
     return false;
 }
 
 bool BlockRetry(uint32_t interval, uint32_t maxRetryTimes, RetryFunction func, int32_t &ret)
 {
-    IMSA_HILOGD("retry start");
+    IMSA_HILOGD("retry start.");
     uint32_t times = 0;
     do {
         times++;
@@ -48,7 +48,7 @@ bool BlockRetry(uint32_t interval, uint32_t maxRetryTimes, RetryFunction func, i
         }
         std::this_thread::sleep_for(std::chrono::milliseconds(interval));
     } while (times < maxRetryTimes);
-    IMSA_HILOGI("retry failed");
+    IMSA_HILOGI("retry failed!");
     return false;
 }
 } // namespace MiscServices

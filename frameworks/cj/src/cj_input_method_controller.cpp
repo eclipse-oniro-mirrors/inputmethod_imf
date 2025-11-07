@@ -294,10 +294,10 @@ int32_t CjInputMethodController::Unsubscribe(int8_t type)
 void CjInputMethodController::OnSelectByRange(int32_t start, int32_t end)
 {
     if (onSelectByRange == nullptr) {
-        IMSA_HILOGD("onSelelctByRange null");
+        IMSA_HILOGE("onSelelctByRange null.");
         return;
     }
-    IMSA_HILOGD("onSelelctByRange runs");
+    IMSA_HILOGD("onSelelctByRange runs.");
     Range range;
     range.start = start;
     range.end = end;
@@ -307,10 +307,10 @@ void CjInputMethodController::OnSelectByRange(int32_t start, int32_t end)
 void CjInputMethodController::OnSelectByMovement(int32_t direction)
 {
     if (onSelectByMovement == nullptr) {
-        IMSA_HILOGD("onSelectByMovement null");
+        IMSA_HILOGE("onSelectByMovement null.");
         return;
     }
-    IMSA_HILOGD("onSelectByMovement runs");
+    IMSA_HILOGD("onSelectByMovement runs.");
     return onSelectByMovement(direction);
 }
 
@@ -322,11 +322,11 @@ void CjInputMethodController::InsertText(const std::u16string &text)
         return;
     }
     if (insertText == nullptr) {
-        IMSA_HILOGD("insertText null");
+        IMSA_HILOGE("insertText null.");
         free(insertTxt);
         return;
     }
-    IMSA_HILOGD("insertText runs");
+    IMSA_HILOGD("insertText runs.");
     insertText(insertTxt);
     free(insertTxt);
     return;
@@ -335,10 +335,10 @@ void CjInputMethodController::InsertText(const std::u16string &text)
 void CjInputMethodController::DeleteRight(int32_t length)
 {
     if (deleteRight == nullptr) {
-        IMSA_HILOGD("deleteRight null");
+        IMSA_HILOGE("deleteRight null.");
         return;
     }
-    IMSA_HILOGD("deleteRight runs");
+    IMSA_HILOGD("deleteRight runs.");
     deleteRight(length);
     return;
 }
@@ -346,10 +346,10 @@ void CjInputMethodController::DeleteRight(int32_t length)
 void CjInputMethodController::DeleteLeft(int32_t length)
 {
     if (deleteLeft == nullptr) {
-        IMSA_HILOGD("deleteLeft null");
+        IMSA_HILOGE("deleteLeft null.");
         return;
     }
-    IMSA_HILOGD("deleteLeft runs");
+    IMSA_HILOGD("deleteLeft runs.");
     deleteLeft(length);
     return;
 }
@@ -357,10 +357,10 @@ void CjInputMethodController::DeleteLeft(int32_t length)
 void CjInputMethodController::SendKeyboardStatus(const KeyboardStatus &status)
 {
     if (sendKeyboardStatus == nullptr) {
-        IMSA_HILOGD("sendKeyboardStatus null");
+        IMSA_HILOGE("sendKeyboardStatus null.");
         return;
     }
-    IMSA_HILOGD("sendKeyboardStatus runs");
+    IMSA_HILOGD("sendKeyboardStatus runs.");
     auto statusNum = static_cast<int32_t>(status);
     sendKeyboardStatus(statusNum);
     return;
@@ -369,10 +369,10 @@ void CjInputMethodController::SendKeyboardStatus(const KeyboardStatus &status)
 void CjInputMethodController::SendFunctionKey(const FunctionKey &functionKey)
 {
     if (sendFunctionKey == nullptr) {
-        IMSA_HILOGD("sendFunctionKey null");
+        IMSA_HILOGE("sendFunctionKey null.");
         return;
     }
-    IMSA_HILOGD("sendFunctionKey runs");
+    IMSA_HILOGD("sendFunctionKey runs.");
     auto type = static_cast<int32_t>(functionKey.GetEnterKeyType());
     sendFunctionKey(type);
     return;
@@ -381,10 +381,10 @@ void CjInputMethodController::SendFunctionKey(const FunctionKey &functionKey)
 void CjInputMethodController::MoveCursor(const Direction direction)
 {
     if (moveCursor == nullptr) {
-        IMSA_HILOGD("moveCursor null");
+        IMSA_HILOGE("moveCursor null.");
         return;
     }
-    IMSA_HILOGD("moveCursor runs");
+    IMSA_HILOGD("moveCursor runs.");
     auto dir = static_cast<int32_t>(direction);
     moveCursor(dir);
     return;
@@ -393,10 +393,10 @@ void CjInputMethodController::MoveCursor(const Direction direction)
 void CjInputMethodController::HandleExtendAction(int32_t action)
 {
     if (handleExtendAction == nullptr) {
-        IMSA_HILOGD("handleExtendAction null");
+        IMSA_HILOGE("handleExtendAction null.");
         return;
     }
-    IMSA_HILOGD("handleExtendAction runs");
+    IMSA_HILOGD("handleExtendAction runs.");
     handleExtendAction(action);
     return;
 }
@@ -404,13 +404,13 @@ void CjInputMethodController::HandleExtendAction(int32_t action)
 std::u16string CjInputMethodController::GetLeftText(int32_t number)
 {
     if (getLeftText == nullptr) {
-        IMSA_HILOGD("getLeftText null");
+        IMSA_HILOGE("getLeftText null.");
         return u"";
     }
-    IMSA_HILOGD("getLeftText runs");
+    IMSA_HILOGD("getLeftText runs.");
     char *text = getLeftText(number);
     if (text == nullptr) {
-        IMSA_HILOGD("text is nullptr");
+        IMSA_HILOGE("text is nullptr.");
         return u"";
     }
     auto ret = Str8ToStr16(std::string(text));
@@ -421,13 +421,13 @@ std::u16string CjInputMethodController::GetLeftText(int32_t number)
 std::u16string CjInputMethodController::GetRightText(int32_t number)
 {
     if (getRightText == nullptr) {
-        IMSA_HILOGD("getRightText null");
+        IMSA_HILOGE("getRightText null.");
         return u"";
     }
-    IMSA_HILOGD("getRightText runs");
+    IMSA_HILOGD("getRightText runs.");
     char *text = getRightText(number);
     if (text == nullptr) {
-        IMSA_HILOGD("text is nullptr");
+        IMSA_HILOGE("text is nullptr.");
         return u"";
     }
     auto ret = Str8ToStr16(std::string(text));
@@ -438,10 +438,10 @@ std::u16string CjInputMethodController::GetRightText(int32_t number)
 int32_t CjInputMethodController::GetTextIndexAtCursor()
 {
     if (getTextIndexAtCursor == nullptr) {
-        IMSA_HILOGD("getTextIndexAtCursor null");
+        IMSA_HILOGE("getTextIndexAtCursor null.");
         return -1;
     }
-    IMSA_HILOGD("getTextIndexAtCursor runs");
+    IMSA_HILOGD("getTextIndexAtCursor runs.");
     return getTextIndexAtCursor();
 }
 
