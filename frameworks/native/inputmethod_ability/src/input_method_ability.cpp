@@ -156,10 +156,6 @@ int32_t InputMethodAbility::RegisterProxyIme(uint64_t displayId)
     IMSA_HILOGD("IMA, displayId: %{public}" PRIu64 "", displayId);
     TaskManager::GetInstance().SetInited(true);
 
-    if (isBound_.load()) {
-        IMSA_HILOGD("already bound.");
-        return ErrorCode::NO_ERROR;
-    }
     auto proxy = GetImsaProxy();
     if (proxy == nullptr) {
         IMSA_HILOGE("imsa proxy is nullptr!");
