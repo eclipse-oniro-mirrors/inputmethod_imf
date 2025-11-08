@@ -17,9 +17,10 @@
 
 #include "event_handler.h"
 #include "event_runner.h"
-#include "inputmethod_trace.h"
 #include "input_method_controller.h"
 #include "input_method_property.h"
+#include "inputmethod_trace.h"
+#include "js_callback_handler.h"
 #include "js_util.h"
 #include "napi/native_api.h"
 #include "napi/native_node_api.h"
@@ -27,6 +28,8 @@
 
 namespace OHOS {
 namespace MiscServices {
+std::mutex JsInputMethod::jsCbsLock_;
+std::unordered_map<std::string, std::vector<std::shared_ptr<JSCallbackObject>>> JsInputMethod::jsCbs_;
 napi_value JsInputMethod::Init(napi_env env, napi_value exports)
 {
     napi_property_descriptor descriptor[] = {
@@ -38,6 +41,9 @@ napi_value JsInputMethod::Init(napi_env env, napi_value exports)
         DECLARE_NAPI_FUNCTION("switchCurrentInputMethodSubtype", SwitchCurrentInputMethodSubtype),
         DECLARE_NAPI_FUNCTION("switchCurrentInputMethodAndSubtype", SwitchCurrentInputMethodAndSubtype),
         DECLARE_NAPI_FUNCTION("setSimpleKeyboardEnabled", SetSimpleKeyboardEnabled),
+        DECLARE_NAPI_FUNCTION("onAttachmentDidFail", OnAttachmentDidFail),
+        DECLARE_NAPI_FUNCTION("offAttachmentDidFail", OffAttachmentDidFail),
+        DECLARE_NAPI_STATIC_PROPERTY("AttachFailureReason", GetJsAttachFailureReasonProperty(env)),
     };
     NAPI_CALL(env,
         napi_define_properties(env, exports, sizeof(descriptor) / sizeof(napi_property_descriptor), descriptor));
@@ -458,6 +464,199 @@ napi_value JsInputMethod::SetSimpleKeyboardEnabled(napi_env env, napi_callback_i
     }
 
     return JsUtil::Const::Null(env);
+}
+
+napi_value JsInputMethod::OnAttachmentDidFail(napi_env env, napi_callback_info info)
+{
+    return Subscribe(env, info, ATTACH_FAIL_CB_EVENT_TYPE);
+}
+
+napi_value JsInputMethod::OffAttachmentDidFail(napi_env env, napi_callback_info info)
+{
+    return UnSubscribe(env, info, ATTACH_FAIL_CB_EVENT_TYPE);
+}
+
+napi_value JsInputMethod::Subscribe(napi_env env, napi_callback_info info, const std::string &eventType)
+{
+    IMSA_HILOGD("event type: %{public}s.", eventType.c_str());
+
+    size_t argc = ARGC_MAX;
+    napi_value argv[ARGC_MAX] = { nullptr };
+    napi_value thisVar = nullptr;
+    void *data = nullptr;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
+    // 1 means least param num.
+    PARAM_CHECK_RETURN(env, argc >= 1, "at least one parameters is required!", TYPE_NONE, JsUtil::Const::Null(env));
+    napi_value callback = argv[0];
+    PARAM_CHECK_RETURN(
+        env, JsUtil::GetType(env, callback) == napi_function, "callback", TYPE_FUNCTION, JsUtil::Const::Null(env));
+    SetImcInnerListener();
+    AddCallback(env, callback, eventType);
+
+    return JsUtil::Const::Null(env);
+}
+
+napi_value JsInputMethod::UnSubscribe(napi_env env, napi_callback_info info, const std::string &eventType)
+{
+    IMSA_HILOGD("event type: %{public}s.", eventType.c_str());
+    size_t argc = ARGC_MAX;
+    napi_value argv[ARGC_MAX] = { nullptr };
+    napi_value thisVar = nullptr;
+    void *data = nullptr;
+    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
+    napi_value callback = nullptr;
+    if (argc > 0) {
+        // if the one param is not napi_function/napi_undefined, return
+        napi_value param = argv[0];
+        auto paramType = JsUtil::GetType(env, param);
+        if (paramType != napi_function && paramType != napi_undefined) {
+            return JsUtil::Const::Null(env);
+        }
+        // if the second param is napi_function, delete it, else delete all
+        callback = paramType == napi_function ? param : nullptr;
+    }
+    RemoveCallback(callback, eventType);
+
+    return JsUtil::Const::Null(env);
+}
+
+void JsInputMethod::AddCallback(napi_env env, napi_value callback, const std::string &eventType)
+{
+    IMSA_HILOGD("event type: %{public}s", eventType.c_str());
+    std::lock_guard<std::mutex> lock(jsCbsLock_);
+    auto isSameCb = [&callback](const std::shared_ptr<JSCallbackObject> &cbObject) {
+        return cbObject != nullptr
+               && JsUtils::Equals(cbObject->env_, callback, cbObject->callback_, cbObject->threadId_);
+    };
+    auto &cbObjects = jsCbs_[eventType];
+    auto ret = std::any_of(cbObjects.begin(), cbObjects.end(), isSameCb);
+    if (ret) {
+        IMSA_HILOGD("callback already add.");
+        return;
+    }
+    auto cbObject = std::make_shared<JSCallbackObject>(
+        env, callback, std::this_thread::get_id(), AppExecFwk::EventHandler::Current());
+    IMSA_HILOGD("add %{public}s callback succeed.", eventType.c_str());
+    cbObjects.push_back(std::move(cbObject));
+}
+
+void JsInputMethod::RemoveCallback(napi_value callback, const std::string &eventType)
+{
+    IMSA_HILOGD("event type: %{public}s", eventType.c_str());
+    std::lock_guard<std::mutex> lock(jsCbsLock_);
+    auto eventIter = jsCbs_.find(eventType);
+    if (eventIter == jsCbs_.end()) {
+        IMSA_HILOGE("no callback for event:%{public}s!", eventType.c_str());
+        return;
+    }
+    if (callback == nullptr) {
+        IMSA_HILOGD("remove all callbacks for event:%{public}s.", eventType.c_str());
+        jsCbs_.erase(eventIter);
+        return;
+    }
+    auto isSameCb = [&callback](const std::shared_ptr<JSCallbackObject> &cbObject) {
+        return cbObject != nullptr
+               && JsUtils::Equals(cbObject->env_, callback, cbObject->callback_, cbObject->threadId_);
+    };
+    auto &cbObjects = eventIter->second;
+    auto cbIter = std::find_if(cbObjects.begin(), cbObjects.end(), isSameCb);
+    if (cbIter == cbObjects.end()) {
+        IMSA_HILOGD("callback for event:%{public}s may be removed already!", eventType.c_str());
+        return;
+    }
+    cbObjects.erase(cbIter);
+    IMSA_HILOGD("remove %{public}s callback succeed.", eventType.c_str());
+    if (cbObjects.empty()) {
+        jsCbs_.erase(eventIter);
+    }
+}
+
+napi_value JsInputMethod::GetJsAttachFailureReasonProperty(napi_env env)
+{
+    napi_value attachFailureReason = nullptr;
+    NAPI_CALL(env, napi_create_object(env, &attachFailureReason));
+    bool ret = JsUtil::Object::WriteProperty(
+        env, attachFailureReason, "CALLER_NOT_FOCUSED", static_cast<int32_t>(AttachFailureReason::CALLER_NOT_FOCUSED));
+    ret = ret
+          && JsUtil::Object::WriteProperty(
+              env, attachFailureReason, "IME_ABNORMAL", static_cast<int32_t>(AttachFailureReason::IME_ABNORMAL));
+    ret = ret
+          && JsUtil::Object::WriteProperty(env, attachFailureReason, "SERVICE_ABNORMAL",
+              static_cast<int32_t>(AttachFailureReason::SERVICE_ABNORMAL));
+    return ret ? attachFailureReason : JsUtil::Const::Null(env);
+}
+
+void JsInputMethod::OnAttachmentDidFail(AttachFailureReason reason)
+{
+    IMSA_HILOGD("reason: %{public}d.", reason);
+    auto jsCbObjects = GetJsCbObjects(ATTACH_FAIL_CB_EVENT_TYPE);
+    for (const auto &jsCbObject : jsCbObjects) {
+        OnAttachmentDidFail(reason, jsCbObject);
+    }
+}
+
+void JsInputMethod::OnAttachmentDidFail(AttachFailureReason reason, const std::shared_ptr<JSCallbackObject> &jsCbObject)
+{
+    if (jsCbObject == nullptr) {
+        IMSA_HILOGE("jsCbObject is nullptr.");
+        return;
+    }
+    auto handler = jsCbObject->jsHandler_;
+    if (handler == nullptr) {
+        IMSA_HILOGE("handler is nullptr.");
+        return;
+    }
+    auto entry = GetEntry(jsCbObject, [reason](UvEntry &entry) { entry.attachFailureReason = reason; });
+    auto task = [entry]() {
+        auto getReason = [entry](napi_env env, napi_value *args, uint8_t argc) -> bool {
+            if (argc < 1) {
+                return false;
+            }
+            auto reason = JsUtil::GetValue(env, static_cast<int32_t>(entry->attachFailureReason));
+            if (reason == nullptr) {
+                IMSA_HILOGE("failed to converse reason!");
+                return false;
+            }
+            // 0 means the first param of callback.
+            args[0] = reason;
+            return true;
+        };
+        // 1 means callback has one param.
+        JsCallbackHandler::Traverse(entry->jsCbObject, { 1, getReason });
+    };
+    handler->PostTask(task, ATTACH_FAIL_CB_EVENT_TYPE, 0, AppExecFwk::EventQueue::Priority::VIP);
+}
+
+std::shared_ptr<JsInputMethod::UvEntry> JsInputMethod::GetEntry(
+    const std::shared_ptr<JSCallbackObject> &jsCbObject, const JsInputMethod::EntrySetter &entrySetter)
+{
+    auto entry = std::make_shared<UvEntry>(jsCbObject);
+    if (entrySetter != nullptr) {
+        entrySetter(*entry);
+    }
+    return entry;
+}
+
+std::vector<std::shared_ptr<JSCallbackObject>> JsInputMethod::GetJsCbObjects(const std::string &type)
+{
+    IMSA_HILOGD("type: %{public}s", type.c_str());
+    std::lock_guard<std::mutex> lock(jsCbsLock_);
+    auto iter = jsCbs_.find(type);
+    if (iter == jsCbs_.end()) {
+        IMSA_HILOGD("%{public}s not register.", type.c_str());
+        return {};
+    }
+    return iter->second;
+}
+
+void JsInputMethod::SetImcInnerListener()
+{
+    auto instance = InputMethodController::GetInstance();
+    if (instance == nullptr) {
+        return;
+    }
+    static auto listener = std::make_shared<JsInputMethod>();
+    instance->SetImcInnerListener(listener);
 }
 } // namespace MiscServices
 } // namespace OHOS

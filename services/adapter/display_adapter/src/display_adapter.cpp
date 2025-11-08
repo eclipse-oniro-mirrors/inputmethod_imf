@@ -17,31 +17,83 @@
 
 #include <cinttypes>
 
-#include "display_info.h"
 #include "display_manager_lite.h"
 #include "global.h"
+#include "ime_info_inquirer.h"
 
 namespace OHOS {
 namespace MiscServices {
 using namespace OHOS::Rosen;
 std::string DisplayAdapter::GetDisplayName(uint64_t displayId)
 {
-    sptr<DisplayLite> display = DisplayManagerLite::GetInstance().GetDisplayById(displayId);
-    if (display == nullptr) {
-        IMSA_HILOGE("display is null!");
-        return "";
-    }
-    sptr<DisplayInfo> displayInfo = display->GetDisplayInfo();
+    auto displayInfo = GetDisplayInfo(displayId);
     if (displayInfo == nullptr) {
         IMSA_HILOGE("displayInfo is null!");
         return "";
     }
-    return displayInfo->GetName();
+    auto name = displayInfo->GetName();
+    IMSA_HILOGD("display: %{public}" PRIu64 " name is %{public}s.", displayId, name.c_str());
+    return name;
 }
 
 uint64_t DisplayAdapter::GetDefaultDisplayId()
 {
     return DisplayManagerLite::GetInstance().GetDefaultDisplayId();
+}
+
+bool DisplayAdapter::IsImeShowable(uint64_t displayId)
+{
+    auto displayInfo = GetDisplayInfo(displayId);
+    if (displayInfo == nullptr) {
+        IMSA_HILOGE("displayInfo is null!");
+        return true;
+    }
+    auto isImeShowable = displayInfo->GetSupportsInput();
+    IMSA_HILOGD("display: %{public}" PRIu64 " is %{public}u.", displayId, isImeShowable);
+    return isImeShowable;
+}
+
+bool DisplayAdapter::IsFocusable(uint64_t displayId)
+{
+    auto displayInfo = GetDisplayInfo(displayId);
+    if (displayInfo == nullptr) {
+        IMSA_HILOGE("displayInfo is null!");
+        return true;
+    }
+    auto isFocusable = displayInfo->GetSupportsFocus();
+    IMSA_HILOGD("display: %{public}" PRIu64 " is %{public}u.", displayId, isFocusable);
+    return isFocusable;
+}
+
+uint64_t DisplayAdapter::GetFinalDisplayId(uint64_t displayId)
+{
+    IMSA_HILOGD("run in, display: %{public}" PRIu64 ".", displayId);
+    if (displayId == DEFAULT_DISPLAY_ID) {
+        return displayId;
+    }
+    if (ImeInfoInquirer::GetInstance().IsRestrictedMainDisplayId(displayId)) {
+        return DEFAULT_DISPLAY_ID;
+    }
+    if (IsImeShowable(displayId)) {
+        return displayId;
+    }
+    IMSA_HILOGD("display: %{public}" PRIu64 " not support show ime.", displayId);
+    return DEFAULT_DISPLAY_ID;
+}
+
+sptr<DisplayInfo> DisplayAdapter::GetDisplayInfo(uint64_t displayId)
+{
+    auto display = DisplayManagerLite::GetInstance().GetDisplayById(displayId);
+    if (display == nullptr) {
+        IMSA_HILOGE("display is null!");
+        return nullptr;
+    }
+    auto displayInfo = display->GetDisplayInfo();
+    if (displayInfo == nullptr) {
+        IMSA_HILOGE("displayInfo is null!");
+        return nullptr;
+    }
+    return displayInfo;
 }
 } // namespace MiscServices
 } // namespace OHOS

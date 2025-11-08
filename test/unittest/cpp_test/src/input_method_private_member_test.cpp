@@ -2976,6 +2976,33 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_GetFinalCallingWindowInfo,
 }
 
 /**
+ * @tc.name: DisplayAdapter_GetFinalDisplayId
+ * @tc.desc: DisplayAdapter_GetFinalDisplayId
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, DisplayAdapter_GetFinalDisplayId, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::DisplayAdapter_GetFinalDisplayId start.");
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultMainDisplayScreenList.clear();
+    uint64_t defaultDisplayId = DisplayAdapter::DEFAULT_DISPLAY_ID;
+    auto finalDisplayId = DisplayAdapter::GetFinalDisplayId(defaultDisplayId);
+    EXPECT_EQ(finalDisplayId, defaultDisplayId);
+
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultMainDisplayScreenList.insert("");
+    uint64_t displayId = 2000;
+    finalDisplayId = DisplayAdapter::GetFinalDisplayId(displayId);
+    EXPECT_EQ(finalDisplayId, defaultDisplayId);
+
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultMainDisplayScreenList.clear();
+    finalDisplayId = DisplayAdapter::GetFinalDisplayId(displayId);
+    EXPECT_EQ(finalDisplayId, displayId);
+
+    auto isFocusable = DisplayAdapter::IsFocusable(displayId);
+    EXPECT_TRUE(isFocusable);
+}
+
+/**
  * @tc.name: ImCommonEventManager_OnBundleResChanged
  * @tc.desc: ImCommonEventManager_OnBundleResChanged
  * @tc.type: FUNC

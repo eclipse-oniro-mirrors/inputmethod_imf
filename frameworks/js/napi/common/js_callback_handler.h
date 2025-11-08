@@ -35,16 +35,23 @@ public:
     static void Traverse(const std::vector<std::shared_ptr<JSCallbackObject>> &objects,
         const ArgContainer &argContainer = { 0, nullptr })
     {
-        InputMethodSyncTrace tracer("Traverse callback");
         for (const auto &object : objects) {
-            if (object == nullptr) {
-                continue;
-            }
-            JsUtil::ScopeGuard scopeGuard(object->env_);
-            napi_value jsOutput = nullptr;
-            Execute(object, argContainer, jsOutput);
+            Traverse(object, argContainer);
         }
     }
+
+    static void Traverse(
+        const std::shared_ptr<JSCallbackObject> &object, const ArgContainer &argContainer = { 0, nullptr })
+    {
+        InputMethodSyncTrace tracer("Traverse callback");
+        if (object == nullptr) {
+            return;
+        }
+        JsUtil::ScopeGuard scopeGuard(object->env_);
+        napi_value jsOutput = nullptr;
+        Execute(object, argContainer, jsOutput);
+    }
+
     template<typename T>
     static void Traverse(const std::vector<std::shared_ptr<JSCallbackObject>> &objects,
         const ArgContainer &argContainer, T &output)

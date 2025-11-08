@@ -2579,11 +2579,7 @@ int32_t PerUserSession::NotifyCallingDisplayChanged(uint64_t displayId)
 ImfCallingWindowInfo PerUserSession::GetFinalCallingWindowInfo(const InputClientInfo &clientInfo)
 {
     auto windowInfo = GetCallingWindowInfo(clientInfo);
-    if (SceneBoardJudgement::IsSceneBoardEnabled() &&
-        ImeInfoInquirer::GetInstance().IsRestrictedMainDisplayId(windowInfo.displayId)) {
-        IMSA_HILOGI("get default displayId");
-        windowInfo.displayId = DisplayAdapter::GetDefaultDisplayId();
-    }
+    windowInfo.displayId = DisplayAdapter::GetFinalDisplayId(windowInfo.displayId);
     return windowInfo;
 }
 
