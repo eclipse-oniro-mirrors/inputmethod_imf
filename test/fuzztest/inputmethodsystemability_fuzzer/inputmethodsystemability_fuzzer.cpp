@@ -95,6 +95,14 @@ void SystemAbility(const uint8_t *data, size_t size)
     auto fuzzedUint32 = provider.ConsumeIntegral<uint32_t>();
     DelayedSingleton<InputMethodSystemAbility>::GetInstance()->ReleaseInput(nullptr, fuzzedUint32);
 }
+
+void FuzzInputType(FuzzedDataProvider &provider)
+{
+    const int32_t type = provider.ConsumeIntegral<int32_t>();
+    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->StartInputType(type);
+    bool resultValue = provider.ConsumeBool();
+    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->IsInputTypeSupported(type, resultValue);
+}
 } // namespace OHOS
 /* Fuzzer entry point */
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
@@ -107,5 +115,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     OHOS::FuzzOnUser(userId, fuzzedString);
     OHOS::FuzzOnScreenUnlock();
     OHOS::SystemAbility(data, size);
+    OHOS::FuzzInputType(provider);
     return 0;
 }
