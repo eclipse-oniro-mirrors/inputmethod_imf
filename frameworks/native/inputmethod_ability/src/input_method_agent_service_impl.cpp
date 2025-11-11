@@ -88,11 +88,11 @@ ErrCode InputMethodAgentServiceImpl::SendMessage(const ArrayBuffer &arraybuffer)
 
 ErrCode InputMethodAgentServiceImpl::DiscardTypingText()
 {
-    IMSA_HILOGD("DiscardTypingText run");
+    IMSA_HILOGD("DiscardTypingText run.");
     std::string type = "discardTypingText";
     auto ret = InputMethodAbility::GetInstance().IsCallbackRegistered(type);
     if (!ret) {
-        IMSA_HILOGE("callback not registered");
+        IMSA_HILOGE("callback not registered.");
         return ErrorCode::ERROR_MSG_HANDLER_NOT_REGIST;
     }
     auto task = std::make_shared<TaskImsaDiscardTypingText>();

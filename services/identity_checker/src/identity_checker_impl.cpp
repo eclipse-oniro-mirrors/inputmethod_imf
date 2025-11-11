@@ -120,13 +120,13 @@ bool IdentityCheckerImpl::IsFormShell(AccessTokenID tokenId)
 uint32_t IdentityCheckerImpl::GetUIExtensionWindowId(sptr<IRemoteObject> abilityToken)
 {
     if (abilityToken == nullptr) {
-        IMSA_HILOGD("abilityToken is nullptr");
+        IMSA_HILOGD("abilityToken is nullptr!");
         return INVALID_WINDOW_ID;
     }
     AAFwk::UIExtensionSessionInfo info;
     auto ret = AAFwk::AbilityManagerClient::GetInstance()->GetUIExtensionSessionInfo(abilityToken, info);
     if (ret != ERR_OK) {
-        IMSA_HILOGD("failed to GetUIExtensionSessionInfo, ret: %{public}d", ret);
+        IMSA_HILOGD("failed to GetUIExtensionSessionInfo, ret: %{public}d!", ret);
         return INVALID_WINDOW_ID;
     }
     return info.hostWindowId;
@@ -148,12 +148,12 @@ bool IdentityCheckerImpl::IsFocusedUIExtension(uint32_t callingTokenId, sptr<IRe
     bool isFocused = false;
     auto client = AbilityManagerClient::GetInstance();
     if (client == nullptr) {
-        IMSA_HILOGE("AbilityManagerClient is nullptr");
+        IMSA_HILOGE("AbilityManagerClient is nullptr!");
         return false;
     }
     auto ret = client->CheckUIExtensionIsFocused(callingTokenId, isFocused);
     if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("failed to CheckUIExtensionIsFocused, ret: %{public}d", ret);
+        IMSA_HILOGE("failed to CheckUIExtensionIsFocused, ret: %{public}d!", ret);
         return false;
     }
     IMSA_HILOGD("tokenId: %{public}d, isFocused: %{public}d", callingTokenId, isFocused);

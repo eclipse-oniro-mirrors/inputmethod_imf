@@ -14,6 +14,7 @@
 */
 #include "ime_state_manager_factory.h"
 #include <gtest/gtest.h>
+#include "global.h"
 
 using namespace testing::ext;
 namespace OHOS {
@@ -34,6 +35,7 @@ protected:
  */
 HWTEST_F(ImeStateManagerFactoryTest, SetGetDynamicStartIme, TestSize.Level1)
 {
+    IMSA_HILOGI("SetGetDynamicStartIme START");
     auto &factory = ImeStateManagerFactory::GetInstance();
 
     factory.SetDynamicStartIme(true);
@@ -50,6 +52,7 @@ HWTEST_F(ImeStateManagerFactoryTest, SetGetDynamicStartIme, TestSize.Level1)
  */
 HWTEST_F(ImeStateManagerFactoryTest, SingletonInstance, TestSize.Level1)
 {
+    IMSA_HILOGI("SingletonInstance START");
     auto &instance1 = ImeStateManagerFactory::GetInstance();
     auto &instance2 = ImeStateManagerFactory::GetInstance();
     ASSERT_EQ(&instance1, &instance2);
@@ -62,6 +65,7 @@ HWTEST_F(ImeStateManagerFactoryTest, SingletonInstance, TestSize.Level1)
  */
 HWTEST_F(ImeStateManagerFactoryTest, CreateImeLifecycleManagerWhenDynamic, TestSize.Level1)
 {
+    IMSA_HILOGI("CreateImeLifecycleManagerWhenDynamic START");
     auto &factory = ImeStateManagerFactory::GetInstance();
     factory.SetDynamicStartIme(true);
     auto manager = factory.CreateImeStateManager(0, [] {
@@ -78,6 +82,7 @@ HWTEST_F(ImeStateManagerFactoryTest, CreateImeLifecycleManagerWhenDynamic, TestS
  */
 HWTEST_F(ImeStateManagerFactoryTest, CreateFreezeManagerWhenNotDynamic, TestSize.Level1)
 {
+    IMSA_HILOGI("CreateFreezeManagerWhenNotDynamic START");
     auto &factory = ImeStateManagerFactory::GetInstance();
     factory.SetDynamicStartIme(false); // Explicit set for clarity
     // stopFunc should be ignored in this mode

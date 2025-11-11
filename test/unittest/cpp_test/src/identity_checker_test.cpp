@@ -932,6 +932,7 @@ HWTEST_F(IdentityCheckerTest, testGetUIExtensionWindowId, TestSize.Level1)
  */
 HWTEST_F(IdentityCheckerTest, testIsFocused, TestSize.Level1)
 {
+    IMSA_HILOGI("IdentityCheckerTest testIsFocused start");
     ASSERT_NE(identityCheckerImpl_, nullptr);
     const auto demoPid = 10;
     const auto demoUid = 10;
@@ -955,6 +956,7 @@ HWTEST_F(IdentityCheckerTest, testIsFocused, TestSize.Level1)
  */
 HWTEST_F(IdentityCheckerTest, testWindowAdapter_GetDisplayIdByToken, TestSize.Level1)
 {
+    IMSA_HILOGI("IdentityCheckerTest testWindowAdapter_GetDisplayIdByToken start");
     const auto displayId = WindowAdapter::GetDisplayIdByToken(nullptr);
     EXPECT_EQ(displayId, DEFAULT_DISPLAY_ID);
 

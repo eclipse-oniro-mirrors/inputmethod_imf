@@ -132,12 +132,12 @@ int32_t InputMethodPanel::FullScreenPrepare(Rosen::KeyboardLayoutParams &param, 
     // calculate avoid height
     auto gradientHeightTemp = static_cast<int32_t>(effect.gradientHeight);
     if (param.landscapeAvoidHeight_ > INT32_MAX - gradientHeightTemp) {
-        IMSA_HILOGE("landscapeAvoidHeight_ overflow detected");
+        IMSA_HILOGE("landscapeAvoidHeight_ overflow detected.");
         return ErrorCode::ERROR_INVALID_RANGE;
     }
     param.landscapeAvoidHeight_ += gradientHeightTemp;
     if (param.portraitAvoidHeight_ > INT32_MAX - gradientHeightTemp) {
-        IMSA_HILOGE("portraitAvoidHeight_ overflow detected");
+        IMSA_HILOGE("portraitAvoidHeight_ overflow detected.");
         return ErrorCode::ERROR_INVALID_RANGE;
     }
     param.portraitAvoidHeight_ += gradientHeightTemp;
@@ -175,7 +175,7 @@ int32_t InputMethodPanel::PrepareAdjustLayout(Rosen::KeyboardLayoutParams &param
         ret = NormalImePrepare(param, effect);
     }
     if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("prepare failed");
+        IMSA_HILOGE("prepare failed!");
         return ret;
     }
     return ErrorCode::NO_ERROR;
@@ -195,7 +195,7 @@ int32_t InputMethodPanel::AdjustLayout(const Rosen::KeyboardLayoutParams &param,
 
     Rosen::KeyboardLayoutParams paramTmp = param;
     if (effect.gradientHeight != 0) {
-        IMSA_HILOGI("gradientHeight:%{public}u is not zero, need adjust layout", effect.gradientHeight);
+        IMSA_HILOGI("gradientHeight:%{public}u is not zero, need adjust layout.", effect.gradientHeight);
         auto ret = PrepareAdjustLayout(paramTmp, effect);
         if (ret != ErrorCode::NO_ERROR) {
             return ret;
@@ -276,7 +276,7 @@ int32_t InputMethodPanel::DestroyPanel()
         UnregisterKeyboardPanelInfoChangeListener();
     }
     auto result = window_->Destroy();
-    IMSA_HILOGI("destroy ret: %{public}d", result);
+    IMSA_HILOGI("destroy ret: %{public}d.", result);
     return ErrorCode::NO_ERROR;
 }
 
@@ -287,7 +287,7 @@ int32_t InputMethodPanel::GetResizeParams(
     DisplaySize displaySize;
     auto ret = GetDisplaySize(displaySize);
     if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("failed to GetDisplaySize ret: %{public}d", ret);
+        IMSA_HILOGE("failed to GetDisplaySize ret: %{public}d!", ret);
         return ret;
     }
 
@@ -296,20 +296,20 @@ int32_t InputMethodPanel::GetResizeParams(
         portrait.width_ = width;
         landscape.height_ = height;
         landscape.width_ = width;
-        IMSA_HILOGI("isScreenEqual now, update screen equal size");
+        IMSA_HILOGI("isScreenEqual now, update screen equal size.");
         return ErrorCode::NO_ERROR;
     }
 
     if (IsDisplayUnfolded()) {
         std::lock_guard<std::mutex> lock(unfoldResizeParamMutex_);
-        IMSA_HILOGI("foldable device without fold state");
+        IMSA_HILOGI("foldable device without fold state.");
         if (!isInEnhancedAdjust_.load()) {
             RectifyResizeParams(resizePanelUnfoldParams_, displaySize);
         }
         currParams = resizePanelUnfoldParams_;
     } else {
         std::lock_guard<std::mutex> lock(foldResizeParamMutex_);
-        IMSA_HILOGI("foldable device with fold state or non-foldable device");
+        IMSA_HILOGI("foldable device with fold state or non-foldable device.");
         if (!isInEnhancedAdjust_.load()) {
             RectifyResizeParams(resizePanelFoldParams_, displaySize);
         }
@@ -342,13 +342,13 @@ void InputMethodPanel::UpdateRectParams(
         landscape.width_ = currParams.landscapeRect.width_;
         portrait.height_ = height;
         portrait.width_ = width;
-        IMSA_HILOGI("isPortrait now, update portrait size");
+        IMSA_HILOGI("isPortrait now, update portrait size.");
     } else {
         portrait.height_ = currParams.portraitRect.height_;
         portrait.width_ = currParams.portraitRect.width_;
         landscape.height_ = height;
         landscape.width_ = width;
-        IMSA_HILOGI("isLandscapeRect now, update landscape size");
+        IMSA_HILOGI("isLandscapeRect now, update landscape size.");
     }
 }
 
@@ -357,11 +357,11 @@ void InputMethodPanel::UpdateResizeParams()
     auto layoutParams = GetKeyboardLayoutParams();
     if (IsDisplayUnfolded()) {
         std::lock_guard<std::mutex> lock(unfoldResizeParamMutex_);
-        IMSA_HILOGI("foldable device without fold state");
+        IMSA_HILOGI("foldable device without fold state.");
         resizePanelUnfoldParams_ = { layoutParams.LandscapeKeyboardRect_, layoutParams.PortraitKeyboardRect_ };
     } else {
         std::lock_guard<std::mutex> lock(foldResizeParamMutex_);
-        IMSA_HILOGI("foldable device in fold state or non-foldable device");
+        IMSA_HILOGI("foldable device in fold state or non-foldable device.");
         resizePanelFoldParams_ = { layoutParams.LandscapeKeyboardRect_, layoutParams.PortraitKeyboardRect_ };
     }
 }
@@ -371,13 +371,13 @@ int32_t InputMethodPanel::ResizeEnhancedPanel(uint32_t width, uint32_t height)
     auto layoutParam = GetEnhancedLayoutParams();
     auto ret = GetResizeParams(layoutParam.portrait.rect, layoutParam.landscape.rect, width, height);
     if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("failed to GetResizeParams, ret: %{public}d", ret);
+        IMSA_HILOGE("failed to GetResizeParams, ret: %{public}d!", ret);
         return ret;
     }
     auto hotAreas = GetHotAreas();
     ret = AdjustPanelRect(panelFlag_, layoutParam, hotAreas);
     if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("failed to AdjustPanelRect, ret: %{public}d", ret);
+        IMSA_HILOGE("failed to AdjustPanelRect, ret: %{public}d!", ret);
         return ErrorCode::ERROR_OPERATE_PANEL;
     }
     std::lock_guard<std::mutex> lock(keyboardSizeLock_);
@@ -394,7 +394,7 @@ int32_t InputMethodPanel::ResizeWithoutAdjust(uint32_t width, uint32_t height)
     }
     auto ret = window_->Resize(width, height);
     if (ret != WMError::WM_OK) {
-        IMSA_HILOGE("failed to resize, ret: %{public}d", ret);
+        IMSA_HILOGE("failed to resize, ret: %{public}d!", ret);
         return ErrorCode::ERROR_OPERATE_PANEL;
     }
     std::lock_guard<std::mutex> lock(keyboardSizeLock_);
@@ -414,12 +414,12 @@ int32_t InputMethodPanel::ResizePanel(uint32_t width, uint32_t height)
         .portraitRect = currentParams.portrait.rect };
     auto ret = GetResizeParams(targetParams.portraitRect, targetParams.landscapeRect, width, height);
     if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("failed to GetResizeParams, ret: %{public}d", ret);
+        IMSA_HILOGE("failed to GetResizeParams, ret: %{public}d!", ret);
         return ret;
     }
     ret = AdjustPanelRect(panelFlag_, targetParams);
     if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("failed to resize, ret: %{public}d", ret);
+        IMSA_HILOGE("failed to resize, ret: %{public}d!", ret);
         return ErrorCode::ERROR_OPERATE_PANEL;
     }
     std::lock_guard<std::mutex> lock(keyboardSizeLock_);
@@ -450,11 +450,11 @@ int32_t InputMethodPanel::MovePanelRect(int32_t x, int32_t y)
     if (IsDisplayPortrait()) {
         params.portraitRect.posX_ = x;
         params.portraitRect.posY_ = y;
-        IMSA_HILOGI("isPortrait now, updata portrait size");
+        IMSA_HILOGI("isPortrait now, updata portrait size.");
     } else {
         params.landscapeRect.posX_ = x;
         params.landscapeRect.posY_ = y;
-        IMSA_HILOGI("isLandscapeRect now, updata landscape size");
+        IMSA_HILOGI("isLandscapeRect now, updata landscape size.");
     }
     auto ret = AdjustPanelRect(panelFlag_, params, false);
     IMSA_HILOGI("x/y: %{public}d/%{public}d, ret = %{public}d", x, y, ret);
@@ -546,7 +546,7 @@ int32_t InputMethodPanel::AdjustKeyboard()
         DisplaySize displaySize;
         ret = GetDisplaySize(displaySize);
         if (ret != ErrorCode::NO_ERROR) {
-            IMSA_HILOGE("failed to GetDisplaySize ret: %{public}d", ret);
+            IMSA_HILOGE("failed to GetDisplaySize ret: %{public}d!", ret);
             return ret;
         }
     if (displaySize.portrait.height < params.portrait.avoidHeight ||
@@ -561,10 +561,9 @@ int32_t InputMethodPanel::AdjustKeyboard()
         ret = AdjustPanelRect(panelFlag_, layoutParams);
     }
     if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("failed to adjust keyboard, ret: %{public}d", ret);
+        IMSA_HILOGE("failed to adjust keyboard, ret: %{public}d!", ret);
         return ErrorCode::ERROR_OPERATE_PANEL;
     }
-    IMSA_HILOGI("adjust keyboard success");
     return ErrorCode::NO_ERROR;
 }
 
@@ -2275,7 +2274,9 @@ int32_t InputMethodPanel::SetShadow(const Shadow &shadow)
     if (shadow.radius < 0.0f || !ColorParser::Parse(shadow.color, colorValue)) {
         return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
     }
-    return SetWindowShadow(shadow);
+    auto ret = SetWindowShadow(shadow);
+    IMSA_HILOGI("SetWindowShadow success.");
+    return ret;
 }
 
 int32_t InputMethodPanel::SetWindowShadow(const Shadow &shadow)
