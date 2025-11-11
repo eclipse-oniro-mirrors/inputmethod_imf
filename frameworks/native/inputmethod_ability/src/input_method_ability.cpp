@@ -1338,7 +1338,9 @@ void InputMethodAbility::SetInputAttribute(const InputAttribute &inputAttribute)
 void InputMethodAbility::ClearInputAttribute()
 {
     std::lock_guard<std::mutex> lock(inputAttrLock_);
+    auto callingDisplayId = inputAttribute_.callingDisplayId;
     inputAttribute_ = {};
+    inputAttribute_.callingDisplayId = callingDisplayId;
 }
 
 InputAttribute InputMethodAbility::GetInputAttribute()
