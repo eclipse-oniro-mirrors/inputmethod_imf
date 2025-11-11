@@ -73,6 +73,7 @@ std::atomic_bool ImeLifecycleManagerTest::isStopImeCalled_ = false;
  */
 HWTEST_F(ImeLifecycleManagerTest, ControlIme_EventHandlerNull, TestSize.Level1)
 {
+    IMSA_HILOGI("ControlIme_EventHandlerNull START");
     ASSERT_NE(ImeLifecycleManagerTest::imeLifecycleManager_, nullptr);
     ImeLifecycleManagerTest::imeLifecycleManager_->SetEventHandler(nullptr);
     ImeLifecycleManagerTest::imeLifecycleManager_->ControlIme(true);
@@ -86,6 +87,7 @@ HWTEST_F(ImeLifecycleManagerTest, ControlIme_EventHandlerNull, TestSize.Level1)
  */
 HWTEST_F(ImeLifecycleManagerTest, ControlIme_shouldStopIme, TestSize.Level1)
 {
+    IMSA_HILOGI("ControlIme_shouldStopIme START");
     auto manager = std::make_shared<ImeLifecycleManager>(-1, ImeLifecycleManagerTest::StopImeCb, TEST_STOP_DELAY_TIME);
     manager->ControlIme(true);
     usleep((TEST_STOP_DELAY_TIME + WAIT_FOR_OTHERS) * MS_TO_US);
@@ -99,6 +101,7 @@ HWTEST_F(ImeLifecycleManagerTest, ControlIme_shouldStopIme, TestSize.Level1)
  */
 HWTEST_F(ImeLifecycleManagerTest, ControlIme_shouldNotStopIme, TestSize.Level1)
 {
+    IMSA_HILOGI("ControlIme_shouldNotStopIme START");
     auto manager = std::make_shared<ImeLifecycleManager>(-1, ImeLifecycleManagerTest::StopImeCb, TEST_STOP_DELAY_TIME);
     manager->ControlIme(false);
     usleep((TEST_STOP_DELAY_TIME + WAIT_FOR_OTHERS) * MS_TO_US);
@@ -112,6 +115,7 @@ HWTEST_F(ImeLifecycleManagerTest, ControlIme_shouldNotStopIme, TestSize.Level1)
  */
 HWTEST_F(ImeLifecycleManagerTest, ControlIme_stopImeFuncIsNull, TestSize.Level1)
 {
+    IMSA_HILOGI("ControlIme_stopImeFuncIsNull START");
     auto manager = std::make_shared<ImeLifecycleManager>(-1, nullptr, TEST_STOP_DELAY_TIME);
     manager->ControlIme(true);
     usleep((TEST_STOP_DELAY_TIME + WAIT_FOR_OTHERS) * MS_TO_US);
@@ -125,6 +129,7 @@ HWTEST_F(ImeLifecycleManagerTest, ControlIme_stopImeFuncIsNull, TestSize.Level1)
  */
 HWTEST_F(ImeLifecycleManagerTest, ControlIme_weakPtrIsExpired, TestSize.Level1)
 {
+    IMSA_HILOGI("ControlIme_weakPtrIsExpired START");
     auto manager = std::make_shared<ImeLifecycleManager>(-1, ImeLifecycleManagerTest::StopImeCb, TEST_STOP_DELAY_TIME);
     manager->ControlIme(true);
     manager = nullptr;
