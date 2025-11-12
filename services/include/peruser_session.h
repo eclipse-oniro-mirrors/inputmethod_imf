@@ -203,7 +203,7 @@ private:
 #else
     static const int MAX_IME_START_TIME = 1500;
 #endif
-    static const int MAX_NOTIFY_TIME = 20;
+    static const int MAX_NOTIFY_TIME = 5; //5ms
     std::mutex resetLock;
     std::map<TimeLimitType, ResetManager> managers_;
     using IpcExec = std::function<int32_t()>;
