@@ -437,6 +437,7 @@ int32_t InputMethodPanel::Resize(uint32_t width, uint32_t height)
     if (!isScbEnable_ || window_->GetType() != WindowType::WINDOW_TYPE_INPUT_METHOD_FLOAT) {
         return ResizeWithoutAdjust(width, height);
     }
+    hasSetSize_.store(true);
     if (isInEnhancedAdjust_.load()) {
         return ResizeEnhancedPanel(width, height);
     }
@@ -568,16 +569,17 @@ int32_t InputMethodPanel::AdjustKeyboard()
 }
 
 int32_t InputMethodPanel::AdjustPanelRect(
-    const PanelFlag panelFlag, const LayoutParams &layoutParams, bool needUpdateRegion)
+    const PanelFlag panelFlag, const LayoutParams &layoutParams, bool needUpdateRegion, bool needConfig)
 {
     if (window_ == nullptr) {
         IMSA_HILOGE("window_ is nullptr!");
         return ErrorCode::ERROR_WINDOW_MANAGER;
     }
+    hasSetSize_.store(true);
     KeyboardLayoutParams resultParams;
     {
         std::lock_guard<std::mutex> lock(parseParamsMutex_);
-        int32_t result = ParseParams(panelFlag, layoutParams, resultParams);
+        int32_t result = ParseParams(panelFlag, layoutParams, resultParams, needConfig);
         if (result != ErrorCode::NO_ERROR) {
             IMSA_HILOGE("failed to parse panel rect, result: %{public}d!", result);
             return result;
@@ -657,6 +659,7 @@ int32_t InputMethodPanel::AdjustPanelRect(PanelFlag panelFlag, EnhancedLayoutPar
         IMSA_HILOGE("not soft keyboard panel");
         return ErrorCode::ERROR_INVALID_PANEL_TYPE;
     }
+    hasSetSize_.store(true);
     FullPanelAdjustInfo adjustInfo;
     auto ret = GetAdjustInfo(panelFlag, adjustInfo);
     if (ret != ErrorCode::NO_ERROR) {
@@ -1070,7 +1073,8 @@ int32_t InputMethodPanel::InitAdjustInfo()
     return ErrorCode::NO_ERROR;
 }
 
-int32_t InputMethodPanel::ParseParams(PanelFlag panelFlag, const LayoutParams &input, KeyboardLayoutParams &output)
+int32_t InputMethodPanel::ParseParams(PanelFlag panelFlag, const LayoutParams &input, KeyboardLayoutParams &output,
+    bool needConfig)
 {
     // 1 - check parameters
     DisplaySize displaySize;
@@ -1090,9 +1094,9 @@ int32_t InputMethodPanel::ParseParams(PanelFlag panelFlag, const LayoutParams &i
 
     // 2 - calculate parameters
     FullPanelAdjustInfo adjustInfo;
-    ret = GetAdjustInfo(panelFlag, adjustInfo);
-    if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("GetAdjustInfo failed ret: %{public}d", ret);
+    if (needConfig && IsNeedConfig()) {
+        ret = GetAdjustInfo(panelFlag, adjustInfo);
+        IMSA_HILOGD("GetAdjustInfo failed ret: %{public}d", ret);
     }
     EnhancedLayoutParams tempOutput;
     tempOutput.displayId = displaySize.displayId;
@@ -1246,12 +1250,7 @@ PanelFlag InputMethodPanel::GetPanelFlag()
 int32_t InputMethodPanel::ShowPanel(uint32_t windowId)
 {
     IMSA_HILOGD("InputMethodPanel start.");
-    int32_t waitTime = 0;
-    while (isWaitSetUiContent_ && waitTime < MAXWAITTIME) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(WAITTIME));
-        waitTime += WAITTIME;
-        IMSA_HILOGI("InputMethodPanel show pannel waitTime %{public}d.", waitTime);
-    }
+    WaitSetUIContent();
     if (window_ == nullptr) {
         IMSA_HILOGE("window_ is nullptr!");
         return ErrorCode::ERROR_IMA_NULLPTR;
@@ -1266,11 +1265,17 @@ int32_t InputMethodPanel::ShowPanel(uint32_t windowId)
         std::lock_guard<std::mutex> lock(parseParamsMutex_);
         needAdjust = GetCurDisplayId() == 0 && IsKeyboardRectAtBottom() && IsNeedConfig();
     }
-    if (needAdjust && panelType_ == PanelType::SOFT_KEYBOARD && panelFlag_ != FLG_CANDIDATE_COLUMN) {
-        auto enhancedParams = GetEnhancedLayoutParams();
-        LayoutParams layoutParams = { enhancedParams.landscape.rect, enhancedParams.portrait.rect };
-        auto result = AdjustPanelRect(panelFlag_, layoutParams);
-        IMSA_HILOGI("AdjustPanelRect result: %{public}d", result);
+    if (panelType_ == PanelType::SOFT_KEYBOARD && panelFlag_ != FLG_CANDIDATE_COLUMN) {
+        if (needAdjust || !hasSetSize_.load()) {
+            auto enhancedParams = GetEnhancedLayoutParams();
+            LayoutParams layoutParams = { enhancedParams.landscape.rect, enhancedParams.portrait.rect };
+            if (layoutParams.landscapeRect.height_ == 0 && layoutParams.portraitRect.height_ == 0) {
+                layoutParams.landscapeRect.height_ = 1;
+                layoutParams.portraitRect.height_ = 1;
+            }
+            auto result = AdjustPanelRect(panelFlag_, layoutParams, true, false);
+            IMSA_HILOGI("AdjustPanelRect result: %{public}d", result);
+        }
     }
     auto ret = WMError::WM_OK;
     {
@@ -2582,6 +2587,16 @@ bool InputMethodPanel::IsNeedNotify(PanelFlag panelFlag)
         return true;
     }
     return false;
+}
+
+void InputMethodPanel::WaitSetUIContent()
+{
+    int32_t waitTime = 0;
+    while (isWaitSetUiContent_ && waitTime < MAXWAITTIME) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(WAITTIME));
+        waitTime += WAITTIME;
+        IMSA_HILOGI("InputMethodPanel show pannel waitTime %{public}d.", waitTime);
+    }
 }
 } // namespace MiscServices
 } // namespace OHOS
