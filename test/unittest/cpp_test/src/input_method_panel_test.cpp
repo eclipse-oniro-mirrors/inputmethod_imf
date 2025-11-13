@@ -3450,5 +3450,42 @@ HWTEST_F(InputMethodPanelTest, testIsValidHexString1, TestSize.Level0)
     auto ret = ColorParser::IsValidHexString(colorStr);
     EXPECT_EQ(ret, false);
 }
+
+/**
+ * @tc.name: ConvertToWMSHotArea
+ * @tc.desc: Test ConvertToWMSHotArea.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testConvertToWMSHotArea, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testConvertToWMSHotArea start.");
+    auto inputMethodPanel = InputMethodPanelTest::CreatePanel();
+    ASSERT_NE(inputMethodPanel, nullptr);
+    HotAreas hotAreas;
+    hotAreas.screenId = 100;
+    hotAreas.landscape.keyboardHotArea.push_back({10, 10, 100, 50});
+    hotAreas.landscape.panelHotArea.push_back({40, 40, 400, 200});
+    hotAreas.portrait.keyboardHotArea.push_back({20, 20, 200, 100});
+    hotAreas.portrait.panelHotArea.push_back({30, 30, 300, 150});
+    auto result = inputMethodPanel->ConvertToWMSHotArea(hotAreas);
+    EXPECT_EQ(result.displayId_, hotAreas.screenId);
+
+    EXPECT_EQ(result.landscapeKeyboardHotAreas_.size(), hotAreas.landscape.keyboardHotArea.size());
+    EXPECT_EQ(result.landscapePanelHotAreas_.size(), hotAreas.landscape.panelHotArea.size());
+    EXPECT_EQ(result.portraitKeyboardHotAreas_.size(), hotAreas.portrait.keyboardHotArea.size());
+    EXPECT_EQ(result.portraitPanelHotAreas_.size(), hotAreas.portrait.panelHotArea.size());
+
+    ASSERT_EQ(result.landscapeKeyboardHotAreas_.size(), 1);
+    ASSERT_EQ(result.landscapePanelHotAreas_.size(), 1);
+    ASSERT_EQ(result.portraitKeyboardHotAreas_.size(), 1);
+    ASSERT_EQ(result.portraitPanelHotAreas_.size(), 1);
+
+    EXPECT_EQ(result.landscapeKeyboardHotAreas_[0], hotAreas.landscape.keyboardHotArea[0]);
+    EXPECT_EQ(result.landscapePanelHotAreas_[0], hotAreas.landscape.panelHotArea[0]);
+    EXPECT_EQ(result.portraitKeyboardHotAreas_[0], hotAreas.portrait.keyboardHotArea[0]);
+    EXPECT_EQ(result.portraitPanelHotAreas_[0], hotAreas.portrait.panelHotArea[0]);
+
+    InputMethodPanelTest::DestroyPanel(inputMethodPanel);
+}
 } // namespace MiscServices
 } // namespace OHOS

@@ -55,6 +55,7 @@ struct HotAreas {
     HotArea landscape;
     HotArea portrait;
     bool isSet{ false };
+    uint64_t screenId{ 0 };
 };
 
 struct EnhancedLayoutParam {
@@ -72,13 +73,13 @@ struct EnhancedLayoutParam {
 
 struct EnhancedLayoutParams {
     bool isFullScreen{ false };
-    uint64_t displayId{ 0 };
+    uint64_t screenId{ 0 };
     EnhancedLayoutParam portrait;
     EnhancedLayoutParam landscape;
 };
 
 struct DisplaySize {
-    uint64_t displayId{ 0 };
+    uint64_t screenId{ 0 };
     WindowSize portrait;
     WindowSize landscape;
 };

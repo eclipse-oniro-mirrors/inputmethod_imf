@@ -615,7 +615,7 @@ Rosen::KeyboardLayoutParams InputMethodPanel::ConvertToWMSParam(
     wmsParams.PortraitPanelRect_ = layoutParams.portrait.panelRect;
     wmsParams.portraitAvoidHeight_ = layoutParams.portrait.avoidHeight;
     wmsParams.landscapeAvoidHeight_ = layoutParams.landscape.avoidHeight;
-    wmsParams.displayId_ = layoutParams.displayId;
+    wmsParams.displayId_ = layoutParams.screenId;
     return wmsParams;
 }
 
@@ -624,7 +624,8 @@ Rosen::KeyboardTouchHotAreas InputMethodPanel::ConvertToWMSHotArea(const HotArea
     return { .landscapeKeyboardHotAreas_ = hotAreas.landscape.keyboardHotArea,
         .portraitKeyboardHotAreas_ = hotAreas.portrait.keyboardHotArea,
         .landscapePanelHotAreas_ = hotAreas.landscape.panelHotArea,
-        .portraitPanelHotAreas_ = hotAreas.portrait.panelHotArea };
+        .portraitPanelHotAreas_ = hotAreas.portrait.panelHotArea,
+        .displayId_ = hotAreas.screenId };
 }
 
 int32_t InputMethodPanel::IsEnhancedParamValid(PanelFlag panelFlag, EnhancedLayoutParams &params)
@@ -725,6 +726,7 @@ int32_t InputMethodPanel::ParseEnhancedParams(
         IMSA_HILOGE("failed to GetDisplaySize ret: %{public}d", ret);
         return ret;
     }
+    params.screenId = display.screenId;
     ret = RectifyRect(params.isFullScreen, params.portrait, display.portrait, panelFlag, adjustInfo.portrait);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("RectifyRect portrait failed, ret: %{public}d", ret);
@@ -845,6 +847,7 @@ void InputMethodPanel::UpdateHotAreas()
         adjustInfo.landscape, hotAreas.landscape, changeY.landscape);
     CalculateDefaultHotArea(layoutParams.PortraitKeyboardRect_, layoutParams.PortraitPanelRect_, adjustInfo.portrait,
         hotAreas.portrait, changeY.portrait);
+    hotAreas.screenId = layoutParams.displayId_; // 实际为 screenId
     auto wmsHotAreas = ConvertToWMSHotArea(hotAreas);
     WMError result = window_->SetKeyboardTouchHotAreas(wmsHotAreas);
     if (result != WMError::WM_OK) {
@@ -862,9 +865,11 @@ void InputMethodPanel::CalculateHotAreas(const EnhancedLayoutParams &enhancedPar
 {
     auto changeY = GetChangeY();
     if (isInEnhancedAdjust_.load()) {
+        hotAreas.screenId = enhancedParams.screenId;
         CalculateEnhancedHotArea(enhancedParams.portrait, adjustInfo.portrait, hotAreas.portrait, changeY.portrait);
         CalculateEnhancedHotArea(enhancedParams.landscape, adjustInfo.landscape, hotAreas.landscape, changeY.landscape);
     } else {
+        hotAreas.screenId = params.displayId_;
         CalculateHotArea(params.PortraitKeyboardRect_, params.PortraitPanelRect_, adjustInfo.portrait,
             hotAreas.portrait, changeY.portrait);
         CalculateHotArea(params.LandscapeKeyboardRect_, params.LandscapePanelRect_, adjustInfo.landscape,
@@ -1099,7 +1104,7 @@ int32_t InputMethodPanel::ParseParams(PanelFlag panelFlag, const LayoutParams &i
         IMSA_HILOGD("GetAdjustInfo failed ret: %{public}d", ret);
     }
     EnhancedLayoutParams tempOutput;
-    tempOutput.displayId = displaySize.displayId;
+    tempOutput.screenId = displaySize.screenId;
     ParseParam(panelFlag, adjustInfo.portrait, displaySize.portrait, input.portraitRect, tempOutput.portrait);
     ParseParam(panelFlag, adjustInfo.landscape, displaySize.landscape, input.landscapeRect, tempOutput.landscape);
     output = ConvertToWMSParam(panelFlag, tempOutput);
@@ -1280,9 +1285,10 @@ int32_t InputMethodPanel::ShowPanel(uint32_t windowId)
     auto ret = WMError::WM_OK;
     {
         KeyboardEffectOption option = ConvertToWmEffect(GetImmersiveMode(), LoadImmersiveEffect());
-        const auto displayId = GetCurDisplayId();
+        const auto screenId = InputMethodAbility::GetInstance().GetInputAttribute().callingScreenId;
+        IMSA_HILOGI("ShowPanel screenId: %{public}" PRIu64 ".", screenId);
         InputMethodSyncTrace tracer("InputMethodPanel_ShowPanel");
-        ret = window_->ShowKeyboard(windowId, displayId, option);
+        ret = window_->ShowKeyboard(windowId, screenId, option);
     }
     if (ret != WMError::WM_OK) {
         IMSA_HILOGE("ShowPanel error, err = %{public}d", ret);
@@ -1882,7 +1888,7 @@ int32_t InputMethodPanel::GetDisplaySize(DisplaySize &size)
         IMSA_HILOGE("GetDefaultDisplay failed!");
         return ErrorCode::ERROR_WINDOW_MANAGER;
     }
-    size.displayId = defaultDisplay->GetId();
+    size.screenId = defaultDisplay->GetScreenId();
     auto width = defaultDisplay->GetWidth();
     auto height = defaultDisplay->GetHeight();
     if (width < height) {
@@ -2489,7 +2495,7 @@ bool InputMethodPanel::IsKeyboardRectAtBottom()
     return layoutParams.PortraitKeyboardRect_.height_ == layoutParams.PortraitPanelRect_.height_ &&
         layoutParams.PortraitKeyboardRect_.height_ > 0 && !isInEnhancedAdjust_.load();
 }
- 
+
 int32_t InputMethodPanel::SetSystemPanelButtonColor(const std::string &fillColor, const std::string &backgroundColor)
 {
     uint32_t colorValue = 0;

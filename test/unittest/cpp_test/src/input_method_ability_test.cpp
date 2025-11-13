@@ -494,6 +494,40 @@ HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatus2, TestSize.Level0)
 }
 
 /**
+ * @tc.name: testNotifyPanelStatus
+ * @tc.desc: InputMethodAbility NotifyPanelStatus
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodAbilityTest, testSetInputAttribute, TestSize.Level0)
+{
+    InputAttribute inputAttribute;
+    inputAttribute.callingScreenId = 1234;
+    inputAttribute.callingDisplayId = 0;
+    inputMethodAbility_.inputAttribute_.callingScreenId = 1;
+    inputMethodAbility_.inputAttribute_.callingDisplayId = 0;
+    inputMethodAbility_.SetInputAttribute(inputAttribute);
+    EXPECT_EQ(inputMethodAbility_.inputAttribute_.callingDisplayId, 0);
+    EXPECT_EQ(inputMethodAbility_.inputAttribute_.callingScreenId, 1); // calling display id not changed, preserve
+
+    inputAttribute.callingScreenId = 0;
+    inputAttribute.callingDisplayId = 0;
+    inputMethodAbility_.inputAttribute_.callingScreenId = 1;
+    inputMethodAbility_.inputAttribute_.callingDisplayId = 2;
+    inputMethodAbility_.SetInputAttribute(inputAttribute);
+    EXPECT_EQ(inputMethodAbility_.inputAttribute_.callingDisplayId, 0);
+    EXPECT_EQ(inputMethodAbility_.inputAttribute_.callingScreenId, 0); // calling display changed, update
+
+    inputAttribute.callingScreenId = 100;
+    inputAttribute.callingDisplayId = 1;
+    inputMethodAbility_.inputAttribute_.callingScreenId = 123;
+    inputMethodAbility_.inputAttribute_.callingDisplayId = 111;
+    inputMethodAbility_.SetInputAttribute(inputAttribute);
+    EXPECT_EQ(inputMethodAbility_.inputAttribute_.callingDisplayId, 1);
+    EXPECT_EQ(inputMethodAbility_.inputAttribute_.callingScreenId, 0); // calling display changed but invalid, use zero
+}
+
+/**
  * @tc.name: testShowKeyboardWithoutImeListener
  * @tc.desc: InputMethodAbility ShowKeyboard without imeListener
  * @tc.type: FUNC
@@ -1920,6 +1954,10 @@ HWTEST_F(InputMethodAbilityTest, testOnCallingDisplayIdChanged, TestSize.Level0)
     ASSERT_NE(coreProxy, nullptr);
     coreProxy->OnCallingDisplayIdChanged(0);
     EXPECT_TRUE(coreProxy != nullptr);
+    inputMethodAbility_.OnCallingDisplayIdChanged(0);
+    EXPECT_EQ(inputMethodAbility_.inputAttribute_.callingScreenId, 0);
+    inputMethodAbility_.OnCallingDisplayIdChanged(123);
+    EXPECT_EQ(inputMethodAbility_.inputAttribute_.callingScreenId, 0); // invalid displayid
 }
 
 /**
