@@ -90,6 +90,7 @@ sptr<MockInputMethodSystemAbilityProxy> InputMethodControllerCapiTest::systemAbi
  */
 HWTEST_F(InputMethodControllerCapiTest, TestCursorInfo_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::TestCursorInfo_001 START");
     double expLeft = 1.1;
     double expTop = 2.2;
     double expWidth = 3.3;
@@ -150,6 +151,7 @@ static void TestCursorInfoOfTextConfig(InputMethod_TextConfig *config)
  */
 HWTEST_F(InputMethodControllerCapiTest, TestTextConfig_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::TestTextConfig_001 START");
     auto config = OH_TextConfig_Create();
     ASSERT_NE(nullptr, config);
 
@@ -217,6 +219,7 @@ HWTEST_F(InputMethodControllerCapiTest, TestTextConfig_001, TestSize.Level0)
  */
 HWTEST_F(InputMethodControllerCapiTest, TestTextConfig_002, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::TestTextConfig_002 START");
     auto config = OH_TextConfig_Create();
     ASSERT_NE(nullptr, config);
 
@@ -344,6 +347,7 @@ static void TestGetTextEditorProxyMember(InputMethod_TextEditorProxy *textEditor
  */
 HWTEST_F(InputMethodControllerCapiTest, TextEditorProxy_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::TextEditorProxy_001 START");
     auto textEditorProxy = OH_TextEditorProxy_Create();
     ASSERT_NE(nullptr, textEditorProxy);
     ConstructTextEditorProxy(textEditorProxy);
@@ -358,6 +362,7 @@ HWTEST_F(InputMethodControllerCapiTest, TextEditorProxy_001, TestSize.Level0)
  */
 HWTEST_F(InputMethodControllerCapiTest, AttachOptions_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::AttachOptions_001 START");
     auto options = OH_AttachOptions_Create(true);
     ASSERT_NE(nullptr, options);
 
@@ -374,6 +379,7 @@ HWTEST_F(InputMethodControllerCapiTest, AttachOptions_001, TestSize.Level0)
  */
 HWTEST_F(InputMethodControllerCapiTest, CreateAndDestroyAttachOptionsWithRequestKeyboardReason_success, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::CreateAndDestroyAttachOptionsWithRequestKeyboardReason_success START");
     auto options = OH_AttachOptions_CreateWithRequestKeyboardReason(
         true, InputMethod_RequestKeyboardReason::IME_REQUEST_REASON_NONE);
     ASSERT_NE(nullptr, options);
@@ -394,6 +400,7 @@ HWTEST_F(InputMethodControllerCapiTest, CreateAndDestroyAttachOptionsWithRequest
  */
 HWTEST_F(InputMethodControllerCapiTest, GetRequestKeyboardReasonWithNull_fail, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::GetRequestKeyboardReasonWithNull_fail START");
     auto options = OH_AttachOptions_CreateWithRequestKeyboardReason(
         true, InputMethod_RequestKeyboardReason::IME_REQUEST_REASON_NONE);
     ASSERT_NE(nullptr, options);
@@ -410,6 +417,7 @@ HWTEST_F(InputMethodControllerCapiTest, GetRequestKeyboardReasonWithNull_fail, T
  */
 HWTEST_F(InputMethodControllerCapiTest, TextAvoidInfo_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::TextAvoidInfo_001 START");
     double expPositionY = 1.1;
     double expHeight = 1.2;
     auto avoidInfo = OH_TextAvoidInfo_Create(expPositionY, expHeight);
@@ -442,6 +450,7 @@ HWTEST_F(InputMethodControllerCapiTest, TextAvoidInfo_001, TestSize.Level0)
  */
 HWTEST_F(InputMethodControllerCapiTest, PrivateCommand_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::PrivateCommand_001 START");
     std::string key = "key";
     auto privateCommand = OH_PrivateCommand_Create(const_cast<char *>(key.c_str()), key.length());
     ASSERT_NE(nullptr, privateCommand);
@@ -492,6 +501,7 @@ HWTEST_F(InputMethodControllerCapiTest, PrivateCommand_001, TestSize.Level0)
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_CursorInfo_SetRect_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_CursorInfo_SetRect_001 START");
     double left = 0;
     double top = 0;
     double width = 0;
@@ -507,6 +517,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_CursorInfo_SetRect_001, TestSize.Leve
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_CursorInfo_GetRect_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_CursorInfo_GetRect_001 START");
     double left = 0;
     double top = 0;
     double width = 0;
@@ -532,6 +543,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_CursorInfo_GetRect_001, TestSize.Leve
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetInputType_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_SetInputType_001 START");
     InputMethod_TextInputType inputType = IME_TEXT_INPUT_TYPE_TEXT;
     auto ret = OH_TextConfig_SetInputType(nullptr, inputType);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
@@ -544,6 +556,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetInputType_001, TestSize
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetEnterKeyType_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_SetEnterKeyType_001 START");
     InputMethod_EnterKeyType enterKeyType = IME_ENTER_KEY_UNSPECIFIED;
     auto ret = OH_TextConfig_SetEnterKeyType(nullptr, enterKeyType);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
@@ -556,6 +569,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetEnterKeyType_001, TestS
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetPreviewTextSupport_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_SetPreviewTextSupport_001 START");
     bool supported = false;
     auto ret = OH_TextConfig_SetPreviewTextSupport(nullptr, supported);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
@@ -568,6 +582,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetPreviewTextSupport_001,
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetSelection_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_SetSelection_001 START");
     int32_t start = 0;
     int32_t end = 0;
     auto ret = OH_TextConfig_SetSelection(nullptr, start, end);
@@ -581,6 +596,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetSelection_001, TestSize
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetWindowId_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_SetWindowId_001 START");
     int32_t windowId = 0;
     auto ret = OH_TextConfig_SetWindowId(nullptr, windowId);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
@@ -593,6 +609,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetWindowId_001, TestSize.
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_GetInputType_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_GetInputType_001 START");
     auto ret = OH_TextConfig_GetInputType(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextConfig *config = OH_TextConfig_Create();
@@ -609,6 +626,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_GetInputType_001, TestSize
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_GetEnterKeyType_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_GetEnterKeyType_001 START");
     auto ret = OH_TextConfig_GetEnterKeyType(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextConfig *config = OH_TextConfig_Create();
@@ -625,6 +643,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_GetEnterKeyType_001, TestS
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_IsPreviewTextSupported_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_IsPreviewTextSupported_001 START");
     auto ret = OH_TextConfig_IsPreviewTextSupported(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextConfig *config = OH_TextConfig_Create();
@@ -641,6 +660,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_IsPreviewTextSupported_001
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_GetCursorInfo_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_GetCursorInfo_001 START");
     auto ret = OH_TextConfig_GetCursorInfo(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextConfig *config = OH_TextConfig_Create();
@@ -657,6 +677,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_GetCursorInfo_001, TestSiz
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_GetTextAvoidInfo_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_GetTextAvoidInfo_001 START");
     auto ret = OH_TextConfig_GetTextAvoidInfo(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextConfig *config = OH_TextConfig_Create();
@@ -673,6 +694,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_GetTextAvoidInfo_001, Test
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_GetSelection_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_GetSelection_001 START");
     auto ret = OH_TextConfig_GetSelection(nullptr, nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextConfig *config = OH_TextConfig_Create();
@@ -692,6 +714,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_GetSelection_001, TestSize
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_GetWindowId_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_GetWindowId_001 START");
     auto ret = OH_TextConfig_GetWindowId(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextConfig *config = OH_TextConfig_Create();
@@ -708,6 +731,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_GetWindowId_001, TestSize.
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetGetTextConfigFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_SetGetTextConfigFunc_001 START");
     auto ret = OH_TextEditorProxy_SetGetTextConfigFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -724,6 +748,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetGetTextConfigFunc_
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetInsertTextFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_SetInsertTextFunc_001 START");
     auto ret = OH_TextEditorProxy_SetInsertTextFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -740,6 +765,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetInsertTextFunc_001
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetDeleteForwardFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_SetDeleteForwardFunc_001 START");
     auto ret = OH_TextEditorProxy_SetDeleteForwardFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -756,6 +782,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetDeleteForwardFunc_
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetDeleteBackwardFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_SetDeleteBackwardFunc_001 START");
     auto ret = OH_TextEditorProxy_SetDeleteBackwardFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -772,6 +799,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetDeleteBackwardFunc
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetSendKeyboardStatusFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_SetSendKeyboardStatusFunc_001 START");
     auto ret = OH_TextEditorProxy_SetSendKeyboardStatusFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -788,6 +816,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetSendKeyboardStatus
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetSendEnterKeyFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_SetSendEnterKeyFunc_001 START");
     auto ret = OH_TextEditorProxy_SetSendEnterKeyFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -804,6 +833,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetSendEnterKeyFunc_0
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetMoveCursorFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_SetMoveCursorFunc_001 START");
     auto ret = OH_TextEditorProxy_SetMoveCursorFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -820,6 +850,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetMoveCursorFunc_001
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetHandleSetSelectionFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_SetHandleSetSelectionFunc_001 START");
     auto ret = OH_TextEditorProxy_SetHandleSetSelectionFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -836,6 +867,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetHandleSetSelection
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetHandleExtendActionFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_SetHandleExtendActionFunc_001 START");
     auto ret = OH_TextEditorProxy_SetHandleExtendActionFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -852,6 +884,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetHandleExtendAction
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetGetLeftTextOfCursorFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_SetGetLeftTextOfCursorFunc_001 START");
     auto ret = OH_TextEditorProxy_SetGetLeftTextOfCursorFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -868,6 +901,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetGetLeftTextOfCurso
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetGetRightTextOfCursorFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_SetGetRightTextOfCursorFunc_001 START");
     auto ret = OH_TextEditorProxy_SetGetRightTextOfCursorFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -884,6 +918,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetGetRightTextOfCurs
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetGetTextIndexAtCursorFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_SetGetTextIndexAtCursorFunc_001 START");
     auto ret = OH_TextEditorProxy_SetGetTextIndexAtCursorFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -900,6 +935,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetGetTextIndexAtCurs
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetReceivePrivateCommandFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_SetReceivePrivateCommandFunc_001 START");
     auto ret = OH_TextEditorProxy_SetReceivePrivateCommandFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -916,6 +952,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetReceivePrivateComm
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetSetPreviewTextFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_SetSetPreviewTextFunc_001 START");
     auto ret = OH_TextEditorProxy_SetSetPreviewTextFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -932,6 +969,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetSetPreviewTextFunc
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetFinishTextPreviewFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_SetFinishTextPreviewFunc_001 START");
     auto ret = OH_TextEditorProxy_SetFinishTextPreviewFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -948,6 +986,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_SetFinishTextPreviewF
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetGetTextConfigFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_GetGetTextConfigFunc_001 START");
     auto ret = OH_TextEditorProxy_GetGetTextConfigFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -964,6 +1003,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetGetTextConfigFunc_
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetInsertTextFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_GetInsertTextFunc_001 START");
     auto ret = OH_TextEditorProxy_GetInsertTextFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -980,6 +1020,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetInsertTextFunc_001
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetDeleteForwardFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_GetDeleteForwardFunc_001 START");
     auto ret = OH_TextEditorProxy_GetDeleteForwardFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -996,6 +1037,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetDeleteForwardFunc_
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetDeleteBackwardFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_GetDeleteBackwardFunc_001 START");
     auto ret = OH_TextEditorProxy_GetDeleteBackwardFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -1012,6 +1054,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetDeleteBackwardFunc
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetSendKeyboardStatusFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_GetSendKeyboardStatusFunc_001 START");
     auto ret = OH_TextEditorProxy_GetSendKeyboardStatusFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -1028,6 +1071,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetSendKeyboardStatus
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetSendEnterKeyFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_GetSendEnterKeyFunc_001 START");
     auto ret = OH_TextEditorProxy_GetSendEnterKeyFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -1044,6 +1088,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetSendEnterKeyFunc_0
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetMoveCursorFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_GetMoveCursorFunc_001 START");
     auto ret = OH_TextEditorProxy_GetMoveCursorFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -1060,6 +1105,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetMoveCursorFunc_001
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetHandleSetSelectionFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_GetHandleSetSelectionFunc_001 START");
     auto ret = OH_TextEditorProxy_GetHandleSetSelectionFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -1076,6 +1122,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetHandleSetSelection
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetHandleExtendActionFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_GetHandleExtendActionFunc_001 START");
     auto ret = OH_TextEditorProxy_GetHandleExtendActionFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -1092,6 +1139,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetHandleExtendAction
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetGetLeftTextOfCursorFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_GetGetLeftTextOfCursorFunc_001 START");
     auto ret = OH_TextEditorProxy_GetGetLeftTextOfCursorFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -1108,6 +1156,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetGetLeftTextOfCurso
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetGetRightTextOfCursorFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_GetGetRightTextOfCursorFunc_001 START");
     auto ret = OH_TextEditorProxy_GetGetRightTextOfCursorFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -1124,6 +1173,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetGetRightTextOfCurs
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetGetTextIndexAtCursorFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_GetGetTextIndexAtCursorFunc_001 START");
     auto ret = OH_TextEditorProxy_GetGetTextIndexAtCursorFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -1140,6 +1190,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetGetTextIndexAtCurs
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetReceivePrivateCommandFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_GetReceivePrivateCommandFunc_001 START");
     auto ret = OH_TextEditorProxy_GetReceivePrivateCommandFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -1156,6 +1207,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetReceivePrivateComm
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetSetPreviewTextFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_GetSetPreviewTextFunc_001 START");
     auto ret = OH_TextEditorProxy_GetSetPreviewTextFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -1172,6 +1224,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetSetPreviewTextFunc
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetFinishTextPreviewFunc_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextEditorProxy_GetFinishTextPreviewFunc_001 START");
     auto ret = OH_TextEditorProxy_GetFinishTextPreviewFunc(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_TextEditorProxy *proxy = OH_TextEditorProxy_Create();
@@ -1188,6 +1241,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetFinishTextPreviewF
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_AttachOptions_IsShowKeyboard_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_AttachOptions_IsShowKeyboard_001 START");
     auto ret = OH_AttachOptions_IsShowKeyboard(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     InputMethod_AttachOptions *options = OH_AttachOptions_Create(true);
@@ -1204,6 +1258,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_AttachOptions_IsShowKeyboard_001, Tes
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextAvoidInfo_SetPositionY_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextAvoidInfo_SetPositionY_001 START");
     double positionY = 0.0;
     auto ret = OH_TextAvoidInfo_SetPositionY(nullptr, positionY);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
@@ -1216,6 +1271,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextAvoidInfo_SetPositionY_001, TestS
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextAvoidInfo_SetHeight_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextAvoidInfo_SetHeight_001 START");
     double positionY = 0.0;
     auto ret = OH_TextAvoidInfo_SetHeight(nullptr, positionY);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
@@ -1228,6 +1284,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextAvoidInfo_SetHeight_001, TestSize
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextAvoidInfo_GetPositionY_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextAvoidInfo_GetPositionY_001 START");
     double positionY = 0.0;
     double height = 0.0;
     auto ret = OH_TextAvoidInfo_GetPositionY(nullptr, nullptr);
@@ -1246,6 +1303,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextAvoidInfo_GetPositionY_001, TestS
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextAvoidInfo_GetHeight_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextAvoidInfo_GetHeight_001 START");
     double positionY = 0.0;
     double height = 0.0;
     auto ret = OH_TextAvoidInfo_GetHeight(nullptr, nullptr);
@@ -1264,6 +1322,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextAvoidInfo_GetHeight_001, TestSize
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_PrivateCommand_SetKey_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_PrivateCommand_SetKey_001 START");
     char key[] = "example key";
     size_t keyLength = strlen(key);
     auto ret = OH_PrivateCommand_SetKey(nullptr, nullptr, keyLength);
@@ -1282,6 +1341,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_PrivateCommand_SetKey_001, TestSize.L
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_PrivateCommand_SetBoolValue_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_PrivateCommand_SetBoolValue_001 START");
     bool value = false;
     auto ret = OH_PrivateCommand_SetBoolValue(nullptr, value);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
@@ -1294,6 +1354,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_PrivateCommand_SetBoolValue_001, Test
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_PrivateCommand_SetIntValue_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_PrivateCommand_SetIntValue_001 START");
     int32_t value = 0;
     auto ret = OH_PrivateCommand_SetIntValue(nullptr, value);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
@@ -1306,6 +1367,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_PrivateCommand_SetIntValue_001, TestS
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_PrivateCommand_SetStrValue_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_PrivateCommand_SetStrValue_001 START");
     char value[] = "example value";
     size_t valueLength = strlen(value);
     auto ret = OH_PrivateCommand_SetStrValue(nullptr, value, valueLength);
@@ -1326,6 +1388,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_PrivateCommand_SetStrValue_001, TestS
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_PrivateCommand_GetKey_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_PrivateCommand_GetKey_001 START");
     char key[] = "example key";
     size_t keyLength = strlen(key);
     auto ret = OH_PrivateCommand_GetKey(nullptr, nullptr, nullptr);
@@ -1347,6 +1410,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_PrivateCommand_GetKey_001, TestSize.L
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_PrivateCommand_GetValueType_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_PrivateCommand_GetValueType_001 START");
     auto ret = OH_PrivateCommand_GetValueType(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     char key[] = "example key";
@@ -1364,6 +1428,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_PrivateCommand_GetValueType_001, Test
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_PrivateCommand_GetBoolValue_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_PrivateCommand_GetBoolValue_001 START");
     auto ret = OH_PrivateCommand_GetBoolValue(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     char key[] = "example key";
@@ -1388,6 +1453,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_PrivateCommand_GetBoolValue_001, Test
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_PrivateCommand_GetIntValue_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_PrivateCommand_GetIntValue_001 START");
     auto ret = OH_PrivateCommand_GetIntValue(nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     char key[] = "example key";
@@ -1410,6 +1476,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_PrivateCommand_GetIntValue_001, TestS
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_PrivateCommand_GetStrValue_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_PrivateCommand_GetStrValue_001 START");
     const char *value = nullptr;
     size_t valueLength = 0;
     auto ret = OH_PrivateCommand_GetStrValue(nullptr, &value, &valueLength);
@@ -1435,6 +1502,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_PrivateCommand_GetStrValue_001, TestS
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_InputMethodController_Attach_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_InputMethodController_Attach_001 START");
     auto ret = OH_InputMethodController_Attach(nullptr, nullptr, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     auto textEditorProxy = OH_TextEditorProxy_Create();
@@ -1457,6 +1525,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_InputMethodController_Attach_001, Tes
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_InputMethodController_Detach_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_InputMethodController_Detach_001 START");
     auto ret = OH_InputMethodController_Detach(nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
 }
@@ -1468,6 +1537,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_InputMethodController_Detach_001, Tes
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_InputMethodProxy_ShowKeyboard_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_InputMethodProxy_ShowKeyboard_001 START");
     auto ret = OH_InputMethodProxy_ShowKeyboard(nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
 }
@@ -1479,6 +1549,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_InputMethodProxy_ShowKeyboard_001, Te
  */
 HWTEST_F(InputMethodControllerCapiTest, ShowKeyboardTest_SUCCESS, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::ShowKeyboardTest_SUCCESS START");
     InputMethod_InputMethodProxy *inputMethodProxy = nullptr;
     EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Attach(textEditorProxy_, attachOptions_, &inputMethodProxy));
 
@@ -1495,6 +1566,7 @@ HWTEST_F(InputMethodControllerCapiTest, ShowKeyboardTest_SUCCESS, TestSize.Level
  */
 HWTEST_F(InputMethodControllerCapiTest, ShowTextInput_SUCCESS, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::ShowTextInput_SUCCESS START");
     InputMethod_InputMethodProxy *inputMethodProxy = nullptr;
     EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Attach(textEditorProxy_, attachOptions_, &inputMethodProxy));
 
@@ -1511,6 +1583,7 @@ HWTEST_F(InputMethodControllerCapiTest, ShowTextInput_SUCCESS, TestSize.Level0)
  */
 HWTEST_F(InputMethodControllerCapiTest, ShowTextInputWithNullOptions_fail, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::ShowTextInputWithNullOptions_fail START");
     InputMethod_InputMethodProxy *inputMethodProxy = nullptr;
     EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Attach(textEditorProxy_, attachOptions_, &inputMethodProxy));
 
@@ -1530,6 +1603,7 @@ HWTEST_F(InputMethodControllerCapiTest, ShowTextInputWithNullOptions_fail, TestS
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_InputMethodProxy_HideKeyboard_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_InputMethodProxy_HideKeyboard_001 START");
     auto ret = OH_InputMethodProxy_HideKeyboard(nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
 }
@@ -1541,6 +1615,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_InputMethodProxy_HideKeyboard_001, Te
  */
 HWTEST_F(InputMethodControllerCapiTest, HideKeyboard_SUCCESS, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::HideKeyboard_SUCCESS START");
     InputMethod_InputMethodProxy *inputMethodProxy = nullptr;
     EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Attach(textEditorProxy_, attachOptions_, &inputMethodProxy));
 
@@ -1557,6 +1632,7 @@ HWTEST_F(InputMethodControllerCapiTest, HideKeyboard_SUCCESS, TestSize.Level0)
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_InputMethodProxy_NotifySelectionChange_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_InputMethodProxy_NotifySelectionChange_001 START");
     size_t length = 0;
     int start = 0;
     int end = 0;
@@ -1571,6 +1647,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_InputMethodProxy_NotifySelectionChang
  */
 HWTEST_F(InputMethodControllerCapiTest, NotifySelectionChangeWithNullText_FAIL, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::NotifySelectionChangeWithNullText_FAIL START");
     InputMethod_InputMethodProxy *inputMethodProxy = nullptr;
     EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Attach(textEditorProxy_, attachOptions_, &inputMethodProxy));
     size_t length = 0;
@@ -1589,6 +1666,7 @@ HWTEST_F(InputMethodControllerCapiTest, NotifySelectionChangeWithNullText_FAIL, 
  */
 HWTEST_F(InputMethodControllerCapiTest, NotifySelectionChangeWithInvalidLength_FAIL, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::NotifySelectionChangeWithInvalidLength_FAIL START");
     InputMethod_InputMethodProxy *inputMethodProxy = nullptr;
     EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Attach(textEditorProxy_, attachOptions_, &inputMethodProxy));
     char16_t text[] = u"1234";
@@ -1605,6 +1683,7 @@ HWTEST_F(InputMethodControllerCapiTest, NotifySelectionChangeWithInvalidLength_F
  */
 HWTEST_F(InputMethodControllerCapiTest, NotifySelectionChange_SUCCESS, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::NotifySelectionChange_SUCCESS START");
     InputMethod_InputMethodProxy *inputMethodProxy = nullptr;
     EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Attach(textEditorProxy_, attachOptions_, &inputMethodProxy));
     char16_t text[] = u"1234";
@@ -1621,6 +1700,7 @@ HWTEST_F(InputMethodControllerCapiTest, NotifySelectionChange_SUCCESS, TestSize.
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_InputMethodProxy_NotifyConfigurationChange_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_InputMethodProxy_NotifyConfigurationChange_001 START");
     InputMethod_EnterKeyType enterKey = IME_ENTER_KEY_UNSPECIFIED;
     InputMethod_TextInputType expInput = IME_TEXT_INPUT_TYPE_NUMBER_DECIMAL;
     auto ret = OH_InputMethodProxy_NotifyConfigurationChange(nullptr, enterKey, expInput);
@@ -1634,6 +1714,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_InputMethodProxy_NotifyConfigurationC
  */
 HWTEST_F(InputMethodControllerCapiTest, NotifyConfigurationChange_SUCCESS, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::NotifyConfigurationChange_SUCCESS START");
     InputMethod_InputMethodProxy *inputMethodProxy = nullptr;
     EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Attach(textEditorProxy_, attachOptions_, &inputMethodProxy));
 
@@ -1652,6 +1733,7 @@ HWTEST_F(InputMethodControllerCapiTest, NotifyConfigurationChange_SUCCESS, TestS
  */
 HWTEST_F(InputMethodControllerCapiTest, NotifyCursorUpdate_SUCCESS, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::NotifyCursorUpdate_SUCCESS START");
     InputMethod_InputMethodProxy *inputMethodProxy = nullptr;
     EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Attach(textEditorProxy_, attachOptions_, &inputMethodProxy));
 
@@ -1675,6 +1757,7 @@ HWTEST_F(InputMethodControllerCapiTest, NotifyCursorUpdate_SUCCESS, TestSize.Lev
  */
 HWTEST_F(InputMethodControllerCapiTest, NotifyCursorUpdateWithNullCursorInfo_FAIL, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::NotifyCursorUpdateWithNullCursorInfo_FAIL START");
     InputMethod_InputMethodProxy *inputMethodProxy = nullptr;
     EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Attach(textEditorProxy_, attachOptions_, &inputMethodProxy));
 
@@ -1691,6 +1774,7 @@ HWTEST_F(InputMethodControllerCapiTest, NotifyCursorUpdateWithNullCursorInfo_FAI
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_InputMethodProxy_NotifyCursorUpdate_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_InputMethodProxy_NotifyCursorUpdate_001 START");
     double left = 0;
     double top = 1.0;
     double width = 2.0;
@@ -1711,6 +1795,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_InputMethodProxy_NotifyCursorUpdate_0
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_InputMethodProxy_SendPrivateCommand_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_InputMethodProxy_SendPrivateCommand_001 START");
     char key[] = "example key";
     size_t keyLength = strlen(key);
     char key1[] = "example key";
@@ -1731,6 +1816,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_InputMethodProxy_SendPrivateCommand_0
  */
 HWTEST_F(InputMethodControllerCapiTest, SendPrivateCommandWithInvalidCommandCount_FAIL, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::SendPrivateCommandWithInvalidCommandCount_FAIL START");
     InputMethod_InputMethodProxy *inputMethodProxy = nullptr;
     EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Attach(textEditorProxy_, attachOptions_, &inputMethodProxy));
 
@@ -1753,6 +1839,7 @@ HWTEST_F(InputMethodControllerCapiTest, SendPrivateCommandWithInvalidCommandCoun
  */
 HWTEST_F(InputMethodControllerCapiTest, SendPrivateCommandWithNullCommand_FAIL, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::SendPrivateCommandWithNullCommand_FAIL START");
     InputMethod_InputMethodProxy *inputMethodProxy = nullptr;
     EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Attach(textEditorProxy_, attachOptions_, &inputMethodProxy));
 
@@ -1769,6 +1856,7 @@ HWTEST_F(InputMethodControllerCapiTest, SendPrivateCommandWithNullCommand_FAIL, 
  */
 HWTEST_F(InputMethodControllerCapiTest, SendPrivateCommand_SUCCESS, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::SendPrivateCommand_SUCCESS START");
     InputMethod_InputMethodProxy *inputMethodProxy = nullptr;
     EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Attach(textEditorProxy_, attachOptions_, &inputMethodProxy));
 
@@ -1789,6 +1877,7 @@ HWTEST_F(InputMethodControllerCapiTest, SendPrivateCommand_SUCCESS, TestSize.Lev
  */
 HWTEST_F(InputMethodControllerCapiTest, TestAttachWithNullParam_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::TestAttachWithNullParam_001 START");
     auto ret = OH_InputMethodController_Attach(nullptr, nullptr, nullptr);
     EXPECT_EQ(IME_ERR_NULL_POINTER, ret);
 
@@ -1849,6 +1938,7 @@ HWTEST_F(InputMethodControllerCapiTest, TestAttachWithNullParam_001, TestSize.Le
  */
 HWTEST_F(InputMethodControllerCapiTest, TestAttachWithNorrmalParam_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::TestAttachWithNorrmalParam_001 START");
     auto textEditorProxy = OH_TextEditorProxy_Create();
     EXPECT_NE(nullptr, textEditorProxy);
     ConstructTextEditorProxy(textEditorProxy);
@@ -1877,6 +1967,7 @@ HWTEST_F(InputMethodControllerCapiTest, TestAttachWithNorrmalParam_001, TestSize
  */
 HWTEST_F(InputMethodControllerCapiTest, TestAttachWithPlaceholderAndAbility_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::TestAttachWithPlaceholderAndAbility_001 START");
     auto options = OH_AttachOptions_Create(true);
     auto textEditorProxy2 = OH_TextEditorProxy_Create();
     EXPECT_NE(nullptr, textEditorProxy2);
@@ -1904,6 +1995,7 @@ HWTEST_F(InputMethodControllerCapiTest, TestAttachWithPlaceholderAndAbility_001,
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetPlaceholder_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_SetPlaceholder_001 START");
     auto config = OH_TextConfig_Create();
     ASSERT_NE(nullptr, config);
     std::u16string input = u"test";
@@ -1943,6 +2035,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetPlaceholder_001, TestSi
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetPlaceholder_002, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_SetPlaceholder_002 START");
     auto config = OH_TextConfig_Create();
     ASSERT_NE(nullptr, config);
     std::u16string input = u"test";
@@ -1965,6 +2058,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetPlaceholder_002, TestSi
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetPlaceholder_003, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_SetPlaceholder_003 START");
     auto config = OH_TextConfig_Create();
     ASSERT_NE(nullptr, config);
     auto ret = OH_TextConfig_SetPlaceholder(config, nullptr, 257);
@@ -2009,6 +2103,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetPlaceholder_003, TestSi
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetAbilityName_001, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_SetAbilityName_001 START");
     auto config = OH_TextConfig_Create();
     ASSERT_NE(nullptr, config);
     std::u16string input = u"test";
@@ -2049,6 +2144,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetAbilityName_001, TestSi
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetAbilityName_002, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_SetAbilityName_002 START");
     auto config = OH_TextConfig_Create();
     ASSERT_NE(nullptr, config);
     std::u16string input = u"test";
@@ -2072,6 +2168,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetAbilityName_002, TestSi
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetAbilityName_003, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_SetAbilityName_003 START");
     auto config = OH_TextConfig_Create();
     ASSERT_NE(nullptr, config);
     auto ret = OH_TextConfig_SetAbilityName(config, nullptr, 128);
@@ -2095,6 +2192,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetAbilityName_003, TestSi
  */
 HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetAbilityName_004, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_SetAbilityName_004 START");
     auto config = OH_TextConfig_Create();
     ASSERT_NE(nullptr, config);
     std::u16string input = u"";
@@ -2148,6 +2246,7 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetAbilityName_004, TestSi
  */
 HWTEST_F(InputMethodControllerCapiTest, SetOnTerminatedFuncWithNull_FAIL, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::SetOnTerminatedFuncWithNull_FAIL START");
     auto proxy = OH_MessageHandlerProxy_Create();
     EXPECT_NE(proxy, nullptr);
 
@@ -2166,6 +2265,7 @@ HWTEST_F(InputMethodControllerCapiTest, SetOnTerminatedFuncWithNull_FAIL, TestSi
  */
 HWTEST_F(InputMethodControllerCapiTest, GetOnTerminatedFuncWithNull_FAIL, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::GetOnTerminatedFuncWithNull_FAIL START");
     auto proxy = OH_MessageHandlerProxy_Create();
     EXPECT_NE(proxy, nullptr);
 
@@ -2183,6 +2283,7 @@ HWTEST_F(InputMethodControllerCapiTest, GetOnTerminatedFuncWithNull_FAIL, TestSi
  */
 HWTEST_F(InputMethodControllerCapiTest, SetOnMessageFuncWithNull_FAIL, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::SetOnMessageFuncWithNull_FAIL START");
     auto proxy = OH_MessageHandlerProxy_Create();
     EXPECT_NE(proxy, nullptr);
 
@@ -2201,6 +2302,7 @@ HWTEST_F(InputMethodControllerCapiTest, SetOnMessageFuncWithNull_FAIL, TestSize.
  */
 HWTEST_F(InputMethodControllerCapiTest, GetOnMessageFuncWithNull_FAIL, TestSize.Level0)
 {
+    IMSA_HILOGI("InputMethodControllerCapiTest::GetOnMessageFuncWithNull_FAIL START");
     auto proxy = OH_MessageHandlerProxy_Create();
     EXPECT_NE(proxy, nullptr);
 
