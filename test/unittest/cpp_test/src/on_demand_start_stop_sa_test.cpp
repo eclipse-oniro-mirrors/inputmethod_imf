@@ -20,6 +20,7 @@
 #include "on_demand_start_stop_sa.h"
 #include "system_ability_definition.h"
 
+#include "global.h"
 using namespace testing::ext;
 namespace OHOS {
 namespace MiscServices {
@@ -34,6 +35,7 @@ class OnDemandStartStopSaTest : public testing::Test { };
  */
 HWTEST_F(OnDemandStartStopSaTest, OnDemandStartSaTest, TestSize.Level1)
 {
+    IMSA_HILOGI("OnDemandStartStopSaTest::OnDemandStartSaTest START");
     auto remote = OnDemandStartStopSa::GetInputMethodSystemAbility();
     EXPECT_NE(nullptr, remote);
 
@@ -53,6 +55,7 @@ HWTEST_F(OnDemandStartStopSaTest, OnDemandStartSaTest, TestSize.Level1)
  */
 HWTEST_F(OnDemandStartStopSaTest, OnDemandStopSaTest, TestSize.Level1)
 {
+    IMSA_HILOGI("OnDemandStartStopSaTest::OnDemandStopSaTest START");
     auto onDemandStartStopSa = std::make_shared<OnDemandStartStopSa>();
     ASSERT_NE(nullptr, onDemandStartStopSa);
 
@@ -68,6 +71,7 @@ HWTEST_F(OnDemandStartStopSaTest, OnDemandStopSaTest, TestSize.Level1)
  */
 HWTEST_F(OnDemandStartStopSaTest, LoadSystemAbilityTest, TestSize.Level1)
 {
+    IMSA_HILOGI("OnDemandStartStopSaTest::LoadSystemAbilityTest START");
     auto onDemandStartStopSa = std::make_shared<OnDemandStartStopSa>();
     ASSERT_NE(nullptr, onDemandStartStopSa);
 
@@ -84,6 +88,7 @@ HWTEST_F(OnDemandStartStopSaTest, LoadSystemAbilityTest, TestSize.Level1)
  */
 HWTEST_F(OnDemandStartStopSaTest, SaLoadCallBackTest, TestSize.Level1)
 {
+    IMSA_HILOGI("OnDemandStartStopSaTest::SaLoadCallBackTest START");
     auto onDemandStartStopSa = std::make_shared<OnDemandStartStopSa>();
     ASSERT_NE(nullptr, onDemandStartStopSa);
 

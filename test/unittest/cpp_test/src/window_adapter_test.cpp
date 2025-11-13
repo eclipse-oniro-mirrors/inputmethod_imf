@@ -53,6 +53,7 @@ public:
  */
 HWTEST_F(WindowAdapterTest, WindowAdapter_GetCallingWindowInfo, TestSize.Level0)
 {
+    IMSA_HILOGI("WindowAdapterTest::WindowAdapter_GetCallingWindowInfo START");
     OHOS::Rosen::CallingWindowInfo callingWindowInfo;
     uint32_t windId = 0;
     int32_t userId = -1;
@@ -68,6 +69,7 @@ HWTEST_F(WindowAdapterTest, WindowAdapter_GetCallingWindowInfo, TestSize.Level0)
  */
 HWTEST_F(WindowAdapterTest, WindowAdapter_GetFocusInfo, TestSize.Level0)
 {
+    IMSA_HILOGI("WindowAdapterTest::WindowAdapter_GetFocusInfo START");
     OHOS::Rosen::FocusChangeInfo focusInfo;
     WindowAdapter::GetInstance().GetFocusInfo(focusInfo);
     EXPECT_TRUE(focusInfo.displayId_ >= 0);
@@ -81,6 +83,7 @@ HWTEST_F(WindowAdapterTest, WindowAdapter_GetFocusInfo, TestSize.Level0)
  */
 HWTEST_F(WindowAdapterTest, WindowAdapter_GetDisplayId, TestSize.Level0)
 {
+    IMSA_HILOGI("WindowAdapterTest::WindowAdapter_GetDisplayId START");
     int64_t callingPid = -1000;
     uint64_t displayId = 0;
     auto ret = WindowAdapter::GetInstance().GetDisplayId(callingPid, displayId);
