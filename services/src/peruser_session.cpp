@@ -50,6 +50,7 @@
 #include "notify_service_impl.h"
 #include "display_adapter.h"
 #include "imf_hook_manager.h"
+#include "res_sched_client.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -973,10 +974,10 @@ void PerUserSession::StartImeInImeDied()
     if (IsLargeMemoryStateNeed()) {
         return;
     }
-    StartImeIfInstalled();
+    StartImeIfInstalled(StartReason::RESTART_AFTER_DIED);
 }
 
-void PerUserSession::StartImeIfInstalled()
+void PerUserSession::StartImeIfInstalled(StartReason startReasaon)
 {
     auto imeToStart = GetRealCurrentIme(false);
     if (imeToStart == nullptr || imeToStart->imeId.empty()) {
@@ -987,7 +988,7 @@ void PerUserSession::StartImeIfInstalled()
         IMSA_HILOGE("imeToStart is not installed, imeId = %{public}s!", imeToStart->imeId.c_str());
         return;
     }
-    StartCurrentIme();
+    StartCurrentIme(false, startReasaon);
 }
 
 void PerUserSession::ReplaceCurrentClient(
@@ -1385,7 +1386,7 @@ bool PerUserSession::IsKeyboardCallingProcess(int32_t pid, uint32_t windowId)
     return clientInfo->config.inputAttribute.windowId == windowId;
 }
 
-int32_t PerUserSession::StartCurrentIme(bool isStopCurrentIme)
+int32_t PerUserSession::StartCurrentIme(bool isStopCurrentIme, StartReason startReason)
 {
     IMSA_HILOGD("enter");
     auto imeToStart = GetRealCurrentIme(true);
@@ -1393,7 +1394,9 @@ int32_t PerUserSession::StartCurrentIme(bool isStopCurrentIme)
         IMSA_HILOGE("imeToStart is nullptr!");
         return ErrorCode::ERROR_IMSA_IME_TO_START_NULLPTR;
     }
-    IMSA_HILOGI("ime info:%{public}s/%{public}s.", imeToStart->bundleName.c_str(), imeToStart->subName.c_str());
+    imeToStart->startReason = startReason;
+    IMSA_HILOGI("ime info:%{public}s/%{public}s, startReason:%{public}d.",
+        imeToStart->bundleName.c_str(), imeToStart->subName.c_str(), imeToStart->startReason);
     auto ret = StartIme(imeToStart, isStopCurrentIme);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("failed to start ime!");
@@ -1513,6 +1516,12 @@ int32_t PerUserSession::StartInputService(const std::shared_ptr<ImeNativeCfg> &i
         return ErrorCode::ERROR_IMSA_IME_START_TIMEOUT;
     }
     IMSA_HILOGI("%{public}s started successfully.", imeToStart->imeId.c_str());
+    if (ime->startReason != StartReason::RESTART_AFTER_DIED) {
+        std::unordered_map<std::string, std::string> payload;
+        payload["bundleName"] = imeToStart->bundleName;
+        ResourceSchedule::ResSchedClient::GetInstance().ReportData(
+            ResourceSchedule::ResType::RES_TYPE_START_INPUT_METHOD_PROCESS, 0, payload);
+    }
     InputMethodSysEvent::GetInstance().RecordEvent(IMEBehaviour::START_IME);
     return ErrorCode::NO_ERROR;
 }
