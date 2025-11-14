@@ -133,7 +133,7 @@ public:
     int32_t OnUnregisterProxyIme(uint64_t displayId);
     int32_t InitConnect(pid_t pid);
 
-    int32_t StartCurrentIme(bool isStopCurrentIme = false);
+    int32_t StartCurrentIme(bool isStopCurrentIme = false, StartReason startReason = StartReason::DEFALUT_START);
     int32_t StartIme(const std::shared_ptr<ImeNativeCfg> &ime, bool isStopCurrentIme = false);
     int32_t StopCurrentIme();
     bool RestartIme();
@@ -251,7 +251,7 @@ private:
 
     int32_t InitInputControlChannel();
     void StartImeInImeDied();
-    void StartImeIfInstalled();
+    void StartImeIfInstalled(StartReason startReason = StartReason::DEFALUT_START);
     void ReplaceCurrentClient(const sptr<IInputClient> &client, const std::shared_ptr<ClientGroup> &clientGroup);
     bool IsSameClient(sptr<IInputClient> source, sptr<IInputClient> dest);
 

@@ -62,7 +62,7 @@ public:
     IMF_API int32_t UnRegisterImeEventListener(uint32_t eventFlag, const std::shared_ptr<ImeEventListener> &listener);
 
 private:
-    static constexpr uint32_t ALL_EVENT_MASK = EVENT_IME_SHOW_MASK | EVENT_IME_HIDE_MASK |
+    static constexpr uint32_t ALL_EVENT_MASK = EVENT_IME_CHANGE_MASK | EVENT_IME_SHOW_MASK | EVENT_IME_HIDE_MASK |
         EVENT_INPUT_STATUS_CHANGED_MASK;
     ImeEventMonitorManager();
     ~ImeEventMonitorManager();
