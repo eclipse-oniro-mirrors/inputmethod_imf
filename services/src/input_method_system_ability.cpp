@@ -2547,6 +2547,7 @@ void InputMethodSystemAbility::HandleOsAccountStarted()
     auto handler = MessageHandler::Instance();
     if (handler == nullptr) {
         IMSA_HILOGE("handler is nullptr");
+        delete msg;
         return;
     }
     handler->SendMessage(msg);
