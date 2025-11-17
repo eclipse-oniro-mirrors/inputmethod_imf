@@ -99,8 +99,9 @@ void ClientGroup::RemoveClientInfo(const sptr<IRemoteObject> &client, bool isCli
     IMSA_HILOGI("client[%{public}d] is removed.", clientInfo->pid);
 }
 // LCOV_EXCL_START
-void ClientGroup::UpdateClientInfo(const sptr<IRemoteObject> &client, const std::unordered_map<UpdateFlag,
-    std::variant<bool, uint32_t, ImeType, ClientState, TextTotalConfig, ClientType, pid_t>> &updateInfos)
+void ClientGroup::UpdateClientInfo(const sptr<IRemoteObject> &client,
+    const std::unordered_map<UpdateFlag, std::variant<bool, uint32_t, ImeType, ClientState, TextTotalConfig,
+                                             ClientType, pid_t, std::shared_ptr<ImeData>>> &updateInfos)
 {
     if (client == nullptr) {
         IMSA_HILOGE("client is nullptr!");
@@ -122,10 +123,10 @@ void ClientGroup::UpdateClientInfo(const sptr<IRemoteObject> &client, const std:
                 VariantUtil::GetValue(updateInfo.second, it->second->isShowKeyboard);
                 break;
             }
-            case UpdateFlag::BINDIMETYPE: {
-                VariantUtil::GetValue(updateInfo.second, it->second->bindImeType);
-                break;
-            }
+//            case UpdateFlag::BINDIMETYPE: {
+//                VariantUtil::GetValue(updateInfo.second, it->second->bindImeType);
+//                break;
+//            }
             case UpdateFlag::STATE: {
                 VariantUtil::GetValue(updateInfo.second, it->second->state);
                 break;
@@ -142,8 +143,8 @@ void ClientGroup::UpdateClientInfo(const sptr<IRemoteObject> &client, const std:
                 VariantUtil::GetValue(updateInfo.second, it->second->type);
                 break;
             }
-            case UpdateFlag::BIND_IME_PID: {
-                VariantUtil::GetValue(updateInfo.second, it->second->bindImePid);
+            case UpdateFlag::BIND_IME_DATA: {
+                VariantUtil::GetValue(updateInfo.second, it->second->bindImeData);
                 break;
             }
             default:
@@ -163,6 +164,50 @@ std::shared_ptr<InputClientInfo> ClientGroup::GetClientInfo(pid_t pid)
     std::lock_guard<std::recursive_mutex> lock(mtx_);
     return iter->second;
 }
+
+std::shared_ptr<InputClientInfo> ClientGroup::GetClientInfoByBindIme(pid_t bindImePid)
+{
+    std::lock_guard<std::recursive_mutex> lock(mtx_);
+    auto iter = std::find_if(mapClients_.begin(), mapClients_.end(), [bindImePid](const auto &mapClient) {
+        auto clientInfo = mapClient.second;
+        return clientInfo != nullptr && clientInfo->bindImeData != nullptr
+               && clientInfo->bindImeData->pid == bindImePid;
+    });
+    if (iter == mapClients_.end()) {
+        IMSA_HILOGD("not found.");
+        return nullptr;
+    }
+    return iter->second;
+}
+
+std::shared_ptr<InputClientInfo> ClientGroup::GetClientInfoBoundRealIme()
+{
+    std::lock_guard<std::recursive_mutex> lock(mtx_);
+    auto iter = std::find_if(mapClients_.begin(), mapClients_.end(), [bindImePid](const auto &mapClient) {
+        auto clientInfo = mapClient.second;
+        return clientInfo != nullptr && clientInfo->bindImeData != nullptr && clientInfo->bindImeData->IsRealIme();
+    });
+    if (iter == mapClients_.end()) {
+        IMSA_HILOGD("not found.");
+        return nullptr;
+    }
+    return iter->second;
+}
+
+std::shared_ptr<InputClientInfo> ClientGroup::GetClientByWindowId(uint32_t windowId)
+{
+    std::lock_guard<std::recursive_mutex> lock(mtx_);
+    auto iter = std::find_if(mapClients_.begin(), mapClients_.end(), [windowId](const auto &mapClient) {
+        auto clientInfo = mapClient.second;
+        return clientInfo != nullptr && clientInfo->config.inputAttribute.windowId == windowId;
+    });
+    if (iter == mapClients_.end()) {
+        IMSA_HILOGD("not found.");
+        return nullptr;
+    }
+    return iter->second;
+}
+
 // LCOV_EXCL_STOP
 std::shared_ptr<InputClientInfo> ClientGroup::GetCurrentClientInfo()
 {

@@ -574,16 +574,6 @@ public:
     IMF_API int32_t HideCurrentInput();
 
     /**
-     * @brief Request to show input method.
-     *
-     * This function is used to request to show input method.
-     *
-     * @return Returns 0 for success, others for failure.
-     * @since 11
-     */
-    IMF_API int32_t RequestShowInput();
-
-    /**
      * @brief Request to hide input method.
      *
      * This function is used to request to hide input method.
@@ -591,7 +581,7 @@ public:
      * @return Returns 0 for success, others for failure.
      * @since 11
      */
-    IMF_API int32_t RequestHideInput(bool isFocusTriggered = false);
+    IMF_API int32_t RequestHideInput(bool isFocusTriggered = false, uint32_t windowId = 0);
 
     /**
      * @brief Show input method setting extension dialog.

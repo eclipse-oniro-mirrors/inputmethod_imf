@@ -522,18 +522,7 @@ void InputMethodController::Reset()
     RemoveDeathRecipient();
 }
 
-int32_t InputMethodController::RequestShowInput()
-{
-    auto proxy = GetSystemAbilityProxy();
-    if (proxy == nullptr) {
-        IMSA_HILOGE("proxy is nullptr!");
-        return ErrorCode::ERROR_SERVICE_START_FAILED; // ERROR_EX_NULL_POINTER
-    }
-    IMSA_HILOGI("InputMethodController start.");
-    return proxy->RequestShowInput();
-}
-
-int32_t InputMethodController::RequestHideInput(bool isFocusTriggered)
+int32_t InputMethodController::RequestHideInput(bool isFocusTriggered, uint32_t windowId)
 {
     auto proxy = TryGetSystemAbilityProxy();
     if (proxy == nullptr) {
@@ -541,7 +530,7 @@ int32_t InputMethodController::RequestHideInput(bool isFocusTriggered)
         return ErrorCode::ERROR_EX_NULL_POINTER;
     }
     IMSA_HILOGD("InputMethodController start.");
-    return proxy->RequestHideInput(isFocusTriggered);
+    return proxy->RequestHideInput(isFocusTriggered, windowId);
 }
 
 int32_t InputMethodController::DisplayOptionalInputMethod()

@@ -17,6 +17,7 @@
 #define SERVICES_INCLUDE_IDENTITY_CHECKER_H
 
 #include "access_token.h"
+#include "input_method_utils.h"
 #include "iremote_object.h"
 namespace OHOS {
 namespace MiscServices {
@@ -26,22 +27,23 @@ public:
     static constexpr int64_t INVALID_PID = -1;
     static constexpr int64_t INVALID_WINDOW_ID = 0;
     virtual ~IdentityChecker() = default;
-    virtual bool IsFocused(int64_t callingPid, uint32_t callingTokenId, int64_t focusedPid = INVALID_PID,
-        bool isAttach = false, sptr<IRemoteObject> abilityToken = nullptr) = 0;
+    virtual std::pair<bool, FocusedInfo> IsFocused(int64_t callingPid, uint32_t callingTokenId, uint32_t windowId = 0,
+        const sptr<IRemoteObject> &abilityToken = nullptr) = 0;
     virtual bool IsSystemApp(uint64_t fullTokenId) = 0;
     virtual bool IsBundleNameValid(uint32_t tokenId, const std::string &validBundleName) = 0;
     virtual bool HasPermission(uint32_t tokenId, const std::string &permission) = 0;
-    virtual bool IsBroker(Security::AccessToken::AccessTokenID tokenId) = 0;
+    virtual std::pair<bool, FocusedInfo> IsBroker(Security::AccessToken::AccessTokenID tokenId) = 0;
     virtual bool IsNativeSa(Security::AccessToken::AccessTokenID tokenId) = 0;
     virtual bool IsFormShell(Security::AccessToken::AccessTokenID tokenId) = 0;
     virtual std::string GetBundleNameByToken(uint32_t tokenId);
-    virtual uint32_t GetUIExtensionWindowId(sptr<IRemoteObject> abilityToken = nullptr)
+    virtual uint32_t GetUIExtensionWindowId(const sptr<IRemoteObject> &abilityToken = nullptr)
     {
         return false;
     };
-    virtual bool IsFocusedUIExtension(uint32_t callingTokenId, sptr<IRemoteObject> abilityToken = nullptr)
+    virtual std::pair<bool, FocusedInfo> IsFocusedUIExtension(uint32_t callingTokenId,
+        const sptr<IRemoteObject> &abilityToken, const std::vector<FocusChangeInfo> &focusWindowInfos)
     {
-        return false;
+        return { false, {} };
     };
     virtual uint64_t GetDisplayIdByWindowId(int32_t callingWindowId)
     {

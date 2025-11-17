@@ -67,6 +67,7 @@ struct ImeData {
     sptr<IRemoteObject> agent{ nullptr };
     sptr<InputDeathRecipient> deathRecipient{ nullptr };
     pid_t pid;
+    ImeType type{ ImeType::IME };
     std::shared_ptr<ImeStateManager> imeStateManager;
     ImeStatus imeStatus{ ImeStatus::STARTING };
     std::pair<std::string, std::string> ime; // first: bundleName  second:extName
@@ -80,7 +81,11 @@ struct ImeData {
 
     bool IsImeMirror() const
     {
-        return ime.first == IME_MIRROR_NAME;
+        return type == ImeType::IME_MIRROR;
+    }
+    bool IsRealIme() const
+    {
+        return type == ImeType::IME;
     }
     ImeExtendInfo imeExtendInfo;
 };
@@ -103,12 +108,11 @@ public:
         std::vector<BindImeInfo> &imeInfos);
     int32_t OnReleaseInput(const sptr<IInputClient> &client, uint32_t sessionId);
     int32_t OnSetCoreAndAgent(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent);
-    int32_t OnHideCurrentInput(uint64_t displayId);
-    int32_t OnShowCurrentInput(uint64_t displayId);
+    int32_t OnHideCurrentInput(uint64_t displayGroupId);
+    int32_t OnShowCurrentInput(uint64_t displayGroupId);
     int32_t OnShowInput(sptr<IInputClient> client, int32_t requestKeyboardReason = 0);
     int32_t OnHideInput(sptr<IInputClient> client);
-    int32_t OnRequestShowInput(uint64_t displayId);
-    int32_t OnRequestHideInput(int32_t callingPid, uint64_t displayId);
+    int32_t OnRequestHideInput(int32_t callingPid, uint64_t displayGroupId);
     void OnSecurityChange(int32_t security);
     void OnHideSoftKeyBoardSelf();
     void NotifyImeChangeToClients(const Property &property, const SubProperty &subProperty);
@@ -123,14 +127,12 @@ public:
     int64_t GetInactiveClientPid(uint64_t displayId);
     int32_t OnPanelStatusChange(const InputWindowStatus &status, const ImeWindowInfo &info, uint64_t displayId);
     int32_t OnUpdateListenEventFlag(const InputClientInfo &clientInfo);
-    int32_t OnRegisterProxyIme(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent, int32_t pid);
-    int32_t OnUnRegisteredProxyIme(UnRegisteredType type, const sptr<IInputMethodCore> &core, pid_t pid);
+    int32_t OnRegisterProxyIme(
+        uint64_t displayId, const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent, int32_t pid);
     int32_t OnBindImeMirror(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent);
     int32_t OnUnbindImeMirror();
     int32_t UpdateLargeMemorySceneState(const int32_t memoryState);
-    int32_t OnRegisterProxyIme(
-        uint64_t displayId, const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent);
-    int32_t OnUnregisterProxyIme(uint64_t displayId);
+    int32_t OnUnregisterProxyIme(uint64_t displayId, int32_t pid);
     int32_t InitConnect(pid_t pid);
 
     int32_t StartCurrentIme(bool isStopCurrentIme = false, StartReason startReason = StartReason::DEFALUT_START);
@@ -139,22 +141,19 @@ public:
     bool RestartIme();
     void AddRestartIme();
 
-    bool IsProxyImeEnable();
     bool IsEnable(const std::shared_ptr<ImeData> &data);
     bool IsBoundToClient(uint64_t displayId);
     bool IsCurrentImeByPid(int32_t pid);
-    int32_t RestoreCurrentImeSubType(uint64_t callingDisplayId);
+    int32_t RestoreCurrentImeSubType();
     int32_t IsPanelShown(const PanelInfo &panelInfo, bool &isShown);
-    bool CheckSecurityMode();
     int32_t OnConnectSystemCmd(const sptr<IRemoteObject> &channel, sptr<IRemoteObject> &agent);
     int32_t RemoveAllCurrentClient();
-    std::shared_ptr<ImeData> GetReadyImeData(ImeType type);
-    std::shared_ptr<ImeData> GetImeData(ImeType type);
-    std::shared_ptr<ImeData> GetImeData(pid_t pid);
+    std::shared_ptr<ImeData> GetReadyImeDataToBind(uint64_t displayId);
+    std::shared_ptr<ImeData> GetRealImeData(bool isReady = false);
     BlockQueue<SwitchInfo>& GetSwitchQueue();
     bool IsWmsReady();
     bool CheckPwdInputPatternConv(InputClientInfo &clientInfo, uint64_t displayId);
-    int32_t StartUserSpecifiedIme(uint64_t callingDisplayId);
+    int32_t StartUserSpecifiedIme();
     int32_t SetInputType();
     std::shared_ptr<ImeNativeCfg> GetImeNativeCfg(int32_t userId, const std::string &bundleName,
         const std::string &subName);
@@ -167,16 +166,13 @@ public:
     void OnCallingDisplayIdChanged(const int32_t windowId, const int32_t callingPid, const uint64_t displayId);
     ImfCallingWindowInfo GetFinalCallingWindowInfo(const InputClientInfo &clientInfo);
     bool SpecialScenarioCheck();
-    bool IsScreenLockOrSecurityFlag();
     int32_t SpecialSendPrivateData(const std::unordered_map<std::string, PrivateDataValue> &privateCommand);
     uint64_t GetDisplayGroupId(uint64_t displayId);
-    bool IsDefaultDisplayGroup(uint64_t displayId);
     bool IsNumkeyAutoInputApp(const std::string &bundleName);
-    std::pair<int32_t, int32_t> GetCurrentInputPattern();
     bool IsPreconfiguredDefaultImeSpecified(const InputClientInfo &inputClientInfo);
     bool IsImeSwitchForbidden();
     std::pair<int32_t, StartPreDefaultImeStatus> StartPreconfiguredDefaultIme(
-        uint64_t callingDisplayId, const ImeExtendInfo &imeExtendInfo = {}, bool isStopCurrentIme = false);
+        const ImeExtendInfo &imeExtendInfo = {}, bool isStopCurrentIme = false);
     void NotifyOnInputStopFinished();
     void IncreaseAttachCount();
     void DecreaseAttachCount();
@@ -224,26 +220,24 @@ private:
         const DetachOptions &options);
     void DeactivateClient(const sptr<IInputClient> &client);
     std::shared_ptr<InputClientInfo> GetCurrentClientInfo(uint64_t displayId = DEFAULT_DISPLAY_ID);
-    std::shared_ptr<ClientGroup> GetClientGroup(uint64_t displayGroupId);
+    std::shared_ptr<ClientGroup> GetClientGroup(uint64_t displayId);
     std::shared_ptr<ClientGroup> GetClientGroup(sptr<IRemoteObject> client);
-    std::shared_ptr<ClientGroup> GetClientGroup(ImeType type);
-    ImeType GetImeType(uint64_t displayId);
+    std::shared_ptr<ClientGroup> GetClientGroupByGroupId(uint64_t displayGroupId);
 
-    int32_t InitImeData(const std::pair<std::string, std::string> &ime,
+    int32_t InitRealImeData(const std::pair<std::string, std::string> &ime,
         const std::shared_ptr<ImeNativeCfg> &imeNativeCfg = nullptr);
-    int32_t UpdateImeData(sptr<IInputMethodCore> core, sptr<IRemoteObject> agent, pid_t pid);
-    int32_t AddImeData(ImeType type, sptr<IInputMethodCore> core, sptr<IRemoteObject> agent, pid_t pid);
-    void AddImeData(std::vector<std::shared_ptr<ImeData>> &imeDataList, const std::shared_ptr<ImeData> &imeData);
-    void RemoveImeData(ImeType type);
+    std::shared_ptr<ImeData> UpdateRealImeData(sptr<IInputMethodCore> core, sptr<IRemoteObject> agent, pid_t pid);
+    std::shared_ptr<ImeData> AddProxyImeData(uint64_t displayId, sptr<IInputMethodCore> core, sptr<IRemoteObject> agent, pid_t pid);
+    void AddProxyImeData(std::vector<std::shared_ptr<ImeData>> &imeDataList, const std::shared_ptr<ImeData> &imeData);
+    int32_t RemoveProxyImeData(uint64_t displayId, pid_t pid);
     void RemoveImeData(pid_t pid);
-    int32_t RemoveIme(ImeType type, pid_t pid);
 
-    int32_t BindClientWithIme(const std::shared_ptr<InputClientInfo> &clientInfo, ImeType type,
-        bool isBindFromClient = false, uint64_t displayId = DEFAULT_DISPLAY_ID);
+    int32_t BindClientWithIme(const std::shared_ptr<InputClientInfo> &clientInfo,
+        const std::shared_ptr<ImeData> &imeData, bool isBindFromClient = false);
     void UnBindClientWithIme(const std::shared_ptr<InputClientInfo> &currentClientInfo, const DetachOptions &options);
     void StopClientInput(
         const std::shared_ptr<InputClientInfo> &clientInfo, bool isStopInactiveClient = false, bool isAsync = false);
-    void StopImeInput(ImeType currentType, const sptr<IRemoteObject> &currentChannel, uint32_t sessionId);
+    void StopImeInput(const std::shared_ptr<ImeData> &imeData, const sptr<IRemoteObject> &currentChannel, uint32_t sessionId);
 
     int32_t HideKeyboard(const sptr<IInputClient> &currentClient, const std::shared_ptr<ClientGroup> &clientGroup);
     int32_t ShowKeyboard(const sptr<IInputClient> &currentClient, const std::shared_ptr<ClientGroup> &clientGroup,
@@ -254,14 +248,9 @@ private:
     void StartImeIfInstalled(StartReason startReason = StartReason::DEFALUT_START);
     void ReplaceCurrentClient(const sptr<IInputClient> &client, const std::shared_ptr<ClientGroup> &clientGroup);
     bool IsSameClient(sptr<IInputClient> source, sptr<IInputClient> dest);
-
-    bool IsImeStartInBind(ImeType bindImeType, ImeType startImeType);
-    bool IsProxyImeStartInBind(ImeType bindImeType, ImeType startImeType);
-    bool IsProxyImeStartInImeBind(ImeType bindImeType, ImeType startImeType);
-    bool IsImeBindTypeChanged(ImeType bindImeType);
     int32_t RequestIme(const std::shared_ptr<ImeData> &data, RequestType type, const IpcExec &exec);
-    int32_t RequestAllIme(const std::shared_ptr<ImeData> data, RequestType reqType, const CoreMethod &method);
-    std::vector<std::shared_ptr<ImeData>> GetAllReadyImeData(ImeType type);
+    int32_t RequestAllIme(const std::shared_ptr<ImeData> &data, RequestType reqType, const CoreMethod &method);
+    std::vector<std::shared_ptr<ImeData>> GetAllReadyImeData(const std::shared_ptr<ImeData> &imeData);
 
     bool WaitForCurrentImeStop();
     void NotifyImeStopFinished();
@@ -277,8 +266,9 @@ private:
     int32_t HandleFirstStart(const std::shared_ptr<ImeNativeCfg> &ime, bool isStopCurrentIme);
     int32_t HandleStartImeTimeout(const std::shared_ptr<ImeNativeCfg> &ime);
     bool GetInputTypeToStart(std::shared_ptr<ImeNativeCfg> &imeToStart);
-    void HandleBindImeChanged(InputClientInfo &newClientInfo, const std::shared_ptr<ClientGroup> &clientGroup);
-    int32_t NotifyCallingDisplayChanged(uint64_t displayId);
+    void HandleBindImeChanged(const std::shared_ptr<InputClientInfo> &newClientInfo,
+        const std::shared_ptr<ImeData> &newImeData, const std::shared_ptr<ClientGroup> &clientGroup);
+    int32_t NotifyCallingDisplayChanged(uint64_t displayId, const std::shared_ptr<ImeData> &bindImeData);
     ImfCallingWindowInfo GetCallingWindowInfo(const InputClientInfo &clientInfo);
     bool GetCallingWindowInfo(const InputClientInfo &clientInfo, Rosen::CallingWindowInfo &callingWindowInfo);
     int32_t SendPrivateData(const std::unordered_map<std::string, PrivateDataValue> &privateCommand);
@@ -299,14 +289,30 @@ private:
     sptr<AAFwk::IAbilityConnection> GetImeConnection();
     void ClearImeConnection(const sptr<AAFwk::IAbilityConnection> &connection);
     int32_t IsRequestOverLimit(TimeLimitType timeLimit, int32_t resetTimeOut, uint32_t restartNum);
-    int32_t PrepareImeInfos(ImeType type, std::vector<sptr<IRemoteObject>> &agents,
+    int32_t PrepareImeInfos(const std::shared_ptr<ImeData> &bindImeData, std::vector<sptr<IRemoteObject>> &agents,
         std::vector<BindImeInfo> &imeInfos);
     int32_t PostCurrentImeInfoReportHook(const std::string &bundleName);
+    std::shared_ptr<ImeData> GetProxyImeData(uint64_t displayId);
+    std::shared_ptr<ImeData> ClearRealImeData();
+    int32_t FillImeData(sptr<IInputMethodCore> core, sptr<IRemoteObject> agent, pid_t pid, ImeType type,
+                        std::shared_ptr<ImeData> &imeData);
+    std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> GetCurrentClientBoundRealIme();
+    std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> GetClientBoundImeByBindIme(
+        pid_t bindImePid);
+    std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> GetClientBoundImeByClientPid(
+        pid_t clientPid);
+    std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> GetClientByWindowId(uiuint32_t windowId);
+    std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> GetClientBoundRealIme();
+    bool IsSameIme(const std::shared_ptr<ImeData> &oldIme, const std::shared_ptr<ImeData> &newIme);
+    bool IsSameImeType(const std::shared_ptr<ImeData> &oldIme, const std::shared_ptr<ImeData> &newIme);
+    bool IsSameClientGroup(uint64_t newGroupId, uint64_t oldGroupId);
+    void HandleSameClientPreemptInMultiGroup(
+        const std::shared_ptr<InputClientInfo> &newClientInfo, const std::shared_ptr<ImeData> &newImeData);
+    void HandleImePreemptInMultiGroup(
+        const std::shared_ptr<InputClientInfo> &newClientInfo, const std::shared_ptr<ImeData> &newImeData);
     std::mutex imeStartLock_;
 
     BlockData<bool> isImeStarted_{ MAX_IME_START_TIME, false };
-    std::mutex imeDataLock_;
-    std::unordered_map<ImeType, std::vector<std::shared_ptr<ImeData>>> imeData_;
     std::mutex focusedClientLock_;
 
     std::atomic<bool> isSwitching_ = false;
@@ -337,9 +343,6 @@ private:
     std::string runningIme_;
     std::mutex imeUsedLock_;
     std::pair<std::string, std::string> imeUsedBeforeScreenLocked_;
-    std::mutex virtualDisplayLock_{};
-    std::unordered_set<uint64_t> virtualScreenDisplayId_;
-    std::atomic<uint64_t> agentDisplayId_{ DEFAULT_DISPLAY_ID };
     std::mutex largeMemoryStateMutex_{};
     int32_t largeMemoryState_ = LargeMemoryState::LARGE_MEMORY_NOT_NEED;
     std::mutex clientGroupLock_{};
@@ -354,6 +357,12 @@ private:
     sptr<AAFwk::IAbilityConnection> connection_ = nullptr;
     std::atomic<bool> isBlockStartedByLowMem_ = false;
     bool isFirstPreemption_ = false;
+    std::mutex proxyImeDataLock_;
+    std::map<uint64_t, std::vector<std::shared_ptr<ImeData>>> proxyImeData_;
+    std::mutex mirrorImeDataLock_;
+    std::shared_ptr<ImeData> mirrorImeData_;
+    std::mutex realImeDataLock_;
+    std::shared_ptr<ImeData> realImeData_{ nullptr };
 };
 } // namespace MiscServices
 } // namespace OHOS

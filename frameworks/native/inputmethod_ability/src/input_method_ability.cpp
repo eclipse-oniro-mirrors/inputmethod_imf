@@ -139,18 +139,6 @@ int32_t InputMethodAbility::InitConnect()
     return ErrorCode::NO_ERROR;
 }
 
-int32_t InputMethodAbility::UnRegisteredProxyIme(UnRegisteredType type)
-{
-    IMSA_HILOGD("type %{public}d", type);
-    isBound_.store(false);
-    auto proxy = GetImsaProxy();
-    if (proxy == nullptr) {
-        IMSA_HILOGE("imsa proxy is nullptr!");
-        return ErrorCode::ERROR_NULL_POINTER;
-    }
-    return proxy->UnRegisteredProxyIme(static_cast<int32_t>(type), coreStub_);
-}
-
 int32_t InputMethodAbility::RegisterProxyIme(uint64_t displayId)
 {
     IMSA_HILOGD("IMA, displayId: %{public}" PRIu64 "", displayId);
@@ -165,15 +153,13 @@ int32_t InputMethodAbility::RegisterProxyIme(uint64_t displayId)
         IMSA_HILOGE("agent nullptr");
         return ErrorCode::ERROR_NULL_POINTER;
     }
-    int32_t ret = displayId == DEFAULT_DISPLAY_ID ?
-        proxy->SetCoreAndAgent(coreStub_, agentStub_->AsObject()) :
-        proxy->RegisterProxyIme(displayId, coreStub_, agentStub_->AsObject());
+    int32_t ret = proxy->RegisterProxyIme(displayId, coreStub_, agentStub_->AsObject());
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("failed, displayId: %{public}" PRIu64 ", ret: %{public}d!", displayId, ret);
         return ret;
     }
     isBound_.store(true);
-    isProxyIme_.store(displayId != DEFAULT_DISPLAY_ID);
+    isProxyIme_.store(true);
     IMSA_HILOGD("set successfully, displayId: %{public}" PRIu64 "", displayId);
     return ErrorCode::NO_ERROR;
 }
@@ -351,25 +337,26 @@ bool InputMethodAbility::IsDisplayChanged(uint64_t oldDisplayId, uint64_t newDis
         IMSA_HILOGD("screen not changed!");
         return false;
     }
-    auto proxy = GetImsaProxy();
-    if (proxy == nullptr) {
-        IMSA_HILOGE("imsa proxy is nullptr!");
-        return false;
-    }
-    bool ret = false;
-    int32_t result = proxy->IsRestrictedDefaultImeByDisplay(oldDisplayId, ret);
-    if (result != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("failed to get oldDisplay info , result is %{public}d!", result);
-        return false;
-    }
-    if (!ret) {
-        result = proxy->IsRestrictedDefaultImeByDisplay(newDisplayId, ret);
-        if (result != ErrorCode::NO_ERROR) {
-            IMSA_HILOGE("failed to get newDisplay info , result is %{public}d!", result);
-            return false;
-        }
-    }
-    return ret;
+    return true;
+    //    auto proxy = GetImsaProxy();
+    //    if (proxy == nullptr) {
+    //        IMSA_HILOGE("imsa proxy is nullptr!");
+    //        return false;
+    //    }
+    //    bool ret = false;
+    //    int32_t result = proxy->IsRestrictedDefaultImeByDisplay(oldDisplayId, ret);
+    //    if (result != ErrorCode::NO_ERROR) {
+    //        IMSA_HILOGE("failed to get oldDisplay info , result is %{public}d!", result);
+    //        return false;
+    //    }
+    //    if (!ret) {
+    //        result = proxy->IsRestrictedDefaultImeByDisplay(newDisplayId, ret);
+    //        if (result != ErrorCode::NO_ERROR) {
+    //            IMSA_HILOGE("failed to get newDisplay info , result is %{public}d!", result);
+    //            return false;
+    //        }
+    //    }
+    //    return ret;
 }
 
 void InputMethodAbility::OnSetSubtype(SubProperty subProperty)

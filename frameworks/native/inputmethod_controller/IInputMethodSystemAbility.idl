@@ -32,8 +32,7 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void ShowInput([in] IInputClient client, [in] unsigned int type, [in] int requestKeyboardReason);
     void HideInput([in] IInputClient client);
     void ReleaseInput([in] IInputClient client, [in] unsigned int sessionId);
-    void RequestShowInput();
-    void RequestHideInput([in] boolean isFocusTriggered);
+    void RequestHideInput([in] boolean isFocusTriggered, [in] unsigned int windowId);
     void GetDefaultInputMethod([out] Property prop, [in] boolean isBrief);
     void GetInputMethodConfig([out] ElementName inputMethodConfig);
     void GetCurrentInputMethod([out] Property resultValue);
@@ -42,7 +41,6 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void DisplayOptionalInputMethod();
     void SetCoreAndAgent([in] IInputMethodCore core, [in] IRemoteObject agent);
     void InitConnect();
-    void UnRegisteredProxyIme([in] int type, [in] IInputMethodCore core);
     void ListCurrentInputMethodSubtype([out] SubProperty[] subProps);
     void ListInputMethodSubtype([in] String name, [out] SubProperty[] subProps);
     void SwitchInputMethod([in] String bundleName, [in] String name, [in] unsigned int trigger);

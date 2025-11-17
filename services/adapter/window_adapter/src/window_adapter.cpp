@@ -16,6 +16,7 @@
 #include "window_adapter.h"
 
 #include <cinttypes>
+#include <ranges>
 
 #include "global.h"
 #include "window.h"
@@ -55,11 +56,13 @@ bool WindowAdapter::GetCallingWindowInfo(
     IMSA_HILOGD("[%{public}d,%{public}d] run in.", userId, windId);
     callingWindowInfo.windowId_ = static_cast<int32_t>(windId);
     callingWindowInfo.userId_ = userId;
-    int64_t start =  std::chrono::duration_cast<std::chrono::microseconds>
-        (std::chrono::system_clock::now().time_since_epoch()).count();
+    int64_t start =
+        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch())
+            .count();
     auto wmErr = WindowManagerLite::GetInstance().GetCallingWindowInfo(callingWindowInfo);
-    int64_t end =  std::chrono::duration_cast<std::chrono::microseconds>
-        (std::chrono::system_clock::now().time_since_epoch()).count();
+    int64_t end =
+        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch())
+            .count();
     int64_t durTime = end - start;
     if (durTime > MAX_TIMEOUT) {
         IMSA_HILOGW("GetCallingWindowInfo cost [%{public}d]us", durTime);
@@ -205,6 +208,140 @@ bool WindowAdapter::GetDisplayId(int64_t callingPid, uint64_t &displayId)
 #else
     IMSA_HILOGI("capability not supported");
     return true;
+#endif
+}
+
+int32_t WindowAdapter::StoreAllDisplayGroupInfos()
+{
+#ifdef SCENE_BOARD_ENABLE
+    std::map<uint64_t, uint64_t> displayGroupIds;
+    std::vector<FocusChangeInfo> focusWindowInfos;
+    auto ret = GetAllDisplayGroupInfos(displayGroupIds, focusWindowInfos);
+    if (ret != WMError::WM_OK) {
+        IMSA_HILOGE("GetAllGroupInfo failed, ret: %{public}d", ret);
+        return ret;
+    }
+    {
+        std::lock_guard<std::mutex> lock(displayGroupIdsLock_);
+        displayGroupIds_ = displayGroupIds;
+    }
+    {
+        std::lock_guard<std::mutex> lock(focusWindowInfosLock_);
+        focusWindowInfos_ = focusWindowInfos;
+    }
+#else
+    IMSA_HILOGI("capability not supported");
+#endif
+    return ErrorCode::NO_ERROR;
+}
+
+int32_t WindowAdapter::GetAllFocusWindowInfos(std::vector<FocusChangeInfo> &focusWindowInfos)
+{
+    std::map<uint64_t, uint64_t> displayGroupIds;
+    auto ret = GetAllDisplayGroupInfos(displayGroupIds, focusWindowInfos);
+    if (ret != WMError::WM_OK) {
+        IMSA_HILOGE("GetAllGroupInfo failed, ret: %{public}d", ret);
+        return ret;
+    }
+    return ErrorCode::NO_ERROR;
+}
+
+uint64_t WindowAdapter::GetDisplayGroupId(uint64_t displayId)
+{
+    std::lock_guard<std::mutex> lock(displayGroupIdsLock_);
+    auto iter = displayGroupIds_.find(displayId);
+    if (iter != displayGroupIds_.end()) {
+        return iter->second;
+    }
+    return DEFAULT_DISPLAY_GROUP_ID;
+}
+
+uint64_t WindowAdapter::GetDisplayGroupId(uint32_t windowId)
+{
+    auto displayId = GetDisplayIdByWindowId(windowId);
+    std::lock_guard<std::mutex> lock(displayGroupIdsLock_);
+    auto iter = displayGroupIds_.find(displayId);
+    if (iter != displayGroupIds_.end()) {
+        return iter->second;
+    }
+    return DEFAULT_DISPLAY_GROUP_ID;
+}
+
+int32_t WindowAdapter::GetAllDisplayGroupInfos(
+    std::map<uint64_t, uint64_t> &displayGroupIds, std::vector<FocusChangeInfo> &focusWindowInfos)
+{
+    WMError ret = WindowManagerLite::GetInstance().GetAllGroupInfo(displayGroupIds, focusWindowInfos);
+    if (ret != WMError::WM_OK) {
+        IMSA_HILOGE("GetAllGroupInfo failed, ret: %{public}d", ret);
+        return ret;
+    }
+    std::sort(focusWindowInfos.begin(), focusWindowInfos.end(),
+        [](const FocusChangeInfo &a, const FocusChangeInfo &b) { return a.displayId_ < b.displayId_; });
+    return ErrorCode::NO_ERROR;
+}
+
+void WindowAdapter::OnDisplayGroupInfoChanged(uint64_t displayId, uint64_t displayGroupId, bool isAdd)
+{
+    size_t count = 0;
+    {
+        std::lock_guard<std::mutex> lock(displayGroupIdsLock_);
+        if (isAdd) {
+            displayGroupIds_[displayId] = displayGroupId;
+            return;
+        }
+        auto iter = displayGroupIds_.find(displayId);
+        if (iter == displayGroupIds_.end()) {
+            return;
+        }
+        displayGroupIds_.erase(displayId);
+        for (const auto &pair : displayGroupIds_) {
+            if (pair.second == displayGroupId) {
+                ++count;
+            }
+        }
+    }
+    if (count != 0) {
+        return;
+    }
+    RemoveFocusInfo(displayGroupId);
+}
+
+void WindowAdapter::OnAllDisplayGroupFocusChanged(const FocusChangeInfo &focusWindowInfo)
+{
+    std::lock_guard<std::mutex> lock(focusWindowInfosLock_);
+    auto iter =
+        std::find_if(focusWindowInfos_.begin(), focusWindowInfos_.end(), [&focusWindowInfo](const auto &focusInfo) {
+            return focusWindowInfo.displayGroupId_ == focusInfo.displayGroupId_;
+        });
+    if (iter != focusWindowInfos_.end()) {
+        focusWindowInfos_.erase(iter);
+    }
+    auto insertPos = std::lower_bound(focusWindowInfos_.begin(), focusWindowInfos_.end(), focusWindowInfo,
+        [](const FocusChangeInfo &a, const FocusChangeInfo &b) { return a.displayId_ < b.displayId_; });
+    focusWindowInfos_.insert(insertPos, focusWindowInfo);
+}
+
+void WindowAdapter::RemoveFocusInfo(uint64_t displayGroupId)
+{
+    std::lock_guard<std::mutex> lock(focusWindowInfosLock_);
+    auto iter = std::find_if(focusWindowInfos_.begin(), focusWindowInfos_.end(),
+        [&displayGroupId](const auto &focusInfo) { return displayGroupId == focusInfo.displayGroupId_; });
+    if (iter == focusWindowInfos_.end()) {
+        return;
+    }
+    focusWindowInfos_.erase(iter);
+}
+
+void WindowAdapter::RegisterAllGroupInfoChangedListener()
+{
+#ifdef SCENE_BOARD_ENABLE
+    sptr<AllGroupInfoChangedListenerImpl> listener = new (std::nothrow) AllGroupInfoChangedListenerImpl();
+    if (listener == nullptr) {
+        IMSA_HILOGE("failed to create listener");
+        return;
+    }
+    auto wmErr = WindowManagerLite::GetInstance().RegisterAllGroupInfoChangedListener(listener);
+    IMSA_HILOGI("register focus changed listener ret: %{public}d", wmErr);
 #endif
 }
 } // namespace MiscServices

@@ -40,16 +40,22 @@ public:
     int32_t OnRemoteRequest(uint32_t code, MessageParcel &data, MessageParcel &reply, MessageOption &option) override;
 
     ErrCode StartInput(const InputClientInfoInner &inputClientInfoInner, std::vector<sptr<IRemoteObject>> &agents,
-        std::vector<BindImeInfo> &imeInfos) override;
-    ErrCode ShowCurrentInput(uint32_t type = static_cast<uint32_t>(ClientType::INNER_KIT)) override;
-    ErrCode HideCurrentInput() override;
+        std::vector<BindImeInfo> &imeInfos) override;                                                                //JS:Attach
+    // 不考虑多ability场景，根据应用所在pid获取displayid，获取改group当前客户端
+    ErrCode ShowCurrentInput(uint32_t type = static_cast<uint32_t>(ClientType::INNER_KIT)) override;  // broker/权限    JS:ShowSoftKeyboard     inner：ShowSoftKeyboard      ndk:有
+    // 不考虑多ability场景，根据应用所在pid获取displayid，获取改group当前客户端
+    ErrCode HideCurrentInput() override;              // broker/权限                                                    JS:HideSoftKeyboard     inner：HideSoftKeyboard      ndk:有
+    // broker：默认group，    焦点：如果没找到，则将原有客户端存在的group挪动到当前group中
     ErrCode ShowInput(const sptr<IInputClient>& client, uint32_t type = static_cast<uint32_t>(ClientType::INNER_KIT),
-        int32_t requestKeyboardReason = 0) override;
-    ErrCode HideInput(const sptr<IInputClient>& client) override;
-    ErrCode StopInputSession() override;
-    ErrCode ReleaseInput(const sptr<IInputClient>& client, uint32_t sessionId) override;
-    ErrCode RequestShowInput() override;
-    ErrCode RequestHideInput(bool isFocusTriggered) override;
+        int32_t requestKeyboardReason = 0) override;  // broker/焦点  OK                   IsBound                      JS:ShowTextInput        inner：ShowTextInput（arkui） ndk:有
+    // broker：默认group，    焦点：如果没找到，则不处理
+    ErrCode HideInput(const sptr<IInputClient>& client) override; // broker/焦点  OK        IsBound                     JS:HideTextInput        inner：HideTextInput          ndk:有
+    // 不考虑多ability场景，根据应用所在pid获取displayid，获取改group当前客户端
+    ErrCode StopInputSession() override;// broker/焦点
+    // 不考虑多ability场景，根据应用所在pid获取displayid，获取改group当前客户端                                                               JS:StopInputSession     inner：StopInputSession       ndk:有
+    ErrCode ReleaseInput(const sptr<IInputClient>& client, uint32_t sessionId) override; // 没有权限,但是携带了client      JS:Detach               inner：close                  ndk:有
+    // 权限：不考虑多ability场景，根据应用所在pid获取displayid，获取改group当前客户端//
+    ErrCode RequestHideInput(bool isFocusTriggered, uint32_t windowId) override;// 权限/焦点                                                      inner：RequestHideInput
     ErrCode GetDefaultInputMethod(Property &prop, bool isBrief) override;
     ErrCode GetInputMethodConfig(ElementName &inputMethodConfig) override;
     ErrCode GetCurrentInputMethod(Property& resultValue) override;
@@ -79,8 +85,9 @@ public:
     ErrCode GetSecurityMode(int32_t &security) override;
     ErrCode ConnectSystemCmd(const sptr<IRemoteObject> &channel, sptr<IRemoteObject> &agent) override;
     // Deprecated because of no permission check, kept for compatibility
-    ErrCode HideCurrentInputDeprecated() override;
-    ErrCode ShowCurrentInputDeprecated() override;
+    // 如果没找到，则将原有客户端存在的group挪动到当前group中（暂时不挪，处理失败）
+    ErrCode HideCurrentInputDeprecated() override;           // broker/焦点, IsEditable                                 JS:StopInput  inner接口：HideCurrentInput    ndk:有
+    ErrCode ShowCurrentInputDeprecated() override;           // broker/焦点  IsEditable                                                inner接口：ShowCurrentInput   ndk:有
     int Dump(int fd, const std::vector<std::u16string> &args) override;
     void DumpAllMethod(int fd);
     ErrCode IsDefaultIme() override;
@@ -111,13 +118,13 @@ private:
     std::thread workThreadHandler; /*!< thread handler of the WorkThread */
     void RestartSessionIme(std::shared_ptr<PerUserSession> &session);
     std::shared_ptr<PerUserSession> GetSessionFromMsg(const Message *msg);
-    int32_t PrepareForOperateKeyboard(std::shared_ptr<PerUserSession> &session);
-    int32_t SwitchByCondition(const Condition &condition,
-        const std::shared_ptr<ImeInfo> &info);
+    int32_t PrepareForOperateKeyboard(std::shared_ptr<PerUserSession> &session, FocusedInfo &info,
+        uint32_t windowId = 0, const sptr<IRemoteObject> &abilityToken = nullptr);
+    int32_t SwitchByCondition(const Condition &condition, const std::shared_ptr<ImeInfo> &info);
     int32_t GetUserId(int32_t uid);
     uint64_t GetCallingDisplayId(sptr<IRemoteObject> abilityToken = nullptr);
     std::shared_ptr<IdentityChecker> identityChecker_ = nullptr;
-    int32_t PrepareInput(int32_t userId, InputClientInfo &clientInfo);
+    int32_t PrepareInput(int32_t userId, InputClientInfo &clientInfo, const FocusedInfo &focusedInfo);
     void WorkThread();
     int32_t OnUserStarted(const Message *msg);
     int32_t OnUserRemoved(const Message *msg);
@@ -178,7 +185,7 @@ private:
     int32_t SwitchMode();
     int32_t SwitchLanguage();
     int32_t SwitchType();
-    int32_t GenerateClientInfo(int32_t userId, InputClientInfo &clientInfo);
+    int32_t GenerateClientInfo(int32_t userId, InputClientInfo &clientInfo, const FocusedInfo &focusedInfo = {});
     void RegisterSecurityModeObserver();
     int32_t CheckInputTypeOption(int32_t userId, InputClientInfo &inputClientInfo);
     int32_t IsDefaultImeFromTokenId(int32_t userId, uint32_t tokenId);
@@ -192,6 +199,8 @@ private:
     void HandleBundleScanFinished();
     int32_t StartInputInner(InputClientInfo &inputClientInfo, std::vector<sptr<IRemoteObject>> &agents,
         std::vector<BindImeInfo> &imeInfos);
+    std::pair<bool, FocusedInfo> IsFocusedOrBroker(int64_t callingPid, uint32_t callingTokenId, uint32_t windowId = 0,
+        const sptr<IRemoteObject> &abilityToken = nullptr);
     int32_t ShowInputInner(sptr<IInputClient> client, int32_t requestKeyboardReason = 0);
     int32_t ShowCurrentInputInner();
     std::pair<int64_t, std::string> GetCurrentImeInfoForHiSysEvent(int32_t userId);

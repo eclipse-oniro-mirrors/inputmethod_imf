@@ -97,7 +97,6 @@ bool FuzzPerUserSession(const uint8_t *rawData, size_t size)
     FuzzedDataProvider provider(rawData, size);
     int32_t type = provider.ConsumeIntegral<int32_t>();
     userSessions->OnUnRegisteredProxyIme(static_cast<UnRegisteredType>(type), core, -1);
-    userSessions->IsProxyImeEnable();
 
     userSessions->OnPrepareInput(clientInfo);
     userSessions->OnSetCoreAndAgent(core, agent->AsObject());

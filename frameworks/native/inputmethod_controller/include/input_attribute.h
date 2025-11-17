@@ -131,8 +131,9 @@ struct InputAttribute {
     int32_t immersiveMode = 0;
     int32_t gradientMode { 0 };
     int32_t fluidLightMode { 0 };
-    uint32_t windowId = 0; // for transfer
+    uint32_t windowId = 0;
     uint64_t callingDisplayId = 0;
+    bool isSpecifyMainDisplay{ false };
     uint64_t callingScreenId = 0;
     std::u16string placeholder { u"" };
     std::u16string abilityName { u"" };

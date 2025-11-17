@@ -554,6 +554,13 @@ struct ResponseDataInner : public Parcelable {
     }
     ResponseData rspData = std::monostate{};
 };
+
+struct FocusedInfo {
+    uint32_t windowId{ 0 };
+    uint64_t displayId{ 0 };
+    uint64_t displayGroupId{ 0 };
+    bool isUiExtension{ false };
+};
 } // namespace MiscServices
 } // namespace OHOS
 #endif // FRAMEWORKS_INPUTMETHOD_CONTROLLER_INCLUDE_INPUT_METHOD_UTILS_H

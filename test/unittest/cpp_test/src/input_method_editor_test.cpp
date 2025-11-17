@@ -245,29 +245,25 @@ HWTEST_F(InputMethodEditorTest, testUnfocused, TestSize.Level1)
 
 /**
  * @tc.name: testRequestInput001.
- * @tc.desc: InputMethodEditorTest RequestShowInput/RequestHideInput neither permitted nor focused.
+ * @tc.desc: InputMethodEditorTest RequestHideInput neither permitted nor focused.
  * @tc.type: FUNC
  */
 HWTEST_F(InputMethodEditorTest, testRequestInput001, TestSize.Level1)
 {
     IMSA_HILOGI("InputMethodEditorTest testRequestInput001 Test START");
-    int32_t ret = InputMethodEditorTest::inputMethodController_->RequestShowInput();
-    EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
     ret = InputMethodEditorTest::inputMethodController_->RequestHideInput();
     EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
 }
 
 /**
  * @tc.name: testRequestInput002.
- * @tc.desc: InputMethodEditorTest RequestShowInput/RequestHideInput with permitted and not focused.
+ * @tc.desc: InputMethodEditorTest RequestHideInput with permitted and not focused.
  * @tc.type: FUNC
  */
 HWTEST_F(InputMethodEditorTest, testRequestInput002, TestSize.Level1)
 {
     IMSA_HILOGI("InputMethodEditorTest testRequestInput002 Test START");
     IdentityCheckerMock::SetPermission(true);
-    int32_t ret = InputMethodEditorTest::inputMethodController_->RequestShowInput();
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     ret = InputMethodEditorTest::inputMethodController_->RequestHideInput();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     IdentityCheckerMock::SetPermission(false);
@@ -485,22 +481,6 @@ HWTEST_F(InputMethodEditorTest, testIMCClose, TestSize.Level1)
     IdentityCheckerMock::SetFocused(false);
     IdentityCheckerMock::SetPermission(false);
     BlockRetry(waitTaskEmptyinterval_, waitTaskEmptyTimes_, IsTaskEmpty);
-}
-
-/**
- * @tc.name: testRequestShowInput.
- * @tc.desc: InputMethodEditorTest testRequestShowInput with focused.
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodEditorTest, testRequestShowInput, TestSize.Level1)
-{
-    IMSA_HILOGI("InputMethodEditorTest testRequestShowInput Test START");
-    IdentityCheckerMock::SetFocused(true);
-    imeListener_->keyboardState_ = false;
-    int32_t ret = InputMethodEditorTest::inputMethodController_->RequestShowInput();
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_TRUE(InputMethodEngineListenerImpl::WaitKeyboardStatus(true));
-    IdentityCheckerMock::SetFocused(false);
 }
 
 /**

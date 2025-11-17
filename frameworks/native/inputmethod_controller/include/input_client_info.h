@@ -16,6 +16,8 @@
 #ifndef INPUTMETHOD_IMF_INPUT__CLIENT_INFO_H
 #define INPUTMETHOD_IMF_INPUT__CLIENT_INFO_H
 
+#include "peruser_session.h"
+
 #include "iinput_client.h"
 #include "iinput_data_channel.h"
 #include "input_attribute.h"
@@ -31,12 +33,11 @@ enum class UpdateFlag : uint32_t {
     TEXT_CONFIG,
     UIEXTENSION_TOKENID,
     CLIENT_TYPE,
-    BIND_IME_PID,
+    BIND_IME_DATA,
 };
 enum class ImeType : int32_t {
     IME = 0,
     PROXY_IME,
-    PROXY_AGENT_IME,
     IME_MIRROR,
     NONE
 };
@@ -61,9 +62,8 @@ struct InputClientInfo {
     pid_t pid { -1 };                        // process id
     pid_t uid { -1 };                        // uid
     int32_t userID { 0 };                    // user id of input client
-    uint64_t displayId { DEFAULT_DISPLAY_ID };
     bool isShowKeyboard { false };           // soft keyboard status
-    ImeType bindImeType { ImeType::NONE };   // type of the ime client bind
+    // ImeType bindImeType { ImeType::NONE };   // type of the ime client bind
     TextTotalConfig config = {};             // text config
     uint32_t eventFlag { NO_EVENT_ON };      // the flag of the all listen event
     InputAttribute attribute;                // the input client attribute
@@ -77,7 +77,9 @@ struct InputClientInfo {
     RequestKeyboardReason requestKeyboardReason { RequestKeyboardReason::NONE }; // show keyboard reason
     ClientType type{ INNER_KIT };                                               // for hiSysEvent
     std::string name; // for hiSysEvent, client name:SA/processName app/bundleName
-    pid_t bindImePid { -1 };
+    // pid_t bindImePid { -1 };
+    std::shared_ptr<ImeData> bindImeData{ nullptr };
+    uiuint64_t clientGroupId{ 0 };
 };
 
 struct InputClientInfoInner : public Parcelable {

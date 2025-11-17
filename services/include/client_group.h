@@ -42,12 +42,15 @@ public:
         const sptr<IRemoteObject> &inputClient, const InputClientInfo &clientInfo, ClientAddEvent event);
     void RemoveClientInfo(const sptr<IRemoteObject> &client, bool isClientDied = false);
     void UpdateClientInfo(const sptr<IRemoteObject> &client,
-        const std::unordered_map<UpdateFlag,
-            std::variant<bool, uint32_t, ImeType, ClientState, TextTotalConfig, ClientType, pid_t>> &updateInfos);
+        const std::unordered_map<UpdateFlag, std::variant<bool, uint32_t, ImeType, ClientState, TextTotalConfig,
+                                                 ClientType, pid_t, std::shared_ptr<ImeData>>> &updateInfos);
 
     std::shared_ptr<InputClientInfo> GetClientInfo(sptr<IRemoteObject> inputClient);
     std::shared_ptr<InputClientInfo> GetClientInfo(pid_t pid);
+    std::shared_ptr<InputClientInfo> GetClientInfoByBindIme(pid_t bindImePid);
+    std::shared_ptr<InputClientInfo> GetClientInfoBoundRealIme();
     std::shared_ptr<InputClientInfo> GetCurrentClientInfo();
+    std::shared_ptr<InputClientInfo> GetClientByWindowId(uint32_t windowId);
     int64_t GetCurrentClientPid();
     int64_t GetInactiveClientPid();
 
@@ -67,12 +70,12 @@ public:
     int32_t NotifyInputStopToClients();
     int32_t NotifyPanelStatusChange(const InputWindowStatus &status, const ImeWindowInfo &info);
     int32_t NotifyImeChangeToClients(const Property &property, const SubProperty &subProperty);
+    uint64_t displayGroupId_{ DEFAULT_DISPLAY_ID };
 
 private:
     std::map<sptr<IRemoteObject>, std::shared_ptr<InputClientInfo>> GetClientMap();
     bool IsSameClient(sptr<IInputClient> source, sptr<IInputClient> dest);
     void OnClientDied(sptr<IInputClient> remote);
-    uint64_t displayGroupId_{ DEFAULT_DISPLAY_ID };
     std::recursive_mutex mtx_;
     std::map<sptr<IRemoteObject>, std::shared_ptr<InputClientInfo>> mapClients_;
 
