@@ -213,7 +213,6 @@ void FuzzGetEnabledStateInner(const uint8_t *data, size_t size)
     ImeEnabledInfoManager::GetInstance().GetEnabledStatesInner(userId, props);
     ImeEnabledInfoManager::GetInstance().IsInEnabledCache(userId, fuzzedString, fuzzedString);
     ImeEnabledInfoManager::GetInstance().CorrectByBundleMgr(userId, imeInfos, enabledInfos);
-    ImeEnabledInfoManager::GetInstance().ComputeEnabledStatus(fuzzedString, status);
     ImeEnabledInfoManager::GetInstance().UpdateEnabledCfgCache(userId, newEnabledCfg);
     ImeEnabledInfoManager::GetInstance().NotifyCurrentImeStatusChanged(userId, fuzzedString, status);
     ImeEnabledInfoManager::GetInstance().IsExpired(fuzzedString);

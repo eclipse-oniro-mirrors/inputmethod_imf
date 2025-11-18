@@ -152,7 +152,6 @@ private:
     int32_t GetEnabledCfg(int32_t userId, const std::vector<FullImeInfo> &imeInfos, ImeEnabledCfg &cfg);
     int32_t CorrectByBundleMgr(
         int32_t userId, const std::vector<FullImeInfo> &imeInfos, std::vector<ImeEnabledInfo> &enabledInfos);
-    EnabledStatus ComputeEnabledStatus(const std::string &bundleName, EnabledStatus initStatus);
     int32_t GetEnabledStateInner(int32_t userId, const std::string &bundleName, EnabledStatus &status);
     int32_t GetEnabledStatesInner(int32_t userId, std::vector<Property> &props);
     void SetEnabledCache(int32_t userId, const ImeEnabledCfg &cfg);
@@ -165,7 +164,6 @@ private:
     int32_t CheckUpdate(
         int32_t userId, const std::string &bundleName, const std::string &extensionName, EnabledStatus status);
     void NotifyCurrentImeStatusChanged(int32_t userId, const std::string &bundleName, EnabledStatus newStatus);
-    bool HasEnabledSwitch();
     bool IsExpired(const std::string &expirationTime);
     std::pair<std::string, std::string> SplitImeId(const std::string &imeId);
     void ModCurrentIme(std::vector<ImeEnabledInfo> &enabledInfos);

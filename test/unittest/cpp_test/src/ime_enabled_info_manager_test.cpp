@@ -16,7 +16,7 @@
 #define private public
 #define protected public
 #include "ime_enabled_info_manager.h"
-
+#include "ime_info_inquirer.h"
 #include "enable_upgrade_manager.h"
 #include "settings_data_utils.h"
 #undef private
@@ -31,6 +31,7 @@
 #include "ime_info_inquirer.h"
 #include "parameter.h"
 #include "tdd_util.h"
+#include "sys_cfg_parser.h"
 
 using namespace testing::ext;
 using namespace OHOS::DataShare;
@@ -86,6 +87,7 @@ public:
     static constexpr const char *IME_KEY1 = "key1";
     static constexpr const char *IME_KEY2 = "key2";
     static constexpr const char *IME_KEY3 = "key3";
+    static constexpr const char *INIT_ENABLED_STATE = "initEnabledState";
     static constexpr const char *BUNDLE_NAME1 = "bundleName1";
     static constexpr const char *BUNDLE_NAME2 = "bundleName2";
     static constexpr const char *BUNDLE_NAME3 = "com.example.newTestIme";
@@ -1461,6 +1463,49 @@ HWTEST_F(ImeEnabledInfoManagerTest, testGetCurrentImeCfg_002, TestSize.Level0)
     EXPECT_EQ(currentIme->subName, ImeEnabledInfoManagerTest::CUR_SUBNAME2);
     EXPECT_EQ(currentIme->imeId,
         std::string(ImeEnabledInfoManagerTest::BUNDLE_NAME2) + "/" + ImeEnabledInfoManagerTest::EXT_NAME2);
+}
+
+/**
+ * @tc.name: ComputeEnabledStatus_001
+ * @tc.desc: test:change the configuration file enabling switch.
+ * @tc.require:
+ * @tc.author: zhangsaiyang
+ */
+HWTEST_F(ImeEnabledInfoManagerTest, ComputeEnabledStatus_001, TestSize.Level0)
+{
+    IMSA_HILOGI("ImeEnabledInfoManagerTest ComputeEnabledStatus_001 START");
+    ImeInfoInquirer::GetInstance().systemConfig_.enableFullExperienceFeature = false;
+    ImeInfoInquirer::GetInstance().systemConfig_.enableInputMethodFeature = false;
+    EnabledStatus status = EnabledStatus::DISABLED;
+    status = SettingsDataUtils::GetInstance().
+        ComputeEnabledStatus(ImeEnabledInfoManagerTest::IME_KEY2, EnabledStatus::DISABLED);
+    if (SysCfgParser::IsContainField(INIT_ENABLED_STATE)) {
+        EXPECT_TRUE(status == EnabledStatus::DISABLED);
+    } else {
+        EXPECT_TRUE(status == EnabledStatus::FULL_EXPERIENCE_MODE);
+    }
+
+    ImeInfoInquirer::GetInstance().systemConfig_.enableFullExperienceFeature = true;
+    ImeInfoInquirer::GetInstance().systemConfig_.enableInputMethodFeature = false;
+    status = SettingsDataUtils::GetInstance().
+        ComputeEnabledStatus(ImeEnabledInfoManagerTest::IME_KEY3, EnabledStatus::DISABLED);
+    if (SysCfgParser::IsContainField(INIT_ENABLED_STATE)) {
+        EXPECT_TRUE(status == EnabledStatus::DISABLED);
+    } else {
+        EXPECT_TRUE(status == EnabledStatus::BASIC_MODE);
+    }
+
+    ImeInfoInquirer::GetInstance().systemConfig_.enableFullExperienceFeature = false;
+    ImeInfoInquirer::GetInstance().systemConfig_.enableInputMethodFeature = true;
+    status = SettingsDataUtils::GetInstance().
+        ComputeEnabledStatus(ImeEnabledInfoManagerTest::IME_KEY3, EnabledStatus::DISABLED);
+    EXPECT_TRUE(status == EnabledStatus::DISABLED);
+
+    ImeInfoInquirer::GetInstance().systemConfig_.enableFullExperienceFeature = true;
+    ImeInfoInquirer::GetInstance().systemConfig_.enableInputMethodFeature = true;
+    status = SettingsDataUtils::GetInstance().
+        ComputeEnabledStatus(ImeEnabledInfoManagerTest::sysImeProp_.bundleName, EnabledStatus::DISABLED);
+    EXPECT_TRUE(status == EnabledStatus::BASIC_MODE);
 }
 } // namespace MiscServices
 } // namespace OHOS
