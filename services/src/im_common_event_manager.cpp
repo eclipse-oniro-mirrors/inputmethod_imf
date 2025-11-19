@@ -215,7 +215,7 @@ void ImCommonEventManager::EventSubscriber::OnBundleResChanged(const CommonEvent
         return;
     }
     if (!ITypesUtil::Marshal(*parcel, userId, resChangeType)) {
-        IMSA_HILOGE("Failed to write message parcel.");
+        IMSA_HILOGE("Failed to write message parcel!");
         delete parcel;
         return;
     }

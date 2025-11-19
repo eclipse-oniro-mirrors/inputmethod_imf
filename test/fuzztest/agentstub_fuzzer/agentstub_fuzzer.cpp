@@ -29,7 +29,7 @@ const std::u16string AGENTSTUB_INTERFACE_TOKEN = u"OHOS.MiscServices.IInputMetho
 constexpr uint32_t CODE_MIN = 0;
 constexpr uint32_t CODE_MAX = static_cast<uint32_t>(IInputMethodAgentIpcCode::COMMAND_SEND_MESSAGE) + 1;
 
-+bool FuzzAgentStub(FuzzedDataProvider &provider)
+bool FuzzAgentStub(FuzzedDataProvider &provider)
 {
     uint32_t code = provider.ConsumeIntegral<uint32_t>() % (CODE_MAX - CODE_MIN + 1) + CODE_MIN;
 

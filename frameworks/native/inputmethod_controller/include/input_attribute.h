@@ -133,6 +133,7 @@ struct InputAttribute {
     int32_t fluidLightMode { 0 };
     uint32_t windowId = 0; // for transfer
     uint64_t callingDisplayId = 0;
+    uint64_t callingScreenId = 0;
     std::u16string placeholder { u"" };
     std::u16string abilityName { u"" };
     CapitalizeMode capitalizeMode = CapitalizeMode::NONE;

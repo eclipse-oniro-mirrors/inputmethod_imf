@@ -58,7 +58,8 @@ public:
     int32_t StartMoving();
     int32_t GetDisplayId(uint64_t &displayId);
     int32_t AdjustKeyboard();
-    int32_t AdjustPanelRect(const PanelFlag panelFlag, const LayoutParams &layoutParams, bool needUpdateRegion = true);
+    int32_t AdjustPanelRect(const PanelFlag panelFlag, const LayoutParams &layoutParams, bool needUpdateRegion = true,
+        bool needConfig = true);
     int32_t AdjustPanelRect(PanelFlag panelFlag, EnhancedLayoutParams params, HotAreas hotAreas);
     int32_t UpdateRegion(std::vector<Rosen::Rect> region);
     std::tuple<std::vector<std::string>, std::vector<std::string>> GetScreenStatus(const PanelFlag panelFlag);
@@ -134,7 +135,8 @@ private:
     int32_t CalculateAvoidHeight(EnhancedLayoutParam &layoutParam, const WindowSize &displaySize, PanelFlag panelFlag,
         const PanelAdjustInfo &adjustInfo);
 
-    int32_t ParseParams(PanelFlag panelFlag, const LayoutParams &input, Rosen::KeyboardLayoutParams &output);
+    int32_t ParseParams(PanelFlag panelFlag, const LayoutParams &input, Rosen::KeyboardLayoutParams &output,
+        bool needConfig = true);
     void ParseParam(PanelFlag panelFlag, const PanelAdjustInfo &adjustInfo, const WindowSize &displaySize,
         const Rosen::Rect &inputRect, EnhancedLayoutParam &outputParam);
 
@@ -211,6 +213,7 @@ private:
     int32_t SetWindowShadow(const Shadow &shadow);
     bool IsKeyboardRectAtBottom();
     bool IsNeedNotify(PanelFlag panelFlag);
+    void WaitSetUIContent();
 
     sptr<OHOS::Rosen::Window> window_ = nullptr;
     sptr<OHOS::Rosen::WindowOption> winOption_ = nullptr;
@@ -274,6 +277,8 @@ private:
 
     std::mutex getInsetsMutex_;
     std::mutex parseParamsMutex_;
+
+    std::atomic<bool> hasSetSize_ { false };
 };
 } // namespace MiscServices
 } // namespace OHOS

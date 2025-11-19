@@ -2498,6 +2498,7 @@ HWTEST_F(InputMethodControllerTest, TestWaitCtrlEventQueue_FAILED, TestSize.Leve
  */
 HWTEST_F(InputMethodControllerTest, TestPushCtrlEventQueue_FAILED, TestSize.Level0)
 {
+    IMSA_HILOGI("TestPushCtrlEventQueue_FAILED START");
     InputMethodController::ctrlEventQueue_.maxQueueSize_ = 2;
     uint32_t testTimeOut = 100; // 100ms
     InputMethodController::ctrlEventQueue_.timeout_ = testTimeOut; // 100ms

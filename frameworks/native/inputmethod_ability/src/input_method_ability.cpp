@@ -156,10 +156,6 @@ int32_t InputMethodAbility::RegisterProxyIme(uint64_t displayId)
     IMSA_HILOGD("IMA, displayId: %{public}" PRIu64 "", displayId);
     TaskManager::GetInstance().SetInited(true);
 
-    if (isBound_.load()) {
-        IMSA_HILOGD("already bound.");
-        return ErrorCode::NO_ERROR;
-    }
     auto proxy = GetImsaProxy();
     if (proxy == nullptr) {
         IMSA_HILOGE("imsa proxy is nullptr!");
@@ -1336,13 +1332,28 @@ int32_t InputMethodAbility::NotifyPanelStatus(bool isUseParameterFlag, PanelFlag
 void InputMethodAbility::SetInputAttribute(const InputAttribute &inputAttribute)
 {
     std::lock_guard<std::mutex> lock(inputAttrLock_);
+    auto callingScreenId = inputAttribute_.callingScreenId;
+    if (inputAttribute.callingDisplayId != inputAttribute_.callingDisplayId) {
+        const auto display = Rosen::DisplayManager::GetInstance().GetDisplayById(inputAttribute.callingDisplayId);
+        if (display != nullptr) {
+            callingScreenId = display->GetScreenId();
+        } else {
+            IMSA_HILOGE("failed to get display by id %{public}" PRIu64 ".", inputAttribute.callingDisplayId);
+            callingScreenId = 0;
+        }
+    }
     inputAttribute_ = inputAttribute;
+    inputAttribute_.callingScreenId = callingScreenId;
 }
 
 void InputMethodAbility::ClearInputAttribute()
 {
     std::lock_guard<std::mutex> lock(inputAttrLock_);
+    auto callingDisplayId = inputAttribute_.callingDisplayId;
+    auto callingScreenId = inputAttribute_.callingScreenId;
     inputAttribute_ = {};
+    inputAttribute_.callingDisplayId = callingDisplayId;
+    inputAttribute_.callingScreenId = callingScreenId;
 }
 
 InputAttribute InputMethodAbility::GetInputAttribute()
@@ -1854,6 +1865,13 @@ int32_t InputMethodAbility::OnCallingDisplayIdChanged(uint64_t displayId)
     {
         std::lock_guard<std::mutex> lock(inputAttrLock_);
         inputAttribute_.callingDisplayId = displayId;
+        const auto display = Rosen::DisplayManager::GetInstance().GetDisplayById(displayId);
+        if (display != nullptr) {
+            inputAttribute_.callingScreenId = display->GetScreenId();
+        } else {
+            IMSA_HILOGE("failed to get display by id %{public}" PRIu64 ".", displayId);
+            inputAttribute_.callingScreenId = 0;
+        }
     }
     imeListener_->OnCallingDisplayIdChanged(displayId);
     return ErrorCode::NO_ERROR;

@@ -31,6 +31,7 @@
 #include "global.h"
 #include "iinput_method_agent.h"
 #include "iinput_method_system_ability.h"
+#include "imc_inner_listener.h"
 #include "ime_event_listener.h"
 #include "input_client_info.h"
 #include "input_method_property.h"
@@ -1005,6 +1006,8 @@ public:
     IMF_API int32_t RegisterWindowScaleCallbackHandler(WindowScaleCallback&& callback);
 
     void HandleKeyEventResult(uint64_t cbId, bool consumeResult);
+
+    IMF_API void SetImcInnerListener(const std::shared_ptr<ImcInnerListener> &imcInnerListener);
 private:
     friend class MockInputMethodSystemAbilityProxy;
     InputMethodController();
@@ -1052,7 +1055,8 @@ private:
     int32_t SendRequestToAllAgents(std::function<int32_t(std::shared_ptr<IInputMethodAgent>)> task);
     int32_t SendRequestToImeMirrorAgent(std::function<int32_t(std::shared_ptr<IInputMethodAgent>)> task);
     void SetInputReady(const std::vector<sptr<IRemoteObject>> &agentObjects, const std::vector<BindImeInfo> &imeInfos);
-
+    std::shared_ptr<ImcInnerListener> GetImcInnerListener();
+    void NotifyAttachFailure(int32_t errCode);
     struct CtrlEventInfo {
         std::chrono::steady_clock::time_point timestamp;
         std::string eventName;
@@ -1145,6 +1149,8 @@ private:
     std::mutex windowScaleCallbackMutex_;
     WindowScaleCallback windowScaleCallback_ = nullptr;
     KeyEventResultHandler keyEventRetHandler_;
+    std::mutex imcInnerListenerLock_;
+    std::shared_ptr<ImcInnerListener> imcInnerListener_{ nullptr };
 };
 } // namespace MiscServices
 } // namespace OHOS

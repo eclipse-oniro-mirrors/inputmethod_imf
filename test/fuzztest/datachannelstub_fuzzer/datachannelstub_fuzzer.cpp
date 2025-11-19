@@ -38,7 +38,7 @@ bool FuzzDataChannelStub(FuzzedDataProvider &provider)
 
     MessageParcel data;
     data.WriteInterfaceToken(DATACHANNEL_INTERFACE_TOKEN);
-    data.WriteBuffer(static_cast<void *>(bufferData.data()), bufferData.size());
+    data.WriteBuffer(bufferData.data(), bufferData.size());
     data.RewindRead(0);
     MessageParcel reply;
     MessageOption option;

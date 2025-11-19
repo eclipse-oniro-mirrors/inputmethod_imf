@@ -102,7 +102,7 @@ HWTEST_F(ImeEventMonitorManagerTest, testRegisterImeEventListener_003, TestSize.
     auto listener = std::make_shared<ImeSettingListenerTestImpl>();
     auto ret = ImeEventMonitorManager::GetInstance().RegisterImeEventListener(15, listener);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_EQ(ImeEventMonitorManagerImpl::GetInstance().listeners_.size(), 3);
+    EXPECT_EQ(ImeEventMonitorManagerImpl::GetInstance().listeners_.size(), 4);
     auto it = ImeEventMonitorManagerImpl::GetInstance().listeners_.find(EVENT_IME_HIDE_MASK);
     ASSERT_NE(it, ImeEventMonitorManagerImpl::GetInstance().listeners_.end());
     it = ImeEventMonitorManagerImpl::GetInstance().listeners_.find(EVENT_IME_SHOW_MASK);
@@ -120,7 +120,7 @@ HWTEST_F(ImeEventMonitorManagerTest, testRegisterImeEventListener_004, TestSize.
     auto listener = std::make_shared<ImeSettingListenerTestImpl>();
     auto ret = ImeEventMonitorManager::GetInstance().RegisterImeEventListener(5, listener);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_EQ(ImeEventMonitorManagerImpl::GetInstance().listeners_.size(), 1);
+    EXPECT_EQ(ImeEventMonitorManagerImpl::GetInstance().listeners_.size(), 2);
     auto it = ImeEventMonitorManagerImpl::GetInstance().listeners_.find(EVENT_IME_HIDE_MASK);
     ASSERT_NE(it, ImeEventMonitorManagerImpl::GetInstance().listeners_.end());
     EXPECT_EQ(it->second.size(), 1);
@@ -246,10 +246,10 @@ HWTEST_F(ImeEventMonitorManagerTest, testRegisterImeEventListener_011, TestSize.
     auto ret = ImeEventMonitorManager::GetInstance().RegisterImeEventListener(
         EVENT_IME_SHOW_MASK | EVENT_IME_HIDE_MASK | EVENT_IME_CHANGE_MASK, listener);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_EQ(InputMethodController::GetInstance()->clientInfo_.eventFlag, 6);
-    EXPECT_EQ(ImeEventMonitorManagerImpl::GetInstance().listeners_.size(), 2);
+    EXPECT_EQ(InputMethodController::GetInstance()->clientInfo_.eventFlag, 7);
+    EXPECT_EQ(ImeEventMonitorManagerImpl::GetInstance().listeners_.size(), 3);
     auto it = ImeEventMonitorManagerImpl::GetInstance().listeners_.find(EVENT_IME_CHANGE_MASK);
-    ASSERT_EQ(it, ImeEventMonitorManagerImpl::GetInstance().listeners_.end());
+    ASSERT_NE(it, ImeEventMonitorManagerImpl::GetInstance().listeners_.end());
 }
 
 /**

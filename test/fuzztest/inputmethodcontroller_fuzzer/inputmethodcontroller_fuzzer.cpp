@@ -101,8 +101,8 @@ void TestOnSelectionChange(sptr<InputMethodController> imc, FuzzedDataProvider &
 
     auto fuzzedInt32t = provider.ConsumeIntegral<int32_t>();
     auto fuzzedInt = provider.ConsumeIntegral<int>();
-	std::string fuzzedString = provider.ConsumeRandomLengthString();
-	std::u16string fuzzedU16String(fuzzedString.begin(), fuzzedString.end());
+    std::string fuzzedString = provider.ConsumeRandomLengthString();
+    std::u16string fuzzedU16String(fuzzedString.begin(), fuzzedString.end());
     CursorInfo cursorInfo;
     cursorInfo.height = fuzzedInt32t;
     cursorInfo.left = fuzzedInt32t;
@@ -282,7 +282,7 @@ void TestShowTextInputInner(sptr<InputMethodController> imc, FuzzedDataProvider 
 void FUZZOnTextChangedListener(FuzzedDataProvider &provider)
 {
     std::string fuzzedString = provider.ConsumeRandomLengthString();
-	std::u16string fuzzedU16String(fuzzedString.begin(), fuzzedString.end());
+    std::u16string fuzzedU16String(fuzzedString.begin(), fuzzedString.end());
     auto fuzzInt32 = provider.ConsumeIntegral<int32_t>();
     auto fuzzBool = provider.ConsumeBool();
     FunctionKey key;
@@ -332,10 +332,10 @@ void FUZZCovered(sptr<InputMethodController> imc, FuzzedDataProvider &provider)
 {
     std::string fuzzedString = provider.ConsumeRandomLengthString();
     std::vector<uint8_t> msgParam;
-    std::vector<uint8_t> bufferData = provider.ConsumeRemainingBytes<uint8_t>();
-    msgParam.push_back(*bufferData.data());
+    auto data = provider.ConsumeIntegral<uint8_t>();
+    msgParam.push_back(data);
     ArrayBuffer arrayBuffer;
-    arrayBuffer.jsArgc = bufferData.size();
+    arrayBuffer.jsArgc = msgParam.size();
     arrayBuffer.msgId = fuzzedString;
     arrayBuffer.msgParam = msgParam;
     imc->SendMessage(arrayBuffer);

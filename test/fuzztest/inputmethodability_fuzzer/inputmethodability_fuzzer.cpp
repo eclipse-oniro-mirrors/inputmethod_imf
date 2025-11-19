@@ -188,7 +188,6 @@ void TestOperationKeyboard(FuzzedDataProvider &provider)
 void TestInterfaceCoverage(FuzzedDataProvider &provider)
 {
     int32_t dataInt32 = provider.ConsumeIntegral<int32_t>();
-    int64_t consumeTime = provider.ConsumeIntegral<int64_t>();
     std::string fuzzedString = provider.ConsumeRandomLengthString();
     std::u16string text(fuzzedString.begin(), fuzzedString.end());
     InputMethodAbility::GetInstance().SelectByMovement(dataInt32);

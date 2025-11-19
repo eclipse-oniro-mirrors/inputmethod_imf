@@ -28,7 +28,7 @@ sptr<IRemoteObject> OnDemandStartStopSa::LoadInputMethodSystemAbility()
     std::unique_lock<std::mutex> lock(loadSaMtx_);
     auto systemAbilityManager = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
     if (systemAbilityManager == nullptr) {
-        IMSA_HILOGE("get system ability manager fail");
+        IMSA_HILOGE("get system ability manager fail!");
         return nullptr;
     }
 
@@ -40,7 +40,7 @@ sptr<IRemoteObject> OnDemandStartStopSa::LoadInputMethodSystemAbility()
     auto sharedThis = shared_from_this();
     sptr<SaLoadCallback> callback = new (std::nothrow) SaLoadCallback(sharedThis);
     if (callback == nullptr) {
-        IMSA_HILOGE("LoadCallback new fail.");
+        IMSA_HILOGE("LoadCallback new fail!");
         return nullptr;
     }
 
@@ -61,7 +61,7 @@ void OnDemandStartStopSa::UnloadInputMethodSystemAbility()
 {
     auto systemAbilityManager = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
     if (systemAbilityManager == nullptr) {
-        IMSA_HILOGE("get system ability manager fail");
+        IMSA_HILOGE("get system ability manager fail!");
         return;
     }
 
@@ -70,14 +70,14 @@ void OnDemandStartStopSa::UnloadInputMethodSystemAbility()
         IMSA_HILOGE("unload input method system ability fail, ret: %{public}d", ret);
         return;
     }
-    IMSA_HILOGI("unload input method system ability success");
+    IMSA_HILOGI("unload input method system ability success!");
 }
 
 void OnDemandStartStopSa::SaLoadCallback::OnLoadSystemAbilitySuccess(int32_t said, const sptr<IRemoteObject> &object)
 {
-    IMSA_HILOGI("load inputmethod sa success");
+    IMSA_HILOGI("load inputmethod sa success!");
     if (onDemandObj_ == nullptr) {
-        IMSA_HILOGE("onDemandObj is null");
+        IMSA_HILOGE("onDemandObj is null!");
         return;
     }
     std::unique_lock<std::mutex> lock(onDemandObj_->loadSaMtx_);
@@ -87,9 +87,9 @@ void OnDemandStartStopSa::SaLoadCallback::OnLoadSystemAbilitySuccess(int32_t sai
 
 void OnDemandStartStopSa::SaLoadCallback::OnLoadSystemAbilityFail(int32_t said)
 {
-    IMSA_HILOGE("load inputmethod sa fail");
+    IMSA_HILOGE("load inputmethod sa fail!");
     if (onDemandObj_ == nullptr) {
-        IMSA_HILOGE("onDemandObj is null");
+        IMSA_HILOGE("onDemandObj is null!");
         return;
     }
     std::unique_lock<std::mutex> lock(onDemandObj_->loadSaMtx_);
@@ -120,7 +120,7 @@ sptr<IRemoteObject> OnDemandStartStopSa::GetInputMethodSystemAbility(bool ifRetr
     auto onDemandStartStopSa = std::make_shared<OnDemandStartStopSa>();
     systemAbility = onDemandStartStopSa->LoadInputMethodSystemAbility();
     if (systemAbility == nullptr) {
-        IMSA_HILOGE("load system ability fail");
+        IMSA_HILOGE("load system ability fail!");
         return nullptr;
     }
 #else

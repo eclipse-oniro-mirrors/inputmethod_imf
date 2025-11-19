@@ -28,12 +28,18 @@ struct ImeExtendInfo {
     std::unordered_map<std::string, PrivateDataValue> privateCommand;
 };
 
+enum class StartReason {
+    DEFALUT_START = 0,
+    RESTART_AFTER_DIED = 1,
+};
+
 struct ImeNativeCfg {
     std::string imeId;
     std::string bundleName;
     std::string subName;
     std::string extName;
     ImeExtendInfo imeExtendInfo;
+    StartReason startReason = StartReason::DEFALUT_START;
 };
 struct ExtraInfo : public Serializable {
     bool isDefaultIme{ false };
