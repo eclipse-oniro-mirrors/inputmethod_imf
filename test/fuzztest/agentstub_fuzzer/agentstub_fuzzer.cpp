@@ -20,32 +20,23 @@
 
 #include "input_method_agent_service_impl.h"
 #include "message_parcel.h"
+#include "fuzzer/FuzzedDataProvider.h"
 
 using namespace OHOS::MiscServices;
 namespace OHOS {
 constexpr size_t THRESHOLD = 10;
-constexpr int32_t OFFSET = 4;
 const std::u16string AGENTSTUB_INTERFACE_TOKEN = u"OHOS.MiscServices.IInputMethodAgent";
 constexpr uint32_t CODE_MIN = 0;
 constexpr uint32_t CODE_MAX = static_cast<uint32_t>(IInputMethodAgentIpcCode::COMMAND_SEND_MESSAGE) + 1;
-uint32_t ConvertToUint32(const uint8_t *ptr)
-{
-    if (ptr == nullptr) {
-        return 0;
-    }
-    uint32_t bigVar = (ptr[0] << 24) | (ptr[1] << 16) | (ptr[2] << 8) | (ptr[3]);
-    return bigVar;
-}
 
-bool FuzzAgentStub(const uint8_t *rawData, size_t size)
++bool FuzzAgentStub(FuzzedDataProvider &provider)
 {
-    uint32_t code = static_cast<uint32_t>(*rawData) % (CODE_MAX - CODE_MIN + 1) + CODE_MIN;
-    rawData = rawData + OFFSET;
-    size = size - OFFSET;
+    uint32_t code = provider.ConsumeIntegral<uint32_t>() % (CODE_MAX - CODE_MIN + 1) + CODE_MIN;
 
+    std::vector<uint8_t> bufferData = provider.ConsumeRemainingBytes<uint8_t>();
     MessageParcel data;
     data.WriteInterfaceToken(AGENTSTUB_INTERFACE_TOKEN);
-    data.WriteBuffer(rawData, size);
+    data.WriteBuffer(static_cast<void *>(bufferData.data()), bufferData.size());
     data.RewindRead(0);
     MessageParcel reply;
     MessageOption option;
@@ -62,7 +53,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     if (size < OHOS::THRESHOLD) {
         return 0;
     }
+    FuzzedDataProvider provider(data, size);
     /* Run your code on data */
-    OHOS::FuzzAgentStub(data, size);
+    OHOS::FuzzAgentStub(provider);
     return 0;
 }

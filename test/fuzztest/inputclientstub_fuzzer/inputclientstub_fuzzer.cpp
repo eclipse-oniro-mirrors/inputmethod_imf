@@ -27,27 +27,16 @@
 using namespace OHOS::MiscServices;
 namespace OHOS {
 constexpr size_t THRESHOLD = 10;
-constexpr int32_t OFFSET = 4;
 const std::u16string INPUTCLIENTSTUB_INTERFACE_TOKEN = u"OHOS.MiscServices.IInputClient";
 
-uint32_t ConvertToUint32(const uint8_t *ptr)
+void FuzzInputClientStub(FuzzedDataProvider &provider)
 {
-    if (ptr == nullptr) {
-        return 0;
-    }
-    uint32_t bigVar = (ptr[0] << 24) | (ptr[1] << 16) | (ptr[2] << 8) | (ptr[3]);
-    return bigVar;
-}
-
-void FuzzInputClientStub(const uint8_t *rawData, size_t size)
-{
-    uint32_t code = ConvertToUint32(rawData);
-    rawData = rawData + OFFSET;
-    size = size - OFFSET;
+    auto code = provider.ConsumeIntegral<uint32_t>();
+    std::vector<uint8_t> bufferData = provider.ConsumeRemainingBytes<uint8_t>();
 
     MessageParcel data;
     data.WriteInterfaceToken(INPUTCLIENTSTUB_INTERFACE_TOKEN);
-    data.WriteBuffer(rawData, size);
+    data.WriteBuffer(static_cast<void *>(bufferData.data()), bufferData.size());
     data.RewindRead(0);
     MessageParcel reply;
     MessageOption option;
@@ -56,38 +45,33 @@ void FuzzInputClientStub(const uint8_t *rawData, size_t size)
     mClient->OnRemoteRequest(code, data, reply, option);
 }
 
-void TextOnInputReady()
+void TextOnInputReady(FuzzedDataProvider &provider)
 {
     sptr<InputClientStub> mClient = new InputClientServiceImpl();
     sptr<InputMethodAgentStub> mInputMethodAgentStub = new InputMethodAgentServiceImpl();
+    std::string fuzzedString = provider.ConsumeRandomLengthString();
     MessageParcel data;
     data.WriteRemoteObject(mInputMethodAgentStub->AsObject());
     auto remoteObject = data.ReadRemoteObject();
     BindImeInfo imeInfo;
     imeInfo.pid = 0;
-    imeInfo.bundleName = "bundleName";
+    imeInfo.bundleName = fuzzedString;
     mClient->OnInputReady(remoteObject, imeInfo);
 }
 
-void TestOnSwitchInput()
+void TestOnSwitchInput(FuzzedDataProvider &provider)
 {
     sptr<InputClientStub> mClient = new InputClientServiceImpl();
-    Property property = {};
+    std::string fuzzedString = provider.ConsumeRandomLengthString();
+    uint32_t fuzzedUint32 = provider.ConsumeIntegral<uint32_t>();
+    Property property;
+    property.name = fuzzedString;
+    property.id = fuzzedString;
+    property.icon = fuzzedString;
+    property.iconId = fuzzedUint32;
     SubProperty subProperty = {};
 
     mClient->OnSwitchInput(property, subProperty);
-}
-
-void TestOnImeMirrorStop()
-{
-    sptr<InputClientStub> mClient = new InputClientServiceImpl();
-    Property property = {};
-    SubProperty subProperty = {};
-    sptr<InputMethodAgentStub> mInputMethodAgentStub = new InputMethodAgentServiceImpl();
-    MessageParcel data;
-    data.WriteRemoteObject(mInputMethodAgentStub->AsObject());
-    auto remoteObject = data.ReadRemoteObject();
-    mClient->OnImeMirrorStop(remoteObject);
 }
 } // namespace OHOS
 
@@ -99,9 +83,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     }
     /* Run your code on data */
     FuzzedDataProvider provider(data, size);
-    OHOS::FuzzInputClientStub(data, size);
-    OHOS::TextOnInputReady();
-    OHOS::TestOnSwitchInput();
-    OHOS::TestOnImeMirrorStop();
+    OHOS::FuzzInputClientStub(provider);
+    OHOS::TextOnInputReady(provider);
+    OHOS::TestOnSwitchInput(provider);
     return 0;
 }

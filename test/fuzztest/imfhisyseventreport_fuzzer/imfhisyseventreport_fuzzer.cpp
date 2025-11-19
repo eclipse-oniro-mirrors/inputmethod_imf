@@ -45,10 +45,10 @@ namespace OHOS {
 using namespace OHOS::HiviewDFX;
 constexpr ClientType PARAM_CLIENT_TYPE = ClientType::INNER_KIT;
 constexpr int32_t PARAM_INPUT_PATTERN = 6;
-void TestClientAttach01(const uint8_t *data, size_t size)
+void TestClientAttach01(FuzzedDataProvider &provider)
 {
-    auto errCode = static_cast<int32_t>(size);
-    auto paramIsShowkeyboard = static_cast<bool>(data[0] % 2);
+    auto errCode = provider.ConsumeIntegral<int32_t>();
+    bool paramIsShowkeyboard = provider.ConsumeBool();
     auto info = HiSysOriginalInfo::Builder()
                 .SetErrCode(errCode)
                 .SetInputPattern(PARAM_INPUT_PATTERN)
@@ -58,10 +58,9 @@ void TestClientAttach01(const uint8_t *data, size_t size)
     ImcHiSysEventReporter::GetInstance().ReportEvent(ImfEventType::CLIENT_ATTACH, *info);
 }
 
-void TestClientAttach02(const uint8_t *data, size_t size)
+void TestClientAttach02(FuzzedDataProvider &provider)
 {
-    FuzzedDataProvider provider(data, size);
-    std::string fuzzedString(reinterpret_cast<const char *>(data), size);
+    std::string fuzzedString = provider.ConsumeRandomLengthString();
     auto paramPeerName = fuzzedString;
     auto paramPeerUserId = provider.ConsumeIntegral<int32_t>();
     auto paramPeerPid = provider.ConsumeIntegral<int64_t>();
@@ -81,10 +80,9 @@ void TestClientAttach02(const uint8_t *data, size_t size)
     ImsaHiSysEventReporter::GetInstance().ReportEvent(ImfEventType::CLIENT_ATTACH, *info);
 }
 
-void TestClientShow(const uint8_t *data, size_t size)
+void TestClientShow(FuzzedDataProvider &provider)
 {
-    FuzzedDataProvider provider(data, size);
-    std::string fuzzedString(reinterpret_cast<const char *>(data), size);
+    std::string fuzzedString = provider.ConsumeRandomLengthString();
     auto paramPeerName = fuzzedString;
     auto paramPeerUserId = provider.ConsumeIntegral<int32_t>();
     auto paramPeerPid = provider.ConsumeIntegral<int64_t>();
@@ -103,10 +101,9 @@ void TestClientShow(const uint8_t *data, size_t size)
     ImcHiSysEventReporter::GetInstance().ReportEvent(ImfEventType::CLIENT_SHOW, *info);
 }
 
-void TestStartInput(const uint8_t *data, size_t size)
+void TestStartInput(FuzzedDataProvider &provider)
 {
-    FuzzedDataProvider provider(data, size);
-    std::string fuzzedString(reinterpret_cast<const char *>(data), size);
+    std::string fuzzedString = provider.ConsumeRandomLengthString();
     auto paramPeerName = fuzzedString;
     auto paramPeerPid = provider.ConsumeIntegral<int64_t>();
     auto errCode = provider.ConsumeIntegral<int32_t>();
@@ -122,10 +119,9 @@ void TestStartInput(const uint8_t *data, size_t size)
     ImaHiSysEventReporter::GetInstance().ReportEvent(ImfEventType::IME_START_INPUT, *info);
 }
 
-void TestBaseTextOperation(const uint8_t *data, size_t size)
+void TestBaseTextOperation(FuzzedDataProvider &provider)
 {
-    FuzzedDataProvider provider(data, size);
-    std::string fuzzedString(reinterpret_cast<const char *>(data), size);
+    std::string fuzzedString = provider.ConsumeRandomLengthString();
     auto paramPeerName = fuzzedString;
     auto paramPeerPid = provider.ConsumeIntegral<int64_t>();
     auto errCode = provider.ConsumeIntegral<int32_t>();
@@ -140,9 +136,8 @@ void TestBaseTextOperation(const uint8_t *data, size_t size)
     ImaHiSysEventReporter::GetInstance().ReportEvent(ImfEventType::BASE_TEXT_OPERATOR, *info);
 }
 
-void TestRecordBaseTextOperationStatistics(const uint8_t *data, size_t size)
+void TestRecordBaseTextOperationStatistics(FuzzedDataProvider &provider)
 {
-    FuzzedDataProvider provider(data, size);
     auto code = provider.ConsumeIntegral<int32_t>();
     auto info = HiSysOriginalInfo::Builder()
                     .SetErrCode(code)
@@ -151,21 +146,19 @@ void TestRecordBaseTextOperationStatistics(const uint8_t *data, size_t size)
     ImaHiSysEventReporter::GetInstance().RecordImeStartInputStatistics(*info);
 }
 
-void TestIntervalIndex(const uint8_t *data, size_t size)
+void TestIntervalIndex(FuzzedDataProvider &provider)
 {
-    FuzzedDataProvider provider(data, size);
     auto fuzzInt32 = provider.ConsumeIntegral<int32_t>();
     ImaHiSysEventReporter::GetInstance().GetBaseTextOperationSucceedIntervalIndex(fuzzInt32);
     ImaHiSysEventReporter::GetInstance().ReportStatisticsEvent();
     ImaHiSysEventReporter::GetInstance().ModImeCbTimeConsumeInfo(fuzzInt32);
 }
 
-void TestInputMethodSysEvent(const uint8_t *data, size_t size)
+void TestInputMethodSysEvent(FuzzedDataProvider &provider)
 {
-    FuzzedDataProvider provider(data, size);
     auto fuzzInt32 = provider.ConsumeIntegral<int32_t>();
     auto fuzzUint32 = provider.ConsumeIntegral<uint32_t>();
-    std::string fuzzedString(reinterpret_cast<const char *>(data), size);
+    std::string fuzzedString = provider.ConsumeRandomLengthString();
     auto tc = []() {};
     InputMethodSysEvent::GetInstance().ServiceFaultReporter(fuzzedString, fuzzInt32);
     InputMethodSysEvent::GetInstance().ImeUsageBehaviourReporter();
@@ -175,12 +168,11 @@ void TestInputMethodSysEvent(const uint8_t *data, size_t size)
     InputMethodSysEvent::GetInstance().ReportSystemShortCut(fuzzedString);
 }
 
-void TestOnDemandStartStopSa(const uint8_t *data, size_t size)
+void TestOnDemandStartStopSa(FuzzedDataProvider &provider)
 {
-    FuzzedDataProvider provider(data, size);
     auto fuzzInt32 = provider.ConsumeIntegral<int32_t>();
     auto fuzzUint32 = provider.ConsumeIntegral<uint32_t>();
-    std::string fuzzedString(reinterpret_cast<const char *>(data), size);
+    std::string fuzzedString = provider.ConsumeRandomLengthString();
     auto tc = []() {};
     InputMethodSysEvent::GetInstance().ServiceFaultReporter(fuzzedString, fuzzInt32);
     InputMethodSysEvent::GetInstance().ImeUsageBehaviourReporter();
@@ -190,9 +182,9 @@ void TestOnDemandStartStopSa(const uint8_t *data, size_t size)
     InputMethodSysEvent::GetInstance().ReportSystemShortCut(fuzzedString);
 }
 
-void TestReportStatisticsEvent(const uint8_t *data, size_t size)
+void TestReportStatisticsEvent(FuzzedDataProvider &provider)
 {
-    std::string fuzzedString(reinterpret_cast<const char *>(data), size);
+    std::string fuzzedString = provider.ConsumeRandomLengthString();
     static std::vector<std::string> appNames;
     static std::vector<std::string> statistics;
     appNames.push_back(fuzzedString);
@@ -209,14 +201,15 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         return 0;
     }
     /* Run your code on data */
-    OHOS::TestClientAttach01(data, size);
-    OHOS::TestClientAttach02(data, size);
-    OHOS::TestClientShow(data, size);
-    OHOS::TestStartInput(data, size);
-    OHOS::TestBaseTextOperation(data, size);
-    OHOS::TestRecordBaseTextOperationStatistics(data, size);
-    OHOS::TestIntervalIndex(data, size);
-    OHOS::TestInputMethodSysEvent(data, size);
-    OHOS::TestReportStatisticsEvent(data, size);
+    FuzzedDataProvider provider(data, size);
+    OHOS::TestClientAttach01(provider);
+    OHOS::TestClientAttach02(provider);
+    OHOS::TestClientShow(provider);
+    OHOS::TestStartInput(provider);
+    OHOS::TestBaseTextOperation(provider);
+    OHOS::TestRecordBaseTextOperationStatistics(provider);
+    OHOS::TestIntervalIndex(provider);
+    OHOS::TestInputMethodSysEvent(provider);
+    OHOS::TestReportStatisticsEvent(provider);
     return 0;
 }

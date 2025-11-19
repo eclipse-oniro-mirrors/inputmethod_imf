@@ -20,31 +20,21 @@
 
 #include "keyevent_consumer_service_impl.h"
 #include "message_parcel.h"
+#include "fuzzer/FuzzedDataProvider.h"
 
 using namespace OHOS::MiscServices;
 namespace OHOS {
 constexpr size_t THRESHOLD = 10;
-constexpr int32_t OFFSET = 4;
 const std::u16string AGENTSTUB_INTERFACE_TOKEN = u"OHOS.MiscServices.IKeyEventConsumer";
-uint32_t ConvertToUint32(const uint8_t *ptr)
-{
-    if (ptr == nullptr) {
-        return 0;
-    }
-    uint32_t bigVar = (ptr[0] << 24) | (ptr[1] << 16) | (ptr[2] << 8) | (ptr[3]);
-    return bigVar;
-}
 
-bool FuzzKeyEventConsumerStub(const uint8_t *rawData, size_t size)
+bool FuzzKeyEventConsumerStub(FuzzedDataProvider &provider)
 {
-    bool isConsumed = static_cast<bool>(rawData[0] % 2);
-    uint32_t code = ConvertToUint32(rawData);
-    rawData = rawData + OFFSET;
-    size = size - OFFSET;
-
+    bool isConsumed = provider.ConsumeBool();
+    uint32_t code = provider.ConsumeIntegral<uint32_t>();
+    std::vector<uint8_t> bufferData = provider.ConsumeRemainingBytes<uint8_t>();
     MessageParcel data;
     data.WriteInterfaceToken(AGENTSTUB_INTERFACE_TOKEN);
-    data.WriteBuffer(rawData, size);
+    data.WriteBuffer(static_cast<void *>(bufferData.data()), bufferData.size());
     data.RewindRead(0);
     MessageParcel reply;
     MessageOption option;
@@ -66,6 +56,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         return 0;
     }
     /* Run your code on data */
-    OHOS::FuzzKeyEventConsumerStub(data, size);
+    FuzzedDataProvider provider(data, size);
+    OHOS::FuzzKeyEventConsumerStub(provider);
     return 0;
 }

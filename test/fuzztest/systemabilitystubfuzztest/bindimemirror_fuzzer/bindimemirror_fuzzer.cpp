@@ -16,6 +16,7 @@
 #include "bindimemirror_fuzzer.h"
 
 #include "imf_sa_stub_fuzz_util.h"
+#include "fuzzer/FuzzedDataProvider.h"
 using namespace OHOS::MiscServices;
 namespace OHOS {
 } // namespace OHOS
@@ -31,10 +32,11 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         }
     }
     setuid(uid);
+    FuzzedDataProvider provider(data, size);
     ImfSaStubFuzzUtil::FuzzInputMethodSystemAbility(
-        data, size, IInputMethodSystemAbilityIpcCode::COMMAND_BIND_IME_MIRROR);
+        provider, IInputMethodSystemAbilityIpcCode::COMMAND_BIND_IME_MIRROR);
     ImfSaStubFuzzUtil::FuzzInputMethodSystemAbility(
-        data, size, IInputMethodSystemAbilityIpcCode::COMMAND_UNBIND_IME_MIRROR);
+        provider, IInputMethodSystemAbilityIpcCode::COMMAND_UNBIND_IME_MIRROR);
     setuid(0);
     return 0;
 }
