@@ -192,6 +192,7 @@ private:
     void SetImmersiveEffectToNone();
     void UpdateImmersiveHotArea();
     bool IsValidGradientHeight(uint32_t gradientHeight);
+    int32_t HandleImmersiveEffectWhenShowing(const ImmersiveEffect &targetEffect);
 
     // Locked read and write functions for concurrent protection
     Rosen::KeyboardLayoutParams GetKeyboardLayoutParams();
