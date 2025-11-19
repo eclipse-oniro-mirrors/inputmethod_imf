@@ -2069,6 +2069,9 @@ int32_t PerUserSession::UpdateImeData(sptr<IInputMethodCore> core, sptr<IRemoteO
         return ErrorCode::ERROR_ADD_DEATH_RECIPIENT_FAILED;
     }
     dataList.back()->deathRecipient = deathRecipient;
+    if (dataList.back()->imeStateManager != nullptr) {
+        dataList.back()->imeStateManager->ReportQos(false, pid);
+    }
     return ErrorCode::NO_ERROR;
 }
 
@@ -2084,6 +2087,9 @@ int32_t PerUserSession::InitConnect(pid_t pid)
         return ErrorCode::ERROR_NULL_POINTER;
     }
     dataList.back()->pid = pid;
+    if (dataList.back()->imeStateManager != nullptr) {
+        dataList.back()->imeStateManager->ReportQos(true, pid);
+    }
     return ErrorCode::NO_ERROR;
 }
 
