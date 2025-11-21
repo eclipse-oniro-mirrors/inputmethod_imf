@@ -3211,5 +3211,41 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnPackageUpdated, TestSize
     ret = userSession->OnPackageUpdated(imeCfg->bundleName);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 }
+
+/**
+ * @tc.name: IsImeStartedForeground_001
+ * @tc.desc: IsImeStartedForeground_001
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, IsImeStartedForeground_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::IsImeStartedForeground_001 start.");
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    userSession->imeData_.clear();
+    auto ret = userSession->IsImeStartedForeground();
+    EXPECT_FALSE(ret);
+
+    userSession->SetIsNeedReportQos(true);
+    ret = userSession->IsImeStartedForeground();
+    EXPECT_TRUE(ret);
+
+    auto group = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    group->currentClient_ = client;
+    auto info = std::make_shared<InputClientInfo>();
+    group->mapClients_.insert_or_assign(client->AsObject(), info);
+    userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
+    ret = userSession->IsImeStartedForeground();
+    EXPECT_FALSE(ret);
+
+    info->isShowKeyboard = true;
+    ret = userSession->IsImeStartedForeground();
+    EXPECT_FALSE(ret);
+
+    info->bindImeType = ImeType::IME;
+    ret = userSession->IsImeStartedForeground();
+    EXPECT_TRUE(ret);
+}
 } // namespace MiscServices
 } // namespace OHOS
