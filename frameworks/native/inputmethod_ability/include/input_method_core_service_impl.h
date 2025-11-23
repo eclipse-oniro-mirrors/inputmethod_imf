@@ -45,7 +45,8 @@ public:
     ErrCode OnConnectSystemCmd(const sptr<IRemoteObject> &channel, sptr<IRemoteObject> &agent) override;
     ErrCode OnClientInactive(const sptr<IRemoteObject> &channel) override;
     ErrCode OnSetInputType(int32_t inputType) override;
-    ErrCode OnCallingDisplayIdChanged(uint64_t dispalyId) override;
+    ErrCode OnCallingDisplayIdChanged(uint64_t displayId) override;
+    ErrCode OnCallingWindowIdIdChanged(uint32_t windowId) override;
     ErrCode OnSendPrivateData(const Value &Value) override;
     ErrCode NotifyPreemption() override;
 };

@@ -337,26 +337,8 @@ bool InputMethodAbility::IsDisplayChanged(uint64_t oldDisplayId, uint64_t newDis
         IMSA_HILOGD("screen not changed!");
         return false;
     }
+    IMSA_HILOGD("screen changed!");  // todo hop场景 是否用screenId校验
     return true;
-    //    auto proxy = GetImsaProxy();
-    //    if (proxy == nullptr) {
-    //        IMSA_HILOGE("imsa proxy is nullptr!");
-    //        return false;
-    //    }
-    //    bool ret = false;
-    //    int32_t result = proxy->IsRestrictedDefaultImeByDisplay(oldDisplayId, ret);
-    //    if (result != ErrorCode::NO_ERROR) {
-    //        IMSA_HILOGE("failed to get oldDisplay info , result is %{public}d!", result);
-    //        return false;
-    //    }
-    //    if (!ret) {
-    //        result = proxy->IsRestrictedDefaultImeByDisplay(newDisplayId, ret);
-    //        if (result != ErrorCode::NO_ERROR) {
-    //            IMSA_HILOGE("failed to get newDisplay info , result is %{public}d!", result);
-    //            return false;
-    //        }
-    //    }
-    //    return ret;
 }
 
 void InputMethodAbility::OnSetSubtype(SubProperty subProperty)
@@ -1684,13 +1666,7 @@ int32_t InputMethodAbility::GetCallingWindowInfo(CallingWindowInfo &windowInfo)
         IMSA_HILOGE("panel not found!");
         return ErrorCode::ERROR_PANEL_NOT_FOUND;
     }
-    TextTotalConfig textConfig;
-    int32_t ret = GetTextConfig(textConfig);
-    if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("failed to get window id, ret: %{public}d!", ret);
-        return ErrorCode::ERROR_GET_TEXT_CONFIG;
-    }
-    ret = panel->SetCallingWindow(textConfig.windowId);
+    auto ret = panel->SetCallingWindow(GetInputAttribute().windowId);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("failed to set calling window, ret: %{public}d!", ret);
         return ret;

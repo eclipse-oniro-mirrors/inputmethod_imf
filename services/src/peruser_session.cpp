@@ -19,12 +19,12 @@
 
 #include <cinttypes>
 #include <algorithm>
-
 #include "ability_manager_client.h"
 #include "full_ime_info_manager.h"
 #include "identity_checker_impl.h"
 #include "im_common_event_manager.h"
 #include "ime_enabled_info_manager.h"
+#include "ime_event_listener_manager.h"
 #include "ime_info_inquirer.h"
 #include "input_control_channel_service_impl.h"
 #include "ipc_skeleton.h"
@@ -89,18 +89,17 @@ PerUserSession::PerUserSession(int32_t userId, const std::shared_ptr<AppExecFwk:
 
 PerUserSession::~PerUserSession() { }
 
-int PerUserSession::AddClientInfo(
-    sptr<IRemoteObject> inputClient, const InputClientInfo &clientInfo, ClientAddEvent event)
+int PerUserSession::AddClientInfo(sptr<IRemoteObject> inputClient, const InputClientInfo &clientInfo)
 {
     IMSA_HILOGD("PerUserSession start.");
     uint64_t clientGroupId = clientInfo.clientGroupId;
     auto clientGroup = GetClientGroupByGroupId(clientGroupId);
     if (clientGroup != nullptr) {
-        return clientGroup->AddClientInfo(inputClient, clientInfo, event);
+        return clientGroup->AddClientInfo(inputClient, clientInfo);
     }
     clientGroup = std::make_shared<ClientGroup>(
         clientGroupId, [this](const sptr<IInputClient> &remote) { this->OnClientDied(remote); });
-    auto ret = clientGroup->AddClientInfo(inputClient, clientInfo, event);
+    auto ret = clientGroup->AddClientInfo(inputClient, clientInfo);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("failed to AddClientInfo: %{public}d", ret);
         return ret;
@@ -124,14 +123,12 @@ int32_t PerUserSession::HideKeyboard(
         IMSA_HILOGE("client info is nullptr!");
         return ErrorCode::ERROR_CLIENT_NOT_FOUND;
     }
-    auto data = clientInfo->bindImeData;
+    auto data = GetImeData(clientInfo->bindImeData);
     if (data == nullptr) {
         IMSA_HILOGE("%{public}d ime is not exist!", clientInfo->pid);
         return ErrorCode::ERROR_IME_NOT_STARTED;
     }
-    auto ret = RequestIme(data, RequestType::NORMAL, [&data] {
-        return data->core->HideKeyboard();
-    });
+    auto ret = RequestIme(data, RequestType::NORMAL, [&data] { return data->core->HideKeyboard(); });
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("failed to hide keyboard, ret: %{public}d!", ret);
         return ErrorCode::ERROR_KBD_HIDE_FAILED;
@@ -141,7 +138,7 @@ int32_t PerUserSession::HideKeyboard(
     if (data->IsRealIme()) {
         RestoreCurrentImeSubType();
     }
-    clientGroup->NotifyInputStopToClients();
+    ImeEventListenerManager::GetInstance().NotifyInputStop(userId_);
     return ErrorCode::NO_ERROR;
 }
 
@@ -157,21 +154,21 @@ int32_t PerUserSession::ShowKeyboard(const sptr<IInputClient> &currentClient,
         IMSA_HILOGE("client info is nullptr!");
         return ErrorCode::ERROR_CLIENT_NOT_FOUND;
     }
-    auto data = clientInfo->bindImeData;
+    auto data = GetImeData(clientInfo->bindImeData);
     if (data == nullptr) {
         IMSA_HILOGE("%{public}d ime is not exist!", clientInfo->pid);
         return ErrorCode::ERROR_IME_NOT_STARTED;
     }
-    auto ret = RequestIme(data, RequestType::REQUEST_SHOW, [&data, requestKeyboardReason] {
-        return data->core->ShowKeyboard(requestKeyboardReason);
-    });
+    auto ret = RequestIme(data, RequestType::REQUEST_SHOW,
+        [&data, requestKeyboardReason] { return data->core->ShowKeyboard(requestKeyboardReason); });
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("failed to show keyboard, ret: %{public}d!", ret);
         return ErrorCode::ERROR_KBD_SHOW_FAILED;
     }
     bool isShowKeyboard = true;
     clientGroup->UpdateClientInfo(currentClient->AsObject(), { { UpdateFlag::ISSHOWKEYBOARD, isShowKeyboard } });
-    clientGroup->NotifyInputStartToClients(clientInfo->config.windowId, requestKeyboardReason);
+    ImeEventListenerManager::GetInstance().NotifyInputStart(
+        userId_, clientInfo->config.windowId, requestKeyboardReason);
     return ErrorCode::NO_ERROR;
 }
 
@@ -189,29 +186,31 @@ void PerUserSession::OnClientDied(sptr<IInputClient> remote)
         return;
     }
     if (clientGroup->IsNotifyInputStop(remote)) {
-        clientGroup->NotifyInputStopToClients();
+        ImeEventListenerManager::GetInstance().NotifyInputStop(userId_);
     }
     auto clientInfo = clientGroup->GetClientInfo(remote->AsObject());
     IMSA_HILOGI("userId: %{public}d.", userId_);
     if (IsSameClient(remote, clientGroup->GetCurrentClient())) {
         if (clientInfo != nullptr) {
-            StopImeInput(clientInfo->bindImeData, clientInfo->channel, 0);
+            auto imeData = GetImeData(clientInfo->bindImeData);
+            StopImeInput(imeData, clientInfo->channel, 0);
+            if (imeData != nullptr && imeData->IsRealIme()) {
+                RestoreCurrentImeSubType();
+            }
         }
         clientGroup->SetCurrentClient(nullptr);
-        if (clientInfo->bindImeData != nullptr && clientInfo->bindImeData->IsRealIme()) {
-            RestoreCurrentImeSubType();
-        }
     }
     if (IsSameClient(remote, clientGroup->GetInactiveClient())) {
         if (clientInfo != nullptr) {
-            StopImeInput(clientInfo->bindImeData, clientInfo->channel, 0);
+            auto imeData = GetImeData(clientInfo->bindImeData);
+            StopImeInput(imeData, clientInfo->channel, 0);
+            if (imeData != nullptr && imeData->IsRealIme()) {
+                RestoreCurrentImeSubType();
+            }
         }
         clientGroup->SetInactiveClient(nullptr);
-        if (clientInfo->bindImeData != nullptr && clientInfo->bindImeData->IsRealIme()) {
-            RestoreCurrentImeSubType();
-        }
     }
-    clientGroup->RemoveClientInfo(remote->AsObject(), true);
+    clientGroup->RemoveClientInfo(remote->AsObject());
 }
 
 /** Handle the situation that an ime died
@@ -227,7 +226,7 @@ void PerUserSession::OnImeDied(const sptr<IInputMethodCore> &remote, ImeType typ
     if (type == ImeType::IME) {
         auto imeData = GetRealImeData();
         if (imeData != nullptr && imeData->imeStatus == ImeStatus::EXITING && pid == imeData->pid) {
-            ClearRealImeData();
+            RemoveRealImeData();
             InputTypeManager::GetInstance().Set(false);
             NotifyImeStopFinished();
             IMSA_HILOGI("%{public}d not current imeData.", type);
@@ -239,11 +238,11 @@ void PerUserSession::OnImeDied(const sptr<IInputMethodCore> &remote, ImeType typ
         IMSA_HILOGW("userId:%{public}d in background, no need to restart ime.", userId_);
         return;
     }
-    auto [clientGroup, clientInfo] = GetClientBoundImeByBindIme(pid);
+    auto [clientGroup, clientInfo] = GetClientBoundImeByImePid(pid);
     if (clientGroup != nullptr && clientInfo != nullptr) {
         auto currentClient = clientGroup->GetCurrentClient();
         if (IsSameClient(currentClient, clientInfo->client)) {
-            clientGroup->NotifyInputStopToClients();
+            ImeEventListenerManager::GetInstance().NotifyInputStop(userId_);
             StopClientInput(clientInfo);
             if (type == ImeType::IME) {
                 StartImeInImeDied();
@@ -355,20 +354,33 @@ void PerUserSession::OnHideSoftKeyBoardSelf()
     RestoreCurrentImeSubType();
 }
 
-int32_t PerUserSession::OnRequestHideInput(int32_t callingPid, uint64_t clientGroupId)
+std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> PerUserSession::GetClientSpecifyMainDisplay()
+{
+    std::lock_guard<std::mutex> lock(clientGroupLock_);
+    for (const auto &[groupId, group] : clientGroupMap_) {
+        if (group == nullptr) {
+            continue;
+        }
+        auto clientInfo = group->GetClientSpecifyMainDisplay();
+        if (clientInfo != nullptr) {
+            return { group, clientInfo };
+        }
+    }
+    return { nullptr, nullptr };
+}
+
+uint64_t PerUserSession::GetSpecifyMainDisplayShowGroupId()
+{
+    auto [clientGroup, clientInfo] = GetClientSpecifyMainDisplay();
+    if (clientGroup == nullptr || clientInfo == nullptr) {
+        return ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID;
+    }
+    return clientInfo->clientGroupId;
+}
+
+int32_t PerUserSession::OnRequestHideInput(uint64_t clientGroupId)
 {
     IMSA_HILOGD("PerUserSession::OnRequestHideInput start.");
-    // todo HideKeyboard为啥加到开头
-    //    auto data = GetReadyImeData(GetImeType(displayId));
-    //    if (data != nullptr) {
-    //        auto ret = RequestIme(data, RequestType::REQUEST_HIDE, [&data] {
-    //            return data->core->HideKeyboard();
-    //        });
-    //        if (ret != ErrorCode::NO_ERROR) {
-    //            IMSA_HILOGE("failed to hide keyboard, ret: %{public}d!", ret);
-    //            return ErrorCode::ERROR_KBD_HIDE_FAILED;
-    //        }
-    //    }
     auto clientGroup = GetClientGroupByGroupId(clientGroupId);
     if (clientGroup == nullptr) {
         return ErrorCode::NO_ERROR;
@@ -377,7 +389,7 @@ int32_t PerUserSession::OnRequestHideInput(int32_t callingPid, uint64_t clientGr
     auto currentClient = clientGroup->GetCurrentClient();
     if (currentClient != nullptr) {
         clientInfo = clientGroup->GetClientInfo(currentClient->AsObject());
-        clientGroup->UpdateClientInfo(currentClient->AsObject(), { { UpdateFlag::ISSHOWKEYBOARD, false } });  // todo 是否置空绑定ime
+        clientGroup->UpdateClientInfo(currentClient->AsObject(), { { UpdateFlag::ISSHOWKEYBOARD, false } });
     }
     auto inactiveClient = clientGroup->GetInactiveClient();
     if (inactiveClient != nullptr) {
@@ -385,17 +397,19 @@ int32_t PerUserSession::OnRequestHideInput(int32_t callingPid, uint64_t clientGr
         DetachOptions options = { .sessionId = 0, .isUnbindFromClient = false, .isInactiveClient = true };
         RemoveClient(inactiveClient, clientGroup, options);
     }
-    if (clientInfo != nullptr && clientInfo->bindImeData != nullptr) {
-        auto data = clientInfo->bindImeData;
-        auto ret = RequestIme(data, RequestType::REQUEST_HIDE, [&data] { return data->core->HideKeyboard(); });
-        if (ret != ErrorCode::NO_ERROR) {
-            IMSA_HILOGE("failed to hide keyboard, ret: %{public}d!", ret);
-        }
-        if (clientInfo->bindImeData->IsRealIme()) {
-            RestoreCurrentImeSubType();
+    if (clientInfo != nullptr) {
+        auto data = GetImeData(clientInfo->bindImeData);
+        if (data != nullptr) {
+            auto ret = RequestIme(data, RequestType::REQUEST_HIDE, [&data] { return data->core->HideKeyboard(); });
+            if (ret != ErrorCode::NO_ERROR) {
+                IMSA_HILOGE("failed to hide keyboard, ret: %{public}d!", ret);
+            }
+            if (data->IsRealIme()) {
+                RestoreCurrentImeSubType();
+            }
         }
     }
-    clientGroup->NotifyInputStopToClients();
+    ImeEventListenerManager::GetInstance().NotifyInputStop(userId_);
     return ErrorCode::NO_ERROR;
 }
 
@@ -406,7 +420,7 @@ int32_t PerUserSession::OnPrepareInput(const InputClientInfo &clientInfo)
         IMSA_HILOGE("client is nullptr");
         return ErrorCode::ERROR_CLIENT_NULL_POINTER;
     }
-    return AddClientInfo(clientInfo.client->AsObject(), clientInfo, PREPARE_INPUT);
+    return AddClientInfo(clientInfo.client->AsObject(), clientInfo);
 }
 
 /** Release input. Called by an input client.Run in work thread of this user
@@ -433,7 +447,7 @@ int32_t PerUserSession::OnReleaseInput(const sptr<IInputClient> &client, uint32_
         return ret;
     }
     if (isReady) {
-        clientGroup->NotifyInputStopToClients();
+        ImeEventListenerManager::GetInstance().NotifyInputStop(userId_);
     }
     return ErrorCode::NO_ERROR;
 }
@@ -462,15 +476,10 @@ int32_t PerUserSession::RemoveClient(
     return ErrorCode::NO_ERROR;
 }
 
-void PerUserSession::DeactivateClient(const sptr<IInputClient> &client)
+void PerUserSession::DeactivateClient(const sptr<IInputClient> &client, const std::shared_ptr<ClientGroup> &clientGroup)
 {
-    if (client == nullptr) {
+    if (client == nullptr || clientGroup == nullptr) {
         IMSA_HILOGD("client is nullptr.");
-        return;
-    }
-    auto clientGroup = GetClientGroup(client->AsObject());
-    if (clientGroup == nullptr) {
-        IMSA_HILOGD("client group not found");
         return;
     }
     auto clientInfo = clientGroup->GetClientInfo(client->AsObject());
@@ -484,9 +493,9 @@ void PerUserSession::DeactivateClient(const sptr<IInputClient> &client)
     }
     clientGroup->SetInactiveClient(client);
     client->DeactivateClient();
-    auto data = clientInfo->bindImeData;
+    auto data = GetImeData(clientInfo->bindImeData);
     if (data == nullptr) {
-        IMSA_HILOGE("ime %{public}d doesn't exist!", clientInfo->bindImePid);
+        IMSA_HILOGE("%{public}d bind ime is abnormal!", clientInfo->pid);
         return;
     }
     RequestAllIme(data, RequestType::NORMAL, [&clientInfo](const sptr<IInputMethodCore> &core) {
@@ -502,10 +511,13 @@ int32_t PerUserSession::OnStartInput(const InputClientInfo &inputClientInfo, std
     std::vector<BindImeInfo> &imeInfos)
 {
     IMSA_HILOGD("start input with keyboard[%{public}d].", inputClientInfo.isShowKeyboard);
-    auto data = GetReadyImeDataToBind(inputClientInfo.config.inputAttribute.displayId);
+    auto data = GetReadyImeDataToBind(inputClientInfo.config.inputAttribute.callingDisplayId);
     if (data == nullptr || data->agent == nullptr) {
         IMSA_HILOGE("data or agent is nullptr!");
         return ErrorCode::ERROR_IME_NOT_STARTED;
+    }
+    if (data->IsRealIme()) {
+        SetInputType();
     }
     auto clientGroup = GetClientGroupByGroupId(inputClientInfo.clientGroupId);
     if (clientGroup == nullptr) {
@@ -523,6 +535,7 @@ int32_t PerUserSession::OnStartInput(const InputClientInfo &inputClientInfo, std
 
 std::shared_ptr<ImeData> PerUserSession::GetRealImeData(bool isReady)
 {
+    std::lock_guard<std::mutex> lock(realImeDataLock_);
     if (realImeData_ == nullptr) {
         return nullptr;
     }
@@ -535,9 +548,65 @@ std::shared_ptr<ImeData> PerUserSession::GetRealImeData(bool isReady)
     return realImeData_;
 }
 
-std::shared_ptr<ImeData> PerUserSession::ClearRealImeData()
+void PerUserSession::RemoveRealImeData()
 {
-    return realImeData_ = nullptr;
+    std::lock_guard<std::mutex> lock(realImeDataLock_);
+    if (realImeData_->core != nullptr) {
+        IMSA_HILOGD("deathRecipient remove.");
+        RemoveDeathRecipient(realImeData_->deathRecipient, realImeData_->core->AsObject());
+    }
+    realImeData_ = nullptr;
+}
+
+void PerUserSession::RemoveRealImeData(pid_t pid)
+{
+    std::lock_guard<std::mutex> lock(realImeDataLock_);
+    if (realImeData_ == nullptr || realImeData_->pid != pid) {
+        return;
+    }
+    if (realImeData_->core != nullptr) {
+        IMSA_HILOGD("deathRecipient remove.");
+        RemoveDeathRecipient(realImeData_->deathRecipient, realImeData_->core->AsObject());
+    }
+    realImeData_ = nullptr;
+}
+
+void PerUserSession::RemoveMirrorImeData(pid_t pid)
+{
+    std::lock_guard<std::mutex> lock(mirrorImeDataLock_);
+    if (mirrorImeData_ == nullptr || mirrorImeData_->pid != pid) {
+        return;
+    }
+    if (mirrorImeData_->core != nullptr) {
+        IMSA_HILOGD("deathRecipient remove.");
+        RemoveDeathRecipient(mirrorImeData_->deathRecipient, mirrorImeData_->core->AsObject());
+    }
+    mirrorImeData_ = nullptr;
+}
+
+void PerUserSession::RemoveProxyImeData(pid_t pid)
+{
+    std::lock_guard<std::mutex> lock(proxyImeDataLock_);
+    auto mapIter = proxyImeData_.begin();
+    while (mapIter != proxyImeData_.end()) {
+        auto &imeDataList = mapIter->second;
+        auto vecIter = std::find_if(
+            imeDataList.begin(), imeDataList.end(), [pid](const std::shared_ptr<ImeData> &existingImeData) {
+                return existingImeData != nullptr && pid == existingImeData->pid;
+            });
+        if (vecIter != imeDataList.end()) {
+            auto imeData = *vecIter;
+            if (imeData->core != nullptr) {
+                RemoveDeathRecipient(imeData->deathRecipient, imeData->core->AsObject());
+            }
+            imeDataList.erase(vecIter);
+        }
+        if (imeDataList.empty()) {
+            mapIter = proxyImeData_.erase(mapIter);
+        } else {
+            mapIter++;
+        }
+    }
 }
 
 std::shared_ptr<ImeData> PerUserSession::GetReadyImeDataToBind(uint64_t displayId)
@@ -571,16 +640,17 @@ int32_t PerUserSession::SendAllReadyImeToClient(
         return ErrorCode::NO_ERROR;
     }
 
-    std::vector<std::shared_ptr<ImeData>> imeDatas = { data };
-    if (!data->IsImeMirror()) {
-        if (mirrorImeData_ != nullptr) {
-            imeDatas.push_back(mirrorImeData_);
+    std::vector<std::shared_ptr<ImeData>> imeDataVec = { data };
+    if (!data->IsImeMirror() && data->IsRealIme()) {
+        auto mirrorIme = GetMirrorImeData();
+        if (mirrorIme != nullptr) {
+            imeDataVec.push_back(mirrorIme);
         }
     }
 
     int32_t finalResult = ErrorCode::NO_ERROR;
     int32_t ret;
-    for (const auto &dataItem : imeDatas) {
+    for (const auto &dataItem : imeDataVec) {
         BindImeInfo imeInfo;
         imeInfo.pid = dataItem->pid;
         imeInfo.bundleName = dataItem->ime.first;
@@ -595,8 +665,8 @@ int32_t PerUserSession::SendAllReadyImeToClient(
     return finalResult;
 }
 
-int32_t PerUserSession::BindClientWithIme(const std::shared_ptr<InputClientInfo> &clientInfo,
-    const std::shared_ptr<ImeData> &imeData, bool isBindFromClient)
+int32_t PerUserSession::BindClientWithIme(
+    const std::shared_ptr<InputClientInfo> &clientInfo, const std::shared_ptr<ImeData> &imeData, bool isBindFromClient)
 {
     if (clientInfo == nullptr) {
         IMSA_HILOGE("clientInfo is nullptr!");
@@ -622,12 +692,10 @@ int32_t PerUserSession::BindClientWithIme(const std::shared_ptr<InputClientInfo>
             IMSA_HILOGE("before start input notify send private data failed, ret: %{public}d!", ret);
         }
     }
-    InputClientInfoInner inputClientInfoInner =
-        InputMethodTools::GetInstance().InputClientInfoToInner(*clientInfo);
-    auto ret = RequestAllIme(
-        data, RequestType::START_INPUT, [&inputClientInfoInner, isBindFromClient](const sptr<IInputMethodCore> &core) {
-            return core->StartInput(inputClientInfoInner, isBindFromClient);
-        });
+    InputClientInfoInner inputClientInfoInner = InputMethodTools::GetInstance().InputClientInfoToInner(*clientInfo);
+    auto ret = RequestAllIme(imeData, RequestType::START_INPUT,
+        [&inputClientInfoInner, isBindFromClient](
+            const sptr<IInputMethodCore> &core) { return core->StartInput(inputClientInfoInner, isBindFromClient); });
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("start input failed, ret: %{public}d!", ret);
         return ErrorCode::ERROR_IME_START_INPUT_FAILED;
@@ -649,14 +717,14 @@ int32_t PerUserSession::BindClientWithIme(const std::shared_ptr<InputClientInfo>
     if (imeData->IsImeMirror()) {
         return ErrorCode::NO_ERROR;
     }
-
+    auto bindImeData = std::make_shared<BindImeData>(imeData->pid, imeData->type);
     clientGroup->UpdateClientInfo(clientInfo->client->AsObject(),
         { { UpdateFlag::ISSHOWKEYBOARD, clientInfo->isShowKeyboard }, { UpdateFlag::STATE, ClientState::ACTIVE },
-            { UpdateFlag::BIND_IME_DATA, imeData } });
+            { UpdateFlag::BIND_IME_DATA, bindImeData } });
     ReplaceCurrentClient(clientInfo->client, clientGroup);
     if (clientInfo->isShowKeyboard) {
-        clientGroup->NotifyInputStartToClients(
-            clientInfo->config.windowId, static_cast<int32_t>(clientInfo->requestKeyboardReason));
+        ImeEventListenerManager::GetInstance().NotifyInputStart(
+            userId_, clientInfo->config.windowId, static_cast<int32_t>(clientInfo->requestKeyboardReason));
     }
     return ErrorCode::NO_ERROR;
 }
@@ -667,38 +735,32 @@ void PerUserSession::HandleSameClientPreemptInMultiGroup(
     if (newClientInfo == nullptr || newImeData == nullptr) {
         return;
     }
-    // TODO 返回值可以改成列表，循环处理，防止异常情况出现多个
-    auto [oldClientGroup, oldClientInfo] = GetClientBoundImeByClientPid(newClientInfo->pid);
+    if (newImeData->IsImeMirror()) {
+        return;
+    }
+    auto [oldClientGroup, oldClientInfo] = GetClientBoundImeBySelfPidOrHostPid(newClientInfo->pid);
     if (oldClientGroup == nullptr || oldClientInfo == nullptr || oldClientInfo->client == nullptr
         || oldClientInfo->bindImeData == nullptr) {
         return;
     }
-    oldClientGroup->UpdateClientInfo(oldClientInfo->client->AsObject(),
-        { { UpdateFlag::ISSHOWKEYBOARD, false }, { UpdateFlag::BIND_IME_DATA, nullptr } });
-    // 相同客户端在同一group里，不论输入法是否相同(只能是类型不同)，都不需要隐藏输入法，HandleBindImeChanged 函数已处理
     if (IsSameClientGroup(oldClientInfo->clientGroupId, newClientInfo->clientGroupId)) {
         return;
     }
-    // todo needHIde
+    //    // 绑定的是同一输入法，只需要置空老group中的输入法,不能隐藏（如果两次显示在同一屏幕，会出现先隐藏再显示）
+    //    // 绑定的不是同一输入法，解绑隐藏输入法
+    if (oldClientInfo->bindImeData->pid != newImeData->pid) {
+        StopImeInput(GetImeData(oldClientInfo->bindImeData), oldClientInfo->channel, 0);
+    }
     newClientInfo->isNotifyInputStart = true;
-    // todo 相同客户端在不同group里:是否需要移除信息老group中的客戶端
     if (IsSameClient(oldClientInfo->client, oldClientGroup->GetCurrentClient())) {
         oldClientGroup->SetCurrentClient(nullptr);
     }
     if (IsSameClient(oldClientInfo->client, oldClientGroup->GetInactiveClient())) {
         oldClientGroup->SetInactiveClient(nullptr);
     }
-//    if (oldClientInfo->bindImeData->IsRealIme()) {
-//        RestoreCurrentImeSubType();  // todo 放哪里合适
-//    }
     oldClientGroup->RemoveClientInfo(oldClientInfo->client->AsObject());
-
-    // 相同客户端在不同group里,绑定的是同一输入法，只需要置空老group中的输入法,不能隐藏（如果两次显示在同一屏幕，会出现先隐藏再显示）
-    if (oldClientInfo->bindImeData->pid == newImeData->pid) {
-        return;
-    }
-    // 相同客户端在不同group里, 且绑定的不是同一输入法
-    StopImeInput(oldClientInfo->bindImeData, oldClientInfo->channel, 0);
+    //    oldClientGroup->UpdateClientInfo(oldClientInfo->client->AsObject(),
+    //        { { UpdateFlag::ISSHOWKEYBOARD, false }, { UpdateFlag::BIND_IME_DATA, nullptr } });
 }
 
 void PerUserSession::HandleImePreemptInMultiGroup(
@@ -707,39 +769,78 @@ void PerUserSession::HandleImePreemptInMultiGroup(
     if (newClientInfo == nullptr || newImeData == nullptr) {
         return;
     }
+    if (newImeData->IsImeMirror()) {
+        return;
+    }
     // HandleClientPreemptInMultiGroup的处理会使oldClientInfo和newClientInfo不会相同
-
     if (newImeData->IsRealIme()) {
         auto [oldClientGroup, oldClientInfo] = GetClientBoundRealIme();
         // 场景：默认group拉起讯飞， 点击group1需要拉起小艺
         // 不同客户端在同一group里，绑定正式输入法，ReplaceCurrentClient 会处理
         if (oldClientGroup != nullptr && oldClientInfo != nullptr && !IsSameIme(oldClientInfo->bindImeData, newImeData)
             && !IsSameClientGroup(oldClientInfo->clientGroupId, newClientInfo->clientGroupId)) {
+            StopImeInput(GetImeData(oldClientInfo->bindImeData), oldClientInfo->channel, 0);
+            StopClientInput(oldClientInfo, IsSameClient(oldClientInfo->client, oldClientGroup->GetInactiveClient()));
+            newClientInfo->isNotifyInputStart = true;
             oldClientGroup->UpdateClientInfo(oldClientInfo->client->AsObject(),
                 { { UpdateFlag::ISSHOWKEYBOARD, false }, { UpdateFlag::BIND_IME_DATA, nullptr } });
-            StopClientInput(oldClientInfo, IsSameClient(oldClientInfo->client, oldClientGroup->GetInactiveClient));
-            newClientInfo->isNotifyInputStart = true;
         }
     }
     // TODO 返回值可以改成列表，循环处理，防止异常情况出现多个
-    auto [oldClientGroup, oldClientInfo] = GetClientBoundImeByBindIme(newImeData->pid);
+    auto [oldClientGroup, oldClientInfo] = GetClientBoundImeByImePid(newImeData->pid);
     if (oldClientGroup == nullptr || oldClientInfo == nullptr || oldClientInfo->client == nullptr
         || oldClientInfo->bindImeData == nullptr) {
         return;
     }
-    //    if (oldClientInfo->bindImeData->IsRealIme()) {
-    //        RestoreCurrentImeSubType(); // todo 放哪里合适
-    //    }
-    oldClientGroup->UpdateClientInfo(oldClientInfo->client->AsObject(),
-        { { UpdateFlag::ISSHOWKEYBOARD, false }, { UpdateFlag::BIND_IME_DATA, nullptr } });
     // 不同客户端在同一group里，绑定同一输入法, ReplaceCurrentClient会处理
     if (IsSameClientGroup(oldClientInfo->clientGroupId, newClientInfo->clientGroupId)) {
         return;
     }
-    // todo needHIde
     newClientInfo->isNotifyInputStart = true;
     // 不同客户端在不同group里，绑定同一输入法
-    StopClientInput(oldClientInfo, IsSameClient(oldClientInfo->client, oldClientGroup->GetInactiveClient);
+    // StopImeInput(GetImeData(oldClientInfo->bindImeData), oldClientInfo->channel, 0);
+    StopClientInput(oldClientInfo, IsSameClient(oldClientInfo->client, oldClientGroup->GetInactiveClient()));
+    oldClientGroup->UpdateClientInfo(oldClientInfo->client->AsObject(),
+        { { UpdateFlag::ISSHOWKEYBOARD, false }, { UpdateFlag::BIND_IME_DATA, nullptr } });
+}
+
+std::shared_ptr<ImeData> PerUserSession::GetImeData(const std::shared_ptr<BindImeData> &bindImeData)
+{
+    if (bindImeData == nullptr) {
+        return nullptr;
+    }
+    return GetImeData(bindImeData->pid, bindImeData->type);
+}
+
+std::shared_ptr<ImeData> PerUserSession::GetImeData(pid_t pid, ImeType type)
+{
+    switch (type) {
+        case ImeType::IME: {
+            return GetRealImeData(pid);
+        }
+        case ImeType::IME_MIRROR: {
+            return GetMirrorImeData(pid);
+        }
+        case ImeType::PROXY_IME: {
+            return GetProxyImeData(pid);
+        }
+        default: {
+            return nullptr;
+        }
+    }
+}
+
+std::shared_ptr<ImeData> PerUserSession::GetProxyImeData(pid_t pid)
+{
+    std::lock_guard<std::mutex> lock(proxyImeDataLock_);
+    for (const auto &[key, imeDataVec] : proxyImeData_) {
+        auto iter = std::find_if(imeDataVec.begin(), imeDataVec.end(),
+            [pid](const auto &imeData) { return imeData != nullptr && imeData->pid == pid; });
+        if (iter != imeDataVec.end()) {
+            return *iter;
+        }
+    }
+    return nullptr;
 }
 
 bool PerUserSession::IsSameClientGroup(uint64_t newGroupId, uint64_t oldGroupId)
@@ -775,7 +876,7 @@ void PerUserSession::UnBindClientWithIme(
         IMSA_HILOGD("unbind from service.");
         StopClientInput(currentClientInfo, options.isNotifyClientAsync);
     }
-    StopImeInput(currentClientInfo->bindImeData, currentClientInfo->channel, options.sessionId);
+    StopImeInput(GetImeData(currentClientInfo->bindImeData), currentClientInfo->channel, options.sessionId);
 }
 
 void PerUserSession::StopClientInput(
@@ -841,7 +942,6 @@ void PerUserSession::OnSecurityChange(int32_t security)
 int32_t PerUserSession::OnSetCoreAndAgent(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent)
 {
     IMSA_HILOGI("start.");
-    auto pid = IPCSkeleton::GetCallingPid();
     auto imeData = UpdateRealImeData(core, agent, IPCSkeleton::GetCallingPid());
     if (imeData == nullptr) {
         return ErrorCode::ERROR_BAD_PARAMETERS;
@@ -855,8 +955,9 @@ int32_t PerUserSession::OnSetCoreAndAgent(const sptr<IInputMethodCore> &core, co
     }
     auto ret = InitInputControlChannel();
     IMSA_HILOGI("init input control channel ret: %{public}d.", ret);
-    // todo 默认group拉起讯飞， 点击group1需要拉起小艺，此处如果不限定会导致小艺先显示在默认group，后续又显示在group1上
-    if (GetAttachCount() != 0) {
+    /* The default group launches ime1. When Group1 is clicked, it needs to launch defaultIme. If not specified,
+       defaultIme will first appear in the default group and then in Group1 afterward.*/
+    if (GetAttachCount() == 0) {
         auto [clientGroup, clientInfo] = GetCurrentClientBoundRealIme();
         if (clientInfo != nullptr) {
             ClearRequestKeyboardReason(clientInfo);
@@ -907,7 +1008,7 @@ std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> PerUse
 }
 
 std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> PerUserSession::GetClientByWindowId(
-    uiuint32_t windowId)
+    uint32_t windowId)
 {
     std::lock_guard<std::mutex> lock(clientGroupLock_);
     for (const auto &[groupId, group] : clientGroupMap_) {
@@ -916,6 +1017,26 @@ std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> PerUse
         }
         auto clientInfo = group->GetClientByWindowId(windowId);
         if (clientInfo != nullptr) {
+            return { group, clientInfo };
+        }
+    }
+    return { nullptr, nullptr };
+}
+
+std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>>
+PerUserSession::GetClientBoundImeBySelfPidOrHostPid(pid_t clientPid)
+{
+    std::lock_guard<std::mutex> lock(clientGroupLock_);
+    for (const auto &[groupId, group] : clientGroupMap_) {
+        if (group == nullptr) {
+            continue;
+        }
+        auto clientInfo = group->GetClientInfo(clientPid);
+        if (clientInfo != nullptr && clientInfo->bindImeData != nullptr) {
+            return { group, clientInfo };
+        }
+        clientInfo = group->GetClientInfoByHostPid(clientPid);
+        if (clientInfo != nullptr && clientInfo->bindImeData != nullptr) {
             return { group, clientInfo };
         }
     }
@@ -938,7 +1059,7 @@ std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> PerUse
     return { nullptr, nullptr };
 }
 
-std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> PerUserSession::GetClientBoundImeByBindIme(
+std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> PerUserSession::GetClientBoundImeByImePid(
     pid_t bindImePid)
 {
     std::lock_guard<std::mutex> lock(clientGroupLock_);
@@ -973,11 +1094,11 @@ int32_t PerUserSession::OnRegisterProxyIme(
         return ErrorCode::ERROR_BAD_PARAMETERS;
     }
     auto clientInfo = GetCurrentClientInfo(displayId);
-    if (clientInfo != nullptr) {
-        if (!IsSameIme(clientInfo->bindImeData, newImeData)) {
-            UnBindClientWithIme(clientInfo, { .sessionId = 0 });
-            BindClientWithIme(clientInfo, newImeData);
-        }
+    if(clientInfo == nullptr) {
+        return ErrorCode::NO_ERROR;
+    }
+    if (!IsSameIme(clientInfo->bindImeData, newImeData)) {
+        BindClientWithIme(clientInfo, newImeData);
     }
     return ErrorCode::NO_ERROR;
 }
@@ -1008,8 +1129,7 @@ int32_t PerUserSession::UpdateLargeMemorySceneState(const int32_t memoryState)
 int32_t PerUserSession::OnUnregisterProxyIme(uint64_t displayId, int32_t pid)
 {
     IMSA_HILOGD("proxy unregister.");
-    auto clientGroup = GetClientGroup(displayId);
-    auto clientInfo = clientGroup != nullptr ? clientGroup->GetCurrentClientInfo() : nullptr;
+    auto clientInfo = GetCurrentClientInfo(displayId);
     if (clientInfo != nullptr && clientInfo->bindImeData != nullptr && clientInfo->bindImeData->pid == pid) {
         UnBindClientWithIme(clientInfo, { .sessionId = 0 });
     }
@@ -1031,6 +1151,10 @@ int32_t PerUserSession::RemoveProxyImeData(uint64_t displayId, pid_t pid)
             return existingImeData != nullptr && pid == existingImeData->pid;
         });
     if (vecIter != imeDataList.end()) {
+        auto imeData = *vecIter;
+        if (imeData->core != nullptr) {
+            RemoveDeathRecipient(imeData->deathRecipient, imeData->core->AsObject());
+        }
         imeDataList.erase(vecIter);
     }
     if (imeDataList.empty()) {
@@ -1039,22 +1163,45 @@ int32_t PerUserSession::RemoveProxyImeData(uint64_t displayId, pid_t pid)
     return ErrorCode::NO_ERROR;
 }
 
+std::shared_ptr<ImeData> PerUserSession::AddMirrorImeData(
+    const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent, pid_t pid)
+{
+    std::lock_guard<std::mutex> lock(mirrorImeDataLock_);
+    auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, -1);
+    auto ret = FillImeData(core, agent, pid, ImeType::IME_MIRROR, imeData);
+    if (ret != ErrorCode::NO_ERROR) {
+        return nullptr;
+    }
+    mirrorImeData_ = imeData;
+    return imeData;
+}
+
 int32_t PerUserSession::OnBindImeMirror(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent)
 {
     IMSA_HILOGI("[ImeMirrorTag]star");
     auto pid = IPCSkeleton::GetCallingPid();
-    {
-        std::lock_guard<std::mutex> lock(mirrorImeDataLock_);
-        mirrorImeData_ = std::make_shared<ImeData>(nullptr, nullptr, nullptr, -1);
-        auto ret = FillImeData(core, agent, pid, ImeType::IME_MIRROR, mirrorImeData_);
-        if (ret != ErrorCode::NO_ERROR) {
-            return ret;
-        }
+    auto oldImeData = GetMirrorImeData();
+    if (oldImeData != nullptr && oldImeData->pid == pid) {
+        return ErrorCode::NO_ERROR;
     }
-
-    auto clientInfo = GetCurrentClientInfo();  // todo
+    if (oldImeData != nullptr) {
+        if (oldImeData->core != nullptr) {
+            oldImeData->core->NotifyPreemption();
+        }
+        auto [clientGroup, clientInfo] = GetCurrentClientBoundRealIme();
+        if (clientInfo != nullptr && clientInfo->client != nullptr) {
+            clientInfo->client->OnImeMirrorStop(oldImeData->agent);
+            IMSA_HILOGD("[ImeMirrorTag]no current client");
+        }
+        RemoveMirrorImeData(oldImeData->pid);
+    }
+    auto imeData = AddMirrorImeData(core, agent, pid);
+    if (imeData == nullptr) {
+        return ErrorCode::ERROR_BAD_PARAMETERS;
+    }
+    auto [clientGroup, clientInfo] = GetCurrentClientBoundRealIme();
     if (clientInfo != nullptr) {
-        BindClientWithIme(clientInfo, mirrorImeData_);
+        BindClientWithIme(clientInfo, imeData);
     }
     return ErrorCode::NO_ERROR;
 }
@@ -1063,24 +1210,16 @@ int32_t PerUserSession::OnUnbindImeMirror()
 {
     IMSA_HILOGD("[ImeMirrorTag]start");
     auto pid = IPCSkeleton::GetCallingPid();
-    if (mirrorImeData_ == nullptr || mirrorImeData_->pid != pid) {
+    auto mirrorIme = GetMirrorImeData();
+    if (mirrorIme == nullptr || mirrorIme->pid != pid) {
         return ErrorCode::NO_ERROR;
     }
-    auto clientInfo = GetCurrentClientInfo();  //todo
-    if (clientInfo == nullptr) {
-        {
-            std::lock_guard<std::mutex> lock(mirrorImeDataLock_);
-            mirrorImeData_ = nullptr;
-        }
-        IMSA_HILOGD("[ImeMirrorTag]no current client");
-        return ErrorCode::NO_ERROR;
+    auto [clientGroup, clientInfo] = GetCurrentClientBoundRealIme();
+    if (clientInfo == nullptr && clientInfo->client != nullptr) {
+        clientInfo->client->OnImeMirrorStop(mirrorIme->agent);
+        StopImeInput(mirrorIme, clientInfo->channel, 0);
     }
-    clientInfo->client->OnImeMirrorStop(mirrorImeData_->agent);
-    StopImeInput(mirrorImeData_, clientInfo->channel, 0);
-    {
-        std::lock_guard<std::mutex> lock(mirrorImeDataLock_);
-        mirrorImeData_ = nullptr;
-    }
+    RemoveMirrorImeData(pid);
     return ErrorCode::NO_ERROR;
 }
 
@@ -1178,13 +1317,7 @@ void PerUserSession::ReplaceCurrentClient(
 
 void PerUserSession::NotifyImeChangeToClients(const Property &property, const SubProperty &subProperty)
 {
-    IMSA_HILOGD("start.");
-    auto clientGroup = GetClientGroup(DEFAULT_DISPLAY_ID);
-    if (clientGroup == nullptr) {
-        IMSA_HILOGD("no client need to notify");
-        return;
-    }
-    clientGroup->NotifyImeChangeToClients(property, subProperty);
+    ImeEventListenerManager::GetInstance().NotifyImeChange(userId_, property, subProperty);
 }
 
 std::shared_ptr<ImeData> PerUserSession::AddProxyImeData(
@@ -1194,13 +1327,10 @@ std::shared_ptr<ImeData> PerUserSession::AddProxyImeData(
         IMSA_HILOGE("core or agent is nullptr!");
         return nullptr;
     }
-    auto type = ImeType::PROXY_IME;
     std::lock_guard<std::mutex> lock(proxyImeDataLock_);
     auto &imeDataList = proxyImeData_[displayId];
-    auto iter = std::find_if(
-        imeDataList.begin(), imeDataList.end(), [&core, this](const std::shared_ptr<ImeData> &existingImeData) {
-            return existingImeData != nullptr && core->AsObject() == existingImeData->core->AsObject();
-        });
+    auto iter = std::find_if(imeDataList.begin(), imeDataList.end(),
+        [pid](const auto &existingImeData) { return existingImeData != nullptr && pid == existingImeData->pid; });
     if (iter != imeDataList.end()) {
         auto imeData = *iter;
         imeDataList.erase(iter);
@@ -1209,9 +1339,12 @@ std::shared_ptr<ImeData> PerUserSession::AddProxyImeData(
         return imeData;
     }
     auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, -1);
-    FillImeData(core, agent, pid, ImeType::IME, imeData);
+    auto ret = FillImeData(core, agent, pid, ImeType::PROXY_IME, imeData);
+    if (ret != ErrorCode::NO_ERROR) {
+        return nullptr;
+    }
     AddProxyImeData(imeDataList, imeData); // todo 啥意思
-    IMSA_HILOGI("add imeData with type: %{public}d name: %{public}s end", type, imeData->ime.first.c_str());
+    IMSA_HILOGI("add imeData with displayId: %{public}" PRIu64 ".", displayId);
     return imeData;
 }
 
@@ -1233,51 +1366,40 @@ void PerUserSession::AddProxyImeData(
     imeDataList.push_back(imeData);
 }
 
-std::vector<std::shared_ptr<ImeData>> PerUserSession::GetAllReadyImeData(const std::shared_ptr<ImeData> &bindImeData)
+std::vector<std::shared_ptr<ImeData>> PerUserSession::GetAllReadyImeData(const std::shared_ptr<ImeData> &imeData)
 {
-    if (bindImeData == nullptr) {
+    if (imeData == nullptr) {
         return {};
     }
 
-    if (bindImeData->IsImeMirror()) {
-        return { bindImeData };
+    if (imeData->IsImeMirror() || !imeData->IsRealIme()) {
+        return { imeData };
+    }
+    auto mirrorIme = GetMirrorImeData();
+    if (mirrorIme == nullptr) {
+        return { imeData };
     }
 
-    if (mirrorImeData_ == nullptr) {
-        return { bindImeData };
-    }
-
-    return { bindImeData, mirrorImeData_ };
+    return { imeData, mirrorIme };
 }
 
 void PerUserSession::RemoveImeData(pid_t pid)
 {
-    {
-        std::lock_guard<std::mutex> lock(realImeDataLock_);
-        if (realImeData_ != nullptr && realImeData_->pid == pid) {
-            realImeData_ = nullptr;
-        }
+    RemoveRealImeData(pid);
+    RemoveMirrorImeData(pid);
+    RemoveProxyImeData(pid);
+}
+
+void PerUserSession::RemoveDeathRecipient(
+    const sptr<InputDeathRecipient> &deathRecipient, const sptr<IRemoteObject> &object)
+{
+    if (deathRecipient == nullptr) {
+        return;
     }
-    {
-        std::lock_guard<std::mutex> lock(mirrorImeDataLock_);
-        if (mirrorImeData_ != nullptr && mirrorImeData_->pid == pid) {
-            mirrorImeData_ = nullptr;
-        }
+    if (object == nullptr) {
+        return;
     }
-    {
-        std::lock_guard<std::mutex> lock(proxyImeDataLock_);
-        for (auto iter = proxyImeData_.begin(); iter != proxyImeData_.end();) {
-            auto &imeDataVec = iter->second;
-            auto newEnd = std::remove_if(imeDataVec.begin(), imeDataVec.end(),
-                [pid](const std::shared_ptr<ImeData> &data) { return data != nullptr && data->pid == pid; });
-            imeDataVec.erase(newEnd, imeDataVec.end());
-            if (imeDataVec.empty()) {
-                iter = proxyImeData_.erase(iter);
-            } else {
-                ++iter;
-            }
-        }
-    }
+    object->RemoveDeathRecipient(deathRecipient);
 }
 
 void PerUserSession::OnFocused(uint64_t displayId, int32_t pid, int32_t uid)
@@ -1302,7 +1424,7 @@ void PerUserSession::OnFocused(uint64_t displayId, int32_t pid, int32_t uid)
         return;
     }
     IMSA_HILOGI("focus shifts to pid: %{public}d, deactivate current client.", pid);
-    DeactivateClient(client);
+    DeactivateClient(client, clientGroup);
 }
 
 void PerUserSession::OnUnfocused(uint64_t displayId, int32_t pid, int32_t uid)
@@ -1485,8 +1607,7 @@ int32_t PerUserSession::NotifySubTypeChangedToIme(const std::string &bundleName,
 
 bool PerUserSession::IsKeyboardCallingProcess(int32_t pid, uint32_t windowId)
 {
-    auto clientGroup = GetClientGroup(WindowAdapter::GetDisplayIdByWindowId(windowId));
-    auto clientInfo = clientGroup != nullptr ? clientGroup->GetCurrentClientInfo() : nullptr;
+    auto [clientGroup, clientInfo] = GetCurrentClientBoundRealIme();
     if (clientInfo == nullptr) {
         IMSA_HILOGE("failed to get cur client info!");
         return false;
@@ -1655,50 +1776,12 @@ int64_t PerUserSession::GetInactiveClientPid(uint64_t displayId)
     return clientGroup->GetInactiveClientPid();
 }
 
-int32_t PerUserSession::OnPanelStatusChange(
-    const InputWindowStatus &status, const ImeWindowInfo &info, uint64_t displayId)
+int32_t PerUserSession::OnPanelStatusChange(const InputWindowStatus &status, const ImeWindowInfo &info)
 {
-    auto clientGroup = GetClientGroup(displayId);
-    if (clientGroup == nullptr) {
-        IMSA_HILOGD("client nullptr");
-        return ErrorCode::NO_ERROR;
-    }
-    return clientGroup->NotifyPanelStatusChange(status, info);
+    return ImeEventListenerManager::GetInstance().NotifyPanelStatusChange(userId_, status, info);
 }
 
-// TODO 注册者都注册到了group0里，之前都是一个group,现在会导致其他group屏幕操作（之前的屏幕在group0里）收不到
-int32_t PerUserSession::OnUpdateListenEventFlag(const InputClientInfo &clientInfo)
-{
-    if (clientInfo.client == nullptr) {
-        IMSA_HILOGE("clientInfo is nullptr!");
-        return ErrorCode::ERROR_NULL_POINTER;
-    }
-    auto remoteClient = clientInfo.client->AsObject();
-    auto ret = AddClientInfo(remoteClient, clientInfo, START_LISTENING);
-    if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("failed to AddClientInfo!");
-        return ret;
-    }
-    auto clientGroup = GetClientGroup(remoteClient);
-    if (clientGroup == nullptr) {
-        IMSA_HILOGE("group is nullptr");
-        return ErrorCode::ERROR_CLIENT_NOT_FOUND;
-    }
-    auto info = clientGroup->GetClientInfo(remoteClient);
-    if (info == nullptr) {
-        IMSA_HILOGE("info is nullptr!");
-        return ErrorCode::ERROR_CLIENT_NOT_FOUND;
-    }
-    auto clientClient = clientGroup->GetCurrentClient();
-    if (info->eventFlag == NO_EVENT_ON
-        && (clientClient == nullptr || clientClient->AsObject() != clientInfo.client->AsObject())) {
-        clientGroup->RemoveClientInfo(remoteClient, false);
-    }
-    return ErrorCode::NO_ERROR;
-}
-
-int32_t PerUserSession::OnSetCallingWindow(uint32_t callingWindowId,
-    uint64_t callingDisplayId, sptr<IInputClient> client)
+int32_t PerUserSession::OnSetCallingWindow(const FocusedInfo &focusedInfo, sptr<IInputClient> client)
 {
     IMSA_HILOGD("OnSetCallingWindow enter");
     if (client == nullptr) {
@@ -1719,38 +1802,37 @@ int32_t PerUserSession::OnSetCallingWindow(uint32_t callingWindowId,
         IMSA_HILOGE("nullptr clientInfo!");
         return ErrorCode::ERROR_CLIENT_NULL_POINTER;
     }
+    auto oldDisplayGroupId = clientInfo->clientGroupId;
+    auto newDisplayGroupId = focusedInfo.displayGroupId;
+    if (!IsSameClientGroup(oldDisplayGroupId, newDisplayGroupId)) {
+        return ErrorCode::NO_ERROR;
+    }
+    ImeEventListenerManager::GetInstance().NotifyInputStart(
+        userId_, focusedInfo.windowId, static_cast<int32_t>(clientInfo->requestKeyboardReason));
     IMSA_HILOGD("windowId changed, refresh windowId info and notify clients input start.");
-    clientInfo->config.windowId = callingWindowId;
-    clientInfo->config.privateCommand.insert_or_assign(
-        "displayId", PrivateDataValue(static_cast<int32_t>(callingDisplayId)));
-    clientGroup->NotifyInputStartToClients(callingWindowId, static_cast<int32_t>(clientInfo->requestKeyboardReason));
-    HandleWindowIdChanged(callingWindowId, clientInfo);
+    HandleWindowIdChanged(focusedInfo, clientInfo);
     return ErrorCode::NO_ERROR;
 }
 
 void PerUserSession::HandleWindowIdChanged(
-    uint32_t callingWindowId, const std::shared_ptr<InputClientInfo> &currentClientInfo)
+    const FocusedInfo &focusedInfo, const std::shared_ptr<InputClientInfo> &clientInfo)
 {
-    if (callingWindowId == INVALID_WINDOW_ID) {
-        return;
-    }
-    auto newDisplayId = WindowAdapter::GetDisplayIdByWindowId(callingWindowId);
-    auto newDisplayGroupId = WindowAdapter::GetDisplayGroupId(newDisplayId);
-    auto oldDisplayGroupId = currentClientInfo->clientGroupId;
-    if (!IsSameClientGroup(oldDisplayGroupId, newDisplayGroupId)) {
-        return;
-    }
-    uint64_t oldDisplayId = clientInfo->config.inputAttribute.callingDisplayId;
+    auto newDisplayId = DisplayAdapter::GetFinalDisplayId(focusedInfo.displayId);
+    auto newWindowId = focusedInfo.windowId;
+    auto oldDisplayId = clientInfo->config.inputAttribute.callingDisplayId;
+    auto oldWindowId = clientInfo->config.inputAttribute.windowId;
+    clientInfo->config.windowId = newWindowId;
+    clientInfo->config.inputAttribute.windowId = newWindowId;
     clientInfo->config.inputAttribute.callingDisplayId = newDisplayId;
-    if (!DisplayAdapter::IsImeShowable(newDisplayId)) {
-        clientInfo->config.inputAttribute.callingDisplayId = DEFAULT_DISPLAY_ID;
-        clientInfo->config.inputAttribute.isSpecifyMainDisplay = true;
+    clientInfo->config.privateCommand.insert_or_assign(
+        "displayId", PrivateDataValue(static_cast<int32_t>(focusedInfo.displayId)));  // todo hop区分
+    clientInfo->config.inputAttribute.isSpecifyMainDisplay = newDisplayId != focusedInfo.displayId;
+    if (newWindowId != oldWindowId) {
+        NotifyCallingWindowIdChanged(newWindowId, GetImeData(clientInfo->bindImeData));
     }
-    newDisplayId = clientInfo->config.inputAttribute.callingDisplayId;
-    if (oldDisplayId == newDisplayId) {
-        return;
+    if (oldDisplayId != newDisplayId) {
+        NotifyCallingDisplayChanged(newDisplayId, GetImeData(clientInfo->bindImeData));
     }
-    NotifyCallingDisplayChanged(newDisplayId, currentClientInfo->bindImeData);
 }
 
 int32_t PerUserSession::GetInputStartInfo(
@@ -1767,7 +1849,7 @@ int32_t PerUserSession::GetInputStartInfo(
     return ErrorCode::NO_ERROR;
 }
 
-bool PerUserSession::IsSameIme(const std::shared_ptr<ImeData> &oldIme, const std::shared_ptr<ImeData> &newIme)
+bool PerUserSession::IsSameIme(const std::shared_ptr<BindImeData> &oldIme, const std::shared_ptr<ImeData> &newIme)
 {
     if (oldIme == nullptr) {
         return false;
@@ -1778,7 +1860,7 @@ bool PerUserSession::IsSameIme(const std::shared_ptr<ImeData> &oldIme, const std
     return oldIme->pid == newIme->pid;
 }
 
-bool PerUserSession::IsSameImeType(const std::shared_ptr<ImeData> &oldIme, const std::shared_ptr<ImeData> &newIme)
+bool PerUserSession::IsSameImeType(const std::shared_ptr<BindImeData> &oldIme, const std::shared_ptr<ImeData> &newIme)
 {
     if (oldIme == nullptr) {
         return true;
@@ -1879,27 +1961,38 @@ bool PerUserSession::IsCurrentImeByPid(int32_t pid)
     return imeData->pid == pid;
 }
 
-int32_t PerUserSession::IsPanelShown(const PanelInfo &panelInfo, bool &isShown)
+int32_t PerUserSession::IsPanelShown(uint64_t displayId, const PanelInfo &panelInfo, bool &isShown)
 {
-    auto clientGroup = GetClientGroup(DEFAULT_DISPLAY_ID);  // todo
-    if (clientGroup == nullptr || clientGroup->GetCurrentClient() == nullptr) {
+    auto clientGroup = GetClientGroup(displayId);
+    if (clientGroup == nullptr) {
         IMSA_HILOGD("not in bound state.");
         isShown = false;
         return ErrorCode::NO_ERROR;
     }
-    auto ime = GetRealImeData(true);
-    if (ime == nullptr) {
-        IMSA_HILOGE("ime not started!");
-        return ErrorCode::ERROR_IME_NOT_STARTED;
+    auto clientInfo = clientGroup->GetCurrentClientInfo();
+    if (clientInfo == nullptr) {
+        IMSA_HILOGD("has no current client.");
+        isShown = false;
+        return ErrorCode::NO_ERROR;
     }
-    return RequestIme(ime, RequestType::NORMAL, [&ime, &panelInfo, &isShown] {
-        return ime->core->IsPanelShown(panelInfo, isShown);
-    });
+    if (clientInfo->bindImeData == nullptr || !clientInfo->bindImeData->IsRealIme()) {
+        IMSA_HILOGD("has no bind ime.");
+        isShown = false;
+        return ErrorCode::NO_ERROR;
+    }
+    auto imeData = GetImeData(clientInfo->bindImeData);
+    if (imeData == nullptr) {
+        IMSA_HILOGD("has no real ime.");
+        isShown = false;
+        return ErrorCode::NO_ERROR;
+    }
+    return RequestIme(imeData, RequestType::NORMAL,
+        [&imeData, &panelInfo, &isShown] { return imeData->core->IsPanelShown(panelInfo, isShown); });
 }
 
 int32_t PerUserSession::RequestIme(const std::shared_ptr<ImeData> &data, RequestType type, const IpcExec &exec)
 {
-    if (data->type != ImeType::IME) {
+    if (!data->IsRealIme()) {
         IMSA_HILOGD("proxy enable.");
         return exec();
     }
@@ -1927,9 +2020,10 @@ int32_t PerUserSession::RequestAllIme(
 
     std::vector<std::shared_ptr<ImeData>> dataArray = { data };
 
-    if (!data->IsImeMirror()) {
-        if (mirrorImeData_ != nullptr) {
-            dataArray.push_back(mirrorImeData_);
+    if (!data->IsImeMirror() && data->IsRealIme()) {
+        auto mirrorIme = GetMirrorImeData();
+        if (mirrorIme != nullptr) {
+            dataArray.push_back(mirrorIme);
         }
     }
 
@@ -1996,7 +2090,7 @@ int32_t PerUserSession::RemoveAllCurrentClient()
         if (clientGroupObject == nullptr) {
             continue;
         }
-        clientGroupObject->NotifyInputStopToClients();
+        ImeEventListenerManager::GetInstance().NotifyInputStop(userId_);
         DetachOptions options = { .sessionId = 0, .isUnbindFromClient = false };
         RemoveClient(clientGroupObject->GetCurrentClient(), clientGroupObject, options);
     }
@@ -2159,7 +2253,34 @@ std::shared_ptr<ImeData> PerUserSession::UpdateRealImeData(
     if (ret != ErrorCode::NO_ERROR) {
         return nullptr;
     }
+    if (realImeData_->imeStateManager != nullptr && IsImeStartedForeground()) {
+        realImeData_->imeStateManager->ReportQos(false, pid);
+    }
     return realImeData_;
+}
+
+std::shared_ptr<ImeData> PerUserSession::GetRealImeData(pid_t pid)
+{
+    std::lock_guard<std::mutex> lock(realImeDataLock_);
+    if (realImeData_ == nullptr || realImeData_->pid != pid) {
+        return nullptr;
+    }
+    return realImeData_;
+}
+
+std::shared_ptr<ImeData> PerUserSession::GetMirrorImeData(pid_t pid)
+{
+    std::lock_guard<std::mutex> lock(mirrorImeDataLock_);
+    if (mirrorImeData_ == nullptr || mirrorImeData_->pid != pid) {
+        return nullptr;
+    }
+    return mirrorImeData_;
+}
+
+std::shared_ptr<ImeData> PerUserSession::GetMirrorImeData()
+{
+    std::lock_guard<std::mutex> lock(mirrorImeDataLock_);
+    return mirrorImeData_;
 }
 
 int32_t PerUserSession::FillImeData(
@@ -2169,7 +2290,9 @@ int32_t PerUserSession::FillImeData(
         IMSA_HILOGE("core or agent is nullptr!");
         return ErrorCode::ERROR_NULL_POINTER;
     }
-    imeData->imeStatus = ImeStatus::READY;
+    if (type != ImeType::IME) {
+        imeData->imeStatus = ImeStatus::READY;
+    }
     imeData->type = type;
     imeData->core = core;
     imeData->agent = agent;
@@ -2192,11 +2315,27 @@ int32_t PerUserSession::FillImeData(
     return ErrorCode::NO_ERROR;
 }
 
+bool PerUserSession::IsImeStartedForeground()
+{
+    auto [clientGroup, clientInfo] = GetCurrentClientBoundRealIme();
+    if (clientInfo != nullptr && clientInfo->isShowKeyboard) {
+        IMSA_HILOGI("ime restart with keyboard front end");
+        return true;
+    } else if (clientInfo == nullptr && isNeedReportQos_) {
+        IMSA_HILOGI("sa start with keyboard front end");
+        return true;
+    }
+    return false;
+}
+
 int32_t PerUserSession::InitConnect(pid_t pid)
 {
     std::lock_guard<std::mutex> lock(realImeDataLock_);
     if (realImeData_ == nullptr) {
         return ErrorCode::ERROR_NULL_POINTER;
+    }
+    if (realImeData_->imeStateManager != nullptr && IsImeStartedForeground()) {
+        realImeData_->imeStateManager->ReportQos(true, pid);
     }
     realImeData_->pid = pid;
     return ErrorCode::NO_ERROR;
@@ -2358,7 +2497,7 @@ int32_t PerUserSession::ForceStopCurrentIme(bool isNeedWait)
     }
     if (!ImeInfoInquirer::GetInstance().IsRunningIme(userId_, imeData->ime.first)) {
         IMSA_HILOGW("[%{public}s, %{public}s] already stop.", imeData->ime.first.c_str(), imeData->ime.second.c_str());
-        ClearRealImeData();
+        RemoveRealImeData();
         return ErrorCode::NO_ERROR;
     }
     auto [clientGroup, clientInfo] = GetCurrentClientBoundRealIme();
@@ -2383,7 +2522,7 @@ int32_t PerUserSession::ForceStopCurrentIme(bool isNeedWait)
         IMSA_HILOGW("stop [%{public}s, %{public}s] timeout.", imeData->ime.first.c_str(), imeData->ime.second.c_str());
         return ErrorCode::ERROR_IMSA_FORCE_STOP_IME_TIMEOUT;
     }
-    ClearRealImeData();
+    RemoveRealImeData();
     return ErrorCode::NO_ERROR;
 }
 
@@ -2485,8 +2624,12 @@ bool PerUserSession::GetInputTypeToStart(std::shared_ptr<ImeNativeCfg> &imeToSta
 void PerUserSession::HandleBindImeChanged(const std::shared_ptr<InputClientInfo> &newClientInfo,
     const std::shared_ptr<ImeData> &newImeData, const std::shared_ptr<ClientGroup> &clientGroup)
 {
+    if (newImeData->IsImeMirror()) {
+        return;
+    }
     /* isClientInactive: true: represent the oldClientInfo is inactiveClient's
                          false: represent the oldClientInfo is currentClient's */
+
     std::shared_ptr<InputClientInfo> oldClientInfo = nullptr;
     if (clientGroup == nullptr || newClientInfo == nullptr) {
         IMSA_HILOGE("clientGroup is nullptr!");
@@ -2523,7 +2666,7 @@ void PerUserSession::HandleBindImeChanged(const std::shared_ptr<InputClientInfo>
     }
     IMSA_HILOGD("isClientInactive: %{public}d!", isClientInactive);
     if (isClientInactive) {
-        StopImeInput(oldClientInfo->bindImeData, oldClientInfo->channel, 0);
+        StopImeInput(GetImeData(oldClientInfo->bindImeData), oldClientInfo->channel, 0);
         return;
     }
     UnBindClientWithIme(oldClientInfo, { .sessionId = 0 });
@@ -2540,15 +2683,6 @@ void PerUserSession::TryUnloadSystemAbility()
 
     auto onDemandStartStopSa = std::make_shared<OnDemandStartStopSa>();
     onDemandStartStopSa->UnloadInputMethodSystemAbility();
-}
-
-uint64_t PerUserSession::GetDisplayGroupId(uint64_t displayId)
-{
-    IMSA_HILOGD("displayId: %{public}" PRIu64 "", displayId);
-    if (displayId == DEFAULT_DISPLAY_ID) {
-        return DEFAULT_DISPLAY_ID;
-    }
-    return 10001; // todo
 }
 
 std::shared_ptr<ClientGroup> PerUserSession::GetClientGroup(uint64_t displayId)
@@ -2598,8 +2732,8 @@ void PerUserSession::OnCallingDisplayIdChanged(
         return;
     }
     auto oldGroupId = clientInfo->clientGroupId;
-    auto newGroupId = WindowAdapter::GetDisplayGroupId(displayId);
-    // 跨group的, 由attach处理
+    auto newGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId);
+    // Cross-group scenarios are handled by the attach.
     if (!IsSameClientGroup(oldGroupId, newGroupId)) {
         return;
     }
@@ -2613,21 +2747,39 @@ void PerUserSession::OnCallingDisplayIdChanged(
     if (oldDisplayId == newDisplayId) {
         return;
     }
-    NotifyCallingDisplayChanged(newDisplayId, clientInfo->bindImeData);
+    NotifyCallingDisplayChanged(newDisplayId, GetImeData(clientInfo->bindImeData));
 }
 
-int32_t PerUserSession::NotifyCallingDisplayChanged(uint64_t displayId, const std::shared_ptr<ImeData> &bindImeData)
+int32_t PerUserSession::NotifyCallingDisplayChanged(uint64_t displayId, const std::shared_ptr<ImeData> &imeData)
 {
     IMSA_HILOGD("enter displayId:%{public}" PRIu64 "", displayId);
-    if (bindImeData == nullptr || !bindImeData->IsRealIme()) {
+    if (imeData == nullptr || !imeData->IsRealIme()) {
         IMSA_HILOGD("bind ime not real ime");
-        ErrorCode::ERROR_IME_NOT_STARTED;
+        return ErrorCode::ERROR_IME_NOT_STARTED;
     }
-    auto callBack = [&bindImeData, displayId]() -> int32_t {
-        bindImeData->core->OnCallingDisplayIdChanged(displayId);
+    auto callBack = [&imeData, displayId]() -> int32_t {
+        imeData->core->OnCallingDisplayIdChanged(displayId);
         return ErrorCode::NO_ERROR;
     };
-    auto ret = RequestIme(bindImeData, RequestType::NORMAL, callBack);
+    auto ret = RequestIme(imeData, RequestType::NORMAL, callBack);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("notify calling window display changed failed, ret: %{public}d!", ret);
+    }
+    return ret;
+}
+
+int32_t PerUserSession::NotifyCallingWindowIdChanged(uint32_t windowId, const std::shared_ptr<ImeData> &imeData)
+{
+    IMSA_HILOGD("enter windowId:%{public}u.", windowId);
+    if (imeData == nullptr || !imeData->IsRealIme()) {
+        IMSA_HILOGD("bind ime not real ime");
+        return ErrorCode::ERROR_IME_NOT_STARTED;
+    }
+    auto callBack = [&imeData, windowId]() -> int32_t {
+        imeData->core->OnCallingWindowIdIdChanged(windowId);
+        return ErrorCode::NO_ERROR;
+    };
+    auto ret = RequestIme(imeData, RequestType::NORMAL, callBack);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("notify calling window display changed failed, ret: %{public}d!", ret);
     }
@@ -2755,9 +2907,10 @@ bool PerUserSession::IsNumkeyAutoInputApp(const std::string &bundleName)
 
 bool PerUserSession::IsPreconfiguredDefaultImeSpecified(const InputClientInfo &inputClientInfo)
 {
-    auto callingWindowInfo = GetCallingWindowInfo(inputClientInfo);
-    return ImeInfoInquirer::GetInstance().IsRestrictedDefaultImeByDisplay(callingWindowInfo.displayId) ||
-        inputClientInfo.config.isSimpleKeyboardEnabled || inputClientInfo.config.inputAttribute.IsOneTimeCodeFlag();
+    return ImeInfoInquirer::GetInstance().IsRestrictedDefaultImeByDisplay(
+               inputClientInfo.config.inputAttribute.callingDisplayId)
+           || inputClientInfo.config.isSimpleKeyboardEnabled
+           || inputClientInfo.config.inputAttribute.IsOneTimeCodeFlag();
 }
 
 std::pair<std::string, std::string> PerUserSession::GetImeUsedBeforeScreenLocked()
@@ -2784,14 +2937,14 @@ bool PerUserSession::IsImeSwitchForbidden()
         return false;
     }
 
-    bool isSimpleKeyboard = (clientInfo->config.inputAttribute.IsSecurityImeFlag() ||
-                                clientInfo->config.inputAttribute.IsOneTimeCodeFlag()) ?
-        false :
-        clientInfo->config.isSimpleKeyboardEnabled;
+    bool isSimpleKeyboard = (clientInfo->config.inputAttribute.IsSecurityImeFlag()
+                                || clientInfo->config.inputAttribute.IsOneTimeCodeFlag())
+                                ? false
+                                : clientInfo->config.isSimpleKeyboardEnabled;
 
-    auto callingWindowInfo = GetCallingWindowInfo(*clientInfo);
-    return ImeInfoInquirer::GetInstance().IsRestrictedDefaultImeByDisplay(callingWindowInfo.displayId) ||
-        clientInfo->config.inputAttribute.IsSecurityImeFlag() || isSimpleKeyboard;
+    return ImeInfoInquirer::GetInstance().IsRestrictedDefaultImeByDisplay(
+               clientInfo->config.inputAttribute.callingDisplayId)
+           || clientInfo->config.inputAttribute.IsSecurityImeFlag() || isSimpleKeyboard;
 }
 
 bool PerUserSession::IsDeviceLockAndScreenLocked()
@@ -2962,10 +3115,10 @@ int32_t PerUserSession::IsRequestOverLimit(TimeLimitType timeLimitType, int32_t 
     return ErrorCode::NO_ERROR;
 }
 
-int32_t PerUserSession::PrepareImeInfos(const std::shared_ptr<ImeData> &bindImeData,
+int32_t PerUserSession::PrepareImeInfos(const std::shared_ptr<ImeData> &imeData,
     std::vector<sptr<IRemoteObject>> &agents, std::vector<BindImeInfo> &imeInfos)
 {
-    auto allData = GetAllReadyImeData(bindImeData);
+    auto allData = GetAllReadyImeData(imeData);
     if (allData.empty()) {
         IMSA_HILOGE("allData is empty!");
         return ErrorCode::ERROR_IME_NOT_STARTED;
@@ -2991,6 +3144,11 @@ bool PerUserSession::IsEnable(const std::shared_ptr<ImeData> &data)
     }
     data->core->IsEnable(ret);
     return ret;
+}
+
+void PerUserSession::SetIsNeedReportQos(bool isNeedReportQos)
+{
+    isNeedReportQos_ = isNeedReportQos;
 }
 } // namespace MiscServices
 } // namespace OHOS

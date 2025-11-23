@@ -15,8 +15,10 @@
 
 #include "window_adapter.h"
 
+#include <chrono>
 #include <cinttypes>
 #include <ranges>
+#include <thread>
 
 #include "global.h"
 #include "window.h"
@@ -26,6 +28,7 @@ namespace OHOS {
 namespace MiscServices {
 using namespace OHOS::Rosen;
 using WMError = OHOS::Rosen::WMError;
+using namespace std::chrono_literals;
 #ifdef SCENE_BOARD_ENABLE
 constexpr int32_t MAX_TIMEOUT = 5000; //5ms
 #endif
@@ -65,7 +68,7 @@ bool WindowAdapter::GetCallingWindowInfo(
             .count();
     int64_t durTime = end - start;
     if (durTime > MAX_TIMEOUT) {
-        IMSA_HILOGW("GetCallingWindowInfo cost [%{public}d]us", durTime);
+        IMSA_HILOGW("GetCallingWindowInfo cost [%{public}" PRId64 "]us", durTime);
     }
     if (wmErr != WMError::WM_OK) {
         IMSA_HILOGE("[%{public}d,%{public}d,%{public}d] failed to get calling window info.", userId, windId, wmErr);
@@ -214,20 +217,12 @@ bool WindowAdapter::GetDisplayId(int64_t callingPid, uint64_t &displayId)
 int32_t WindowAdapter::StoreAllDisplayGroupInfos()
 {
 #ifdef SCENE_BOARD_ENABLE
-    std::map<uint64_t, uint64_t> displayGroupIds;
+    std::unordered_map<uint64_t, uint64_t> displayGroupIds;
     std::vector<FocusChangeInfo> focusWindowInfos;
     auto ret = GetAllDisplayGroupInfos(displayGroupIds, focusWindowInfos);
-    if (ret != WMError::WM_OK) {
+    if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("GetAllGroupInfo failed, ret: %{public}d", ret);
         return ret;
-    }
-    {
-        std::lock_guard<std::mutex> lock(displayGroupIdsLock_);
-        displayGroupIds_ = displayGroupIds;
-    }
-    {
-        std::lock_guard<std::mutex> lock(focusWindowInfosLock_);
-        focusWindowInfos_ = focusWindowInfos;
     }
 #else
     IMSA_HILOGI("capability not supported");
@@ -237,76 +232,100 @@ int32_t WindowAdapter::StoreAllDisplayGroupInfos()
 
 int32_t WindowAdapter::GetAllFocusWindowInfos(std::vector<FocusChangeInfo> &focusWindowInfos)
 {
-    std::map<uint64_t, uint64_t> displayGroupIds;
+    std::unordered_map<uint64_t, uint64_t> displayGroupIds;
     auto ret = GetAllDisplayGroupInfos(displayGroupIds, focusWindowInfos);
-    if (ret != WMError::WM_OK) {
+    if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("GetAllGroupInfo failed, ret: %{public}d", ret);
         return ret;
+    }
+    for (const auto &[key, value] : displayGroupIds) {
+        IMSA_HILOGI("CYYYYY1127 display:%{public}" PRIu64 "/%{public}" PRIu64 ".", key, value);
+    }
+    for (const auto &info : focusWindowInfos) {
+        IMSA_HILOGI("CYYYYY1127 focus:%{public}d/%{public}" PRIu64 "/%{public}" PRIu64 "/%{public}d", info.windowId_,
+            info.displayGroupId_, info.realDisplayId_, info.pid_);
     }
     return ErrorCode::NO_ERROR;
 }
 
 uint64_t WindowAdapter::GetDisplayGroupId(uint64_t displayId)
 {
+    IMSA_HILOGI("CYYYYY1127 by displayId run in:%{public}" PRIu64 ".", displayId);
     std::lock_guard<std::mutex> lock(displayGroupIdsLock_);
     auto iter = displayGroupIds_.find(displayId);
     if (iter != displayGroupIds_.end()) {
+        IMSA_HILOGI("CYYYYY1127 by displayId:%{public}" PRIu64 "/%{public}" PRIu64 ".", displayId, iter->second);
         return iter->second;
     }
     return DEFAULT_DISPLAY_GROUP_ID;
 }
 
+bool WindowAdapter::IsDefaultDisplayGroup(uint64_t displayId)
+{
+    return GetDisplayGroupId(displayId) == DEFAULT_DISPLAY_GROUP_ID;
+}
+
 uint64_t WindowAdapter::GetDisplayGroupId(uint32_t windowId)
 {
+    IMSA_HILOGI("CYYYYY1127 by windowId run in:%{public}d.", windowId);
     auto displayId = GetDisplayIdByWindowId(windowId);
     std::lock_guard<std::mutex> lock(displayGroupIdsLock_);
     auto iter = displayGroupIds_.find(displayId);
     if (iter != displayGroupIds_.end()) {
+        IMSA_HILOGI("CYYYYY1127 by windowId:%{public}d/%{public}" PRIu64 "/%{public}" PRIu64 ".", windowId, displayId,
+            iter->second);
         return iter->second;
     }
     return DEFAULT_DISPLAY_GROUP_ID;
 }
 
 int32_t WindowAdapter::GetAllDisplayGroupInfos(
-    std::map<uint64_t, uint64_t> &displayGroupIds, std::vector<FocusChangeInfo> &focusWindowInfos)
+    std::unordered_map<uint64_t, uint64_t> &displayGroupIds, std::vector<FocusChangeInfo> &focusWindowInfos)
 {
-    WMError ret = WindowManagerLite::GetInstance().GetAllGroupInfo(displayGroupIds, focusWindowInfos);
-    if (ret != WMError::WM_OK) {
-        IMSA_HILOGE("GetAllGroupInfo failed, ret: %{public}d", ret);
-        return ret;
+    std::vector<sptr<FocusChangeInfo>> focusWindowInfoPtr;
+    WindowManagerLite::GetInstance().GetAllGroupInfo(displayGroupIds, focusWindowInfoPtr);
+    for (const auto &info : focusWindowInfoPtr) {
+        if (info != nullptr) {
+            focusWindowInfos.push_back(*info);
+        }
     }
     std::sort(focusWindowInfos.begin(), focusWindowInfos.end(),
         [](const FocusChangeInfo &a, const FocusChangeInfo &b) { return a.displayId_ < b.displayId_; });
+
+    GetInstance().SetDisplayGroupIds(displayGroupIds);
+    GetInstance().SetFocusWindowInfos(focusWindowInfos);
     return ErrorCode::NO_ERROR;
+}
+
+void WindowAdapter::SetDisplayGroupIds(const std::unordered_map<uint64_t, uint64_t> &displayGroupIds)
+{
+    std::lock_guard<std::mutex> lock(displayGroupIdsLock_);
+    displayGroupIds_ = displayGroupIds;
+}
+
+void WindowAdapter::SetFocusWindowInfos(const std::vector<Rosen::FocusChangeInfo> &focusWindowInfos)
+{
+    std::lock_guard<std::mutex> lock(focusWindowInfosLock_);
+    focusWindowInfos_ = focusWindowInfos;
 }
 
 void WindowAdapter::OnDisplayGroupInfoChanged(uint64_t displayId, uint64_t displayGroupId, bool isAdd)
 {
-    size_t count = 0;
-    {
-        std::lock_guard<std::mutex> lock(displayGroupIdsLock_);
-        if (isAdd) {
-            displayGroupIds_[displayId] = displayGroupId;
-            return;
-        }
-        auto iter = displayGroupIds_.find(displayId);
-        if (iter == displayGroupIds_.end()) {
-            return;
-        }
-        displayGroupIds_.erase(displayId);
-        for (const auto &pair : displayGroupIds_) {
-            if (pair.second == displayGroupId) {
-                ++count;
-            }
-        }
-    }
-    if (count != 0) {
+    IMSA_HILOGI("CYYYYY1127 display change:%{public}" PRIu64 "/%{public}" PRIu64 "/%{public}d.", displayId,
+        displayGroupId, isAdd);
+    std::lock_guard<std::mutex> lock(displayGroupIdsLock_);
+    if (isAdd) {
+        displayGroupIds_[displayId] = displayGroupId;
         return;
     }
-    RemoveFocusInfo(displayGroupId);
+    auto iter = displayGroupIds_.find(displayId);
+    if (iter == displayGroupIds_.end()) {
+        return;
+    }
+    displayGroupIds_.erase(displayId);
 }
 
-void WindowAdapter::OnAllDisplayGroupFocusChanged(const FocusChangeInfo &focusWindowInfo)
+void WindowAdapter::OnFocused(const FocusChangeInfo &focusWindowInfo)
 {
     std::lock_guard<std::mutex> lock(focusWindowInfosLock_);
     auto iter =
@@ -321,11 +340,11 @@ void WindowAdapter::OnAllDisplayGroupFocusChanged(const FocusChangeInfo &focusWi
     focusWindowInfos_.insert(insertPos, focusWindowInfo);
 }
 
-void WindowAdapter::RemoveFocusInfo(uint64_t displayGroupId)
+void WindowAdapter::OnUnFocused(const FocusChangeInfo &focusWindowInfo)
 {
     std::lock_guard<std::mutex> lock(focusWindowInfosLock_);
     auto iter = std::find_if(focusWindowInfos_.begin(), focusWindowInfos_.end(),
-        [&displayGroupId](const auto &focusInfo) { return displayGroupId == focusInfo.displayGroupId_; });
+        [&focusWindowInfo](const auto &focusInfo) { return focusWindowInfo.windowId_ == focusInfo.windowId_; });
     if (iter == focusWindowInfos_.end()) {
         return;
     }
@@ -341,7 +360,16 @@ void WindowAdapter::RegisterAllGroupInfoChangedListener()
         return;
     }
     auto wmErr = WindowManagerLite::GetInstance().RegisterAllGroupInfoChangedListener(listener);
-    IMSA_HILOGI("register focus changed listener ret: %{public}d", wmErr);
+    IMSA_HILOGI("register AllGroupInfoChangedListener ret: %{public}d", wmErr);
+    if (wmErr == WMError::WM_OK) {
+        return;
+    }
+    std::thread retryThread([listener]() {
+        std::this_thread::sleep_for(1min);
+        auto retryErr = WindowManagerLite::GetInstance().RegisterAllGroupInfoChangedListener(listener);
+        IMSA_HILOGI("retry register AllGroupInfoChangedListener retry ret: %{public}d", retryErr);
+    });
+    retryThread.detach();
 #endif
 }
 } // namespace MiscServices

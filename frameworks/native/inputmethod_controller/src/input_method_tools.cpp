@@ -173,7 +173,7 @@ InputClientInfoInner InputMethodTools::InputClientInfoToInner(const InputClientI
     inner.uid = inputClientInfo.uid;
     inner.userID = inputClientInfo.userID;
     inner.isShowKeyboard = inputClientInfo.isShowKeyboard;
-    inner.bindImeType = inputClientInfo.bindImeType;
+    // inner.bindImeType = inputClientInfo.bindImeType;
     inner.config = TextTotalConfigToInner(inputClientInfo.config);
     inner.eventFlag = inputClientInfo.eventFlag;
     inner.attribute = AttributeToInner(inputClientInfo.attribute);
@@ -197,7 +197,7 @@ InputClientInfo InputMethodTools::InnerToInputClientInfo(const InputClientInfoIn
     inputClientInfo.uid = inner.uid;
     inputClientInfo.userID = inner.userID;
     inputClientInfo.isShowKeyboard = inner.isShowKeyboard;
-    inputClientInfo.bindImeType = inner.bindImeType;
+    // inputClientInfo.bindImeType = inner.bindImeType;
     inputClientInfo.config = InnerToTextTotalConfig(inner.config);
     inputClientInfo.eventFlag = inner.eventFlag;
     inputClientInfo.attribute = InnerToAttribute(inner.attribute);

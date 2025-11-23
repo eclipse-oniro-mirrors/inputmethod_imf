@@ -24,11 +24,6 @@
 
 namespace OHOS {
 namespace MiscServices {
-enum ClientAddEvent : int32_t {
-    PREPARE_INPUT = 0,
-    START_LISTENING,
-};
-
 class ClientGroup {
 public:
     using ClientDiedHandler = std::function<void(const sptr<IInputClient> &)>;
@@ -38,17 +33,18 @@ public:
     }
 
     uint64_t GetDisplayGroupId();
-    int32_t AddClientInfo(
-        const sptr<IRemoteObject> &inputClient, const InputClientInfo &clientInfo, ClientAddEvent event);
-    void RemoveClientInfo(const sptr<IRemoteObject> &client, bool isClientDied = false);
+    int32_t AddClientInfo(const sptr<IRemoteObject> &inputClient, const InputClientInfo &clientInfo);
+    void RemoveClientInfo(const sptr<IRemoteObject> &client);
     void UpdateClientInfo(const sptr<IRemoteObject> &client,
         const std::unordered_map<UpdateFlag, std::variant<bool, uint32_t, ImeType, ClientState, TextTotalConfig,
-                                                 ClientType, pid_t, std::shared_ptr<ImeData>>> &updateInfos);
+                                                 ClientType, pid_t, std::shared_ptr<BindImeData>, uint64_t>> &updateInfos);
 
     std::shared_ptr<InputClientInfo> GetClientInfo(sptr<IRemoteObject> inputClient);
     std::shared_ptr<InputClientInfo> GetClientInfo(pid_t pid);
     std::shared_ptr<InputClientInfo> GetClientInfoByBindIme(pid_t bindImePid);
+    std::shared_ptr<InputClientInfo> GetClientInfoByHostPid(pid_t hostPid);
     std::shared_ptr<InputClientInfo> GetClientInfoBoundRealIme();
+    std::shared_ptr<InputClientInfo> GetClientSpecifyMainDisplay();
     std::shared_ptr<InputClientInfo> GetCurrentClientInfo();
     std::shared_ptr<InputClientInfo> GetClientByWindowId(uint32_t windowId);
     int64_t GetCurrentClientPid();
@@ -65,17 +61,11 @@ public:
     bool IsCurClientFocused(int32_t pid, int32_t uid);
     bool IsCurClientUnFocused(int32_t pid, int32_t uid);
 
-    // from service notify clients
-    int32_t NotifyInputStartToClients(uint32_t callingWndId, int32_t requestKeyboardReason = 0);
-    int32_t NotifyInputStopToClients();
-    int32_t NotifyPanelStatusChange(const InputWindowStatus &status, const ImeWindowInfo &info);
-    int32_t NotifyImeChangeToClients(const Property &property, const SubProperty &subProperty);
-    uint64_t displayGroupId_{ DEFAULT_DISPLAY_ID };
-
 private:
     std::map<sptr<IRemoteObject>, std::shared_ptr<InputClientInfo>> GetClientMap();
     bool IsSameClient(sptr<IInputClient> source, sptr<IInputClient> dest);
     void OnClientDied(sptr<IInputClient> remote);
+    uint64_t displayGroupId_{ DEFAULT_DISPLAY_ID };
     std::recursive_mutex mtx_;
     std::map<sptr<IRemoteObject>, std::shared_ptr<InputClientInfo>> mapClients_;
 

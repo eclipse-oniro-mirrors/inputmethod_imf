@@ -126,6 +126,12 @@ ErrCode InputMethodCoreServiceImpl::OnCallingDisplayIdChanged(uint64_t displayId
     return InputMethodAbility::GetInstance().OnCallingDisplayIdChanged(displayId);
 }
 
+ErrCode InputMethodCoreServiceImpl::OnCallingWindowIdIdChanged(uint32_t windowId)
+{
+    InputMethodAbility::GetInstance().SetCallingWindow(windowId);
+    return ERR_OK;
+}
+
 ErrCode InputMethodCoreServiceImpl::OnSendPrivateData(const Value &Value)
 {
     std::unordered_map<std::string, PrivateDataValue> privateCommand;

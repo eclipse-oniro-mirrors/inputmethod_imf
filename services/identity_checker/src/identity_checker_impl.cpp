@@ -46,11 +46,19 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocused(
     return IsFocusedUIExtension(callingTokenId, abilityToken, focusWindowInfos);
 }
 
+bool IdentityCheckerImpl::IsFocusedUIExtension(uint32_t callingTokenId)
+{
+    std::vector<FocusChangeInfo> focusWindowInfos;
+    WindowAdapter::GetAllFocusWindowInfos(focusWindowInfos);
+    auto checkRet = IsFocusedUIExtension(callingTokenId, nullptr, focusWindowInfos);
+    return checkRet.first;
+}
+
 std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUiAbility(int64_t callingPid,
     const sptr<IRemoteObject> &abilityToken, uint32_t windowId, const std::vector<FocusChangeInfo> &focusWindowInfos)
 {
     std::pair<bool, FocusedInfo> retInfo{ false, {} };
-    if (windowId != 0) {
+    if (windowId != ImfCommonConst::INVALID_WINDOW_ID) {
         auto displayId = WindowAdapter::GetDisplayIdByWindowId(windowId);
         retInfo = IsFocusedUiAbility(callingPid, displayId, focusWindowInfos);
         if (retInfo.first) {
@@ -76,7 +84,7 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUiAbility(
         return retInfo;
     }
     retInfo.first = true;
-    retInfo.second.displayId = iter->displayId_;
+    retInfo.second.displayId = iter->realDisplayId_;
     retInfo.second.windowId = iter->windowId_;
     retInfo.second.displayGroupId = iter->displayGroupId_;
     return retInfo;
@@ -92,7 +100,7 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUiAbility(
         return retInfo;
     }
     retInfo.first = true;
-    retInfo.second.displayId = iter->displayId_;
+    retInfo.second.displayId = iter->realDisplayId_;
     retInfo.second.windowId = iter->windowId_;
     retInfo.second.displayGroupId = iter->displayGroupId_;
     return retInfo;
@@ -128,24 +136,34 @@ bool IdentityCheckerImpl::HasPermission(uint32_t tokenId, const std::string &per
     return true;
 }
 
-std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsBroker(AccessTokenID tokenId)
+std::pair<bool, FocusedInfo> IdentityCheckerImpl::CheckBroker(AccessTokenID tokenId)
 {
     std::pair<bool, FocusedInfo> retInfo{ false, {} };
-    if (!IsNativeSa(tokenId)) {
-        return retInfo;
-    }
-    NativeTokenInfo nativeTokenInfoRes;
-    AccessTokenKit::GetNativeTokenInfo(tokenId, nativeTokenInfoRes);
-    if (nativeTokenInfoRes.processName != "broker") {
+    if (!IsBrokerInner(tokenId)) {
         return retInfo;
     }
     FocusChangeInfo focusInfo;
     WindowAdapter::GetFocusInfo(focusInfo);
     retInfo.first = true;
-    retInfo.second.displayId = focusInfo.displayId_;
+    retInfo.second.displayId = focusInfo.realDisplayId_;
     retInfo.second.windowId = focusInfo.windowId_;
     retInfo.second.displayGroupId = focusInfo.displayGroupId_;
     return retInfo;
+}
+
+bool IdentityCheckerImpl::IsBroker(AccessTokenID tokenId)
+{
+    return IsBrokerInner(tokenId);
+}
+
+bool IdentityCheckerImpl::IsBrokerInner(AccessTokenID tokenId)
+{
+    if (!IsNativeSa(tokenId)) {
+        return false;
+    }
+    NativeTokenInfo nativeTokenInfoRes;
+    AccessTokenKit::GetNativeTokenInfo(tokenId, nativeTokenInfoRes);
+    return nativeTokenInfoRes.processName != "broker";
 }
 
 bool IdentityCheckerImpl::IsNativeSa(AccessTokenID tokenId)
@@ -176,9 +194,8 @@ uint32_t IdentityCheckerImpl::GetUIExtensionWindowId(sptr<IRemoteObject> ability
 std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(uint32_t callingTokenId,
     const sptr<IRemoteObject> &abilityToken, const std::vector<FocusChangeInfo> &focusWindowInfos)
 {
-    std::pair<bool, FocusedInfo> retInfo{ false, {} };
     uint32_t windowId = GetUIExtensionWindowId(abilityToken);
-    if (windowId != INVALID_WINDOW_ID) {
+    if (windowId != ImfCommonConst::INVALID_WINDOW_ID) {
         auto displayIdByWindow = WindowAdapter::GetDisplayIdByWindowId(windowId);
         IMSA_HILOGD("windowId is: %{public}d, displayId is %{public}" PRIu64 "", windowId, displayIdByWindow);
         if (displayIdByWindow != DEFAULT_DISPLAY_ID) {
@@ -202,10 +219,10 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(
         return retInfo;
     }
     retInfo.first = true;
-    retInfo.second.displayId = iter->displayId_;
+    retInfo.second.displayId = iter->realDisplayId_;
     retInfo.second.windowId = iter->windowId_;
     retInfo.second.displayGroupId = iter->displayGroupId_;
-    retInfo.second.isUiExtension = true;
+    retInfo.second.uiExtensionHostPid = iter->pid_;
     return retInfo;
 }
 
@@ -228,17 +245,17 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(
     if (!isFocused) {
         return retInfo;
     }
-    auto iter = std::find_if(focusWindowInfos.begin(), focusWindowInfos.end(), [](const auto focusWindowInfo) {
+    auto iter = std::find_if(focusWindowInfos.begin(), focusWindowInfos.end(), [](const auto &focusWindowInfo) {
         return focusWindowInfo.displayGroupId_ == WindowAdapter::GetInstance().GetDisplayGroupId(DEFAULT_DISPLAY_ID);
     });
     if (iter == focusWindowInfos.end()) {
         return retInfo;
     }
     retInfo.first = true;
-    retInfo.second.displayId = iter->displayId_;
+    retInfo.second.displayId = iter->realDisplayId_;
     retInfo.second.windowId = iter->windowId_;
     retInfo.second.displayGroupId = iter->displayGroupId_;
-    retInfo.second.isUiExtension = true;
+    retInfo.second.uiExtensionHostPid = iter->pid_;
     return retInfo;
 }
 

@@ -18,29 +18,36 @@
 #include <cinttypes>
 
 #include "global.h"
+#include "window_adapter.h"
 
 namespace OHOS {
 namespace MiscServices {
 void FocusChangedListener::OnFocused(const sptr<Rosen::FocusChangeInfo> &focusChangeInfo)
 {
-    if (focusChangeInfo == nullptr || focusHandle_ == nullptr) {
+    if (focusChangeInfo == nullptr) {
         IMSA_HILOGE("error nullptr");
         return;
     }
     IMSA_HILOGD("displayId: %{public}" PRIu64 " pid: %{public}d, uid: %{public}d", focusChangeInfo->displayId_,
         focusChangeInfo->pid_, focusChangeInfo->uid_);
-    focusHandle_(true, focusChangeInfo->displayId_, focusChangeInfo->pid_, focusChangeInfo->uid_);
+    if (focusHandle_ != nullptr) {
+        focusHandle_(true, focusChangeInfo->displayId_, focusChangeInfo->pid_, focusChangeInfo->uid_);
+    }
+    WindowAdapter::GetInstance().OnFocused(*focusChangeInfo);
 }
 
 void FocusChangedListener::OnUnfocused(const sptr<Rosen::FocusChangeInfo> &focusChangeInfo)
 {
-    if (focusChangeInfo == nullptr || focusHandle_ == nullptr) {
+    if (focusChangeInfo == nullptr) {
         IMSA_HILOGE("error nullptr");
         return;
     }
     IMSA_HILOGD("displayId: %{public}" PRIu64 " pid: %{public}d, uid: %{public}d", focusChangeInfo->displayId_,
         focusChangeInfo->pid_, focusChangeInfo->uid_);
-    focusHandle_(false, focusChangeInfo->displayId_, focusChangeInfo->pid_, focusChangeInfo->uid_);
+    if (focusHandle_ != nullptr) {
+        focusHandle_(false, focusChangeInfo->displayId_, focusChangeInfo->pid_, focusChangeInfo->uid_);
+    }
+    WindowAdapter::GetInstance().OnUnFocused(*focusChangeInfo);
 }
 } // namespace MiscServices
 } // namespace OHOS

@@ -517,7 +517,8 @@ public:
      * @return Returns 0 for success, others for failure.
      * @since 6
      */
-    IMF_API int32_t ShowSoftKeyboard(ClientType type = ClientType::INNER_KIT);
+    IMF_API int32_t ShowSoftKeyboard(
+        ClientType type = ClientType::INNER_KIT, uint64_t displayId = ImfCommonConst::DEFAULT_DISPLAY_ID);
 
     /**
      * @brief Hide soft keyboard.
@@ -527,7 +528,7 @@ public:
      * @return Returns 0 for success, others for failure.
      * @since 6
      */
-    IMF_API int32_t HideSoftKeyboard();
+    IMF_API int32_t HideSoftKeyboard(uint64_t displayId = ImfCommonConst::DEFAULT_DISPLAY_ID);
 
     /**
      * @brief Stop current input session.
@@ -537,7 +538,7 @@ public:
      * @return Returns 0 for success, others for failure.
      * @since 6
      */
-    IMF_API int32_t StopInputSession();
+    IMF_API int32_t StopInputSession(uint32_t windowId = ImfCommonConst::INVALID_WINDOW_ID);
 
     /**
      * @brief Show input method setting extension dialog.
@@ -581,7 +582,7 @@ public:
      * @return Returns 0 for success, others for failure.
      * @since 11
      */
-    IMF_API int32_t RequestHideInput(bool isFocusTriggered = false, uint32_t windowId = 0);
+    IMF_API int32_t RequestHideInput(uint32_t callingWndId = 0, bool isFocusTriggered = false);
 
     /**
      * @brief Show input method setting extension dialog.
@@ -843,7 +844,8 @@ public:
      * @return Returns 0 for success, others for failure.
      * @since 11
      */
-    IMF_API int32_t IsPanelShown(const PanelInfo &panelInfo, bool &isShown);
+    IMF_API int32_t IsPanelShown(
+        const PanelInfo &panelInfo, bool &isShown, uint64_t displayId = ImfCommonConst::DEFAULT_DISPLAY_ID);
     int32_t UpdateListenEventFlag(uint32_t finalEventFlag, uint32_t eventFlag, bool isOn);
 
     /**
@@ -1037,7 +1039,7 @@ private:
     std::pair<int64_t, std::string> GetBindImeInfo();
     int32_t SetPreviewTextInner(const std::string &text, const Range &range);
     int32_t ShowTextInputInner(const AttachOptions &attachOptions, ClientType type);
-    int32_t ShowSoftKeyboardInner(ClientType type);
+    int32_t ShowSoftKeyboardInner(uint64_t displayId, ClientType type);
     void ReportClientShow(int32_t eventCode, int32_t errCode, ClientType type);
     void GetWindowScaleCoordinate(uint32_t windowId, CursorInfo &cursorInfo);
     void CalibrateImmersiveParam(InputAttribute &inputAttribute);

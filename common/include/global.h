@@ -141,6 +141,14 @@ enum {
 };
 }; // namespace ErrorCode
 
+namespace ImfCommonConst {
+constexpr uint32_t IMF_INVALID_TOKENID = 0;
+constexpr uint64_t DEFAULT_DISPLAY_ID = 0;
+constexpr uint64_t DEFAULT_DISPLAY_GROUP_ID = 0;
+constexpr int64_t INVALID_PID = -1;
+constexpr uint32_t INVALID_WINDOW_ID = 0;
+}; // namespace ImfCommonConst
+
 static constexpr HiviewDFX::HiLogLabel g_SMALL_SERVICES_LABEL = { LOG_CORE, 0xD001C10, "ImsaKit" };
 
 #define IMSA_HILOGD(fmt, ...)                                                                                    \

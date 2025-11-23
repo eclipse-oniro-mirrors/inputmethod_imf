@@ -18,9 +18,10 @@
 
 #include <cstdint>
 #include <string>
-#include "parcel.h"
 
+#include "global.h"
 #include "panel_info.h"
+#include "parcel.h"
 namespace OHOS {
 namespace MiscServices {
 enum class InputWindowStatus : uint32_t {
@@ -34,7 +35,8 @@ struct InputWindowInfo : public Parcelable {
     int32_t left { 0 };    // the abscissa of the upper-left vertex of inputWindow
     int32_t top { 0 };     // the ordinate of the upper-left vertex of inputWindow
     uint32_t width { 0 };  // the width of inputWindow
-    uint32_t height { 0 }; // the height of inputWindow
+    uint32_t height{ 0 };  // the height of inputWindow
+    uint64_t displayId{ ImfCommonConst::DEFAULT_DISPLAY_ID };
 
     bool ReadFromParcel(Parcel &in)
     {
@@ -43,6 +45,7 @@ struct InputWindowInfo : public Parcelable {
         top = in.ReadInt32();
         width = in.ReadUint32();
         height = in.ReadUint32();
+        displayId = in.ReadUint64();
         return true;
     }
 
@@ -63,7 +66,7 @@ struct InputWindowInfo : public Parcelable {
         if (!out.WriteUint32(height)) {
             return false;
         }
-        return true;
+        return out.WriteUint64(displayId);
     }
 
     static InputWindowInfo *Unmarshalling(Parcel &in)

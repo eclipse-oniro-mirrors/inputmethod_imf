@@ -467,7 +467,14 @@ int32_t InputMethodController::HideCurrentInput()
         clientInfo_.isShowKeyboard = false;
     }
     InputMethodSysEvent::GetInstance().OperateSoftkeyboardBehaviour(OperateIMEInfoCode::IME_HIDE_NORMAL);
-    return proxy->HideCurrentInputDeprecated();
+    sptr<IRemoteObject> abilityToken = nullptr;
+    uint32_t windowId = ImfCommonConst::INVALID_WINDOW_ID;
+    {
+        std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
+        windowId = clientInfo_.config.windowId;
+        abilityToken = clientInfo_.config.abilityToken;
+    }
+    return proxy->HideCurrentInputDeprecated(abilityToken, windowId);
 }
 
 int32_t InputMethodController::ShowCurrentInput()
@@ -488,7 +495,14 @@ int32_t InputMethodController::ShowCurrentInput()
         clientInfo_.isShowKeyboard = true;
     }
     InputMethodSysEvent::GetInstance().OperateSoftkeyboardBehaviour(OperateIMEInfoCode::IME_SHOW_NORMAL);
-    return proxy->ShowCurrentInputDeprecated();
+    sptr<IRemoteObject> abilityToken = nullptr;
+    uint32_t windowId = ImfCommonConst::INVALID_WINDOW_ID;
+    {
+        std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
+        windowId = clientInfo_.config.windowId;
+        abilityToken = clientInfo_.config.abilityToken;
+    }
+    return proxy->ShowCurrentInputDeprecated(abilityToken, windowId);
 }
 
 int32_t InputMethodController::Close()
@@ -522,15 +536,16 @@ void InputMethodController::Reset()
     RemoveDeathRecipient();
 }
 
-int32_t InputMethodController::RequestHideInput(bool isFocusTriggered, uint32_t windowId)
+int32_t InputMethodController::RequestHideInput(uint32_t callingWndId, bool isFocusTriggered)
 {
+    IMSA_HILOGD("callingWndId/isFocusTriggered:%{public}u/%{public}d.", callingWndId, isFocusTriggered);
     auto proxy = TryGetSystemAbilityProxy();
     if (proxy == nullptr) {
         IMSA_HILOGE("proxy is nullptr!");
         return ErrorCode::ERROR_EX_NULL_POINTER;
     }
     IMSA_HILOGD("InputMethodController start.");
-    return proxy->RequestHideInput(isFocusTriggered, windowId);
+    return proxy->RequestHideInput(isFocusTriggered, callingWndId);
 }
 
 int32_t InputMethodController::DisplayOptionalInputMethod()
@@ -706,7 +721,14 @@ int32_t InputMethodController::ShowInput(sptr<IInputClient> &client, ClientType 
         IMSA_HILOGE("proxy is nullptr!");
         return ErrorCode::ERROR_SERVICE_START_FAILED;
     }
-    return proxy->ShowInput(client, type, requestKeyboardReason);
+    sptr<IRemoteObject> abilityToken = nullptr;
+    uint32_t windowId = ImfCommonConst::INVALID_WINDOW_ID;
+    {
+        std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
+        windowId = clientInfo_.config.windowId;
+        abilityToken = clientInfo_.config.abilityToken;
+    }
+    return proxy->ShowInput(client, abilityToken, windowId, type, requestKeyboardReason);
 }
 
 int32_t InputMethodController::HideInput(sptr<IInputClient> &client)
@@ -717,7 +739,14 @@ int32_t InputMethodController::HideInput(sptr<IInputClient> &client)
         IMSA_HILOGE("proxy is nullptr!");
         return ErrorCode::ERROR_SERVICE_START_FAILED;
     }
-    return proxy->HideInput(client);
+    sptr<IRemoteObject> abilityToken = nullptr;
+    uint32_t windowId = ImfCommonConst::INVALID_WINDOW_ID;
+    {
+        std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
+        windowId = clientInfo_.config.windowId;
+        abilityToken = clientInfo_.config.abilityToken;
+    }
+    return proxy->HideInput(client, abilityToken, windowId);
 }
 
 void InputMethodController::OnRemoteSaDied(const wptr<IRemoteObject> &remote)
@@ -1110,25 +1139,27 @@ int32_t InputMethodController::SetCallingWindow(uint32_t windowId)
         IMSA_HILOGD("not editable.");
         return ErrorCode::ERROR_CLIENT_NOT_EDITABLE;
     }
+    auto finalWindowId = windowId;
+    auto proxy = GetSystemAbilityProxy();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("proxy is nullptr!");
+        return ErrorCode::ERROR_SERVICE_START_FAILED;
+    }
+    sptr<IRemoteObject> abilityToken = nullptr;
+    {
+        std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
+        abilityToken = clientInfo_.config.abilityToken;
+    }
+    proxy->SetCallingWindow(windowId, clientInfo_.client, abilityToken, finalWindowId);
     {
         std::lock_guard<std::mutex> lock(textConfigLock_);
-        textConfig_.windowId = windowId;
+        textConfig_.windowId = finalWindowId;
     }
-    auto agent = GetAgent();
-    if (agent == nullptr) {
-        IMSA_HILOGE("agent is nullptr!");
-        return ErrorCode::ERROR_IME_NOT_STARTED;
-    }
-    IMSA_HILOGI("windowId: %{public}d.", windowId);
-    agent->SetCallingWindow(windowId);
-    auto proxy = GetSystemAbilityProxy();
-    if (proxy != nullptr) {
-        proxy->SetCallingWindow(windowId, clientInfo_.client);
-    }
+    IMSA_HILOGI("windowId/finalWindowId: %{public}u/%{public}u.", windowId, finalWindowId);
     return ErrorCode::NO_ERROR;
 }
 
-int32_t InputMethodController::ShowSoftKeyboardInner(ClientType type)
+int32_t InputMethodController::ShowSoftKeyboardInner(uint64_t displayId, ClientType type)
 {
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
@@ -1141,10 +1172,10 @@ int32_t InputMethodController::ShowSoftKeyboardInner(ClientType type)
         clientInfo_.isShowKeyboard = true;
     }
     InputMethodSysEvent::GetInstance().OperateSoftkeyboardBehaviour(OperateIMEInfoCode::IME_SHOW_NORMAL);
-    return proxy->ShowCurrentInput(type);
+    return proxy->ShowCurrentInput(displayId, type);
 }
 
-int32_t InputMethodController::HideSoftKeyboard()
+int32_t InputMethodController::HideSoftKeyboard(uint64_t displayId)
 {
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
@@ -1157,10 +1188,10 @@ int32_t InputMethodController::HideSoftKeyboard()
         clientInfo_.isShowKeyboard = false;
     }
     InputMethodSysEvent::GetInstance().OperateSoftkeyboardBehaviour(OperateIMEInfoCode::IME_HIDE_NORMAL);
-    return proxy->HideCurrentInput();
+    return proxy->HideCurrentInput(displayId);
 }
 
-int32_t InputMethodController::StopInputSession()
+int32_t InputMethodController::StopInputSession(uint32_t windowId)
 {
     IMSA_HILOGI("start.");
     isEditable_.store(false);
@@ -1169,7 +1200,16 @@ int32_t InputMethodController::StopInputSession()
         IMSA_HILOGE("proxy is nullptr!");
         return ErrorCode::ERROR_EX_NULL_POINTER;
     }
-    return proxy->StopInputSession();
+    sptr<IRemoteObject> abilityToken = nullptr;
+    uint32_t finalWindowId = ImfCommonConst::INVALID_WINDOW_ID;
+    if (windowId != ImfCommonConst::INVALID_WINDOW_ID) {
+        finalWindowId = windowId;
+    } else if (IsBound()) {
+        std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
+        finalWindowId = clientInfo_.config.windowId;
+        abilityToken = clientInfo_.config.abilityToken;
+    }
+    return proxy->StopInputSession(abilityToken, finalWindowId);
 }
 
 int32_t InputMethodController::ShowOptionalInputMethod()
@@ -1620,7 +1660,7 @@ int32_t InputMethodController::StartInputTypeAsync(InputType type)
     return proxy->StartInputTypeAsync(static_cast<int32_t>(type));
 }
 
-int32_t InputMethodController::IsPanelShown(const PanelInfo &panelInfo, bool &isShown)
+int32_t InputMethodController::IsPanelShown(const PanelInfo &panelInfo, bool &isShown, uint64_t displayId)
 {
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
@@ -1629,7 +1669,7 @@ int32_t InputMethodController::IsPanelShown(const PanelInfo &panelInfo, bool &is
     }
     IMSA_HILOGD("type: %{public}d, flag: %{public}d.", static_cast<int32_t>(panelInfo.panelType),
         static_cast<int32_t>(panelInfo.panelFlag));
-    return proxy->IsPanelShown(panelInfo, isShown);
+    return proxy->IsPanelShown(displayId, panelInfo, isShown);
 }
 
 void InputMethodController::SetAgent(const sptr<IRemoteObject> &agentObject, const std::string &bundleName)
@@ -1890,9 +1930,9 @@ int32_t InputMethodController::ShowTextInput(const AttachOptions &attachOptions,
     return ret;
 }
 
-int32_t InputMethodController::ShowSoftKeyboard(ClientType type)
+int32_t InputMethodController::ShowSoftKeyboard(ClientType type, uint64_t displayId)
 {
-    auto ret = ShowSoftKeyboardInner(type);
+    auto ret = ShowSoftKeyboardInner(displayId, type);
     ReportClientShow(static_cast<int32_t>(IInputMethodSystemAbilityIpcCode::COMMAND_SHOW_CURRENT_INPUT), ret, type);
     return ret;
 }

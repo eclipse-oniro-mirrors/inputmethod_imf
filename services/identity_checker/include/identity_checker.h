@@ -32,18 +32,21 @@ public:
     virtual bool IsSystemApp(uint64_t fullTokenId) = 0;
     virtual bool IsBundleNameValid(uint32_t tokenId, const std::string &validBundleName) = 0;
     virtual bool HasPermission(uint32_t tokenId, const std::string &permission) = 0;
-    virtual std::pair<bool, FocusedInfo> IsBroker(Security::AccessToken::AccessTokenID tokenId) = 0;
+    virtual std::pair<bool, FocusedInfo> CheckBroker(Security::AccessToken::AccessTokenID tokenId) = 0;
+    virtual bool IsBroker(Security::AccessToken::AccessTokenID tokenId) = 0;
     virtual bool IsNativeSa(Security::AccessToken::AccessTokenID tokenId) = 0;
     virtual bool IsFormShell(Security::AccessToken::AccessTokenID tokenId) = 0;
-    virtual std::string GetBundleNameByToken(uint32_t tokenId);
-    virtual uint32_t GetUIExtensionWindowId(const sptr<IRemoteObject> &abilityToken = nullptr)
+    virtual std::string GetBundleNameByToken(uint32_t tokenId)
+    {
+        return "";
+    };
+    virtual uint32_t GetUIExtensionWindowId(sptr<IRemoteObject> abilityToken = nullptr)
+    {
+        return 0;
+    };
+    virtual bool IsFocusedUIExtension(uint32_t callingTokenId)
     {
         return false;
-    };
-    virtual std::pair<bool, FocusedInfo> IsFocusedUIExtension(uint32_t callingTokenId,
-        const sptr<IRemoteObject> &abilityToken, const std::vector<FocusChangeInfo> &focusWindowInfos)
-    {
-        return { false, {} };
     };
     virtual uint64_t GetDisplayIdByWindowId(int32_t callingWindowId)
     {

@@ -23,18 +23,13 @@ bool InputClientInfoInner::ReadFromParcel(Parcel &in)
     pid = in.ReadInt32();
     uid = in.ReadInt32();
     userID = in.ReadInt32();
-    displayId = in.ReadUint64();
     isShowKeyboard = in.ReadBool();
-    int32_t bindImeTypeData = in.ReadInt32();
-    bindImeType = static_cast<ImeType>(bindImeTypeData);
 
     std::unique_ptr<TextTotalConfigInner> configInfo(in.ReadParcelable<TextTotalConfigInner>());
     if (configInfo == nullptr) {
         return false;
     }
     config = *configInfo;
-
-    eventFlag = in.ReadUint32();
 
     std::unique_ptr<InputAttributeInner> attributeInfo(in.ReadParcelable<InputAttributeInner>());
     if (attributeInfo == nullptr) {
@@ -85,19 +80,10 @@ bool InputClientInfoInner::Marshalling(Parcel &out) const
     if (!out.WriteInt32(userID)) {
         return false;
     }
-    if (!out.WriteUint64(displayId)) {
-        return false;
-    }
     if (!out.WriteBool(isShowKeyboard)) {
         return false;
     }
-    if (!out.WriteInt32(static_cast<int32_t>(bindImeType))) {
-        return false;
-    }
     if (!out.WriteParcelable(&config)) {
-        return false;
-    }
-    if (!out.WriteUint32(eventFlag)) {
         return false;
     }
     if (!out.WriteParcelable(&attribute)) {
