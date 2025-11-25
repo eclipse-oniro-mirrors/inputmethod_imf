@@ -591,7 +591,7 @@ public:
      * @return Returns 0 for success, others for failure.
      * @since 11
      */
-    IMF_API int32_t RequestHideInput(bool isFocusTriggered = false);
+    IMF_API int32_t RequestHideInput(uint32_t callingWndId = 0, bool isFocusTriggered = false);
 
     /**
      * @brief Show input method setting extension dialog.
