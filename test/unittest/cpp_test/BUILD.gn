@@ -757,6 +757,7 @@ ohos_unittest("NumKeyAppsManagerTest") {
 
   external_deps = [
     "ability_base:want",
+    "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "config_policy:configpolicy_util",
@@ -1591,6 +1592,7 @@ ohos_unittest("InputMethodManagerCommandTest") {
   ]
 
   external_deps = [
+    "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "hilog:libhilog",
@@ -1630,6 +1632,7 @@ ohos_unittest("ImeEnabledInfoManagerTest") {
 
   external_deps = [
     "ability_base:want",
+    "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "c_utils:utils",
     "config_policy:configpolicy_util",
