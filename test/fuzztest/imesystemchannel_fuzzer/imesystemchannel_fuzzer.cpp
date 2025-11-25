@@ -25,54 +25,22 @@
 
 #include "input_method_agent_service_impl.h"
 #include "message_parcel.h"
+#include "fuzzer/FuzzedDataProvider.h"
 
 using namespace OHOS::MiscServices;
 namespace OHOS {
 constexpr size_t THRESHOLD = 10;
-constexpr int32_t PRIVATEDATAVALUE = 100;
-void FuzzGetSmartMenuCfg()
+
+void FuzzPrivateCommand(FuzzedDataProvider &provider)
 {
-    ImeSystemCmdChannel::GetInstance()->GetSmartMenuCfg();
-}
-
-void FuzzConnectSystemCmd()
-{
-    sptr<OnSystemCmdListener> listener = new (std::nothrow) OnSystemCmdListener();
-    if (listener == nullptr) {
-        return;
-    }
-
-    ImeSystemCmdChannel::GetInstance()->SetSystemCmdListener(listener);
-    ImeSystemCmdChannel::GetInstance()->GetSystemCmdListener();
-    ImeSystemCmdChannel::GetInstance()->ConnectSystemCmd(listener);
-    ImeSystemCmdChannel::GetInstance()->RunConnectSystemCmd();
-}
-
-void FuzzSystemCmdAgent()
-{
-    ImeSystemCmdChannel::GetInstance()->GetSystemCmdAgent();
-    ImeSystemCmdChannel::GetInstance()->ClearSystemCmdAgent();
-}
-
-void FuzzOnSystemCmdAgent()
-{
-    sptr<SystemCmdChannelStub> stub = new SystemCmdChannelServiceImpl();
-
-    MessageParcel data;
-    data.WriteRemoteObject(stub->AsObject());
-    sptr<IRemoteObject> remoteObject = data.ReadRemoteObject();
-    ImeSystemCmdChannel::GetInstance()->OnConnectCmdReady(remoteObject);
-    ImeSystemCmdChannel::GetInstance()->OnSystemCmdAgentDied(remoteObject);
-}
-
-void FuzzPrivateCommand(const uint8_t *data, size_t size)
-{
-    bool fuzzedBool = static_cast<bool>(data[0] % 2);
+    bool fuzzedBool = provider.ConsumeBool();
+    std::string fuzzedString = provider.ConsumeRandomLengthString();
+    auto fuzzInt32 = provider.ConsumeIntegral<int32_t>();
 
     std::unordered_map<std::string, PrivateDataValue> privateCommand;
-    PrivateDataValue privateDataValue1 = std::string("stringValue");
+    PrivateDataValue privateDataValue1 = fuzzedString;
     PrivateDataValue privateDataValue2 = fuzzedBool;
-    PrivateDataValue privateDataValue3 = PRIVATEDATAVALUE;
+    PrivateDataValue privateDataValue3 = fuzzInt32;
     privateCommand.emplace("value1", privateDataValue1);
     privateCommand.emplace("value2", privateDataValue2);
     privateCommand.emplace("value3", privateDataValue3);
@@ -81,12 +49,13 @@ void FuzzPrivateCommand(const uint8_t *data, size_t size)
     ImeSystemCmdChannel::GetInstance()->ReceivePrivateCommand(privateCommand);
 }
 
-void FuzzNotifyPanelStatus(const uint8_t *data, size_t size)
+void FuzzNotifyPanelStatus(FuzzedDataProvider &provider)
 {
-    InputType fuzzedBool = static_cast<InputType>(data[0] % 2);
-    auto fuzzedUint32 = static_cast<uint32_t>(size);
+    int32_t value = provider.ConsumeIntegralInRange<int32_t>(-1, 4);
+    InputType inputType = static_cast<InputType>(value);
+    auto fuzzedUint32 = provider.ConsumeIntegral<uint32_t>();
 
-    SysPanelStatus sysPanelStatus = { fuzzedBool, 0, fuzzedUint32, fuzzedUint32 };
+    SysPanelStatus sysPanelStatus = { inputType, 0, fuzzedUint32, fuzzedUint32 };
     ImeSystemCmdChannel::GetInstance()->NotifyPanelStatus(sysPanelStatus);
 }
 } // namespace OHOS
@@ -98,12 +67,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         return 0;
     }
     /* Run your code on data */
-
-    OHOS::FuzzGetSmartMenuCfg();
-    OHOS::FuzzConnectSystemCmd();
-    OHOS::FuzzSystemCmdAgent();
-    OHOS::FuzzOnSystemCmdAgent();
-    OHOS::FuzzPrivateCommand(data, size);
-    OHOS::FuzzNotifyPanelStatus(data, size);
+    FuzzedDataProvider provider(data, size);
+    OHOS::FuzzPrivateCommand(provider);
+    OHOS::FuzzNotifyPanelStatus(provider);
     return 0;
 }

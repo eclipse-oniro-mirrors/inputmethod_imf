@@ -66,131 +66,133 @@ bool InitializeClientInfo(InputClientInfo &clientInfo)
     return true;
 }
 
-void TestInsertText(const std::string &fuzzedString)
+void TestInsertText(FuzzedDataProvider &provider)
 {
-    InputMethodAbility::GetInstance().InsertText(std::move(fuzzedString));
+    std::string fuzzedString = provider.ConsumeRandomLengthString();
+    InputMethodAbility::GetInstance().InsertText(fuzzedString);
 }
 
-void TestSetImeListener()
+void TestDeleteForward(FuzzedDataProvider &provider)
 {
-    auto engineListener = std::make_shared<InputMethodEngineListenerImpl>();
-    InputMethodAbility::GetInstance().SetImeListener(engineListener);
-}
-
-void TestSetKdListener()
-{
-    InputMethodAbility::GetInstance().SetKdListener(nullptr);
-}
-
-void TestDeleteForward(int32_t fuzzedInt32)
-{
+    int32_t fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
     InputMethodAbility::GetInstance().DeleteForward(fuzzedInt32);
 }
 
-void TestDeleteBackward(int32_t fuzzedInt32)
+void TestDeleteBackward(FuzzedDataProvider &provider)
 {
+    int32_t fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
     InputMethodAbility::GetInstance().DeleteBackward(fuzzedInt32);
 }
 
-void TestSendExtendAction(int32_t fuzzedInt32)
+void TestSendExtendAction(FuzzedDataProvider &provider)
 {
+    int32_t fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
     InputMethodAbility::GetInstance().SendExtendAction(fuzzedInt32);
 }
 
-void TestHideKeyboardSelf()
+void TestGetTextBeforeCursor(FuzzedDataProvider &provider)
 {
-    InputMethodAbility::GetInstance().HideKeyboardSelf();
-}
-
-void TestGetTextBeforeCursor(int32_t fuzzedInt32)
-{
+    int32_t fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
     std::u16string text;
     InputMethodAbility::GetInstance().GetTextBeforeCursor(fuzzedInt32, text);
 }
 
-void TestGetTextAfterCursor(int32_t fuzzedInt32)
+void TestGetTextAfterCursor(FuzzedDataProvider &provider)
 {
+    int32_t fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
     std::u16string text;
     InputMethodAbility::GetInstance().GetTextAfterCursor(fuzzedInt32, text);
 }
 
-void TestSendFunctionKey(int32_t fuzzedInt32)
+void TestSendFunctionKey(FuzzedDataProvider &provider)
 {
+    int32_t fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
     InputMethodAbility::GetInstance().SendFunctionKey(fuzzedInt32);
 }
 
-void TestMoveCursor(int32_t fuzzedInt32)
+void TestMoveCursor(FuzzedDataProvider &provider)
 {
+    int32_t fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
     InputMethodAbility::GetInstance().MoveCursor(fuzzedInt32);
 }
 
-void TestDispatchKeyEvent(int32_t fuzzedInt32)
+void TestDispatchKeyEvent(FuzzedDataProvider &provider)
 {
+    int32_t fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
     std::shared_ptr<MMI::KeyEvent> keyEvent = MMI::KeyEvent::Create();
     keyEvent->SetKeyCode(fuzzedInt32);
     keyEvent->SetKeyAction(fuzzedInt32);
     InputMethodAbility::GetInstance().DispatchKeyEvent(keyEvent, fuzzedInt32, nullptr);
 }
 
-void TestSetCallingWindow(int32_t fuzzedInt32)
+void TestSetCallingWindow(FuzzedDataProvider &provider)
 {
+    int32_t fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
     InputMethodAbility::GetInstance().SetCallingWindow(fuzzedInt32);
 }
 
-void TestGetEnterKeyType()
+void TestCallingDisplayIdChanged(FuzzedDataProvider &provider)
 {
-    int32_t keyType;
-    InputMethodAbility::GetInstance().GetEnterKeyType(keyType);
-}
-
-void TestGetInputPattern()
-{
-    int32_t inputPattern;
-    InputMethodAbility::GetInstance().GetInputPattern(inputPattern);
-}
-
-void TestCallingDisplayIdChanged(uint64_t fuzzedUint64)
-{
+    uint64_t fuzzedUint64 = provider.ConsumeIntegral<uint64_t>();
     InputMethodAbility::GetInstance().OnCallingDisplayIdChanged(fuzzedUint64);
 }
 
-void TestRegisterProxyIme(uint64_t fuzzedUint64)
+void TestRegisterProxyIme(FuzzedDataProvider &provider)
 {
+    uint64_t fuzzedUint64 = provider.ConsumeIntegral<uint64_t>();
     InputMethodAbility::GetInstance().RegisterProxyIme(fuzzedUint64);
 }
 
-void TestUnregisterProxyIme(uint64_t fuzzedUint64)
+void TestUnregisterProxyIme(FuzzedDataProvider &provider)
 {
+    uint64_t fuzzedUint64 = provider.ConsumeIntegral<uint64_t>();
     InputMethodAbility::GetInstance().UnregisterProxyIme(fuzzedUint64);
 }
 
-void TestStartInput(const InputClientInfo &clientInfo, bool isBindFromClient)
+void TestStartInput(FuzzedDataProvider &provider)
 {
+    InputClientInfo clientInfo;
+    if (!OHOS::InitializeClientInfo(clientInfo)) {
+        return;
+    }
+    bool isBindFromClient = provider.ConsumeBool();
     InputMethodAbility::GetInstance().StartInput(clientInfo, isBindFromClient);
 }
 
-void TestIsDisplayChanged(uint64_t oldDisplayId, uint64_t newDisplayId)
+void TestIsDisplayChanged(FuzzedDataProvider &provider)
 {
+    uint64_t oldDisplayId = provider.ConsumeIntegral<uint64_t>();
+    uint64_t newDisplayId = provider.ConsumeIntegral<uint64_t>();
     InputMethodAbility::GetInstance().IsDisplayChanged(oldDisplayId, newDisplayId);
 }
 
-void TestOnSelectionChange(std::u16string text, int32_t oldBegin, int32_t oldEnd,
-    int32_t newBegin, int32_t newEnd)
+void TestOnSelectionChange(FuzzedDataProvider &provider)
 {
+    std::string fuzzedString = provider.ConsumeRandomLengthString();
+    std::u16string text(fuzzedString.begin(), fuzzedString.end());
+    int32_t oldBegin = provider.ConsumeIntegral<int32_t>();
+    int32_t oldEnd = provider.ConsumeIntegral<int32_t>();
+    int32_t newBegin = provider.ConsumeIntegral<int32_t>();
+    int32_t newEnd = provider.ConsumeIntegral<int32_t>();
     InputMethodAbility::GetInstance().OnSelectionChange(text, oldBegin, oldEnd, newBegin, newEnd);
 }
 
-void TestOperationKeyboard(int32_t cmdId, uint32_t sessionId)
+void TestOperationKeyboard(FuzzedDataProvider &provider)
 {
+    int32_t cmdId = provider.ConsumeIntegral<int32_t>();
+    uint32_t sessionId = provider.ConsumeIntegral<uint32_t>();
     InputMethodAbility::GetInstance().HideKeyboardImplWithoutLock(cmdId, sessionId);
     InputMethodAbility::GetInstance().ShowKeyboardImplWithLock(cmdId);
 }
-void TestInterfaceCoverage(int32_t dataInt32, bool dataBool, std::u16string &text, int64_t consumeTime)
+
+void TestInterfaceCoverage(FuzzedDataProvider &provider)
 {
+    int32_t dataInt32 = provider.ConsumeIntegral<int32_t>();
+    std::string fuzzedString = provider.ConsumeRandomLengthString();
+    std::u16string text(fuzzedString.begin(), fuzzedString.end());
     InputMethodAbility::GetInstance().SelectByMovement(dataInt32);
     InputMethodAbility::GetInstance().GetEnterKeyType(dataInt32);
     InputMethodAbility::GetInstance().GetSecurityMode(dataInt32);
-    InputMethodAbility::GetInstance().FinishTextPreview();
     InputMethodAbility::GetInstance().GetTextBeforeCursor(dataInt32, text);
 }
 
@@ -212,50 +214,29 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     /* Run your code on data */
     FuzzedDataProvider provider(data, size);
-    std::string fuzzedString(reinterpret_cast<const char *>(data), size);
-    auto fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
-    auto fuzzedUint64 = provider.ConsumeIntegral<uint64_t>();
-    auto fuzzedInt64 = provider.ConsumeIntegral<int64_t>();
-    InputClientInfo clientInfo;
-    if (!OHOS::InitializeClientInfo(clientInfo)) {
-        return false;
-    }
-    auto fuzzedBool = static_cast<bool>(data[0] % 2);
+    OHOS::TestInsertText(provider);
+    OHOS::TestDeleteForward(provider);
+    OHOS::TestDeleteBackward(provider);
+    OHOS::TestSendExtendAction(provider);
 
-    std::u16string fuzzedU16String = u"insert text";
+    OHOS::TestGetTextBeforeCursor(provider);
+    OHOS::TestGetTextAfterCursor(provider);
 
-    OHOS::TestInsertText(fuzzedString);
+    OHOS::TestSendFunctionKey(provider);
+    OHOS::TestMoveCursor(provider);
 
-    OHOS::TestSetImeListener();
+    OHOS::TestDispatchKeyEvent(provider);
 
-    OHOS::TestSetKdListener();
+    OHOS::TestSetCallingWindow(provider);
 
-    OHOS::TestDeleteForward(fuzzedInt32);
-    OHOS::TestDeleteBackward(fuzzedInt32);
-    OHOS::TestSendExtendAction(fuzzedInt32);
-
-    OHOS::TestHideKeyboardSelf();
-
-    OHOS::TestGetTextBeforeCursor(fuzzedInt32);
-    OHOS::TestGetTextAfterCursor(fuzzedInt32);
-
-    OHOS::TestSendFunctionKey(fuzzedInt32);
-    OHOS::TestMoveCursor(fuzzedInt32);
-
-    OHOS::TestDispatchKeyEvent(fuzzedInt32);
-
-    OHOS::TestSetCallingWindow(fuzzedInt32);
-
-    OHOS::TestGetEnterKeyType();
-    OHOS::TestGetInputPattern();
-    OHOS::TestCallingDisplayIdChanged(fuzzedUint64);
-    OHOS::TestRegisterProxyIme(fuzzedUint64);
-    OHOS::TestUnregisterProxyIme(fuzzedUint64);
-    OHOS::TestStartInput(clientInfo, fuzzedBool);
-    OHOS::TestIsDisplayChanged(fuzzedUint64, fuzzedUint64);
-    OHOS::TestOnSelectionChange(fuzzedU16String, fuzzedInt32, fuzzedInt32, fuzzedInt32, fuzzedInt32);
-    OHOS::TestOperationKeyboard(fuzzedInt32, fuzzedInt32);
-    OHOS::TestInterfaceCoverage(fuzzedInt32, fuzzedBool, fuzzedU16String, fuzzedInt64);
+    OHOS::TestCallingDisplayIdChanged(provider);
+    OHOS::TestRegisterProxyIme(provider);
+    OHOS::TestUnregisterProxyIme(provider);
+    OHOS::TestStartInput(provider);
+    OHOS::TestIsDisplayChanged(provider);
+    OHOS::TestOnSelectionChange(provider);
+    OHOS::TestOperationKeyboard(provider);
+    OHOS::TestInterfaceCoverage(provider);
     OHOS::TestImeMirrorManager(provider);
     return 0;
 }
