@@ -2069,7 +2069,24 @@ int32_t PerUserSession::UpdateImeData(sptr<IInputMethodCore> core, sptr<IRemoteO
         return ErrorCode::ERROR_ADD_DEATH_RECIPIENT_FAILED;
     }
     dataList.back()->deathRecipient = deathRecipient;
+    if (dataList.back()->imeStateManager != nullptr && IsImeStartedForeground()) {
+        dataList.back()->imeStateManager->ReportQos(false, pid);
+    }
     return ErrorCode::NO_ERROR;
+}
+
+bool PerUserSession::IsImeStartedForeground()
+{
+    auto clientGroup = GetClientGroup(ImeType::IME);
+    auto clientInfo = clientGroup != nullptr ? clientGroup->GetCurrentClientInfo() : nullptr;
+    if (clientInfo != nullptr && clientInfo->bindImeType == ImeType::IME && clientInfo->isShowKeyboard) {
+        IMSA_HILOGI("ime restart with keyboard front end");
+        return true;
+    } else if (clientInfo == nullptr && isNeedReportQos_) {
+        IMSA_HILOGI("sa start with keyboard front end");
+        return true;
+    }
+    return false;
 }
 
 int32_t PerUserSession::InitConnect(pid_t pid)
@@ -2084,6 +2101,9 @@ int32_t PerUserSession::InitConnect(pid_t pid)
         return ErrorCode::ERROR_NULL_POINTER;
     }
     dataList.back()->pid = pid;
+    if (dataList.back()->imeStateManager != nullptr && IsImeStartedForeground()) {
+        dataList.back()->imeStateManager->ReportQos(true, pid);
+    }
     return ErrorCode::NO_ERROR;
 }
 
@@ -2965,6 +2985,11 @@ bool PerUserSession::IsEnable(const std::shared_ptr<ImeData> &data)
     }
     data->core->IsEnable(ret);
     return ret;
+}
+
+void PerUserSession::SetIsNeedReportQos(bool isNeedReportQos)
+{
+    isNeedReportQos_ = isNeedReportQos;
 }
 } // namespace MiscServices
 } // namespace OHOS

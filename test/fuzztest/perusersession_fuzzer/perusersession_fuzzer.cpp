@@ -47,15 +47,6 @@ namespace OHOS {
 constexpr size_t THRESHOLD = 10;
 constexpr int32_t MAIN_USER_ID = 100;
 
-uint32_t ConvertToUint32(const uint8_t *ptr)
-{
-    if (ptr == nullptr) {
-        return 0;
-    }
-    uint32_t bigVar = (ptr[0] << 24) | (ptr[1] << 16) | (ptr[2] << 8) | (ptr[3]);
-    return bigVar;
-}
-
 bool InitializeClientInfo(InputClientInfo &clientInfo)
 {
     sptr<IInputClient> clientStub = new (std::nothrow) InputClientServiceImpl();
@@ -72,7 +63,7 @@ bool InitializeClientInfo(InputClientInfo &clientInfo)
     return true;
 }
 
-bool FuzzPerUserSession(const uint8_t *rawData, size_t size)
+bool FuzzPerUserSession(FuzzedDataProvider &provider)
 {
     Property property;
     SubProperty subProperty;
@@ -94,7 +85,6 @@ bool FuzzPerUserSession(const uint8_t *rawData, size_t size)
     static std::shared_ptr<PerUserSession> userSessions = std::make_shared<PerUserSession>(MAIN_USER_ID);
 
     userSessions->OnRegisterProxyIme(core, agent->AsObject(), -1);
-    FuzzedDataProvider provider(rawData, size);
     int32_t type = provider.ConsumeIntegral<int32_t>();
     userSessions->OnUnRegisteredProxyIme(static_cast<UnRegisteredType>(type), core, -1);
     userSessions->IsProxyImeEnable();
@@ -120,6 +110,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         return 0;
     }
     /* Run your code on data */
-    OHOS::FuzzPerUserSession(data, size);
+    FuzzedDataProvider provider(data, size);
+    OHOS::FuzzPerUserSession(provider);
     return 0;
 }

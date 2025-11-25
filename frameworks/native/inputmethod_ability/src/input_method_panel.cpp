@@ -2109,7 +2109,6 @@ void InputMethodPanel::UpdateImmersiveHotArea()
         IMSA_HILOGE("SetKeyboardTouchHotAreas error, err: %{public}d!", result);
         return;
     }
-    SetHotAreas(hotAreas);
     IMSA_HILOGI("success, portrait: %{public}s", HotArea::ToString(hotAreas.portrait.keyboardHotArea).c_str());
     IMSA_HILOGI("success, landscape: %{public}s", HotArea::ToString(hotAreas.landscape.keyboardHotArea).c_str());
 }
@@ -2129,6 +2128,10 @@ int32_t InputMethodPanel::SetImmersiveEffect(const ImmersiveEffect &effect)
 
     // adjust again
     auto currentEffect = LoadImmersiveEffect();
+    if (currentEffect == effect) {
+        IMSA_HILOGW("repeat invalid param, ret:%{public}s", effect.ToString().c_str());
+        return ErrorCode::NO_ERROR;
+    }
     ImmersiveEffect targetEffect = effect;
     if (currentEffect.gradientMode != effect.gradientMode && effect.gradientMode == GradientMode::NONE) {
         targetEffect =
@@ -2150,6 +2153,12 @@ int32_t InputMethodPanel::SetImmersiveEffect(const ImmersiveEffect &effect)
         IMSA_HILOGE("window_ is nullptr");
         return ErrorCode::ERROR_NULL_POINTER;
     }
+    return HandleImmersiveEffectWhenShowing(targetEffect);
+}
+
+
+int32_t InputMethodPanel::HandleImmersiveEffectWhenShowing(const ImmersiveEffect &targetEffect)
+{
     auto mode = GetImmersiveMode();
     KeyboardEffectOption option = ConvertToWmEffect(mode, targetEffect);
     // call window manager to set immersive mode
@@ -2164,7 +2173,7 @@ int32_t InputMethodPanel::SetImmersiveEffect(const ImmersiveEffect &effect)
         return ErrorCode::ERROR_WINDOW_MANAGER;
     }
     StoreImmersiveEffect(targetEffect);
-    IMSA_HILOGI("success, %{public}s", effect.ToString().c_str());
+    IMSA_HILOGI("success, %{public}s", targetEffect.ToString().c_str());
     return ErrorCode::NO_ERROR;
 }
 

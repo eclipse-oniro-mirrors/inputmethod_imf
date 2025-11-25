@@ -62,7 +62,7 @@ bool WindowAdapter::GetCallingWindowInfo(
         (std::chrono::system_clock::now().time_since_epoch()).count();
     int64_t durTime = end - start;
     if (durTime > MAX_TIMEOUT) {
-        IMSA_HILOGW("GetCallingWindowInfo cost [%{public}d]us", durTime);
+        IMSA_HILOGW("GetCallingWindowInfo cost [%{public}" PRId64 "]us", durTime);
     }
     if (wmErr != WMError::WM_OK) {
         IMSA_HILOGE("[%{public}d,%{public}d,%{public}d] failed to get calling window info.", userId, windId, wmErr);

@@ -320,6 +320,8 @@ HWTEST_F(ImeFreezeManagerTest, TemporaryActiveImeTest_001, TestSize.Level1)
     ImeFreezeManagerTest::freezeManager_->TemporaryActiveIme();
     ImeFreezeManagerTest::freezeManager_->isFrozen_ = true;
     ImeFreezeManagerTest::freezeManager_->TemporaryActiveIme();
+    ImeFreezeManagerTest::freezeManager_->ReportQos(true, 1);
+    ImeFreezeManagerTest::freezeManager_->ReportQos(false, 1);
     EXPECT_TRUE(ImeFreezeManagerTest::freezeManager_->isFrozen_);
 }
 } // namespace MiscServices

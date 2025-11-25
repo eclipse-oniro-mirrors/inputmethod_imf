@@ -98,6 +98,11 @@ struct ImmersiveEffect {
            << "fluidLightMode=" << static_cast<int32_t>(fluidLightMode) << "]";
         return ss.str();
     }
+    bool operator==(const ImmersiveEffect &effect) const
+    {
+        return (gradientHeight == effect.gradientHeight && gradientMode == effect.gradientMode &&
+            fluidLightMode == effect.fluidLightMode);
+    }
 };
 
 struct SystemPanelInsets {

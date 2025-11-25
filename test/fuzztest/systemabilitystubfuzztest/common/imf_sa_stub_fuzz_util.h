@@ -21,6 +21,7 @@
 #include "input_method_system_ability.h"
 #include "input_method_system_ability_proxy.h"
 #undef private
+#include "fuzzer/FuzzedDataProvider.h"
 
 #include <cstddef>
 #include <cstdint>
@@ -31,7 +32,7 @@ const std::u16string SYSTEMABILITY_INTERFACE_TOKEN = u"OHOS.MiscServices.IInputM
 constexpr const int32_t USER_ID = 100;
 class ImfSaStubFuzzUtil {
 public:
-    static bool FuzzInputMethodSystemAbility(const uint8_t *rawData, size_t size,
+    static bool FuzzInputMethodSystemAbility(FuzzedDataProvider &provider,
         IInputMethodSystemAbilityIpcCode code);
 
 private:

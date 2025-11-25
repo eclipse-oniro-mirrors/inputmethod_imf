@@ -15,6 +15,7 @@
 
 #include "startinputtype_fuzzer.h"
 #include "imf_sa_stub_fuzz_util.h"
+#include "fuzzer/FuzzedDataProvider.h"
 using namespace OHOS::MiscServices;
 namespace OHOS {
 } // namespace OHOS
@@ -22,7 +23,8 @@ namespace OHOS {
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     /* Run your code on data */
-    ImfSaStubFuzzUtil::FuzzInputMethodSystemAbility(data, size,
+    FuzzedDataProvider provider(data, size);
+    ImfSaStubFuzzUtil::FuzzInputMethodSystemAbility(provider,
         IInputMethodSystemAbilityIpcCode::COMMAND_START_INPUT_TYPE);
     return 0;
 }

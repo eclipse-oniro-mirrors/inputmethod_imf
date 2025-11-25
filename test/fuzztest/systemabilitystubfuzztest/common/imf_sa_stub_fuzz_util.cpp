@@ -114,20 +114,20 @@ bool ImfSaStubFuzzUtil::SwitchIpcCode(IInputMethodSystemAbilityIpcCode code, Mes
     return true;
 }
 
-bool ImfSaStubFuzzUtil::FuzzInputMethodSystemAbility(const uint8_t *rawData, size_t size,
+bool ImfSaStubFuzzUtil::FuzzInputMethodSystemAbility(FuzzedDataProvider &provider,
     IInputMethodSystemAbilityIpcCode code)
 {
     if (!isInitialize_) {
         Initialize();
     }
-    FuzzedDataProvider provider(rawData, size);
     auto fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
+    std::vector<uint8_t> bufferData = provider.ConsumeRemainingBytes<uint8_t>();
     GrantNativePermission();
 
     MessageParcel datas;
     datas.WriteInterfaceToken(SYSTEMABILITY_INTERFACE_TOKEN);
     SwitchIpcCode(code, datas, fuzzedInt32);
-    datas.WriteBuffer(rawData, size);
+    datas.WriteBuffer(static_cast<void *>(bufferData.data()), bufferData.size());
     datas.RewindRead(0);
     MessageParcel reply;
     MessageOption option;

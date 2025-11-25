@@ -21,17 +21,15 @@
 using namespace OHOS::MiscServices;
 namespace OHOS {
 constexpr size_t THRESHOLD = 10;
-void FuzzRegisterImeEventListener(const uint8_t *rawData, size_t size)
+void FuzzRegisterImeEventListener(FuzzedDataProvider &provider)
 {
-    FuzzedDataProvider provider(rawData, size);
     auto listener = std::make_shared<ImeSettingListenerTestImpl>();
     ImeEventMonitorManager::GetInstance().RegisterImeEventListener(provider.ConsumeIntegral<uint32_t>(), nullptr);
     ImeEventMonitorManager::GetInstance().RegisterImeEventListener(provider.ConsumeIntegral<uint32_t>(), listener);
 }
 
-void FuzzUnRegisterImeEventListener(const uint8_t *rawData, size_t size)
+void FuzzUnRegisterImeEventListener(FuzzedDataProvider &provider)
 {
-    FuzzedDataProvider provider(rawData, size);
     auto listener = std::make_shared<ImeSettingListenerTestImpl>();
     ImeEventMonitorManager::GetInstance().UnRegisterImeEventListener(provider.ConsumeIntegral<uint32_t>(), nullptr);
     ImeEventMonitorManager::GetInstance().UnRegisterImeEventListener(provider.ConsumeIntegral<uint32_t>(), listener);
@@ -45,8 +43,9 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     }
 
     /* Run your code on data */
-    OHOS::FuzzRegisterImeEventListener(data, size);
-    OHOS::FuzzUnRegisterImeEventListener(data, size);
+    FuzzedDataProvider provider(data, size);
+    OHOS::FuzzRegisterImeEventListener(provider);
+    OHOS::FuzzUnRegisterImeEventListener(provider);
     return 0;
 }
 } // namespace OHOS

@@ -33,6 +33,7 @@
 #include "systemabilitystub_fuzzer.h"
 #include "text_listener.h"
 #include "token_setproc.h"
+#include "fuzzer/FuzzedDataProvider.h"
 
 using namespace OHOS::Security::AccessToken;
 using namespace OHOS::MiscServices;
@@ -64,23 +65,13 @@ void GrantNativePermission()
     delete[] perms;
 }
 constexpr size_t THRESHOLD = 10;
-constexpr int32_t OFFSET = 4;
 const std::u16string SYSTEMABILITY_INTERFACE_TOKEN = u"OHOS.MiscServices.IInputMethodSystemAbility";
 
-uint32_t ConvertToUint32(const uint8_t *ptr)
-{
-    if (ptr == nullptr) {
-        return 0;
-    }
-    uint32_t bigVar = (ptr[0] << 24) | (ptr[1] << 16) | (ptr[2] << 8) | (ptr[3]);
-    return bigVar;
-}
-bool FuzzInputMethodSystemAbility(const uint8_t *rawData, size_t size)
+bool FuzzInputMethodSystemAbility(FuzzedDataProvider &provider)
 {
     GrantNativePermission();
-    uint32_t code = ConvertToUint32(rawData) % TARGET_REMOTE_CODE_NUMS;
-    rawData = rawData + OFFSET;
-    size = size - OFFSET;
+    uint32_t code = provider.ConsumeIntegral<uint32_t>() % TARGET_REMOTE_CODE_NUMS;
+    std::vector<uint8_t> bufferData = provider.ConsumeRemainingBytes<uint8_t>();
 
     if (!g_isInitialize.load()) {
         DelayedSingleton<InputMethodSystemAbility>::GetInstance()->Initialize();
@@ -93,7 +84,7 @@ bool FuzzInputMethodSystemAbility(const uint8_t *rawData, size_t size)
 
     MessageParcel datas;
     datas.WriteInterfaceToken(SYSTEMABILITY_INTERFACE_TOKEN);
-    datas.WriteBuffer(rawData, size);
+    datas.WriteBuffer(static_cast<void *>(bufferData.data()), bufferData.size());
     datas.RewindRead(0);
     MessageParcel reply;
     MessageOption option;
@@ -101,13 +92,14 @@ bool FuzzInputMethodSystemAbility(const uint8_t *rawData, size_t size)
     return true;
 }
 
-bool TestDump(const uint8_t *rawData, size_t size)
+bool TestDump(FuzzedDataProvider &provider)
 {
+    std::string fuzzedString = provider.ConsumeRandomLengthString();
+    std::u16string u16Str(fuzzedString.begin(), fuzzedString.end());
     std::vector<std::u16string> args;
-    std::string str(reinterpret_cast<const char *>(rawData), size);
-    args.push_back(Str8ToStr16(str));
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->Dump(static_cast<int32_t>(size), args);
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->DumpAllMethod(static_cast<int32_t>(size));
+    args.push_back(u16Str);
+    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->Dump(provider.ConsumeIntegral<int32_t>(), args);
+    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->DumpAllMethod(provider.ConsumeIntegral<int32_t>());
     return true;
 }
 
@@ -119,7 +111,8 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
         return 0;
     }
     /* Run your code on data */
-    OHOS::FuzzInputMethodSystemAbility(data, size);
-    OHOS::TestDump(data, size);
+    FuzzedDataProvider provider(data, size);
+    OHOS::FuzzInputMethodSystemAbility(provider);
+    OHOS::TestDump(provider);
     return 0;
 }

@@ -185,6 +185,7 @@ public:
     int32_t TryStartIme();
     int32_t TryDisconnectIme();
     bool IsDeviceLockAndScreenLocked();
+    void SetIsNeedReportQos(bool isNeedReportQos);
 
 private:
     struct ResetManager {
@@ -302,6 +303,8 @@ private:
     int32_t PrepareImeInfos(ImeType type, std::vector<sptr<IRemoteObject>> &agents,
         std::vector<BindImeInfo> &imeInfos);
     int32_t PostCurrentImeInfoReportHook(const std::string &bundleName);
+    bool IsImeStartedForeground();
+
     std::mutex imeStartLock_;
 
     BlockData<bool> isImeStarted_{ MAX_IME_START_TIME, false };
@@ -354,6 +357,7 @@ private:
     sptr<AAFwk::IAbilityConnection> connection_ = nullptr;
     std::atomic<bool> isBlockStartedByLowMem_ = false;
     bool isFirstPreemption_ = false;
+    std::atomic<bool> isNeedReportQos_ = false;
 };
 } // namespace MiscServices
 } // namespace OHOS

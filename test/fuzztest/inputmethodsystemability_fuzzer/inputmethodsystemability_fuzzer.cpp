@@ -40,58 +40,8 @@
 
 using namespace OHOS::MiscServices;
 namespace OHOS {
-constexpr const int32_t MSG_ID_USER_ONE = 50;
-constexpr const int32_t MSG_ID_USER_TWO = 60;
-void FuzzOnUser(int32_t userId, const std::string &packageName)
+void SystemAbility(FuzzedDataProvider &provider)
 {
-    // onUserStarted
-    MessageParcel *parcel = new MessageParcel();
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->isScbEnable_ = false;
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->userId_ = MSG_ID_USER_ONE;
-    parcel->WriteInt32(MSG_ID_USER_ONE);
-    auto msg = std::make_shared<Message>(MessageID::MSG_ID_USER_START, parcel);
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->OnUserStarted(msg.get());
-
-    // onUserRemoved
-    MessageParcel *parcel1 = new MessageParcel();
-    parcel1->WriteInt32(MSG_ID_USER_TWO);
-    auto msg1 = std::make_shared<Message>(MessageID::MSG_ID_USER_REMOVED, parcel1);
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->OnUserRemoved(msg1.get());
-
-    // HandlePackageEvent
-    MessageParcel *parcel2 = new (std::nothrow) MessageParcel();
-    auto bundleName = "testBundleName1";
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->userId_ = MSG_ID_USER_TWO;
-    parcel2->WriteInt32(MSG_ID_USER_ONE);
-    parcel2->WriteString(bundleName);
-    auto msg2 = std::make_shared<Message>(MessageID::MSG_ID_PACKAGE_REMOVED, parcel2);
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->HandlePackageEvent(msg2.get());
-
-    // OnPackageRemoved
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->userId_ = userId;
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->OnPackageRemoved(userId, bundleName);
-}
-
-void FuzzOnScreenUnlock()
-{
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->OnScreenUnlock(nullptr);
-
-    MessageParcel *parcel = nullptr;
-    auto msg = std::make_shared<Message>(MessageID::MSG_ID_SCREEN_UNLOCK, parcel);
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->OnScreenUnlock(msg.get());
-
-    MessageParcel *parcel1 = new (std::nothrow) MessageParcel();
-    msg = std::make_shared<Message>(MessageID::MSG_ID_SCREEN_UNLOCK, parcel1);
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->OnScreenUnlock(msg.get());
-
-    MessageParcel *parcel2 = new (std::nothrow) MessageParcel();
-    msg = std::make_shared<Message>(MessageID::MSG_ID_SCREEN_UNLOCK, parcel2);
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->OnScreenUnlock(msg.get());
-}
-
-void SystemAbility(const uint8_t *data, size_t size)
-{
-    FuzzedDataProvider provider(data, size);
     auto fuzzedUint32 = provider.ConsumeIntegral<uint32_t>();
     DelayedSingleton<InputMethodSystemAbility>::GetInstance()->ReleaseInput(nullptr, fuzzedUint32);
 }
@@ -109,12 +59,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     /* Run your code on data */
     FuzzedDataProvider provider(data, size);
-    const int32_t userId = provider.ConsumeIntegral<int32_t>();
-    std::string fuzzedString(reinterpret_cast<const char *>(data), size);
-
-    OHOS::FuzzOnUser(userId, fuzzedString);
-    OHOS::FuzzOnScreenUnlock();
-    OHOS::SystemAbility(data, size);
-    OHOS::FuzzInputType(provider);
+    OHOS::SystemAbility(provider);
     return 0;
 }

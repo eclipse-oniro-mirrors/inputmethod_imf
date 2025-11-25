@@ -127,6 +127,7 @@ bool SysCfgParser::IsContainField(const std::string& fieldName)
     cJSON *nestedObject = cJSON_GetObjectItem(root, GET_NAME(systemConfig));
     if (nestedObject == NULL || !cJSON_IsObject(nestedObject)) {
         IMSA_HILOGE("get object item failed!");
+        cJSON_Delete(root);
         return false;
     }
     bool isContained = cJSON_HasObjectItem(nestedObject, fieldName.c_str());

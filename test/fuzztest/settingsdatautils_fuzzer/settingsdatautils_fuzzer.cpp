@@ -18,47 +18,44 @@
 #undef private
 
 #include "settingsdatautils_fuzzer.h"
+#include "fuzzer/FuzzedDataProvider.h"
 
 using namespace OHOS::MiscServices;
 namespace OHOS {
-void FuzzGetToken()
-{
-    SettingsDataUtils::GetInstance().GetToken();
-}
 
-void FuzzDataShareHelper()
+void FuzzCreateAndRegisterObserver(FuzzedDataProvider &provider, SettingsDataObserver::CallbackFunc func)
 {
-    auto helper = SettingsDataUtils::GetInstance().CreateDataShareHelper(SETTING_URI_PROXY);
-    SettingsDataUtils::GetInstance().ReleaseDataShareHelper(helper);
-}
-
-void FuzzCreateAndRegisterObserver(
-    const std::string &uriProxy, const std::string &key, SettingsDataObserver::CallbackFunc func)
-{
+    std::string uriProxy = provider.ConsumeRandomLengthString();
+    std::string key = provider.ConsumeRandomLengthString();
     SettingsDataUtils::GetInstance().CreateAndRegisterObserver(uriProxy, key, func);
 }
 
-void FuzzRegisterObserver(const std::string &uriProxy, const std::string &key, SettingsDataObserver::CallbackFunc &func)
+void FuzzRegisterObserver(FuzzedDataProvider &provider, SettingsDataObserver::CallbackFunc &func)
 {
+    std::string uriProxy = provider.ConsumeRandomLengthString();
+    std::string key = provider.ConsumeRandomLengthString();
     sptr<SettingsDataObserver> observer = new SettingsDataObserver(uriProxy, key, func);
     SettingsDataUtils::GetInstance().RegisterObserver(observer);
 }
 
-void FuzzUnregisterObserver(
-    const std::string &uriProxy, const std::string &key, SettingsDataObserver::CallbackFunc &func)
+void FuzzUnregisterObserver(FuzzedDataProvider &provider, SettingsDataObserver::CallbackFunc &func)
 {
+    std::string uriProxy = provider.ConsumeRandomLengthString();
+    std::string key = provider.ConsumeRandomLengthString();
     sptr<SettingsDataObserver> observer = new SettingsDataObserver(uriProxy, key, func);
     SettingsDataUtils::GetInstance().UnregisterObserver(observer);
 }
 
-void FuzzGenerateTargetUri(const std::string &key)
+void FuzzGenerateTargetUri(FuzzedDataProvider &provider)
 {
+    std::string key = provider.ConsumeRandomLengthString();
     SettingsDataUtils::GetInstance().GenerateTargetUri(SETTING_URI_PROXY, key);
 }
 
 
-void FuzzSetStringValue(const std::string &key)
+void FuzzSetStringValue(FuzzedDataProvider &provider)
 {
+    std::string key = provider.ConsumeRandomLengthString();
     SettingsDataUtils::GetInstance().SetStringValue(SETTING_URI_PROXY, key, key);
 }
 } // namespace OHOS
@@ -67,14 +64,12 @@ void FuzzSetStringValue(const std::string &key)
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     /* Run your code on data */
-    std::string fuzzedString(reinterpret_cast<const char *>(data), size);
+    FuzzedDataProvider provider(data, size);
     SettingsDataObserver::CallbackFunc func;
 
-    OHOS::FuzzGetToken();
-    OHOS::FuzzDataShareHelper();
-    OHOS::FuzzCreateAndRegisterObserver(fuzzedString, fuzzedString, func);
-    OHOS::FuzzRegisterObserver(fuzzedString, fuzzedString, func);
-    OHOS::FuzzUnregisterObserver(fuzzedString, fuzzedString, func);
-    OHOS::FuzzGenerateTargetUri(fuzzedString);
+    OHOS::FuzzCreateAndRegisterObserver(provider, func);
+    OHOS::FuzzRegisterObserver(provider, func);
+    OHOS::FuzzUnregisterObserver(provider, func);
+    OHOS::FuzzGenerateTargetUri(provider);
     return 0;
 }

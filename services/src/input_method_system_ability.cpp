@@ -705,7 +705,9 @@ int32_t InputMethodSystemAbility::StartInputInner(
         inputClientInfo.isNotifyInputStart = true;
     }
     if (session->IsDefaultDisplayGroup(displayId) && !session->IsProxyImeEnable()) {
+        session->SetIsNeedReportQos(inputClientInfo.isShowKeyboard);
         auto ret = CheckInputTypeOption(userId, inputClientInfo);
+        session->SetIsNeedReportQos(false);
         if (ret != ErrorCode::NO_ERROR) {
             IMSA_HILOGE("%{public}d failed to CheckInputTypeOption!", userId);
             return ret;

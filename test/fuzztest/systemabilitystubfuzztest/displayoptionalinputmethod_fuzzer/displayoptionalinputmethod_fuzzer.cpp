@@ -16,6 +16,7 @@
 #include "displayoptionalinputmethod_fuzzer.h"
 
 #include "imf_sa_stub_fuzz_util.h"
+#include "fuzzer/FuzzedDataProvider.h"
 using namespace OHOS::MiscServices;
 namespace OHOS {
 } // namespace OHOS
@@ -23,7 +24,8 @@ namespace OHOS {
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     /* Run your code on data */
+    FuzzedDataProvider provider(data, size);
     ImfSaStubFuzzUtil::FuzzInputMethodSystemAbility(
-        data, size, IInputMethodSystemAbilityIpcCode::COMMAND_DISPLAY_OPTIONAL_INPUT_METHOD);
+        provider, IInputMethodSystemAbilityIpcCode::COMMAND_DISPLAY_OPTIONAL_INPUT_METHOD);
     return 0;
 }
