@@ -201,7 +201,7 @@ public:
     static bool ParseDefaultFullIme(std::vector<DefaultFullImeInfo> &defaultFullImeList);
     static bool ParseIgnoreSysPanelAdjust(IgnoreSysPanelAdjust &ignoreSysPanelAdjust);
     static bool ParseDynamicStartImeCfg(std::vector<DynamicStartImeCfgItem> &dynamicStartImeCfgList);
-
+    static bool IsContainField(const std::string& fieldName);
 private:
     static std::string GetSysCfgContent(const std::string &key);
 };

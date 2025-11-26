@@ -69,7 +69,6 @@ void FuzzAgentStub(FuzzedDataProvider &provider)
     EnableUpgradeManager::GetInstance().GenerateGlobalContent(userId, bundleNamesVec);
     EnableUpgradeManager::GetInstance().GetImePersistCfg(userId, persisInfo);
     EnableUpgradeManager::GetInstance().PaddedByImePersistCfg(userId, enabledInfos);
-    EnableUpgradeManager::GetInstance().ComputeEnabledStatus(fuzzedString, initStatus);
 }
 
 void FuzzFullImeInfo(FuzzedDataProvider &provider)

@@ -134,7 +134,8 @@ int32_t ImeEnabledInfoManager::Add(int32_t userId, const FullImeInfo &imeInfo)
         return ErrorCode::NO_ERROR;
     }
     enabledCfg.enabledInfos.emplace_back(imeInfo.prop.name, imeInfo.prop.id,
-        ComputeEnabledStatus(imeInfo.prop.name, ImeInfoInquirer::GetInstance().GetSystemConfig().initEnabledState));
+        SettingsDataUtils::GetInstance().ComputeEnabledStatus(imeInfo.prop.name,
+            ImeInfoInquirer::GetInstance().GetSystemConfig().initEnabledState));
     return UpdateEnabledCfgCache(userId, enabledCfg);
 }
 
@@ -461,21 +462,10 @@ int32_t ImeEnabledInfoManager::CorrectByBundleMgr(
         }
         IMSA_HILOGW("%{public}d/%{public}s first install when imsa abnormal", userId, imeInfo.prop.name.c_str());
         enabledInfos.emplace_back(imeInfo.prop.name, imeInfo.prop.id,
-            ComputeEnabledStatus(imeInfo.prop.name, ImeInfoInquirer::GetInstance().GetSystemConfig().initEnabledState));
+            SettingsDataUtils::GetInstance().ComputeEnabledStatus(imeInfo.prop.name,
+                ImeInfoInquirer::GetInstance().GetSystemConfig().initEnabledState));
     }
     return ErrorCode::NO_ERROR;
-}
-// LCOV_EXCL_STOP
-EnabledStatus ImeEnabledInfoManager::ComputeEnabledStatus(const std::string &bundleName, EnabledStatus initStatus)
-{
-    if (!HasEnabledSwitch()) {
-        return EnabledStatus::FULL_EXPERIENCE_MODE;
-    }
-    auto sysIme = ImeInfoInquirer::GetInstance().GetDefaultIme();
-    if (bundleName == sysIme.bundleName && initStatus == EnabledStatus::DISABLED) {
-        return EnabledStatus::BASIC_MODE;
-    }
-    return initStatus;
 }
 
 int32_t ImeEnabledInfoManager::UpdateEnabledCfgCache(int32_t userId, const ImeEnabledCfg &cfg)
@@ -508,12 +498,6 @@ void ImeEnabledInfoManager::NotifyCurrentImeStatusChanged(
         }
     };
     handler->PostTask(notifyTask, "NotifyCurrentImeStatusChanged", 0, AppExecFwk::EventQueue::Priority::VIP);
-}
-
-bool ImeEnabledInfoManager::HasEnabledSwitch()
-{
-    auto sysCfg = ImeInfoInquirer::GetInstance().GetSystemConfig();
-    return sysCfg.enableInputMethodFeature || sysCfg.enableFullExperienceFeature;
 }
 
 bool ImeEnabledInfoManager::IsDefaultFullMode(int32_t userId, const std::string &bundleName)

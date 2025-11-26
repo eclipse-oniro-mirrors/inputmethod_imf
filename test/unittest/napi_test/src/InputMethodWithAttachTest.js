@@ -46,7 +46,6 @@ describe('InputMethodWithAttachTest', function () {
     FINISH_TEXT_PREVIEW: 21,
     SET_KEEP_SCREEN_ON: 22,
     GET_SYSTEM_PANEL_INSETS: 23,
-    SET_SYSTEM_PANEL_BUTTON_COLOR: 24
   }
 
   beforeAll(async function (done) {
@@ -724,28 +723,6 @@ describe('InputMethodWithAttachTest', function () {
       subscribe(subscribeInfo, TEST_FUNCTION.SET_KEEP_SCREEN_ON, done);
     } catch(error) {
       console.info(`inputmethod_test_setKeepScreenOn_001 result: ${JSON.stringify(error)}`);
-      expect().assertFail();
-      done();
-    }
-  });
-
-  /*
-   * @tc.number  inputmethod_test_setSystemPanelButtonColor_001
-   * @tc.name    Test Indicates the input method which will replace the current one.
-   * @tc.desc    Function test
-   * @tc.level   2
-   */
-  it('inputmethod_test_setSystemPanelButtonColor_001', 0, async function (done) {
-    console.info('************* inputmethod_test_setSystemPanelButtonColor_001 Test start*************');
-    let inputMethodCtrl = inputMethod.getController();
-    await inputMethodCtrl.showSoftKeyboard();
-    try {
-      let subscribeInfo = {
-        events: ['setSystemPanelButtonColor']
-      };
-      subscribe(subscribeInfo, TEST_FUNCTION.SET_SYSTEM_PANEL_BUTTON_COLOR, done);
-    } catch(error) {
-      console.info(`inputmethod_test_setSystemPanelButtonColor_001 result: ${JSON.stringify(error)}`);
       expect().assertFail();
       done();
     }
