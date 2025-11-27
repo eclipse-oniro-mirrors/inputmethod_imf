@@ -695,8 +695,8 @@ int32_t InputMethodSystemAbility::StartInputInner(
         return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
     }
     auto displayId = GetCallingDisplayId();
-    if (session->GetCurrentClientPid(displayId) != IPCSkeleton::GetCallingPid()
-        && session->GetInactiveClientPid(displayId) != IPCSkeleton::GetCallingPid()) {
+    if (session->GetCurrentClientPid(displayId) != IPCSkeleton::GetCallingPid() &&
+        session->GetInactiveClientPid(displayId) != IPCSkeleton::GetCallingPid()) {
         // notify inputStart when caller pid different from both current client and inactive client
         inputClientInfo.isNotifyInputStart = true;
     }

@@ -505,9 +505,9 @@ napi_value JsGetInputMethodSetting::EnableInputMethod(napi_env env, napi_callbac
             "extensionName type must be string!", TYPE_NONE, napi_invalid_arg);
         int32_t status = 0;
         PARAM_CHECK_RETURN(env,
-            JsUtil::GetType(env, argv[2]) == napi_number && JsUtil::GetValue(env, argv[2], status)
-                && (status >= static_cast<int32_t>(EnabledStatus::DISABLED)
-                    && status <= static_cast<int32_t>(EnabledStatus::FULL_EXPERIENCE_MODE)),
+            JsUtil::GetType(env, argv[2]) == napi_number && JsUtil::GetValue(env, argv[2], status) &&
+                (status >= static_cast<int32_t>(EnabledStatus::DISABLED) &&
+                    status <= static_cast<int32_t>(EnabledStatus::FULL_EXPERIENCE_MODE)),
             "enabledState type must be EnabledState!", TYPE_NONE, napi_invalid_arg);
         ctxt->enabledStatus = static_cast<EnabledStatus>(status);
         return napi_ok;

@@ -340,7 +340,7 @@ int32_t ImeInfoInquirer::ListEnabledInputMethod(const int32_t userId, std::vecto
     IMSA_HILOGD("userId: %{public}d.", userId);
     int32_t ret = ListInputMethod(userId, props);
     if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("userId: %{public}d listInputMethod failed!", userId);
+        IMSA_HILOGE("userId: %{public}d listInputMethod failed! ret: %{public}d.", userId, ret);
         return ret;
     }
     auto start = std::remove_if(
@@ -354,7 +354,7 @@ int32_t ImeInfoInquirer::ListDisabledInputMethod(const int32_t userId, std::vect
     IMSA_HILOGD("userId: %{public}d.", userId);
     auto ret = ListInputMethod(userId, props);
     if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("userId: %{public}d listInputMethod failed!", userId);
+        IMSA_HILOGE("userId: %{public}d listInputMethod failed! ret: %{public}d.", userId, ret);
         return ret;
     }
     auto start = std::remove_if(
@@ -368,7 +368,7 @@ int32_t ImeInfoInquirer::GetSwitchInfoBySwitchCount(SwitchInfo &switchInfo, int3
     std::vector<Property> props;
     auto ret = ListEnabledInputMethod(userId, props);
     if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("userId: %{public}d ListEnabledInputMethod failed!", userId);
+        IMSA_HILOGE("userId: %{public}d ListEnabledInputMethod failed! ret: %{public}d.", userId, ret);
         return ret;
     }
     auto currentImeBundle = ImeCfgManager::GetInstance().GetCurrentImeCfg(userId)->bundleName;
@@ -409,7 +409,8 @@ int32_t ImeInfoInquirer::ListInputMethodSubtype(int32_t userId, const std::strin
     std::vector<ExtensionAbilityInfo> extInfos;
     auto ret = GetExtInfosByBundleName(userId, bundleName, extInfos);
     if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("userId: %{public}d getExtInfosByBundleName %{public}s failed!", userId, bundleName.c_str());
+        IMSA_HILOGE("userId: %{public}d getExtInfosByBundleName %{public}s failed! ret: %{public}d.", userId,
+            bundleName.c_str(), ret);
         return ret;
     }
     return IsNewExtInfos(extInfos) ? ListInputMethodSubtype(userId, extInfos[0], subProps)
@@ -491,7 +492,7 @@ int32_t ImeInfoInquirer::GetSubProperty(int32_t userId, const std::string &subNa
     std::vector<Subtype> subtypes;
     auto ret = ParseSubtype(extInfo, subtypes);
     if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("failed to parse subtype!");
+        IMSA_HILOGE("failed to parse subtype! Error code: %{public}d.", ret);
         return ret;
     }
     if (subtypes.empty()) {
@@ -536,7 +537,7 @@ int32_t ImeInfoInquirer::ListInputMethodSubtype(const int32_t userId, const Exte
     std::vector<Subtype> subtypes;
     auto ret = ParseSubtype(extInfo, subtypes);
     if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("failed to parse subtype!");
+        IMSA_HILOGE("failed to parse subtype! Error code: %{public}d.", ret);
         return ret;
     }
 
@@ -1074,7 +1075,8 @@ int32_t ImeInfoInquirer::GetFullImeInfo(int32_t userId,
     auto ret = imeInfo.isNewIme ? ListInputMethodSubtype(userId, extInfos[0], imeInfo.subProps)
                                 : ListInputMethodSubtype(userId, extInfos, imeInfo.subProps);
     if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("[%{public}d,%{public}s] list Subtype failed!", userId, extInfos[0].bundleName.c_str());
+        IMSA_HILOGE("[%{public}d,%{public}s] list Subtype failed! ret: %{public}d.", userId,
+            extInfos[0].bundleName.c_str(), ret);
         return ret;
     }
     BundleInfo bundleInfo;

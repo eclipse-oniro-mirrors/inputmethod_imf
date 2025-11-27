@@ -525,8 +525,8 @@ void JsInputMethod::AddCallback(napi_env env, napi_value callback, const std::st
     IMSA_HILOGD("event type: %{public}s", eventType.c_str());
     std::lock_guard<std::mutex> lock(jsCbsLock_);
     auto isSameCb = [&callback](const std::shared_ptr<JSCallbackObject> &cbObject) {
-        return cbObject != nullptr
-               && JsUtils::Equals(cbObject->env_, callback, cbObject->callback_, cbObject->threadId_);
+        return cbObject != nullptr &&
+            JsUtils::Equals(cbObject->env_, callback, cbObject->callback_, cbObject->threadId_);
     };
     auto &cbObjects = jsCbs_[eventType];
     auto ret = std::any_of(cbObjects.begin(), cbObjects.end(), isSameCb);

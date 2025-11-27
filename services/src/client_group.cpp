@@ -251,8 +251,8 @@ bool ClientGroup::IsCurClientFocused(int32_t pid, int32_t uid)
         return false;
     }
     auto identityChecker = std::make_shared<IdentityCheckerImpl>();
-    if (clientInfo->uiExtensionTokenId != IMF_INVALID_TOKENID
-        && identityChecker->IsFocusedUIExtension(clientInfo->uiExtensionTokenId)) {
+    if (clientInfo->uiExtensionTokenId != IMF_INVALID_TOKENID &&
+        identityChecker->IsFocusedUIExtension(clientInfo->uiExtensionTokenId)) {
         IMSA_HILOGI("UIExtension focused");
         return true;
     }
