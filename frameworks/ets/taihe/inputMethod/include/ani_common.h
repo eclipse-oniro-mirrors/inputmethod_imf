@@ -73,9 +73,9 @@ private:
         result.name = std::forward<T>(obj).name;
         result.id = obj.id;
         result.label = taihe::optional<taihe::string>(std::in_place_t{}, obj.label);
-        result.labelId = taihe::optional<long long>(std::in_place_t{}, static_cast<long long>(obj.labelId));
+        result.labelId = taihe::optional<int64_t>(std::in_place_t{}, static_cast<long long>(obj.labelId));
         result.icon = taihe::optional<taihe::string>(std::in_place_t{}, obj.icon);
-        result.iconId = taihe::optional<long long>(std::in_place_t{}, static_cast<long long>(obj.iconId));
+        result.iconId = taihe::optional<int64_t>(std::in_place_t{}, static_cast<long long>(obj.iconId));
         return result;
     }
 
