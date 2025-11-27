@@ -1260,7 +1260,10 @@ int32_t InputMethodPanel::ShowPanel(uint32_t windowId)
         IMSA_HILOGE("window_ is nullptr!");
         return ErrorCode::ERROR_IMA_NULLPTR;
     }
-    if (IsShowing() && callingWindowId_ == windowId) {
+    if (IsShowing()) {
+        if (callingWindowId_ != windowId) {
+            SetCallingWindow(windowId);
+        }
         IMSA_HILOGI("panel already shown.");
         return ErrorCode::NO_ERROR;
     }
@@ -1282,17 +1285,9 @@ int32_t InputMethodPanel::ShowPanel(uint32_t windowId)
             IMSA_HILOGI("AdjustPanelRect result: %{public}d", result);
         }
     }
-    auto ret = WMError::WM_OK;
-    {
-        KeyboardEffectOption option = ConvertToWmEffect(GetImmersiveMode(), LoadImmersiveEffect());
-        const auto screenId = InputMethodAbility::GetInstance().GetInputAttribute().callingScreenId;
-        IMSA_HILOGI("ShowPanel screenId: %{public}" PRIu64 ".", screenId);
-        InputMethodSyncTrace tracer("InputMethodPanel_ShowPanel");
-        ret = window_->ShowKeyboard(windowId, screenId, option);
-    }
-    if (ret != WMError::WM_OK) {
-        IMSA_HILOGE("ShowPanel error, err = %{public}d", ret);
-        return ErrorCode::ERROR_OPERATE_PANEL;
+    auto ret = ShowKeyboardToWms(windowId);
+    if (ret != ErrorCode::NO_ERROR) {
+        return ret;
     }
     callingWindowId_ = windowId;
     IMSA_HILOGI("success, type/flag: %{public}d/%{public}d.", static_cast<int32_t>(panelType_),
@@ -1300,6 +1295,24 @@ int32_t InputMethodPanel::ShowPanel(uint32_t windowId)
     PanelStatusChange(InputWindowStatus::SHOW);
     if (!isScbEnable_) {
         PanelStatusChangeToImc(InputWindowStatus::SHOW, window_->GetRect());
+    }
+    return ErrorCode::NO_ERROR;
+}
+
+int32_t InputMethodPanel::ShowKeyboardToWms(uint32_t windowId)
+{
+    if (window_ == nullptr) {
+        IMSA_HILOGE("window_ is nullptr!");
+        return ErrorCode::ERROR_IMA_NULLPTR;
+    }
+    KeyboardEffectOption option = ConvertToWmEffect(GetImmersiveMode(), LoadImmersiveEffect());
+    const auto screenId = InputMethodAbility::GetInstance().GetInputAttribute().callingScreenId;
+    IMSA_HILOGI("ShowPanel windowId: %{public}u screenId: %{public}" PRIu64 ".", windowId, screenId);
+    InputMethodSyncTrace tracer("InputMethodPanel_ShowPanel");
+    auto ret = window_->ShowKeyboard(windowId, screenId, option);
+    if (ret != WMError::WM_OK) {
+        IMSA_HILOGE("ShowPanel error, err = %{public}d", ret);
+        return ErrorCode::ERROR_OPERATE_PANEL;
     }
     return ErrorCode::NO_ERROR;
 }
