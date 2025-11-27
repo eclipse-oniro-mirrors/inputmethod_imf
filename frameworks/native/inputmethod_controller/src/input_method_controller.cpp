@@ -533,8 +533,9 @@ int32_t InputMethodController::RequestShowInput()
     return proxy->RequestShowInput();
 }
 
-int32_t InputMethodController::RequestHideInput(bool isFocusTriggered)
+int32_t InputMethodController::RequestHideInput(uint32_t callingWndId, bool isFocusTriggered)
 {
+    IMSA_HILOGD("callingWndId/isFocusTriggered:%{public}u/%{public}d.", callingWndId, isFocusTriggered);
     auto proxy = TryGetSystemAbilityProxy();
     if (proxy == nullptr) {
         IMSA_HILOGE("proxy is nullptr!");
