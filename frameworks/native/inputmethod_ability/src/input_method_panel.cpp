@@ -2530,6 +2530,10 @@ int32_t InputMethodPanel::SetSystemPanelButtonColor(const std::string &fillColor
             return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
         }
     }
+    if (!isScbEnable_) {
+        IMSA_HILOGW("no need to sendPrivateCommand!");
+        return ErrorCode::NO_ERROR;
+    }
     std::unordered_map<std::string, PrivateDataValue> privateCommand
         = { {"sys_cmd", 1}, {"functionKeyColor", fillColor}, {"functionKeyPressColor", backgroundColor}};
     int32_t ret = InputMethodAbility::GetInstance().SendPrivateCommand(privateCommand, false);
