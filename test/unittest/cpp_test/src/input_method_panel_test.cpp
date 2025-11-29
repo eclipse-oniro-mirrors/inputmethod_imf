@@ -3371,12 +3371,20 @@ HWTEST_F(InputMethodPanelTest, testSetSystemPanelButtonColor1, TestSize.Level0)
     std::string fillColor = "#FFFFFF";
     std::string backgroundColor = "";
     auto ret = inputMethodPanel->SetSystemPanelButtonColor(fillColor, backgroundColor);
-    EXPECT_EQ(ret, ErrorCode::ERROR_SYSTEM_CMD_CHANNEL_ERROR);
+    if (isScbEnable_) {
+        EXPECT_EQ(ret, ErrorCode::ERROR_SYSTEM_CMD_CHANNEL_ERROR);
+    } else {
+        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    }
 
     fillColor = "";
     backgroundColor = "#FFFFFF";
     ret = inputMethodPanel->SetSystemPanelButtonColor(fillColor, backgroundColor);
-    EXPECT_EQ(ret, ErrorCode::ERROR_SYSTEM_CMD_CHANNEL_ERROR);
+    if (isScbEnable_) {
+        EXPECT_EQ(ret, ErrorCode::ERROR_SYSTEM_CMD_CHANNEL_ERROR);
+    } else {
+        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    }
     InputMethodPanelTest::DestroyPanel(inputMethodPanel);
 }
 
@@ -3394,8 +3402,15 @@ HWTEST_F(InputMethodPanelTest, testSetSystemPanelButtonColor2, TestSize.Level0)
     std::string fillColor = "#FFFFFF";
     std::string backgroundColor = "#FF0000";
     auto ret = inputMethodPanel->SetSystemPanelButtonColor(fillColor, backgroundColor);
-    EXPECT_EQ(ret, ErrorCode::ERROR_SYSTEM_CMD_CHANNEL_ERROR);
-
+    if (isScbEnable_) {
+        EXPECT_EQ(ret, ErrorCode::ERROR_SYSTEM_CMD_CHANNEL_ERROR);
+    } else {
+        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    }
+    inputMethodPanel->isScbEnable_ = false;
+    ret = inputMethodPanel->SetSystemPanelButtonColor(fillColor, backgroundColor);
+    inputMethodPanel->isScbEnable_ = Rosen::SceneBoardJudgement::IsSceneBoardEnabled();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     InputMethodPanelTest::DestroyPanel(inputMethodPanel);
 }
 
