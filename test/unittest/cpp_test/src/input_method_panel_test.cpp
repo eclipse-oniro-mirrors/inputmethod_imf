@@ -165,7 +165,7 @@ public:
     ~InputMethodSettingListenerImpl() = default;
     void OnImeShow(const ImeWindowInfo &info) override
     {
-        IMSA_HILOGI("InputMethodPanelTest::OnImeShow");
+        IMSA_HILOGI("InputMethodPanelTest::OnImeShow.");
         std::unique_lock<std::mutex> lock(InputMethodPanelTest::imcPanelStatusListenerLock_);
         InputMethodPanelTest::status_ = InputWindowStatus::SHOW;
         InputMethodPanelTest::windowInfo_ = info.windowInfo;
@@ -174,7 +174,7 @@ public:
     }
     void OnImeHide(const ImeWindowInfo &info) override
     {
-        IMSA_HILOGI("InputMethodPanelTest::OnImeHide");
+        IMSA_HILOGI("InputMethodPanelTest::OnImeHide.");
         std::unique_lock<std::mutex> lock(InputMethodPanelTest::imcPanelStatusListenerLock_);
         InputMethodPanelTest::status_ = InputWindowStatus::HIDE;
         InputMethodPanelTest::windowInfo_ = info.windowInfo;

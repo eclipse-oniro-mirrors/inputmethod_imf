@@ -215,6 +215,7 @@ private:
     bool IsKeyboardRectAtBottom();
     bool IsNeedNotify(PanelFlag panelFlag);
     void WaitSetUIContent();
+    int32_t ShowKeyboardToWms(uint32_t windowId);
 
     sptr<OHOS::Rosen::Window> window_ = nullptr;
     sptr<OHOS::Rosen::WindowOption> winOption_ = nullptr;
