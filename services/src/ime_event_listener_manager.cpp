@@ -135,9 +135,13 @@ void ImeEventListenerManager::OnListenerDied(int32_t userId, const sptr<IInputCl
     }
 }
 
-int32_t ImeEventListenerManager::NotifyInputStart(int32_t userId, int32_t callingWndId, int32_t requestKeyboardReason)
+int32_t ImeEventListenerManager::NotifyInputStart(
+    int32_t userId, int32_t callingWndId, uint64_t displayGroupId, int32_t requestKeyboardReason)
 {
     IMSA_HILOGD("enter.");
+    if (displayGroupId != ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID) {
+        return ErrorCode::NO_ERROR;
+    }
     auto listenerInfos = GetListenerInfo(userId);
     for (const auto &listenerInfo : listenerInfos) {
         if (listenerInfo.client == nullptr || !EventStatusManager::IsInputStatusChangedOn(listenerInfo.eventFlag)) {
@@ -154,9 +158,12 @@ int32_t ImeEventListenerManager::NotifyInputStart(int32_t userId, int32_t callin
     return ErrorCode::NO_ERROR;
 }
 
-int32_t ImeEventListenerManager::NotifyInputStop(int32_t userId)
+int32_t ImeEventListenerManager::NotifyInputStop(int32_t userId, uint64_t displayGroupId)
 {
     IMSA_HILOGI("enter.");
+    if (displayGroupId != ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID) {
+        return ErrorCode::NO_ERROR;
+    }
     auto listenerInfos = GetListenerInfo(userId);
     for (const auto &listenerInfo : listenerInfos) {
         if (listenerInfo.client == nullptr || !EventStatusManager::IsInputStatusChangedOn(listenerInfo.eventFlag)) {

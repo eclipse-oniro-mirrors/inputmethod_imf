@@ -191,21 +191,6 @@ std::shared_ptr<InputClientInfo> ClientGroup::GetClientInfoBoundRealIme()
     return iter->second;
 }
 
-std::shared_ptr<InputClientInfo> ClientGroup::GetClientSpecifyMainDisplay()
-{
-    std::lock_guard<std::recursive_mutex> lock(mtx_);
-    auto iter = std::find_if(mapClients_.begin(), mapClients_.end(), [](const auto &mapClient) {
-        auto clientInfo = mapClient.second;
-        return clientInfo != nullptr && clientInfo->bindImeData != nullptr
-               && clientInfo->config.inputAttribute.isSpecifyMainDisplay;
-    });
-    if (iter == mapClients_.end()) {
-        IMSA_HILOGD("not found.");
-        return nullptr;
-    }
-    return iter->second;
-}
-
 std::shared_ptr<InputClientInfo> ClientGroup::GetClientByWindowId(uint32_t windowId)
 {
     std::lock_guard<std::recursive_mutex> lock(mtx_);
@@ -308,8 +293,8 @@ bool ClientGroup::IsCurClientFocused(int32_t pid, int32_t uid)
         return false;
     }
     auto identityChecker = std::make_shared<IdentityCheckerImpl>();
-    if (clientInfo->uiExtensionTokenId != IMF_INVALID_TOKENID
-        && identityChecker->IsFocusedUIExtension(clientInfo->uiExtensionTokenId)) {
+    if (clientInfo->uiExtensionTokenId != IMF_INVALID_TOKENID &&
+        identityChecker->IsFocusedUIExtension(clientInfo->uiExtensionTokenId)) {
         IMSA_HILOGI("UIExtension focused");
         return true;
     }

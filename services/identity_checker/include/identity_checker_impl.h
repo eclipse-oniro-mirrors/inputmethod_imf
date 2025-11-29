@@ -38,13 +38,14 @@ public:
     uint64_t GetDisplayIdByPid(int64_t callingPid, sptr<IRemoteObject> abilityToken = nullptr) override;
     bool IsValidVirtualIme(int32_t callingUid) override;
     bool IsSpecialSaUid() override;
+    bool IsUIExtension(int64_t pid) override;
 
 private:
-    std::pair<bool, FocusedInfo> IsFocusedUiAbility(int64_t callingPid, const sptr<IRemoteObject> &abilityToken,
-        uint32_t windowId, const std::vector<Rosen::FocusChangeInfo> &focusWindowInfos);
-    std::pair<bool, FocusedInfo> IsFocusedUiAbility(
+    std::pair<bool, FocusedInfo> IsFocusedUIAbility(
+        int64_t callingPid, uint32_t windowId, const std::vector<Rosen::FocusChangeInfo> &focusWindowInfos);
+    std::pair<bool, FocusedInfo> IsFocusedUIAbility(
         int64_t callingPid, uint64_t displayId, const std::vector<Rosen::FocusChangeInfo> &focusWindowInfos);
-    std::pair<bool, FocusedInfo> IsFocusedUiAbility(
+    std::pair<bool, FocusedInfo> IsFocusedUIAbility(
         int64_t callingPid, const std::vector<Rosen::FocusChangeInfo> &focusWindowInfos);
     std::pair<bool, FocusedInfo> IsFocusedUIExtension(uint32_t callingTokenId, const sptr<IRemoteObject> &abilityToken,
         const std::vector<Rosen::FocusChangeInfo> &focusWindowInfos);
@@ -53,6 +54,9 @@ private:
     std::pair<bool, FocusedInfo> IsFocusedUIExtension(
         uint32_t callingTokenId, const std::vector<Rosen::FocusChangeInfo> &focusWindowInfos);
     bool IsBrokerInner(Security::AccessToken::AccessTokenID tokenId);
+    std::pair<bool, FocusedInfo> IsFocusedScbNotEnable(
+        int64_t callingPid, uint32_t callingTokenId, uint32_t windowId, const sptr<IRemoteObject> &abilityToken);
+    bool IsFocusedUIExtension(uint32_t callingTokenId, sptr<IRemoteObject> abilityToken);
 };
 } // namespace MiscServices
 } // namespace OHOS

@@ -24,7 +24,7 @@ using FocusHandle = std::function<void(bool, uint64_t, int32_t, int32_t)>;
 class FocusMonitorManager {
 public:
     static FocusMonitorManager &GetInstance();
-    void RegisterFocusChangedListener(const FocusHandle &handle);
+    int32_t RegisterFocusChangedListener(const FocusHandle &handle);
 
 private:
     FocusMonitorManager() = default;

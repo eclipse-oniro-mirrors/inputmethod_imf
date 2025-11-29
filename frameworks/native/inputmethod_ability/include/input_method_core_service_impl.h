@@ -35,7 +35,7 @@ public:
     ErrCode StartInput(const InputClientInfoInner &clientInfoInner, bool isBindFromClient) override;
     ErrCode StopInput(const sptr<IRemoteObject> &channel, uint32_t sessionId) override;
     ErrCode ShowKeyboard(int32_t requestKeyboardReason) override;
-    ErrCode HideKeyboard() override;
+    ErrCode HideKeyboard(uint64_t displayGroupId, bool isCheckGroupId) override;
     ErrCode InitInputControlChannel(const sptr<IInputControlChannel> &inputControlChannel) override;
     ErrCode StopInputService(bool isTerminateIme) override;
     ErrCode SetSubtype(const SubProperty &property) override;
@@ -46,7 +46,7 @@ public:
     ErrCode OnClientInactive(const sptr<IRemoteObject> &channel) override;
     ErrCode OnSetInputType(int32_t inputType) override;
     ErrCode OnCallingDisplayIdChanged(uint64_t displayId) override;
-    ErrCode OnCallingWindowIdIdChanged(uint32_t windowId) override;
+    ErrCode OnCallingWindowIdChanged(uint32_t windowId) override;
     ErrCode OnSendPrivateData(const Value &Value) override;
     ErrCode NotifyPreemption() override;
 };

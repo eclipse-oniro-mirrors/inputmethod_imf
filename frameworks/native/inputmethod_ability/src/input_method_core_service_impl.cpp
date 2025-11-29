@@ -49,9 +49,9 @@ ErrCode InputMethodCoreServiceImpl::ShowKeyboard(int32_t requestKeyboardReason)
     return ERR_OK;
 }
 
-ErrCode InputMethodCoreServiceImpl::HideKeyboard()
+ErrCode InputMethodCoreServiceImpl::HideKeyboard(uint64_t displayGroupId, bool isCheckGroupId)
 {
-    auto task = std::make_shared<TaskImsaHideKeyboard>();
+    auto task = std::make_shared<TaskImsaHideKeyboard>(displayGroupId, isCheckGroupId);
     TaskManager::GetInstance().PostTask(task);
     return ERR_OK;
 }
@@ -126,7 +126,7 @@ ErrCode InputMethodCoreServiceImpl::OnCallingDisplayIdChanged(uint64_t displayId
     return InputMethodAbility::GetInstance().OnCallingDisplayIdChanged(displayId);
 }
 
-ErrCode InputMethodCoreServiceImpl::OnCallingWindowIdIdChanged(uint32_t windowId)
+ErrCode InputMethodCoreServiceImpl::OnCallingWindowIdChanged(uint32_t windowId)
 {
     InputMethodAbility::GetInstance().SetCallingWindow(windowId);
     return ERR_OK;

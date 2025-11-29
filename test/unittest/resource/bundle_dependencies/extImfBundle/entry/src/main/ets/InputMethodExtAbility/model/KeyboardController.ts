@@ -54,7 +54,6 @@ enum TEST_FUNCTION {
   FINISH_TEXT_PREVIEW,
   SET_KEEP_SCREEN_ON,
   GET_SYSTEM_PANEL_INSETS,
-  SET_SYSTEM_PANEL_BUTTON_COLOR,
 }
 
 export class KeyboardController {
@@ -201,26 +200,11 @@ export class KeyboardController {
           case TEST_FUNCTION.GET_SYSTEM_PANEL_INSETS:
             this.getSystemPanelInsets();
             break;
-          case TEST_FUNCTION.SET_SYSTEM_PANEL_BUTTON_COLOR:
-            this.setSystemPanelButtonColor();
-            break;
           default:
             break;
         }
       })
     })
-  }
-
-  private async setSystemPanelButtonColor() {
-    try {
-      let fillColor: string = "#00FFFF";
-      let backgroundColor: string = "#FF00FF";
-      await this.panel.setSystemPanelButtonColor(fillColor, backgroundColor);
-      this.publishCommonEvent('setSystemPanelButtonColor', TEST_RESULT_CODE.SUCCESS);
-    } catch (err) {
-      console.log('[setSystemPanelButtonColor] failed.' )
-      this.publishCommonEvent('setSystemPanelButtonColor', TEST_RESULT_CODE.FAILED);
-    }
   }
 
   private async getSystemPanelInsets() {

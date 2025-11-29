@@ -131,10 +131,11 @@ struct InputAttribute {
     int32_t immersiveMode = 0;
     int32_t gradientMode { 0 };
     int32_t fluidLightMode { 0 };
-    uint32_t windowId = 0;
-    uint64_t callingDisplayId = 0;
-    bool isSpecifyMainDisplay{ false };
-    uint64_t callingScreenId = 0;
+    uint32_t windowId = 0;         // editor window
+    uint64_t displayId = 0;        // editor window in
+    uint64_t callingDisplayId = 0; // keyboard show
+    uint64_t displayGroupId = 0;   // keyboard show
+    uint64_t callingScreenId = 0;  // keyboard show
     std::u16string placeholder { u"" };
     std::u16string abilityName { u"" };
     CapitalizeMode capitalizeMode = CapitalizeMode::NONE;
@@ -181,9 +182,10 @@ struct InputAttribute {
     {
         std::string info;
         info.append("pattern/enterKey:" + std::to_string(inputPattern) + "/" + std::to_string(enterKeyType));
-        info.append(" windowId/displayId:" + std::to_string(windowId) + "/" + std::to_string(callingDisplayId));
-        info.append(" textPreview/immersiveMode:" + std::to_string(static_cast<int32_t>(isTextPreviewSupported)) +
-                    "/" + std::to_string(immersiveMode));
+        info.append(" windowId/displayId/displayGroupId:" + std::to_string(windowId) + "/"
+                    + std::to_string(callingDisplayId) + "/" + std::to_string(displayGroupId));
+        info.append(" textPreview/immersiveMode:" + std::to_string(static_cast<int32_t>(isTextPreviewSupported)) + "/"
+                    + std::to_string(immersiveMode));
         return info;
     }
 };
@@ -202,8 +204,9 @@ struct InputAttributeInner : public Parcelable {
     int32_t immersiveMode = 0;
     int32_t gradientMode { 0 };
     int32_t fluidLightMode { 0 };
-    uint32_t windowId = 0; // for transfer
-    uint64_t callingDisplayId = 0;
+    uint32_t windowId = 0;         // editor window
+    uint64_t callingDisplayId = 0; // keyboard show
+    uint64_t displayGroupId = 0;   // keyboard show
     std::u16string placeholder { u"" };
     std::u16string abilityName { u"" };
     CapitalizeMode capitalizeMode = CapitalizeMode::NONE;
@@ -220,6 +223,7 @@ struct InputAttributeInner : public Parcelable {
         immersiveMode = in.ReadInt32();
         windowId = in.ReadUint32();
         callingDisplayId = in.ReadUint64();
+        displayGroupId = in.ReadUint64();
         placeholder = in.ReadString16();
         abilityName = in.ReadString16();
         int32_t readCapitalizeMode = in.ReadInt32();
@@ -263,6 +267,9 @@ struct InputAttributeInner : public Parcelable {
             return false;
         }
         if (!out.WriteUint64(callingDisplayId)) {
+            return false;
+        }
+        if (!out.WriteUint64(displayGroupId)) {
             return false;
         }
         auto ret = out.WriteString16(placeholder) && out.WriteString16(abilityName);

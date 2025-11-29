@@ -25,6 +25,7 @@
 #undef private
 
 #include <gtest/gtest.h>
+#include <gtest/hwext/gtest-multithread.h>
 #include <sys/time.h>
 #include <unistd.h>
 
@@ -53,6 +54,7 @@
 #include "color_parser.h"
 
 using namespace testing::ext;
+using namespace testing::mt;
 using namespace OHOS::Rosen;
 namespace OHOS {
 namespace MiscServices {
@@ -104,6 +106,7 @@ public:
     static void TestHidePanel(const std::shared_ptr<InputMethodPanel> &panel);
     static void TestIsPanelShown(const PanelInfo &info, bool expectedResult);
     static void TriggerPanelStatusChangeToImc(const std::shared_ptr<InputMethodPanel> &panel, InputWindowStatus status);
+    static void TestAdjust();
     static int32_t GetDisplaySize(DisplaySize &size);
     class PanelStatusListenerImpl : public PanelStatusListener {
     public:
@@ -154,6 +157,7 @@ public:
     static sptr<OnTextChangedListener> textListener_;
     static std::shared_ptr<InputMethodEngineListener> imeListener_;
     static bool isScbEnable_;
+    static std::shared_ptr<InputMethodPanel> panel_;
 };
 class InputMethodSettingListenerImpl : public ImeEventListener {
 public:
@@ -161,7 +165,7 @@ public:
     ~InputMethodSettingListenerImpl() = default;
     void OnImeShow(const ImeWindowInfo &info) override
     {
-        IMSA_HILOGI("InputMethodPanelTest::OnImeShow");
+        IMSA_HILOGI("InputMethodPanelTest::OnImeShow.");
         std::unique_lock<std::mutex> lock(InputMethodPanelTest::imcPanelStatusListenerLock_);
         InputMethodPanelTest::status_ = InputWindowStatus::SHOW;
         InputMethodPanelTest::windowInfo_ = info.windowInfo;
@@ -170,7 +174,7 @@ public:
     }
     void OnImeHide(const ImeWindowInfo &info) override
     {
-        IMSA_HILOGI("InputMethodPanelTest::OnImeHide");
+        IMSA_HILOGI("InputMethodPanelTest::OnImeHide.");
         std::unique_lock<std::mutex> lock(InputMethodPanelTest::imcPanelStatusListenerLock_);
         InputMethodPanelTest::status_ = InputWindowStatus::HIDE;
         InputMethodPanelTest::windowInfo_ = info.windowInfo;
@@ -222,6 +226,7 @@ int32_t InputMethodPanelTest::currentImeUid_ = 0;
 sptr<OnTextChangedListener> InputMethodPanelTest::textListener_ { nullptr };
 std::shared_ptr<InputMethodEngineListener> InputMethodPanelTest::imeListener_ { nullptr };
 bool InputMethodPanelTest::isScbEnable_ { false };
+std::shared_ptr<InputMethodPanel> InputMethodPanelTest::panel_ {nullptr};
 void InputMethodPanelTest::SetUpTestCase(void)
 {
     IMSA_HILOGI("InputMethodPanelTest::SetUpTestCase");
@@ -482,6 +487,20 @@ int32_t InputMethodPanelTest::GetDisplaySize(DisplaySize &size)
         size.landscape = { .width = width, .height = height };
     }
     return ErrorCode::NO_ERROR;
+}
+
+void InputMethodPanelTest::TestAdjust()
+{
+    DisplaySize displaySize;
+    ASSERT_EQ(InputMethodPanelTest::GetDisplaySize(displaySize), ErrorCode::NO_ERROR);
+    LayoutParams layoutParams;
+    PanelFlag panelFlag = PanelFlag::FLG_FIXED;
+    for (int i = 0;i <= 1; i++) {
+        layoutParams.landscapeRect = { 0, 0, displaySize.landscape.width, i};
+        layoutParams.portraitRect = { 0, 0, displaySize.portrait.width, i};
+        auto ret = panel_->AdjustPanelRect(panelFlag, layoutParams, true, false);
+        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    }
 }
 
 /**
@@ -1720,6 +1739,33 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_018, TestSize.Level0)
     auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams);
     EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
+    InputMethodPanelTest::imc_->Close();
+    TddUtil::DestroyWindow();
+}
+
+/**
+ * @tc.name: testAdjustPanelRect_muiltThread
+ * @tc.desc: Test AdjustPanelRect with FLG_FLOATING valid params.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_muiltThread, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testAdjustPanelRect_muiltThread start.");
+    InputMethodPanelTest::Attach();
+    panel_ = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FIXED;
+    InputMethodPanelTest::ImaCreatePanel(panelInfo, panel_);
+    SET_THREAD_NUM(3);
+    GTEST_RUN_TASK(TestAdjust);
+    bool result = false;
+    if (panel_->keyboardLayoutParams_.LandscapeKeyboardRect_.height_ == 1 ||
+        panel_->keyboardLayoutParams_.PortraitKeyboardRect_.height_ == 1) {
+        result = true;
+    }
+    EXPECT_TRUE(result);
+    InputMethodPanelTest::ImaDestroyPanel(panel_);
     InputMethodPanelTest::imc_->Close();
     TddUtil::DestroyWindow();
 }
@@ -3325,12 +3371,20 @@ HWTEST_F(InputMethodPanelTest, testSetSystemPanelButtonColor1, TestSize.Level0)
     std::string fillColor = "#FFFFFF";
     std::string backgroundColor = "";
     auto ret = inputMethodPanel->SetSystemPanelButtonColor(fillColor, backgroundColor);
-    EXPECT_EQ(ret, ErrorCode::ERROR_SYSTEM_CMD_CHANNEL_ERROR);
+    if (isScbEnable_) {
+        EXPECT_EQ(ret, ErrorCode::ERROR_SYSTEM_CMD_CHANNEL_ERROR);
+    } else {
+        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    }
 
     fillColor = "";
     backgroundColor = "#FFFFFF";
     ret = inputMethodPanel->SetSystemPanelButtonColor(fillColor, backgroundColor);
-    EXPECT_EQ(ret, ErrorCode::ERROR_SYSTEM_CMD_CHANNEL_ERROR);
+    if (isScbEnable_) {
+        EXPECT_EQ(ret, ErrorCode::ERROR_SYSTEM_CMD_CHANNEL_ERROR);
+    } else {
+        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    }
     InputMethodPanelTest::DestroyPanel(inputMethodPanel);
 }
 
@@ -3348,8 +3402,15 @@ HWTEST_F(InputMethodPanelTest, testSetSystemPanelButtonColor2, TestSize.Level0)
     std::string fillColor = "#FFFFFF";
     std::string backgroundColor = "#FF0000";
     auto ret = inputMethodPanel->SetSystemPanelButtonColor(fillColor, backgroundColor);
-    EXPECT_EQ(ret, ErrorCode::ERROR_SYSTEM_CMD_CHANNEL_ERROR);
-
+    if (isScbEnable_) {
+        EXPECT_EQ(ret, ErrorCode::ERROR_SYSTEM_CMD_CHANNEL_ERROR);
+    } else {
+        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    }
+    inputMethodPanel->isScbEnable_ = false;
+    ret = inputMethodPanel->SetSystemPanelButtonColor(fillColor, backgroundColor);
+    inputMethodPanel->isScbEnable_ = Rosen::SceneBoardJudgement::IsSceneBoardEnabled();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     InputMethodPanelTest::DestroyPanel(inputMethodPanel);
 }
 

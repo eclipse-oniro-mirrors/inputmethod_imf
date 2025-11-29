@@ -545,7 +545,7 @@ int32_t InputMethodController::RequestHideInput(uint32_t callingWndId, bool isFo
         return ErrorCode::ERROR_EX_NULL_POINTER;
     }
     IMSA_HILOGD("InputMethodController start.");
-    return proxy->RequestHideInput(isFocusTriggered, callingWndId);
+    return proxy->RequestHideInput(callingWndId, isFocusTriggered);
 }
 
 int32_t InputMethodController::DisplayOptionalInputMethod()
@@ -1155,6 +1155,10 @@ int32_t InputMethodController::SetCallingWindow(uint32_t windowId)
         std::lock_guard<std::mutex> lock(textConfigLock_);
         textConfig_.windowId = finalWindowId;
     }
+    {
+        std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
+        clientInfo_.config.windowId = finalWindowId;
+    }
     IMSA_HILOGI("windowId/finalWindowId: %{public}u/%{public}u.", windowId, finalWindowId);
     return ErrorCode::NO_ERROR;
 }
@@ -1191,7 +1195,7 @@ int32_t InputMethodController::HideSoftKeyboard(uint64_t displayId)
     return proxy->HideCurrentInput(displayId);
 }
 
-int32_t InputMethodController::StopInputSession(uint32_t windowId)
+int32_t InputMethodController::StopInputSession()
 {
     IMSA_HILOGI("start.");
     isEditable_.store(false);
@@ -1201,15 +1205,13 @@ int32_t InputMethodController::StopInputSession(uint32_t windowId)
         return ErrorCode::ERROR_EX_NULL_POINTER;
     }
     sptr<IRemoteObject> abilityToken = nullptr;
-    uint32_t finalWindowId = ImfCommonConst::INVALID_WINDOW_ID;
-    if (windowId != ImfCommonConst::INVALID_WINDOW_ID) {
-        finalWindowId = windowId;
-    } else if (IsBound()) {
+    uint32_t windowId = ImfCommonConst::INVALID_WINDOW_ID;
+    if (IsBound()) {
         std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
-        finalWindowId = clientInfo_.config.windowId;
+        windowId = clientInfo_.config.windowId;
         abilityToken = clientInfo_.config.abilityToken;
     }
-    return proxy->StopInputSession(abilityToken, finalWindowId);
+    return proxy->StopInputSession(abilityToken, windowId);
 }
 
 int32_t InputMethodController::ShowOptionalInputMethod()

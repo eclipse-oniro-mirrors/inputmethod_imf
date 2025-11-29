@@ -311,7 +311,7 @@ void WindowAdapter::SetFocusWindowInfos(const std::vector<Rosen::FocusChangeInfo
 
 void WindowAdapter::OnDisplayGroupInfoChanged(uint64_t displayId, uint64_t displayGroupId, bool isAdd)
 {
-    IMSA_HILOGI("CYYYYY1127 display change:%{public}" PRIu64 "/%{public}" PRIu64 "/%{public}d.", displayId,
+    IMSA_HILOGI("display change:%{public}" PRIu64 "/%{public}" PRIu64 "/%{public}d.", displayId,
         displayGroupId, isAdd);
     std::lock_guard<std::mutex> lock(displayGroupIdsLock_);
     if (isAdd) {
@@ -351,25 +351,20 @@ void WindowAdapter::OnUnFocused(const FocusChangeInfo &focusWindowInfo)
     focusWindowInfos_.erase(iter);
 }
 
-void WindowAdapter::RegisterAllGroupInfoChangedListener()
+int32_t WindowAdapter::RegisterAllGroupInfoChangedListener()
 {
 #ifdef SCENE_BOARD_ENABLE
     sptr<AllGroupInfoChangedListenerImpl> listener = new (std::nothrow) AllGroupInfoChangedListenerImpl();
     if (listener == nullptr) {
         IMSA_HILOGE("failed to create listener");
-        return;
+        return ErrorCode::ERROR_IMSA_MALLOC_FAILED;
     }
     auto wmErr = WindowManagerLite::GetInstance().RegisterAllGroupInfoChangedListener(listener);
     IMSA_HILOGI("register AllGroupInfoChangedListener ret: %{public}d", wmErr);
-    if (wmErr == WMError::WM_OK) {
-        return;
+    if (wmErr != WMError::WM_OK) {
+        return ErrorCode::ERROR_WINDOW_MANAGER;
     }
-    std::thread retryThread([listener]() {
-        std::this_thread::sleep_for(1min);
-        auto retryErr = WindowManagerLite::GetInstance().RegisterAllGroupInfoChangedListener(listener);
-        IMSA_HILOGI("retry register AllGroupInfoChangedListener retry ret: %{public}d", retryErr);
-    });
-    retryThread.detach();
+    return ErrorCode::NO_ERROR;
 #endif
 }
 } // namespace MiscServices

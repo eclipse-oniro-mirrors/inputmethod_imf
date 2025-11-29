@@ -23,7 +23,7 @@ interface OHOS.MiscServices.IInputMethodCore {
     [ipccode 0] void StartInput([in] InputClientInfoInner clientInfoInner, [in] boolean isBindFromClient);
     void StopInput([in] IRemoteObject channel, [in] unsigned int sessionId);
     void ShowKeyboard([in] int requestKeyboardReason);
-    void HideKeyboard();
+    void HideKeyboard([in] unsigned long displayGroupId, [in] boolean isCheckGroupId);
     void InitInputControlChannel([in] IInputControlChannel inputControlChannel);
     void StopInputService([in] boolean isTerminateIme);
     void SetSubtype([in] SubProperty property);
@@ -33,8 +33,8 @@ interface OHOS.MiscServices.IInputMethodCore {
     void OnConnectSystemCmd([in] IRemoteObject channel, [out] IRemoteObject agent);
     [oneway] void OnClientInactive([in] IRemoteObject channel);
     [oneway] void OnSetInputType([in] int inputType);
-    void OnCallingDisplayIdChanged([in] unsigned long dispalyId);
-    void OnCallingWindowIdIdChanged([in] unsigned int windowId);
+    void OnCallingDisplayIdChanged([in] unsigned long displayId);
+    void OnCallingWindowIdChanged([in] unsigned int windowId);
     void OnSendPrivateData([in] Value value);
     void NotifyPreemption();
 }

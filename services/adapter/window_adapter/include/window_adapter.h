@@ -48,7 +48,7 @@ public:
     void OnDisplayGroupInfoChanged(uint64_t displayId, uint64_t displayGroupId, bool isAdd);
     void OnFocused(const Rosen::FocusChangeInfo &focusWindowInfo);
     void OnUnFocused(const Rosen::FocusChangeInfo &focusWindowInfo);
-    void RegisterAllGroupInfoChangedListener();
+    int32_t RegisterAllGroupInfoChangedListener();
 
     class AllGroupInfoChangedListenerImpl : public OHOS::Rosen::IAllGroupInfoChangedListener {
     public:

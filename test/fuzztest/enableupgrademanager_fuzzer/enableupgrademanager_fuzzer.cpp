@@ -22,20 +22,21 @@
 #include "enable_upgrade_manager.h"
 #include "full_ime_info_manager.h"
 #undef private
+#include "fuzzer/FuzzedDataProvider.h"
 
 using namespace OHOS::MiscServices;
 namespace OHOS {
 
-void FuzzAgentStub(const uint8_t *data, size_t size)
+void FuzzAgentStub(FuzzedDataProvider &provider)
 {
     static std::vector<FullImeInfo> imeInfos;
     static std::set<std::string> bundleNames;
     static std::vector<std::string> bundleNamesVec;
     static std::vector<ImeEnabledInfo> enabledInfos;
-    std::string fuzzedString(reinterpret_cast<const char *>(data), size);
-    auto fuzzInt32 = static_cast<int32_t>(size);
-    auto fuzzUint32 = static_cast<uint32_t>(size);
-    auto fuzzedBool = static_cast<bool>(data[0] % 2);
+    int32_t fuzzInt32 = provider.ConsumeIntegral<int32_t>();
+    std::string fuzzedString = provider.ConsumeRandomLengthString();
+    bool fuzzedBool = provider.ConsumeBool();
+    int32_t fuzzUint32 = provider.ConsumeIntegral<uint32_t>();
     int32_t userId = fuzzInt32;
     FullImeInfo imeInfo = { .isNewIme = fuzzedBool, .tokenId = fuzzUint32, .appId = fuzzedString,
         .versionCode = fuzzUint32 };
@@ -68,15 +69,14 @@ void FuzzAgentStub(const uint8_t *data, size_t size)
     EnableUpgradeManager::GetInstance().GenerateGlobalContent(userId, bundleNamesVec);
     EnableUpgradeManager::GetInstance().GetImePersistCfg(userId, persisInfo);
     EnableUpgradeManager::GetInstance().PaddedByImePersistCfg(userId, enabledInfos);
-    EnableUpgradeManager::GetInstance().ComputeEnabledStatus(fuzzedString, initStatus);
 }
 
-void FuzzFullImeInfo(const uint8_t *data, size_t size)
+void FuzzFullImeInfo(FuzzedDataProvider &provider)
 {
-    auto fuzzInt32 = static_cast<int32_t>(size);
-    std::string fuzzedString(reinterpret_cast<const char *>(data), size);
-    auto fuzzedBool = static_cast<bool>(data[0] % 2);
-    auto fuzzUint32 = static_cast<uint32_t>(size);
+    int32_t fuzzInt32 = provider.ConsumeIntegral<int32_t>();
+    std::string fuzzedString = provider.ConsumeRandomLengthString();
+    bool fuzzedBool = provider.ConsumeBool();
+    int32_t fuzzUint32 = provider.ConsumeIntegral<uint32_t>();
     static std::vector<FullImeInfo> infos;
     FullImeInfo imeInfo = { .isNewIme = fuzzedBool, .tokenId = fuzzUint32, .appId = fuzzedString,
         .versionCode = fuzzUint32 };
@@ -90,7 +90,8 @@ void FuzzFullImeInfo(const uint8_t *data, size_t size)
 extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     /* Run your code on data */
-    OHOS::FuzzAgentStub(data, size);
-    OHOS::FuzzFullImeInfo(data, size);
+    FuzzedDataProvider provider(data, size);
+    OHOS::FuzzAgentStub(provider);
+    OHOS::FuzzFullImeInfo(provider);
     return 0;
 }

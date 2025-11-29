@@ -50,11 +50,13 @@ public:
     void NotifyDataShareReady();
     bool IsDataShareReady();
     void Release();
-
+    EnabledStatus ComputeEnabledStatus(const std::string &bundleName, EnabledStatus initStatus);
+    
 private:
     SettingsDataUtils() = default;
     ~SettingsDataUtils();
     int32_t RegisterObserver(const sptr<SettingsDataObserver> &observer);
+    EnabledStatus ComputeSysCfgEnabledStatus(EnabledStatus initStatus);
     sptr<IRemoteObject> GetToken();
 
 private:

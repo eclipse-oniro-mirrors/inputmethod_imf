@@ -12,10 +12,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "ime_info_inquirer.h"
+
+#include <cinttypes>
+
 #include "app_mgr_client.h"
 #include "bundle_mgr_client.h"
+#include "display_adapter.h"
 #include "full_ime_info_manager.h"
 #include "ime_enabled_info_manager.h"
 #include "input_type_manager.h"
@@ -27,7 +30,7 @@
 #include "parameters.h"
 #include "singleton.h"
 #include "system_ability_definition.h"
-#include "display_adapter.h"
+#include "ui_extension_utils.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -340,7 +343,7 @@ int32_t ImeInfoInquirer::ListEnabledInputMethod(const int32_t userId, std::vecto
     IMSA_HILOGD("userId: %{public}d.", userId);
     int32_t ret = ListInputMethod(userId, props);
     if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("userId: %{public}d listInputMethod failed!", userId);
+        IMSA_HILOGE("userId: %{public}d listInputMethod failed! ret: %{public}d.", userId, ret);
         return ret;
     }
     auto start = std::remove_if(
@@ -354,7 +357,7 @@ int32_t ImeInfoInquirer::ListDisabledInputMethod(const int32_t userId, std::vect
     IMSA_HILOGD("userId: %{public}d.", userId);
     auto ret = ListInputMethod(userId, props);
     if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("userId: %{public}d listInputMethod failed!", userId);
+        IMSA_HILOGE("userId: %{public}d listInputMethod failed! ret: %{public}d.", userId, ret);
         return ret;
     }
     auto start = std::remove_if(
@@ -368,7 +371,7 @@ int32_t ImeInfoInquirer::GetSwitchInfoBySwitchCount(SwitchInfo &switchInfo, int3
     std::vector<Property> props;
     auto ret = ListEnabledInputMethod(userId, props);
     if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("userId: %{public}d ListEnabledInputMethod failed!", userId);
+        IMSA_HILOGE("userId: %{public}d ListEnabledInputMethod failed! ret: %{public}d.", userId, ret);
         return ret;
     }
     auto currentImeBundle = ImeCfgManager::GetInstance().GetCurrentImeCfg(userId)->bundleName;
@@ -409,7 +412,8 @@ int32_t ImeInfoInquirer::ListInputMethodSubtype(int32_t userId, const std::strin
     std::vector<ExtensionAbilityInfo> extInfos;
     auto ret = GetExtInfosByBundleName(userId, bundleName, extInfos);
     if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("userId: %{public}d getExtInfosByBundleName %{public}s failed!", userId, bundleName.c_str());
+        IMSA_HILOGE("userId: %{public}d getExtInfosByBundleName %{public}s failed! ret: %{public}d.", userId,
+            bundleName.c_str(), ret);
         return ret;
     }
     return IsNewExtInfos(extInfos) ? ListInputMethodSubtype(userId, extInfos[0], subProps)
@@ -491,7 +495,7 @@ int32_t ImeInfoInquirer::GetSubProperty(int32_t userId, const std::string &subNa
     std::vector<Subtype> subtypes;
     auto ret = ParseSubtype(extInfo, subtypes);
     if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("failed to parse subtype!");
+        IMSA_HILOGE("failed to parse subtype! Error code: %{public}d.", ret);
         return ret;
     }
     if (subtypes.empty()) {
@@ -536,7 +540,7 @@ int32_t ImeInfoInquirer::ListInputMethodSubtype(const int32_t userId, const Exte
     std::vector<Subtype> subtypes;
     auto ret = ParseSubtype(extInfo, subtypes);
     if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("failed to parse subtype!");
+        IMSA_HILOGE("failed to parse subtype! Error code: %{public}d.", ret);
         return ret;
     }
 
@@ -1074,7 +1078,8 @@ int32_t ImeInfoInquirer::GetFullImeInfo(int32_t userId,
     auto ret = imeInfo.isNewIme ? ListInputMethodSubtype(userId, extInfos[0], imeInfo.subProps)
                                 : ListInputMethodSubtype(userId, extInfos, imeInfo.subProps);
     if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("[%{public}d,%{public}s] list Subtype failed!", userId, extInfos[0].bundleName.c_str());
+        IMSA_HILOGE("[%{public}d,%{public}s] list Subtype failed! ret: %{public}d.", userId,
+            extInfos[0].bundleName.c_str(), ret);
         return ret;
     }
     BundleInfo bundleInfo;
@@ -1134,6 +1139,22 @@ std::vector<std::string> ImeInfoInquirer::GetRunningIme(int32_t userId)
         }
     }
     return bundleNames;
+}
+
+bool ImeInfoInquirer::IsUIExtension(int64_t pid)
+{
+    RunningProcessInfo info;
+    auto appMgrClient = DelayedSingleton<AppMgrClient>::GetInstance();
+    if (appMgrClient == nullptr) {
+        IMSA_HILOGE("appMgrClient is nullptr.");
+        return false;
+    }
+    auto ret = appMgrClient->GetRunningProcessInfoByPid(pid, info);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetRunningProcessInfosByPid:%{public}" PRId64 " failed: %{public}d!", pid, ret);
+        return false;
+    }
+    return UIExtensionUtils::IsUIExtension(info.extensionType_);
 }
 
 bool ImeInfoInquirer::IsDefaultImeSet(int32_t userId)

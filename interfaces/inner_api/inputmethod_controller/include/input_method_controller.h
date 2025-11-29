@@ -538,7 +538,7 @@ public:
      * @return Returns 0 for success, others for failure.
      * @since 6
      */
-    IMF_API int32_t StopInputSession(uint32_t windowId = ImfCommonConst::INVALID_WINDOW_ID);
+    IMF_API int32_t StopInputSession();
 
     /**
      * @brief Show input method setting extension dialog.

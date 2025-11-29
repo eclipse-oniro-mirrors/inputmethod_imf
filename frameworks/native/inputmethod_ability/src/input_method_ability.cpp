@@ -16,6 +16,8 @@
 #include "input_method_ability.h"
 
 #include <unistd.h>
+
+#include <cinttypes>
 #include <utility>
 
 #include "common_timer_errors.h"
@@ -337,7 +339,7 @@ bool InputMethodAbility::IsDisplayChanged(uint64_t oldDisplayId, uint64_t newDis
         IMSA_HILOGD("screen not changed!");
         return false;
     }
-    IMSA_HILOGD("screen changed!");  // todo hop场景 是否用screenId校验
+    IMSA_HILOGD("screen changed!");
     return true;
 }
 
@@ -514,9 +516,14 @@ int32_t InputMethodAbility::OnDiscardTypingText()
     return imeListener_->OnDiscardTypingText();
 }
 
-int32_t InputMethodAbility::HideKeyboard()
+int32_t InputMethodAbility::HideKeyboard(uint64_t displayGroupId, bool isCheckGroupId)
 {
     std::lock_guard<std::recursive_mutex> lock(keyboardCmdLock_);
+    if (isCheckGroupId && displayGroupId != GetInputAttribute().displayGroupId) {
+        IMSA_HILOGD("not same group:%{public}" PRIu64 "/%{public}" PRIu64 ".", displayGroupId,
+            GetInputAttribute().displayGroupId);
+        return ErrorCode::NO_ERROR;
+    }
     int32_t cmdCount = ++cmdId_;
     return HideKeyboardImplWithoutLock(cmdCount, 0);
 }

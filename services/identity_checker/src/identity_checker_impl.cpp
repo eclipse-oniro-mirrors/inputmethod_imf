@@ -33,10 +33,11 @@ using namespace OHOS::AAFwk;
 std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocused(
     int64_t callingPid, uint32_t callingTokenId, uint32_t windowId, const sptr<IRemoteObject> &abilityToken)
 {
+#ifdef SCENE_BOARD_ENABLE
     std::pair<bool, FocusedInfo> retInfo{ false, {} };
     std::vector<FocusChangeInfo> focusWindowInfos;
     WindowAdapter::GetAllFocusWindowInfos(focusWindowInfos);
-    retInfo = IsFocusedUiAbility(callingPid, abilityToken, windowId, focusWindowInfos);
+    retInfo = IsFocusedUIAbility(callingPid, windowId, focusWindowInfos);
     if (retInfo.first) {
         return retInfo;
     }
@@ -44,6 +45,9 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocused(
         return retInfo;
     }
     return IsFocusedUIExtension(callingTokenId, abilityToken, focusWindowInfos);
+#else
+    return IsFocusedScbNotEnable(callingPid, callingTokenId, windowId, abilityToken);
+#endif
 }
 
 bool IdentityCheckerImpl::IsFocusedUIExtension(uint32_t callingTokenId)
@@ -54,24 +58,21 @@ bool IdentityCheckerImpl::IsFocusedUIExtension(uint32_t callingTokenId)
     return checkRet.first;
 }
 
-std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUiAbility(int64_t callingPid,
-    const sptr<IRemoteObject> &abilityToken, uint32_t windowId, const std::vector<FocusChangeInfo> &focusWindowInfos)
+std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIAbility(
+    int64_t callingPid, uint32_t windowId, const std::vector<FocusChangeInfo> &focusWindowInfos)
 {
     std::pair<bool, FocusedInfo> retInfo{ false, {} };
     if (windowId != ImfCommonConst::INVALID_WINDOW_ID) {
         auto displayId = WindowAdapter::GetDisplayIdByWindowId(windowId);
-        retInfo = IsFocusedUiAbility(callingPid, displayId, focusWindowInfos);
+        retInfo = IsFocusedUIAbility(callingPid, displayId, focusWindowInfos);
         if (retInfo.first) {
             return retInfo;
         }
     }
-    if (abilityToken != nullptr) {
-        return IsFocusedUiAbility(callingPid, WindowAdapter::GetDisplayIdByToken(abilityToken), focusWindowInfos);
-    }
-    return IsFocusedUiAbility(callingPid, focusWindowInfos);
+    return IsFocusedUIAbility(callingPid, focusWindowInfos);
 }
 
-std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUiAbility(
+std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIAbility(
     int64_t callingPid, uint64_t displayId, const std::vector<FocusChangeInfo> &focusWindowInfos)
 {
     auto displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId);
@@ -90,7 +91,7 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUiAbility(
     return retInfo;
 }
 
-std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUiAbility(
+std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIAbility(
     int64_t callingPid, const std::vector<FocusChangeInfo> &focusWindowInfos)
 {
     std::pair<bool, FocusedInfo> retInfo{ false, {} };
@@ -163,7 +164,7 @@ bool IdentityCheckerImpl::IsBrokerInner(AccessTokenID tokenId)
     }
     NativeTokenInfo nativeTokenInfoRes;
     AccessTokenKit::GetNativeTokenInfo(tokenId, nativeTokenInfoRes);
-    return nativeTokenInfoRes.processName != "broker";
+    return nativeTokenInfoRes.processName == "broker";
 }
 
 bool IdentityCheckerImpl::IsNativeSa(AccessTokenID tokenId)
@@ -304,6 +305,74 @@ bool IdentityCheckerImpl::IsSpecialSaUid()
 {
     auto callingUid = IPCSkeleton::GetCallingUid();
     return ImeInfoInquirer::GetInstance().IsSpecialSaUid(callingUid);
+}
+
+bool IdentityCheckerImpl::IsUIExtension(int64_t pid)
+{
+    return ImeInfoInquirer::GetInstance().IsUIExtension(pid);
+}
+
+std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedScbNotEnable(
+    int64_t callingPid, uint32_t callingTokenId, uint32_t windowId, const sptr<IRemoteObject> &abilityToken)
+{
+    std::pair<bool, FocusedInfo> retInfo{ false, {} };
+    retInfo.second.windowId = windowId;
+    uint64_t displayId;
+    if (abilityToken != nullptr) {
+        displayId = WindowAdapter::GetDisplayIdByToken(abilityToken);
+        IMSA_HILOGD("abilityToken not nullptr, displayId: %{public}" PRIu64 "", displayId);
+    } else {
+        displayId = WindowAdapter::GetDisplayIdByPid(callingPid);
+    }
+    FocusChangeInfo focusInfo;
+    WindowAdapter::GetFocusInfo(focusInfo, displayId);
+    auto focusedPid = focusInfo.pid_;
+    if (callingPid == focusedPid) {
+        IMSA_HILOGD("focused app, pid: %{public}" PRId64 ", display: %{public}" PRIu64 ",windowId: %{public}d",
+            callingPid, displayId, focusInfo.windowId_);
+        retInfo.first = true;
+        return retInfo;
+    }
+    if (ImeInfoInquirer::GetInstance().IsInputMethodExtension(callingPid)) {
+        return retInfo;
+    }
+    bool isFocused = IsFocusedUIExtension(callingTokenId, abilityToken);
+    if (!isFocused) {
+        IMSA_HILOGE("not focused, focusedPid: %{public}d, callerPid: %{public}" PRId64 ", callerToken: "
+                    "%{public}d",
+            focusedPid, callingPid, callingTokenId);
+        return retInfo;
+    }
+    retInfo.first = true;
+    return retInfo;
+}
+
+bool IdentityCheckerImpl::IsFocusedUIExtension(uint32_t callingTokenId, sptr<IRemoteObject> abilityToken)
+{
+    uint32_t windowId = GetUIExtensionWindowId(abilityToken);
+    if (windowId != INVALID_WINDOW_ID) {
+        auto displayIdByWindow = WindowAdapter::GetDisplayIdByWindowId(windowId);
+        IMSA_HILOGD("windowId is: %{public}d, displayId is %{public}" PRIu64 "", windowId, displayIdByWindow);
+        if (displayIdByWindow != DEFAULT_DISPLAY_ID) {
+            FocusChangeInfo focusInfo;
+            WindowAdapter::GetFocusInfo(focusInfo, displayIdByWindow);
+            return windowId == static_cast<uint32_t>(focusInfo.windowId_);
+        }
+    }
+
+    bool isFocused = false;
+    auto client = AbilityManagerClient::GetInstance();
+    if (client == nullptr) {
+        IMSA_HILOGE("AbilityManagerClient is nullptr!");
+        return false;
+    }
+    auto ret = client->CheckUIExtensionIsFocused(callingTokenId, isFocused);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("failed to CheckUIExtensionIsFocused, ret: %{public}d!", ret);
+        return false;
+    }
+    IMSA_HILOGD("tokenId: %{public}d, isFocused: %{public}d", callingTokenId, isFocused);
+    return isFocused;
 }
 } // namespace MiscServices
 } // namespace OHOS

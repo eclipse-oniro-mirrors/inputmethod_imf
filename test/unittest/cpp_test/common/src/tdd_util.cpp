@@ -539,9 +539,9 @@ void TddUtil::ClickApp()
 bool TddUtil::WaitTaskEmpty()
 {
     return BlockRetry(WAIT_TASK_EMPTY_INTERVAL, WAIT_TASK_EMPTY_TIMES, []() {
-        return TaskManager::GetInstance().curTask_ == nullptr && TaskManager::GetInstance().amsTasks_.empty()
-               && TaskManager::GetInstance().imaTasks_.empty() && TaskManager::GetInstance().imsaTasks_.empty()
-               && TaskManager::GetInstance().innerTasks_.empty();
+        return TaskManager::GetInstance().curTask_ == nullptr && TaskManager::GetInstance().amsTasks_.empty() &&
+            TaskManager::GetInstance().imaTasks_.empty() && TaskManager::GetInstance().imsaTasks_.empty() &&
+                TaskManager::GetInstance().innerTasks_.empty();
     });
 }
 

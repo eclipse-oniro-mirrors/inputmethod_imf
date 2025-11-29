@@ -128,7 +128,6 @@ private:
     int32_t PaddedByBundleMgr(
         int32_t userId, const std::vector<FullImeInfo> &imeInfos, std::vector<ImeEnabledInfo> &enabledInfos);
     int32_t PaddedByImePersistCfg(int32_t userId, std::vector<ImeEnabledInfo> &enabledInfos);
-    EnabledStatus ComputeEnabledStatus(const std::string &bundleName, EnabledStatus initStatus);
     int32_t GetImePersistCfg(int32_t userId, ImePersistInfo &persisInfo);
     std::mutex upgradedLock_;
     std::set<int32_t> upgradedUserId_;

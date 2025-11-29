@@ -15,11 +15,14 @@
 #include "settings_data_utils.h"
 
 #include <sstream>
+#include "ime_info_inquirer.h"
 #include "iservice_registry.h"
 #include "system_ability_definition.h"
+#include "sys_cfg_parser.h"
 
 namespace OHOS {
 namespace MiscServices {
+constexpr const char *INIT_ENABLED_STATE = "initEnabledState";
 SettingsDataUtils::~SettingsDataUtils()
 {
     {
@@ -242,6 +245,43 @@ void SettingsDataUtils::NotifyDataShareReady()
 bool SettingsDataUtils::IsDataShareReady()
 {
     return isDataShareReady_.load();
+}
+
+EnabledStatus SettingsDataUtils::ComputeEnabledStatus(const std::string &bundleName, EnabledStatus initStatus)
+{
+    auto status = ComputeSysCfgEnabledStatus(initStatus);
+    auto sysIme = ImeInfoInquirer::GetInstance().GetDefaultIme();
+    if (sysIme.bundleName.empty()) {
+        IMSA_HILOGE("failed to get default ime!");
+        return status;
+    }
+    if (status == EnabledStatus::DISABLED && bundleName == sysIme.bundleName) {
+        return EnabledStatus::BASIC_MODE;
+    }
+    return status;
+}
+
+EnabledStatus SettingsDataUtils::ComputeSysCfgEnabledStatus(EnabledStatus initStatus)
+{
+    auto sysCfg = ImeInfoInquirer::GetInstance().GetSystemConfig();
+    auto hasEnableSwitch = sysCfg.enableInputMethodFeature;
+    auto hasFullExperienceSwitch = sysCfg.enableFullExperienceFeature;
+    auto isContainInitEnabledState = SysCfgParser::IsContainField(INIT_ENABLED_STATE);
+    IMSA_HILOGI("enable cfg:[%{public}d, %{public}d, %{public}d, %{public}d].",
+        hasEnableSwitch, hasFullExperienceSwitch, isContainInitEnabledState, initStatus);
+    if (isContainInitEnabledState) {
+        return initStatus;
+    }
+    if (!hasFullExperienceSwitch) {
+        if (hasEnableSwitch) {
+            return EnabledStatus::DISABLED;
+        }
+        return EnabledStatus::FULL_EXPERIENCE_MODE;
+    }
+    if (!hasEnableSwitch) {
+        return EnabledStatus::BASIC_MODE;
+    }
+    return EnabledStatus::DISABLED;
 }
 } // namespace MiscServices
 } // namespace OHOS

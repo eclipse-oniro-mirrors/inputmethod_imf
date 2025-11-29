@@ -206,8 +206,8 @@ int32_t EnableUpgradeManager::PaddedByBundleMgr(
             continue;
         }
         IMSA_HILOGI("%{public}d/%{public}s is disabled before upgrade or sys ime.", userId, info.prop.name.c_str());
-        enabledInfos.emplace_back(
-            info.prop.name, info.prop.id, ComputeEnabledStatus(info.prop.name, EnabledStatus::DISABLED));
+        enabledInfos.emplace_back(info.prop.name, info.prop.id,
+            SettingsDataUtils::GetInstance().ComputeEnabledStatus(info.prop.name, EnabledStatus::DISABLED));
     }
     return ErrorCode::NO_ERROR;
 }
@@ -381,22 +381,6 @@ int32_t EnableUpgradeManager::PaddedByImePersistCfg(int32_t userId, std::vector<
         iter->extraInfo.isTmpIme = true;
     }
     return ErrorCode::NO_ERROR;
-}
-
-EnabledStatus EnableUpgradeManager::ComputeEnabledStatus(const std::string &bundleName, EnabledStatus initStatus)
-{
-    auto sysCfg = ImeInfoInquirer::GetInstance().GetSystemConfig();
-    auto hasEnableSwitch = sysCfg.enableInputMethodFeature;
-    auto hasFullExperienceSwitch = sysCfg.enableFullExperienceFeature;
-    IMSA_HILOGI("enable cfg:[%{public}d, %{public}d].", hasEnableSwitch, hasFullExperienceSwitch);
-    if (!hasEnableSwitch && !hasFullExperienceSwitch) {
-        return EnabledStatus::FULL_EXPERIENCE_MODE;
-    }
-    auto sysIme = ImeInfoInquirer::GetInstance().GetDefaultIme();
-    if (bundleName == sysIme.bundleName && initStatus == EnabledStatus::DISABLED) {
-        return EnabledStatus::BASIC_MODE;
-    }
-    return initStatus;
 }
 } // namespace MiscServices
 } // namespace OHOS

@@ -51,6 +51,7 @@ InputAttributeInner InputMethodTools::AttributeToInner(const InputAttribute &att
     inner.fluidLightMode = attribute.fluidLightMode;
     inner.windowId = attribute.windowId;
     inner.callingDisplayId = attribute.callingDisplayId;
+    inner.displayGroupId = attribute.displayGroupId;
     inner.placeholder = attribute.placeholder;
     inner.abilityName = attribute.abilityName;
     inner.capitalizeMode = attribute.capitalizeMode;
@@ -72,6 +73,7 @@ InputAttribute InputMethodTools::InnerToAttribute(const InputAttributeInner &inn
     inputAttribute.fluidLightMode = inner.fluidLightMode;
     inputAttribute.windowId = inner.windowId;
     inputAttribute.callingDisplayId = inner.callingDisplayId;
+    inputAttribute.displayGroupId = inner.displayGroupId;
     inputAttribute.placeholder = inner.placeholder;
     inputAttribute.abilityName = inner.abilityName;
     inputAttribute.capitalizeMode = inner.capitalizeMode;
@@ -173,9 +175,7 @@ InputClientInfoInner InputMethodTools::InputClientInfoToInner(const InputClientI
     inner.uid = inputClientInfo.uid;
     inner.userID = inputClientInfo.userID;
     inner.isShowKeyboard = inputClientInfo.isShowKeyboard;
-    // inner.bindImeType = inputClientInfo.bindImeType;
     inner.config = TextTotalConfigToInner(inputClientInfo.config);
-    inner.eventFlag = inputClientInfo.eventFlag;
     inner.attribute = AttributeToInner(inputClientInfo.attribute);
     inner.client = inputClientInfo.client;
     inner.channel = inputClientInfo.channel;
@@ -197,9 +197,7 @@ InputClientInfo InputMethodTools::InnerToInputClientInfo(const InputClientInfoIn
     inputClientInfo.uid = inner.uid;
     inputClientInfo.userID = inner.userID;
     inputClientInfo.isShowKeyboard = inner.isShowKeyboard;
-    // inputClientInfo.bindImeType = inner.bindImeType;
     inputClientInfo.config = InnerToTextTotalConfig(inner.config);
-    inputClientInfo.eventFlag = inner.eventFlag;
     inputClientInfo.attribute = InnerToAttribute(inner.attribute);
     inputClientInfo.client = inner.client;
     inputClientInfo.channel = inner.channel;

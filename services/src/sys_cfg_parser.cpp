@@ -110,6 +110,31 @@ std::string SysCfgParser::GetSysCfgContent(const std::string &key)
     }
     return content;
 }
+
+bool SysCfgParser::IsContainField(const std::string& fieldName)
+{
+    SystemConfig systemConfig;
+    auto content = GetSysCfgContent(GET_NAME(systemConfig));
+    if (content.empty()) {
+        IMSA_HILOGE("content is empty");
+        return false;
+    }
+    cJSON *root = cJSON_Parse(content.c_str());
+    if (root == NULL) {
+        IMSA_HILOGE("%{public}s: parse failed!", content.c_str());
+        return false;
+    }
+    cJSON *nestedObject = cJSON_GetObjectItem(root, GET_NAME(systemConfig));
+    if (nestedObject == NULL || !cJSON_IsObject(nestedObject)) {
+        IMSA_HILOGE("get object item failed!");
+        cJSON_Delete(root);
+        return false;
+    }
+    bool isContained = cJSON_HasObjectItem(nestedObject, fieldName.c_str());
+    IMSA_HILOGD("fieldName: %{public}s, isContained: %{public}d", fieldName.c_str(), isContained);
+    cJSON_Delete(root);
+    return isContained;
+}
 // LCOV_EXCL_STOP
 } // namespace MiscServices
 } // namespace OHOS

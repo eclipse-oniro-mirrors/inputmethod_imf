@@ -61,6 +61,7 @@ public:
         return false;
     };
     virtual bool IsSpecialSaUid() = 0;
+    virtual bool IsUIExtension(int64_t pid) = 0;
 };
 } // namespace MiscServices
 } // namespace OHOS

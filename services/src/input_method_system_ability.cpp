@@ -64,6 +64,7 @@ constexpr uint32_t FATAL_TIMEOUT = 30;    // 30s
 constexpr int64_t WARNING_TIMEOUT = 5000; // 5s
 REGISTER_SYSTEM_ABILITY_BY_ID(InputMethodSystemAbility, INPUT_METHOD_SYSTEM_ABILITY_ID, true);
 constexpr std::int32_t INIT_INTERVAL = 10000L;
+constexpr std::int32_t WMS_RETRY_INTERVAL = 60000;  // 1min
 constexpr const char *UNDEFINED = "undefined";
 static const char *PERMISSION_CONNECT_IME_ABILITY = "ohos.permission.CONNECT_IME_ABILITY";
 std::shared_ptr<AppExecFwk::EventHandler> InputMethodSystemAbility::serviceHandler_;
@@ -78,7 +79,6 @@ constexpr int64_t DELAY_UNLOAD_SA_TIME = 20000; // 20s
 constexpr int32_t REFUSE_UNLOAD_DELAY_TIME = 1000; // 1s
 #endif
 const constexpr char *IMMERSIVE_EFFECT_CAP_NAME = "immersive_effect";
-constexpr uint32_t MAIN_DISPLAY_PROXY_IME = 5521;
 InputMethodSystemAbility::InputMethodSystemAbility(int32_t systemAbilityId, bool runOnCreate)
     : SystemAbility(systemAbilityId, runOnCreate), state_(ServiceRunningState::STATE_NOT_START)
 {
@@ -578,6 +578,7 @@ int32_t InputMethodSystemAbility::PrepareInput(
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
     }
+    session->HandleSameClientInMultiGroup(clientInfo);
     return session->OnPrepareInput(clientInfo);
 }
 
@@ -607,14 +608,16 @@ int32_t InputMethodSystemAbility::GenerateClientInfo(
     }
     clientInfo.config.windowId = focusedInfo.windowId;
     clientInfo.config.inputAttribute.bundleName = identityChecker_->GetBundleNameByToken(tokenId);
+    auto callingDisplayId = identityChecker_->GetDisplayIdByWindowId(clientInfo.config.windowId);
     clientInfo.config.privateCommand.insert_or_assign(
-        "displayId", PrivateDataValue(static_cast<int32_t>(focusedInfo.displayId))); // todo hop区分
+        "displayId", PrivateDataValue(static_cast<int32_t>(callingDisplayId)));
     clientInfo.name = ImfHiSysEventUtil::GetAppName(tokenId);
     clientInfo.config.inputAttribute.windowId = focusedInfo.windowId;
-    clientInfo.config.inputAttribute.callingDisplayId = DisplayAdapter::GetFinalDisplayId(focusedInfo.displayId);
+    clientInfo.config.inputAttribute.displayId = focusedInfo.displayId;
     clientInfo.clientGroupId = focusedInfo.displayGroupId;
-    clientInfo.config.inputAttribute.isSpecifyMainDisplay = focusedInfo.displayId
-                                                            != clientInfo.config.inputAttribute.callingDisplayId;  // todo 主group可以操作指定主屏显示group的键盘显隐
+    auto finalDisplayId = DisplayAdapter::GetFinalDisplayId(focusedInfo.displayId);
+    clientInfo.config.inputAttribute.callingDisplayId = finalDisplayId;
+    clientInfo.config.inputAttribute.displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(finalDisplayId);
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session != nullptr) {
         clientInfo.config.inputAttribute.needAutoInputNumkey =
@@ -725,7 +728,8 @@ int32_t InputMethodSystemAbility::StartInputInner(
     }
     auto imeToBind = session->GetReadyImeDataToBind(displayId);
     if (imeToBind == nullptr || imeToBind->IsRealIme()) {
-        auto ret = CheckInputTypeOption(userId, inputClientInfo);
+        session->HandleRealImeInInMultiGroup(inputClientInfo);
+        ret = CheckInputTypeOption(userId, inputClientInfo);
         session->SetIsNeedReportQos(false);
         if (ret != ErrorCode::NO_ERROR) {
             IMSA_HILOGE("%{public}d failed to CheckInputTypeOption!", userId);
@@ -832,8 +836,7 @@ ErrCode InputMethodSystemAbility::StopInputSession(const sptr<IRemoteObject> &ab
     if (result != ErrorCode::NO_ERROR) {
         return result;
     }
-    // auto groupId = WindowAdapter::GetInstance().GetDisplayGroupId(GetCallingDisplayId(abilityToken));
-    auto [clientGroup, clientInfo] = session->GetClientBoundImeBySelfPidOrHostPid(pid);
+    auto [clientGroup, clientInfo] = session->GetClientBySelfPidOrHostPid(pid);
     if (clientInfo == nullptr) {
         IMSA_HILOGE("client group not found");
         return ErrorCode::ERROR_CLIENT_NOT_FOUND;
@@ -841,11 +844,15 @@ ErrCode InputMethodSystemAbility::StopInputSession(const sptr<IRemoteObject> &ab
     return session->OnHideCurrentInput(clientInfo->clientGroupId);
 }
 
-ErrCode InputMethodSystemAbility::RequestHideInput(bool isFocusTriggered, uint32_t windowId)
+ErrCode InputMethodSystemAbility::RequestHideInput(uint32_t windowId, bool isFocusTriggered)
 {
     IMSA_HILOGI("isFocusTriggered/windowId:%{public}d/%{public}d.", isFocusTriggered, windowId);
     AccessTokenID tokenId = IPCSkeleton::GetCallingTokenID();
     auto pid = IPCSkeleton::GetCallingPid();
+    if (identityChecker_->IsBroker(tokenId) || identityChecker_->IsUIExtension(pid)) {
+        IMSA_HILOGW("not allow broker or UIExtension caller!");
+        return ErrorCode::ERROR_STATUS_PERMISSION_DENIED;
+    }
     auto [isFocused, focusedInfo] = identityChecker_->IsFocused(pid, tokenId, windowId);
     if (!isFocused) {
         if (isFocusTriggered) {
@@ -863,13 +870,7 @@ ErrCode InputMethodSystemAbility::RequestHideInput(bool isFocusTriggered, uint32
         return ErrorCode::ERROR_NULL_POINTER;
     }
     auto displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(windowId);
-    IMSA_HILOGI("displayGroupId:%{public} " PRIu64 ".", displayGroupId);
-    if (displayGroupId == ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID) {
-        auto specifyMainDisplayShowGroupId = session->GetSpecifyMainDisplayShowGroupId();
-        if (specifyMainDisplayShowGroupId != ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID) {
-            session->OnRequestHideInput(specifyMainDisplayShowGroupId);
-        }
-    }
+    IMSA_HILOGI("displayGroupId:%{public}" PRIu64 ".", displayGroupId);
     return session->OnRequestHideInput(displayGroupId);
 }
 
@@ -894,14 +895,13 @@ ErrCode InputMethodSystemAbility::RegisterProxyIme(
     uint64_t displayId, const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent)
 {
     auto uid = IPCSkeleton::GetCallingUid();
+    if (uid == ImfCommonConst::AI_PROXY_IME && !ImeInfoInquirer::GetInstance().IsEnableAppAgent()) {
+        IMSA_HILOGE("current device does not support app agent");
+        return ErrorCode::ERROR_DEVICE_UNSUPPORTED;
+    }
     if (!identityChecker_->IsValidVirtualIme(uid)) {
         IMSA_HILOGE("not proxy sa");
         return ErrorCode::ERROR_NOT_AI_APP_IME;
-    }
-    // todo CCM
-    if (displayId != DEFAULT_DISPLAY_ID && uid == MAIN_DISPLAY_PROXY_IME) {
-        IMSA_HILOGE("displayId not support");
-        return ErrorCode::ERROR_BAD_PARAMETERS;
     }
     auto userId = GetCallingUserId();
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
@@ -914,7 +914,12 @@ ErrCode InputMethodSystemAbility::RegisterProxyIme(
 
 ErrCode InputMethodSystemAbility::UnregisterProxyIme(uint64_t displayId)
 {
-    if (!identityChecker_->IsValidVirtualIme(IPCSkeleton::GetCallingUid())) {
+    auto uid = IPCSkeleton::GetCallingUid();
+    if (uid == ImfCommonConst::AI_PROXY_IME && !ImeInfoInquirer::GetInstance().IsEnableAppAgent()) {
+        IMSA_HILOGE("current device does not support app agent");
+        return ErrorCode::ERROR_DEVICE_UNSUPPORTED;
+    }
+    if (!identityChecker_->IsValidVirtualIme(uid)) {
         IMSA_HILOGE("not agent sa");
         return ErrorCode::ERROR_NOT_AI_APP_IME;
     }
@@ -1550,7 +1555,7 @@ int32_t InputMethodSystemAbility::HideCurrentInputDeprecated(const sptr<IRemoteO
         return result;
     }
     // auto groupId = WindowAdapter::GetInstance().GetDisplayGroupId(GetCallingDisplayId(abilityToken));
-    auto [clientGroup, clientInfo] = session->GetClientBoundImeByClientPid(pid);
+    auto [clientGroup, clientInfo] = session->GetClientBySelfPid(pid);
     if (clientInfo == nullptr) {
         IMSA_HILOGE("client group not found");
         return ErrorCode::ERROR_CLIENT_NOT_FOUND;
@@ -1566,8 +1571,7 @@ int32_t InputMethodSystemAbility::ShowCurrentInputDeprecated(const sptr<IRemoteO
     if (result != ErrorCode::NO_ERROR) {
         return result;
     }
-    // auto groupId = WindowAdapter::GetInstance().GetDisplayGroupId(GetCallingDisplayId(abilityToken));
-    auto [clientGroup, clientInfo] = session->GetClientBoundImeByClientPid(pid);
+    auto [clientGroup, clientInfo] = session->GetClientBySelfPid(pid);
     if (clientInfo == nullptr) {
         IMSA_HILOGE("client group not found");
         return ErrorCode::ERROR_CLIENT_NOT_FOUND;
@@ -2236,9 +2240,9 @@ void InputMethodSystemAbility::InitSystemLanguageMonitor()
     SystemParamAdapter::GetInstance().WatchParam(SystemParamAdapter::SYSTEM_LANGUAGE_KEY);
 }
 
-void InputMethodSystemAbility::InitFocusChangedMonitor()
+int32_t InputMethodSystemAbility::InitFocusChangedMonitor()
 {
-    FocusMonitorManager::GetInstance().RegisterFocusChangedListener(
+    return FocusMonitorManager::GetInstance().RegisterFocusChangedListener(
         [this](bool isOnFocused, uint64_t displayId, int32_t pid, int32_t uid) {
             HandleFocusChanged(isOnFocused, displayId, pid, uid);
         });
@@ -2504,9 +2508,25 @@ void InputMethodSystemAbility::HandleWmsStarted()
 {
     // singleton, device boot, wms reboot
     IMSA_HILOGI("Wms start.");
-    WindowAdapter::GetInstance().StoreAllDisplayGroupInfos();
-    WindowAdapter::GetInstance().RegisterAllGroupInfoChangedListener();
-    InitFocusChangedMonitor();
+    auto ret = InitFocusChangedMonitor();
+    if (ret != ErrorCode::NO_ERROR) {
+        auto callback = [=]() { InitFocusChangedMonitor(); };
+        if (serviceHandler_ != nullptr) {
+            serviceHandler_->PostTask(callback, WMS_RETRY_INTERVAL);
+        }
+    }
+    ret = WindowAdapter::GetInstance().RegisterAllGroupInfoChangedListener();
+    if (ret != ErrorCode::NO_ERROR) {
+        auto callback = []() {
+            WindowAdapter::GetInstance().StoreAllDisplayGroupInfos();
+            WindowAdapter::GetInstance().RegisterAllGroupInfoChangedListener();
+        };
+        if (serviceHandler_ != nullptr) {
+            serviceHandler_->PostTask(callback, WMS_RETRY_INTERVAL);
+        }
+    } else {
+        WindowAdapter::GetInstance().StoreAllDisplayGroupInfos();
+    }
     if (isScbEnable_.load()) {
         IMSA_HILOGI("scb enable, register WMS connection listener.");
         InitWmsConnectionMonitor();
@@ -2625,7 +2645,7 @@ int32_t InputMethodSystemAbility::StartInputType(int32_t userId, InputType type)
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
     }
-    if (!WindowAdapter::GetInstance().IsDefaultDisplayGroup(GetCallingDisplayId())) {  // TODO
+    if (!WindowAdapter::GetInstance().IsDefaultDisplayGroup(GetCallingDisplayId())) {
         IMSA_HILOGI("only need input type in default display");
         return ErrorCode::NO_ERROR;
     }

@@ -48,7 +48,7 @@ public:
         const sptr<IInputClient> &client, const sptr<IRemoteObject> &abilityToken, uint32_t windowId) override;
     ErrCode StopInputSession(const sptr<IRemoteObject> &abilityToken, uint32_t windowId) override;
     ErrCode ReleaseInput(const sptr<IInputClient> &client, uint32_t sessionId) override;
-    ErrCode RequestHideInput(bool isFocusTriggered, uint32_t windowId) override;
+    ErrCode RequestHideInput(uint32_t windowId, bool isFocusTriggered) override;
     ErrCode GetDefaultInputMethod(Property &prop, bool isBrief) override;
     ErrCode GetInputMethodConfig(ElementName &inputMethodConfig) override;
     ErrCode GetCurrentInputMethod(Property &resultValue) override;
@@ -167,7 +167,7 @@ private:
     void InitSystemLanguageMonitor();
     bool InitMemMgrMonitor();
     void InitWmsConnectionMonitor();
-    void InitFocusChangedMonitor();
+    int32_t InitFocusChangedMonitor();
     void InitWindowDisplayChangedMonitor();
     bool InitPasteboardMonitor();
     bool InitHaMonitor();
