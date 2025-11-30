@@ -38,6 +38,9 @@ public:
     void OnImeHideCallback(const ImeWindowInfo &info);
     void RegisterImeEvent(std::string const &eventName, int32_t eventMask, callbackType &&f, uintptr_t opq);
     void UnregisterImeEvent(std::string const &eventName, int32_t eventMask, taihe::optional_view<uintptr_t> opq);
+    EnabledState_t GetInputMethodStateSync();
+    void EnableInputMethodSync(::taihe::string_view bundleName, ::taihe::string_view extensionName,
+        ::ohos::inputMethod::EnabledState enabledState);
 
 private:
     PanelFlag softKbShowingFlag_{ FLG_CANDIDATE_COLUMN };
@@ -100,6 +103,15 @@ public:
     void OffImeChange(taihe::optional_view<uintptr_t> opq)
     {
         InputMethodSettingImpl::GetInstance().UnregisterImeEvent("imeChange", EVENT_IME_CHANGE_MASK, opq);
+    }
+    EnabledState_t GetInputMethodStateSync()
+    {
+        return InputMethodSettingImpl::GetInstance().GetInputMethodStateSync();
+    }
+    void EnableInputMethodSync(::taihe::string_view bundleName, ::taihe::string_view extensionName,
+        ::ohos::inputMethod::EnabledState enabledState)
+    {
+        InputMethodSettingImpl::GetInstance().EnableInputMethodSync(bundleName, extensionName, enabledState);
     }
 };
 } // namespace MiscServices

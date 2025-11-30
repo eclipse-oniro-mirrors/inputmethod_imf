@@ -52,7 +52,18 @@ public:
     std::u16string GetLeftTextOfCursorCallback(int32_t number);
     std::u16string GetRightTextOfCursorCallback(int32_t number);
     int32_t GetTextIndexAtCursorCallback();
+    int32_t SetPreviewTextCallback(const std::u16string &text, const Range &range);
+    void FinishTextPreviewCallback();
 
+    void DiscardTypingTextSync();
+    void SetCallingWindowSync(int32_t windowId);
+    void ChangeSelectionSync(::taihe::string_view text, int32_t start, int32_t end);
+    void UpdateAttributeSync(InputAttribute_t const& attribute);
+    bool StopInputSessionSync();
+    void ShowSoftKeyboardSync();
+    void SendMessageSync(::taihe::string_view msgId, ::taihe::optional_view<::taihe::array<uint8_t>> msgParam);
+    void recvMessage(::taihe::optional_view<MessageHandler_t> msgHandler);
+    void UpdateCursorSync(::ohos::inputMethod::CursorInfo const& cursorInfo);
     void OnSelectByRange(int32_t start, int32_t end) override;
     void OnSelectByMovement(int32_t direction) override;
 
@@ -190,6 +201,63 @@ public:
     void OffGetTextIndexAtCursor(taihe::optional_view<uintptr_t> opq)
     {
         InputMethodControllerImpl::GetInstance()->UnRegisterListener("getTextIndexAtCursor", opq);
+    }
+    void OnSetPreviewText(
+        taihe::callback_view<void(::taihe::string_view text, ::ohos::inputMethod::Range const& range)> f,
+        uintptr_t opq)
+    {
+        InputMethodControllerImpl::GetInstance()->RegisterListener("setPreviewText", f, opq);
+    }
+
+    void OffSetPreviewText(taihe::optional_view<uintptr_t> opq)
+    {
+        InputMethodControllerImpl::GetInstance()->UnRegisterListener("setPreviewText", opq);
+    }
+
+    void OnFinishTextPreview(taihe::callback_view<void()> f, uintptr_t opq)
+    {
+        InputMethodControllerImpl::GetInstance()->RegisterListener("finishTextPreview", f, opq);
+    }
+
+    void OffFinishTextPreview(taihe::optional_view<uintptr_t> opq)
+    {
+        InputMethodControllerImpl::GetInstance()->UnRegisterListener("finishTextPreview", opq);
+    }
+    void DiscardTypingTextSync()
+    {
+        InputMethodControllerImpl::GetInstance()->DiscardTypingTextSync();
+    }
+    void SetCallingWindowSync(int32_t windowId)
+    {
+        InputMethodControllerImpl::GetInstance()->SetCallingWindowSync(windowId);
+    }
+    void ChangeSelectionSync(::taihe::string_view text, int32_t start, int32_t end)
+    {
+        InputMethodControllerImpl::GetInstance()->ChangeSelectionSync(text, start, end);
+    }
+    void UpdateAttributeSync(InputAttribute_t const& attribute)
+    {
+        InputMethodControllerImpl::GetInstance()->UpdateAttributeSync(attribute);
+    }
+    bool StopInputSessionSync()
+    {
+        return InputMethodControllerImpl::GetInstance()->StopInputSessionSync();
+    }
+    void ShowSoftKeyboardSync()
+    {
+        InputMethodControllerImpl::GetInstance()->ShowSoftKeyboardSync();
+    }
+    void SendMessageSync(::taihe::string_view msgId, ::taihe::optional_view<::taihe::array<uint8_t>> msgParam)
+    {
+        InputMethodControllerImpl::GetInstance()->SendMessageSync(msgId, msgParam);
+    }
+    void recvMessage(::taihe::optional_view<MessageHandler_t> msgHandler)
+    {
+        InputMethodControllerImpl::GetInstance()->recvMessage(msgHandler);
+    }
+    void UpdateCursorSync(::ohos::inputMethod::CursorInfo const& cursorInfo)
+    {
+        InputMethodControllerImpl::GetInstance()->UpdateCursorSync(cursorInfo);
     }
 };
 } // namespace MiscServices

@@ -1538,6 +1538,28 @@ int32_t InputMethodPanel::SetUiContent(
     return ret == WMError::WM_ERROR_INVALID_PARAM ? ErrorCode::ERROR_PARAMETER_CHECK_FAILED : ErrorCode::NO_ERROR;
 }
 
+int32_t InputMethodPanel::SetUiContent(
+    const std::string &contentInfo, ani_env* env, ani_object storage)
+{
+    if (window_ == nullptr || env == nullptr) {
+        IMSA_HILOGE("window_ or env is nullptr, can not SetUiContent!");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    WMError ret = WMError::WM_OK;
+    if (storage == nullptr) {
+        ret = window_->NapiSetUIContent(contentInfo, env, nullptr);
+    } else {
+        ret = window_->NapiSetUIContent(contentInfo, env, storage);
+    }
+    WMError wmError = window_->SetTransparent(true);
+    if (isWaitSetUiContent_) {
+        isWaitSetUiContent_ = false;
+    }
+    IMSA_HILOGI("SetTransparent ret: %{public}u.", wmError);
+    IMSA_HILOGI("NapiSetUIContent ret: %{public}d.", ret);
+    return ret == WMError::WM_ERROR_INVALID_PARAM ? ErrorCode::ERROR_PARAMETER_CHECK_FAILED : ErrorCode::NO_ERROR;
+}
+
 bool InputMethodPanel::SetPanelStatusListener(
     std::shared_ptr<PanelStatusListener> statusListener, const std::string &type)
 {

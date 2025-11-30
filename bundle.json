@@ -73,7 +73,8 @@
                   "//base/inputmethod/imf/frameworks/js/napi/inputmethodlist:inputmethodlist",
                   "//base/inputmethod/imf/frameworks/js/napi/inputmethodpanel:panel",
                   "//base/inputmethod/imf/frameworks/ndk:ohinputmethod",
-                  "//base/inputmethod/imf/frameworks/ets/taihe/inputMethod:inputmethod_taihe"
+                  "//base/inputmethod/imf/frameworks/ets/taihe/inputMethod:inputmethod_taihe",
+                  "//base/inputmethod/imf/frameworks/ets/taihe/inputMethodEngine:inputmethod_engine_taihe"
               ], 
               "service_group": [
                   "//base/inputmethod/imf/etc/init:inputmethodservice.cfg", 
@@ -82,6 +83,8 @@
                   "//base/inputmethod/imf/interfaces/inner_api/inputmethod_ability:inputmethod_ability",
                   "//base/inputmethod/imf/profile:inputmethod_inputmethod_sa_profiles",
                   "//base/inputmethod/imf/services:inputmethod_service",
+                  "//base/inputmethod/imf/frameworks/ets/extension/ani:inputmethod_extension_ani",
+                  "//base/inputmethod/imf/frameworks/ets/extension/ets:inputmethod_extension_ability_etc",
                   "//base/inputmethod/imf/frameworks/kits/extension:inputmethod_extension",
                   "//base/inputmethod/imf/frameworks/kits/extension:inputmethod_extension_module", 
                   "//base/inputmethod/imf/frameworks/js/napi/inputmethodability:inputmethodengine", 
