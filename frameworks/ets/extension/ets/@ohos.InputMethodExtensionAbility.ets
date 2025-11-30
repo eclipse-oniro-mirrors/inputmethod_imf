@@ -18,7 +18,7 @@ import AbilityConstant from '@ohos.app.ability.AbilityConstant';
 import InputMethodExtensionContext from '@ohos.InputMethodExtensionContext';
 
 export default class InputMethodExtensionAbility {
-  context: InputMethodExtensionContext = {};
+  public context: InputMethodExtensionContext = {};
 
   onCreate(want: Want): void {
     console.log(`InputMethodExtensionAbility onCreate, want: ${want}`);
