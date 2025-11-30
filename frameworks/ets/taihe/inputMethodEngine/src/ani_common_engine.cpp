@@ -315,6 +315,11 @@ ani_object CommonConvert::Uint8ArrayToObject(ani_env *env, const std::vector<uin
     if (retCode != ANI_OK) {
         IMSA_HILOGE("Failed: env->ArrayBuffer_GetInfo()");
     }
+    if (bufLength < values.size()) {
+        IMSA_HILOGE("Buffer overflow prevented: required=%{public}zu, available=%{public}zu",
+            values.size(), bufLength);
+        return nullptr;
+    }
     auto ret = memcpy_s(bufData, bufLength, values.data(), bufLength);
     if (ret != 0) {
         IMSA_HILOGE("Failed: memcpy_s");

@@ -219,7 +219,6 @@ void InputMethodAbilityImpl::OnKeyboardStatus(bool isShow)
 void InputMethodAbilityImpl::OnInputStart()
 {
     IMSA_HILOGI("OnInputStart start.");
-    std::lock_guard<std::mutex> lock(mutex_);
     if (vm_ == nullptr) {
         IMSA_HILOGE("vm_ is nullptr");
         return;
@@ -245,7 +244,6 @@ void InputMethodAbilityImpl::OnInputStart()
 int32_t InputMethodAbilityImpl::OnInputStop()
 {
     IMSA_HILOGI("OnInputStop start.");
-    std::lock_guard<std::mutex> lock(mutex_);
     auto &cbVec = jsCbMap_["inputStop"];
     for (auto &cb : cbVec) {
         auto &func = std::get<taihe::callback<void()>>(cb->callback);
