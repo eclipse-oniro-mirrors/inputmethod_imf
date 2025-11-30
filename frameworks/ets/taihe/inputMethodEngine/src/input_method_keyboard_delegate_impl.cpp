@@ -302,8 +302,8 @@ void KeyboardDelegateImpl::OnEditorAttributeChange(const InputAttribute &inputAt
 bool KeyboardDelegateImpl::OnDealKeyEvent(const std::shared_ptr<MMI::KeyEvent> &keyEvent, uint64_t cbId,
     const sptr<IRemoteObject> &channelObject)
 {
-    if (keyEvent == nullptr) {
-        IMSA_HILOGE("keyEvent is nullptr");
+    if (keyEvent == nullptr || channelObject == nullptr) {
+        IMSA_HILOGE("keyEvent or channelObjectis nullptr");
         return false;
     }
     std::lock_guard<std::mutex> lock(mutex_);
@@ -311,18 +311,16 @@ bool KeyboardDelegateImpl::OnDealKeyEvent(const std::shared_ptr<MMI::KeyEvent> &
     for (auto &cb : cbEventVec) {
         auto &func = std::get<taihe::callback<bool(KeyEvent_t const&)>>(cb->callback);
         bool isKeyEventConsumed = func(CommonConvert::ToTaiheKeyEvent(keyEvent));
-        if (channelObject != nullptr) {
-            if (!isKeyEventConsumed) {
-                if (keyEvent != nullptr && keyEvent->GetKeyAction() == MMI::KeyEvent::KEY_ACTION_DOWN) {
-                    IMSA_HILOGW("keyEvent is not consumed by ime");
-                }
-                isKeyEventConsumed = InputMethodAbility::GetInstance().HandleUnconsumedKey(keyEvent);
+        if (!isKeyEventConsumed) {
+            if (keyEvent != nullptr && keyEvent->GetKeyAction() == MMI::KeyEvent::KEY_ACTION_DOWN) {
+                IMSA_HILOGW("keyEvent is not consumed by ime");
             }
-            IMSA_HILOGD("final consumed result: %{public}d.", isKeyEventConsumed);
-            auto ret = InputMethodAbility::GetInstance().HandleKeyEventResult(cbId, isKeyEventConsumed, channelObject);
-            if (ret != ErrorCode::NO_ERROR) {
-                IMSA_HILOGE("handle keyEvent failed:%{public}d", ret);
-            }
+            isKeyEventConsumed = InputMethodAbility::GetInstance().HandleUnconsumedKey(keyEvent);
+        }
+        IMSA_HILOGD("final consumed result: %{public}d.", isKeyEventConsumed);
+        auto ret = InputMethodAbility::GetInstance().HandleKeyEventResult(cbId, isKeyEventConsumed, channelObject);
+        if (ret != ErrorCode::NO_ERROR) {
+            IMSA_HILOGE("handle keyEvent failed:%{public}d", ret);
         }
     }
     std::string type = (keyEvent->GetKeyAction() == ARGC_TWO ? "keyDown" : "keyUp");
@@ -335,18 +333,16 @@ bool KeyboardDelegateImpl::OnDealKeyEvent(const std::shared_ptr<MMI::KeyEvent> &
         };
         bool isKeyCodeConsumed = false;
         isKeyCodeConsumed = func(event);
-        if (channelObject != nullptr) {
-            if (!isKeyCodeConsumed) {
-                if (keyEvent != nullptr && keyEvent->GetKeyAction() == MMI::KeyEvent::KEY_ACTION_DOWN) {
-                    IMSA_HILOGW("keyEvent is not consumed by ime");
-                }
-                isKeyCodeConsumed = InputMethodAbility::GetInstance().HandleUnconsumedKey(keyEvent);
+        if (!isKeyCodeConsumed) {
+            if (keyEvent != nullptr && keyEvent->GetKeyAction() == MMI::KeyEvent::KEY_ACTION_DOWN) {
+                IMSA_HILOGW("keyEvent is not consumed by ime");
             }
-            IMSA_HILOGD("final consumed result: %{public}d.", isKeyCodeConsumed);
-            auto ret = InputMethodAbility::GetInstance().HandleKeyEventResult(cbId, isKeyCodeConsumed, channelObject);
-            if (ret != ErrorCode::NO_ERROR) {
-                IMSA_HILOGE("handle keyEvent failed:%{public}d", ret);
-            }
+            isKeyCodeConsumed = InputMethodAbility::GetInstance().HandleUnconsumedKey(keyEvent);
+        }
+        IMSA_HILOGD("final consumed result: %{public}d.", isKeyCodeConsumed);
+        auto ret = InputMethodAbility::GetInstance().HandleKeyEventResult(cbId, isKeyCodeConsumed, channelObject);
+        if (ret != ErrorCode::NO_ERROR) {
+            IMSA_HILOGE("handle keyEvent failed:%{public}d", ret);
         }
     }
     return true;
