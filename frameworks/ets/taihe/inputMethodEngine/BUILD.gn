@@ -23,9 +23,8 @@ taihe_generated_file_path =
 
 copy_taihe_idl("inputMethodEngine_taihe") {
   sources = [ "idl/ohos.inputMethodEngine.taihe" ]
-  deps = [
-    "${inputmethod_path}/frameworks/ets/taihe/inputMethod:inputMethod_taihe",
-  ]
+  deps =
+      [ "${inputmethod_path}/frameworks/ets/taihe/inputMethod:copy_taihe_deps" ]
   external_deps = [ "input:key_event_taihe" ]
 }
 
