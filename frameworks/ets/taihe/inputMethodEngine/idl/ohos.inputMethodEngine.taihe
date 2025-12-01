@@ -30,6 +30,53 @@ from ohos.multimodalInput.keyEvent use KeyEvent as InputKeyEvent;
 static { loadLibrary("inputmethod_engine_taihe_native.z") }
 """)
 
+@!sts_inject("""
+const ENTER_KEY_TYPE_UNSPECIFIED: int = 0;
+const ENTER_KEY_TYPE_GO: int = 2;
+const ENTER_KEY_TYPE_SEARCH: int = 3;
+const ENTER_KEY_TYPE_SEND: int = 4;
+const ENTER_KEY_TYPE_NEXT: int = 5;
+const ENTER_KEY_TYPE_DONE: int = 6;
+const ENTER_KEY_TYPE_PREVIOUS: int = 7;
+const ENTER_KEY_TYPE_NEWLINE: int = 8;
+
+const PATTERN_NULL: int = -1;
+const PATTERN_TEXT: int = 0;
+const PATTERN_NUMBER: int = 2;
+const PATTERN_PHONE: int = 3;
+const PATTERN_DATETIME: int = 4;
+const PATTERN_EMAIL: int = 5;
+const PATTERN_URI: int = 6;
+const PATTERN_PASSWORD: int = 7;
+const PATTERN_PASSWORD_SCREEN_LOCK: int = 9;
+const PATTERN_PASSWORD_NUMBER: int = 8;
+const PATTERN_USER_NAME: int = 10;
+const PATTERN_NEW_PASSWORD: int = 11;
+const PATTERN_NUMBER_DECIMAL: int = 12;
+const PATTERN_ONE_TIME_CODE: int = 13;
+
+const FLAG_SELECTING: int = 2;
+const FLAG_SINGLE_LINE: int = 1;
+
+const DISPLAY_MODE_PART: int = 0;
+const DISPLAY_MODE_FULL: int = 1;
+
+const OPTION_ASCII: int = 20;
+const OPTION_NONE: int = 0;
+const OPTION_AUTO_CAP_CHARACTERS: int = 2;
+const OPTION_AUTO_CAP_SENTENCES: int = 8;
+const OPTION_AUTO_WORDS: int = 4;
+const OPTION_MULTI_LINE: int = 1;
+const OPTION_NO_FULLSCREEN: int = 10;
+
+const CURSOR_UP: int = 1;
+const CURSOR_DOWN: int = 2;
+const CURSOR_LEFT: int = 3;
+const CURSOR_RIGHT: int = 4;
+
+const WINDOW_TYPE_INPUT_METHOD_FLOAT: int = 2105;
+""")
+
 enum Direction: i32 {
     CURSOR_UP = 1,
     CURSOR_DOWN = 2,

@@ -42,6 +42,10 @@ struct MessageHandler {
     onTerminated: @sts_type("OnTerminatedCallback") Opaque;
 }
 
+@!sts_inject("""
+const MAX_TYPE_NUM: int = 128;
+""")
+
 enum EnabledState : i32 {
     DISABLED = 0,
     BASIC_MODE = 1,
