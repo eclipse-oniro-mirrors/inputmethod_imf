@@ -25,7 +25,11 @@ copy_taihe_idl("inputMethodEngine_taihe") {
   sources = [ "idl/ohos.inputMethodEngine.taihe" ]
   deps =
       [ "${inputmethod_path}/frameworks/ets/taihe/inputMethod:copy_taihe_deps" ]
-  external_deps = [ "input:key_event_taihe" ]
+  external_deps = [
+    "input:input_event_taihe",
+    "input:key_code_taihe",
+    "input:key_event_taihe",
+  ]
 }
 
 ohos_taihe("run_taihe") {

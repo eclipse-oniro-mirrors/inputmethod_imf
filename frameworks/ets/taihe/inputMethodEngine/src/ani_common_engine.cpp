@@ -335,6 +335,10 @@ ani_object CommonConvert::Uint8ArrayToObject(ani_env *env, const std::vector<uin
 ani_object CommonConvert::CreateAniUndefined(ani_env* env)
 {
     ani_ref aniRef;
+    if (env == nullptr) {
+        IMSA_HILOGE("null env");
+        return nullptr;
+    }
     env->GetUndefined(&aniRef);
     return static_cast<ani_object>(aniRef);
 }
@@ -556,7 +560,10 @@ bool CommonConvert::GetBooleanOrUndefined(ani_env* env, ani_object param, const 
     ani_ref obj = nullptr;
     ani_boolean isUndefined = true;
     ani_status status = ANI_ERROR;
-
+    if (env == nullptr) {
+        IMSA_HILOGE("null env");
+        return false;
+    }
     if ((status = env->Object_GetPropertyByName_Ref(param, name, &obj)) != ANI_OK) {
         IMSA_HILOGE("status : %{public}d", status);
         return false;
@@ -586,7 +593,10 @@ bool CommonConvert::GetIntOrUndefined(ani_env* env, ani_object param, const char
     ani_ref obj = nullptr;
     ani_boolean isUndefined = true;
     ani_status status = ANI_ERROR;
-
+    if (env == nullptr) {
+        IMSA_HILOGE("null env");
+        return false;
+    }
     if ((status = env->Object_GetPropertyByName_Ref(param, name, &obj)) != ANI_OK) {
         IMSA_HILOGE("status : %{public}d", status);
         return false;
@@ -616,7 +626,10 @@ bool CommonConvert::GetRectOrUndefined(ani_env* env, ani_object param, const cha
     ani_ref ref = nullptr;
     ani_boolean isUndefined = true;
     ani_status status = ANI_ERROR;
-
+    if (env == nullptr) {
+        IMSA_HILOGE("null env");
+        return false;
+    }
     if ((status = env->Object_GetPropertyByName_Ref(param, name, &ref)) != ANI_OK) {
         IMSA_HILOGE("status : %{public}d", status);
         return false;
@@ -643,7 +656,10 @@ bool CommonConvert::GetRegionOrUndefined(ani_env* env, ani_object param, const c
     ani_ref ref = nullptr;
     ani_boolean isUndefined = true;
     ani_status status = ANI_ERROR;
-
+    if (env == nullptr) {
+        IMSA_HILOGE("null env");
+        return false;
+    }
     if ((status = env->Object_GetPropertyByName_Ref(param, name, &ref)) != ANI_OK) {
         IMSA_HILOGE("status : %{public}d", status);
         return false;

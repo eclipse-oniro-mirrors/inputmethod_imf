@@ -21,6 +21,10 @@ namespace MiscServices {
 constexpr size_t ARGC_ONE = 1;
 ani_env* AniMessageHandler::AttachAniEnv(ani_vm* vm)
 {
+    if (vm == nullptr) {
+        IMSA_HILOGE("vm is nullptr");
+        return nullptr;
+    }
     ani_env *workerEnv = nullptr;
     ani_options aniArgs {0, nullptr};
     if (vm->AttachCurrentThread(&aniArgs, ANI_VERSION_1, &workerEnv) != ANI_OK) {

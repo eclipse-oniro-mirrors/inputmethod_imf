@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2022 Huawei Device Co., Ltd.
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -21,6 +21,10 @@ namespace MiscServices {
 ani_vm* AniMsgHandlerCallbackObject::vm_ {nullptr};
 ani_vm* AniMsgHandlerCallbackObject::GetAniVm(ani_env* env)
 {
+    if (env == nullptr) {
+        IMSA_HILOGE("env is nullptr");
+        return nullptr;
+    }
     ani_vm* vm = nullptr;
     if (env->GetVM(&vm) != ANI_OK) {
         IMSA_HILOGE("GetVM failed");
@@ -31,6 +35,10 @@ ani_vm* AniMsgHandlerCallbackObject::GetAniVm(ani_env* env)
 
 ani_env* AniMsgHandlerCallbackObject::GetAniEnv(ani_vm* vm)
 {
+    if (vm == nullptr) {
+        IMSA_HILOGE("vm is nullptr");
+        return nullptr;
+    }
     ani_env* env = nullptr;
     if (vm->GetEnv(ANI_VERSION_1, &env) != ANI_OK) {
         IMSA_HILOGE("GetEnv failed");
@@ -41,6 +49,10 @@ ani_env* AniMsgHandlerCallbackObject::GetAniEnv(ani_vm* vm)
 
 ani_env* AniMsgHandlerCallbackObject::AttachAniEnv(ani_vm* vm)
 {
+    if (vm == nullptr) {
+        IMSA_HILOGE("vm is nullptr");
+        return nullptr;
+    }
     ani_env *workerEnv = nullptr;
     ani_options aniArgs {0, nullptr};
     if (vm->AttachCurrentThread(&aniArgs, ANI_VERSION_1, &workerEnv) != ANI_OK) {

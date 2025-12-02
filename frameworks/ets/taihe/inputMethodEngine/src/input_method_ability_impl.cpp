@@ -31,6 +31,10 @@ ani_vm* InputMethodAbilityImpl::vm_ {nullptr};
 
 ani_vm* InputMethodAbilityImpl::GetAniVm(ani_env* env)
 {
+    if (env == nullptr) {
+        IMSA_HILOGE("null env");
+        return nullptr;
+    }
     ani_vm* vm = nullptr;
     if (env->GetVM(&vm) != ANI_OK) {
         IMSA_HILOGE("GetVM failed");
@@ -41,6 +45,10 @@ ani_vm* InputMethodAbilityImpl::GetAniVm(ani_env* env)
 
 ani_env* InputMethodAbilityImpl::GetAniEnv(ani_vm* vm)
 {
+    if (vm == nullptr) {
+        IMSA_HILOGE("null vm");
+        return nullptr;
+    }
     ani_env* env = nullptr;
     if (vm->GetEnv(ANI_VERSION_1, &env) != ANI_OK) {
         IMSA_HILOGE("GetEnv failed");
@@ -51,6 +59,10 @@ ani_env* InputMethodAbilityImpl::GetAniEnv(ani_vm* vm)
 
 ani_env* InputMethodAbilityImpl::AttachAniEnv(ani_vm* vm)
 {
+    if (vm == nullptr) {
+        IMSA_HILOGE("null vm");
+        return nullptr;
+    }
     ani_env *workerEnv = nullptr;
     ani_options aniArgs {0, nullptr};
     if (vm->AttachCurrentThread(&aniArgs, ANI_VERSION_1, &workerEnv) != ANI_OK) {

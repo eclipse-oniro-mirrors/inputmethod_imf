@@ -26,6 +26,10 @@
 #endif
 ANI_EXPORT ani_status ANI_Constructor(ani_vm *vm, uint32_t *result)
 {
+    if (vm == nullptr) {
+        IMSA_HILOGE("vm is nullptr");
+        return ANI_ERROR;
+    }
     ani_env *env;
     if (ANI_OK != vm->GetEnv(ANI_VERSION_1, &env)) {
         IMSA_HILOGE("Failed to get ANI environment");
@@ -44,6 +48,10 @@ ANI_EXPORT ani_status ANI_Constructor(ani_vm *vm, uint32_t *result)
         IMSA_HILOGE("Error from ohos::inputMethod::ANIRegister");
         status = ANI_ERROR;
     }
-    *result = ANI_VERSION_1;
+    if (result != nullptr) {
+        *result = ANI_VERSION_1;
+    } else {
+        IMSA_HILOGW("result is nullptr");
+    }
     return status;
 }
