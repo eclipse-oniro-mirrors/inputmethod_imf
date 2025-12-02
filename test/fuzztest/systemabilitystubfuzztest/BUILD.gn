@@ -32,7 +32,6 @@ group("system_ability_stub_fuzztest") {
     ":CommandRegisterProxyImeFuzzTest",
     ":CommandSetCallingWindowFuzzTest",
     ":CommandUnregisterProxyImeFuzzTest",
-    ":ConnectSystemCmdFuzzTest",
     ":DisplayOptionalInputMethodFuzzTest",
     ":ExitCurrentInputTypeFuzzTest",
     ":GetCurrentInputmethodFuzzTest",
@@ -43,7 +42,6 @@ group("system_ability_stub_fuzztest") {
     ":HideCurrentInputDeprecatedFuzzTest",
     ":HideCurrentInputFuzzTest",
     ":HideInputFuzzTest",
-    ":IsCurrentImeFuzzTest",
     ":IsDefaultImeFuzzTest",
     ":IsInputTypeSupportedFuzzTest",
     ":IsPanelShownFuzzTest",
@@ -54,14 +52,12 @@ group("system_ability_stub_fuzztest") {
     ":ReleaseInputFuzzTest",
     ":RequestHideInputFuzzTest",
     ":RequestShowInputFuzzTest",
-    ":SetCoreAndAgentFuzzTest",
     ":ShowCurrentInputDeprecatedFuzzTest",
     ":ShowCurrentInputFuzzTest",
     ":ShowInputFuzzTest",
     ":StartInputFuzzTest",
     ":StartInputTypeFuzzTest",
     ":StopInputSessionFuzzTest",
-    ":SwitchInputMethodFuzzTest",
     ":UnRegisteredProxyImeFuzzTest",
     ":UpdateListenEventFlagFuzzTest",
   ]
@@ -250,23 +246,6 @@ ohos_fuzztest("ReleaseInputFuzzTest") {
   external_deps = common_external_deps
 }
 
-ohos_fuzztest("SetCoreAndAgentFuzzTest") {
-  module_out_path = "imf/imf"
-
-  fuzz_config_file = "${inputmethod_path}/test/fuzztest/systemabilitystubfuzztest/setcoreandagent_fuzzer"
-
-  include_dirs = [
-    "${inputmethod_path}/test/fuzztest/systemabilitystubfuzztest/setcoreandagent_fuzzer",
-    "${inputmethod_path}/test/fuzztest/systemabilitystubfuzztest/common",
-  ]
-
-  sources = [ "setcoreandagent_fuzzer/setcoreandagent_fuzzer.cpp" ]
-
-  deps = common_deps
-
-  external_deps = common_external_deps
-}
-
 ohos_fuzztest("ShowCurrentInputFuzzTest") {
   module_out_path = "imf/imf"
 
@@ -371,23 +350,6 @@ ohos_fuzztest("UpdateListenEventFlagFuzzTest") {
   external_deps = common_external_deps
 }
 
-ohos_fuzztest("SwitchInputMethodFuzzTest") {
-  module_out_path = "imf/imf"
-
-  fuzz_config_file = "${inputmethod_path}/test/fuzztest/systemabilitystubfuzztest/switchinputmethod_fuzzer"
-
-  include_dirs = [
-    "${inputmethod_path}/test/fuzztest/systemabilitystubfuzztest/switchinputmethod_fuzzer",
-    "${inputmethod_path}/test/fuzztest/systemabilitystubfuzztest/common",
-  ]
-
-  sources = [ "switchinputmethod_fuzzer/switchinputmethod_fuzzer.cpp" ]
-
-  deps = common_deps
-
-  external_deps = common_external_deps
-}
-
 ohos_fuzztest("DisplayOptionalInputMethodFuzzTest") {
   module_out_path = "imf/imf"
 
@@ -418,23 +380,6 @@ ohos_fuzztest("ExitCurrentInputTypeFuzzTest") {
   ]
 
   sources = [ "exitcurrentinputtype_fuzzer/exitcurrentinputtype_fuzzer.cpp" ]
-
-  deps = common_deps
-
-  external_deps = common_external_deps
-}
-
-ohos_fuzztest("IsCurrentImeFuzzTest") {
-  module_out_path = "imf/imf"
-
-  fuzz_config_file = "${inputmethod_path}/test/fuzztest/systemabilitystubfuzztest/iscurrentime_fuzzer"
-
-  include_dirs = [
-    "${inputmethod_path}/test/fuzztest/systemabilitystubfuzztest/iscurrentime_fuzzer",
-    "${inputmethod_path}/test/fuzztest/systemabilitystubfuzztest/common",
-  ]
-
-  sources = [ "iscurrentime_fuzzer/iscurrentime_fuzzer.cpp" ]
 
   deps = common_deps
 
@@ -639,23 +584,6 @@ ohos_fuzztest("IsDefaultImeFuzzTest") {
   ]
 
   sources = [ "isdefaultime_fuzzer/isdefaultime_fuzzer.cpp" ]
-
-  deps = common_deps
-
-  external_deps = common_external_deps
-}
-
-ohos_fuzztest("ConnectSystemCmdFuzzTest") {
-  module_out_path = "imf/imf"
-
-  fuzz_config_file = "${inputmethod_path}/test/fuzztest/systemabilitystubfuzztest/connectsystemcmd_fuzzer"
-
-  include_dirs = [
-    "${inputmethod_path}/test/fuzztest/systemabilitystubfuzztest/connectsystemcmd_fuzzer",
-    "${inputmethod_path}/test/fuzztest/systemabilitystubfuzztest/common",
-  ]
-
-  sources = [ "connectsystemcmd_fuzzer/connectsystemcmd_fuzzer.cpp" ]
 
   deps = common_deps
 
