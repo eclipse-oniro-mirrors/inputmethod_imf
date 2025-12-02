@@ -13,9 +13,7 @@
  * limitations under the License.
  */
 
-#include "ohos.InputMethodSubtype.ani.hpp"
-#include "ohos.inputMethod.Panel.ani.hpp"
-#include "ohos.inputMethod.ani.hpp"
+#include "ohos.inputMethodEngine.ani.hpp"
 #include "global.h"
 #if __has_include(<ani.h>)
 #include <ani.h>
@@ -36,16 +34,8 @@ ANI_EXPORT ani_status ANI_Constructor(ani_vm *vm, uint32_t *result)
         return ANI_ERROR;
     }
     ani_status status = ANI_OK;
-    if (ANI_OK != ohos::InputMethodSubtype::ANIRegister(env)) {
-        IMSA_HILOGE("Error from ohos::InputMethodSubtype::ANIRegister");
-        status = ANI_ERROR;
-    }
-    if (ANI_OK != ohos::inputMethod::Panel::ANIRegister(env)) {
-        IMSA_HILOGE("Error from ohos::inputMethod::Panel::ANIRegister");
-        status = ANI_ERROR;
-    }
-    if (ANI_OK != ohos::inputMethod::ANIRegister(env)) {
-        IMSA_HILOGE("Error from ohos::inputMethod::ANIRegister");
+    if (ANI_OK != ohos::inputMethodEngine::ANIRegister(env)) {
+        IMSA_HILOGE("Error from ohos::inputMethodEngine::ANIRegister");
         status = ANI_ERROR;
     }
     if (result != nullptr) {

@@ -13,15 +13,51 @@
  * limitations under the License.
  */
 
-
 @!sts_inject_into_module("import {ElementName} from 'bundleManager.ElementName';")
 @!sts_inject_into_module("import * as ohos_InputMethodSubtype from './@ohos.InputMethodSubtype';")
+
+@!sts_inject_into_module("""
+import { Callback } from '@ohos.base';
+""")
+
 @!namespace("@ohos.inputMethod", "inputMethod")
+
 from ohos.inputMethod.Panel use PanelInfo;
 from ohos.InputMethodSubtype use InputMethodSubtype;
 @!sts_inject("""
 static { loadLibrary("inputmethod_taihe_native.z") }
 """)
+
+@!sts_inject("""
+export type SetPreviewTextCallback = (text: string, range: Range) => void;
+""")
+
+@!sts_inject("""
+export type OnMessageCallback = (msgId: string, msgParam?: ArrayBuffer) => void;
+export type OnTerminatedCallback = Callback<void>;
+""")
+
+struct MessageHandler {
+    onMessage: @sts_type("OnMessageCallback") Opaque;
+    onTerminated: @sts_type("OnTerminatedCallback") Opaque;
+}
+
+@!sts_inject("""
+const MAX_TYPE_NUM: int = 128;
+""")
+
+enum EnabledState : i32 {
+    DISABLED = 0,
+    BASIC_MODE = 1,
+    FULL_EXPERIENCE_MODE = 2
+}
+
+enum CapitalizeMode : i32 {
+    NONE = 0,
+    SENTENCES = 3,
+    WORDS = 4,
+    CHARACTERS = 5
+}
 
 struct InputMethodProperty {
     @readonly name: String;
@@ -30,6 +66,7 @@ struct InputMethodProperty {
     @readonly labelId: Optional<i64>;
     @readonly icon: Optional<String>;
     @readonly iconId: Optional<i64>;
+    @readonly enabledState: Optional<EnabledState>;
     extra: Optional<Opaque>;
 }
 
@@ -85,6 +122,21 @@ interface InputMethodSetting {
     OffImeShow(opq: Optional<Opaque>);
     OnImeChange(f: (inputMethodProperty: InputMethodProperty, inputMethodSubtype: InputMethodSubtype) => void, opq: Opaque);
     OffImeChange(opq: Optional<Opaque>);
+
+    OnImeChangeNew(callback: (inputMethodProperty: InputMethodProperty, inputMethodSubtype: InputMethodSubtype) => void, @sts_last opq: Opaque): void;
+    OffImeChangeNew(opq: Optional<@sts_type("Function2<InputMethodProperty, ohos_InputMethodSubtype.InputMethodSubtype, void>") Opaque>): void;
+
+    OnImeShowNew(callback: (info: Array<InputWindowInfo>) => void, @sts_last opq: Opaque): void;
+    OffImeShowNew(opq: Optional<@sts_type("Function1<Array<InputWindowInfo>, void>") Opaque>): void;
+
+    OnImeHideNew(callback: (info: Array<InputWindowInfo>) => void, @sts_last opq: Opaque): void;
+    OffImeHideNew(opq: Optional<@sts_type("Function1<Array<InputWindowInfo>, void>") Opaque>): void;
+
+    @gen_promise("getInputMethodState")
+    GetInputMethodStateSync(): EnabledState;
+
+    @gen_promise("enableInputMethod")
+    EnableInputMethodSync(bundleName: String, extensionName: String, enabledState: EnabledState): void;
 }
 
 struct CursorInfo {
@@ -127,7 +179,12 @@ enum TextInputType : i32 {
     EMAIL_ADDRESS = 5,
     URL = 6,
     VISIBLE_PASSWORD = 7,
-    NUMBER_PASSWORD = 8
+    NUMBER_PASSWORD = 8,
+    SCREEN_LOCK_PASSWORD = 9,
+    USER_NAME = 10,
+    NEW_PASSWORD = 11,
+    NUMBER_DECIMAL = 12,
+    ONE_TIME_CODE = 13
 }
 
 enum EnterKeyType : i32 {
@@ -192,7 +249,7 @@ interface InputMethodController {
     @gen_async("detach")
     @gen_promise("detach")
     DetachSync();
-    @!sts_inject_into_interface("""
+   @!sts_inject_into_interface("""
         on(type: string, callback: (arg0 : Object) => Object): void;
         off(type: string, callback?: (arg0 : Object) => Object): void;
         on(type: string, callback: () => int): void;
@@ -258,6 +315,80 @@ interface InputMethodController {
     OffGetRightTextOfCursor(opq: Optional<Opaque>);
     OnGetTextIndexAtCursor(f: () => i32, opq: Opaque);
     OffGetTextIndexAtCursor(opq: Optional<Opaque>);
+
+    OnSelectByRangeNew(callback: (range: Range) => void, @sts_last opq: Opaque): void;
+    OffSelectByRangeNew(opq: Optional<@sts_type("Function1<Range, void>") Opaque>);
+
+    OnSelectByMovementNew(callback: (movement: Movement) => void, @sts_last opq: Opaque);
+    OffSelectByMovementNew(opq: Optional<@sts_type("Function1<Movement, void>") Opaque>);
+
+    OnInsertTextNew(callback: (text: String) => void, @sts_last opq: Opaque);
+    OffInsertTextNew(opq: Optional<@sts_type("Function1<String, void>") Opaque>);
+
+    OnDeleteLeftNew(callback: (f: i32) => void, @sts_last opq: Opaque);
+    OffDeleteLeftNew(opq: Optional<@sts_type("Function1<int, void>") Opaque>);
+
+    OnDeleteRightNew(callback: (f: i32) => void, @sts_last opq: Opaque);
+    OffDeleteRightNew(opq: Optional<@sts_type("Function1<int, void>") Opaque>);
+
+    OnSendKeyboardStatusNew(callback: (status: KeyboardStatus) => void, @sts_last opq: Opaque);
+    OffSendKeyboardStatusNew(opq: Optional<@sts_type("Function1<KeyboardStatus, void>") Opaque>);
+
+    OnSendFunctionKeyNew(callback: (key: FunctionKey) => void, @sts_last opq: Opaque);
+    OffSendFunctionKeyNew(opq: Optional<@sts_type("Function1<FunctionKey, void>") Opaque>);
+
+    OnMoveCursorNew(callback: (direction: Direction) => void, @sts_last opq: Opaque);
+    OffMoveCursorNew(opq: Optional<@sts_type("Function1<Direction, void>") Opaque>);
+
+    OnHandleExtendActionNew(callback: (extendAction: ExtendAction) => void, @sts_last opq: Opaque);
+    OffHandleExtendActionNew(opq: Optional<@sts_type("Function1<ExtendAction, void>") Opaque>);
+    
+    OnGetLeftTextOfCursorNew(callback: (length: i32) => String, @sts_last opq: Opaque);
+    OffGetLeftTextOfCursorNew(opq: Optional<@sts_type("Function1<int, String>") Opaque>);
+
+    OnGetRightTextOfCursorNew(callback: (length: i32) => String, @sts_last opq: Opaque);
+    OffGetRightTextOfCursorNew(opq: Optional<@sts_type("Function1<int, String>") Opaque>);
+
+    OnGetTextIndexAtCursorNew(callback: () => i32, @sts_last opq: Opaque);
+    OffGetTextIndexAtCursorNew(opq: Optional<@sts_type("Function0<int>") Opaque>);
+    
+    OnSetPreviewText(callback: (text: String, range: Range) => void, @sts_last opq: Opaque);
+    OffSetPreviewText(opq: Optional<@sts_type("Function2<String, Range, void>") Opaque>);
+
+    OnFinishTextPreview(callback: () => void, @sts_last opq: Opaque);
+    OffFinishTextPreview(opq: Optional<@sts_type("Function0<void>") Opaque>);
+
+    @gen_promise("discardTypingText")
+    DiscardTypingTextSync(): void;
+
+    @gen_async("setCallingWindow")
+    @gen_promise("setCallingWindow")
+    SetCallingWindowSync(windowId: i32): void;
+
+    @gen_async("updateCursor")
+    @gen_promise("updateCursor")
+    UpdateCursorSync(cursorInfo: CursorInfo): void;
+
+    @gen_async("changeSelection")
+    @gen_promise("changeSelection")
+    ChangeSelectionSync(text: String, start: i32, end: i32): void;
+
+    @gen_async("updateAttribute")
+    @gen_promise("updateAttribute")
+    UpdateAttributeSync(attribute: InputAttribute): void;
+
+    @gen_async("stopInputSession")
+    @gen_promise("stopInputSession")
+    StopInputSessionSync(): bool;
+
+    @gen_async("showSoftKeyboard")
+    @gen_promise("showSoftKeyboard")
+    ShowSoftKeyboardSync(): void;
+
+    @gen_promise("sendMessage")
+    SendMessageSync(msgId: String, msgParam: Optional<@arraybuffer Array<u8>>): void;
+
+    recvMessage(msgHandler: Optional<MessageHandler>): void;
 }
 
 function GetSetting(): InputMethodSetting;
@@ -274,3 +405,9 @@ function SwitchInputMethodSync(bundleName: String, subtypeId: Optional<String>);
 @gen_async("switchCurrentInputMethodSubtype")
 @gen_promise("switchCurrentInputMethodSubtype")
 function SwitchCurrentInputMethodSubtypeSync(target: InputMethodSubtype): bool;
+
+function SetSimpleKeyboardEnabled(enable: bool): void;
+
+@gen_async("switchCurrentInputMethodAndSubtype")
+@gen_promise("switchCurrentInputMethodAndSubtype")
+function SwitchCurrentInputMethodAndSubtypeSync(inputMethodProperty: InputMethodProperty, inputMethodSubtype: InputMethodSubtype): bool;

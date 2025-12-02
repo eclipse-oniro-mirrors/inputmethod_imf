@@ -181,6 +181,11 @@ void InputMethodSettingImpl::RegisterListener(std::string const &type, callbackT
 void InputMethodSettingImpl::UnregisterListener(std::string const &type, optional_view<uintptr_t> opq,
     bool &isUpdateFlag)
 {
+    ani_env *env = taihe::get_env();
+    if (env == nullptr) {
+        IMSA_HILOGE("ani_env is nullptr!");
+        return;
+    }
     std::lock_guard<std::mutex> lock(mutex_);
     const auto iter = jsCbMap_.find(type);
     if (iter == jsCbMap_.end()) {
@@ -191,12 +196,6 @@ void InputMethodSettingImpl::UnregisterListener(std::string const &type, optiona
     if (!opq.has_value()) {
         jsCbMap_.erase(iter);
         isUpdateFlag = true;
-        return;
-    }
-
-    ani_env *env = taihe::get_env();
-    if (env == nullptr) {
-        IMSA_HILOGE("Failed to unregister %{public}s, env is nullptr", type.c_str());
         return;
     }
 
@@ -285,6 +284,37 @@ void InputMethodSettingImpl::OnPanelStatusChange(std::string const &type, const 
         auto &func = std::get<taihe::callback<void(taihe::array_view<InputWindowInfo_t>)>>(cb->callback);
         func(arrInfo);
     }
+}
+
+EnabledState_t InputMethodSettingImpl::GetInputMethodStateSync()
+{
+    int32_t errCode = ErrorCode::ERROR_EX_NULL_POINTER;
+    OHOS::MiscServices::EnabledStatus status = OHOS::MiscServices::EnabledStatus::DISABLED;
+    auto instance = InputMethodController::GetInstance();
+    if (instance != nullptr) {
+        IMSA_HILOGI("InputMethodController instance is not nullptr!");
+        errCode = instance->GetInputMethodState(status);
+    }
+    if (errCode != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetInputMethodState failed!");
+        set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
+        return EnumConvert::ConvertEnabledStatus(status);
+    }
+    IMSA_HILOGI("GetInputMethodState success!");
+    return EnumConvert::ConvertEnabledStatus(status);
+}
+
+void InputMethodSettingImpl::EnableInputMethodSync(::taihe::string_view bundleName,
+    ::taihe::string_view extensionName, ::ohos::inputMethod::EnabledState enabledState)
+{
+    int32_t errCode = ErrorCode::ERROR_EX_NULL_POINTER;
+    OHOS::MiscServices::EnabledStatus status;
+    auto instance = InputMethodController::GetInstance();
+    if (instance == nullptr) {
+        IMSA_HILOGE("GetInstance return nullptr!");
+    }
+    errCode = instance->EnableIme(std::string(bundleName), std::string(extensionName),
+        static_cast<OHOS::MiscServices::EnabledStatus>(enabledState.get_value()));
 }
 } // namespace MiscServices
 } // namespace OHOS

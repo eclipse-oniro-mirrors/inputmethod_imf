@@ -116,6 +116,7 @@ bool SwitchInputMethodWithTarget(InputMethodProperty const &target)
         IMSA_HILOGE("failed to switch input method, code:%{public}d message: %{public}s", code, message.c_str());
         return false;
     }
+    IMSA_HILOGI("SwitchInputMethodWithTarget success.");
     return true;
 }
 
@@ -133,7 +134,9 @@ void SwitchInputMethodSync(string_view bundleName, optional_view<string> subtype
         std::string message = JsUtils::ToMessage(code);
         taihe::set_business_error(code, message);
         IMSA_HILOGE("failed to switch input method, code:%{public}d message: %{public}s", code, message.c_str());
+        return;
     }
+    IMSA_HILOGI("SwitchInputMethodSync success.");
 }
 
 bool SwitchCurrentInputMethodSubtypeSync(InputMethodSubtype const &target)
@@ -151,6 +154,41 @@ bool SwitchCurrentInputMethodSubtypeSync(InputMethodSubtype const &target)
             message.c_str());
         return false;
     }
+    IMSA_HILOGI("SwitchCurrentInputMethodSubtypeSync success.");
+    return true;
+}
+
+void SetSimpleKeyboardEnabled(bool enable)
+{
+    auto controller =  OHOS::MiscServices::InputMethodController::GetInstance();
+    if (controller != nullptr) {
+        auto ret = controller->SetSimpleKeyboardEnabled(enable);
+        if (ret != ErrorCode::NO_ERROR) {
+            IMSA_HILOGE("SetSimpleKeyboardEnabled failed:%{public}d.", ret);
+            return;
+        }
+        IMSA_HILOGI("SetSimpleKeyboardEnabled success.");
+        return;
+    }
+    IMSA_HILOGE("SetSimpleKeyboardEnabled failed, InputMethodController GetInstance failed");
+}
+
+bool SwitchCurrentInputMethodAndSubtypeSync(::ohos::inputMethod::InputMethodProperty const& inputMethodProperty,
+    ::ohos::InputMethodSubtype::InputMethodSubtype const& inputMethodSubtype)
+{
+    std::string name(inputMethodSubtype.name);
+    std::string id(inputMethodSubtype.id);
+    int32_t errCode = OHOS::MiscServices::InputMethodController::GetInstance()->SwitchInputMethod(
+        SwitchTrigger::CURRENT_IME, name, id);
+    if (errCode != ErrorCode::NO_ERROR) {
+        int32_t code = JsUtils::Convert(errCode);
+        std::string message = JsUtils::ToMessage(code);
+        taihe::set_business_error(code, message);
+        IMSA_HILOGE("failed to switch Current input method subtype, code:%{public}d message: %{public}s", code,
+            message.c_str());
+        return false;
+    }
+    IMSA_HILOGI("SwitchCurrentInputMethodAndSubtype success.");
     return true;
 }
 } // namespace
@@ -164,3 +202,5 @@ TH_EXPORT_CPP_API_GetSystemInputMethodConfigAbility(GetSystemInputMethodConfigAb
 TH_EXPORT_CPP_API_SwitchInputMethodWithTarget(SwitchInputMethodWithTarget);
 TH_EXPORT_CPP_API_SwitchInputMethodSync(SwitchInputMethodSync);
 TH_EXPORT_CPP_API_SwitchCurrentInputMethodSubtypeSync(SwitchCurrentInputMethodSubtypeSync);
+TH_EXPORT_CPP_API_SetSimpleKeyboardEnabled(SetSimpleKeyboardEnabled);
+TH_EXPORT_CPP_API_SwitchCurrentInputMethodAndSubtypeSync(SwitchCurrentInputMethodAndSubtypeSync);

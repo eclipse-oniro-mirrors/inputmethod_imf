@@ -19,34 +19,29 @@ import("//build/ohos/taihe_idl/taihe.gni")
 subsystem_name = "inputmethod"
 part_name = "imf"
 taihe_generated_file_path =
-    "$taihe_file_path/out/$subsystem_name/$part_name/inputMethod"
+    "$taihe_file_path/out/$subsystem_name/$part_name/inputMethodEngine"
 
-copy_taihe_idl("copy_taihe_deps") {
-  sources = [ "idl/ohos.InputMethodSubtype.taihe" ]
-}
-
-copy_taihe_idl("inputMethod_taihe") {
-  sources = [
-    "idl/ohos.inputMethod.Panel.taihe",
-    "idl/ohos.inputMethod.taihe",
+copy_taihe_idl("inputMethodEngine_taihe") {
+  sources = [ "idl/ohos.inputMethodEngine.taihe" ]
+  deps =
+      [ "${inputmethod_path}/frameworks/ets/taihe/inputMethod:copy_taihe_deps" ]
+  external_deps = [
+    "input:input_event_taihe",
+    "input:key_code_taihe",
+    "input:key_event_taihe",
   ]
-  deps = [ ":copy_taihe_deps" ]
 }
 
 ohos_taihe("run_taihe") {
   taihe_generated_file_path = "$taihe_generated_file_path"
-  deps = [ ":inputMethod_taihe" ]
+  deps = [ ":inputMethodEngine_taihe" ]
   outputs = [
-    "$taihe_generated_file_path/src/ohos.inputMethod.ani.cpp",
-    "$taihe_generated_file_path/src/ohos.inputMethod.abi.c",
-    "$taihe_generated_file_path/src/ohos.inputMethod.Panel.ani.cpp",
-    "$taihe_generated_file_path/src/ohos.inputMethod.Panel.abi.c",
-    "$taihe_generated_file_path/src/ohos.InputMethodSubtype.ani.cpp",
-    "$taihe_generated_file_path/src/ohos.InputMethodSubtype.abi.c",
+    "$taihe_generated_file_path/src/ohos.inputMethodEngine.ani.cpp",
+    "$taihe_generated_file_path/src/ohos.inputMethodEngine.abi.c",
   ]
 }
 
-taihe_shared_library("inputmethod_taihe_native") {
+taihe_shared_library("inputmethod_engine_taihe_native") {
   branch_protector_ret = "pac_ret"
   sanitize = {
     boundary_sanitize = true
@@ -63,23 +58,26 @@ taihe_shared_library("inputmethod_taihe_native") {
     "include",
     "${inputmethod_path}/frameworks/ets/taihe/include",
     "${inputmethod_path}/frameworks/ets/taihe/inputMethod/include",
-    "${inputmethod_path}/frameworks/ets/taihe/inputMethodEngine/include",
     "${inputmethod_path}/frameworks/js/napi/inputmethodability",
     "${inputmethod_path}/frameworks/js/napi/inputmethodclient",
     "${inputmethod_path}/frameworks/native/inputmethod_controller/include",
   ]
   sources = get_target_outputs(":run_taihe")
   sources += [
+    "${inputmethod_path}/frameworks/ets/taihe/inputMethod/src/ani_callback_object.cpp",
+    "${inputmethod_path}/frameworks/ets/taihe/inputMethod/src/ani_message_handler.cpp",
     "${inputmethod_path}/frameworks/js/napi/inputmethodclient/js_utils.cpp",
     "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_method_utils.cpp",
-    "src/ani_callback_object.cpp",
+    "src/ani_common_engine.cpp",
     "src/ani_constructor.cpp",
-    "src/ani_message_handler.cpp",
-    "src/input_method_controller_impl.cpp",
-    "src/input_method_event_listener.cpp",
-    "src/input_method_setting_impl.cpp",
-    "src/input_method_text_changed_listener.cpp",
-    "src/ohos.inputMethod.impl.cpp",
+    "src/input_client_impl.cpp",
+    "src/input_method_ability_impl.cpp",
+    "src/input_method_client_impl.cpp",
+    "src/input_method_keyboard_delegate_impl.cpp",
+    "src/input_method_panel_impl.cpp",
+    "src/input_method_panel_listener.cpp",
+    "src/keyboard_controller_impl.cpp",
+    "src/ohos.inputMethodEngine.impl.cpp",
   ]
   deps = [
     ":run_taihe",
@@ -104,59 +102,25 @@ taihe_shared_library("inputmethod_taihe_native") {
   ]
 }
 
-generate_static_abc("inputmethod_abc") {
+generate_static_abc("inputmethod_engine_abc") {
   base_url = "$taihe_generated_file_path"
-  files = [ "$taihe_generated_file_path/@ohos.inputMethod.ets" ]
+  files = [ "$taihe_generated_file_path/@ohos.inputMethodEngine.ets" ]
   is_boot_abc = "True"
-  device_dst_file = "/system/framework/inputmethod_abc.abc"
+  device_dst_file = "/system/framework/inputmethod_engine_abc.abc"
   dependencies = [ ":run_taihe" ]
 }
 
-ohos_prebuilt_etc("inputmethod_etc") {
-  source = "$target_out_dir/inputmethod_abc.abc"
+ohos_prebuilt_etc("inputmethod_engine_etc") {
+  source = "$target_out_dir/inputmethod_engine_abc.abc"
   module_install_dir = "framework"
   part_name = "$part_name"
   subsystem_name = "$subsystem_name"
-  deps = [ ":inputmethod_abc" ]
+  deps = [ ":inputmethod_engine_abc" ]
 }
 
-generate_static_abc("inputmethod_panel_abc") {
-  base_url = "$taihe_generated_file_path"
-  files = [ "$taihe_generated_file_path/@ohos.inputMethod.Panel.ets" ]
-  is_boot_abc = "True"
-  device_dst_file = "/system/framework/inputmethod_panel_abc.abc"
-  dependencies = [ ":run_taihe" ]
-}
-
-ohos_prebuilt_etc("inputmethod_panel_etc") {
-  source = "$target_out_dir/inputmethod_panel_abc.abc"
-  module_install_dir = "framework"
-  part_name = "$part_name"
-  subsystem_name = "$subsystem_name"
-  deps = [ ":inputmethod_panel_abc" ]
-}
-
-generate_static_abc("inputmethod_subtype_abc") {
-  base_url = "$taihe_generated_file_path"
-  files = [ "$taihe_generated_file_path/@ohos.InputMethodSubtype.ets" ]
-  is_boot_abc = "True"
-  device_dst_file = "/system/framework/inputmethod_subtype_abc.abc"
-  dependencies = [ ":run_taihe" ]
-}
-
-ohos_prebuilt_etc("inputmethod_subtype_etc") {
-  source = "$target_out_dir/inputmethod_subtype_abc.abc"
-  module_install_dir = "framework"
-  part_name = "$part_name"
-  subsystem_name = "$subsystem_name"
-  deps = [ ":inputmethod_subtype_abc" ]
-}
-
-group("inputmethod_taihe") {
+group("inputmethod_engine_taihe") {
   deps = [
-    ":inputmethod_etc",
-    ":inputmethod_panel_etc",
-    ":inputmethod_subtype_etc",
-    ":inputmethod_taihe_native",
+    ":inputmethod_engine_etc",
+    ":inputmethod_engine_taihe_native",
   ]
 }
