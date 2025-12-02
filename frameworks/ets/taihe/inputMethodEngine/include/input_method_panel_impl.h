@@ -71,7 +71,6 @@ private:
 
 class IMFPanelImpl {
 public:
-
     IMFPanelImpl(uintptr_t ctx, PanelInfo_t const& info)
     {
         value_ = std::shared_ptr<InputMethodPanel>();

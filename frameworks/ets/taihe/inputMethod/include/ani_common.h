@@ -194,6 +194,10 @@ public:
     {
         ani_object aniObject = nullptr;
         ani_class arrayClass;
+        if (env == nullptr) {
+            IMSA_HILOGE("null env");
+            return aniObject;
+        }
         ani_status retCode = env->FindClass("escompat.Uint8Array", &arrayClass);
         if (retCode != ANI_OK) {
             IMSA_HILOGE("Failed: env->FindClass()");

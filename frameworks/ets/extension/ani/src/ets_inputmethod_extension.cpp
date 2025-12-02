@@ -35,11 +35,19 @@ using namespace AbilityRuntime;
 AbilityRuntime::InputMethodExtension *OHOS_ABILITY_ETSInputMethodExtension(
     const std::unique_ptr<AbilityRuntime::Runtime> &runtime)
 {
+    if (runtime == nullptr) {
+        IMSA_HILOGI("runtime null");
+        return nullptr;
+    }
     return new ETSInputMethodExtension(static_cast<ETSRuntime &>(*runtime));
 }
 
 ETSInputMethodExtension *ETSInputMethodExtension::Create(const std::unique_ptr<Runtime> &runtime)
 {
+    if (runtime == nullptr) {
+        IMSA_HILOGI("runtime null");
+        return nullptr;
+    }
     IMSA_HILOGI("call___%{public}d", runtime->GetLanguage());
     return new ETSInputMethodExtension(static_cast<ETSRuntime &>(*runtime));
 }
@@ -240,10 +248,15 @@ void ETSInputMethodExtension::OnStop()
         return;
     }
 
+    auto context = GetContext();
+    if (context == nullptr) {
+        IMSA_HILOGE("context null");
+        return;
+    }
     AbilityRuntime::InputMethodExtension::OnStop();
     IMSA_HILOGI("ETSInputMethodExtension OnStop start.");
     CallObjectMethod(false, "onDestroy", nullptr);
-    bool ret = ConnectionManager::GetInstance().DisconnectCaller(GetContext()->GetToken());
+    bool ret = ConnectionManager::GetInstance().DisconnectCaller(context->GetToken());
     if (ret) {
         IMSA_HILOGI("the input method extension connection is not disconnected.");
     }
@@ -356,6 +369,10 @@ ani_ref ETSInputMethodExtension::CallObjectMethod(bool withResult, const char *n
     auto env = etsRuntime_.GetAniEnv();
     if (env == nullptr) {
         IMSA_HILOGE("null env");
+        return nullptr;
+    }
+    if (etsAbilityObj_ == nullptr) {
+        IMSA_HILOGE("null etsAbilityObj_");
         return nullptr;
     }
     if ((status = env->Class_FindMethod(etsAbilityObj_->aniCls, name, signature, &method)) != ANI_OK) {

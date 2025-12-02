@@ -290,6 +290,10 @@ ani_object CommonConvert::Uint8ArrayToObject(ani_env *env, const std::vector<uin
 {
     ani_object aniObject = nullptr;
     ani_class arrayClass;
+    if (env == nullptr) {
+        IMSA_HILOGE("null env");
+        return aniObject;
+    }
     ani_status retCode = env->FindClass("escompat.Uint8Array", &arrayClass);
     if (retCode != ANI_OK) {
         IMSA_HILOGE("Failed: env->FindClass()");
@@ -338,6 +342,10 @@ ani_object CommonConvert::CreateAniUndefined(ani_env* env)
 ani_status CommonConvert::CallAniMethodVoid(ani_env *env, ani_object object, ani_class cls,
     const char* method, const char* signature, ...)
 {
+    if (env == nullptr) {
+        IMSA_HILOGE("null env");
+        return ANI_ERROR;
+    }
     ani_method aniMethod;
     ani_status ret = env->Class_FindMethod(cls, method, signature, &aniMethod);
     if (ret != ANI_OK) {
@@ -356,6 +364,10 @@ ani_status CommonConvert::CallAniMethodVoid(ani_env *env, ani_object object, ani
 
 ani_object CommonConvert::CreateAniSize(ani_env* env, uint32_t width, uint32_t height)
 {
+    if (env == nullptr) {
+        IMSA_HILOGE("null env");
+        return nullptr;
+    }
     ani_class aniClass;
     ani_status ret = env->FindClass("@ohos.window.window.SizeInternal", &aniClass);
     if (ret != ANI_OK) {
@@ -399,6 +411,10 @@ bool CommonConvert::GetIntObject(ani_env* env, const char* propertyName,
 
 bool CommonConvert::ParseRect(ani_env *env, ani_object rect, Rosen::Rect &result)
 {
+    if (env == nullptr) {
+        IMSA_HILOGE("null env");
+        return false;
+    }
     if (rect == nullptr) {
         IMSA_HILOGE("AniObject is null");
         return false;
@@ -468,6 +484,10 @@ bool CommonConvert::ParseRects(ani_object aniRects, std::vector<Rosen::Rect> &re
 
 bool CommonConvert::ParseWindowRect(ani_env *env, const char* propertyName, ani_object obj, Rosen::Rect &result)
 {
+    if (env == nullptr) {
+        IMSA_HILOGE("null env");
+        return false;
+    }
     ani_ref windowRect;
     ani_status ret = env->Object_GetPropertyByName_Ref(obj, propertyName, &windowRect);
     if (ret != ANI_OK) {

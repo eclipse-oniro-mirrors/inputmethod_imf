@@ -65,12 +65,7 @@ std::shared_ptr<InputMethodAbilityImpl> InputMethodAbilityImpl::GetInstance()
     if (inputMethodEngine_ == nullptr) {
         std::lock_guard<std::mutex> lock(engineMutex_);
         if (inputMethodEngine_ == nullptr) {
-            auto engine = std::make_shared<InputMethodAbilityImpl>();
-            if (engine == nullptr) {
-                IMSA_HILOGE("create engine failed!");
-                return nullptr;
-            }
-            inputMethodEngine_ = engine;
+            inputMethodEngine_ = std::make_shared<InputMethodAbilityImpl>();
         }
     }
     return inputMethodEngine_;

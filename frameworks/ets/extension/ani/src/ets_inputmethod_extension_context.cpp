@@ -32,6 +32,10 @@ constexpr const char *CLASSNAME_ASYNC_CALLBACK_WRAPPER = "@ohos.InputMethodExten
 
 bool BindNativeMethods(ani_env *env, ani_class &cls)
 {
+    if (env == nullptr) {
+        IMSA_HILOGE("null env");
+        return false;
+    }
     ani_status status = ANI_ERROR;
     std::array functions = {
         ani_native_function { "nativeStartAbility",
@@ -224,6 +228,10 @@ void ETSInputMethodExtensionContext::Destroy(ani_env *env, ani_object aniObj, an
 void ETSInputMethodExtensionContext::OnStartAbility(
     ani_env *env, ani_object aniObj, ani_object wantObj, ani_object callback)
 {
+    if (env == nullptr) {
+        IMSA_HILOGE("null env");
+        return;
+    }
     ani_object aniObject = nullptr;
     AAFwk::Want want;
     ErrCode errCode = ERR_OK;
@@ -248,6 +256,10 @@ void ETSInputMethodExtensionContext::OnStartAbility(
 
 void ETSInputMethodExtensionContext::OnDestroy(ani_env *env, ani_object aniObj, ani_object callback)
 {
+    if (env == nullptr) {
+        IMSA_HILOGE("null env");
+        return;
+    }
     ani_object aniObject = nullptr;
     ErrCode errCode = ERR_OK;
     auto context = context_.lock();
