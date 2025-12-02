@@ -228,7 +228,7 @@ public:
                 values.size(), bufLength);
             return nullptr;
         }
-        auto ret = memcpy_s(bufData, bufLength, values.data(), bufLength);
+        auto ret = memcpy_s(bufData, bufLength, values.data(), values.size());
         if (ret != 0) {
             IMSA_HILOGE("Failed: memcpy_s");
             return nullptr;

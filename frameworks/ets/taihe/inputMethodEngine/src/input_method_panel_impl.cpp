@@ -460,7 +460,7 @@ void PanelImpl::SetUiContent(int64_t id, taihe::string_view path, ani_object sto
         return;
     }
     std::string contentInfo = std::string(path);
-    auto code = inputMethodPanel_->SetUiContent(contentInfo, env, storage);
+    auto code = inputMethodPanel_->SetUiContentAni(contentInfo, env, storage);
     jobQueue_.Pop();
     if (code == ErrorCode::ERROR_PARAMETER_CHECK_FAILED) {
         IMSA_HILOGE("path should be a path to specific page.");

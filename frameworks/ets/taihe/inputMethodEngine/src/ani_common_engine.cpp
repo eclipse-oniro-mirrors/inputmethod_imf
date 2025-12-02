@@ -324,7 +324,7 @@ ani_object CommonConvert::Uint8ArrayToObject(ani_env *env, const std::vector<uin
             values.size(), bufLength);
         return nullptr;
     }
-    auto ret = memcpy_s(bufData, bufLength, values.data(), bufLength);
+    auto ret = memcpy_s(bufData, bufLength, values.data(), values.size());
     if (ret != 0) {
         IMSA_HILOGE("Failed: memcpy_s");
         return nullptr;
