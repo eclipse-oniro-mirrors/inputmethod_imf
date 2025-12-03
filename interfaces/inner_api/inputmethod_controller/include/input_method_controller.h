@@ -1048,6 +1048,7 @@ private:
     int32_t SendRequestToImeMirrorAgent(std::function<int32_t(std::shared_ptr<IInputMethodAgent>)> task);
     void SetInputReady(const std::vector<sptr<IRemoteObject>> &agentObjects, const std::vector<BindImeInfo> &imeInfos);
     std::shared_ptr<ImcInnerListener> GetImcInnerListener();
+    int32_t SetCallingWindowByIMSA(uint32_t windowId);
     void NotifyAttachFailure(int32_t errCode);
     struct CtrlEventInfo {
         std::chrono::steady_clock::time_point timestamp;

@@ -251,7 +251,7 @@ HWTEST_F(InputMethodEditorTest, testUnfocused, TestSize.Level1)
 HWTEST_F(InputMethodEditorTest, testRequestInput001, TestSize.Level1)
 {
     IMSA_HILOGI("InputMethodEditorTest testRequestInput001 Test START");
-    ret = InputMethodEditorTest::inputMethodController_->RequestHideInput();
+    auto ret = InputMethodEditorTest::inputMethodController_->RequestHideInput();
     EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
 }
 
@@ -264,7 +264,9 @@ HWTEST_F(InputMethodEditorTest, testRequestInput002, TestSize.Level1)
 {
     IMSA_HILOGI("InputMethodEditorTest testRequestInput002 Test START");
     IdentityCheckerMock::SetPermission(true);
-    ret = InputMethodEditorTest::inputMethodController_->RequestHideInput();
+    IdentityCheckerMock::SetIsUIExtension(false);
+    IdentityCheckerMock::SetBroker(false);
+    auto ret = InputMethodEditorTest::inputMethodController_->RequestHideInput();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     IdentityCheckerMock::SetPermission(false);
 }
@@ -491,6 +493,8 @@ HWTEST_F(InputMethodEditorTest, testIMCClose, TestSize.Level1)
 HWTEST_F(InputMethodEditorTest, testRequestHideInput_001, TestSize.Level1)
 {
     IMSA_HILOGI("InputMethodEditorTest testRequestHideInput_001 Test START");
+    IdentityCheckerMock::SetIsUIExtension(false);
+    IdentityCheckerMock::SetBroker(false);
     IdentityCheckerMock::SetFocused(true);
     imeListener_->keyboardState_ = true;
     int32_t ret = InputMethodEditorTest::inputMethodController_->RequestHideInput();
@@ -507,6 +511,8 @@ HWTEST_F(InputMethodEditorTest, testRequestHideInput_002, TestSize.Level1)
 {
     IMSA_HILOGI("InputMethodEditorTest testRequestHideInput_002 Test START");
     IdentityCheckerMock::SetFocused(true);
+    IdentityCheckerMock::SetIsUIExtension(false);
+    IdentityCheckerMock::SetBroker(false);
     int32_t ret = InputMethodEditorTest::inputMethodController_->Attach(InputMethodEditorTest::textListener_, false);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     std::this_thread::sleep_for(std::chrono::seconds(2));

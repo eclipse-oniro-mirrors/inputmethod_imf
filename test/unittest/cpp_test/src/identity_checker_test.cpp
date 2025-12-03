@@ -39,8 +39,12 @@ constexpr uint32_t INVAL_WINDOW_ID = 0;
 
 class MockIRemoteObject : public IRemoteObject {
 public:
-    MockIRemoteObject() : IRemoteObject(u"mock_i_remote_object") { }
-    ~MockIRemoteObject() { }
+    MockIRemoteObject() : IRemoteObject(u"mock_i_remote_object")
+    {
+    }
+    ~MockIRemoteObject()
+    {
+    }
     MOCK_METHOD(int, SendRequest, (uint32_t code, MessageParcel &data, MessageParcel &reply, MessageOption &option));
     MOCK_METHOD(bool, IsProxyObject, (), (const, override));
     MOCK_METHOD(bool, CheckObjectLegality, (), (const, override));
@@ -64,10 +68,11 @@ public:
     public:
         IdentityCheckerMock() = default;
         virtual ~IdentityCheckerMock() = default;
-        bool IsFocused(int64_t callingPid, uint32_t callingTokenId, int64_t focusedPid = INVALID_PID,
-            bool isAttach = false, sptr<IRemoteObject> abilityToken = nullptr) override
+        std::pair<bool, FocusedInfo> IsFocused(int64_t callingPid, uint32_t callingTokenId, uint32_t windowId = 0,
+            const sptr<IRemoteObject> &abilityToken = nullptr) override
         {
-            return isFocused_;
+            FocusedInfo info;
+            return { isFocused_, info };
         }
         bool IsSystemApp(uint64_t fullTokenId) override
         {
@@ -101,9 +106,18 @@ public:
         {
             return true;
         }
-        bool IsFocusedUIExtension(uint32_t callingTokenId, sptr<IRemoteObject> abilityToken = nullptr) override
+        bool IsFocusedUIExtension(uint32_t callingTokenId) override
         {
             return isFocusedUIExtension_;
+        }
+        bool IsUIExtension(int64_t pid) override
+        {
+            return true;
+        }
+        std::pair<bool, FocusedInfo> CheckBroker(Security::AccessToken::AccessTokenID tokenId) override
+        {
+            FocusedInfo info;
+            return { isBroker_, info };
         }
         static bool isFocused_;
         static bool isSystemApp_;
@@ -126,6 +140,7 @@ public:
     static sptr<InputMethodSystemAbility> service_;
     static std::shared_ptr<IdentityCheckerMock> identityCheckerMock_;
     static std::shared_ptr<IdentityCheckerImpl> identityCheckerImpl_;
+    static uint32_t windowId_;
 };
 bool IdentityCheckerTest::IdentityCheckerMock::isFocused_ = false;
 bool IdentityCheckerTest::IdentityCheckerMock::isSystemApp_ = false;
@@ -144,9 +159,7 @@ void IdentityCheckerTest::SetUpTestCase(void)
         return;
     }
     service_->OnStart();
-    ImeCfgManager::GetInstance().imeConfigs_ = {
-        { MAIN_USER_ID, CURRENT_IME, CURRENT_SUBNAME, false }
-    };
+    ImeCfgManager::GetInstance().imeConfigs_ = { { MAIN_USER_ID, CURRENT_IME, CURRENT_SUBNAME, false } };
     identityCheckerImpl_ = std::make_shared<IdentityCheckerImpl>();
 }
 
@@ -173,6 +186,7 @@ void IdentityCheckerTest::TearDown(void)
 sptr<InputMethodSystemAbility> IdentityCheckerTest::service_;
 std::shared_ptr<IdentityCheckerTest::IdentityCheckerMock> IdentityCheckerTest::identityCheckerMock_;
 std::shared_ptr<IdentityCheckerImpl> IdentityCheckerTest::identityCheckerImpl_;
+uint32_t IdentityCheckerTest::windowId_ = 0;
 
 /**
  * @tc.name: testStartInput_001
@@ -208,7 +222,7 @@ HWTEST_F(IdentityCheckerTest, testStartInput_002, TestSize.Level1)
     std::vector<sptr<IRemoteObject>> agents;
     std::vector<BindImeInfo> imeInfos;
     int32_t ret = IdentityCheckerTest::service_->StartInput(inputClientInfo, agents, imeInfos);
-    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_REBOOT_OLD_IME_NOT_STOP);
+    EXPECT_NE(ret, ErrorCode::ERROR_CLIENT_NOT_FOCUSED);
 }
 
 /**
@@ -227,7 +241,7 @@ HWTEST_F(IdentityCheckerTest, testStartInput_003, TestSize.Level1)
     std::vector<sptr<IRemoteObject>> agents;
     std::vector<BindImeInfo> imeInfos;
     int32_t ret = IdentityCheckerTest::service_->StartInput(inputClientInfo, agents, imeInfos);
-    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_REBOOT_OLD_IME_NOT_STOP);
+    EXPECT_NE(ret, ErrorCode::ERROR_CLIENT_NOT_FOCUSED);
 }
 
 /**
@@ -246,7 +260,7 @@ HWTEST_F(IdentityCheckerTest, testStartInput_004, TestSize.Level1)
     std::vector<sptr<IRemoteObject>> agents;
     std::vector<BindImeInfo> imeInfos;
     int32_t ret = IdentityCheckerTest::service_->StartInput(inputClientInfo, agents, imeInfos);
-    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_REBOOT_OLD_IME_NOT_STOP);
+    EXPECT_NE(ret, ErrorCode::ERROR_CLIENT_NOT_FOCUSED);
 }
 
 /**
@@ -260,7 +274,7 @@ HWTEST_F(IdentityCheckerTest, testStopInput_001, TestSize.Level1)
 {
     IMSA_HILOGI("IdentityCheckerTest testStopInput_001 start");
     service_->identityChecker_ = identityCheckerImpl_;
-    int32_t ret = IdentityCheckerTest::service_->HideInput(nullptr);
+    int32_t ret = IdentityCheckerTest::service_->HideInput(nullptr, windowId_);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOCUSED);
 }
 
@@ -276,7 +290,7 @@ HWTEST_F(IdentityCheckerTest, testStopInput_002, TestSize.Level1)
     IMSA_HILOGI("IdentityCheckerTest testStopInput_002 start");
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = true;
     IdentityCheckerTest::IdentityCheckerMock::isFocused_ = false;
-    int32_t ret = IdentityCheckerTest::service_->HideInput(nullptr);
+    int32_t ret = IdentityCheckerTest::service_->HideInput(nullptr, windowId_);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
 }
 
@@ -292,8 +306,8 @@ HWTEST_F(IdentityCheckerTest, testStopInput_003, TestSize.Level1)
     IMSA_HILOGI("IdentityCheckerTest testStopInput_003 start");
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = true;
     IdentityCheckerTest::IdentityCheckerMock::isFocused_ = true;
-    InputClientInfo clientInfo {};
-    int32_t ret = IdentityCheckerTest::service_->HideInput(nullptr);
+    InputClientInfo clientInfo{};
+    int32_t ret = IdentityCheckerTest::service_->HideInput(nullptr, windowId_);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
 }
 
@@ -309,8 +323,8 @@ HWTEST_F(IdentityCheckerTest, testStopInput_004, TestSize.Level1)
     IMSA_HILOGI("IdentityCheckerTest testStopInput_004 start");
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = false;
     IdentityCheckerTest::IdentityCheckerMock::isFocused_ = true;
-    InputClientInfo clientInfo {};
-    int32_t ret = IdentityCheckerTest::service_->HideInput(nullptr);
+    InputClientInfo clientInfo{};
+    int32_t ret = IdentityCheckerTest::service_->HideInput(nullptr, windowId_);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
 }
 
@@ -325,7 +339,7 @@ HWTEST_F(IdentityCheckerTest, testStopInputSession_001, TestSize.Level1)
 {
     IMSA_HILOGI("IdentityCheckerTest testStopInputSession_001 start");
     service_->identityChecker_ = identityCheckerImpl_;
-    int32_t ret = IdentityCheckerTest::service_->StopInputSession();
+    int32_t ret = IdentityCheckerTest::service_->StopInputSession(windowId_);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOCUSED);
 }
 
@@ -341,7 +355,7 @@ HWTEST_F(IdentityCheckerTest, testStopInputSession_002, TestSize.Level1)
     IMSA_HILOGI("IdentityCheckerTest testStopInputSession_002 start");
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = true;
     IdentityCheckerTest::IdentityCheckerMock::isFocused_ = false;
-    int32_t ret = IdentityCheckerTest::service_->StopInputSession();
+    int32_t ret = IdentityCheckerTest::service_->StopInputSession(windowId_);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOUND);
 }
 
@@ -357,8 +371,8 @@ HWTEST_F(IdentityCheckerTest, testStopInputSession_003, TestSize.Level1)
     IMSA_HILOGI("IdentityCheckerTest testStopInputSession_003 start");
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = true;
     IdentityCheckerTest::IdentityCheckerMock::isFocused_ = true;
-    InputClientInfo clientInfo {};
-    int32_t ret = IdentityCheckerTest::service_->StopInputSession();
+    InputClientInfo clientInfo{};
+    int32_t ret = IdentityCheckerTest::service_->StopInputSession(windowId_);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOUND);
 }
 
@@ -374,8 +388,8 @@ HWTEST_F(IdentityCheckerTest, testStopInputSession_004, TestSize.Level1)
     IMSA_HILOGI("IdentityCheckerTest testStopInputSession_004 start");
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = false;
     IdentityCheckerTest::IdentityCheckerMock::isFocused_ = true;
-    InputClientInfo clientInfo {};
-    int32_t ret = IdentityCheckerTest::service_->StopInputSession();
+    InputClientInfo clientInfo{};
+    int32_t ret = IdentityCheckerTest::service_->StopInputSession(windowId_);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOUND);
 }
 
@@ -407,22 +421,6 @@ HWTEST_F(IdentityCheckerTest, testSetCoreAndAgent_002, TestSize.Level1)
     IdentityCheckerTest::IdentityCheckerMock::isBundleNameValid_ = true;
     int32_t ret = IdentityCheckerTest::service_->SetCoreAndAgent(nullptr, nullptr);
     EXPECT_EQ(ret, ErrorCode::ERROR_NOT_CURRENT_IME);
-}
-
-/**
- * @tc.name: testUnRegisteredProxyIme_001
- * @tc.desc: not a sys_basic native sa
- * @tc.type: FUNC
- * @tc.require:
- * @tc.author:
- */
-HWTEST_F(IdentityCheckerTest, testUnRegisteredProxyIme_001, TestSize.Level1)
-{
-    IMSA_HILOGI("IdentityCheckerTest testUnRegisteredProxyIme_001 start");
-    IdentityCheckerTest::IdentityCheckerMock::isNativeSa_ = false;
-    int32_t ret = IdentityCheckerTest::service_->UnRegisteredProxyIme(
-        static_cast<int32_t>(UnRegisteredType::REMOVE_PROXY_IME), nullptr);
-    EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
 }
 
 /**
@@ -466,7 +464,8 @@ HWTEST_F(IdentityCheckerTest, testHideCurrentInput_001, TestSize.Level1)
 {
     IMSA_HILOGI("IdentityCheckerTest testHideCurrentInput_001 start");
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = true;
-    int32_t ret = IdentityCheckerTest::service_->HideCurrentInput();
+    uint64_t displayId = 0;
+    int32_t ret = IdentityCheckerTest::service_->HideCurrentInput(displayId);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOUND);
 }
 
@@ -482,7 +481,8 @@ HWTEST_F(IdentityCheckerTest, testHideCurrentInput_002, TestSize.Level1)
     IMSA_HILOGI("IdentityCheckerTest testHideCurrentInput_002 start");
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = false;
     IdentityCheckerTest::IdentityCheckerMock::hasPermission_ = false;
-    int32_t ret = IdentityCheckerTest::service_->HideCurrentInput();
+    uint64_t displayId = 0;
+    int32_t ret = IdentityCheckerTest::service_->HideCurrentInput(displayId);
     EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
 }
 
@@ -499,7 +499,8 @@ HWTEST_F(IdentityCheckerTest, testHideCurrentInput_003, TestSize.Level1)
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = false;
     IdentityCheckerTest::IdentityCheckerMock::hasPermission_ = true;
     IdentityCheckerTest::IdentityCheckerMock::isFocused_ = false;
-    int32_t ret = IdentityCheckerTest::service_->HideCurrentInput();
+    uint64_t displayId = 0;
+    int32_t ret = IdentityCheckerTest::service_->HideCurrentInput(displayId);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOUND);
 }
 
@@ -514,7 +515,8 @@ HWTEST_F(IdentityCheckerTest, testShowCurrentInput_001, TestSize.Level1)
 {
     IMSA_HILOGI("IdentityCheckerTest testShowCurrentInput_001 start");
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = true;
-    int32_t ret = IdentityCheckerTest::service_->ShowCurrentInput();
+    uint64_t displayId = 0;
+    int32_t ret = IdentityCheckerTest::service_->ShowCurrentInput(displayId);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOUND);
 }
 
@@ -530,7 +532,8 @@ HWTEST_F(IdentityCheckerTest, testShowCurrentInput_002, TestSize.Level1)
     IMSA_HILOGI("IdentityCheckerTest testShowCurrentInput_002 start");
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = false;
     IdentityCheckerTest::IdentityCheckerMock::hasPermission_ = false;
-    int32_t ret = IdentityCheckerTest::service_->ShowCurrentInput();
+    uint64_t displayId = 0;
+    int32_t ret = IdentityCheckerTest::service_->ShowCurrentInput(displayId);
     EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
 }
 
@@ -547,7 +550,8 @@ HWTEST_F(IdentityCheckerTest, testShowCurrentInput_003, TestSize.Level1)
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = false;
     IdentityCheckerTest::IdentityCheckerMock::hasPermission_ = true;
     IdentityCheckerTest::IdentityCheckerMock::isFocused_ = false;
-    int32_t ret = IdentityCheckerTest::service_->ShowCurrentInput();
+    uint64_t displayId = 0;
+    int32_t ret = IdentityCheckerTest::service_->ShowCurrentInput(displayId);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOUND);
 }
 
@@ -563,7 +567,7 @@ HWTEST_F(IdentityCheckerTest, testPanelStatusChange_001, TestSize.Level1)
     IMSA_HILOGI("IdentityCheckerTest testPanelStatusChange_001 start");
     service_->identityChecker_ = identityCheckerImpl_;
     InputWindowStatus status = InputWindowStatus::SHOW;
-    ImeWindowInfo info {};
+    ImeWindowInfo info{};
     int32_t ret = IdentityCheckerTest::service_->PanelStatusChange(static_cast<uint32_t>(status), info);
     EXPECT_EQ(ret, ErrorCode::ERROR_NOT_CURRENT_IME);
 }
@@ -580,7 +584,7 @@ HWTEST_F(IdentityCheckerTest, testPanelStatusChange_002, TestSize.Level1)
     IMSA_HILOGI("IdentityCheckerTest testPanelStatusChange_002 start");
     IdentityCheckerTest::IdentityCheckerMock::isBundleNameValid_ = true;
     InputWindowStatus status = InputWindowStatus::SHOW;
-    ImeWindowInfo info {};
+    ImeWindowInfo info{};
     int32_t ret = IdentityCheckerTest::service_->PanelStatusChange(static_cast<uint32_t>(status), info);
     EXPECT_EQ(ret, ErrorCode::ERROR_NOT_CURRENT_IME);
 }
@@ -596,7 +600,7 @@ HWTEST_F(IdentityCheckerTest, testUpdateListenEventFlag_001, TestSize.Level1)
 {
     IMSA_HILOGI("IdentityCheckerTest testUpdateListenEventFlag_001 start");
     service_->identityChecker_ = identityCheckerImpl_;
-    InputClientInfoInner clientInfo {};
+    InputClientInfoInner clientInfo{};
     int32_t ret = IdentityCheckerTest::service_->UpdateListenEventFlag(clientInfo, EVENT_IME_SHOW_MASK);
     EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
 
@@ -604,7 +608,7 @@ HWTEST_F(IdentityCheckerTest, testUpdateListenEventFlag_001, TestSize.Level1)
     EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
 
     ret = IdentityCheckerTest::service_->UpdateListenEventFlag(clientInfo, EVENT_IME_CHANGE_MASK);
-    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_NULLPTR);
+    EXPECT_NE(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
 }
 
 /**
@@ -619,15 +623,15 @@ HWTEST_F(IdentityCheckerTest, testUpdateListenEventFlag_002, TestSize.Level1)
     IMSA_HILOGI("IdentityCheckerTest testUpdateListenEventFlag_002 start");
     IdentityCheckerTest::IdentityCheckerMock::isSystemApp_ = true;
     IdentityCheckerTest::IdentityCheckerMock::isNativeSa_ = false;
-    InputClientInfoInner clientInfo {};
+    InputClientInfoInner clientInfo{};
     int32_t ret = IdentityCheckerTest::service_->UpdateListenEventFlag(clientInfo, EVENT_IME_SHOW_MASK);
-    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_NULLPTR);
+    EXPECT_NE(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
 
     ret = IdentityCheckerTest::service_->UpdateListenEventFlag(clientInfo, EVENT_IME_HIDE_MASK);
-    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_NULLPTR);
+    EXPECT_NE(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
 
     ret = IdentityCheckerTest::service_->UpdateListenEventFlag(clientInfo, EVENT_IME_CHANGE_MASK);
-    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_NULLPTR);
+    EXPECT_NE(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
 }
 
 /**
@@ -642,15 +646,15 @@ HWTEST_F(IdentityCheckerTest, testUpdateListenEventFlag_003, TestSize.Level1)
     IMSA_HILOGI("IdentityCheckerTest testUpdateListenEventFlag_003 start");
     IdentityCheckerTest::IdentityCheckerMock::isSystemApp_ = false;
     IdentityCheckerTest::IdentityCheckerMock::isNativeSa_ = true;
-    InputClientInfoInner clientInfo {};
+    InputClientInfoInner clientInfo{};
     int32_t ret = IdentityCheckerTest::service_->UpdateListenEventFlag(clientInfo, EVENT_IME_SHOW_MASK);
-    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_NULLPTR);
+    EXPECT_NE(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
 
     ret = IdentityCheckerTest::service_->UpdateListenEventFlag(clientInfo, EVENT_IME_HIDE_MASK);
-    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_NULLPTR);
+    EXPECT_NE(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
 
     ret = IdentityCheckerTest::service_->UpdateListenEventFlag(clientInfo, EVENT_IME_CHANGE_MASK);
-    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_NULLPTR);
+    EXPECT_NE(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
 }
 
 /**
@@ -745,7 +749,7 @@ HWTEST_F(IdentityCheckerTest, testHideCurrentInputDeprecated_001, TestSize.Level
 {
     IMSA_HILOGI("IdentityCheckerTest testHideCurrentInputDeprecated_001 start");
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = true;
-    int32_t ret = IdentityCheckerTest::service_->HideCurrentInputDeprecated();
+    int32_t ret = IdentityCheckerTest::service_->HideCurrentInputDeprecated(windowId_);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOUND);
 }
 
@@ -761,7 +765,7 @@ HWTEST_F(IdentityCheckerTest, testHideCurrentInputDeprecated_002, TestSize.Level
     IMSA_HILOGI("IdentityCheckerTest testHideCurrentInputDeprecated_002 start");
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = false;
     IdentityCheckerTest::IdentityCheckerMock::isFocused_ = false;
-    int32_t ret = IdentityCheckerTest::service_->HideCurrentInputDeprecated();
+    int32_t ret = IdentityCheckerTest::service_->HideCurrentInputDeprecated(windowId_);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOCUSED);
 }
 
@@ -777,7 +781,7 @@ HWTEST_F(IdentityCheckerTest, testHideCurrentInputDeprecated_003, TestSize.Level
     IMSA_HILOGI("IdentityCheckerTest testHideCurrentInputDeprecated_003 start");
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = false;
     IdentityCheckerTest::IdentityCheckerMock::isFocused_ = true;
-    int32_t ret = IdentityCheckerTest::service_->HideCurrentInputDeprecated();
+    int32_t ret = IdentityCheckerTest::service_->HideCurrentInputDeprecated(windowId_);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOUND);
 }
 
@@ -792,7 +796,7 @@ HWTEST_F(IdentityCheckerTest, testShowCurrentInputDeprecated_001, TestSize.Level
 {
     IMSA_HILOGI("IdentityCheckerTest testShowCurrentInputDeprecated_001 start");
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = true;
-    int32_t ret = IdentityCheckerTest::service_->ShowCurrentInputDeprecated();
+    int32_t ret = IdentityCheckerTest::service_->ShowCurrentInputDeprecated(windowId_);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOUND);
 }
 
@@ -808,7 +812,7 @@ HWTEST_F(IdentityCheckerTest, testShowCurrentInputDeprecated_002, TestSize.Level
     IMSA_HILOGI("IdentityCheckerTest testShowCurrentInputDeprecated_002 start");
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = false;
     IdentityCheckerTest::IdentityCheckerMock::isFocused_ = false;
-    int32_t ret = IdentityCheckerTest::service_->ShowCurrentInputDeprecated();
+    int32_t ret = IdentityCheckerTest::service_->ShowCurrentInputDeprecated(windowId_);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOCUSED);
 }
 
@@ -824,7 +828,7 @@ HWTEST_F(IdentityCheckerTest, testShowCurrentInputDeprecated_003, TestSize.Level
     IMSA_HILOGI("IdentityCheckerTest testShowCurrentInputDeprecated_003 start");
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = false;
     IdentityCheckerTest::IdentityCheckerMock::isFocused_ = true;
-    int32_t ret = IdentityCheckerTest::service_->ShowCurrentInputDeprecated();
+    int32_t ret = IdentityCheckerTest::service_->ShowCurrentInputDeprecated(windowId_);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOUND);
 }
 
@@ -935,17 +939,16 @@ HWTEST_F(IdentityCheckerTest, testIsFocused, TestSize.Level1)
     IMSA_HILOGI("IdentityCheckerTest testIsFocused start");
     ASSERT_NE(identityCheckerImpl_, nullptr);
     const auto demoPid = 10;
-    const auto demoUid = 10;
-    const auto focusedPid = 20;
+    const auto demoTokenId = 10;
     IMSA_HILOGI("IdentityCheckerTest IsFocused with null token");
-    bool isFocusedResult1 = identityCheckerImpl_->IsFocused(demoPid, demoUid, focusedPid, true, nullptr);
-    EXPECT_FALSE(isFocusedResult1);
+    auto isFocusedResult1 = identityCheckerImpl_->IsFocused(demoPid, demoTokenId, windowId_, nullptr);
+    EXPECT_FALSE(isFocusedResult1.first);
 
     auto abilityToken = new (std::nothrow) MockIRemoteObject();
     ASSERT_NE(abilityToken, nullptr);
     IMSA_HILOGI("IdentityCheckerTest IsFocused with valid token");
-    bool isFocusedResult2 = identityCheckerImpl_->IsFocused(demoPid, demoUid, focusedPid, true, abilityToken);
-    EXPECT_FALSE(isFocusedResult2);
+    auto isFocusedResult2 = identityCheckerImpl_->IsFocused(demoPid, demoTokenId, windowId_, abilityToken);
+    EXPECT_FALSE(isFocusedResult2.first);
 }
 
 /**

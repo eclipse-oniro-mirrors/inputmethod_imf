@@ -59,13 +59,11 @@ bool WindowAdapter::GetCallingWindowInfo(
     IMSA_HILOGD("[%{public}d,%{public}d] run in.", userId, windId);
     callingWindowInfo.windowId_ = static_cast<int32_t>(windId);
     callingWindowInfo.userId_ = userId;
-    int64_t start =
-        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch())
-            .count();
+    int64_t start =  std::chrono::duration_cast<std::chrono::microseconds>
+        (std::chrono::system_clock::now().time_since_epoch()).count();
     auto wmErr = WindowManagerLite::GetInstance().GetCallingWindowInfo(callingWindowInfo);
-    int64_t end =
-        std::chrono::duration_cast<std::chrono::microseconds>(std::chrono::system_clock::now().time_since_epoch())
-            .count();
+    int64_t end =  std::chrono::duration_cast<std::chrono::microseconds>
+        (std::chrono::system_clock::now().time_since_epoch()).count();
     int64_t durTime = end - start;
     if (durTime > MAX_TIMEOUT) {
         IMSA_HILOGW("GetCallingWindowInfo cost [%{public}" PRId64 "]us", durTime);

@@ -28,9 +28,9 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void StartInput([in] InputClientInfoInner inputClientInfoInner, [out] IRemoteObject[] agents, [out] BindImeInfo[] imeInfos);
     void ShowCurrentInput([in]unsigned long displayId, [in] unsigned int type);
     void HideCurrentInput([in]unsigned long displayId);
-    void StopInputSession([in] IRemoteObject abilityToken, [in] unsigned int windowId);
-    void ShowInput([in] IInputClient client, [in] IRemoteObject abilityToken, [in] unsigned int windowId, [in] unsigned int type, [in] int requestKeyboardReason);
-    void HideInput([in] IInputClient client, [in] IRemoteObject abilityToken, [in] unsigned int windowId);
+    void StopInputSession([in] unsigned int windowId);
+    void ShowInput([in] IInputClient client, [in] unsigned int windowId, [in] unsigned int type, [in] int requestKeyboardReason);
+    void HideInput([in] IInputClient client, [in] unsigned int windowId);
     void ReleaseInput([in] IInputClient client, [in] unsigned int sessionId);
     void RequestHideInput([in] unsigned int windowId, [in] boolean isFocusTriggered);
     void GetDefaultInputMethod([out] Property prop, [in] boolean isBrief);
@@ -60,9 +60,9 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void ConnectSystemCmd([in] IRemoteObject channel, [out] IRemoteObject agent);
     void GetInputMethodState([out] int state);
     void IsSystemApp([out] boolean resultValue);
-    void HideCurrentInputDeprecated([in] IRemoteObject abilityToken, [in] unsigned int windowId);
-    void ShowCurrentInputDeprecated([in] IRemoteObject abilityToken, [in] unsigned int windowId);
-    void SetCallingWindow([in] unsigned int windowId, [in] IInputClient client, [in] IRemoteObject abilityToken, [out] unsigned int finalWindowId);
+    void HideCurrentInputDeprecated([in] unsigned int windowId);
+    void ShowCurrentInputDeprecated([in] unsigned int windowId);
+    void SetCallingWindow([in] unsigned int windowId, [in] IInputClient client, [out] unsigned int finalWindowId);
     void GetInputStartInfo(
         [out] boolean isInputStart, [out] unsigned int callingWndId, [out] int requestKeyboardReason);
     void RegisterProxyIme([in] unsigned long displayId, [in] IInputMethodCore core, [in] IRemoteObject agent);

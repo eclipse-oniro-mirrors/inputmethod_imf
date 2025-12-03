@@ -39,6 +39,7 @@ struct CallingWindowInfo;
 namespace OHOS {
 namespace MiscServices {
 const std::string IME_MIRROR_NAME = "proxyIme_IME_MIRROR";
+const std::string PROXY_IME_NAME = "proxyIme";
 enum class ImeStatus : uint32_t { STARTING, READY, EXITING };
 enum class ImeEvent : uint32_t {
     START_IME,
@@ -156,7 +157,7 @@ public:
     int32_t SetInputType();
     std::shared_ptr<ImeNativeCfg> GetImeNativeCfg(int32_t userId, const std::string &bundleName,
         const std::string &subName);
-    int32_t OnSetCallingWindow(const FocusedInfo &focusedInfo, sptr<IInputClient> client);
+    int32_t OnSetCallingWindow(const FocusedInfo &focusedInfo, sptr<IInputClient> client, uint32_t windowId);
     bool IsKeyboardCallingProcess(int32_t pid, uint32_t windowId);
     int32_t GetInputStartInfo(
         uint64_t displayId, bool &isInputStart, uint32_t &callingWndId, int32_t &requestKeyboardReason);
@@ -285,10 +286,11 @@ private:
     int32_t HandleFirstStart(const std::shared_ptr<ImeNativeCfg> &ime, bool isStopCurrentIme);
     int32_t HandleStartImeTimeout(const std::shared_ptr<ImeNativeCfg> &ime);
     bool GetInputTypeToStart(std::shared_ptr<ImeNativeCfg> &imeToStart);
-    void HandleBindImeChanged(const std::shared_ptr<InputClientInfo> &newClientInfo,
-        const std::shared_ptr<ImeData> &newImeData, const std::shared_ptr<ClientGroup> &clientGroup);
+    void HandleBindImeChanged(InputClientInfo &newClientInfo, const std::shared_ptr<ImeData> &newImeData,
+        const std::shared_ptr<ClientGroup> &clientGroup);
     int32_t NotifyCallingDisplayChanged(uint64_t displayId, const std::shared_ptr<ImeData> &imeData);
-    int32_t NotifyCallingWindowIdChanged(uint32_t windowId, const std::shared_ptr<ImeData> &imeData);
+    int32_t NotifyCallingWindowIdChanged(
+        uint32_t finalWindowId, const std::shared_ptr<ImeData> &imeData, uint32_t windowId);
     ImfCallingWindowInfo GetCallingWindowInfo(const InputClientInfo &clientInfo);
     bool GetCallingWindowInfo(const InputClientInfo &clientInfo, Rosen::CallingWindowInfo &callingWindowInfo);
     int32_t SendPrivateData(const std::unordered_map<std::string, PrivateDataValue> &privateCommand);
@@ -317,7 +319,8 @@ private:
     std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> GetCurrentClientBoundRealIme();
     std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> GetClientBoundImeByImePid(
         pid_t bindImePid);
-    std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> GetClientByWindowId(uint32_t windowId);
+    std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> GetClientBoundImeByWindowId(
+        uint32_t windowId);
     std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> GetClientBoundRealIme();
     bool IsSameIme(const std::shared_ptr<BindImeData> &oldIme, const std::shared_ptr<ImeData> &newIme);
     bool IsSameImeType(const std::shared_ptr<BindImeData> &oldIme, const std::shared_ptr<ImeData> &newIme);
@@ -325,7 +328,8 @@ private:
     void HandleSameImeInMultiGroup(InputClientInfo &newClientInfo, const std::shared_ptr<ImeData> &newImeData);
     void HandleInMultiGroup(InputClientInfo &newClientInfo, const std::shared_ptr<ClientGroup> &oldClientGroup,
         const std::shared_ptr<InputClientInfo> &oldClientInfo);
-    void HandleWindowIdChanged(const FocusedInfo &focusedInfo, const std::shared_ptr<InputClientInfo> &clientInfo);
+    void HandleWindowIdChanged(
+        const FocusedInfo &focusedInfo, const std::shared_ptr<InputClientInfo> &clientInfo, uint32_t windowId);
     void RemoveDeathRecipient(const sptr<InputDeathRecipient> &deathRecipient, const sptr<IRemoteObject> &object);
     bool IsDefaultGroup(uint64_t clientGroupId);
     std::mutex imeStartLock_;

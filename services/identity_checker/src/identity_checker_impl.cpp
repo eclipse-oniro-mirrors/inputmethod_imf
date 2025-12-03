@@ -34,17 +34,24 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocused(
     int64_t callingPid, uint32_t callingTokenId, uint32_t windowId, const sptr<IRemoteObject> &abilityToken)
 {
 #ifdef SCENE_BOARD_ENABLE
-    std::pair<bool, FocusedInfo> retInfo{ false, {} };
     std::vector<FocusChangeInfo> focusWindowInfos;
     WindowAdapter::GetAllFocusWindowInfos(focusWindowInfos);
-    retInfo = IsFocusedUIAbility(callingPid, windowId, focusWindowInfos);
+    if (focusWindowInfos.empty()) {
+        IMSA_HILOGF("focus window infos is empty!");
+    }
+    auto retInfo = IsFocusedUIAbility(callingPid, windowId, focusWindowInfos);
     if (retInfo.first) {
+        IMSA_HILOGD("%{public}" PRId64 "/%{public}d is focused uiAbility!", callingPid, windowId);
         return retInfo;
     }
     if (ImeInfoInquirer::GetInstance().IsInputMethodExtension(callingPid)) {
         return retInfo;
     }
-    return IsFocusedUIExtension(callingTokenId, abilityToken, focusWindowInfos);
+    retInfo = IsFocusedUIExtension(callingTokenId, abilityToken, focusWindowInfos);
+    if (!retInfo.first) {
+        IMSA_HILOGE("%{public}" PRId64 "/%{public}d/%{public}d is not focused!", callingPid, windowId, callingTokenId);
+    }
+    return retInfo;
 #else
     return IsFocusedScbNotEnable(callingPid, callingTokenId, windowId, abilityToken);
 #endif

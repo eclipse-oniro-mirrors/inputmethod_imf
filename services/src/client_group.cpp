@@ -191,12 +191,13 @@ std::shared_ptr<InputClientInfo> ClientGroup::GetClientInfoBoundRealIme()
     return iter->second;
 }
 
-std::shared_ptr<InputClientInfo> ClientGroup::GetClientByWindowId(uint32_t windowId)
+std::shared_ptr<InputClientInfo> ClientGroup::GetClientBoundImeByWindowId(uint32_t windowId)
 {
     std::lock_guard<std::recursive_mutex> lock(mtx_);
     auto iter = std::find_if(mapClients_.begin(), mapClients_.end(), [windowId](const auto &mapClient) {
         auto clientInfo = mapClient.second;
-        return clientInfo != nullptr && clientInfo->config.inputAttribute.windowId == windowId;
+        return clientInfo != nullptr && clientInfo->config.inputAttribute.windowId == windowId
+               && clientInfo->bindImeData != nullptr;
     });
     if (iter == mapClients_.end()) {
         IMSA_HILOGD("not found.");

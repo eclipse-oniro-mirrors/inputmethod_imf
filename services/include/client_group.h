@@ -37,7 +37,7 @@ public:
     void RemoveClientInfo(const sptr<IRemoteObject> &client);
     void UpdateClientInfo(const sptr<IRemoteObject> &client,
         const std::unordered_map<UpdateFlag, std::variant<bool, uint32_t, ImeType, ClientState, TextTotalConfig,
-                                                 ClientType, pid_t, std::shared_ptr<BindImeData>, uint64_t>> &updateInfos);
+            ClientType, pid_t, std::shared_ptr<BindImeData>, uint64_t>> &updateInfos);
 
     std::shared_ptr<InputClientInfo> GetClientInfo(sptr<IRemoteObject> inputClient);
     std::shared_ptr<InputClientInfo> GetClientInfo(pid_t pid);
@@ -45,7 +45,7 @@ public:
     std::shared_ptr<InputClientInfo> GetClientInfoByHostPid(pid_t hostPid);
     std::shared_ptr<InputClientInfo> GetClientInfoBoundRealIme();
     std::shared_ptr<InputClientInfo> GetCurrentClientInfo();
-    std::shared_ptr<InputClientInfo> GetClientByWindowId(uint32_t windowId);
+    std::shared_ptr<InputClientInfo> GetClientBoundImeByWindowId(uint32_t windowId);
     int64_t GetCurrentClientPid();
     int64_t GetInactiveClientPid();
 

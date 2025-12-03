@@ -606,7 +606,6 @@ int32_t InputMethodSystemAbility::GenerateClientInfo(
         clientInfo.uiExtensionTokenId = ImfCommonConst::IMF_INVALID_TOKENID;
         clientInfo.uiExtensionHostPid = ImfCommonConst::INVALID_PID;
     }
-    clientInfo.config.windowId = focusedInfo.windowId;
     clientInfo.config.inputAttribute.bundleName = identityChecker_->GetBundleNameByToken(tokenId);
     auto callingDisplayId = identityChecker_->GetDisplayIdByWindowId(clientInfo.config.windowId);
     clientInfo.config.privateCommand.insert_or_assign(
@@ -712,8 +711,8 @@ int32_t InputMethodSystemAbility::StartInputInner(
         return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
     }
     auto displayId = checkRet.second.displayId;
-    if (session->GetCurrentClientPid(displayId) != IPCSkeleton::GetCallingPid()
-        && session->GetInactiveClientPid(displayId) != IPCSkeleton::GetCallingPid()) {
+    if (session->GetCurrentClientPid(displayId) != IPCSkeleton::GetCallingPid() &&
+        session->GetInactiveClientPid(displayId) != IPCSkeleton::GetCallingPid()) {
         // notify inputStart when caller pid different from both current client and inactive client
         inputClientInfo.isNotifyInputStart = true;
     }
@@ -729,6 +728,7 @@ int32_t InputMethodSystemAbility::StartInputInner(
     auto imeToBind = session->GetReadyImeDataToBind(displayId);
     if (imeToBind == nullptr || imeToBind->IsRealIme()) {
         session->HandleRealImeInInMultiGroup(inputClientInfo);
+        session->SetIsNeedReportQos(inputClientInfo.isShowKeyboard);
         ret = CheckInputTypeOption(userId, inputClientInfo);
         session->SetIsNeedReportQos(false);
         if (ret != ErrorCode::NO_ERROR) {
@@ -798,12 +798,13 @@ ErrCode InputMethodSystemAbility::IsRestrictedDefaultImeByDisplay(uint64_t displ
     return ErrorCode::NO_ERROR;
 }
 
-int32_t InputMethodSystemAbility::ShowInputInner(sptr<IInputClient> client, const sptr<IRemoteObject> &abilityToken,
-    uint32_t windowId, int32_t requestKeyboardReason)
+int32_t InputMethodSystemAbility::ShowInputInner(
+    sptr<IInputClient> client, uint32_t windowId, int32_t requestKeyboardReason)
 {
     std::shared_ptr<PerUserSession> session = nullptr;
-    auto result = PrepareForOperateKeyboard(session, windowId, abilityToken);
+    auto result = PrepareForOperateKeyboard(session, windowId);
     if (result != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("prepare failed:%{public}d.", result);
         return result;
     }
     if (client == nullptr) {
@@ -813,12 +814,12 @@ int32_t InputMethodSystemAbility::ShowInputInner(sptr<IInputClient> client, cons
     return session->OnShowInput(client, requestKeyboardReason);
 }
 
-ErrCode InputMethodSystemAbility::HideInput(
-    const sptr<IInputClient> &client, const sptr<IRemoteObject> &abilityToken, uint32_t windowId)
+ErrCode InputMethodSystemAbility::HideInput(const sptr<IInputClient> &client, uint32_t windowId)
 {
     std::shared_ptr<PerUserSession> session = nullptr;
-    auto result = PrepareForOperateKeyboard(session, windowId, abilityToken);
+    auto result = PrepareForOperateKeyboard(session, windowId);
     if (result != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("prepare failed:%{public}d.", result);
         return result;
     }
     if (client == nullptr) {
@@ -828,12 +829,13 @@ ErrCode InputMethodSystemAbility::HideInput(
     return session->OnHideInput(client);
 }
 
-ErrCode InputMethodSystemAbility::StopInputSession(const sptr<IRemoteObject> &abilityToken, uint32_t windowId)
+ErrCode InputMethodSystemAbility::StopInputSession(uint32_t windowId)
 {
     auto pid = IPCSkeleton::GetCallingPid();
     std::shared_ptr<PerUserSession> session = nullptr;
-    auto result = PrepareForOperateKeyboard(session, windowId, abilityToken);
+    auto result = PrepareForOperateKeyboard(session, windowId);
     if (result != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("prepare failed:%{public}d.", result);
         return result;
     }
     auto [clientGroup, clientInfo] = session->GetClientBySelfPidOrHostPid(pid);
@@ -1074,14 +1076,14 @@ ErrCode InputMethodSystemAbility::UpdateListenEventFlag(const InputClientInfoInn
         userId, { eventFlag, clientInfo.client, IPCSkeleton::GetCallingPid() });
 }
 // LCOV_EXCL_START
-ErrCode InputMethodSystemAbility::SetCallingWindow(uint32_t windowId, const sptr<IInputClient> &client,
-    const sptr<IRemoteObject> &abilityToken, uint32_t &finalWindowId)
+ErrCode InputMethodSystemAbility::SetCallingWindow(
+    uint32_t windowId, const sptr<IInputClient> &client, uint32_t &finalWindowId)
 {
     IMSA_HILOGD("IMF SA setCallingWindow enter");
     auto pid = IPCSkeleton::GetCallingPid();
     AccessTokenID tokenId = IPCSkeleton::GetCallingTokenID();
     auto checkRet =
-        IsFocusedOrBroker(pid, tokenId, windowId, abilityToken);
+        IsFocusedOrBroker(pid, tokenId, windowId);
     if (!checkRet.first) {
         return ErrorCode::ERROR_CLIENT_NOT_FOCUSED;
     }
@@ -1092,7 +1094,7 @@ ErrCode InputMethodSystemAbility::SetCallingWindow(uint32_t windowId, const sptr
         return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
     }
     finalWindowId = checkRet.second.windowId;
-    return session->OnSetCallingWindow(checkRet.second, client);
+    return session->OnSetCallingWindow(checkRet.second, client, windowId);
 }
 // LCOV_EXCL_STOP
 ErrCode InputMethodSystemAbility::GetInputStartInfo(bool& isInputStart,
@@ -1546,15 +1548,15 @@ int32_t InputMethodSystemAbility::SwitchInputType(int32_t userId, const SwitchIn
 }
 
 // Deprecated because of no permission check, kept for compatibility
-int32_t InputMethodSystemAbility::HideCurrentInputDeprecated(const sptr<IRemoteObject> &abilityToken, uint32_t windowId)
+int32_t InputMethodSystemAbility::HideCurrentInputDeprecated(uint32_t windowId)
 {
     auto pid = IPCSkeleton::GetCallingPid();
     std::shared_ptr<PerUserSession> session = nullptr;
-    auto result = PrepareForOperateKeyboard(session, windowId, abilityToken);
+    auto result = PrepareForOperateKeyboard(session, windowId);
     if (result != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("prepare failed:%{public}d.", result);
         return result;
     }
-    // auto groupId = WindowAdapter::GetInstance().GetDisplayGroupId(GetCallingDisplayId(abilityToken));
     auto [clientGroup, clientInfo] = session->GetClientBySelfPid(pid);
     if (clientInfo == nullptr) {
         IMSA_HILOGE("client group not found");
@@ -1563,11 +1565,11 @@ int32_t InputMethodSystemAbility::HideCurrentInputDeprecated(const sptr<IRemoteO
     return session->OnHideCurrentInput(clientInfo->clientGroupId);
 }
 
-int32_t InputMethodSystemAbility::ShowCurrentInputDeprecated(const sptr<IRemoteObject> &abilityToken, uint32_t windowId)
+int32_t InputMethodSystemAbility::ShowCurrentInputDeprecated(uint32_t windowId)
 {
     auto pid = IPCSkeleton::GetCallingPid();
     std::shared_ptr<PerUserSession> session = nullptr;
-    auto result = PrepareForOperateKeyboard(session, windowId, abilityToken);
+    auto result = PrepareForOperateKeyboard(session, windowId);
     if (result != ErrorCode::NO_ERROR) {
         return result;
     }
@@ -2806,14 +2808,14 @@ ErrCode InputMethodSystemAbility::ShowCurrentInput(uint64_t displayId, uint32_t 
     return ret;
 }
 
-ErrCode InputMethodSystemAbility::ShowInput(const sptr<IInputClient> &client, const sptr<IRemoteObject> &abilityToken,
-    uint32_t windowId, uint32_t type, int32_t requestKeyboardReason)
+ErrCode InputMethodSystemAbility::ShowInput(
+    const sptr<IInputClient> &client uint32_t windowId, uint32_t type, int32_t requestKeyboardReason)
 {
     auto name = ImfHiSysEventUtil::GetAppName(IPCSkeleton::GetCallingTokenID());
     auto pid = IPCSkeleton::GetCallingPid();
     auto userId = GetCallingUserId();
     auto imeInfo = GetCurrentImeInfoForHiSysEvent(userId);
-    auto ret = ShowInputInner(client, abilityToken, windowId, requestKeyboardReason);
+    auto ret = ShowInputInner(client, windowId, requestKeyboardReason);
     auto evenInfo = HiSysOriginalInfo::Builder()
                         .SetPeerName(name)
                         .SetPeerPid(pid)

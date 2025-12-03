@@ -74,7 +74,7 @@ public:
     int32_t SelectByMovement(int32_t direction, const AsyncIpcCallBack &callback = nullptr);
     int32_t DispatchKeyEvent(
         const std::shared_ptr<MMI::KeyEvent> &keyEvent, uint64_t cbId, const sptr<IRemoteObject> &channelObject);
-    void SetCallingWindow(uint32_t windowId);
+    void SetCallingWindow(uint32_t windowId, uint32_t finalWindowId);
     int32_t GetEnterKeyType(int32_t &keyType);
     int32_t GetInputPattern(int32_t &inputPattern);
     int32_t GetTextIndexAtCursor(int32_t &index, const AsyncIpcCallBack &callback = nullptr);

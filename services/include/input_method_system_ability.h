@@ -42,11 +42,10 @@ public:
         std::vector<BindImeInfo> &imeInfos) override;
     ErrCode ShowCurrentInput(uint64_t displayId, uint32_t type = static_cast<uint32_t>(ClientType::INNER_KIT)) override;
     ErrCode HideCurrentInput(uint64_t displayId) override;
-    ErrCode ShowInput(const sptr<IInputClient> &client, const sptr<IRemoteObject> &abilityToken, uint32_t windowId,
+    ErrCode ShowInput(const sptr<IInputClient> &client, uint32_t windowId,
         uint32_t type = static_cast<uint32_t>(ClientType::INNER_KIT), int32_t requestKeyboardReason = 0) override;
-    ErrCode HideInput(
-        const sptr<IInputClient> &client, const sptr<IRemoteObject> &abilityToken, uint32_t windowId) override;
-    ErrCode StopInputSession(const sptr<IRemoteObject> &abilityToken, uint32_t windowId) override;
+    ErrCode HideInput(const sptr<IInputClient> &client, uint32_t windowId) override;
+    ErrCode StopInputSession(uint32_t windowId) override;
     ErrCode ReleaseInput(const sptr<IInputClient> &client, uint32_t sessionId) override;
     ErrCode RequestHideInput(uint32_t windowId, bool isFocusTriggered) override;
     ErrCode GetDefaultInputMethod(Property &prop, bool isBrief) override;
@@ -62,8 +61,7 @@ public:
     ErrCode InitConnect() override;
     ErrCode PanelStatusChange(uint32_t status, const ImeWindowInfo &info) override;
     ErrCode UpdateListenEventFlag(const InputClientInfoInner &clientInfoInner, uint32_t eventFlag) override;
-    ErrCode SetCallingWindow(uint32_t windowId, const sptr<IInputClient> &client,
-        const sptr<IRemoteObject> &abilityToken, uint32_t &finalWindowId) override;
+    ErrCode SetCallingWindow(uint32_t windowId, const sptr<IInputClient> &client, uint32_t &finalWindowId) override;
     ErrCode GetInputStartInfo(bool &isInputStart, uint32_t &callingWndId, int32_t &requestKeyboardReason) override;
     ErrCode SendPrivateData(const Value &value) override;
 
@@ -77,8 +75,8 @@ public:
     ErrCode GetSecurityMode(int32_t &security) override;
     ErrCode ConnectSystemCmd(const sptr<IRemoteObject> &channel, sptr<IRemoteObject> &agent) override;
     // Deprecated because of no permission check, kept for compatibility
-    ErrCode HideCurrentInputDeprecated(const sptr<IRemoteObject> &abilityToken, uint32_t windowId) override;
-    ErrCode ShowCurrentInputDeprecated(const sptr<IRemoteObject> &abilityToken, uint32_t windowId) override;
+    ErrCode HideCurrentInputDeprecated(uint32_t windowId) override;
+    ErrCode ShowCurrentInputDeprecated(uint32_t windowId) override;
     int Dump(int fd, const std::vector<std::u16string> &args) override;
     void DumpAllMethod(int fd);
     ErrCode IsDefaultIme() override;
@@ -191,8 +189,7 @@ private:
         std::vector<BindImeInfo> &imeInfos);
     std::pair<bool, FocusedInfo> IsFocusedOrBroker(int64_t callingPid, uint32_t callingTokenId, uint32_t windowId = 0,
         const sptr<IRemoteObject> &abilityToken = nullptr);
-    int32_t ShowInputInner(sptr<IInputClient> client, const sptr<IRemoteObject> &abilityToken, uint32_t windowId,
-        int32_t requestKeyboardReason = 0);
+    int32_t ShowInputInner(sptr<IInputClient> client, uint32_t windowId, int32_t requestKeyboardReason = 0);
     int32_t ShowCurrentInputInner(uint64_t displayId);
     std::pair<int64_t, std::string> GetCurrentImeInfoForHiSysEvent(int32_t userId);
     int32_t GetScreenLockIme(int32_t userId, std::string &ime);

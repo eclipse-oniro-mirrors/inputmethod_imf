@@ -97,7 +97,7 @@ bool ImfSaStubFuzzUtil::SwitchIpcCode(IInputMethodSystemAbilityIpcCode code, Mes
             return writeInputClient();
         case IInputMethodSystemAbilityIpcCode::COMMAND_SET_CORE_AND_AGENT:
             return writeInputMethodCore() && writeInputMethodAgent();
-        case IInputMethodSystemAbilityIpcCode::COMMAND_UN_REGISTERED_PROXY_IME:
+        case IInputMethodSystemAbilityIpcCode::COMMAND_UNREGISTERE_PROXY_IME:
             if (!datas.WriteInt32(fuzzedInt32)) {
                 return false;
             }

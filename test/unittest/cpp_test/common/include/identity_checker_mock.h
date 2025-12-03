@@ -24,10 +24,11 @@ class IdentityCheckerMock : public IdentityChecker {
 public:
     IdentityCheckerMock() = default;
     virtual ~IdentityCheckerMock() = default;
-    bool IsFocused(int64_t callingPid, uint32_t callingTokenId, int64_t focusedPid = INVALID_PID,
-        bool isAttach = false, sptr<IRemoteObject> abilityToken = nullptr) override
+    std::pair<bool, FocusedInfo> IsFocused(int64_t callingPid, uint32_t callingTokenId, uint32_t windowId = 0,
+        const sptr<IRemoteObject> &abilityToken = nullptr) override
     {
-        return isFocused_;
+        FocusedInfo info;
+        return { isFocused_, info };
     }
     bool IsSystemApp(uint64_t fullTokenId) override
     {
@@ -65,6 +66,15 @@ public:
     {
         return isSpecialSaUid_;
     }
+    bool IsUIExtension(int64_t pid) override
+    {
+        return isUIExtension_;
+    }
+    std::pair<bool, FocusedInfo> CheckBroker(Security::AccessToken::AccessTokenID tokenId) override
+    {
+        FocusedInfo info;
+        return { isBroker_, info };
+    }
     static void ResetParam()
     {
         isFocused_ = false;
@@ -76,6 +86,7 @@ public:
         isNativeSa_ = false;
         isSpecialSaUid_ = false;
         bundleName_ = "";
+        isUIExtension_ = false;
     }
     static void SetFocused(bool isFocused)
     {
@@ -110,6 +121,11 @@ public:
     {
         isSpecialSaUid_ = isSpecialSaUid;
     }
+    static void SetIsUIExtension(bool isUIExtension)
+    {
+        isUIExtension_ = isUIExtension;
+    }
+
 
 private:
     static bool isFocused_;
@@ -120,6 +136,7 @@ private:
     static bool isNativeSa_;
     static bool isFormShell_;
     static bool isSpecialSaUid_;
+    static bool isUIExtension_;
     static std::string bundleName_;
 };
 bool IdentityCheckerMock::isFocused_ { false };
@@ -131,6 +148,7 @@ bool IdentityCheckerMock::isNativeSa_ { false };
 bool IdentityCheckerMock::isFormShell_ { false };
 bool IdentityCheckerMock::isSpecialSaUid_ { false };
 std::string IdentityCheckerMock::bundleName_;
+bool IdentityCheckerMock::isUIExtension_ { false };
 } // namespace MiscServices
 } // namespace OHOS
 #endif // IMF_TEST_IDENTITY_CHECKER_MOCK_H

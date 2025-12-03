@@ -464,24 +464,6 @@ HWTEST_F(ImeProxyTest, UnRegisteredProxyInProxyBind_switch_010, TestSize.Level1)
 }
 
 /**
- * @tc.name: UnRegisteredProxyWithErrorType_011
- * @tc.desc:
- * @tc.type: FUNC
- */
-HWTEST_F(ImeProxyTest, UnRegisteredProxyWithErrorType_011, TestSize.Level1)
-{
-    IMSA_HILOGI("ImeProxyTest::UnRegisteredProxyWithErrorType_011");
-    InputMethodEngineListenerImpl::isEnable_ = true;
-    {
-        UidScope uidScope(ImeProxyTest::uid_);
-        auto ret = InputMethodAbilityInterface::GetInstance().RegisteredProxy();
-        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-        ret = InputMethodAbilityInterface::GetInstance().UnRegisteredProxy(static_cast<UnRegisteredType>(3));
-        EXPECT_EQ(ret, ErrorCode::ERROR_BAD_PARAMETERS);
-    }
-}
-
-/**
  * @tc.name: AppUnFocusInProxyBindInPe_012
  * @tc.desc:
  * @tc.type: FUNC

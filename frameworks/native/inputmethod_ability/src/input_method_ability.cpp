@@ -427,15 +427,15 @@ int32_t InputMethodAbility::DispatchKeyEvent(
     return ErrorCode::NO_ERROR;
 }
 
-void InputMethodAbility::SetCallingWindow(uint32_t windowId)
+void InputMethodAbility::SetCallingWindow(uint32_t windowId, uint32_t finalWindowId)
 {
     IMSA_HILOGD("InputMethodAbility windowId: %{public}d.", windowId);
     {
         std::lock_guard<std::mutex> lock(inputAttrLock_);
-        inputAttribute_.windowId = windowId;
+        inputAttribute_.windowId = finalWindowId;
     }
-    panels_.ForEach([windowId](const PanelType &panelType, const std::shared_ptr<InputMethodPanel> &panel) {
-        panel->SetCallingWindow(windowId);
+    panels_.ForEach([finalWindowId](const PanelType &panelType, const std::shared_ptr<InputMethodPanel> &panel) {
+        panel->SetCallingWindow(finalWindowId);
         return false;
     });
     if (imeListener_ == nullptr) {

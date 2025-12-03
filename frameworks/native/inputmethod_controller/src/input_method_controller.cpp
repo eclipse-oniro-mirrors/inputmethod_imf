@@ -467,14 +467,12 @@ int32_t InputMethodController::HideCurrentInput()
         clientInfo_.isShowKeyboard = false;
     }
     InputMethodSysEvent::GetInstance().OperateSoftkeyboardBehaviour(OperateIMEInfoCode::IME_HIDE_NORMAL);
-    sptr<IRemoteObject> abilityToken = nullptr;
     uint32_t windowId = ImfCommonConst::INVALID_WINDOW_ID;
     {
         std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
         windowId = clientInfo_.config.windowId;
-        abilityToken = clientInfo_.config.abilityToken;
     }
-    return proxy->HideCurrentInputDeprecated(abilityToken, windowId);
+    return proxy->HideCurrentInputDeprecated(windowId);
 }
 
 int32_t InputMethodController::ShowCurrentInput()
@@ -495,14 +493,12 @@ int32_t InputMethodController::ShowCurrentInput()
         clientInfo_.isShowKeyboard = true;
     }
     InputMethodSysEvent::GetInstance().OperateSoftkeyboardBehaviour(OperateIMEInfoCode::IME_SHOW_NORMAL);
-    sptr<IRemoteObject> abilityToken = nullptr;
     uint32_t windowId = ImfCommonConst::INVALID_WINDOW_ID;
     {
         std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
         windowId = clientInfo_.config.windowId;
-        abilityToken = clientInfo_.config.abilityToken;
     }
-    return proxy->ShowCurrentInputDeprecated(abilityToken, windowId);
+    return proxy->ShowCurrentInputDeprecated(windowId);
 }
 
 int32_t InputMethodController::Close()
@@ -721,14 +717,12 @@ int32_t InputMethodController::ShowInput(sptr<IInputClient> &client, ClientType 
         IMSA_HILOGE("proxy is nullptr!");
         return ErrorCode::ERROR_SERVICE_START_FAILED;
     }
-    sptr<IRemoteObject> abilityToken = nullptr;
     uint32_t windowId = ImfCommonConst::INVALID_WINDOW_ID;
     {
         std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
         windowId = clientInfo_.config.windowId;
-        abilityToken = clientInfo_.config.abilityToken;
     }
-    return proxy->ShowInput(client, abilityToken, windowId, type, requestKeyboardReason);
+    return proxy->ShowInput(client, windowId, type, requestKeyboardReason);
 }
 
 int32_t InputMethodController::HideInput(sptr<IInputClient> &client)
@@ -739,14 +733,12 @@ int32_t InputMethodController::HideInput(sptr<IInputClient> &client)
         IMSA_HILOGE("proxy is nullptr!");
         return ErrorCode::ERROR_SERVICE_START_FAILED;
     }
-    sptr<IRemoteObject> abilityToken = nullptr;
     uint32_t windowId = ImfCommonConst::INVALID_WINDOW_ID;
     {
         std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
         windowId = clientInfo_.config.windowId;
-        abilityToken = clientInfo_.config.abilityToken;
     }
-    return proxy->HideInput(client, abilityToken, windowId);
+    return proxy->HideInput(client, windowId);
 }
 
 void InputMethodController::OnRemoteSaDied(const wptr<IRemoteObject> &remote)
@@ -1139,18 +1131,41 @@ int32_t InputMethodController::SetCallingWindow(uint32_t windowId)
         IMSA_HILOGD("not editable.");
         return ErrorCode::ERROR_CLIENT_NOT_EDITABLE;
     }
+    auto ret = SetCallingWindowByIMSA(windowId);
+    if (ret == ErrorCode::NO_ERROR) {
+        return ret;
+    }
+    auto agent = GetAgent();
+    if (agent == nullptr) {
+        IMSA_HILOGE("agent is nullptr!");
+        return ErrorCode::ERROR_IME_NOT_STARTED;
+    }
+    IMSA_HILOGI("windowId: %{public}d.", windowId);
+    agent->SetCallingWindow(windowId);
+    {
+        std::lock_guard<std::mutex> lock(textConfigLock_);
+        textConfig_.windowId = windowId;
+    }
+    {
+        std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
+        clientInfo_.config.windowId = windowId;
+    }
+    return ErrorCode::NO_ERROR;
+}
+
+int32_t InputMethodController::SetCallingWindowByIMSA(uint32_t windowId)
+{
     auto finalWindowId = windowId;
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
         IMSA_HILOGE("proxy is nullptr!");
         return ErrorCode::ERROR_SERVICE_START_FAILED;
     }
-    sptr<IRemoteObject> abilityToken = nullptr;
-    {
-        std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
-        abilityToken = clientInfo_.config.abilityToken;
+    auto ret = proxy->SetCallingWindow(windowId, clientInfo_.client, finalWindowId);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("failed:%{public}d!", ret);
+        return ret;
     }
-    proxy->SetCallingWindow(windowId, clientInfo_.client, abilityToken, finalWindowId);
     {
         std::lock_guard<std::mutex> lock(textConfigLock_);
         textConfig_.windowId = finalWindowId;
@@ -1204,14 +1219,12 @@ int32_t InputMethodController::StopInputSession()
         IMSA_HILOGE("proxy is nullptr!");
         return ErrorCode::ERROR_EX_NULL_POINTER;
     }
-    sptr<IRemoteObject> abilityToken = nullptr;
     uint32_t windowId = ImfCommonConst::INVALID_WINDOW_ID;
     if (IsBound()) {
         std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
         windowId = clientInfo_.config.windowId;
-        abilityToken = clientInfo_.config.abilityToken;
     }
-    return proxy->StopInputSession(abilityToken, windowId);
+    return proxy->StopInputSession(windowId);
 }
 
 int32_t InputMethodController::ShowOptionalInputMethod()

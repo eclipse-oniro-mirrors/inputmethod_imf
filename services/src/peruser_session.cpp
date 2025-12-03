@@ -195,9 +195,6 @@ void PerUserSession::OnClientDied(sptr<IInputClient> remote)
         if (clientInfo != nullptr) {
             auto imeData = GetImeData(clientInfo->bindImeData);
             StopImeInput(imeData, clientInfo, 0);
-            if (imeData != nullptr && imeData->IsRealIme()) {
-                RestoreCurrentImeSubType();
-            }
         }
         clientGroup->SetCurrentClient(nullptr);
     }
@@ -205,9 +202,6 @@ void PerUserSession::OnClientDied(sptr<IInputClient> remote)
         if (clientInfo != nullptr) {
             auto imeData = GetImeData(clientInfo->bindImeData);
             StopImeInput(imeData, clientInfo, 0);
-            if (imeData != nullptr && imeData->IsRealIme()) {
-                RestoreCurrentImeSubType();
-            }
         }
         clientGroup->SetInactiveClient(nullptr);
     }
@@ -449,9 +443,6 @@ int32_t PerUserSession::RemoveClient(
     if (IsSameClient(client, clientGroup->GetCurrentClient())) {
         UnBindClientWithIme(clientInfo, options);
         clientGroup->SetCurrentClient(nullptr);
-        if (clientInfo->bindImeData != nullptr && clientInfo->bindImeData->IsRealIme()) {
-            RestoreCurrentImeSubType();
-        }
         StopClientInput(clientInfo, false, options.isNotifyClientAsync);
     }
     if (IsSameClient(client, clientGroup->GetInactiveClient())) {
@@ -505,7 +496,14 @@ int32_t PerUserSession::OnStartInput(
     if (data->IsRealIme()) {
         SetInputType();
     }
+    auto clientGroup = GetClientGroupByGroupId(inputClientInfo.clientGroupId);
+    if (clientGroup == nullptr) {
+        IMSA_HILOGE("not found group");
+        return ErrorCode::ERROR_IMSA_NULLPTR;
+    }
+    HandleBindImeChanged(inputClientInfo, data, clientGroup);
     HandleSameImeInMultiGroup(inputClientInfo, data);
+    inputClientInfo.config.requestKeyboardReason = inputClientInfo.requestKeyboardReason;
     int32_t ret = BindClientWithIme(std::make_shared<InputClientInfo>(inputClientInfo), data, true);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("bind failed, ret: %{public}d!", ret);
@@ -532,7 +530,7 @@ std::shared_ptr<ImeData> PerUserSession::GetRealImeData(bool isReady)
 void PerUserSession::RemoveRealImeData()
 {
     std::lock_guard<std::mutex> lock(realImeDataLock_);
-    if (realImeData_->core != nullptr) {
+    if (realImeData_ != nullptr && realImeData_->core != nullptr) {
         IMSA_HILOGD("deathRecipient remove.");
         RemoveDeathRecipient(realImeData_->deathRecipient, realImeData_->core->AsObject());
     }
@@ -673,7 +671,6 @@ int32_t PerUserSession::BindClientWithIme(
         IMSA_HILOGE("not found group");
         return ErrorCode::ERROR_IMSA_NULLPTR;
     }
-    HandleBindImeChanged(clientInfo, imeData, clientGroup);
     IMSA_HILOGD("imePid: %{public}d, isShowKeyboard: %{public}d, isBindFromClient: %{public}d.", imeData->pid,
         clientInfo->isShowKeyboard, isBindFromClient);
     if (!imeData->imeExtendInfo.privateCommand.empty()) {
@@ -947,10 +944,7 @@ std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> PerUse
             continue;
         }
         auto bindImeData = currentClientInfo->bindImeData;
-        if (bindImeData == nullptr) {
-            continue;
-        }
-        if (bindImeData->IsRealIme()) {
+        if (bindImeData != nullptr && bindImeData->IsRealIme()) {
             return { group, currentClientInfo };
         }
     }
@@ -972,7 +966,7 @@ std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> PerUse
     return { nullptr, nullptr };
 }
 
-std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> PerUserSession::GetClientByWindowId(
+std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> PerUserSession::GetClientBoundImeByWindowId(
     uint32_t windowId)
 {
     std::lock_guard<std::mutex> lock(clientGroupLock_);
@@ -980,7 +974,7 @@ std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> PerUse
         if (group == nullptr) {
             continue;
         }
-        auto clientInfo = group->GetClientByWindowId(windowId);
+        auto clientInfo = group->GetClientBoundImeByWindowId(windowId);
         if (clientInfo != nullptr) {
             return { group, clientInfo };
         }
@@ -1065,8 +1059,9 @@ int32_t PerUserSession::OnRegisterProxyIme(
         return ErrorCode::NO_ERROR;
     }
     if (!IsSameIme(clientInfo->bindImeData, newImeData)) {
-        BindClientWithIme(clientInfo, newImeData);
+        UnBindClientWithIme(clientInfo, { .sessionId = 0 });
     }
+    BindClientWithIme(clientInfo, newImeData);
     return ErrorCode::NO_ERROR;
 }
 
@@ -1308,7 +1303,7 @@ std::shared_ptr<ImeData> PerUserSession::AddProxyImeData(
     if (iter != imeDataList.end()) {
         auto imeData = *iter;
         imeDataList.erase(iter);
-        IMSA_HILOGI("%{public}s preempt again!", imeData->ime.first.c_str());
+        IMSA_HILOGI("preempt again!");
         imeDataList.push_back(imeData);
         return imeData;
     }
@@ -1755,7 +1750,7 @@ int32_t PerUserSession::OnPanelStatusChange(const InputWindowStatus &status, con
     return ImeEventListenerManager::GetInstance().NotifyPanelStatusChange(userId_, status, info);
 }
 
-int32_t PerUserSession::OnSetCallingWindow(const FocusedInfo &focusedInfo, sptr<IInputClient> client)
+int32_t PerUserSession::OnSetCallingWindow(const FocusedInfo &focusedInfo, sptr<IInputClient> client, uint32_t windowId)
 {
     IMSA_HILOGD("OnSetCallingWindow enter");
     if (client == nullptr) {
@@ -1786,12 +1781,12 @@ int32_t PerUserSession::OnSetCallingWindow(const FocusedInfo &focusedInfo, sptr<
     ImeEventListenerManager::GetInstance().NotifyInputStart(
         userId_, focusedInfo.windowId, newClientGroupId, static_cast<int32_t>(clientInfo->requestKeyboardReason));
     IMSA_HILOGD("windowId changed, refresh windowId info and notify clients input start.");
-    HandleWindowIdChanged(focusedInfo, clientInfo);
+    HandleWindowIdChanged(focusedInfo, clientInfo, windowId);
     return ErrorCode::NO_ERROR;
 }
 
 void PerUserSession::HandleWindowIdChanged(
-    const FocusedInfo &focusedInfo, const std::shared_ptr<InputClientInfo> &clientInfo)
+    const FocusedInfo &focusedInfo, const std::shared_ptr<InputClientInfo> &clientInfo, uint32_t windowId)
 {
     auto oldKeyboardGroupId = clientInfo->config.inputAttribute.displayGroupId;
     auto newKeyboardDisplayId = DisplayAdapter::GetFinalDisplayId(focusedInfo.displayId);
@@ -1803,7 +1798,6 @@ void PerUserSession::HandleWindowIdChanged(
     }
     auto newWindowId = focusedInfo.windowId;
     auto oldKeyboardDisplayId = clientInfo->config.inputAttribute.callingDisplayId;
-    auto oldWindowId = clientInfo->config.inputAttribute.windowId;
     clientInfo->config.windowId = newWindowId;
     clientInfo->config.inputAttribute.windowId = newWindowId;
     clientInfo->config.inputAttribute.displayId = focusedInfo.displayId;
@@ -1811,9 +1805,7 @@ void PerUserSession::HandleWindowIdChanged(
     auto callingDisplayId = WindowAdapter::GetDisplayIdByWindowId(newWindowId);
     clientInfo->config.privateCommand.insert_or_assign(
         "displayId", PrivateDataValue(static_cast<int32_t>(callingDisplayId)));
-    if (newWindowId != oldWindowId) {
-        NotifyCallingWindowIdChanged(newWindowId, GetImeData(clientInfo->bindImeData));
-    }
+    NotifyCallingWindowIdChanged(newWindowId, GetImeData(clientInfo->bindImeData), windowId);
     if (oldKeyboardDisplayId != newKeyboardDisplayId) {
         NotifyCallingDisplayChanged(newKeyboardDisplayId, GetImeData(clientInfo->bindImeData));
     }
@@ -2297,6 +2289,12 @@ int32_t PerUserSession::FillImeData(
         return ErrorCode::ERROR_ADD_DEATH_RECIPIENT_FAILED;
     }
     imeData->deathRecipient = deathRecipient;
+    if (type == ImeType::IME_MIRROR) {
+        imeData->ime.first = IME_MIRROR_NAME;
+    }
+    if (type == ImeType::PROXY_IME) {
+        imeData->ime.first = PROXY_IME_NAME;
+    }
     return ErrorCode::NO_ERROR;
 }
 
@@ -2608,17 +2606,17 @@ bool PerUserSession::GetInputTypeToStart(std::shared_ptr<ImeNativeCfg> &imeToSta
     return true;
 }
 
-void PerUserSession::HandleBindImeChanged(const std::shared_ptr<InputClientInfo> &newClientInfo,
-    const std::shared_ptr<ImeData> &newImeData, const std::shared_ptr<ClientGroup> &clientGroup)
+void PerUserSession::HandleBindImeChanged(InputClientInfo &newClientInfo, const std::shared_ptr<ImeData> &newImeData,
+    const std::shared_ptr<ClientGroup> &clientGroup)
 {
-    if (newImeData->IsImeMirror()) {
+    if (newImeData == nullptr || newImeData->IsImeMirror()) {
         return;
     }
     /* isClientInactive: true: represent the oldClientInfo is inactiveClient's
                          false: represent the oldClientInfo is currentClient's */
 
     std::shared_ptr<InputClientInfo> oldClientInfo = nullptr;
-    if (clientGroup == nullptr || newClientInfo == nullptr) {
+    if (clientGroup == nullptr) {
         IMSA_HILOGE("clientGroup is nullptr!");
         return;
     }
@@ -2636,15 +2634,15 @@ void PerUserSession::HandleBindImeChanged(const std::shared_ptr<InputClientInfo>
         if (oldClientInfo == nullptr) {
             return;
         }
-        if (IsSameClient(newClientInfo->client, oldClientInfo->client)
+        if (IsSameClient(newClientInfo.client, oldClientInfo->client)
             && !IsSameIme(oldClientInfo->bindImeData, newImeData)) {
-            newClientInfo->isNotifyInputStart = true;
+            newClientInfo.isNotifyInputStart = true;
         }
-        if (IsSameImeType(oldClientInfo->bindImeData, newImeData)) {
+        if (IsSameImeType(oldClientInfo->bindImeData, newImeData) && newImeData->IsRealIme()) {
             return;
         }
         // has current client, but new client is not current client
-        if (!isClientInactive && !IsSameClient(newClientInfo->client, oldClientInfo->client)) {
+        if (!isClientInactive && !IsSameClient(newClientInfo.client, oldClientInfo->client)) {
             clientGroup->SetCurrentClient(nullptr);
             if (oldClientInfo->client != nullptr) {
                 clientGroup->RemoveClientInfo(oldClientInfo->client->AsObject());
@@ -2714,7 +2712,7 @@ void PerUserSession::OnCallingDisplayIdChanged(
 {
     IMSA_HILOGD("enter!windowId:%{public}d,callingPid:%{public}d,displayId:%{public}" PRIu64 "", windowId, callingPid,
         displayId);
-    auto [clientGroup, clientInfo] = GetClientByWindowId(windowId);
+    auto [clientGroup, clientInfo] = GetClientBoundImeByWindowId(windowId);
     if (clientGroup == nullptr || clientInfo == nullptr) {
         return;
     }
@@ -2762,15 +2760,16 @@ int32_t PerUserSession::NotifyCallingDisplayChanged(uint64_t displayId, const st
     return ret;
 }
 
-int32_t PerUserSession::NotifyCallingWindowIdChanged(uint32_t windowId, const std::shared_ptr<ImeData> &imeData)
+int32_t PerUserSession::NotifyCallingWindowIdChanged(
+    uint32_t finalWindowId, const std::shared_ptr<ImeData> &imeData, uint32_t windowId)
 {
-    IMSA_HILOGD("enter windowId:%{public}u.", windowId);
+    IMSA_HILOGD("enter windowId/finalWindowId:%{public}u/%{public}u.", windowId, finalWindowId);
     if (imeData == nullptr || !imeData->IsRealIme()) {
         IMSA_HILOGD("bind ime not real ime");
         return ErrorCode::ERROR_IME_NOT_STARTED;
     }
-    auto callBack = [&imeData, windowId]() -> int32_t {
-        imeData->core->OnCallingWindowIdChanged(windowId);
+    auto callBack = [&imeData, windowId, finalWindowId]() -> int32_t {
+        imeData->core->OnCallingWindowIdChanged(windowId, finalWindowId);
         return ErrorCode::NO_ERROR;
     };
     auto ret = RequestIme(imeData, RequestType::NORMAL, callBack);

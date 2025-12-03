@@ -341,7 +341,7 @@ HWTEST_F(VirtualListenerTest, testInputMethodEngineListener_001, TestSize.Level1
     ASSERT_NE(VirtualListenerTest::engineListener_, nullptr);
     VirtualListenerTest::engineListener_->OnInputFinish();
     bool isEnable = VirtualListenerTest::engineListener_->IsEnable();
-    EXPECT_FALSE(isEnable);
+    EXPECT_TRUE(isEnable);
 }
 
 /**
@@ -357,7 +357,7 @@ HWTEST_F(VirtualListenerTest, testInputMethodEngineListener_002, TestSize.Level1
     int32_t security = 1;
     VirtualListenerTest::engineListener_->OnSecurityChange(security);
     bool isEnable = VirtualListenerTest::engineListener_->IsEnable();
-    EXPECT_FALSE(isEnable);
+    EXPECT_TRUE(isEnable);
 }
 
 /**
