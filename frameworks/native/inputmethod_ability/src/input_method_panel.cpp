@@ -1547,16 +1547,16 @@ int32_t InputMethodPanel::SetUiContentAni(
     }
     WMError ret = WMError::WM_OK;
     if (storage == nullptr) {
-        ret = window_->NapiSetUIContent(contentInfo, env, nullptr);
+        ret = window_->AniSetUIContent(contentInfo, env, nullptr);
     } else {
-        ret = window_->NapiSetUIContent(contentInfo, env, storage);
+        ret = window_->AniSetUIContent(contentInfo, env, storage);
     }
     WMError wmError = window_->SetTransparent(true);
     if (isWaitSetUiContent_) {
         isWaitSetUiContent_ = false;
     }
     IMSA_HILOGI("SetTransparent ret: %{public}u.", wmError);
-    IMSA_HILOGI("NapiSetUIContent ret: %{public}d.", ret);
+    IMSA_HILOGI("AniSetUIContent ret: %{public}d.", ret);
     return ret == WMError::WM_ERROR_INVALID_PARAM ? ErrorCode::ERROR_PARAMETER_CHECK_FAILED : ErrorCode::NO_ERROR;
 }
 
