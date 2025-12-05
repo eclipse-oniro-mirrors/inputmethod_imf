@@ -123,6 +123,10 @@ union CommandDataType {
     type_Bool: bool;
 }
 
+union UndefinedType {
+  @undefined undefined;
+}
+
 struct EditorAttribute {
     @readonly inputPattern: i32;
     @readonly enterKeyType: i32;
@@ -256,9 +260,6 @@ interface KeyboardController {
     ExitCurrentInputTypeAsync(): void;
 }
 
-interface InputMethodEngine {
-}
-
 interface InputMethodAbility {
     GetSecurityMode(): SecurityMode;
 
@@ -270,38 +271,55 @@ interface InputMethodAbility {
     @gen_promise("destroyPanel")
     DestroyPanelAsync(panel: Panel): void;
 
+    @rename("onInputStart")
     OnInputStart(callback: (kbController: KeyboardController, inputClient: InputClient) => void, @sts_last opq: Opaque): void;
+    @rename("offInputStart")
     OffInputStart(opq: Optional<@sts_type("Function2<KeyboardController, InputClient, void>")Opaque>): void;
 
-    OnInputStop(callback: () => void, @sts_last opq: Opaque): void;
+    @rename("onInputStop")
+    OnInputStop(callback: (data: UndefinedType) => void, @sts_last opq: Opaque): void;
+    @rename("offInputStop")
     OffInputStop(opq: Optional<@sts_type("Function1<void, void>") Opaque>): void;
 
+    @rename("onSetCallingWindow")
     OnSetCallingWindow(callback: (windowId: i32) => void, @sts_last opq: Opaque): void;
+    @rename("offSetCallingWindow")
     OffSetCallingWindow(opq: Optional<@sts_type("Function1<int, void>") Opaque>): void;
 
-    OnKeyboardShow(callback: () => void, @sts_last opq: Opaque): void;
+    @rename("onKeyboardShow")
+    OnKeyboardShow(callback: (data: UndefinedType) => void, @sts_last opq: Opaque): void;
+    @rename("offKeyboardShow")
     OffKeyboardShow(opq: Optional<@sts_type("Function1<void, void>") Opaque>): void;
 
-    OnKeyboardHide(callback: () => void, @sts_last opq: Opaque): void;
+    @rename("onKeyboardHide")
+    OnKeyboardHide(callback: (data: UndefinedType) => void, @sts_last opq: Opaque): void;
+    @rename("offKeyboardHide")
     OffKeyboardHide(opq: Optional<@sts_type("Function1<void, void>") Opaque>): void;
 
+    @rename("onSetSubtype")
     OnSetSubtype(callback: (inputMethodSubtype: InputMethodSubtype) => void, @sts_last opq: Opaque): void;
+    @rename("offSetSubtype")
     OffSetSubtype(opq: Optional<@sts_type("Function1<ohos_InputMethodSubtype.InputMethodSubtype, void>") Opaque>): void;
 
+    @rename("onSecurityModeChange")
     OnSecurityModeChange(callback: (mode: SecurityMode) => void, @sts_last opq: Opaque): void;
+    @rename("offSecurityModeChange")
     OffSecurityModeChange(opq: Optional<@sts_type("Function1<SecurityMode, void>")Opaque>): void;
 
+    @rename("onPrivateCommand")
     OnPrivateCommand(callback: (data: @record Map<String, CommandDataType>) => void, @sts_last opq: Opaque): void;
+    @rename("offPrivateCommand")
     OffPrivateCommand(opq: Optional<@sts_type("Function1<Record<string, CommandDataType>, void>") Opaque>): void;
 
+    @rename("onCallingDisplayDidChange")
     OnCallingDisplayDidChange(callback: (callingDisplayId: i32) => void, @sts_last opq: Opaque): void;
+    @rename("offCallingDisplayDidChange")
     OffCallingDisplayDidChange(opq: Optional<@sts_type("Function1<int, void>") Opaque>): void;
 
-    OnDiscardTypingText(callback: () => void, @sts_last opq: Opaque): void;
+    @rename("onDiscardTypingText")
+    OnDiscardTypingText(callback: (data: UndefinedType) => void, @sts_last opq: Opaque): void;
+    @rename("offDiscardTypingText")
     OffDiscardTypingText(opq: Optional<@sts_type("Function1<void, void>") Opaque>): void;
-}
-
-interface TextInputClient {
 }
 
 interface InputClient {
@@ -383,16 +401,22 @@ interface InputClient {
     GetTextIndexAtCursorSync(): i32;
     GetAttachOptions(): AttachOptionsCallback;
 
+    @rename("onAttachOptionsDidChange")
     OnAttachOptionsDidChange(callback: (opts: AttachOptions) => void, @sts_last opq: Opaque): void;
+    @rename("offAttachOptionsDidChange")
     OffAttachOptionsDidChange(opq: Optional<@sts_type("Function1<AttachOptions, void>") Opaque>): void;
 }
 
 interface KeyboardDelegate {
 
+    @rename("onKeyDown")
     OnKeyDown(callback: (event: KeyEventType) => bool, @sts_last opq: Opaque): void;
+    @rename("offKeyDown")
     OffKeyDown(opq: Optional<@sts_type("Function1<KeyEventType, boolean>") Opaque>): void;
 
+    @rename("onKeyUp")
     OnKeyUp(callback: (event: KeyEventType) => bool, @sts_last opq: Opaque): void;
+    @rename("offKeyUp")
     OffKeyUp(opq: Optional<@sts_type("Function1<KeyEventType, boolean>") Opaque>): void;
 
     @!sts_inject_into_interface("""
@@ -410,16 +434,24 @@ interface KeyboardDelegate {
     OnKeyEvent(callback: (event: InputKeyEvent) => bool, opq: Opaque);
     OffKeyEvent(opq: Optional<Opaque>);
 
+    @rename("onCursorContextChange")
     OnCursorContextChange(callback: (x: i32, y: i32, height: i32) => void, @sts_last opq: Opaque): void;
+    @rename("offCursorContextChange")
     OffCursorContextChange(opq: Optional<@sts_type("Function3<int, int, int , void>") Opaque>): void;
 
+    @rename("onSelectionChange")
     OnSelectionChange(callback: (oldBegin: i32, oldEnd: i32, newBegin: i32, newEnd: i32) => void, @sts_last opq: Opaque): void;
+    @rename("offSelectionChange")
     OffSelectionChange(opq: Optional<@sts_type("Function4<int, int, int, int, void>") Opaque>): void;
 
+    @rename("onTextChange")
     OnTextChange(callback: (text: String) => void, @sts_last opq: Opaque): void;
+    @rename("offTextChange")
     OffTextChange(opq: Optional<@sts_type("Function1<string, void>") Opaque>): void;
 
+    @rename("onEditorAttributeChanged")
     OnEditorAttributeChanged(callback: (attr: EditorAttribute) => void, @sts_last opq: Opaque): void;
+    @rename("offEditorAttributeChanged")
     OffEditorAttributeChanged(opq: Optional<@sts_type("Function1<EditorAttribute, void>") Opaque>): void;
 }
 
@@ -474,16 +506,24 @@ interface Panel {
     GetImmersiveMode(): ImmersiveMode;
     SetImmersiveEffect(effect: ImmersiveEffect): void;
 
-    OnShow(callback: () => void, @sts_last opq: Opaque): void;
+    @rename("onShow")
+    OnShow(callback: (data: UndefinedType) => void, @sts_last opq: Opaque): void;
+    @rename("offShow")
     OffShow(opq: Optional<@sts_type("Function1<void, void>") Opaque>): void;
 
-    OnHide(callback: () => void, @sts_last opq: Opaque): void;
+    @rename("onHide")
+    OnHide(callback: (data: UndefinedType) => void, @sts_last opq: Opaque): void;
+    @rename("offHide")
     OffHide(opq: Optional<@sts_type("Function1<void, void>") Opaque>): void;
 
+    @rename("onSizeUpdate")
     OnSizeUpdate(callback: (size: @sts_type("window.Size") Opaque, keyboardArea: KeyboardArea) => void, @sts_last opq: Opaque): void;
+    @rename("offSizeUpdate")
     OffSizeUpdate(opq: Optional<@sts_type("Function2<window.Size, KeyboardArea, void>") Opaque>): void;
 
+    @rename("onSizeChange")
     OnSizeChange(callback: (size: @sts_type("window.Size") Opaque, keyboardArea: Optional<KeyboardArea>) => void, @sts_last opq: Opaque): void;
+    @rename("offSizeChange")
     OffSizeChange(opq: Optional<@sts_type("Function2<window.Size, KeyboardAreaData, void>") Opaque>): void;
 
     LineUp(): i64;

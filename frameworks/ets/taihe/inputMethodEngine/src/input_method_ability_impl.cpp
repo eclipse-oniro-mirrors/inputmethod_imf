@@ -218,8 +218,9 @@ void InputMethodAbilityImpl::OnKeyboardStatus(bool isShow)
     std::lock_guard<std::mutex> lock(mutex_);
     auto &cbVec = jsCbMap_[type];
     for (auto &cb : cbVec) {
-        auto &func = std::get<taihe::callback<void()>>(cb->callback);
-        func();
+        auto &func = std::get<taihe::callback<void(UndefinedType_t const&)>>(cb->callback);
+        UndefinedType_t type = UndefinedType_t::make_undefined();
+        func(type);
     }
 }
 
@@ -253,8 +254,9 @@ int32_t InputMethodAbilityImpl::OnInputStop()
     IMSA_HILOGI("OnInputStop start.");
     auto &cbVec = jsCbMap_["inputStop"];
     for (auto &cb : cbVec) {
-        auto &func = std::get<taihe::callback<void()>>(cb->callback);
-        func();
+        auto &func = std::get<taihe::callback<void(UndefinedType_t const&)>>(cb->callback);
+        UndefinedType_t type = UndefinedType_t::make_undefined();
+        func(type);
     }
     return 0;
 }
@@ -265,8 +267,9 @@ int32_t InputMethodAbilityImpl::OnDiscardTypingText()
     std::lock_guard<std::mutex> lock(mutex_);
     auto &cbVec = jsCbMap_["discardTypingText"];
     for (auto &cb : cbVec) {
-        auto &func = std::get<taihe::callback<void()>>(cb->callback);
-        func();
+        auto &func = std::get<taihe::callback<void(UndefinedType_t const&)>>(cb->callback);
+        UndefinedType_t type = UndefinedType_t::make_undefined();
+        func(type);
     }
     return 0;
 }

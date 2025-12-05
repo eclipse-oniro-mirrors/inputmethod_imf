@@ -123,13 +123,19 @@ interface InputMethodSetting {
     OnImeChange(f: (inputMethodProperty: InputMethodProperty, inputMethodSubtype: InputMethodSubtype) => void, opq: Opaque);
     OffImeChange(opq: Optional<Opaque>);
 
+    @rename("onImeChange")
     OnImeChangeNew(callback: (inputMethodProperty: InputMethodProperty, inputMethodSubtype: InputMethodSubtype) => void, @sts_last opq: Opaque): void;
+    @rename("offImeChange")
     OffImeChangeNew(opq: Optional<@sts_type("Function2<InputMethodProperty, ohos_InputMethodSubtype.InputMethodSubtype, void>") Opaque>): void;
 
+    @rename("onImeShow")
     OnImeShowNew(callback: (info: Array<InputWindowInfo>) => void, @sts_last opq: Opaque): void;
+    @rename("offImeShow")
     OffImeShowNew(opq: Optional<@sts_type("Function1<Array<InputWindowInfo>, void>") Opaque>): void;
 
+    @rename("onImeHide")
     OnImeHideNew(callback: (info: Array<InputWindowInfo>) => void, @sts_last opq: Opaque): void;
+    @rename("offImeHide")
     OffImeHideNew(opq: Optional<@sts_type("Function1<Array<InputWindowInfo>, void>") Opaque>): void;
 
     @gen_promise("getInputMethodState")
@@ -229,6 +235,10 @@ enum RequestKeyboardReason : i32 {
     OTHER = 20
 }
 
+union UndefinedType {
+  @undefined undefined;
+}
+
 interface InputMethodController {
     @gen_async("hideSoftKeyboard")
     @gen_promise("hideSoftKeyboard")
@@ -316,47 +326,75 @@ interface InputMethodController {
     OnGetTextIndexAtCursor(f: () => i32, opq: Opaque);
     OffGetTextIndexAtCursor(opq: Optional<Opaque>);
 
+    @rename("onSelectByRange")
     OnSelectByRangeNew(callback: (range: Range) => void, @sts_last opq: Opaque): void;
+    @rename("offSelectByRange")
     OffSelectByRangeNew(opq: Optional<@sts_type("Function1<Range, void>") Opaque>);
 
+    @rename("onSelectByMovement")
     OnSelectByMovementNew(callback: (movement: Movement) => void, @sts_last opq: Opaque);
+    @rename("offSelectByMovement")
     OffSelectByMovementNew(opq: Optional<@sts_type("Function1<Movement, void>") Opaque>);
 
+    @rename("onInsertText")
     OnInsertTextNew(callback: (text: String) => void, @sts_last opq: Opaque);
+    @rename("offInsertText")
     OffInsertTextNew(opq: Optional<@sts_type("Function1<String, void>") Opaque>);
 
+    @rename("onDeleteLeft")
     OnDeleteLeftNew(callback: (f: i32) => void, @sts_last opq: Opaque);
+    @rename("offDeleteLeft")
     OffDeleteLeftNew(opq: Optional<@sts_type("Function1<int, void>") Opaque>);
 
+    @rename("onDeleteRight")
     OnDeleteRightNew(callback: (f: i32) => void, @sts_last opq: Opaque);
+    @rename("offDeleteRight")
     OffDeleteRightNew(opq: Optional<@sts_type("Function1<int, void>") Opaque>);
 
+    @rename("onSendKeyboardStatus")
     OnSendKeyboardStatusNew(callback: (status: KeyboardStatus) => void, @sts_last opq: Opaque);
+    @rename("offSendKeyboardStatus")
     OffSendKeyboardStatusNew(opq: Optional<@sts_type("Function1<KeyboardStatus, void>") Opaque>);
 
+    @rename("onSendFunctionKey")
     OnSendFunctionKeyNew(callback: (key: FunctionKey) => void, @sts_last opq: Opaque);
+    @rename("offSendFunctionKey")
     OffSendFunctionKeyNew(opq: Optional<@sts_type("Function1<FunctionKey, void>") Opaque>);
 
+    @rename("onMoveCursor")
     OnMoveCursorNew(callback: (direction: Direction) => void, @sts_last opq: Opaque);
+    @rename("offMoveCursor")
     OffMoveCursorNew(opq: Optional<@sts_type("Function1<Direction, void>") Opaque>);
 
+    @rename("onHandleExtendAction")
     OnHandleExtendActionNew(callback: (extendAction: ExtendAction) => void, @sts_last opq: Opaque);
+    @rename("offHandleExtendAction")
     OffHandleExtendActionNew(opq: Optional<@sts_type("Function1<ExtendAction, void>") Opaque>);
-    
+
+    @rename("onGetLeftTextOfCursor")
     OnGetLeftTextOfCursorNew(callback: (length: i32) => String, @sts_last opq: Opaque);
+    @rename("offGetLeftTextOfCursor")
     OffGetLeftTextOfCursorNew(opq: Optional<@sts_type("Function1<int, String>") Opaque>);
 
+    @rename("onGetRightTextOfCursor")
     OnGetRightTextOfCursorNew(callback: (length: i32) => String, @sts_last opq: Opaque);
+    @rename("offGetRightTextOfCursor")
     OffGetRightTextOfCursorNew(opq: Optional<@sts_type("Function1<int, String>") Opaque>);
 
+    @rename("onGetTextIndexAtCursor")
     OnGetTextIndexAtCursorNew(callback: () => i32, @sts_last opq: Opaque);
+    @rename("offGetTextIndexAtCursor")
     OffGetTextIndexAtCursorNew(opq: Optional<@sts_type("Function0<int>") Opaque>);
-    
+
+    @rename("onSetPreviewText")
     OnSetPreviewText(callback: (text: String, range: Range) => void, @sts_last opq: Opaque);
+    @rename("offSetPreviewText")
     OffSetPreviewText(opq: Optional<@sts_type("Function2<String, Range, void>") Opaque>);
 
-    OnFinishTextPreview(callback: () => void, @sts_last opq: Opaque);
-    OffFinishTextPreview(opq: Optional<@sts_type("Function0<void>") Opaque>);
+    @rename("onFinishTextPreview")
+    OnFinishTextPreview(callback: (data: UndefinedType) => void, @sts_last opq: Opaque);
+    @rename("offFinishTextPreview")
+    OffFinishTextPreview(opq: Optional<@sts_type("Function1<void, void>") Opaque>);
 
     @gen_promise("discardTypingText")
     DiscardTypingTextSync(): void;

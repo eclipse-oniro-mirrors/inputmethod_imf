@@ -213,7 +213,7 @@ void InputClientImpl::SendPrivateCommandAsync(taihe::map_view<taihe::string, Com
 
 ohos::inputMethodEngine::WindowInfoCallback InputClientImpl::GetCallingWindowInfoAsync()
 {
-    ohos::inputMethodEngine::WindowInfo result {};
+    WindowInfo_t result {};
     CallingWindowInfo windowInfo {};
     int32_t ret = InputMethodAbility::GetInstance().GetCallingWindowInfo(windowInfo);
     if (ret != ErrorCode::NO_ERROR) {

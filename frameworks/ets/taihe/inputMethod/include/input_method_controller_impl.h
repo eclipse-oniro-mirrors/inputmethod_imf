@@ -73,6 +73,7 @@ private:
     static std::mutex controllerMutex_;
     static std::shared_ptr<InputMethodControllerImpl> controller_;
     static const std::set<std::string> TEXT_EVENT_TYPE;
+    void UpdateTextPreviewState(const std::string &type);
 };
 
 class IMFControllerImpl {
@@ -214,7 +215,7 @@ public:
         InputMethodControllerImpl::GetInstance()->UnRegisterListener("setPreviewText", opq);
     }
 
-    void OnFinishTextPreview(taihe::callback_view<void()> f, uintptr_t opq)
+    void OnFinishTextPreview(taihe::callback_view<void(UndefinedType_t const&)> f, uintptr_t opq)
     {
         InputMethodControllerImpl::GetInstance()->RegisterListener("finishTextPreview", f, opq);
     }
