@@ -183,6 +183,7 @@ public:
     static bool ParsePanelRect(ani_env* env, PanelRect_t const& rect, LayoutParams& param);
     static bool ParseEnhancedPanelRect(ani_env* env, EnhancedPanelRect_t const& rect,
         EnhancedLayoutParams& param, HotAreas& hotAreas);
+    static ani_object CreateAniWindowStatus(ani_env* env, Rosen::WindowStatus type);
     static ani_object CreateAniRect(ani_env* env, Rosen::Rect rect);
     static WindowInfo_t NativeWindowInfoToAni(ani_env* env, MiscServices::CallingWindowInfo &windowInfo);
 };

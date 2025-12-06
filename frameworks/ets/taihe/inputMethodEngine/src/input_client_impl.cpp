@@ -221,6 +221,14 @@ ohos::inputMethodEngine::WindowInfoCallback InputClientImpl::GetCallingWindowInf
         taihe::set_business_error(JsUtils::Convert(ret), JsUtils::ToMessage(JsUtils::Convert(ret)));
         return ohos::inputMethodEngine::WindowInfoCallback::make_type_null();
     }
+    ani_env* env = taihe::get_env();
+    if (env == nullptr) {
+        IMSA_HILOGE("env is nullptr, GetCallingWindowInfo failed!");
+        taihe::set_business_error(IMFErrorCode::EXCEPTION_PARAMCHECK,
+            "env is nullptr, GetCallingWindowInfo failed!");
+        return ohos::inputMethodEngine::WindowInfoCallback::make_type_null();
+    }
+    result = CommonConvert::NativeWindowInfoToAni(env, windowInfo);
     return ohos::inputMethodEngine::WindowInfoCallback::make_type_WindowInfo(result);
 }
 

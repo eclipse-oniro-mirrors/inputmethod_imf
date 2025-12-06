@@ -744,6 +744,33 @@ bool CommonConvert::ParseEnhancedPanelRect(ani_env* env, EnhancedPanelRect_t con
     return true;
 }
 
+ani_object CommonConvert::CreateAniWindowStatus(ani_env* env, Rosen::WindowStatus status)
+{
+    if (env == nullptr) {
+        IMSA_HILOGE("env is nullptr");
+        return CreateAniUndefined(env);
+    }
+    ani_class aniClass;
+    ani_status ret = env->FindClass("std.core.Int", &aniClass);
+    if (ret != ANI_OK) {
+        IMSA_HILOGE("[ANI] class not found");
+        return CreateAniUndefined(env);
+    }
+    ani_method aniCtor;
+    ret = env->Class_FindMethod(aniClass, "", "i:", &aniCtor);
+    if (ret != ANI_OK) {
+        IMSA_HILOGE("[ANI] ctor not found");
+        return CreateAniUndefined(env);
+    }
+    ani_object aniStatus;
+    ret = env->Object_New(aniClass, aniCtor, &aniStatus, ani_int(status));
+    if (ret != ANI_OK) {
+        IMSA_HILOGE("[ANI] fail to create new obj");
+        return CreateAniUndefined(env);
+    }
+    return aniStatus;
+}
+
 ani_object CommonConvert::CreateAniRect(ani_env* env, Rosen::Rect rect)
 {
     if (env == nullptr) {
@@ -798,7 +825,7 @@ WindowInfo_t CommonConvert::NativeWindowInfoToAni(ani_env* env, MiscServices::Ca
         return info;
     }
     CallAniMethodVoid(env, aniInfo, cls, "<set>rect", nullptr, CreateAniRect(env, windowInfo.rect));
-    env->Object_SetFieldByName_Int(aniInfo, "status", static_cast<ani_int>(windowInfo.status));
+    CallAniMethodVoid(env, aniInfo, cls, "<set>status", nullptr, CreateAniWindowStatus(env, windowInfo.status));
     info = taihe::from_ani<WindowInfo_t>(env, aniInfo);
     return info;
 }
