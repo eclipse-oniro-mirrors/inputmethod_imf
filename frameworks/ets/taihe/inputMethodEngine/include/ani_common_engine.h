@@ -24,12 +24,14 @@
 #include "ohos.inputMethodEngine.impl.hpp"
 #include "ohos.inputMethodEngine.PanelRect.ani.1.hpp"
 #include "ohos.inputMethodEngine.EnhancedPanelRect.ani.1.hpp"
+#include "ohos.inputMethodEngine.WindowInfo.ani.1.hpp"
 #include "taihe/runtime.hpp"
 #include "ani.h"
 #include "string_ex.h"
 #include "panel_info.h"
 #include "wm_common.h"
 #include "panel_common.h"
+#include "calling_window_info.h"
 
 using InputMethodSubtype_t = ohos::InputMethodSubtype::InputMethodSubtype;
 using EnhancedPanelRect_t = ohos::inputMethodEngine::EnhancedPanelRect;
@@ -58,8 +60,9 @@ using Panel_t = ohos::inputMethodEngine::weak::Panel;
 using RequestKeyboardReason_t = ohos::inputMethodEngine::RequestKeyboardReason;
 using AttachOptions_t = ohos::inputMethodEngine::AttachOptions;
 using ImmersiveEffect_t = ohos::inputMethodEngine::ImmersiveEffect;
-using ExtendAction_t = ohos::inputMethod::ExtendAction;
-using TextInputClient_t = ohos::inputMethodEngine::weak::TextInputClient;
+using ExtendAction_t = ohos::inputMethodEngine::ExtendAction;
+using UndefinedType_t = ohos::inputMethodEngine::UndefinedType;
+using WindowInfo_t = ohos::inputMethodEngine::WindowInfo;
 namespace OHOS {
 namespace MiscServices {
 using ValueMap = std::unordered_map<std::string, PrivateDataValue>;
@@ -83,18 +86,20 @@ private:
         result.labelId = taihe::optional<double>(std::in_place_t{}, property.labelId);
         result.icon = taihe::optional<taihe::string>(std::in_place_t{}, property.icon);
         result.iconId = taihe::optional<double>(std::in_place_t{}, property.iconId);
+        result.mode = taihe::optional<taihe::string>(std::in_place_t{}, property.mode);
         return result;
     }
 };
 
-using callbackTypes = std::variant<taihe::callback<void()>, taihe::callback<void(int32_t)>,
+using callbackTypes = std::variant<taihe::callback<void(int32_t)>,
     taihe::callback<void(taihe::map_view<taihe::string, CommandDataType_t>)>, taihe::callback<void(SecurityMode_t)>,
     taihe::callback<void(InputMethodSubtype_t const&)>, taihe::callback<void(KeyboardController_t, InputClient_t)>,
     taihe::callback<void(int32_t, int32_t, int32_t)>, taihe::callback<void(int32_t, int32_t, int32_t, int32_t)>,
     taihe::callback<bool(KeyEventType_t const&)>, taihe::callback<bool(KeyEvent_t const&)>,
     taihe::callback<void(taihe::string_view)>, taihe::callback<void(EditorAttribute_t const&)>,
     taihe::callback<void(uintptr_t, taihe::optional_view<KeyboardArea_t>)>,
-    taihe::callback<void(uintptr_t, KeyboardArea_t const&)>, taihe::callback<void(AttachOptions_t const&)>>;
+    taihe::callback<void(uintptr_t, KeyboardArea_t const&)>, taihe::callback<void(AttachOptions_t const&)>,
+    taihe::callback<void(UndefinedType_t const&)>>;
 
 struct CallbackObjects {
     CallbackObjects(callbackTypes cb, ani_ref ref) : callback(cb), ref(ref)
@@ -178,6 +183,9 @@ public:
     static bool ParsePanelRect(ani_env* env, PanelRect_t const& rect, LayoutParams& param);
     static bool ParseEnhancedPanelRect(ani_env* env, EnhancedPanelRect_t const& rect,
         EnhancedLayoutParams& param, HotAreas& hotAreas);
+    static ani_object CreateAniWindowStatus(ani_env* env, Rosen::WindowStatus type);
+    static ani_object CreateAniRect(ani_env* env, Rosen::Rect rect);
+    static WindowInfo_t NativeWindowInfoToAni(ani_env* env, MiscServices::CallingWindowInfo &windowInfo);
 };
 } // namespace MiscServices
 } // namespace OHOS

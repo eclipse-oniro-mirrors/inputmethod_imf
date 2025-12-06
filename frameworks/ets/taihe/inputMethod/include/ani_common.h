@@ -39,6 +39,7 @@ using Direction_t = ohos::inputMethod::Direction;
 using EnabledState_t = ::ohos::inputMethod::EnabledState;
 using MessageHandler_t = ::ohos::inputMethod::MessageHandler;
 using InputAttribute_t = ::ohos::inputMethod::InputAttribute;
+using UndefinedType_t = ::ohos::inputMethod::UndefinedType;
 namespace OHOS {
 namespace MiscServices {
 constexpr const int32_t SELECT_ALL = 0;
@@ -47,13 +48,14 @@ constexpr const int32_t COPY = 4;
 constexpr const int32_t PASTE = 5;
 
 using callbackType = std::variant<taihe::callback<int32_t()>, taihe::callback<taihe::string(int32_t)>,
-    taihe::callback<void()>, taihe::callback<void(int32_t)>, taihe::callback<void(taihe::string_view)>,
+    taihe::callback<void(int32_t)>, taihe::callback<void(taihe::string_view)>,
     taihe::callback<void(Range_t const &)>, taihe::callback<void(Movement_t const &)>,
     taihe::callback<void(KeyboardStatus_t const)>, taihe::callback<void(Direction_t const)>,
     taihe::callback<void(FunctionKey_t const &)>, taihe::callback<void(EnterKeyType_t const)>,
     taihe::callback<void(ExtendAction_t const)>, taihe::callback<void(taihe::array_view<InputWindowInfo_t>)>,
     taihe::callback<void(InputMethodProperty_t const &, InputMethodSubtype_t const &)>,
-    taihe::callback<void(::taihe::string_view text, ::ohos::inputMethod::Range const& range)>>;
+    taihe::callback<void(::taihe::string_view text, ::ohos::inputMethod::Range const& range)>,
+    taihe::callback<void(UndefinedType_t const&)>>;
 
 struct CallbackObject {
     CallbackObject(callbackType cb, ani_ref ref) : callback(cb), ref(ref)

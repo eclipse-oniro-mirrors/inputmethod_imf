@@ -438,8 +438,8 @@ bool CommonConvert::ParseRect(ani_env *env, ani_object rect, Rosen::Rect &result
     }
     result.posX_ = posX;
     result.posY_ = posY;
-    result.width_ = width;
-    result.height_ = height;
+    result.width_ = static_cast<uint32_t>(width);
+    result.height_ = static_cast<uint32_t>(height);
     IMSA_HILOGD("rect is [%{public}d, %{public}d, %{public}u, %{public}u]",
         result.posX_, result.posY_, result.width_, result.height_);
     return true;
@@ -514,8 +514,8 @@ bool CommonConvert::ParseWindowRect(ani_env *env, const char* propertyName, ani_
     }
     result.posX_ = posX;
     result.posY_ = posY;
-    result.width_ = width;
-    result.height_ = height;
+    result.width_ = static_cast<uint32_t>(width);
+    result.height_ = static_cast<uint32_t>(height);
     IMSA_HILOGD("rect is [%{public}d, %{public}d, %{public}u, %{public}u]",
         result.posX_, result.posY_, result.width_, result.height_);
     return true;
@@ -742,6 +742,92 @@ bool CommonConvert::ParseEnhancedPanelRect(ani_env* env, EnhancedPanelRect_t con
         hotAreas.portrait.keyboardHotArea.clear();
     }
     return true;
+}
+
+ani_object CommonConvert::CreateAniWindowStatus(ani_env* env, Rosen::WindowStatus status)
+{
+    if (env == nullptr) {
+        IMSA_HILOGE("env is nullptr");
+        return CreateAniUndefined(env);
+    }
+    ani_class aniClass;
+    ani_status ret = env->FindClass("std.core.Int", &aniClass);
+    if (ret != ANI_OK) {
+        IMSA_HILOGE("[ANI] class not found");
+        return CreateAniUndefined(env);
+    }
+    ani_method aniCtor;
+    ret = env->Class_FindMethod(aniClass, "", "i:", &aniCtor);
+    if (ret != ANI_OK) {
+        IMSA_HILOGE("[ANI] ctor not found");
+        return CreateAniUndefined(env);
+    }
+    ani_object aniStatus;
+    ret = env->Object_New(aniClass, aniCtor, &aniStatus, ani_int(status));
+    if (ret != ANI_OK) {
+        IMSA_HILOGE("[ANI] fail to create new obj");
+        return CreateAniUndefined(env);
+    }
+    return aniStatus;
+}
+
+ani_object CommonConvert::CreateAniRect(ani_env* env, Rosen::Rect rect)
+{
+    if (env == nullptr) {
+        IMSA_HILOGE("env is nullptr");
+        return CreateAniUndefined(env);
+    }
+    ani_class aniClass;
+    ani_status ret = env->FindClass("@ohos.window.window.RectInternal", &aniClass);
+    if (ret != ANI_OK) {
+        IMSA_HILOGE("[ANI] class not found");
+        return CreateAniUndefined(env);
+    }
+    ani_method aniCtor;
+    ret = env->Class_FindMethod(aniClass, "<ctor>", ":V", &aniCtor);
+    if (ret != ANI_OK) {
+        IMSA_HILOGE("[ANI] ctor not found");
+        return CreateAniUndefined(env);
+    }
+    ani_object aniRect;
+    ret = env->Object_New(aniClass, aniCtor, &aniRect);
+    if (ret != ANI_OK) {
+        IMSA_HILOGE("[ANI] fail to create new obj");
+        return CreateAniUndefined(env);
+    }
+    CallAniMethodVoid(env, aniRect, aniClass, "<set>left", nullptr, ani_int(rect.posX_));
+    CallAniMethodVoid(env, aniRect, aniClass, "<set>top", nullptr, ani_int(rect.posY_));
+    CallAniMethodVoid(env, aniRect, aniClass, "<set>width", nullptr, ani_int(rect.width_));
+    CallAniMethodVoid(env, aniRect, aniClass, "<set>height", nullptr, ani_int(rect.height_));
+    return aniRect;
+}
+
+WindowInfo_t CommonConvert::NativeWindowInfoToAni(ani_env* env, MiscServices::CallingWindowInfo &windowInfo)
+{
+    WindowInfo_t info {};
+    if (env == nullptr) {
+        IMSA_HILOGE("env is nullptr");
+        return info;
+    }
+    ani_class cls;
+    if (env->FindClass("@ohos.inputMethodEngine.inputMethodEngine._taihe_WindowInfo_inner", &cls) != ANI_OK) {
+        IMSA_HILOGE("[ANI] class not found");
+        return info;
+    }
+    ani_method ctor;
+    if (env->Class_FindMethod(cls, "<ctor>", nullptr, &ctor) != ANI_OK) {
+        IMSA_HILOGE("[ANI] ctor not found");
+        return info;
+    }
+    ani_object aniInfo;
+    if (env->Object_New(cls, ctor, &aniInfo) != ANI_OK) {
+        IMSA_HILOGE("[ANI] fail to new obj");
+        return info;
+    }
+    CallAniMethodVoid(env, aniInfo, cls, "<set>rect", nullptr, CreateAniRect(env, windowInfo.rect));
+    CallAniMethodVoid(env, aniInfo, cls, "<set>status", nullptr, CreateAniWindowStatus(env, windowInfo.status));
+    info = taihe::from_ani<WindowInfo_t>(env, aniInfo);
+    return info;
 }
 } // namespace MiscServices
 } // namespace OHOS

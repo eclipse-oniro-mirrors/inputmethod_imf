@@ -98,8 +98,9 @@ void InputMethodPanelListener::OnPanelStatus(uint32_t windowId, bool isShow)
         IMSA_HILOGE("callBack is nullptr!");
         return;
     }
-    auto &func = std::get<taihe::callback<void()>>(cbVec->callback);
-    func();
+    auto &func = std::get<taihe::callback<void(UndefinedType_t const&)>>(cbVec->callback);
+    UndefinedType_t callbackType = UndefinedType_t::make_undefined();
+    func(callbackType);
 }
 
 void InputMethodPanelListener::OnSizeChange(uint32_t windowId, const WindowSize &size)

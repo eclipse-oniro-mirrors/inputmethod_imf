@@ -101,36 +101,36 @@ interface InputMethodSetting {
     @!sts_inject_into_class("""
         on(type: string, cb: Object) {
             switch(type) {
-                case "imeHide": return this.onImeHide(cb as (info: Array<InputWindowInfo>) => void, cb);
-                case "imeShow": return this.onImeShow(cb as (info: Array<InputWindowInfo>) => void, cb);
-                case "imeChange": return this.onImeChange(cb as (inputMethodProperty: InputMethodProperty, inputMethodSubtype: ohos_InputMethodSubtype.InputMethodSubtype) => void, cb);
+                case "imeHide": return this.onImeHideImpl(cb as (info: Array<InputWindowInfo>) => void, cb);
+                case "imeShow": return this.onImeShowImpl(cb as (info: Array<InputWindowInfo>) => void, cb);
+                case "imeChange": return this.onImeChangeImpl(cb as (inputMethodProperty: InputMethodProperty, inputMethodSubtype: ohos_InputMethodSubtype.InputMethodSubtype) => void, cb);
                 default: throw new Error(`Unknown type: ${type}`);
             }
         }
         off(type: string, cb?: Object) {
             switch(type) {
-                case "imeHide": return this.offImeHide(cb);
-                case "imeShow": return this.offImeShow(cb);
-                case "imeChange": return this.offImeChange(cb);
+                case "imeHide": return this.offImeHideImpl(cb);
+                case "imeShow": return this.offImeShowImpl(cb);
+                case "imeChange": return this.offImeChangeImpl(cb);
                 default: throw new Error(`Unknown type: ${type}`);
             }
         }
     """)
-    OnImeHide(f: (info: Array<InputWindowInfo>) => void, opq: Opaque);
-    OffImeHide(opq: Optional<Opaque>);
-    OnImeShow(f: (info: Array<InputWindowInfo>) => void, opq: Opaque);
-    OffImeShow(opq: Optional<Opaque>);
-    OnImeChange(f: (inputMethodProperty: InputMethodProperty, inputMethodSubtype: InputMethodSubtype) => void, opq: Opaque);
-    OffImeChange(opq: Optional<Opaque>);
+    OnImeHideImpl(f: (info: Array<InputWindowInfo>) => void, opq: Opaque);
+    OffImeHideImpl(opq: Optional<Opaque>);
+    OnImeShowImpl(f: (info: Array<InputWindowInfo>) => void, opq: Opaque);
+    OffImeShowImpl(opq: Optional<Opaque>);
+    OnImeChangeImpl(f: (inputMethodProperty: InputMethodProperty, inputMethodSubtype: InputMethodSubtype) => void, opq: Opaque);
+    OffImeChangeImpl(opq: Optional<Opaque>);
 
-    OnImeChangeNew(callback: (inputMethodProperty: InputMethodProperty, inputMethodSubtype: InputMethodSubtype) => void, @sts_last opq: Opaque): void;
-    OffImeChangeNew(opq: Optional<@sts_type("Function2<InputMethodProperty, ohos_InputMethodSubtype.InputMethodSubtype, void>") Opaque>): void;
+    OnImeChange(callback: (inputMethodProperty: InputMethodProperty, inputMethodSubtype: InputMethodSubtype) => void, @sts_last opq: Opaque): void;
+    OffImeChange(opq: Optional<@sts_type("Function2<InputMethodProperty, ohos_InputMethodSubtype.InputMethodSubtype, void>") Opaque>): void;
 
-    OnImeShowNew(callback: (info: Array<InputWindowInfo>) => void, @sts_last opq: Opaque): void;
-    OffImeShowNew(opq: Optional<@sts_type("Function1<Array<InputWindowInfo>, void>") Opaque>): void;
+    OnImeShow(callback: (info: Array<InputWindowInfo>) => void, @sts_last opq: Opaque): void;
+    OffImeShow(opq: Optional<@sts_type("Function1<Array<InputWindowInfo>, void>") Opaque>): void;
 
-    OnImeHideNew(callback: (info: Array<InputWindowInfo>) => void, @sts_last opq: Opaque): void;
-    OffImeHideNew(opq: Optional<@sts_type("Function1<Array<InputWindowInfo>, void>") Opaque>): void;
+    OnImeHide(callback: (info: Array<InputWindowInfo>) => void, @sts_last opq: Opaque): void;
+    OffImeHide(opq: Optional<@sts_type("Function1<Array<InputWindowInfo>, void>") Opaque>): void;
 
     @gen_promise("getInputMethodState")
     GetInputMethodStateSync(): EnabledState;
@@ -229,6 +229,10 @@ enum RequestKeyboardReason : i32 {
     OTHER = 20
 }
 
+union UndefinedType {
+  @undefined undefined;
+}
+
 interface InputMethodController {
     @gen_async("hideSoftKeyboard")
     @gen_promise("hideSoftKeyboard")
@@ -258,105 +262,105 @@ interface InputMethodController {
     @!sts_inject_into_class("""
         on(type: string, cb: Object) {
             switch(type) {
-                case "selectByRange": return this.onSelectByRange(cb as (range : Range) => void, cb);
-                case "selectByMovement": return this.onSelectByMovement(cb as (movement : Movement) => void, cb);
-                case "insertText": return this.onInsertText(cb as (text: String) => void, cb);
-                case "deleteLeft": return this.onDeleteLeft(cb as (length: int) => void, cb);
-                case "deleteRight": return this.onDeleteRight(cb as (length: int) => void, cb);
-                case "sendKeyboardStatus": return this.onSendKeyboardStatus(cb as (keyboardStatus: KeyboardStatus) => void, cb);
-                case "sendFunctionKey": return this.onSendFunctionKey(cb as (functionKey: FunctionKey) => void, cb);
-                case "moveCursor": return this.onMoveCursor(cb as (direction: Direction) => void, cb);
-                case "handleExtendAction": return this.onHandleExtendAction(cb as (extendAction: ExtendAction) => void, cb);
-                case "getLeftTextOfCursor": return this.onGetLeftTextOfCursor(cb as (length: int) => String, cb);
-                case "getRightTextOfCursor": return this.onGetRightTextOfCursor(cb as (length: int) => String, cb);
-                case "getTextIndexAtCursor": return this.onGetTextIndexAtCursor(cb as () => int, cb);
+                case "selectByRange": return this.onSelectByRangeImpl(cb as (range : Range) => void, cb);
+                case "selectByMovement": return this.onSelectByMovementImpl(cb as (movement : Movement) => void, cb);
+                case "insertText": return this.onInsertTextImpl(cb as (text: String) => void, cb);
+                case "deleteLeft": return this.onDeleteLeftImpl(cb as (length: int) => void, cb);
+                case "deleteRight": return this.onDeleteRightImpl(cb as (length: int) => void, cb);
+                case "sendKeyboardStatus": return this.onSendKeyboardStatusImpl(cb as (keyboardStatus: KeyboardStatus) => void, cb);
+                case "sendFunctionKey": return this.onSendFunctionKeyImpl(cb as (functionKey: FunctionKey) => void, cb);
+                case "moveCursor": return this.onMoveCursorImpl(cb as (direction: Direction) => void, cb);
+                case "handleExtendAction": return this.onHandleExtendActionImpl(cb as (extendAction: ExtendAction) => void, cb);
+                case "getLeftTextOfCursor": return this.onGetLeftTextOfCursorImpl(cb as (length: int) => String, cb);
+                case "getRightTextOfCursor": return this.onGetRightTextOfCursorImpl(cb as (length: int) => String, cb);
+                case "getTextIndexAtCursor": return this.onGetTextIndexAtCursorImpl(cb as () => int, cb);
                 default: throw new Error(`Unknown type: ${type}`);
             }
         }
         off(type: string, cb?: Object) {
             switch(type) {
-                case "selectByRange": return this.offSelectByRange(cb);
-                case "selectByMovement": return this.offSelectByMovement(cb);
-                case "insertText": return this.offInsertText(cb);
-                case "deleteLeft": return this.offDeleteLeft(cb);
-                case "deleteRight": return this.offDeleteRight(cb);
-                case "sendKeyboardStatus": return this.offSendKeyboardStatus(cb);
-                case "sendFunctionKey": return this.offSendFunctionKey(cb);
-                case "moveCursor": return this.offMoveCursor(cb);
-                case "handleExtendAction": return this.offHandleExtendAction(cb);
-                case "getLeftTextOfCursor": return this.offGetLeftTextOfCursor(cb);
-                case "getRightTextOfCursor": return this.offGetRightTextOfCursor(cb);
-                case "getTextIndexAtCursor": return this.offGetTextIndexAtCursor(cb);
+                case "selectByRange": return this.offSelectByRangeImpl(cb);
+                case "selectByMovement": return this.offSelectByMovementImpl(cb);
+                case "insertText": return this.offInsertTextImpl(cb);
+                case "deleteLeft": return this.offDeleteLeftImpl(cb);
+                case "deleteRight": return this.offDeleteRightImpl(cb);
+                case "sendKeyboardStatus": return this.offSendKeyboardStatusImpl(cb);
+                case "sendFunctionKey": return this.offSendFunctionKeyImpl(cb);
+                case "moveCursor": return this.offMoveCursorImpl(cb);
+                case "handleExtendAction": return this.offHandleExtendActionImpl(cb);
+                case "getLeftTextOfCursor": return this.offGetLeftTextOfCursorImpl(cb);
+                case "getRightTextOfCursor": return this.offGetRightTextOfCursorImpl(cb);
+                case "getTextIndexAtCursor": return this.offGetTextIndexAtCursorImpl(cb);
                 default: throw new Error(`Unknown type: ${type}`);
             }
         }
     """)
-    OnSelectByRange(f: (range : Range) => void, opq: Opaque);
-    OffSelectByRange(opq: Optional<Opaque>);
-    OnSelectByMovement(f: (movement : Movement) => void, opq: Opaque);
-    OffSelectByMovement(opq: Optional<Opaque>);
-    OnInsertText(f: (text: String) => void, opq: Opaque);
-    OffInsertText(opq: Optional<Opaque>);
-    OnDeleteLeft(f: (length: i32) => void, opq: Opaque);
-    OffDeleteLeft(opq: Optional<Opaque>);
-    OnDeleteRight(f: (length: i32) => void, opq: Opaque);
-    OffDeleteRight(opq: Optional<Opaque>);
-    OnSendKeyboardStatus(f: (keyboardStatus: KeyboardStatus) => void, opq: Opaque);
-    OffSendKeyboardStatus(opq: Optional<Opaque>);
-    OnSendFunctionKey(f: (functionKey: FunctionKey) => void, opq: Opaque);
-    OffSendFunctionKey(opq: Optional<Opaque>);
-    OnMoveCursor(f: (direction: Direction) => void, opq: Opaque);
-    OffMoveCursor(opq: Optional<Opaque>);
-    OnHandleExtendAction(f: (action: ExtendAction) => void, opq: Opaque);
-    OffHandleExtendAction(opq: Optional<Opaque>);
-    OnGetLeftTextOfCursor(f: (length: i32) => String, opq: Opaque);
-    OffGetLeftTextOfCursor(opq: Optional<Opaque>);
-    OnGetRightTextOfCursor(f: (length: i32) => String, opq: Opaque);
-    OffGetRightTextOfCursor(opq: Optional<Opaque>);
-    OnGetTextIndexAtCursor(f: () => i32, opq: Opaque);
-    OffGetTextIndexAtCursor(opq: Optional<Opaque>);
+    OnSelectByRangeImpl(f: (range : Range) => void, opq: Opaque);
+    OffSelectByRangeImpl(opq: Optional<Opaque>);
+    OnSelectByMovementImpl(f: (movement : Movement) => void, opq: Opaque);
+    OffSelectByMovementImpl(opq: Optional<Opaque>);
+    OnInsertTextImpl(f: (text: String) => void, opq: Opaque);
+    OffInsertTextImpl(opq: Optional<Opaque>);
+    OnDeleteLeftImpl(f: (length: i32) => void, opq: Opaque);
+    OffDeleteLeftImpl(opq: Optional<Opaque>);
+    OnDeleteRightImpl(f: (length: i32) => void, opq: Opaque);
+    OffDeleteRightImpl(opq: Optional<Opaque>);
+    OnSendKeyboardStatusImpl(f: (keyboardStatus: KeyboardStatus) => void, opq: Opaque);
+    OffSendKeyboardStatusImpl(opq: Optional<Opaque>);
+    OnSendFunctionKeyImpl(f: (functionKey: FunctionKey) => void, opq: Opaque);
+    OffSendFunctionKeyImpl(opq: Optional<Opaque>);
+    OnMoveCursorImpl(f: (direction: Direction) => void, opq: Opaque);
+    OffMoveCursorImpl(opq: Optional<Opaque>);
+    OnHandleExtendActionImpl(f: (action: ExtendAction) => void, opq: Opaque);
+    OffHandleExtendActionImpl(opq: Optional<Opaque>);
+    OnGetLeftTextOfCursorImpl(f: (length: i32) => String, opq: Opaque);
+    OffGetLeftTextOfCursorImpl(opq: Optional<Opaque>);
+    OnGetRightTextOfCursorImpl(f: (length: i32) => String, opq: Opaque);
+    OffGetRightTextOfCursorImpl(opq: Optional<Opaque>);
+    OnGetTextIndexAtCursorImpl(f: () => i32, opq: Opaque);
+    OffGetTextIndexAtCursorImpl(opq: Optional<Opaque>);
 
-    OnSelectByRangeNew(callback: (range: Range) => void, @sts_last opq: Opaque): void;
-    OffSelectByRangeNew(opq: Optional<@sts_type("Function1<Range, void>") Opaque>);
+    OnSelectByRange(callback: (range: Range) => void, @sts_last opq: Opaque): void;
+    OffSelectByRange(opq: Optional<@sts_type("Function1<Range, void>") Opaque>);
 
-    OnSelectByMovementNew(callback: (movement: Movement) => void, @sts_last opq: Opaque);
-    OffSelectByMovementNew(opq: Optional<@sts_type("Function1<Movement, void>") Opaque>);
+    OnSelectByMovement(callback: (movement: Movement) => void, @sts_last opq: Opaque);
+    OffSelectByMovement(opq: Optional<@sts_type("Function1<Movement, void>") Opaque>);
 
-    OnInsertTextNew(callback: (text: String) => void, @sts_last opq: Opaque);
-    OffInsertTextNew(opq: Optional<@sts_type("Function1<String, void>") Opaque>);
+    OnInsertText(callback: (text: String) => void, @sts_last opq: Opaque);
+    OffInsertText(opq: Optional<@sts_type("Function1<String, void>") Opaque>);
 
-    OnDeleteLeftNew(callback: (f: i32) => void, @sts_last opq: Opaque);
-    OffDeleteLeftNew(opq: Optional<@sts_type("Function1<int, void>") Opaque>);
+    OnDeleteLeft(callback: (f: i32) => void, @sts_last opq: Opaque);
+    OffDeleteLeft(opq: Optional<@sts_type("Function1<int, void>") Opaque>);
 
-    OnDeleteRightNew(callback: (f: i32) => void, @sts_last opq: Opaque);
-    OffDeleteRightNew(opq: Optional<@sts_type("Function1<int, void>") Opaque>);
+    OnDeleteRight(callback: (f: i32) => void, @sts_last opq: Opaque);
+    OffDeleteRight(opq: Optional<@sts_type("Function1<int, void>") Opaque>);
 
-    OnSendKeyboardStatusNew(callback: (status: KeyboardStatus) => void, @sts_last opq: Opaque);
-    OffSendKeyboardStatusNew(opq: Optional<@sts_type("Function1<KeyboardStatus, void>") Opaque>);
+    OnSendKeyboardStatus(callback: (status: KeyboardStatus) => void, @sts_last opq: Opaque);
+    OffSendKeyboardStatus(opq: Optional<@sts_type("Function1<KeyboardStatus, void>") Opaque>);
 
-    OnSendFunctionKeyNew(callback: (key: FunctionKey) => void, @sts_last opq: Opaque);
-    OffSendFunctionKeyNew(opq: Optional<@sts_type("Function1<FunctionKey, void>") Opaque>);
+    OnSendFunctionKey(callback: (key: FunctionKey) => void, @sts_last opq: Opaque);
+    OffSendFunctionKey(opq: Optional<@sts_type("Function1<FunctionKey, void>") Opaque>);
 
-    OnMoveCursorNew(callback: (direction: Direction) => void, @sts_last opq: Opaque);
-    OffMoveCursorNew(opq: Optional<@sts_type("Function1<Direction, void>") Opaque>);
+    OnMoveCursor(callback: (direction: Direction) => void, @sts_last opq: Opaque);
+    OffMoveCursor(opq: Optional<@sts_type("Function1<Direction, void>") Opaque>);
 
-    OnHandleExtendActionNew(callback: (extendAction: ExtendAction) => void, @sts_last opq: Opaque);
-    OffHandleExtendActionNew(opq: Optional<@sts_type("Function1<ExtendAction, void>") Opaque>);
-    
-    OnGetLeftTextOfCursorNew(callback: (length: i32) => String, @sts_last opq: Opaque);
-    OffGetLeftTextOfCursorNew(opq: Optional<@sts_type("Function1<int, String>") Opaque>);
+    OnHandleExtendAction(callback: (extendAction: ExtendAction) => void, @sts_last opq: Opaque);
+    OffHandleExtendAction(opq: Optional<@sts_type("Function1<ExtendAction, void>") Opaque>);
 
-    OnGetRightTextOfCursorNew(callback: (length: i32) => String, @sts_last opq: Opaque);
-    OffGetRightTextOfCursorNew(opq: Optional<@sts_type("Function1<int, String>") Opaque>);
+    OnGetLeftTextOfCursor(callback: (length: i32) => String, @sts_last opq: Opaque);
+    OffGetLeftTextOfCursor(opq: Optional<@sts_type("Function1<int, String>") Opaque>);
 
-    OnGetTextIndexAtCursorNew(callback: () => i32, @sts_last opq: Opaque);
-    OffGetTextIndexAtCursorNew(opq: Optional<@sts_type("Function0<int>") Opaque>);
-    
+    OnGetRightTextOfCursor(callback: (length: i32) => String, @sts_last opq: Opaque);
+    OffGetRightTextOfCursor(opq: Optional<@sts_type("Function1<int, String>") Opaque>);
+
+    OnGetTextIndexAtCursor(callback: () => i32, @sts_last opq: Opaque);
+    OffGetTextIndexAtCursor(opq: Optional<@sts_type("Function0<int>") Opaque>);
+
     OnSetPreviewText(callback: (text: String, range: Range) => void, @sts_last opq: Opaque);
     OffSetPreviewText(opq: Optional<@sts_type("Function2<String, Range, void>") Opaque>);
 
-    OnFinishTextPreview(callback: () => void, @sts_last opq: Opaque);
-    OffFinishTextPreview(opq: Optional<@sts_type("Function0<void>") Opaque>);
+    OnFinishTextPreview(callback: (data: UndefinedType) => void, @sts_last opq: Opaque);
+    OffFinishTextPreview(opq: Optional<@sts_type("Function1<void, void>") Opaque>);
 
     @gen_promise("discardTypingText")
     DiscardTypingTextSync(): void;

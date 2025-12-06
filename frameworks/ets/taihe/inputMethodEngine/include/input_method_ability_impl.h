@@ -93,7 +93,7 @@ public:
         InputMethodAbilityImpl::GetInstance()->UnRegisterListener("inputStart", opq);
     }
 
-    void OnInputStop(taihe::callback_view<void()> callback, uintptr_t opq)
+    void OnInputStop(taihe::callback_view<void(UndefinedType_t const&)> callback, uintptr_t opq)
     {
         InputMethodAbilityImpl::GetInstance()->RegisterListener("inputStop", callback, opq);
     }
@@ -113,7 +113,7 @@ public:
         InputMethodAbilityImpl::GetInstance()->UnRegisterListener("setCallingWindow", opq);
     }
 
-    void OnKeyboardShow(taihe::callback_view<void()> callback, uintptr_t opq)
+    void OnKeyboardShow(taihe::callback_view<void(UndefinedType_t const&)> callback, uintptr_t opq)
     {
         InputMethodAbilityImpl::GetInstance()->RegisterListener("keyboardShow", callback, opq);
     }
@@ -123,7 +123,7 @@ public:
         InputMethodAbilityImpl::GetInstance()->UnRegisterListener("keyboardShow", opq);
     }
 
-    void OnKeyboardHide(taihe::callback_view<void()> callback, uintptr_t opq)
+    void OnKeyboardHide(taihe::callback_view<void(UndefinedType_t const&)> callback, uintptr_t opq)
     {
         InputMethodAbilityImpl::GetInstance()->RegisterListener("keyboardHide", callback, opq);
     }
@@ -174,7 +174,7 @@ public:
         InputMethodAbilityImpl::GetInstance()->UnRegisterListener("callingDisplayDidChange", opq);
     }
 
-    void OnDiscardTypingText(taihe::callback_view<void()> callback, uintptr_t opq)
+    void OnDiscardTypingText(taihe::callback_view<void(UndefinedType_t const&)> callback, uintptr_t opq)
     {
         InputMethodAbilityImpl::GetInstance()->RegisterListener("discardTypingText", callback, opq);
     }

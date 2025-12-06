@@ -190,7 +190,7 @@ public:
         PanelImpl::GetInstance()->SetImmersiveEffect(effect);
     }
 
-    void OnShow(taihe::callback_view<void()> callback, uintptr_t opq)
+    void OnShow(taihe::callback_view<void(UndefinedType_t const&)> callback, uintptr_t opq)
     {
         PanelImpl::GetInstance()->RegisterListener("show", callback, opq);
     }
@@ -200,7 +200,7 @@ public:
         PanelImpl::GetInstance()->UnRegisterListener("show", opq);
     }
 
-    void OnHide(taihe::callback_view<void()> callback, uintptr_t opq)
+    void OnHide(taihe::callback_view<void(UndefinedType_t const&)> callback, uintptr_t opq)
     {
         PanelImpl::GetInstance()->RegisterListener("hide", callback, opq);
     }

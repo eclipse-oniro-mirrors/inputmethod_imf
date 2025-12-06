@@ -222,6 +222,7 @@ void InputMethodControllerImpl::UnRegisterListener(std::string const &type, taih
             uniquePtr->Release();
         }
         jsCbMap_.erase(iter);
+        UpdateTextPreviewState(type);
         IMSA_HILOGE("callback is nullptr!");
         return;
     }
@@ -245,6 +246,7 @@ void InputMethodControllerImpl::UnRegisterListener(std::string const &type, taih
     }
     if (callbacks.empty()) {
         jsCbMap_.erase(iter);
+        UpdateTextPreviewState(type);
         IMSA_HILOGI("UnRegisterListener callbacks is empty type:%{public}s", type.c_str());
     }
 }
@@ -368,8 +370,9 @@ void InputMethodControllerImpl::FinishTextPreviewCallback()
     std::lock_guard<std::mutex> lock(mutex_);
     auto &cbVec = jsCbMap_["finishTextPreview"];
     for (auto &cb : cbVec) {
-        auto &func = std::get<taihe::callback<void()>>(cb->callback);
-        func();
+        auto &func = std::get<taihe::callback<void(UndefinedType_t const&)>>(cb->callback);
+        UndefinedType_t type = UndefinedType_t::make_undefined();
+        func(type);
     }
 }
 
@@ -590,6 +593,18 @@ void InputMethodControllerImpl::UpdateCursorSync(::ohos::inputMethod::CursorInfo
         return;
     }
     IMSA_HILOGI("InputMethodControllerImpl::OnCursorUpdate success!");
+}
+
+void InputMethodControllerImpl::UpdateTextPreviewState(const std::string &type)
+{
+    if (type == "setPreviewText" || type == "finishTextPreview") {
+        auto instance = InputMethodController::GetInstance();
+        if (instance == nullptr) {
+            IMSA_HILOGE("GetInstance() is nullptr!");
+            return;
+        }
+        instance->UpdateTextPreviewState(false);
+    }
 }
 } // namespace MiscServices
 } // namespace OHOS
