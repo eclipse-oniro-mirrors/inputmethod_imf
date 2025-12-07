@@ -851,10 +851,6 @@ ErrCode InputMethodSystemAbility::RequestHideInput(uint32_t windowId, bool isFoc
     IMSA_HILOGI("isFocusTriggered/windowId:%{public}d/%{public}d.", isFocusTriggered, windowId);
     AccessTokenID tokenId = IPCSkeleton::GetCallingTokenID();
     auto pid = IPCSkeleton::GetCallingPid();
-    if (identityChecker_->IsBroker(tokenId) || identityChecker_->IsUIExtension(pid)) {
-        IMSA_HILOGW("not allow broker or UIExtension caller!");
-        return ErrorCode::ERROR_STATUS_PERMISSION_DENIED;
-    }
     auto [isFocused, focusedInfo] = identityChecker_->IsFocused(pid, tokenId, windowId);
     if (!isFocused) {
         if (isFocusTriggered) {
@@ -871,9 +867,11 @@ ErrCode InputMethodSystemAbility::RequestHideInput(uint32_t windowId, bool isFoc
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_NULL_POINTER;
     }
-    auto displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(windowId);
+    auto displayId = WindowAdapter::GetDisplayIdByWindowId(windowId);
+    auto displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId);
+    bool isRestrictedMainShow = DisplayAdapter::IsRestrictedMainDisplayId(displayId);
     IMSA_HILOGI("displayGroupId:%{public}" PRIu64 ".", displayGroupId);
-    return session->OnRequestHideInput(displayGroupId);
+    return session->OnRequestHideInput(displayGroupId, isRestrictedMainShow);
 }
 
 ErrCode InputMethodSystemAbility::SetCoreAndAgent(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent)
@@ -1063,17 +1061,17 @@ ErrCode InputMethodSystemAbility::UpdateListenEventFlag(const InputClientInfoInn
 {
     InputClientInfo clientInfo = InputMethodTools::GetInstance().InnerToInputClientInfo(clientInfoInner);
     IMSA_HILOGD("finalEventFlag: %{public}u, eventFlag: %{public}u.", clientInfo.eventFlag, eventFlag);
-    if (EventStatusManager::IsImeHideOn(eventFlag) || EventStatusManager::IsImeShowOn(eventFlag)
-        || EventStatusManager::IsInputStatusChangedOn(eventFlag)) {
-        if (!identityChecker_->IsSystemApp(IPCSkeleton::GetCallingFullTokenID())
-            && !identityChecker_->IsNativeSa(IPCSkeleton::GetCallingTokenID())) {
+    if (EventStatusManager::IsImeHideOn(eventFlag) || EventStatusManager::IsImeShowOn(eventFlag) ||
+        EventStatusManager::IsInputStatusChangedOn(eventFlag)) {
+        if (!identityChecker_->IsSystemApp(IPCSkeleton::GetCallingFullTokenID()) &&
+            !identityChecker_->IsNativeSa(IPCSkeleton::GetCallingTokenID())) {
             IMSA_HILOGE("not system application!");
             return ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION;
         }
     }
     auto userId = OsAccountAdapter::GetOsAccountLocalIdFromUid(IPCSkeleton::GetCallingUid());
     return ImeEventListenerManager::GetInstance().UpdateListenerInfo(
-        userId, { eventFlag, clientInfo.client, IPCSkeleton::GetCallingPid() });
+        userId, { clientInfo.eventFlag, clientInfo.client, IPCSkeleton::GetCallingPid() });
 }
 // LCOV_EXCL_START
 ErrCode InputMethodSystemAbility::SetCallingWindow(
@@ -2809,7 +2807,7 @@ ErrCode InputMethodSystemAbility::ShowCurrentInput(uint64_t displayId, uint32_t 
 }
 
 ErrCode InputMethodSystemAbility::ShowInput(
-    const sptr<IInputClient> &client uint32_t windowId, uint32_t type, int32_t requestKeyboardReason)
+    const sptr<IInputClient> &client, uint32_t windowId, uint32_t type, int32_t requestKeyboardReason)
 {
     auto name = ImfHiSysEventUtil::GetAppName(IPCSkeleton::GetCallingTokenID());
     auto pid = IPCSkeleton::GetCallingPid();

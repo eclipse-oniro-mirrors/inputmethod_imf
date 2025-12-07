@@ -30,7 +30,7 @@ bool InputClientInfoInner::ReadFromParcel(Parcel &in)
         return false;
     }
     config = *configInfo;
-
+    eventFlag = in.ReadUint32();
     std::unique_ptr<InputAttributeInner> attributeInfo(in.ReadParcelable<InputAttributeInner>());
     if (attributeInfo == nullptr) {
         return false;
@@ -84,6 +84,9 @@ bool InputClientInfoInner::Marshalling(Parcel &out) const
         return false;
     }
     if (!out.WriteParcelable(&config)) {
+        return false;
+    }
+    if (!out.WriteUint32(eventFlag)) {
         return false;
     }
     if (!out.WriteParcelable(&attribute)) {

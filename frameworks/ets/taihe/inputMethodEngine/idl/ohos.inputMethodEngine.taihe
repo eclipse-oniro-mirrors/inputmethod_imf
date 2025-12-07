@@ -1,0 +1,596 @@
+/*
+ * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+
+@!namespace("@ohos.inputMethodEngine", "inputMethodEngine")
+@!sts_inject_into_module("""
+import BaseContext from 'application.BaseContext';
+import window from '@ohos.window';
+import { LocalStorage } from '@ohos.arkui.stateManagement';
+import { BusinessError, AsyncCallback, Callback } from '@ohos.base';
+""")
+@!sts_inject_into_module("import * as ohos_InputMethodSubtype from './@ohos.InputMethodSubtype';")
+@!sts_inject_into_module("import * as ohos_multimodalInput_keyEvent from './@ohos.multimodalInput.keyEvent';")
+
+from ohos.InputMethodSubtype use InputMethodSubtype;
+from ohos.multimodalInput.keyEvent use KeyEvent as InputKeyEvent;
+
+@!sts_inject("""
+static { loadLibrary("inputmethod_engine_taihe_native.z") }
+""")
+
+@!sts_inject("""
+const ENTER_KEY_TYPE_UNSPECIFIED: int = 0;
+const ENTER_KEY_TYPE_GO: int = 2;
+const ENTER_KEY_TYPE_SEARCH: int = 3;
+const ENTER_KEY_TYPE_SEND: int = 4;
+const ENTER_KEY_TYPE_NEXT: int = 5;
+const ENTER_KEY_TYPE_DONE: int = 6;
+const ENTER_KEY_TYPE_PREVIOUS: int = 7;
+const ENTER_KEY_TYPE_NEWLINE: int = 8;
+
+const PATTERN_NULL: int = -1;
+const PATTERN_TEXT: int = 0;
+const PATTERN_NUMBER: int = 2;
+const PATTERN_PHONE: int = 3;
+const PATTERN_DATETIME: int = 4;
+const PATTERN_EMAIL: int = 5;
+const PATTERN_URI: int = 6;
+const PATTERN_PASSWORD: int = 7;
+const PATTERN_PASSWORD_SCREEN_LOCK: int = 9;
+const PATTERN_PASSWORD_NUMBER: int = 8;
+const PATTERN_USER_NAME: int = 10;
+const PATTERN_NEW_PASSWORD: int = 11;
+const PATTERN_NUMBER_DECIMAL: int = 12;
+const PATTERN_ONE_TIME_CODE: int = 13;
+
+const FLAG_SELECTING: int = 2;
+const FLAG_SINGLE_LINE: int = 1;
+
+const DISPLAY_MODE_PART: int = 0;
+const DISPLAY_MODE_FULL: int = 1;
+
+const OPTION_ASCII: int = 20;
+const OPTION_NONE: int = 0;
+const OPTION_AUTO_CAP_CHARACTERS: int = 2;
+const OPTION_AUTO_CAP_SENTENCES: int = 8;
+const OPTION_AUTO_WORDS: int = 4;
+const OPTION_MULTI_LINE: int = 1;
+const OPTION_NO_FULLSCREEN: int = 10;
+
+const CURSOR_UP: int = 1;
+const CURSOR_DOWN: int = 2;
+const CURSOR_LEFT: int = 3;
+const CURSOR_RIGHT: int = 4;
+
+const WINDOW_TYPE_INPUT_METHOD_FLOAT: int = 2105;
+""")
+
+enum Direction: i32 {
+    CURSOR_UP = 1,
+    CURSOR_DOWN = 2,
+    CURSOR_LEFT = 3,
+    CURSOR_RIGHT = 4
+}
+
+struct Movement {
+    direction: Direction;
+}
+
+struct Range {
+    start: i32;
+    end: i32;
+}
+
+enum ImmersiveMode: i32 {
+    NONE_IMMERSIVE = 0,
+    IMMERSIVE = 1,
+    LIGHT_IMMERSIVE = 2,
+    DARK_IMMERSIVE = 3
+}
+
+enum CapitalizeMode: i32 {
+    NONE = 0,
+    SENTENCES = 1,
+    WORDS = 2,
+    CHARACTERS = 3
+}
+
+enum GradientMode: i32 {
+    NONE = 0,
+    LINEAR_GRADIENT = 1
+}
+
+enum FluidLightMode: i32 {
+    NONE = 0,
+    BACKGROUND_FLUID_LIGHT = 1
+}
+
+union CommandDataType {
+    type_Int: i32;
+    type_String: String;
+    type_Bool: bool;
+}
+
+union UndefinedType {
+  @undefined undefined;
+}
+
+struct EditorAttribute {
+    @readonly inputPattern: i32;
+    @readonly enterKeyType: i32;
+    isTextPreviewSupported: bool;
+    @readonly bundleName: Optional<String>;
+    @readonly immersiveMode: Optional<ImmersiveMode>;
+    @readonly windowId: Optional<i32>;
+    @readonly displayId: Optional<u64>;
+    @readonly placeholder: Optional<String>;
+    @readonly abilityName: Optional<String>;
+    @readonly capitalizeMode: Optional<CapitalizeMode>;
+    @readonly gradientMode: Optional<GradientMode>;
+    @readonly fluidLightMode: Optional<FluidLightMode>;
+}
+
+struct WindowInfo {
+    rect: @sts_type("window.Rect") Opaque;
+    status: @sts_type("window.WindowStatusType") Opaque;
+}
+
+enum PanelType: i32 {
+    SOFT_KEYBOARD = 0,
+    STATUS_BAR = 1
+}
+
+enum PanelFlag: i32 {
+    FLG_FIXED = 0,
+    FLG_FLOATING = 1,
+    FLAG_CANDIDATE = 2
+}
+
+enum SecurityMode: i32 {
+    BASIC = 0,
+    FULL = 1
+}
+
+enum ExtendAction: i32 {
+    SELECT_ALL = 0,
+    CUT = 3,
+    COPY = 4,
+    PASTE = 5
+}
+
+struct PanelInfo {
+    type: PanelType;
+    flag: Optional<PanelFlag>;
+}
+
+enum RequestKeyboardReason: i32 {
+    NONE = 0,
+    MOUSE = 1,
+    TOUCH = 2,
+    OTHER = 20
+}
+
+struct PanelRect {
+    landscapeRect: @sts_type("window.Rect") Opaque;
+    portraitRect: @sts_type("window.Rect") Opaque;
+}
+
+struct KeyboardArea {
+    top: i32;
+    bottom: i32;
+    left: i32;
+    right: i32;
+}
+
+struct EnhancedPanelRect {
+    landscapeRect: Optional<@sts_type("window.Rect") Opaque>;
+    portraitRect: Optional<@sts_type("window.Rect") Opaque>;
+    landscapeAvoidY: Optional<i32>;
+    landscapeInputRegion: Optional<@sts_type("Array<window.Rect>") Opaque>;
+    portraitAvoidY: Optional<i32>;
+    portraitInputRegion: Optional<@sts_type("Array<window.Rect>") Opaque>;
+    fullScreenMode: Optional<bool>;
+}
+
+struct KeyEventType {
+    @readonly keyCode: i32;
+    @readonly keyAction: i32;
+}
+
+struct AttachOptions {
+    requestKeyboardReason: Optional<RequestKeyboardReason>;
+    isSimpleKeyboardEnabled: Optional<bool>;
+}
+
+struct ImmersiveEffect {
+    gradientHeight: i32;
+    gradientMode: GradientMode;
+    fluidLightMode: Optional<FluidLightMode>;
+}
+
+union EditorAttributeCallback {
+    type_EditorAttribute: EditorAttribute;
+    @null type_null;
+}
+
+union WindowInfoCallback {
+    type_WindowInfo: WindowInfo;
+    @null type_null;
+}
+
+union AttachOptionsCallback {
+    type_AttachOptions: AttachOptions;
+    @null type_null;
+}
+
+union Delegate {
+    type_Delegate: KeyboardDelegate;
+    @null type_null;
+}
+
+union Ability {
+    type_Ability: InputMethodAbility;
+    @null type_null;
+}
+
+union KeyboardAreaData {
+    type_KeyboardArea: KeyboardArea;
+    @undefined uValue;
+}
+
+interface KeyboardController {
+    @gen_async("hide")
+    @gen_promise("hide")
+    HideAsync(): void;
+
+    @gen_async("exitCurrentInputType")
+    @gen_promise("exitCurrentInputType")
+    ExitCurrentInputTypeAsync(): void;
+}
+
+interface InputMethodAbility {
+    GetSecurityMode(): SecurityMode;
+
+    @gen_async("createPanel")
+    @gen_promise("createPanel")
+    CreatePanelAsync(ctx: @sts_type("BaseContext") Opaque, info: PanelInfo): Panel;
+
+    @gen_async("destroyPanel")
+    @gen_promise("destroyPanel")
+    DestroyPanelAsync(panel: Panel): void;
+
+    OnInputStart(callback: (kbController: KeyboardController, inputClient: InputClient) => void, @sts_last opq: Opaque): void;
+    OffInputStart(opq: Optional<@sts_type("Function2<KeyboardController, InputClient, void>")Opaque>): void;
+
+    OnInputStop(callback: (data: UndefinedType) => void, @sts_last opq: Opaque): void;
+    OffInputStop(opq: Optional<@sts_type("Function1<void, void>") Opaque>): void;
+
+    OnSetCallingWindow(callback: (windowId: i32) => void, @sts_last opq: Opaque): void;
+    OffSetCallingWindow(opq: Optional<@sts_type("Function1<int, void>") Opaque>): void;
+
+    OnKeyboardShow(callback: (data: UndefinedType) => void, @sts_last opq: Opaque): void;
+    OffKeyboardShow(opq: Optional<@sts_type("Function1<void, void>") Opaque>): void;
+
+    OnKeyboardHide(callback: (data: UndefinedType) => void, @sts_last opq: Opaque): void;
+    OffKeyboardHide(opq: Optional<@sts_type("Function1<void, void>") Opaque>): void;
+
+    OnSetSubtype(callback: (inputMethodSubtype: InputMethodSubtype) => void, @sts_last opq: Opaque): void;
+    OffSetSubtype(opq: Optional<@sts_type("Function1<ohos_InputMethodSubtype.InputMethodSubtype, void>") Opaque>): void;
+
+    OnSecurityModeChange(callback: (mode: SecurityMode) => void, @sts_last opq: Opaque): void;
+    OffSecurityModeChange(opq: Optional<@sts_type("Function1<SecurityMode, void>")Opaque>): void;
+
+    OnPrivateCommand(callback: (data: @record Map<String, CommandDataType>) => void, @sts_last opq: Opaque): void;
+    OffPrivateCommand(opq: Optional<@sts_type("Function1<Record<string, CommandDataType>, void>") Opaque>): void;
+
+    OnCallingDisplayDidChange(callback: (callingDisplayId: i32) => void, @sts_last opq: Opaque): void;
+    OffCallingDisplayDidChange(opq: Optional<@sts_type("Function1<int, void>") Opaque>): void;
+
+    OnDiscardTypingText(callback: (data: UndefinedType) => void, @sts_last opq: Opaque): void;
+    OffDiscardTypingText(opq: Optional<@sts_type("Function1<void, void>") Opaque>): void;
+}
+
+interface InputClient {
+    @gen_async("sendKeyFunction")
+    @gen_promise("sendKeyFunction")
+    SendKeyFunctionAsync(action: i32): bool;
+
+    @gen_async("deleteForward")
+    @gen_promise("deleteForward")
+    DeleteForwardAsync(length: i32): bool;
+
+    @gen_async("deleteBackward")
+    @gen_promise("deleteBackward")
+    DeleteBackwardAsync(length: i32): bool;
+
+    @gen_async("insertText")
+    @gen_promise("insertText")
+    InsertTextAsync(text: String): bool;
+
+    @gen_async("getForward")
+    @gen_promise("getForward")
+    GetForwardAsync(length: i32): String;
+
+    @gen_async("getBackward")
+    @gen_promise("getBackward")
+    GetBackwardAsync(length: i32): String;
+
+    @gen_async("getEditorAttribute")
+    @gen_promise("getEditorAttribute")
+    GetEditorAttributeAsync(): EditorAttributeCallback;
+
+    @gen_async("moveCursor")
+    @gen_promise("moveCursor")
+    MoveCursorAsync(direction: i32): void;
+
+    @gen_async("selectByRange")
+    @gen_promise("selectByRange")
+    SelectByRangeAsync(range: Range): void;
+
+    @gen_async("selectByMovement")
+    @gen_promise("selectByMovement")
+    SelectByMovementAsync(movement: Movement): void;
+
+    @gen_async("getTextIndexAtCursor")
+    @gen_promise("getTextIndexAtCursor")
+    GetTextIndexAtCursorAsync(): i32;
+
+    @gen_async("sendExtendAction")
+    @gen_promise("sendExtendAction")
+    SendExtendActionAsync(action: ExtendAction): void;
+
+    @gen_promise("sendPrivateCommand")
+    SendPrivateCommandAsync(commandData: @record Map<String, CommandDataType>): void;
+
+    @gen_promise("getCallingWindowInfo")
+    GetCallingWindowInfoAsync(): WindowInfoCallback;
+
+    @gen_promise("setPreviewText")
+    SetPreviewTextAsync(text: String, range: Range): void;
+
+    @gen_promise("finishTextPreview")
+    FinishTextPreviewAsync(): void;
+
+    @gen_promise("sendMessage")
+    SendMessageAsync(msgId: String, msgParam: Optional<@arraybuffer Array<u8>>): void;
+
+    RecvMessage(msgHandler: Optional<MessageHandler>): void;
+    FinishTextPreviewSync(): void;
+    SetPreviewTextSync(text: String, range: Range): void;
+    SelectByMovementSync(movement: Movement): void;
+    SelectByRangeSync(range: Range): void;
+    MoveCursorSync(direction: i32): void;
+    GetBackwardSync(length: i32): String;
+    GetForwardSync(length: i32): String;
+    InsertTextSync(text: String): void;
+    DeleteBackwardSync(length: i32): void;
+    DeleteForwardSync(length: i32): void;
+    GetEditorAttributeSync(): EditorAttributeCallback;
+    GetTextIndexAtCursorSync(): i32;
+    GetAttachOptions(): AttachOptionsCallback;
+
+    OnAttachOptionsDidChange(callback: (opts: AttachOptions) => void, @sts_last opq: Opaque): void;
+    OffAttachOptionsDidChange(opq: Optional<@sts_type("Function1<AttachOptions, void>") Opaque>): void;
+}
+
+interface KeyboardDelegate {
+
+    OnKeyDown(callback: (event: KeyEventType) => bool, @sts_last opq: Opaque): void;
+    OffKeyDown(opq: Optional<@sts_type("Function1<KeyEventType, boolean>") Opaque>): void;
+
+    OnKeyUp(callback: (event: KeyEventType) => bool, @sts_last opq: Opaque): void;
+    OffKeyUp(opq: Optional<@sts_type("Function1<KeyEventType, boolean>") Opaque>): void;
+
+    @!sts_inject_into_interface("""
+        onkeyEvent(callback: (data: object) => object): void;
+        offkeyEvent(callback?: (data: object) => object): void;
+    """)
+    @!sts_inject_into_class("""
+        onkeyEvent(callback: object) {
+            return this.onKeyEvent(callback as (data: ohos_multimodalInput_keyEvent.KeyEvent) => boolean, callback);
+        }
+        offkeyEvent(callback?: Object) {
+            return this.offKeyEvent(callback);
+        }
+    """)
+    OnKeyEvent(callback: (event: InputKeyEvent) => bool, opq: Opaque);
+    OffKeyEvent(opq: Optional<Opaque>);
+
+    OnCursorContextChange(callback: (x: i32, y: i32, height: i32) => void, @sts_last opq: Opaque): void;
+    OffCursorContextChange(opq: Optional<@sts_type("Function3<int, int, int , void>") Opaque>): void;
+
+    OnSelectionChange(callback: (oldBegin: i32, oldEnd: i32, newBegin: i32, newEnd: i32) => void, @sts_last opq: Opaque): void;
+    OffSelectionChange(opq: Optional<@sts_type("Function4<int, int, int, int, void>") Opaque>): void;
+
+    OnTextChange(callback: (text: String) => void, @sts_last opq: Opaque): void;
+    OffTextChange(opq: Optional<@sts_type("Function1<string, void>") Opaque>): void;
+
+    OnEditorAttributeChanged(callback: (attr: EditorAttribute) => void, @sts_last opq: Opaque): void;
+    OffEditorAttributeChanged(opq: Optional<@sts_type("Function1<EditorAttribute, void>") Opaque>): void;
+}
+
+interface Panel {
+    GetImplPtr(): i64;
+
+    @gen_async("setUiContentImpl")
+    @gen_promise("setUiContentImpl")
+    SetUiContentAsync(id: i64, path: String): void;
+
+    SetUiContentSync(id: i64, path: String): void;
+
+    @gen_async("setUiContentWithStorageImpl")
+    @gen_promise("setUiContentWithStorageImpl")
+    SetUiContentStorage(id: i64, path: String, storage: @sts_type("LocalStorage") Opaque): void;
+
+    SetUiContentStorageSync(id: i64, path: String, storage: @sts_type("LocalStorage") Opaque): void;
+
+    @gen_async("resizeImpl")
+    @gen_promise("resizeImpl")
+    ResizeAsync(id: i64, width: i64, height: i64): void;
+
+    @gen_async("moveToImpl")
+    @gen_promise("moveToImpl")
+    MoveToAsync(id: i64, x: i32, y: i32): void;
+
+    @gen_promise("getDisplayIdImpl")
+    GetDisplayIdSync(id: i64): u32;
+
+    @gen_async("showImpl")
+    @gen_promise("showImpl")
+    ShowAsync(id: i64,): void;
+
+    @gen_async("hideImpl")
+    @gen_promise("hideImpl")
+    HideAsync(id: i64): void;
+
+    @gen_promise("setKeepScreenOn")
+    SetKeepScreenOnAsync(isKeepScreenOn: bool): void;
+
+    StartMoving(): void;
+    ChangeFlag(flag: PanelFlag): void;
+    SetPrivacyMode(isPrivacyMode: bool): void;
+
+    @overload("adjustPanelRect")
+    AdjustPanelRect(flag: PanelFlag, rect: PanelRect): void;
+    @overload("adjustPanelRect")
+    AdjustPanelRectEnhanced(flag: PanelFlag, rect: EnhancedPanelRect): void;
+
+    UpdateRegion(inputRegion: @sts_type("Array<window.Rect>") Opaque): void;
+    SetImmersiveMode(mode: ImmersiveMode): void;
+    GetImmersiveMode(): ImmersiveMode;
+    SetImmersiveEffect(effect: ImmersiveEffect): void;
+
+    OnShow(callback: (data: UndefinedType) => void, @sts_last opq: Opaque): void;
+    OffShow(opq: Optional<@sts_type("Function1<void, void>") Opaque>): void;
+
+    OnHide(callback: (data: UndefinedType) => void, @sts_last opq: Opaque): void;
+    OffHide(opq: Optional<@sts_type("Function1<void, void>") Opaque>): void;
+
+    OnSizeUpdate(callback: (size: @sts_type("window.Size") Opaque, keyboardArea: KeyboardArea) => void, @sts_last opq: Opaque): void;
+    OffSizeUpdate(opq: Optional<@sts_type("Function2<window.Size, KeyboardArea, void>") Opaque>): void;
+
+    OnSizeChange(callback: (size: @sts_type("window.Size") Opaque, keyboardArea: Optional<KeyboardArea>) => void, @sts_last opq: Opaque): void;
+    OffSizeChange(opq: Optional<@sts_type("Function2<window.Size, KeyboardAreaData, void>") Opaque>): void;
+
+    LineUp(): i64;
+    @!sts_inject_into_interface("""
+        resize(width: long, height: long): Promise<void>;
+        resize(width: long, height: long, callback: AsyncCallback<void>): void;
+
+        setUiContent(path: string): Promise<void>;
+        setUiContent(path: string, callback: AsyncCallback<void>): void;
+        setUiContent(path: string, storage: LocalStorage): Promise<void>;
+        setUiContent(path: string, storage: LocalStorage, callback: AsyncCallback<void>): void;
+
+        moveTo(x: int, y: int): Promise<void>;
+        moveTo(x: int, y: int, callback: AsyncCallback<void>): void;
+
+        getDisplayId(): Promise<int>;
+
+        show(): Promise<void>;
+        show(callback: AsyncCallback<void>): void;
+
+        hide(): Promise<void>;
+        hide(callback: AsyncCallback<void>): void;
+    """)
+    @!sts_inject_into_class("""
+        resize(width: long, height: long, callback: AsyncCallback<void>): void {
+            this.resizeImpl(this.lineUp(), width, height, callback);
+        }
+        resize(width: long, height: long): Promise<void> {
+            return this.resizeImpl(this.lineUp(), width, height);
+        }
+
+        setUiContent(path: string): Promise<void> {
+            let id: long = this.lineUp();
+            return new Promise<void>((resolve, reject): void => {
+                try {
+                    this.setUiContentSync(id, path);
+                    resolve(undefined);
+                } catch (err: Error) {
+                    reject(err as BusinessError);
+                }
+            });
+        }
+        setUiContent(path: string, callback: AsyncCallback<void>): void {
+            let id: long = this.lineUp();
+            try {
+                this.setUiContentSync(id, path);
+                callback(null, undefined);
+            } catch (err: Error) {
+                callback(err as BusinessError, undefined);
+            }
+        }
+        setUiContent(path: string, storage: LocalStorage): Promise<void> {
+            let id: long = this.lineUp();
+            return new Promise<void>((resolve, reject): void => {
+                try {
+                    this.setUiContentStorageSync(id, path, storage);
+                    resolve(undefined);
+                } catch (err: Error) {
+                    reject(err as BusinessError);
+                }
+            });
+        }
+        setUiContent(path: string, storage: LocalStorage, callback: AsyncCallback<void>): void {
+            let id: long = this.lineUp();
+            try {
+                this.setUiContentStorageSync(id, path, storage);
+                callback(null, undefined);
+            } catch (err: Error) {
+                callback(err as BusinessError, undefined);
+            }
+        }
+
+        moveTo(x: int, y: int): Promise<void> {
+            return this.moveToImpl(this.lineUp(), x, y);
+        }
+        moveTo(x: int, y: int, callback: AsyncCallback<void>): void {
+            this.moveToImpl(this.lineUp(), x, y, callback);
+        }
+
+        getDisplayId(): Promise<int> {
+            return this.getDisplayIdImpl(this.lineUp());
+        }
+
+        show(): Promise<void> {
+            return this.showImpl(this.lineUp());
+        }
+        show(callback: AsyncCallback<void>): void {
+            this.showImpl(this.lineUp(), callback);
+        }
+
+        hide(): Promise<void> {
+            return this.hideImpl(this.lineUp());
+        }
+        hide(callback: AsyncCallback<void>): void {
+            this.hideImpl(this.lineUp(), callback);
+        }
+    """)
+}
+
+@!sts_inject("""
+export type OnMessageCallback = (msgId: string, msgParam?: ArrayBuffer) => void;
+export type OnTerminatedCallback = Callback<void>;
+""")
+
+struct MessageHandler {
+    onMessage: @sts_type("OnMessageCallback") Opaque;
+    onTerminated: @sts_type("OnTerminatedCallback") Opaque;
+}
+
+function GetInputMethodAbility(): Ability;
+
+function GetKeyboardDelegate(): Delegate;

@@ -12,21 +12,28 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "ani_message_handler.h"
 #include "input_method_controller_impl.h"
-
 #include <cstdint>
-
 #include "ani_common.h"
+#include "input_method_ability.h"
 #include "input_method_controller.h"
 #include "input_method_text_changed_listener.h"
+#include "input_method_utils.h"
 #include "js_utils.h"
 #include "stdexcept"
 #include "string_ex.h"
 #include "taihe/runtime.hpp"
+#include <iostream>
+#include <string>
+#include <unicode/unistr.h>
+#include <unicode/ucnv.h>
 
 namespace OHOS {
 namespace MiscServices {
 using namespace taihe;
+constexpr size_t ARGC_ONE = 1;
+constexpr size_t ARGC_TWO = 2;
 std::mutex InputMethodControllerImpl::controllerMutex_;
 std::shared_ptr<InputMethodControllerImpl> InputMethodControllerImpl::controller_{ nullptr };
 const std::set<std::string> InputMethodControllerImpl::TEXT_EVENT_TYPE{
@@ -37,10 +44,15 @@ const std::set<std::string> InputMethodControllerImpl::TEXT_EVENT_TYPE{
     "sendFunctionKey",
     "moveCursor",
     "handleExtendAction",
+    "selectByRange",
+    "selectByMovement",
     "getLeftTextOfCursor",
     "getRightTextOfCursor",
     "getTextIndexAtCursor",
+    "setPreviewText",
+    "finishTextPreview"
 };
+
 std::shared_ptr<InputMethodControllerImpl> InputMethodControllerImpl::GetInstance()
 {
     if (controller_ == nullptr) {
@@ -59,8 +71,10 @@ void InputMethodControllerImpl::HideSoftKeyboardSync()
     int32_t errCode = InputMethodController::GetInstance()->HideSoftKeyboard();
     if (errCode != ErrorCode::NO_ERROR) {
         set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
-        IMSA_HILOGE("InputMethodController::HideSoftKeyboard failed, errCode: %{public}d!", errCode);
+        IMSA_HILOGE("InputMethodControllerImpl::HideSoftKeyboard failed, errCode: %{public}d!", errCode);
+        return;
     }
+    IMSA_HILOGI("InputMethodControllerImpl::HideSoftKeyboard success");
 }
 
 void InputMethodControllerImpl::ShowTextInputHasParam(RequestKeyboardReason_t requestKeyboardReason)
@@ -70,8 +84,10 @@ void InputMethodControllerImpl::ShowTextInputHasParam(RequestKeyboardReason_t re
     int32_t errCode = InputMethodController::GetInstance()->ShowTextInput(attachOptions, ClientType::JS);
     if (errCode != ErrorCode::NO_ERROR) {
         set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
-        IMSA_HILOGE("InputMethodController::ShowTextInput failed, errCode: %{public}d!", errCode);
+        IMSA_HILOGE("InputMethodControllerImpl::ShowTextInput failed, errCode: %{public}d!", errCode);
+        return;
     }
+    IMSA_HILOGI("InputMethodControllerImpl::ShowTextInput success");
 }
 
 void InputMethodControllerImpl::ShowTextInputSync()
@@ -84,12 +100,15 @@ void InputMethodControllerImpl::HideTextInputSync()
     int32_t errCode = InputMethodController::GetInstance()->HideTextInput();
     if (errCode != ErrorCode::NO_ERROR) {
         set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
-        IMSA_HILOGE("InputMethodController::HideTextInput failed, errCode: %{public}d!", errCode);
+        IMSA_HILOGE("InputMethodControllerImpl::HideTextInput failed, errCode: %{public}d!", errCode);
+        return;
     }
+    IMSA_HILOGI("InputMethodControllerImpl::HideTextInput success");
 }
 
 void InputMethodControllerImpl::AttachSync(bool showKeyboard, TextConfig_t const &textConfig)
 {
+    IMSA_HILOGI("start");
     AttachWithReason(showKeyboard, textConfig, RequestKeyboardReason_t::key_t::NONE);
 }
 
@@ -115,22 +134,38 @@ void InputMethodControllerImpl::AttachWithReason(bool showKeyboard, TextConfig_t
     if (textConfig.windowId.has_value()) {
         config.windowId = textConfig.windowId.value();
     }
-    
-    int32_t errCode = InputMethodController::GetInstance()->Attach(InputMethodTextChangedListener::GetInstance(),
-        attachOptions, config, ClientType::JS);
+
+    int32_t errCode = ErrorCode::ERROR_CLIENT_NULL_POINTER;
+    auto instance = InputMethodController::GetInstance();
+    if (instance != nullptr) {
+        IMSA_HILOGI("InputMethodController instance is not nullptr!");
+        errCode =
+            instance->Attach(InputMethodTextChangedListener::GetInstance(), attachOptions, config, ClientType::JS);
+    }
     if (errCode != ErrorCode::NO_ERROR) {
         set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
-        IMSA_HILOGE("InputMethodController::Attach failed, errCode: %{public}d!", errCode);
+        IMSA_HILOGE("InputMethodControllerImpl::Attach failed, errCode: %{public}d!", errCode);
+        return;
     }
+    IMSA_HILOGI("InputMethodControllerImpl::Attach success");
 }
 
 void InputMethodControllerImpl::DetachSync()
 {
-    int32_t errCode = InputMethodController::GetInstance()->Close();
+    int32_t errCode = ErrorCode::ERROR_CLIENT_NULL_POINTER;
+    auto instance = InputMethodController::GetInstance();
+    if (instance == nullptr) {
+        IMSA_HILOGE("GetInstance return nullptr!");
+        set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
+        return;
+    }
+    errCode = instance->Close();
     if (errCode != ErrorCode::NO_ERROR) {
         set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
-        IMSA_HILOGE("InputMethodController::Close failed, errCode: %{public}d!", errCode);
+        IMSA_HILOGE("InputMethodControllerImpl::Close failed, errCode: %{public}d!", errCode);
+        return;
     }
+    IMSA_HILOGI("InputMethodControllerImpl::Close success");
 }
 
 void InputMethodControllerImpl::RegisterListener(std::string const &type, callbackType &&cb, uintptr_t opq)
@@ -143,7 +178,7 @@ void InputMethodControllerImpl::RegisterListener(std::string const &type, callba
             return;
         }
     }
-    std::lock_guard<std::mutex> lock(mutex_);
+
     ani_object callbackObj = reinterpret_cast<ani_object>(opq);
     ani_ref callbackRef;
     ani_env *env = taihe::get_env();
@@ -151,6 +186,8 @@ void InputMethodControllerImpl::RegisterListener(std::string const &type, callba
         IMSA_HILOGE("ani_env is nullptr or GlobalReference_Create failed, type: %{public}s!", type.c_str());
         return;
     }
+
+    std::lock_guard<std::mutex> lock(mutex_);
     auto &cbVec = jsCbMap_[type];
     bool isDuplicate =
         std::any_of(cbVec.begin(), cbVec.end(), [env, callbackRef](std::unique_ptr<CallbackObject> &obj) {
@@ -165,8 +202,14 @@ void InputMethodControllerImpl::RegisterListener(std::string const &type, callba
     cbVec.emplace_back(std::make_unique<CallbackObject>(cb, callbackRef));
     IMSA_HILOGI("register callback success, type: %{public}s!", type.c_str());
 }
+
 void InputMethodControllerImpl::UnRegisterListener(std::string const &type, taihe::optional_view<uintptr_t> opq)
 {
+    ani_env *env = taihe::get_env();
+    if (env == nullptr) {
+        IMSA_HILOGE("ani_env is nullptr!");
+        return;
+    }
     std::lock_guard<std::mutex> lock(mutex_);
     const auto iter = jsCbMap_.find(type);
     if (iter == jsCbMap_.end()) {
@@ -179,13 +222,8 @@ void InputMethodControllerImpl::UnRegisterListener(std::string const &type, taih
             uniquePtr->Release();
         }
         jsCbMap_.erase(iter);
+        UpdateTextPreviewState(type);
         IMSA_HILOGE("callback is nullptr!");
-        return;
-    }
-
-    ani_env *env = taihe::get_env();
-    if (env == nullptr) {
-        IMSA_HILOGE("ani_env is nullptr!");
         return;
     }
 
@@ -208,6 +246,7 @@ void InputMethodControllerImpl::UnRegisterListener(std::string const &type, taih
     }
     if (callbacks.empty()) {
         jsCbMap_.erase(iter);
+        UpdateTextPreviewState(type);
         IMSA_HILOGI("UnRegisterListener callbacks is empty type:%{public}s", type.c_str());
     }
 }
@@ -313,6 +352,30 @@ int32_t InputMethodControllerImpl::GetTextIndexAtCursorCallback()
     return 0;
 }
 
+int32_t InputMethodControllerImpl::SetPreviewTextCallback(const std::u16string &text, const Range &range)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto &cbVec = jsCbMap_["setPreviewText"];
+    for (auto &cb : cbVec) {
+        auto &func = std::get<taihe::callback<void(taihe::string_view, Range_t const &)>>(cb->callback);
+        taihe::string textStr = Str16ToStr8(text);
+        Range_t tmpRange { .start = range.start, .end = range.end };
+        func(textStr, tmpRange);
+    }
+    return ErrorCode::NO_ERROR;
+}
+
+void InputMethodControllerImpl::FinishTextPreviewCallback()
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto &cbVec = jsCbMap_["finishTextPreview"];
+    for (auto &cb : cbVec) {
+        auto &func = std::get<taihe::callback<void(UndefinedType_t const&)>>(cb->callback);
+        UndefinedType_t type = UndefinedType_t::make_undefined();
+        func(type);
+    }
+}
+
 void InputMethodControllerImpl::OnSelectByRange(int32_t start, int32_t end)
 {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -331,6 +394,216 @@ void InputMethodControllerImpl::OnSelectByMovement(int32_t direction)
         auto &func = std::get<taihe::callback<void(Movement_t const &)>>(cb->callback);
         Movement_t movement{ .direction = EnumConvert::ConvertDirection(static_cast<Direction>(direction)) };
         func(movement);
+    }
+}
+
+void InputMethodControllerImpl::DiscardTypingTextSync()
+{
+    int32_t errCode = ErrorCode::ERROR_CLIENT_NULL_POINTER;
+    auto instance = InputMethodController::GetInstance();
+    if (instance == nullptr) {
+        IMSA_HILOGE("GetInstance return nullptr!");
+        set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
+        return;
+    }
+    errCode = instance->DiscardTypingText();
+    if (errCode != ErrorCode::NO_ERROR) {
+        set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
+        IMSA_HILOGE("InputMethodControllerImpl::DiscardTypingText failed, errCode: %{public}d!", errCode);
+        return;
+    }
+    IMSA_HILOGI("InputMethodControllerImpl::DiscardTypingText success!");
+}
+
+void InputMethodControllerImpl::SetCallingWindowSync(int32_t windowId)
+{
+    int32_t errCode = ErrorCode::ERROR_CLIENT_NULL_POINTER;
+    auto instance = InputMethodController::GetInstance();
+    if (instance != nullptr) {
+        IMSA_HILOGI("InputMethodController instance is not nullptr!");
+        errCode = instance->SetCallingWindow(windowId);
+    }
+    if (errCode != ErrorCode::NO_ERROR) {
+        set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
+        IMSA_HILOGE("InputMethodControllerImpl::SetCallingWindow failed, errCode: %{public}d!", errCode);
+        return;
+    }
+    IMSA_HILOGI("InputMethodControllerImpl::SetCallingWindow success!");
+}
+
+void InputMethodControllerImpl::ChangeSelectionSync(::taihe::string_view text, int32_t start, int32_t end)
+{
+    icu::UnicodeString unicode_str = icu::UnicodeString::fromUTF8(std::string(text));
+    int32_t length = unicode_str.length();
+    const UChar* utf16_data = unicode_str.getBuffer();
+    std::u16string u16_string(reinterpret_cast<const char16_t*>(utf16_data), length);
+    int32_t errCode = ErrorCode::ERROR_CLIENT_NULL_POINTER;
+    auto instance = InputMethodController::GetInstance();
+    if (instance != nullptr) {
+        IMSA_HILOGI("InputMethodController instance is not nullptr!");
+        errCode = instance->OnSelectionChange(u16_string, start, end);
+    }
+    if (errCode != ErrorCode::NO_ERROR) {
+        set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
+        IMSA_HILOGE("InputMethodControllerImpl::ChangeSelection failed, errCode: %{public}d!", errCode);
+        return;
+    }
+    IMSA_HILOGI("InputMethodControllerImpl::OnSelectionChange success!");
+}
+
+void InputMethodControllerImpl::UpdateAttributeSync(InputAttribute_t const& attribute)
+{
+    Configuration cfg;
+    cfg.SetEnterKeyType(static_cast<OHOS::MiscServices::EnterKeyType>(attribute.enterKeyType.get_value()));
+    cfg.SetTextInputType(static_cast<OHOS::MiscServices::TextInputType>(attribute.textInputType.get_value()));
+    int32_t errCode = ErrorCode::ERROR_CLIENT_NULL_POINTER;
+    auto instance = InputMethodController::GetInstance();
+    if (instance != nullptr) {
+        IMSA_HILOGI("InputMethodController instance is not nullptr!");
+        errCode = instance->OnConfigurationChange(cfg);
+    }
+    if (errCode != ErrorCode::NO_ERROR) {
+        set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
+        IMSA_HILOGE("InputMethodControllerImpl::OnConfigurationChange failed, errCode: %{public}d!", errCode);
+        return;
+    }
+    IMSA_HILOGI("InputMethodControllerImpl::OnConfigurationChange success!");
+}
+
+bool InputMethodControllerImpl::StopInputSessionSync()
+{
+    int32_t errCode = ErrorCode::ERROR_CLIENT_NULL_POINTER;
+    auto instance = InputMethodController::GetInstance();
+    if (instance == nullptr) {
+        IMSA_HILOGE("InputMethodControllerImpl::GetInstance return nullptr!");
+        set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
+        return false;
+    }
+    errCode = instance->StopInputSession();
+    if (errCode != ErrorCode::NO_ERROR) {
+        set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
+        IMSA_HILOGE("InputMethodControllerImpl::StopInputSession failed, errCode: %{public}d!", errCode);
+        return false;
+    }
+    IMSA_HILOGI("InputMethodControllerImpl::StopInputSession success!");
+    return true;
+}
+
+void InputMethodControllerImpl::ShowSoftKeyboardSync()
+{
+    int32_t errCode = ErrorCode::ERROR_CLIENT_NULL_POINTER;
+    auto instance = InputMethodController::GetInstance();
+    if (instance == nullptr) {
+        IMSA_HILOGE("InputMethodControllerImpl::GetInstance return nullptr!");
+        set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
+        return;
+    }
+    errCode = instance->ShowSoftKeyboard(ClientType::JS);
+    if (errCode != ErrorCode::NO_ERROR) {
+        set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
+        IMSA_HILOGE("InputMethodControllerImpl::ShowSoftKeyboard failed, errCode: %{public}d!", errCode);
+        return;
+    }
+    IMSA_HILOGI("InputMethodControllerImpl::ShowSoftKeyboard success!");
+}
+
+void InputMethodControllerImpl::SendMessageSync(::taihe::string_view msgId,
+    ::taihe::optional_view<::taihe::array<uint8_t>> msgParam)
+{
+    ArrayBuffer arrayBuffer {};
+    arrayBuffer.msgId = std::string(msgId);
+    arrayBuffer.jsArgc = ARGC_ONE;
+    if (msgParam.has_value()) {
+        arrayBuffer.jsArgc = ARGC_TWO;
+        arrayBuffer.msgParam.resize(msgParam.value().size());
+        auto const &value = msgParam.value();
+        for (size_t i = 0; i < value.size(); ++i) {
+            arrayBuffer.msgParam[i] = value[i];
+        }
+    }
+    if (!ArrayBuffer::IsSizeValid(arrayBuffer)) {
+        IMSA_HILOGE("msgId limit 256B and msgParam limit 128KB.");
+        set_business_error(IMFErrorCode::EXCEPTION_PARAMCHECK, "msgId limit 256B and msgParam limit 128KB.");
+        return;
+    }
+    int32_t code = ErrorCode::ERROR_CLIENT_NULL_POINTER;
+    auto instance = InputMethodController::GetInstance();
+    if (instance != nullptr) {
+        IMSA_HILOGI("InputMethodController instance is not nullptr!");
+        code = instance->SendMessage(arrayBuffer);
+    }
+    if (code != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("InputMethodControllerImpl::SendMessage failed, errCode: %{public}d!", code);
+        set_business_error(JsUtils::Convert(code), JsUtils::ToMessage(JsUtils::Convert(code)));
+        return;
+    }
+    IMSA_HILOGI("InputMethodControllerImpl::SendMessage success!");
+}
+
+void InputMethodControllerImpl::recvMessage(::taihe::optional_view<MessageHandler_t> msgHandler)
+{
+    auto instance = InputMethodController::GetInstance();
+    if (instance == nullptr) {
+        IMSA_HILOGE("InputMethodController instance is not nullptr!");
+        set_business_error(IMFErrorCode::EXCEPTION_PARAMCHECK,
+            JsUtils::ToMessage(IMFErrorCode::EXCEPTION_PARAMCHECK));
+        return;
+    }
+    if (msgHandler.has_value()) {
+        IMSA_HILOGI("RecvMessage on.");
+        ani_object onTerminatedCB = reinterpret_cast<ani_object>(msgHandler.value().onTerminated);
+        ani_object onMessageCB = reinterpret_cast<ani_object>(msgHandler.value().onMessage);
+        ani_env *env = taihe::get_env();
+        if (env == nullptr) {
+            IMSA_HILOGE("env is nullptr, RecvMessage failed!");
+            set_business_error(IMFErrorCode::EXCEPTION_PARAMCHECK,
+                JsUtils::ToMessage(IMFErrorCode::EXCEPTION_PARAMCHECK));
+            return;
+        }
+        ani_vm* vm = nullptr;
+        if (env->GetVM(&vm) != ANI_OK) {
+            IMSA_HILOGE("GetVM failed");
+            return;
+        }
+        std::shared_ptr<MsgHandlerCallbackInterface> callback =
+            std::make_shared<AniMessageHandler>(vm, onTerminatedCB, onMessageCB);
+        instance->RegisterMsgHandler(callback);
+    } else {
+        IMSA_HILOGI("RecvMessage off.");
+        instance->RegisterMsgHandler();
+    }
+}
+
+void InputMethodControllerImpl::UpdateCursorSync(::ohos::inputMethod::CursorInfo const& cursorInfo)
+{
+    OHOS::MiscServices::CursorInfo info;
+    info.height = cursorInfo.height;
+    info.left = cursorInfo.left;
+    info.top = cursorInfo.top;
+    info.width = cursorInfo.width;
+    int32_t errCode = ErrorCode::ERROR_CLIENT_NULL_POINTER;
+    auto instance = InputMethodController::GetInstance();
+    if (instance != nullptr) {
+        IMSA_HILOGI("InputMethodController instance is not nullptr!");
+        errCode = instance->OnCursorUpdate(info);
+    }
+    if (errCode != ErrorCode::NO_ERROR) {
+        set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
+        IMSA_HILOGE("InputMethodController::OnCursorUpdate failed, errCode: %{public}d!", errCode);
+        return;
+    }
+    IMSA_HILOGI("InputMethodControllerImpl::OnCursorUpdate success!");
+}
+
+void InputMethodControllerImpl::UpdateTextPreviewState(const std::string &type)
+{
+    if (type == "setPreviewText" || type == "finishTextPreview") {
+        auto instance = InputMethodController::GetInstance();
+        if (instance == nullptr) {
+            IMSA_HILOGE("GetInstance() is nullptr!");
+            return;
+        }
+        instance->UpdateTextPreviewState(false);
     }
 }
 } // namespace MiscServices

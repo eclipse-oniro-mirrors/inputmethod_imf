@@ -13,27 +13,45 @@
  * limitations under the License.
  */
 
+#include "ohos.InputMethodSubtype.ani.hpp"
 #include "ohos.inputMethod.Panel.ani.hpp"
 #include "ohos.inputMethod.ani.hpp"
-#include "ohos.InputMethodSubtype.ani.hpp"
+#include "global.h"
+#if __has_include(<ani.h>)
+#include <ani.h>
+#elif __has_include(<ani/ani.h>)
+#include <ani/ani.h>
+#else
+#error "ani.h not found. Please ensure the Ani SDK is correctly installed."
+#endif
 ANI_EXPORT ani_status ANI_Constructor(ani_vm *vm, uint32_t *result)
 {
+    if (vm == nullptr) {
+        IMSA_HILOGE("vm is nullptr");
+        return ANI_ERROR;
+    }
     ani_env *env;
     if (ANI_OK != vm->GetEnv(ANI_VERSION_1, &env)) {
+        IMSA_HILOGE("Failed to get ANI environment");
         return ANI_ERROR;
     }
-    if (ANI_OK != ohos::inputMethod::ANIRegister(env)) {
-        std::cerr << "Error from ohos::inputMethod::ANIRegister" << std::endl;
-        return ANI_ERROR;
-    }
+    ani_status status = ANI_OK;
     if (ANI_OK != ohos::InputMethodSubtype::ANIRegister(env)) {
-        std::cerr << "Error from ohos::InputMethodSubtype::ANIRegister" << std::endl;
-        return ANI_ERROR;
+        IMSA_HILOGE("Error from ohos::InputMethodSubtype::ANIRegister");
+        status = ANI_ERROR;
     }
     if (ANI_OK != ohos::inputMethod::Panel::ANIRegister(env)) {
-        std::cerr << "Error from ohos::inputMethod::Panel::ANIRegister" << std::endl;
-        return ANI_ERROR;
+        IMSA_HILOGE("Error from ohos::inputMethod::Panel::ANIRegister");
+        status = ANI_ERROR;
     }
-    *result = ANI_VERSION_1;
-    return ANI_OK;
+    if (ANI_OK != ohos::inputMethod::ANIRegister(env)) {
+        IMSA_HILOGE("Error from ohos::inputMethod::ANIRegister");
+        status = ANI_ERROR;
+    }
+    if (result != nullptr) {
+        *result = ANI_VERSION_1;
+    } else {
+        IMSA_HILOGW("result is nullptr");
+    }
+    return status;
 }

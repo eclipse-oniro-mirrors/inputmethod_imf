@@ -237,10 +237,10 @@ int32_t WindowAdapter::GetAllFocusWindowInfos(std::vector<FocusChangeInfo> &focu
         return ret;
     }
     for (const auto &[key, value] : displayGroupIds) {
-        IMSA_HILOGI("CYYYYY1127 display:%{public}" PRIu64 "/%{public}" PRIu64 ".", key, value);
+        IMSA_HILOGD("display:%{public}" PRIu64 "/%{public}" PRIu64 ".", key, value);
     }
     for (const auto &info : focusWindowInfos) {
-        IMSA_HILOGI("CYYYYY1127 focus:%{public}d/%{public}" PRIu64 "/%{public}" PRIu64 "/%{public}d", info.windowId_,
+        IMSA_HILOGD("focus:%{public}d/%{public}" PRIu64 "/%{public}" PRIu64 "/%{public}d", info.windowId_,
             info.displayGroupId_, info.realDisplayId_, info.pid_);
     }
     return ErrorCode::NO_ERROR;
@@ -248,11 +248,11 @@ int32_t WindowAdapter::GetAllFocusWindowInfos(std::vector<FocusChangeInfo> &focu
 
 uint64_t WindowAdapter::GetDisplayGroupId(uint64_t displayId)
 {
-    IMSA_HILOGI("CYYYYY1127 by displayId run in:%{public}" PRIu64 ".", displayId);
+    IMSA_HILOGD("by displayId run in:%{public}" PRIu64 ".", displayId);
     std::lock_guard<std::mutex> lock(displayGroupIdsLock_);
     auto iter = displayGroupIds_.find(displayId);
     if (iter != displayGroupIds_.end()) {
-        IMSA_HILOGI("CYYYYY1127 by displayId:%{public}" PRIu64 "/%{public}" PRIu64 ".", displayId, iter->second);
+        IMSA_HILOGD("by displayId:%{public}" PRIu64 "/%{public}" PRIu64 ".", displayId, iter->second);
         return iter->second;
     }
     return DEFAULT_DISPLAY_GROUP_ID;
@@ -265,12 +265,12 @@ bool WindowAdapter::IsDefaultDisplayGroup(uint64_t displayId)
 
 uint64_t WindowAdapter::GetDisplayGroupId(uint32_t windowId)
 {
-    IMSA_HILOGI("CYYYYY1127 by windowId run in:%{public}d.", windowId);
+    IMSA_HILOGD("by windowId run in:%{public}d.", windowId);
     auto displayId = GetDisplayIdByWindowId(windowId);
     std::lock_guard<std::mutex> lock(displayGroupIdsLock_);
     auto iter = displayGroupIds_.find(displayId);
     if (iter != displayGroupIds_.end()) {
-        IMSA_HILOGI("CYYYYY1127 by windowId:%{public}d/%{public}" PRIu64 "/%{public}" PRIu64 ".", windowId, displayId,
+        IMSA_HILOGD("by windowId:%{public}d/%{public}" PRIu64 "/%{public}" PRIu64 ".", windowId, displayId,
             iter->second);
         return iter->second;
     }
@@ -280,6 +280,7 @@ uint64_t WindowAdapter::GetDisplayGroupId(uint32_t windowId)
 int32_t WindowAdapter::GetAllDisplayGroupInfos(
     std::unordered_map<uint64_t, uint64_t> &displayGroupIds, std::vector<FocusChangeInfo> &focusWindowInfos)
 {
+#ifdef SCENE_BOARD_ENABLE
     std::vector<sptr<FocusChangeInfo>> focusWindowInfoPtr;
     WindowManagerLite::GetInstance().GetAllGroupInfo(displayGroupIds, focusWindowInfoPtr);
     for (const auto &info : focusWindowInfoPtr) {
@@ -293,6 +294,9 @@ int32_t WindowAdapter::GetAllDisplayGroupInfos(
     GetInstance().SetDisplayGroupIds(displayGroupIds);
     GetInstance().SetFocusWindowInfos(focusWindowInfos);
     return ErrorCode::NO_ERROR;
+#else
+    return ErrorCode::NO_ERROR;
+#endif
 }
 
 void WindowAdapter::SetDisplayGroupIds(const std::unordered_map<uint64_t, uint64_t> &displayGroupIds)
@@ -362,6 +366,8 @@ int32_t WindowAdapter::RegisterAllGroupInfoChangedListener()
     if (wmErr != WMError::WM_OK) {
         return ErrorCode::ERROR_WINDOW_MANAGER;
     }
+    return ErrorCode::NO_ERROR;
+#else
     return ErrorCode::NO_ERROR;
 #endif
 }

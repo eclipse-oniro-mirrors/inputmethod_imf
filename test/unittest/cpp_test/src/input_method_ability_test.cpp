@@ -2496,5 +2496,38 @@ HWTEST_F(InputMethodAbilityTest, testTimer_001, TestSize.Level0)
     inputMethodAbility_.StopTimer();
     EXPECT_EQ(inputMethodAbility_.timerId_, 0);
 }
+/**
+ * @tc.name: testHideKeyboard_001
+ * @tc.desc: InputMethodAbility Timer_001
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodAbilityTest, testHideKeyboard_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testHideKeyboard_001 START");
+    uint64_t displayGroupId = 1;
+    uint64_t isCheckGroupId = true;
+    uint64_t displayGroupId1 = 3;
+    uint64_t isCheckGroupId1 = false;
+    InputAttribute attribute;
+    attribute.displayGroupId = displayGroupId;
+    inputMethodAbility_.imeListener_ = nullptr;
+    inputMethodAbility_.SetInputAttribute(attribute);
+    // check pass
+    auto ret = inputMethodAbility_.HideKeyboard(displayGroupId, isCheckGroupId);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IME);
+
+    // no need check, same displayGroupId
+    ret = inputMethodAbility_.HideKeyboard(displayGroupId, isCheckGroupId1);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IME);
+
+    // no need check, different displayGroupId
+    ret = inputMethodAbility_.HideKeyboard(displayGroupId1, isCheckGroupId1);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IME);
+
+    // check failed
+    ret = inputMethodAbility_.HideKeyboard(displayGroupId1, isCheckGroupId);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
 } // namespace MiscServices
 } // namespace OHOS

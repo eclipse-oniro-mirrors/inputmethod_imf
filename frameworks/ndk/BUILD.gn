@@ -52,6 +52,8 @@ ohos_shared_library("ohinputmethod") {
   configs = [ "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_native_public_config" ]
 
   external_deps = [
+    "ace_engine:ace_ndk",
+    "ace_engine:ace_uicontent",
     "c_utils:utils",
     "eventhandler:libeventhandler",
     "hilog:libhilog",
@@ -103,6 +105,8 @@ ohos_static_library("ohinputmethod_static") {
   configs = [ "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_native_public_config" ]
 
   external_deps = [
+    "ace_engine:ace_ndk",
+    "ace_engine:ace_uicontent",
     "c_utils:utils",
     "eventhandler:libeventhandler",
     "hilog:libhilog",

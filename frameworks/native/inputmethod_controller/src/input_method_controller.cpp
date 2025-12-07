@@ -790,9 +790,9 @@ void InputMethodController::RestoreListenInfoInSaDied()
 
 void InputMethodController::RestoreClientInfoInSaDied()
 {
+    RestoreListenInfoInSaDied();
     if (!IsEditable()) {
         IMSA_HILOGD("not editable.");
-        RestoreListenInfoInSaDied();
         return;
     }
     auto attach = [=]() -> bool {

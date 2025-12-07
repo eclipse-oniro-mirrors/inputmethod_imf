@@ -176,6 +176,7 @@ InputClientInfoInner InputMethodTools::InputClientInfoToInner(const InputClientI
     inner.userID = inputClientInfo.userID;
     inner.isShowKeyboard = inputClientInfo.isShowKeyboard;
     inner.config = TextTotalConfigToInner(inputClientInfo.config);
+    inner.eventFlag = inputClientInfo.eventFlag;
     inner.attribute = AttributeToInner(inputClientInfo.attribute);
     inner.client = inputClientInfo.client;
     inner.channel = inputClientInfo.channel;
@@ -198,6 +199,7 @@ InputClientInfo InputMethodTools::InnerToInputClientInfo(const InputClientInfoIn
     inputClientInfo.userID = inner.userID;
     inputClientInfo.isShowKeyboard = inner.isShowKeyboard;
     inputClientInfo.config = InnerToTextTotalConfig(inner.config);
+    inputClientInfo.eventFlag = inner.eventFlag;
     inputClientInfo.attribute = InnerToAttribute(inner.attribute);
     inputClientInfo.client = inner.client;
     inputClientInfo.channel = inner.channel;

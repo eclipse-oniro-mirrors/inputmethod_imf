@@ -41,13 +41,12 @@ ohos_fuzztest("ImeEventMonitorManagerFuzzTest") {
     "${inputmethod_path}/test/common:inputmethod_test_common",
   ]
 
-  external_deps = [ "input:libmmi-client" ]
+  external_deps = [
+    "hilog:libhilog",
+    "input:libmmi-client",
+    "ipc:ipc_single",
+  ]
 }
-
-external_deps = [
-  "hilog:libhilog",
-  "ipc:ipc_single",
-]
 
 ###############################################################################
 group("fuzztest") {

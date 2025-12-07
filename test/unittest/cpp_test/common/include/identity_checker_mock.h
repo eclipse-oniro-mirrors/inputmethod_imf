@@ -126,7 +126,6 @@ public:
         isUIExtension_ = isUIExtension;
     }
 
-
 private:
     static bool isFocused_;
     static bool isSystemApp_;

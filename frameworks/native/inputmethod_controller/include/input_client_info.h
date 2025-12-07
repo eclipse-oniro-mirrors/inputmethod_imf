@@ -57,7 +57,7 @@ enum ClientType : uint32_t {
 struct BindImeData {
     pid_t pid;
     ImeType type{ ImeType::IME };
-    BindImeData(pid_t pid, ImeType type) : pid(pid), type(type)
+    BindImeData(pid_t pidParam, ImeType typeParam) : pid(pidParam), type(typeParam)
     {
     }
     bool IsRealIme() const
@@ -99,6 +99,7 @@ struct InputClientInfoInner : public Parcelable {
     int32_t userID { 0 };                    // user id of input client
     bool isShowKeyboard { false };           // soft keyboard status
     TextTotalConfigInner config = {};             // text config
+    uint32_t eventFlag { NO_EVENT_ON };      // the flag of the all listen event
     InputAttributeInner attribute;                // the input client attribute
     sptr<IInputClient> client { nullptr };   // the remote object handler for service to callback input client
     sptr<IRemoteObject> channel { nullptr }; // the remote object handler for ime to callback input client

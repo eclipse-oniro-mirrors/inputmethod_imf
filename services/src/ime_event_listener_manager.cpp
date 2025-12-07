@@ -18,7 +18,7 @@
 
 #include "global.h"
 #include "input_client_info.h"
-#include "peruser_session.h"
+#include "event_status_manager.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -65,6 +65,7 @@ std::vector<ImeEventListenerInfo> ImeEventListenerManager::GetListenerInfo(int32
     if (it != imeEventListeners_.end()) {
         allListenerInfos = it->second;
     }
+    // 0 present user 0
     if (userId == 0) {
         return allListenerInfos;
     }
@@ -91,7 +92,7 @@ int32_t ImeEventListenerManager::AddDeathRecipient(int32_t userId, ImeEventListe
     }
     listenerInfo.deathRecipient->SetDeathRecipient(
         [this, client = listenerInfo.client, userId](
-            const wptr<IRemoteObject> &object) { this->OnListenerDied(userId, client); });
+            const wptr<IRemoteObject> &object) { OnListenerDied(userId, client); });
     auto obj = listenerInfo.client->AsObject();
     if (obj == nullptr) {
         IMSA_HILOGE("client obj is nullptr!");
@@ -221,8 +222,7 @@ int32_t ImeEventListenerManager::NotifyImeChange(
         IMSA_HILOGI("pid/eventFlag: %{public}" PRId64 "/%{public}u", listenerInfo.pid, listenerInfo.eventFlag);
         int32_t ret = listenerInfo.client->OnSwitchInput(property, subProperty);
         if (ret != ErrorCode::NO_ERROR) {
-            IMSA_HILOGE(
-                "notify failed, ret: %{public}d, uid: %{public}d!", ret, static_cast<int32_t>(listenerInfo.pid));
+            IMSA_HILOGE("notify failed, ret: %{public}d, pid: %{public}" PRId64 "!", ret, listenerInfo.pid);
             continue;
         }
     }

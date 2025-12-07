@@ -153,8 +153,10 @@ std::shared_ptr<InputClientInfo> ClientGroup::GetClientInfo(pid_t pid)
 std::shared_ptr<InputClientInfo> ClientGroup::GetClientInfoByHostPid(pid_t hostPid)
 {
     std::lock_guard<std::recursive_mutex> lock(mtx_);
-    auto iter = std::find_if(mapClients_.begin(), mapClients_.end(),
-        [hostPid](const auto &mapClient) { return mapClient.second->uiExtensionHostPid == hostPid; });
+    auto iter = std::find_if(mapClients_.begin(), mapClients_.end(), [hostPid](const auto &mapClient) {
+        auto clientInfo = mapClient.second;
+        return clientInfo != nullptr && clientInfo->uiExtensionHostPid == hostPid;
+    });
     if (iter == mapClients_.end()) {
         IMSA_HILOGD("not found.");
         return nullptr;

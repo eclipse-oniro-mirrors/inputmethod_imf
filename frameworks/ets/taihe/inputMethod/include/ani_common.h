@@ -16,6 +16,8 @@
 #ifndef INPUT_METHOD_TAIHE_ANI_COMMON_H
 #define INPUT_METHOD_TAIHE_ANI_COMMON_H
 
+#include "securec.h"
+
 #include "input_method_property.h"
 #include "input_method_utils.h"
 #include "ohos.inputMethod.impl.hpp"
@@ -34,6 +36,10 @@ using FunctionKey_t = ohos::inputMethod::FunctionKey;
 using ExtendAction_t = ohos::inputMethod::ExtendAction;
 using EnterKeyType_t = ohos::inputMethod::EnterKeyType;
 using Direction_t = ohos::inputMethod::Direction;
+using EnabledState_t = ::ohos::inputMethod::EnabledState;
+using MessageHandler_t = ::ohos::inputMethod::MessageHandler;
+using InputAttribute_t = ::ohos::inputMethod::InputAttribute;
+using UndefinedType_t = ::ohos::inputMethod::UndefinedType;
 namespace OHOS {
 namespace MiscServices {
 constexpr const int32_t SELECT_ALL = 0;
@@ -41,69 +47,15 @@ constexpr const int32_t CUT = 3;
 constexpr const int32_t COPY = 4;
 constexpr const int32_t PASTE = 5;
 
-class PropertyConverter {
-public:
-    static InputMethodProperty_t ConvertProperty(const std::shared_ptr<Property> &obj)
-    {
-        return ConvertPropertyImpl(*obj);
-    }
-
-    static InputMethodProperty_t ConvertProperty(const Property &obj)
-    {
-        return ConvertPropertyImpl(obj);
-    }
-
-    static InputMethodSubtype_t ConvertSubProperty(const std::shared_ptr<SubProperty> &obj)
-    {
-        return ConvertSubPropertyImpl(*obj);
-    }
-
-    static InputMethodSubtype_t ConvertSubProperty(const SubProperty &obj)
-    {
-        return ConvertSubPropertyImpl(obj);
-    }
-
-private:
-    template<typename T>
-    static InputMethodProperty_t ConvertPropertyImpl(T &&obj)
-    {
-        static_assert(std::is_same_v<std::decay_t<T>, Property>, "Invalid type for Property conversion");
-
-        InputMethodProperty_t result{};
-        result.name = std::forward<T>(obj).name;
-        result.id = obj.id;
-        result.label = taihe::optional<taihe::string>(std::in_place_t{}, obj.label);
-        result.labelId = taihe::optional<long long>(std::in_place_t{}, static_cast<long long>(obj.labelId));
-        result.icon = taihe::optional<taihe::string>(std::in_place_t{}, obj.icon);
-        result.iconId = taihe::optional<long long>(std::in_place_t{}, static_cast<long long>(obj.iconId));
-        return result;
-    }
-
-    template<typename T>
-    static InputMethodSubtype_t ConvertSubPropertyImpl(T &&obj)
-    {
-        static_assert(std::is_same_v<std::decay_t<T>, SubProperty>, "Invalid type for SubProperty conversion");
-
-        InputMethodSubtype_t result{};
-        result.name = std::forward<T>(obj).name;
-        result.id = obj.id;
-        result.locale = obj.locale;
-        result.language = obj.language;
-        result.label = taihe::optional<taihe::string>(std::in_place_t{}, obj.label);
-        result.labelId = taihe::optional<double>(std::in_place_t{}, obj.labelId);
-        result.icon = taihe::optional<taihe::string>(std::in_place_t{}, obj.icon);
-        result.iconId = taihe::optional<double>(std::in_place_t{}, obj.iconId);
-        return result;
-    }
-};
-
 using callbackType = std::variant<taihe::callback<int32_t()>, taihe::callback<taihe::string(int32_t)>,
-    taihe::callback<void()>, taihe::callback<void(int32_t)>, taihe::callback<void(taihe::string_view)>,
+    taihe::callback<void(int32_t)>, taihe::callback<void(taihe::string_view)>,
     taihe::callback<void(Range_t const &)>, taihe::callback<void(Movement_t const &)>,
     taihe::callback<void(KeyboardStatus_t const)>, taihe::callback<void(Direction_t const)>,
     taihe::callback<void(FunctionKey_t const &)>, taihe::callback<void(EnterKeyType_t const)>,
     taihe::callback<void(ExtendAction_t const)>, taihe::callback<void(taihe::array_view<InputWindowInfo_t>)>,
-    taihe::callback<void(InputMethodProperty_t const &, InputMethodSubtype_t const &)>>;
+    taihe::callback<void(InputMethodProperty_t const &, InputMethodSubtype_t const &)>,
+    taihe::callback<void(::taihe::string_view text, ::ohos::inputMethod::Range const& range)>,
+    taihe::callback<void(UndefinedType_t const&)>>;
 
 struct CallbackObject {
     CallbackObject(callbackType cb, ani_ref ref) : callback(cb), ref(ref)
@@ -224,6 +176,125 @@ public:
             default:
                 return KeyboardStatus_t::key_t::NONE;
         }
+    }
+
+    static EnabledState_t ConvertEnabledStatus(OHOS::MiscServices::EnabledStatus status)
+    {
+        switch (status) {
+            case EnabledStatus::DISABLED:
+                return EnabledState_t::key_t::DISABLED;
+            case EnabledStatus::BASIC_MODE:
+                return EnabledState_t::key_t::BASIC_MODE;
+            case EnabledStatus::FULL_EXPERIENCE_MODE:
+                return EnabledState_t::key_t::FULL_EXPERIENCE_MODE;
+            default:
+                return EnabledState_t::key_t::DISABLED;
+        }
+    }
+
+    static ani_object Uint8ArrayToObject(ani_env *env, const std::vector<uint8_t> values)
+    {
+        ani_object aniObject = nullptr;
+        ani_class arrayClass;
+        if (env == nullptr) {
+            IMSA_HILOGE("null env");
+            return aniObject;
+        }
+        ani_status retCode = env->FindClass("escompat.Uint8Array", &arrayClass);
+        if (retCode != ANI_OK) {
+            IMSA_HILOGE("Failed: env->FindClass()");
+            return aniObject;
+        }
+        ani_method arrayCtor;
+        retCode = env->Class_FindMethod(arrayClass, "<ctor>", "i:", &arrayCtor);
+        if (retCode != ANI_OK) {
+            IMSA_HILOGE("Failed: env->Class_FindMethod()");
+            return aniObject;
+        }
+        auto valueSize = values.size();
+        retCode = env->Object_New(arrayClass, arrayCtor, &aniObject, valueSize);
+        if (retCode != ANI_OK) {
+            IMSA_HILOGE("Failed: env->Object_New()");
+            return aniObject;
+        }
+        ani_ref buffer;
+        env->Object_GetFieldByName_Ref(aniObject, "buffer", &buffer);
+        void *bufData;
+        size_t bufLength;
+        retCode = env->ArrayBuffer_GetInfo(static_cast<ani_arraybuffer>(buffer), &bufData, &bufLength);
+        if (retCode != ANI_OK) {
+            IMSA_HILOGE("Failed: env->ArrayBuffer_GetInfo()");
+        }
+        if (bufLength < values.size()) {
+            IMSA_HILOGE("Buffer overflow prevented: required=%{public}zu, available=%{public}zu",
+                values.size(), bufLength);
+            return nullptr;
+        }
+        auto ret = memcpy_s(bufData, bufLength, values.data(), values.size());
+        if (ret != 0) {
+            IMSA_HILOGE("Failed: memcpy_s");
+            return nullptr;
+        }
+        return aniObject;
+    }
+};
+
+class PropertyConverter {
+public:
+    static InputMethodProperty_t ConvertProperty(const std::shared_ptr<Property> &obj)
+    {
+        return ConvertPropertyImpl(*obj);
+    }
+
+    static InputMethodProperty_t ConvertProperty(const Property &obj)
+    {
+        return ConvertPropertyImpl(obj);
+    }
+
+    static InputMethodSubtype_t ConvertSubProperty(const std::shared_ptr<SubProperty> &obj)
+    {
+        return ConvertSubPropertyImpl(*obj);
+    }
+
+    static InputMethodSubtype_t ConvertSubProperty(const SubProperty &obj)
+    {
+        return ConvertSubPropertyImpl(obj);
+    }
+
+private:
+    template<typename T>
+    static InputMethodProperty_t ConvertPropertyImpl(T &&obj)
+    {
+        static_assert(std::is_same_v<std::decay_t<T>, Property>, "Invalid type for Property conversion");
+
+        InputMethodProperty_t result{};
+        result.name = std::forward<T>(obj).name;
+        result.id = obj.id;
+        result.label = taihe::optional<taihe::string>(std::in_place_t{}, obj.label);
+        result.labelId = taihe::optional<int64_t>(std::in_place_t{}, static_cast<int64_t>(obj.labelId));
+        result.icon = taihe::optional<taihe::string>(std::in_place_t{}, obj.icon);
+        result.iconId = taihe::optional<int64_t>(std::in_place_t{}, static_cast<int64_t>(obj.iconId));
+        result.enabledState = taihe::optional<EnabledState_t>(std::in_place_t{},
+            EnumConvert::ConvertEnabledStatus(obj.status));
+        return result;
+    }
+
+    template<typename T>
+    static InputMethodSubtype_t ConvertSubPropertyImpl(T &&obj)
+    {
+        static_assert(std::is_same_v<std::decay_t<T>, SubProperty>, "Invalid type for SubProperty conversion");
+
+        InputMethodSubtype_t result{};
+        result.name = std::forward<T>(obj).name;
+        result.id = obj.id;
+        result.locale = obj.locale;
+        result.language = obj.language;
+        result.label = taihe::optional<taihe::string>(std::in_place_t{}, obj.label);
+        result.labelId = taihe::optional<double>(std::in_place_t{}, obj.labelId);
+        result.icon = taihe::optional<taihe::string>(std::in_place_t{}, obj.icon);
+        result.iconId = taihe::optional<double>(std::in_place_t{}, obj.iconId);
+        result.mode = taihe::optional<taihe::string>(std::in_place_t{}, obj.mode);
+        return result;
     }
 };
 } // namespace MiscServices

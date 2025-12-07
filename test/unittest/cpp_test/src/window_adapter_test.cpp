@@ -13,7 +13,10 @@
  * limitations under the License.
  */
 
+#define private public
+#define protected public
 #include "window_adapter.h"
+#undef private
 
 #include <gtest/gtest.h>
 
@@ -88,6 +91,61 @@ HWTEST_F(WindowAdapterTest, WindowAdapter_GetDisplayId, TestSize.Level0)
     uint64_t displayId = 0;
     auto ret = WindowAdapter::GetInstance().GetDisplayId(callingPid, displayId);
     EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.name: WindowAdapter_OnDisplayGroupInfoChanged
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(WindowAdapterTest, WindowAdapter_OnDisplayGroupInfoChanged, TestSize.Level0)
+{
+    IMSA_HILOGI("WindowAdapterTest::WindowAdapter_OnDisplayGroupInfoChanged START");
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+    uint64_t displayId = 100;
+    uint64_t displayGroupId = 2;
+    uint64_t displayId1 = 99;
+    // empty, remove
+    WindowAdapter::GetInstance().OnDisplayGroupInfoChanged(displayId, displayGroupId, false);
+    auto iter = WindowAdapter::GetInstance().displayGroupIds_.find(displayId);
+    EXPECT_TRUE(iter == WindowAdapter::GetInstance().displayGroupIds_.end());
+    // add
+    WindowAdapter::GetInstance().OnDisplayGroupInfoChanged(displayId, displayGroupId, true);
+    iter = WindowAdapter::GetInstance().displayGroupIds_.find(displayId);
+    EXPECT_TRUE(iter != WindowAdapter::GetInstance().displayGroupIds_.end());
+    EXPECT_EQ(iter->second, displayGroupId);
+    // not find displayId
+    WindowAdapter::GetInstance().OnDisplayGroupInfoChanged(displayId1, displayGroupId, false);
+    iter = WindowAdapter::GetInstance().displayGroupIds_.find(displayId);
+    EXPECT_TRUE(iter != WindowAdapter::GetInstance().displayGroupIds_.end());
+    EXPECT_EQ(iter->second, displayGroupId);
+    // remove success
+    WindowAdapter::GetInstance().OnDisplayGroupInfoChanged(displayId, displayGroupId, false);
+    iter = WindowAdapter::GetInstance().displayGroupIds_.find(displayId);
+    EXPECT_TRUE(iter == WindowAdapter::GetInstance().displayGroupIds_.end());
+}
+
+/**
+ * @tc.name: WindowAdapter_OnUnfocused
+ * @tc.desc: windowId
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(WindowAdapterTest, WindowAdapter_OnUnfocused, TestSize.Level0)
+{
+    IMSA_HILOGI("WindowAdapterTest::WindowAdapter_OnUnfocused START");
+    WindowAdapter::GetInstance().focusWindowInfos_.clear();
+    uint32_t windowId = 10;
+
+    Rosen::FocusChangeInfo focusWindowInfo;
+    focusWindowInfo.windowId_ = windowId;
+    WindowAdapter::GetInstance().OnUnFocused(focusWindowInfo);
+    EXPECT_TRUE(WindowAdapter::GetInstance().focusWindowInfos_.empty());
+
+    WindowAdapter::GetInstance().focusWindowInfos_.push_back(focusWindowInfo);
+    WindowAdapter::GetInstance().OnUnFocused(focusWindowInfo);
+    EXPECT_TRUE(WindowAdapter::GetInstance().focusWindowInfos_.empty());
 }
 } // namespace MiscServices
 } // namespace OHOS

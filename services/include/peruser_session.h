@@ -113,7 +113,7 @@ public:
     int32_t OnShowCurrentInput(uint64_t displayGroupId);
     int32_t OnShowInput(sptr<IInputClient> client, int32_t requestKeyboardReason = 0);
     int32_t OnHideInput(sptr<IInputClient> client);
-    int32_t OnRequestHideInput(uint64_t displayGroupId);
+    int32_t OnRequestHideInput(uint64_t displayGroupId, bool isRestrictedMainShow);
     void OnSecurityChange(int32_t security);
     void OnHideSoftKeyBoardSelf();
     void NotifyImeChangeToClients(const Property &property, const SubProperty &subProperty);
@@ -323,6 +323,8 @@ private:
         uint32_t windowId);
     std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> GetClientBoundRealIme();
     bool IsSameIme(const std::shared_ptr<BindImeData> &oldIme, const std::shared_ptr<ImeData> &newIme);
+    bool IsShowSameRealImeInMainDisplayInMultiGroup(
+        InputClientInfo &newClientInfo, const std::shared_ptr<InputClientInfo> &oldClientInfo);
     bool IsSameImeType(const std::shared_ptr<BindImeData> &oldIme, const std::shared_ptr<ImeData> &newIme);
     bool IsSameClientGroup(uint64_t oldGroupId, uint64_t newGroupId);
     void HandleSameImeInMultiGroup(InputClientInfo &newClientInfo, const std::shared_ptr<ImeData> &newImeData);

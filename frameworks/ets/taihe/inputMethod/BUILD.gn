@@ -18,21 +18,24 @@ import("//build/ohos/taihe_idl/taihe.gni")
 
 subsystem_name = "inputmethod"
 part_name = "imf"
-taihe_generated_file_path = "$taihe_file_path/out/$subsystem_name/$part_name"
+taihe_generated_file_path =
+    "$taihe_file_path/out/$subsystem_name/$part_name/inputMethod"
 
-copy_taihe_idl("copy_taihe") {
+copy_taihe_idl("copy_taihe_deps") {
+  sources = [ "idl/ohos.InputMethodSubtype.taihe" ]
+}
+
+copy_taihe_idl("inputMethod_taihe") {
   sources = [
-    "idl/ohos.InputMethodSubtype.taihe",
     "idl/ohos.inputMethod.Panel.taihe",
     "idl/ohos.inputMethod.taihe",
   ]
-
-  external_deps = []
+  deps = [ ":copy_taihe_deps" ]
 }
 
 ohos_taihe("run_taihe") {
   taihe_generated_file_path = "$taihe_generated_file_path"
-  deps = [ ":copy_taihe" ]
+  deps = [ ":inputMethod_taihe" ]
   outputs = [
     "$taihe_generated_file_path/src/ohos.inputMethod.ani.cpp",
     "$taihe_generated_file_path/src/ohos.inputMethod.abi.c",
@@ -58,13 +61,20 @@ taihe_shared_library("inputmethod_taihe_native") {
   part_name = "$part_name"
   include_dirs = [
     "include",
+    "${inputmethod_path}/frameworks/ets/taihe/include",
+    "${inputmethod_path}/frameworks/ets/taihe/inputMethod/include",
+    "${inputmethod_path}/frameworks/ets/taihe/inputMethodEngine/include",
     "${inputmethod_path}/frameworks/js/napi/inputmethodability",
     "${inputmethod_path}/frameworks/js/napi/inputmethodclient",
+    "${inputmethod_path}/frameworks/native/inputmethod_controller/include",
   ]
   sources = get_target_outputs(":run_taihe")
   sources += [
     "${inputmethod_path}/frameworks/js/napi/inputmethodclient/js_utils.cpp",
+    "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_method_utils.cpp",
+    "src/ani_callback_object.cpp",
     "src/ani_constructor.cpp",
+    "src/ani_message_handler.cpp",
     "src/input_method_controller_impl.cpp",
     "src/input_method_event_listener.cpp",
     "src/input_method_setting_impl.cpp",
@@ -74,17 +84,23 @@ taihe_shared_library("inputmethod_taihe_native") {
   deps = [
     ":run_taihe",
     "${inputmethod_path}/frameworks/js/napi/common:inputmethod_js_common",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client",
   ]
   external_deps = [
     "ability_base:want",
     "ability_runtime:abilitykit_native",
+    "ability_runtime:ani_base_context",
     "ability_runtime:extensionkit_native",
     "bundle_framework:bms_ani_common",
     "c_utils:utils",
     "eventhandler:libeventhandler",
     "ffrt:libffrt",
     "hilog:libhilog",
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
+    "ipc:ipc_core",
+    "ipc:ipc_single",
   ]
 }
 

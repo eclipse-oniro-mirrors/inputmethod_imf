@@ -35,9 +35,16 @@ struct AttachInfo {
     }
 };
 
+struct JsAttachOptions {
+    static napi_value Write(napi_env env, const AttachOptions &nativeObject);
+    static bool Read(napi_env env, napi_value jsObject, AttachOptions &nativeObject);
+};
+
 struct HandleContext : public AsyncCall::Context {
     bool isHandle = false;
     napi_status status = napi_generic_failure;
+    uint64_t displayId{ 0 };
+    uint32_t windowId{ 0 };
     HandleContext() : Context(nullptr, nullptr){};
     HandleContext(InputAction input, OutputAction output) : Context(std::move(input), std::move(output)){};
 
@@ -63,6 +70,8 @@ struct AttachContext : public AsyncCall::Context {
     int32_t requestKeyboardReason = 0;
     TextConfig textConfig;
     AttachInfo info;
+    uint32_t windowId = 0;
+    AttachOptions attachOptions = { true, false, RequestKeyboardReason::NONE };
     AttachContext() : Context(nullptr, nullptr){};
     AttachContext(InputAction input, OutputAction output) : Context(std::move(input), std::move(output)){};
 
@@ -175,6 +184,7 @@ public:
     static napi_value HandleSoftKeyboard(napi_env env, napi_callback_info info, std::function<int32_t()> callback,
         bool isOutput, bool needThrowException);
     static napi_value Attach(napi_env env, napi_callback_info info);
+    static napi_value AttachWithUIContext(napi_env env, napi_callback_info info);
     static napi_value Detach(napi_env env, napi_callback_info info);
     static napi_value ShowTextInput(napi_env env, napi_callback_info info);
     static napi_value HideTextInput(napi_env env, napi_callback_info info);
@@ -241,6 +251,7 @@ private:
     static napi_value GetJsRequestKeyboardReasonProperty(napi_env env);
     static std::shared_ptr<AppExecFwk::EventHandler> GetEventHandler();
     static bool IsTextPreviewSupported();
+    static bool GetWindowIdFromUIContext(napi_env env, napi_value jsObject, uint32_t &windowId);
     static const std::set<std::string> TEXT_EVENT_TYPE;
     static constexpr int32_t MAX_TIMEOUT = 2500;
     struct UvEntry {

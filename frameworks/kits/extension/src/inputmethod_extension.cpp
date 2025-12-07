@@ -23,6 +23,7 @@
 #include "inputmethod_extension_context.h"
 #include "js_inputmethod_extension.h"
 #include "runtime.h"
+#include "ets_inputmethod_extension_loader.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -38,6 +39,8 @@ InputMethodExtension *InputMethodExtension::Create(const std::unique_ptr<Runtime
             return JsInputMethodExtension::Create(runtime);
         case Runtime::Language::CJ:
             return CreateCjInputMethodExtension();
+        case Runtime::Language::ETS:
+            return MiscServices::OHOS_ABILITY_ETSInputMethodExtension(runtime);
         default:
             return new (std::nothrow) InputMethodExtension();
     }
