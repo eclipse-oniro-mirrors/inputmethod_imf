@@ -80,5 +80,14 @@ int32_t InputMethodTextChangedListener::GetTextIndexAtCursor()
 {
     return InputMethodControllerImpl::GetInstance()->GetTextIndexAtCursorCallback();
 }
+
+int32_t InputMethodTextChangedListener::SetPreviewText(const std::u16string &text, const Range &range)
+{
+    return InputMethodControllerImpl::GetInstance()->SetPreviewTextCallback(text, range);
+}
+void InputMethodTextChangedListener::FinishTextPreview()
+{
+    return InputMethodControllerImpl::GetInstance()->FinishTextPreviewCallback();
+}
 } // namespace MiscServices
 } // namespace OHOS

@@ -46,6 +46,7 @@ public:
     void OnSetSubtype(const SubProperty &property) override;
     void OnCallingDisplayIdChanged(uint64_t callingDisplayId) override;
     void ReceivePrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand) override;
+    bool IsCallbackRegistered(const std::string &type) override;
 
 private:
     static ani_vm* GetAniVm(ani_env* env);
