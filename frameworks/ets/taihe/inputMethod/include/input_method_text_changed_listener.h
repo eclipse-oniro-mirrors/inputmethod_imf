@@ -54,13 +54,8 @@ public:
     {
         return false;
     }
-    int32_t SetPreviewText(const std::u16string &text, const Range &range) override
-    {
-        return 0;
-    }
-    void FinishTextPreview() override
-    {
-    }
+    int32_t SetPreviewText(const std::u16string &text, const Range &range) override;
+    void FinishTextPreview() override;
 
 private:
     static std::mutex listenerMutex_;

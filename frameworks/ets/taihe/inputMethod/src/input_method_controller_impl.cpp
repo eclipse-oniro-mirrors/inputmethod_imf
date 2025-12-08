@@ -44,13 +44,9 @@ const std::set<std::string> InputMethodControllerImpl::TEXT_EVENT_TYPE{
     "sendFunctionKey",
     "moveCursor",
     "handleExtendAction",
-    "selectByRange",
-    "selectByMovement",
     "getLeftTextOfCursor",
     "getRightTextOfCursor",
     "getTextIndexAtCursor",
-    "setPreviewText",
-    "finishTextPreview"
 };
 
 std::shared_ptr<InputMethodControllerImpl> InputMethodControllerImpl::GetInstance()
@@ -133,6 +129,10 @@ void InputMethodControllerImpl::AttachWithReason(bool showKeyboard, TextConfig_t
     }
     if (textConfig.windowId.has_value()) {
         config.windowId = textConfig.windowId.value();
+    }
+
+    if (IsTextPreviewSupported()) {
+        config.inputAttribute.isTextPreviewSupported = true;
     }
 
     int32_t errCode = ErrorCode::ERROR_CLIENT_NULL_POINTER;
@@ -605,6 +605,25 @@ void InputMethodControllerImpl::UpdateTextPreviewState(const std::string &type)
         }
         instance->UpdateTextPreviewState(false);
     }
+}
+
+bool InputMethodControllerImpl::IsRegister(const std::string &type)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (jsCbMap_.empty() || jsCbMap_.find(type) == jsCbMap_.end()) {
+        IMSA_HILOGD("methodName: %{public}s is not registered!", type.c_str());
+        return false;
+    }
+    if (jsCbMap_[type].empty()) {
+        IMSA_HILOGD("methodName: %{public}s cb-vector is empty!", type.c_str());
+        return false;
+    }
+    return true;
+}
+
+bool InputMethodControllerImpl::IsTextPreviewSupported()
+{
+    return IsRegister("setPreviewText") && IsRegister("finishTextPreview");
 }
 } // namespace MiscServices
 } // namespace OHOS
