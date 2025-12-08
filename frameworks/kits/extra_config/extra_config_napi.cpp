@@ -20,8 +20,8 @@ namespace OHOS {
 namespace MiscServices {
 napi_status JsExtraConfig::GetValue(napi_env env, napi_value in, ExtraConfig &out, uint32_t maxLen)
 {
-    if (maxLen > MAX_EXTRA_CONFIG_SIZE) {
-        return napi_generic_failure;
+    if (maxLen > DEFAULT_MAX_EXTRA_CONFIG_SIZE) {
+        maxLen = DEFAULT_MAX_EXTRA_CONFIG_SIZE;
     }
     napi_valuetype type = napi_undefined;
     napi_status status = napi_typeof(env, in, &type);
@@ -68,9 +68,11 @@ napi_status JsExtraConfig::GetValue(napi_env env, napi_value in, CustomSettings 
         totalSize = totalSize + keySize + valueSize;
         out.emplace(keyStr, customSettingData);
     }
-    if (totalSize > maxLen) {
+    ExtraConfigInner configInner;
+    configInner.customSettings = out;
+    if (totalSize > maxLen || !configInner.IsMarshallingPass()) {
         out.clear();
-        IMSA_HILOGE("totalSize : %{public}d", totalSize);
+        IMSA_HILOGE("input data exceed limit. totalSize: %{public}d, maxLen: %{public}d", totalSize, maxLen);
         return napi_generic_failure;
     }
     return status;
@@ -139,6 +141,9 @@ napi_status JsExtraConfig::CreateExtraConfig(napi_env env, const ExtraConfig &in
 
 napi_status JsExtraConfig::GetExtraConfig(napi_env env, napi_value in, ExtraConfig &out, uint32_t maxLen)
 {
+    if (maxLen > DEFAULT_MAX_EXTRA_CONFIG_SIZE) {
+        maxLen = DEFAULT_MAX_EXTRA_CONFIG_SIZE;
+    }
     auto status = GetValue(env, in, out, maxLen);
     CHECK_RETURN(status == napi_ok, "ExtraConfig convert failed", status);
     return napi_ok;
