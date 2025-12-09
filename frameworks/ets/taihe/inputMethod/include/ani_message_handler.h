@@ -27,16 +27,12 @@ namespace OHOS {
 namespace MiscServices {
 class AniMessageHandler : public MsgHandlerCallbackInterface {
 public:
-    explicit AniMessageHandler(ani_vm* vm, ani_object onTerminated, ani_object onMessage)
-        : aniMessageHandler_(std::make_shared<AniMsgHandlerCallbackObject>(vm, onTerminated, onMessage)), vm_(vm) {};
+    explicit AniMessageHandler(const ::ohos::inputMethod::MessageHandler &handler) : handler_(handler) {};
     virtual ~AniMessageHandler() {};
     int32_t OnTerminated() override;
     int32_t OnMessage(const ArrayBuffer &arrayBuffer) override;
 private:
-    ani_env* AttachAniEnv(ani_vm* vm);
-    std::mutex callbackObjectMutex_;
-    std::shared_ptr<AniMsgHandlerCallbackObject> aniMessageHandler_ = nullptr;
-    ani_vm* vm_ = nullptr;
+    ::ohos::inputMethod::MessageHandler handler_;
 };
 } // namespace MiscServices
 } // namespace OHOS

@@ -21,6 +21,36 @@ namespace OHOS {
 namespace MiscServices {
 constexpr size_t ARGC_ONE = 1;
 constexpr size_t ARGC_TWO = 2;
+class AniMessageHandlerExt : public MsgHandlerCallbackInterface {
+public:
+    explicit AniMessageHandlerExt(const ::ohos::inputMethodEngine::MessageHandler &handler) : handler_(handler) {};
+    virtual ~AniMessageHandlerExt() {};
+    int32_t OnTerminated() override;
+    int32_t OnMessage(const ArrayBuffer &arrayBuffer) override;
+private:
+    ::ohos::inputMethodEngine::MessageHandler handler_;
+};
+
+int32_t AniMessageHandlerExt::OnTerminated()
+{
+    UndefinedType_t type = UndefinedType_t::make_undefined();
+    handler_.onTerminated(type);
+    return ErrorCode::NO_ERROR;
+}
+
+int32_t AniMessageHandlerExt::OnMessage(const ArrayBuffer &arrayBuffer)
+{
+    if (!ArrayBuffer::IsSizeValid(arrayBuffer)) {
+        IMSA_HILOGE("msgId limit 256B and msgParam limit 128KB.");
+        return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+    }
+    ::taihe::array<uint8_t> thArray =
+        ::taihe::array<uint8_t>(taihe::copy_data_t{}, arrayBuffer.msgParam.data(), arrayBuffer.msgParam.size());
+    handler_.onMessage(::taihe::string(arrayBuffer.msgId),
+        taihe::optional<::taihe::array<uint8_t>>(std::in_place_t{}, thArray));
+    return ErrorCode::NO_ERROR;
+}
+
 bool InputClientImpl::SendKeyFunctionAsync(int32_t action)
 {
     bool isSendKeyFunction = false;
@@ -224,8 +254,6 @@ ohos::inputMethodEngine::WindowInfoCallback InputClientImpl::GetCallingWindowInf
     ani_env* env = taihe::get_env();
     if (env == nullptr) {
         IMSA_HILOGE("env is nullptr, GetCallingWindowInfo failed!");
-        taihe::set_business_error(IMFErrorCode::EXCEPTION_PARAMCHECK,
-            "env is nullptr, GetCallingWindowInfo failed!");
         return ohos::inputMethodEngine::WindowInfoCallback::make_type_null();
     }
     result = CommonConvert::NativeWindowInfoToAni(env, windowInfo);
@@ -290,22 +318,8 @@ void InputClientImpl::RecvMessage(taihe::optional_view<::ohos::inputMethodEngine
 {
     if (msgHandler.has_value()) {
         IMSA_HILOGI("RecvMessage on.");
-        ani_object onTerminatedCB = reinterpret_cast<ani_object>(msgHandler.value().onTerminated);
-        ani_object onMessageCB = reinterpret_cast<ani_object>(msgHandler.value().onMessage);
-        ani_env *env = taihe::get_env();
-        if (env == nullptr) {
-            IMSA_HILOGE("env is nullptr, RecvMessage failed!");
-            taihe::set_business_error(IMFErrorCode::EXCEPTION_PARAMCHECK,
-                "env is nullptr, RecvMessage failed!");
-            return;
-        }
-        ani_vm* vm = nullptr;
-        if (env->GetVM(&vm) != ANI_OK) {
-            IMSA_HILOGE("GetVM failed");
-            return;
-        }
         std::shared_ptr<MsgHandlerCallbackInterface> callback =
-            std::make_shared<AniMessageHandler>(vm, onTerminatedCB, onMessageCB);
+            std::make_shared<AniMessageHandlerExt>(msgHandler.value());
         InputMethodAbility::GetInstance().RegisterMsgHandler(callback);
     } else {
         IMSA_HILOGI("RecvMessage off.");

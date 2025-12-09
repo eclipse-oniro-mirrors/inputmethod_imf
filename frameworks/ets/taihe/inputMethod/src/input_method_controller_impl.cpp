@@ -436,6 +436,11 @@ void InputMethodControllerImpl::ChangeSelectionSync(::taihe::string_view text, i
     icu::UnicodeString unicode_str = icu::UnicodeString::fromUTF8(std::string(text));
     int32_t length = unicode_str.length();
     const UChar* utf16_data = unicode_str.getBuffer();
+    if (utf16_data == nullptr) {
+        set_business_error(IMFErrorCode::EXCEPTION_PARAMCHECK, "text is invalid");
+        IMSA_HILOGE("InputMethodControllerImpl::ChangeSelection failed, text is invalid!");
+        return;
+    }
     std::u16string u16_string(reinterpret_cast<const char16_t*>(utf16_data), length);
     int32_t errCode = ErrorCode::ERROR_CLIENT_NULL_POINTER;
     auto instance = InputMethodController::GetInstance();
@@ -551,22 +556,7 @@ void InputMethodControllerImpl::recvMessage(::taihe::optional_view<MessageHandle
     }
     if (msgHandler.has_value()) {
         IMSA_HILOGI("RecvMessage on.");
-        ani_object onTerminatedCB = reinterpret_cast<ani_object>(msgHandler.value().onTerminated);
-        ani_object onMessageCB = reinterpret_cast<ani_object>(msgHandler.value().onMessage);
-        ani_env *env = taihe::get_env();
-        if (env == nullptr) {
-            IMSA_HILOGE("env is nullptr, RecvMessage failed!");
-            set_business_error(IMFErrorCode::EXCEPTION_PARAMCHECK,
-                JsUtils::ToMessage(IMFErrorCode::EXCEPTION_PARAMCHECK));
-            return;
-        }
-        ani_vm* vm = nullptr;
-        if (env->GetVM(&vm) != ANI_OK) {
-            IMSA_HILOGE("GetVM failed");
-            return;
-        }
-        std::shared_ptr<MsgHandlerCallbackInterface> callback =
-            std::make_shared<AniMessageHandler>(vm, onTerminatedCB, onMessageCB);
+        std::shared_ptr<MsgHandlerCallbackInterface> callback = std::make_shared<AniMessageHandler>(msgHandler.value());
         instance->RegisterMsgHandler(callback);
     } else {
         IMSA_HILOGI("RecvMessage off.");

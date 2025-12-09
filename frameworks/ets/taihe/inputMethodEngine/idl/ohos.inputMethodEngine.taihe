@@ -587,8 +587,8 @@ export type OnTerminatedCallback = Callback<void>;
 """)
 
 struct MessageHandler {
-    onMessage: @sts_type("OnMessageCallback") Opaque;
-    onTerminated: @sts_type("OnTerminatedCallback") Opaque;
+    onMessage: (msgId: String, @optional msgParam: Optional<@arraybuffer Array<u8>>) => void;
+    onTerminated: (data: UndefinedType) => void;
 }
 
 function GetInputMethodAbility(): Ability;
