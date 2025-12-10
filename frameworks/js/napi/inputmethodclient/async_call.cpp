@@ -33,7 +33,6 @@ AsyncCall::AsyncCall(napi_env env, napi_callback_info info, std::shared_ptr<Cont
     : env_(env)
 {
     context_ = new (std::nothrow) AsyncContext();
-    NAPI_ASSERT_RETURN_VOID(env, context_ != nullptr, "context_ != nullptr");
     size_t argc = ARGC_MAX;
     napi_value self = nullptr;
     napi_value argv[ARGC_MAX] = { nullptr };
