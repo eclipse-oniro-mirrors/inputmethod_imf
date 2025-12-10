@@ -17,7 +17,7 @@
 
 #include "global.h"
 #include "js_runtime_utils.h"
-#include "js_util.h"
+#include "js_utils.h"
 #include "panel_info.h"
 
 namespace OHOS {
