@@ -45,7 +45,7 @@ napi_value JsInputMethod::Init(napi_env env, napi_value exports)
         DECLARE_NAPI_FUNCTION("offAttachmentDidFail", OffAttachmentDidFail),
         DECLARE_NAPI_STATIC_PROPERTY("AttachFailureReason", GetJsAttachFailureReasonProperty(env)),
     };
-    NAPI_CALL(
+    IMF_CALL(
         napi_define_properties(env, exports, sizeof(descriptor) / sizeof(napi_property_descriptor), descriptor));
     return exports;
 };
@@ -450,7 +450,7 @@ napi_value JsInputMethod::SetSimpleKeyboardEnabled(napi_env env, napi_callback_i
     bool isSimpleKeyboardEnabled = false;
     size_t argc = 1;
     napi_value argv[1] = { nullptr };
-    NAPI_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
     // 1 means least param num.
     PARAM_CHECK_RETURN(env, argc > 0, "at least one parameter is required!", TYPE_NONE, JsUtil::Const::Null(env));
     PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, argv[0], isSimpleKeyboardEnabled),
@@ -484,7 +484,7 @@ napi_value JsInputMethod::Subscribe(napi_env env, napi_callback_info info, const
     napi_value argv[ARGC_MAX] = { nullptr };
     napi_value thisVar = nullptr;
     void *data = nullptr;
-    NAPI_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
     // 1 means least param num.
     PARAM_CHECK_RETURN(env, argc >= 1, "at least one parameters is required!", TYPE_NONE, JsUtil::Const::Null(env));
     napi_value callback = argv[0];
@@ -503,7 +503,7 @@ napi_value JsInputMethod::UnSubscribe(napi_env env, napi_callback_info info, con
     napi_value argv[ARGC_MAX] = { nullptr };
     napi_value thisVar = nullptr;
     void *data = nullptr;
-    NAPI_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
     napi_value callback = nullptr;
     if (argc > 0) {
         // if the one param is not napi_function/napi_undefined, return
@@ -574,7 +574,7 @@ void JsInputMethod::RemoveCallback(napi_value callback, const std::string &event
 napi_value JsInputMethod::GetJsAttachFailureReasonProperty(napi_env env)
 {
     napi_value attachFailureReason = nullptr;
-    NAPI_CALL(napi_create_object(env, &attachFailureReason));
+    IMF_CALL(napi_create_object(env, &attachFailureReason));
     bool ret = JsUtil::Object::WriteProperty(
         env, attachFailureReason, "CALLER_NOT_FOCUSED", static_cast<int32_t>(AttachFailureReason::CALLER_NOT_FOCUSED));
     ret = ret

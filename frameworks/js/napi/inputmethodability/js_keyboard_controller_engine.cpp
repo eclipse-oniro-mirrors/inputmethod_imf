@@ -31,10 +31,10 @@ napi_value JsKeyboardControllerEngine::Init(napi_env env, napi_value info)
         DECLARE_NAPI_FUNCTION("exitCurrentInputType", ExitCurrentInputType),
     };
     napi_value cons = nullptr;
-    NAPI_CALL(napi_define_class(env, KCE_CLASS_NAME.c_str(), KCE_CLASS_NAME.size(), JsConstructor, nullptr,
+    IMF_CALL(napi_define_class(env, KCE_CLASS_NAME.c_str(), KCE_CLASS_NAME.size(), JsConstructor, nullptr,
                        sizeof(properties) / sizeof(napi_property_descriptor), properties, &cons));
-    NAPI_CALL(napi_create_reference(env, cons, 1, &KCERef_));
-    NAPI_CALL(napi_set_named_property(env, info, KCE_CLASS_NAME.c_str(), cons));
+    IMF_CALL(napi_create_reference(env, cons, 1, &KCERef_));
+    IMF_CALL(napi_set_named_property(env, info, KCE_CLASS_NAME.c_str(), cons));
 
     return info;
 }
@@ -42,7 +42,7 @@ napi_value JsKeyboardControllerEngine::Init(napi_env env, napi_value info)
 napi_value JsKeyboardControllerEngine::JsConstructor(napi_env env, napi_callback_info info)
 {
     napi_value thisVar = nullptr;
-    NAPI_CALL(napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr));
+    IMF_CALL(napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr));
 
     JsKeyboardControllerEngine *controllerObject = new (std::nothrow) JsKeyboardControllerEngine();
     if (controllerObject == nullptr) {

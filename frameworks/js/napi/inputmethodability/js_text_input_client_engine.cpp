@@ -82,10 +82,10 @@ napi_value JsTextInputClientEngine::Init(napi_env env, napi_value info)
         DECLARE_NAPI_FUNCTION("on", Subscribe),
         DECLARE_NAPI_FUNCTION("off", UnSubscribe) };
     napi_value cons = nullptr;
-    NAPI_CALL(napi_define_class(env, TIC_CLASS_NAME.c_str(), TIC_CLASS_NAME.size(), JsConstructor, nullptr,
+    IMF_CALL(napi_define_class(env, TIC_CLASS_NAME.c_str(), TIC_CLASS_NAME.size(), JsConstructor, nullptr,
                        sizeof(properties) / sizeof(napi_property_descriptor), properties, &cons));
-    NAPI_CALL(napi_create_reference(env, cons, 1, &TICRef_));
-    NAPI_CALL(napi_set_named_property(env, info, TIC_CLASS_NAME.c_str(), cons));
+    IMF_CALL(napi_create_reference(env, cons, 1, &TICRef_));
+    IMF_CALL(napi_set_named_property(env, info, TIC_CLASS_NAME.c_str(), cons));
 
     return info;
 }
@@ -157,7 +157,7 @@ napi_value JsTextInputClientEngine::MoveCursorSync(napi_env env, napi_callback_i
 {
     size_t argc = 1;
     napi_value argv[1] = { nullptr };
-    NAPI_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
     int32_t direction = 0;
     // 1 means least param num.
     PARAM_CHECK_RETURN(env, argc >= 1, "at least one parameter is required!", TYPE_NONE, HandleParamCheckFailure(env));
@@ -178,7 +178,7 @@ napi_value JsTextInputClientEngine::MoveCursorSync(napi_env env, napi_callback_i
 napi_value JsTextInputClientEngine::JsConstructor(napi_env env, napi_callback_info info)
 {
     napi_value thisVar = nullptr;
-    NAPI_CALL(napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr));
+    IMF_CALL(napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr));
 
     auto clientObject = GetTextInputClientEngine();
     if (clientObject == nullptr || !InitTextInputClientEngine()) {
@@ -349,7 +349,7 @@ napi_value JsTextInputClientEngine::DeleteForwardSync(napi_env env, napi_callbac
     InputMethodSyncTrace tracer("JS_DeleteForwardSync", GenerateTraceId());
     size_t argc = 1;
     napi_value argv[1] = { nullptr };
-    NAPI_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
     int32_t length = 0;
     // 1 means least param num.
     PARAM_CHECK_RETURN(env, argc >= 1, "at least one parameter is required!", TYPE_NONE, HandleParamCheckFailure(env));
@@ -412,7 +412,7 @@ napi_value JsTextInputClientEngine::DeleteBackwardSync(napi_env env, napi_callba
 {
     size_t argc = 1;
     napi_value argv[1] = { nullptr };
-    NAPI_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
     int32_t length = 0;
     // 1 means least param num.
     PARAM_CHECK_RETURN(env, argc >= 1, "at least one parameter is required!", TYPE_NONE, HandleParamCheckFailure(env));
@@ -513,7 +513,7 @@ napi_value JsTextInputClientEngine::InsertTextSync(napi_env env, napi_callback_i
     InputMethodSyncTrace tracer("JS_InsertTextSync", GenerateTraceId());
     size_t argc = 1;
     napi_value argv[1] = { nullptr };
-    NAPI_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
     std::string text;
     // 1 means least param num.
     PARAM_CHECK_RETURN(env, argc >= 1, "at least one parameter is required!", TYPE_NONE, HandleParamCheckFailure(env));
@@ -534,7 +534,7 @@ napi_value JsTextInputClientEngine::GetForwardSync(napi_env env, napi_callback_i
     InputMethodSyncTrace tracer("JS_GetForwardSync", GenerateTraceId());
     size_t argc = 1;
     napi_value argv[1] = { nullptr };
-    NAPI_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
     int32_t length = 0;
     // 1 means least param num.
     PARAM_CHECK_RETURN(env, argc >= 1, "at least one parameter is required!", TYPE_NONE, HandleParamCheckFailure(env));
@@ -603,7 +603,7 @@ napi_value JsTextInputClientEngine::GetBackwardSync(napi_env env, napi_callback_
 {
     size_t argc = 1;
     napi_value argv[1] = { nullptr };
-    NAPI_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
     int32_t length = 0;
     // 1 means least param num.
     PARAM_CHECK_RETURN(env, argc >= 1, "at least one parameter is required!", TYPE_NONE, HandleParamCheckFailure(env));
@@ -747,7 +747,7 @@ napi_value JsTextInputClientEngine::SelectByRangeSync(napi_env env, napi_callbac
     IMSA_HILOGD("SelectByRangeSync");
     size_t argc = 1;
     napi_value argv[1] = { nullptr };
-    NAPI_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
     PARAM_CHECK_RETURN(env, argc >= 1, "at least one parameter is required!", TYPE_NONE, HandleParamCheckFailure(env));
     PARAM_CHECK_RETURN(env, JsUtil::GetType(env, argv[0]) == napi_object, "range type must be Range!", TYPE_NONE,
         HandleParamCheckFailure(env));
@@ -771,7 +771,7 @@ napi_value JsTextInputClientEngine::SelectByMovementSync(napi_env env, napi_call
     IMSA_HILOGD("run in");
     size_t argc = 1;
     napi_value argv[1] = { nullptr };
-    NAPI_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
     PARAM_CHECK_RETURN(env, argc >= 1, "at least one parameter is required!", TYPE_NONE, HandleParamCheckFailure(env));
     PARAM_CHECK_RETURN(env, JsUtil::GetType(env, argv[0]) == napi_object, "movement type must be Movement!",
         TYPE_NONE, HandleParamCheckFailure(env));
@@ -939,7 +939,7 @@ napi_value JsTextInputClientEngine::SetPreviewTextSync(napi_env env, napi_callba
     // 2 means JsAPI:setPreviewText needs 2 params at most
     size_t argc = 2;
     napi_value argv[2] = { nullptr };
-    NAPI_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
     std::string text;
     Range range;
     if (GetPreviewTextParam(env, argc, argv, text, range) != napi_ok) {
@@ -1316,7 +1316,7 @@ napi_value JsTextInputClientEngine::RecvMessage(napi_env env, napi_callback_info
     napi_value argv[ARGC_TWO] = {nullptr};
     napi_value thisVar = nullptr;
     void *data = nullptr;
-    NAPI_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
     if (argc < 0) {
         IMSA_HILOGE("RecvMessage failed! argc abnormal.");
         return nullptr;
@@ -1401,7 +1401,7 @@ napi_value JsTextInputClientEngine::Subscribe(napi_env env, napi_callback_info i
     napi_value argv[ARGC_TWO] = { nullptr };
     napi_value thisVar = nullptr;
     void *data = nullptr;
-    NAPI_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
     std::string type;
     // 2 means least param num.
     if (argc < ARGC_TWO || !JsUtil::GetValue(env, argv[0], type) ||
@@ -1431,7 +1431,7 @@ napi_value JsTextInputClientEngine::UnSubscribe(napi_env env, napi_callback_info
     napi_value argv[ARGC_TWO] = { nullptr };
     napi_value thisVar = nullptr;
     void *data = nullptr;
-    NAPI_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
     std::string type;
     // 1 means least param num.
     if (argc < ARGC_ONE || !JsUtil::GetValue(env, argv[0], type) ||
