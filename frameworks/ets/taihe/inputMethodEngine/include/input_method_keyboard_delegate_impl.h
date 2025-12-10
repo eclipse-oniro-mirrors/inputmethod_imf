@@ -27,6 +27,8 @@
 #include "key_event_consumer_proxy.h"
 #include "keyboard_listener.h"
 #include "input_method_ability.h"
+#include "event_handler.h"
+#include "event_runner.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -47,8 +49,8 @@ public:
     void OnKeyEventConsumeResult(bool isConsumed, sptr<KeyEventConsumerProxy> consumer);
     void OnKeyCodeConsumeResult(bool isConsumed, sptr<KeyEventConsumerProxy> consumer);
 private:
-    std::mutex mutex_;
-    std::map<std::string, std::vector<std::unique_ptr<CallbackObjects>>> jsCbMap_;
+    static std::mutex mutex_;
+    static std::map<std::string, std::vector<std::unique_ptr<CallbackObjects>>> jsCbMap_;
     static std::mutex keyboardMutex_;
     static ani_ref KCERef_;
     static std::shared_ptr<KeyboardDelegateImpl> keyboardDelegate_;
@@ -57,6 +59,9 @@ private:
     static ani_env* AttachAniEnv(ani_vm* vm);
     static ani_env* env_;
     static ani_vm* vm_;
+    static std::shared_ptr<AppExecFwk::EventHandler> handler_;
+    static void DealKeyEvent(const std::shared_ptr<MMI::KeyEvent> &keyEvent,
+        uint64_t cbId, const sptr<IRemoteObject> &channelObject);
 
     bool keyEventConsume_ = false;
     bool keyCodeConsume_ = false;

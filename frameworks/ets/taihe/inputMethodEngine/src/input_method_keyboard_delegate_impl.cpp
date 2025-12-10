@@ -20,7 +20,10 @@ namespace OHOS {
 namespace MiscServices {
 constexpr size_t ARGC_TWO = 2;
 using namespace taihe;
+std::mutex KeyboardDelegateImpl::mutex_;
 std::mutex KeyboardDelegateImpl::keyboardMutex_;
+std::map<std::string, std::vector<std::unique_ptr<CallbackObjects>>> KeyboardDelegateImpl::jsCbMap_;
+std::shared_ptr<AppExecFwk::EventHandler> KeyboardDelegateImpl::handler_{ nullptr };
 std::shared_ptr<KeyboardDelegateImpl> KeyboardDelegateImpl::keyboardDelegate_{ nullptr };
 ani_ref KeyboardDelegateImpl::KCERef_ = nullptr;
 ani_env* KeyboardDelegateImpl::env_ {nullptr};
@@ -137,6 +140,15 @@ void KeyboardDelegateImpl::RegisterListener(std::string const &type, callbackTyp
         IMSA_HILOGE("subscribe failed, type: %{public}s.", type.c_str());
         return;
     }
+    if (handler_ == nullptr) {
+        auto runner = AppExecFwk::EventRunner::GetMainEventRunner();
+        if (!runner) {
+            IMSA_HILOGW("null EventRunner");
+        } else {
+            handler_ = std::make_shared<AppExecFwk::EventHandler>(runner);
+        }
+    }
+
     std::lock_guard<std::mutex> lock(mutex_);
     ani_object callbackObj = reinterpret_cast<ani_object>(opq);
     ani_ref callbackRef;
@@ -318,46 +330,58 @@ bool KeyboardDelegateImpl::OnDealKeyEvent(const std::shared_ptr<MMI::KeyEvent> &
         IMSA_HILOGE("keyEvent or channelObjectis nullptr");
         return false;
     }
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbEventVec = jsCbMap_["keyEvent"];
-    for (auto &cb : cbEventVec) {
-        auto &func = std::get<taihe::callback<bool(KeyEvent_t const&)>>(cb->callback);
-        bool isKeyEventConsumed = func(CommonConvert::ToTaiheKeyEvent(keyEvent));
-        if (!isKeyEventConsumed) {
-            if (keyEvent != nullptr && keyEvent->GetKeyAction() == MMI::KeyEvent::KEY_ACTION_DOWN) {
-                IMSA_HILOGW("keyEvent is not consumed by ime");
-            }
-            isKeyEventConsumed = InputMethodAbility::GetInstance().HandleUnconsumedKey(keyEvent);
-        }
-        IMSA_HILOGD("final consumed result: %{public}d.", isKeyEventConsumed);
-        auto ret = InputMethodAbility::GetInstance().HandleKeyEventResult(cbId, isKeyEventConsumed, channelObject);
-        if (ret != ErrorCode::NO_ERROR) {
-            IMSA_HILOGE("handle keyEvent failed:%{public}d", ret);
-        }
+    if (handler_ == nullptr) {
+        IMSA_HILOGE("handler_ is nullptr");
+        return false;
     }
-    std::string type = (keyEvent->GetKeyAction() == ARGC_TWO ? "keyDown" : "keyUp");
-    auto &cbCodeVec = jsCbMap_[type];
-    for (auto &cb : cbCodeVec) {
-        auto &func = std::get<taihe::callback<bool(KeyEventType_t const&)>>(cb->callback);
-        KeyEventType_t event {
-            .keyCode = keyEvent->GetKeyCode(),
-            .keyAction = keyEvent->GetKeyAction(),
-        };
-        bool isKeyCodeConsumed = false;
-        isKeyCodeConsumed = func(event);
-        if (!isKeyCodeConsumed) {
-            if (keyEvent != nullptr && keyEvent->GetKeyAction() == MMI::KeyEvent::KEY_ACTION_DOWN) {
-                IMSA_HILOGW("keyEvent is not consumed by ime");
-            }
-            isKeyCodeConsumed = InputMethodAbility::GetInstance().HandleUnconsumedKey(keyEvent);
-        }
-        IMSA_HILOGD("final consumed result: %{public}d.", isKeyCodeConsumed);
-        auto ret = InputMethodAbility::GetInstance().HandleKeyEventResult(cbId, isKeyCodeConsumed, channelObject);
-        if (ret != ErrorCode::NO_ERROR) {
-            IMSA_HILOGE("handle keyEvent failed:%{public}d", ret);
-        }
-    }
+    IMSA_HILOGD("run in.");
+    auto task = [keyEvent, cbId, channelObject]() {
+        DealKeyEvent(keyEvent, cbId, channelObject);
+    };
+    handler_->PostTask(task, "OnDealKeyEvent", 0, AppExecFwk::EventQueue::Priority::VIP);
     return true;
+}
+
+void KeyboardDelegateImpl::DealKeyEvent(const std::shared_ptr<MMI::KeyEvent> &keyEvent,
+    uint64_t cbId, const sptr<IRemoteObject> &channelObject)
+{
+    bool isKeyEventConsumed = false;
+    bool isKeyCodeConsumed = false;
+    std::string type = (keyEvent->GetKeyAction() == ARGC_TWO ? "keyDown" : "keyUp");
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (jsCbMap_["keyEvent"].empty() && jsCbMap_[type].empty()) {
+            IMSA_HILOGW("key event callback is not registered.");
+            return;
+        }
+        auto &cbEventVec = jsCbMap_["keyEvent"];
+        for (auto &cb : cbEventVec) {
+            auto &func = std::get<taihe::callback<bool(KeyEvent_t const&)>>(cb->callback);
+            isKeyEventConsumed = func(CommonConvert::ToTaiheKeyEvent(keyEvent));
+            break;
+        }
+        auto &cbCodeVec = jsCbMap_[type];
+        for (auto &cb : cbCodeVec) {
+            auto &func = std::get<taihe::callback<bool(KeyEventType_t const&)>>(cb->callback);
+            KeyEventType_t event {
+                .keyCode = keyEvent->GetKeyCode(),
+                .keyAction = keyEvent->GetKeyAction(),
+            };
+            isKeyCodeConsumed = func(event);
+            break;
+        }
+    }
+    bool consumeResult = isKeyEventConsumed || isKeyCodeConsumed;
+    if (!consumeResult) {
+        if (keyEvent != nullptr && keyEvent->GetKeyAction() == MMI::KeyEvent::KEY_ACTION_DOWN) {
+            IMSA_HILOGW("keyEvent is not consumed by ime");
+        }
+        consumeResult = InputMethodAbility::GetInstance().HandleUnconsumedKey(keyEvent);
+    }
+    auto ret = InputMethodAbility::GetInstance().HandleKeyEventResult(cbId, consumeResult, channelObject);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("handle keyEvent failed:%{public}d", ret);
+    }
 }
 } // namespace MiscServices
 } // namespace OHOS
