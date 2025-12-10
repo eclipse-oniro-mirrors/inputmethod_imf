@@ -64,7 +64,7 @@ napi_value JsKeyboardDelegateSetting::Init(napi_env env, napi_value exports)
         DECLARE_NAPI_FUNCTION("createKeyboardDelegate", CreateKeyboardDelegate),
         DECLARE_NAPI_FUNCTION("getKeyboardDelegate", GetKeyboardDelegate),
     };
-    NAPI_CALL(env,
+    IMF_CALL(
         napi_define_properties(env, exports, sizeof(descriptor) / sizeof(napi_property_descriptor), descriptor));
 
     napi_property_descriptor properties[] = {
@@ -72,10 +72,10 @@ napi_value JsKeyboardDelegateSetting::Init(napi_env env, napi_value exports)
         DECLARE_NAPI_FUNCTION("off", UnSubscribe),
     };
     napi_value cons = nullptr;
-    NAPI_CALL(env, napi_define_class(env, KDS_CLASS_NAME.c_str(), KDS_CLASS_NAME.size(), JsConstructor, nullptr,
+    IMF_CALL(napi_define_class(env, KDS_CLASS_NAME.c_str(), KDS_CLASS_NAME.size(), JsConstructor, nullptr,
                        sizeof(properties) / sizeof(napi_property_descriptor), properties, &cons));
-    NAPI_CALL(env, napi_create_reference(env, cons, 1, &KDSRef_));
-    NAPI_CALL(env, napi_set_named_property(env, exports, KDS_CLASS_NAME.c_str(), cons));
+    IMF_CALL(napi_create_reference(env, cons, 1, &KDSRef_));
+    IMF_CALL(napi_set_named_property(env, exports, KDS_CLASS_NAME.c_str(), cons));
     return exports;
 };
 
@@ -122,7 +122,7 @@ bool JsKeyboardDelegateSetting::InitKeyboardDelegate()
 napi_value JsKeyboardDelegateSetting::JsConstructor(napi_env env, napi_callback_info cbinfo)
 {
     napi_value thisVar = nullptr;
-    NAPI_CALL(env, napi_get_cb_info(env, cbinfo, nullptr, nullptr, &thisVar, nullptr));
+    IMF_CALL(napi_get_cb_info(env, cbinfo, nullptr, nullptr, &thisVar, nullptr));
     auto delegate = GetKeyboardDelegateSetting();
     if (delegate == nullptr || !InitKeyboardDelegate()) {
         IMSA_HILOGE("failed to get delegate!");
@@ -221,7 +221,7 @@ napi_value JsKeyboardDelegateSetting::Subscribe(napi_env env, napi_callback_info
     napi_value argv[ARGC_TWO] = { nullptr };
     napi_value thisVar = nullptr;
     void *data = nullptr;
-    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
     std::string type;
     // 2 means least param num.
     if (argc < 2 || !JsUtil::GetValue(env, argv[0], type) ||
@@ -251,7 +251,7 @@ napi_value JsKeyboardDelegateSetting::UnSubscribe(napi_env env, napi_callback_in
     napi_value argv[ARGC_TWO] = { nullptr };
     napi_value thisVar = nullptr;
     void *data = nullptr;
-    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
     std::string type;
     // 1 means least param num.
     if (argc < 1 || !JsUtil::GetValue(env, argv[0], type) ||
@@ -282,15 +282,15 @@ napi_value JsKeyboardDelegateSetting::UnSubscribe(napi_env env, napi_callback_in
 napi_value JsKeyboardDelegateSetting::GetResultOnKeyEvent(napi_env env, int32_t keyCode, int32_t keyStatus)
 {
     napi_value KeyboardDelegate = nullptr;
-    NAPI_CALL(env, napi_create_object(env, &KeyboardDelegate));
+    IMF_CALL(napi_create_object(env, &KeyboardDelegate));
 
     napi_value jsKeyCode = nullptr;
-    NAPI_CALL(env, napi_create_int32(env, keyCode, &jsKeyCode));
-    NAPI_CALL(env, napi_set_named_property(env, KeyboardDelegate, "keyCode", jsKeyCode));
+    IMF_CALL(napi_create_int32(env, keyCode, &jsKeyCode));
+    IMF_CALL(napi_set_named_property(env, KeyboardDelegate, "keyCode", jsKeyCode));
 
     napi_value jsKeyAction = nullptr;
-    NAPI_CALL(env, napi_create_int32(env, keyStatus, &jsKeyAction));
-    NAPI_CALL(env, napi_set_named_property(env, KeyboardDelegate, "keyAction", jsKeyAction));
+    IMF_CALL(napi_create_int32(env, keyStatus, &jsKeyAction));
+    IMF_CALL(napi_set_named_property(env, KeyboardDelegate, "keyAction", jsKeyAction));
 
     return KeyboardDelegate;
 }

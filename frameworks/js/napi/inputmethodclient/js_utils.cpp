@@ -166,25 +166,25 @@ void JsUtils::ThrowException(napi_env env, int32_t err, const std::string &msg, 
             IMSA_HILOGE("THROW_ERROR message: %{public}s!", errMsg.c_str());
         }
     }
-    NAPI_CALL_RETURN_VOID(env, napi_create_string_utf8(env, errMsg.c_str(), NAPI_AUTO_LENGTH, &message));
-    NAPI_CALL_RETURN_VOID(env, napi_create_error(env, nullptr, message, &error));
-    NAPI_CALL_RETURN_VOID(env, napi_create_int32(env, err, &code));
-    NAPI_CALL_RETURN_VOID(env, napi_set_named_property(env, error, "code", code));
-    NAPI_CALL_RETURN_VOID(env, napi_throw(env, error));
+    IMF_CALL_RETURN_VOID(napi_create_string_utf8(env, errMsg.c_str(), NAPI_AUTO_LENGTH, &message));
+    IMF_CALL_RETURN_VOID(napi_create_error(env, nullptr, message, &error));
+    IMF_CALL_RETURN_VOID(napi_create_int32(env, err, &code));
+    IMF_CALL_RETURN_VOID(napi_set_named_property(env, error, "code", code));
+    IMF_CALL_RETURN_VOID(napi_throw(env, error));
 }
 
 napi_value JsUtils::ToError(napi_env env, int32_t code, const std::string &msg)
 {
     IMSA_HILOGD("ToError start");
     napi_value errorObj;
-    NAPI_CALL(env, napi_create_object(env, &errorObj));
+    IMF_CALL(napi_create_object(env, &errorObj));
     napi_value errorCode = nullptr;
-    NAPI_CALL(env, napi_create_int32(env, Convert(code), &errorCode));
+    IMF_CALL(napi_create_int32(env, Convert(code), &errorCode));
     napi_value errorMessage = nullptr;
     std::string errMsg = ToMessage(Convert(code)) + " " + msg;
-    NAPI_CALL(env, napi_create_string_utf8(env, errMsg.c_str(), NAPI_AUTO_LENGTH, &errorMessage));
-    NAPI_CALL(env, napi_set_named_property(env, errorObj, "code", errorCode));
-    NAPI_CALL(env, napi_set_named_property(env, errorObj, "message", errorMessage));
+    IMF_CALL(napi_create_string_utf8(env, errMsg.c_str(), NAPI_AUTO_LENGTH, &errorMessage));
+    IMF_CALL(napi_set_named_property(env, errorObj, "code", errorCode));
+    IMF_CALL(napi_set_named_property(env, errorObj, "message", errorMessage));
     IMSA_HILOGD("ToError end");
     return errorObj;
 }
@@ -468,27 +468,27 @@ napi_status JsUtils::GetValue(napi_env env, const std::string &in, napi_value &o
 napi_value JsUtils::GetJsPrivateCommand(napi_env env, const std::unordered_map<std::string, PrivateDataValue> &in)
 {
     napi_value jsPrivateCommand = nullptr;
-    NAPI_CALL(env, napi_create_object(env, &jsPrivateCommand));
+    IMF_CALL(napi_create_object(env, &jsPrivateCommand));
     for (const auto &iter : in) {
         size_t idx = iter.second.index();
         napi_value value = nullptr;
         if (idx == static_cast<size_t>(PrivateDataValueType::VALUE_TYPE_STRING)) {
             auto stringValue = std::get_if<std::string>(&iter.second);
             if (stringValue != nullptr) {
-                NAPI_CALL(env, napi_create_string_utf8(env, (*stringValue).c_str(), (*stringValue).size(), &value));
+                IMF_CALL(napi_create_string_utf8(env, (*stringValue).c_str(), (*stringValue).size(), &value));
             }
         } else if (idx == static_cast<size_t>(PrivateDataValueType::VALUE_TYPE_BOOL)) {
             auto boolValue = std::get_if<bool>(&iter.second);
             if (boolValue != nullptr) {
-                NAPI_CALL(env, napi_get_boolean(env, *boolValue, &value));
+                IMF_CALL(napi_get_boolean(env, *boolValue, &value));
             }
         } else if (idx == static_cast<size_t>(PrivateDataValueType::VALUE_TYPE_NUMBER)) {
             auto numberValue = std::get_if<int32_t>(&iter.second);
             if (numberValue != nullptr) {
-                NAPI_CALL(env, napi_create_int32(env, *numberValue, &value));
+                IMF_CALL(napi_create_int32(env, *numberValue, &value));
             }
         }
-        NAPI_CALL(env, napi_set_named_property(env, jsPrivateCommand, iter.first.c_str(), value));
+        IMF_CALL(napi_set_named_property(env, jsPrivateCommand, iter.first.c_str(), value));
     }
     return jsPrivateCommand;
 }
@@ -518,7 +518,7 @@ napi_value JsUtils::GetValue(napi_env env, const std::vector<uint8_t> &in)
     void *data = nullptr;
     napi_value arrayBuffer = nullptr;
     size_t length = in.size();
-    NAPI_CALL(env, napi_create_arraybuffer(env, length, &data, &arrayBuffer));
+    IMF_CALL(napi_create_arraybuffer(env, length, &data, &arrayBuffer));
     // 0 means the size of data.
     CHECK_RETURN(length != 0, "Data size is 0.", arrayBuffer);
     if (memcpy_s(data, length, reinterpret_cast<const void *>(in.data()), length) != 0) {

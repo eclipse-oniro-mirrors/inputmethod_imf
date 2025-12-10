@@ -129,6 +129,17 @@ enum TypeCode : int32_t {
         }                                                          \
     } while (0)
 
+#define IMF_RETVAL_NOTHING
+#define IMF_CALL_BASE(theCall, retVal)                                      \
+    do {                                                                    \
+        if ((theCall) != napi_ok) {                                         \
+            IMSA_HILOGE("napi call failed, theCall: %{public}s", #theCall); \
+            return retVal;                                                  \
+        }                                                                   \
+    } while (0)
+#define IMF_CALL(theCall)             IMF_CALL_BASE(theCall, nullptr)
+#define IMF_CALL_RETURN_VOID(theCall) IMF_CALL_BASE(theCall, IMF_RETVAL_NOTHING)
+
 struct JsPropertyInfo {
     napi_valuetype type;
     TypeCode typeCode;
