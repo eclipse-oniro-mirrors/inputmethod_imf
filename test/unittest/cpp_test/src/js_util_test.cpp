@@ -163,7 +163,7 @@ static napi_value Init(napi_env env, napi_value exports)
         DECLARE_NAPI_FUNCTION("getNull", GetNull),
         DECLARE_NAPI_FUNCTION("getUndefined", GetUndefined),
     };
-    IMF_CALL(napi_define_properties(env, exports, sizeof(properties) / sizeof(*properties), properties));
+    NAPI_CALL(napi_define_properties(env, exports, sizeof(properties) / sizeof(*properties), properties));
 
     return exports;
 }

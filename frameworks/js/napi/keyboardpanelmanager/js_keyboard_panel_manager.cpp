@@ -44,7 +44,7 @@ napi_value JsKeyboardPanelManager::Init(napi_env env, napi_value info)
         DECLARE_NAPI_FUNCTION("getDefaultInputMethod", GetDefaultInputMethod),
         DECLARE_NAPI_FUNCTION("connectSystemCmd", ConnectSystemCmd),
     };
-    IMF_CALL(
+    NAPI_CALL(
         napi_define_properties(env, info, sizeof(descriptor) / sizeof(napi_property_descriptor), descriptor));
     return info;
 }
@@ -104,7 +104,7 @@ napi_value JsKeyboardPanelManager::Subscribe(napi_env env, napi_callback_info in
     napi_value argv[2] = { nullptr };
     napi_value thisVar = nullptr;
     void *data = nullptr;
-    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
+    NAPI_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
     std::string type;
     // 2 means least param num.
     if (argc < 2 || !JsUtil::GetValue(env, argv[0], type) ||
@@ -132,7 +132,7 @@ napi_value JsKeyboardPanelManager::UnSubscribe(napi_env env, napi_callback_info 
     napi_value argv[2] = { nullptr };
     napi_value thisVar = nullptr;
     void *data = nullptr;
-    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
+    NAPI_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
     std::string type;
     // 1 means least param num.
     if (argc < 1 || !JsUtil::GetValue(env, argv[0], type) ||

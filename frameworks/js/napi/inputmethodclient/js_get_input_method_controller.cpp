@@ -73,7 +73,7 @@ napi_value JsGetInputMethodController::Init(napi_env env, napi_value info)
         DECLARE_NAPI_STATIC_PROPERTY("RequestKeyboardReason", GetJsRequestKeyboardReasonProperty(env)),
         DECLARE_NAPI_STATIC_PROPERTY("CapitalizeMode", GetJsCapitalizeModeProperty(env))
     };
-    IMF_CALL(
+    NAPI_CALL(
         napi_define_properties(env, info, sizeof(descriptor) / sizeof(napi_property_descriptor), descriptor));
 
     napi_property_descriptor properties[] = {
@@ -96,10 +96,10 @@ napi_value JsGetInputMethodController::Init(napi_env env, napi_value info)
         DECLARE_NAPI_FUNCTION("discardTypingText", DiscardTypingText),
     };
     napi_value cons = nullptr;
-    IMF_CALL(napi_define_class(env, IMC_CLASS_NAME.c_str(), IMC_CLASS_NAME.size(), JsConstructor, nullptr,
+    NAPI_CALL(napi_define_class(env, IMC_CLASS_NAME.c_str(), IMC_CLASS_NAME.size(), JsConstructor, nullptr,
                        sizeof(properties) / sizeof(napi_property_descriptor), properties, &cons));
-    IMF_CALL(napi_create_reference(env, cons, 1, &IMCRef_));
-    IMF_CALL(napi_set_named_property(env, info, IMC_CLASS_NAME.c_str(), cons));
+    NAPI_CALL(napi_create_reference(env, cons, 1, &IMCRef_));
+    NAPI_CALL(napi_set_named_property(env, info, IMC_CLASS_NAME.c_str(), cons));
 
     return info;
 }
@@ -110,13 +110,13 @@ napi_value JsGetInputMethodController::GetJsKeyboardStatusProperty(napi_env env)
     napi_value statusNone = nullptr;
     napi_value statusHide = nullptr;
     napi_value statusShow = nullptr;
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(KeyboardStatus::NONE), &statusNone));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(KeyboardStatus::HIDE), &statusHide));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(KeyboardStatus::SHOW), &statusShow));
-    IMF_CALL(napi_create_object(env, &keyboardStatus));
-    IMF_CALL(napi_set_named_property(env, keyboardStatus, "NONE", statusNone));
-    IMF_CALL(napi_set_named_property(env, keyboardStatus, "HIDE", statusHide));
-    IMF_CALL(napi_set_named_property(env, keyboardStatus, "SHOW", statusShow));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(KeyboardStatus::NONE), &statusNone));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(KeyboardStatus::HIDE), &statusHide));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(KeyboardStatus::SHOW), &statusShow));
+    NAPI_CALL(napi_create_object(env, &keyboardStatus));
+    NAPI_CALL(napi_set_named_property(env, keyboardStatus, "NONE", statusNone));
+    NAPI_CALL(napi_set_named_property(env, keyboardStatus, "HIDE", statusHide));
+    NAPI_CALL(napi_set_named_property(env, keyboardStatus, "SHOW", statusShow));
     return keyboardStatus;
 }
 
@@ -132,25 +132,25 @@ napi_value JsGetInputMethodController::GetJsEnterKeyTypeProperty(napi_env env)
     napi_value typeDone = nullptr;
     napi_value typePrevious = nullptr;
     napi_value typeNewline = nullptr;
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(EnterKeyType::UNSPECIFIED), &typeUnspecified));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(EnterKeyType::NONE), &typeNone));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(EnterKeyType::GO), &typeGo));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(EnterKeyType::SEARCH), &typeSearch));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(EnterKeyType::SEND), &typeSend));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(EnterKeyType::NEXT), &typeNext));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(EnterKeyType::DONE), &typeDone));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(EnterKeyType::PREVIOUS), &typePrevious));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(EnterKeyType::NEW_LINE), &typeNewline));
-    IMF_CALL(napi_create_object(env, &enterKeyType));
-    IMF_CALL(napi_set_named_property(env, enterKeyType, "UNSPECIFIED", typeUnspecified));
-    IMF_CALL(napi_set_named_property(env, enterKeyType, "NONE", typeNone));
-    IMF_CALL(napi_set_named_property(env, enterKeyType, "GO", typeGo));
-    IMF_CALL(napi_set_named_property(env, enterKeyType, "SEARCH", typeSearch));
-    IMF_CALL(napi_set_named_property(env, enterKeyType, "SEND", typeSend));
-    IMF_CALL(napi_set_named_property(env, enterKeyType, "NEXT", typeNext));
-    IMF_CALL(napi_set_named_property(env, enterKeyType, "DONE", typeDone));
-    IMF_CALL(napi_set_named_property(env, enterKeyType, "PREVIOUS", typePrevious));
-    IMF_CALL(napi_set_named_property(env, enterKeyType, "NEWLINE", typeNewline));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(EnterKeyType::UNSPECIFIED), &typeUnspecified));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(EnterKeyType::NONE), &typeNone));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(EnterKeyType::GO), &typeGo));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(EnterKeyType::SEARCH), &typeSearch));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(EnterKeyType::SEND), &typeSend));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(EnterKeyType::NEXT), &typeNext));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(EnterKeyType::DONE), &typeDone));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(EnterKeyType::PREVIOUS), &typePrevious));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(EnterKeyType::NEW_LINE), &typeNewline));
+    NAPI_CALL(napi_create_object(env, &enterKeyType));
+    NAPI_CALL(napi_set_named_property(env, enterKeyType, "UNSPECIFIED", typeUnspecified));
+    NAPI_CALL(napi_set_named_property(env, enterKeyType, "NONE", typeNone));
+    NAPI_CALL(napi_set_named_property(env, enterKeyType, "GO", typeGo));
+    NAPI_CALL(napi_set_named_property(env, enterKeyType, "SEARCH", typeSearch));
+    NAPI_CALL(napi_set_named_property(env, enterKeyType, "SEND", typeSend));
+    NAPI_CALL(napi_set_named_property(env, enterKeyType, "NEXT", typeNext));
+    NAPI_CALL(napi_set_named_property(env, enterKeyType, "DONE", typeDone));
+    NAPI_CALL(napi_set_named_property(env, enterKeyType, "PREVIOUS", typePrevious));
+    NAPI_CALL(napi_set_named_property(env, enterKeyType, "NEWLINE", typeNewline));
     return enterKeyType;
 }
 
@@ -171,36 +171,36 @@ napi_value JsGetInputMethodController::GetJsTextInputTypeProperty(napi_env env)
     napi_value typeUserName = nullptr;
     napi_value typeNewPassword = nullptr;
     napi_value typeNumberDecimal = nullptr;
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(TextInputType::NONE), &typeNone));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(TextInputType::TEXT), &typeText));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(TextInputType::MULTILINE), &typeMultiline));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(TextInputType::NUMBER), &typeNumber));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(TextInputType::PHONE), &typePhone));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(TextInputType::DATETIME), &typeDatatime));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(TextInputType::EMAIL_ADDRESS), &typeEmailAddress));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(TextInputType::URL), &typeUrl));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(TextInputType::VISIBLE_PASSWORD), &typeVisiblePassword));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(TextInputType::NUMBER_PASSWORD), &typeNumberPassword));
-    IMF_CALL(napi_create_int32(env,
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(TextInputType::NONE), &typeNone));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(TextInputType::TEXT), &typeText));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(TextInputType::MULTILINE), &typeMultiline));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(TextInputType::NUMBER), &typeNumber));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(TextInputType::PHONE), &typePhone));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(TextInputType::DATETIME), &typeDatatime));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(TextInputType::EMAIL_ADDRESS), &typeEmailAddress));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(TextInputType::URL), &typeUrl));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(TextInputType::VISIBLE_PASSWORD), &typeVisiblePassword));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(TextInputType::NUMBER_PASSWORD), &typeNumberPassword));
+    NAPI_CALL(napi_create_int32(env,
         static_cast<int32_t>(TextInputType::SCREEN_LOCK_PASSWORD), &typeScreenLockPassword));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(TextInputType::USER_NAME), &typeUserName));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(TextInputType::NEW_PASSWORD), &typeNewPassword));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(TextInputType::NUMBER_DECIMAL), &typeNumberDecimal));
-    IMF_CALL(napi_create_object(env, &textInputType));
-    IMF_CALL(napi_set_named_property(env, textInputType, "NONE", typeNone));
-    IMF_CALL(napi_set_named_property(env, textInputType, "TEXT", typeText));
-    IMF_CALL(napi_set_named_property(env, textInputType, "MULTILINE", typeMultiline));
-    IMF_CALL(napi_set_named_property(env, textInputType, "NUMBER", typeNumber));
-    IMF_CALL(napi_set_named_property(env, textInputType, "PHONE", typePhone));
-    IMF_CALL(napi_set_named_property(env, textInputType, "DATETIME", typeDatatime));
-    IMF_CALL(napi_set_named_property(env, textInputType, "EMAIL_ADDRESS", typeEmailAddress));
-    IMF_CALL(napi_set_named_property(env, textInputType, "URL", typeUrl));
-    IMF_CALL(napi_set_named_property(env, textInputType, "VISIBLE_PASSWORD", typeVisiblePassword));
-    IMF_CALL(napi_set_named_property(env, textInputType, "NUMBER_PASSWORD", typeNumberPassword));
-    IMF_CALL(napi_set_named_property(env, textInputType, "SCREEN_LOCK_PASSWORD", typeScreenLockPassword));
-    IMF_CALL(napi_set_named_property(env, textInputType, "USER_NAME", typeUserName));
-    IMF_CALL(napi_set_named_property(env, textInputType, "NEW_PASSWORD", typeNewPassword));
-    IMF_CALL(napi_set_named_property(env, textInputType, "NUMBER_DECIMAL", typeNumberDecimal));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(TextInputType::USER_NAME), &typeUserName));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(TextInputType::NEW_PASSWORD), &typeNewPassword));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(TextInputType::NUMBER_DECIMAL), &typeNumberDecimal));
+    NAPI_CALL(napi_create_object(env, &textInputType));
+    NAPI_CALL(napi_set_named_property(env, textInputType, "NONE", typeNone));
+    NAPI_CALL(napi_set_named_property(env, textInputType, "TEXT", typeText));
+    NAPI_CALL(napi_set_named_property(env, textInputType, "MULTILINE", typeMultiline));
+    NAPI_CALL(napi_set_named_property(env, textInputType, "NUMBER", typeNumber));
+    NAPI_CALL(napi_set_named_property(env, textInputType, "PHONE", typePhone));
+    NAPI_CALL(napi_set_named_property(env, textInputType, "DATETIME", typeDatatime));
+    NAPI_CALL(napi_set_named_property(env, textInputType, "EMAIL_ADDRESS", typeEmailAddress));
+    NAPI_CALL(napi_set_named_property(env, textInputType, "URL", typeUrl));
+    NAPI_CALL(napi_set_named_property(env, textInputType, "VISIBLE_PASSWORD", typeVisiblePassword));
+    NAPI_CALL(napi_set_named_property(env, textInputType, "NUMBER_PASSWORD", typeNumberPassword));
+    NAPI_CALL(napi_set_named_property(env, textInputType, "SCREEN_LOCK_PASSWORD", typeScreenLockPassword));
+    NAPI_CALL(napi_set_named_property(env, textInputType, "USER_NAME", typeUserName));
+    NAPI_CALL(napi_set_named_property(env, textInputType, "NEW_PASSWORD", typeNewPassword));
+    NAPI_CALL(napi_set_named_property(env, textInputType, "NUMBER_DECIMAL", typeNumberDecimal));
     bool ret = JsUtil::Object::WriteProperty(env, textInputType, "ONE_TIME_CODE",
         static_cast<int32_t>(TextInputType::ONE_TIME_CODE));
     return ret ? textInputType : JsUtil::Const::Null(env);
@@ -213,15 +213,15 @@ napi_value JsGetInputMethodController::GetJsDirectionProperty(napi_env env)
     napi_value cursorDown = nullptr;
     napi_value cursorLeft = nullptr;
     napi_value cursorRight = nullptr;
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(Direction::UP), &cursorUp));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(Direction::DOWN), &cursorDown));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(Direction::LEFT), &cursorLeft));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(Direction::RIGHT), &cursorRight));
-    IMF_CALL(napi_create_object(env, &direction));
-    IMF_CALL(napi_set_named_property(env, direction, "CURSOR_UP", cursorUp));
-    IMF_CALL(napi_set_named_property(env, direction, "CURSOR_DOWN", cursorDown));
-    IMF_CALL(napi_set_named_property(env, direction, "CURSOR_LEFT", cursorLeft));
-    IMF_CALL(napi_set_named_property(env, direction, "CURSOR_RIGHT", cursorRight));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(Direction::UP), &cursorUp));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(Direction::DOWN), &cursorDown));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(Direction::LEFT), &cursorLeft));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(Direction::RIGHT), &cursorRight));
+    NAPI_CALL(napi_create_object(env, &direction));
+    NAPI_CALL(napi_set_named_property(env, direction, "CURSOR_UP", cursorUp));
+    NAPI_CALL(napi_set_named_property(env, direction, "CURSOR_DOWN", cursorDown));
+    NAPI_CALL(napi_set_named_property(env, direction, "CURSOR_LEFT", cursorLeft));
+    NAPI_CALL(napi_set_named_property(env, direction, "CURSOR_RIGHT", cursorRight));
     return direction;
 }
 
@@ -232,15 +232,15 @@ napi_value JsGetInputMethodController::GetJsExtendActionProperty(napi_env env)
     napi_value actionCut = nullptr;
     napi_value actionCopy = nullptr;
     napi_value actionPaste = nullptr;
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(ExtendAction::SELECT_ALL), &actionSelectAll));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(ExtendAction::CUT), &actionCut));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(ExtendAction::COPY), &actionCopy));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(ExtendAction::PASTE), &actionPaste));
-    IMF_CALL(napi_create_object(env, &action));
-    IMF_CALL(napi_set_named_property(env, action, "SELECT_ALL", actionSelectAll));
-    IMF_CALL(napi_set_named_property(env, action, "CUT", actionCut));
-    IMF_CALL(napi_set_named_property(env, action, "COPY", actionCopy));
-    IMF_CALL(napi_set_named_property(env, action, "PASTE", actionPaste));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(ExtendAction::SELECT_ALL), &actionSelectAll));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(ExtendAction::CUT), &actionCut));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(ExtendAction::COPY), &actionCopy));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(ExtendAction::PASTE), &actionPaste));
+    NAPI_CALL(napi_create_object(env, &action));
+    NAPI_CALL(napi_set_named_property(env, action, "SELECT_ALL", actionSelectAll));
+    NAPI_CALL(napi_set_named_property(env, action, "CUT", actionCut));
+    NAPI_CALL(napi_set_named_property(env, action, "COPY", actionCopy));
+    NAPI_CALL(napi_set_named_property(env, action, "PASTE", actionPaste));
     return action;
 }
 
@@ -263,13 +263,13 @@ napi_value JsGetInputMethodController::GetJsEnabledStateProperty(napi_env env)
     napi_value disabled = nullptr;
     napi_value basicMode = nullptr;
     napi_value fullExperience = nullptr;
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(EnabledStatus::DISABLED), &disabled));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(EnabledStatus::BASIC_MODE), &basicMode));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(EnabledStatus::FULL_EXPERIENCE_MODE), &fullExperience));
-    IMF_CALL(napi_create_object(env, &status));
-    IMF_CALL(napi_set_named_property(env, status, "DISABLED", disabled));
-    IMF_CALL(napi_set_named_property(env, status, "BASIC_MODE", basicMode));
-    IMF_CALL(napi_set_named_property(env, status, "FULL_EXPERIENCE_MODE", fullExperience));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(EnabledStatus::DISABLED), &disabled));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(EnabledStatus::BASIC_MODE), &basicMode));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(EnabledStatus::FULL_EXPERIENCE_MODE), &fullExperience));
+    NAPI_CALL(napi_create_object(env, &status));
+    NAPI_CALL(napi_set_named_property(env, status, "DISABLED", disabled));
+    NAPI_CALL(napi_set_named_property(env, status, "BASIC_MODE", basicMode));
+    NAPI_CALL(napi_set_named_property(env, status, "FULL_EXPERIENCE_MODE", fullExperience));
     return status;
 }
 
@@ -280,15 +280,15 @@ napi_value JsGetInputMethodController::GetJsRequestKeyboardReasonProperty(napi_e
     napi_value mouse = nullptr;
     napi_value touch = nullptr;
     napi_value other = nullptr;
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(RequestKeyboardReason::NONE), &none));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(RequestKeyboardReason::MOUSE), &mouse));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(RequestKeyboardReason::TOUCH), &touch));
-    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(RequestKeyboardReason::OTHER), &other));
-    IMF_CALL(napi_create_object(env, &requestKeyboardReason));
-    IMF_CALL(napi_set_named_property(env, requestKeyboardReason, "NONE", none));
-    IMF_CALL(napi_set_named_property(env, requestKeyboardReason, "MOUSE", mouse));
-    IMF_CALL(napi_set_named_property(env, requestKeyboardReason, "TOUCH", touch));
-    IMF_CALL(napi_set_named_property(env, requestKeyboardReason, "OTHER", other));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(RequestKeyboardReason::NONE), &none));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(RequestKeyboardReason::MOUSE), &mouse));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(RequestKeyboardReason::TOUCH), &touch));
+    NAPI_CALL(napi_create_int32(env, static_cast<int32_t>(RequestKeyboardReason::OTHER), &other));
+    NAPI_CALL(napi_create_object(env, &requestKeyboardReason));
+    NAPI_CALL(napi_set_named_property(env, requestKeyboardReason, "NONE", none));
+    NAPI_CALL(napi_set_named_property(env, requestKeyboardReason, "MOUSE", mouse));
+    NAPI_CALL(napi_set_named_property(env, requestKeyboardReason, "TOUCH", touch));
+    NAPI_CALL(napi_set_named_property(env, requestKeyboardReason, "OTHER", other));
     return requestKeyboardReason;
 }
 
@@ -299,7 +299,7 @@ napi_value JsGetInputMethodController::JsConstructor(napi_env env, napi_callback
         handler_ = AppExecFwk::EventHandler::Current();
     }
     napi_value thisVar = nullptr;
-    IMF_CALL(napi_get_cb_info(env, cbinfo, nullptr, nullptr, &thisVar, nullptr));
+    NAPI_CALL(napi_get_cb_info(env, cbinfo, nullptr, nullptr, &thisVar, nullptr));
 
     auto controllerObject = GetInstance();
     if (controllerObject == nullptr) {
@@ -426,7 +426,7 @@ napi_value JsGetInputMethodController::Subscribe(napi_env env, napi_callback_inf
     napi_value argv[ARGC_TWO] = { nullptr };
     napi_value thisVar = nullptr;
     void *data = nullptr;
-    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
+    NAPI_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
     std::string type;
     // 2 means least param num.
     PARAM_CHECK_RETURN(env, argc >= 2, "at least two parameters is required!", TYPE_NONE, nullptr);
@@ -463,7 +463,7 @@ napi_value JsGetInputMethodController::UnSubscribe(napi_env env, napi_callback_i
     napi_value argv[ARGC_TWO] = { nullptr };
     napi_value thisVar = nullptr;
     void *data = nullptr;
-    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
+    NAPI_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
     std::string type;
     // 1 means least param num.
     if (argc < 1 || !JsUtil::GetValue(env, argv[0], type) ||
@@ -711,12 +711,12 @@ napi_value JsGetInputMethodController::GetAttachOptionsValue(
     napi_env env, napi_callback_info cbinfo, AttachOptions &attachOptions)
 {
     napi_value result = nullptr;
-    IMF_CALL(napi_create_int32(env, 0, &result));
+    NAPI_CALL(napi_create_int32(env, 0, &result));
     size_t argc = ARGC_ONE;
     napi_value argv[ARGC_ONE] = { nullptr };
     napi_value thisVar = nullptr;
     void *data = nullptr;
-    IMF_CALL(napi_get_cb_info(env, cbinfo, &argc, argv, &thisVar, &data));
+    NAPI_CALL(napi_get_cb_info(env, cbinfo, &argc, argv, &thisVar, &data));
     int32_t requestKeyboardReason = 0;
     if (argc > 0) {
         JsUtil::GetValue(env, argv[0], requestKeyboardReason);
@@ -1378,7 +1378,7 @@ napi_value JsGetInputMethodController::RecvMessage(napi_env env, napi_callback_i
     napi_value argv[ARGC_TWO] = {nullptr};
     napi_value thisVar = nullptr;
     void *data = nullptr;
-    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
+    NAPI_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
     if (argc < 0) {
         IMSA_HILOGE("RecvMessage failed! argc abnormal.");
         return nullptr;

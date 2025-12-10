@@ -177,14 +177,14 @@ napi_value JsUtils::ToError(napi_env env, int32_t code, const std::string &msg)
 {
     IMSA_HILOGD("ToError start");
     napi_value errorObj;
-    IMF_CALL(napi_create_object(env, &errorObj));
+    NAPI_CALL(napi_create_object(env, &errorObj));
     napi_value errorCode = nullptr;
-    IMF_CALL(napi_create_int32(env, Convert(code), &errorCode));
+    NAPI_CALL(napi_create_int32(env, Convert(code), &errorCode));
     napi_value errorMessage = nullptr;
     std::string errMsg = ToMessage(Convert(code)) + " " + msg;
-    IMF_CALL(napi_create_string_utf8(env, errMsg.c_str(), NAPI_AUTO_LENGTH, &errorMessage));
-    IMF_CALL(napi_set_named_property(env, errorObj, "code", errorCode));
-    IMF_CALL(napi_set_named_property(env, errorObj, "message", errorMessage));
+    NAPI_CALL(napi_create_string_utf8(env, errMsg.c_str(), NAPI_AUTO_LENGTH, &errorMessage));
+    NAPI_CALL(napi_set_named_property(env, errorObj, "code", errorCode));
+    NAPI_CALL(napi_set_named_property(env, errorObj, "message", errorMessage));
     IMSA_HILOGD("ToError end");
     return errorObj;
 }
@@ -468,27 +468,27 @@ napi_status JsUtils::GetValue(napi_env env, const std::string &in, napi_value &o
 napi_value JsUtils::GetJsPrivateCommand(napi_env env, const std::unordered_map<std::string, PrivateDataValue> &in)
 {
     napi_value jsPrivateCommand = nullptr;
-    IMF_CALL(napi_create_object(env, &jsPrivateCommand));
+    NAPI_CALL(napi_create_object(env, &jsPrivateCommand));
     for (const auto &iter : in) {
         size_t idx = iter.second.index();
         napi_value value = nullptr;
         if (idx == static_cast<size_t>(PrivateDataValueType::VALUE_TYPE_STRING)) {
             auto stringValue = std::get_if<std::string>(&iter.second);
             if (stringValue != nullptr) {
-                IMF_CALL(napi_create_string_utf8(env, (*stringValue).c_str(), (*stringValue).size(), &value));
+                NAPI_CALL(napi_create_string_utf8(env, (*stringValue).c_str(), (*stringValue).size(), &value));
             }
         } else if (idx == static_cast<size_t>(PrivateDataValueType::VALUE_TYPE_BOOL)) {
             auto boolValue = std::get_if<bool>(&iter.second);
             if (boolValue != nullptr) {
-                IMF_CALL(napi_get_boolean(env, *boolValue, &value));
+                NAPI_CALL(napi_get_boolean(env, *boolValue, &value));
             }
         } else if (idx == static_cast<size_t>(PrivateDataValueType::VALUE_TYPE_NUMBER)) {
             auto numberValue = std::get_if<int32_t>(&iter.second);
             if (numberValue != nullptr) {
-                IMF_CALL(napi_create_int32(env, *numberValue, &value));
+                NAPI_CALL(napi_create_int32(env, *numberValue, &value));
             }
         }
-        IMF_CALL(napi_set_named_property(env, jsPrivateCommand, iter.first.c_str(), value));
+        NAPI_CALL(napi_set_named_property(env, jsPrivateCommand, iter.first.c_str(), value));
     }
     return jsPrivateCommand;
 }
@@ -518,7 +518,7 @@ napi_value JsUtils::GetValue(napi_env env, const std::vector<uint8_t> &in)
     void *data = nullptr;
     napi_value arrayBuffer = nullptr;
     size_t length = in.size();
-    IMF_CALL(napi_create_arraybuffer(env, length, &data, &arrayBuffer));
+    NAPI_CALL(napi_create_arraybuffer(env, length, &data, &arrayBuffer));
     // 0 means the size of data.
     CHECK_RETURN(length != 0, "Data size is 0.", arrayBuffer);
     if (memcpy_s(data, length, reinterpret_cast<const void *>(in.data()), length) != 0) {
