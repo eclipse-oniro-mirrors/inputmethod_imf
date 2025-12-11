@@ -83,7 +83,8 @@ napi_value JsTextInputClientEngine::Init(napi_env env, napi_value info)
         DECLARE_NAPI_FUNCTION("off", UnSubscribe) };
     napi_value cons = nullptr;
     IMF_CALL(napi_define_class(env, TIC_CLASS_NAME.c_str(), TIC_CLASS_NAME.size(), JsConstructor, nullptr,
-                       sizeof(properties) / sizeof(napi_property_descriptor), properties, &cons));
+                               sizeof / sizeof(napi_property_descriptor), 
+                               properties, &cons));
     IMF_CALL(napi_create_reference(env, cons, 1, &TICRef_));
     IMF_CALL(napi_set_named_property(env, info, TIC_CLASS_NAME.c_str(), cons));
 
