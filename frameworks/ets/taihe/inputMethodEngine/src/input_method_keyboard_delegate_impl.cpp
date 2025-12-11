@@ -21,9 +21,10 @@ namespace MiscServices {
 constexpr size_t ARGC_TWO = 2;
 using namespace taihe;
 std::mutex KeyboardDelegateImpl::mutex_;
+std::mutex KeyboardDelegateImpl::handlerMutex_;
 std::mutex KeyboardDelegateImpl::keyboardMutex_;
 std::map<std::string, std::vector<std::unique_ptr<CallbackObjects>>> KeyboardDelegateImpl::jsCbMap_;
-std::map<std::string, std::vector<taihe::callback_view<bool(KeyEvent_t const& event)>>> KeyboardDelegateImpl::eventCbMap_;
+std::map<std::string, std::vector<taihe::callback<bool(KeyEvent_t const& event)>>> KeyboardDelegateImpl::eventCbMap_;
 std::shared_ptr<AppExecFwk::EventHandler> KeyboardDelegateImpl::handler_{ nullptr };
 std::shared_ptr<KeyboardDelegateImpl> KeyboardDelegateImpl::keyboardDelegate_{ nullptr };
 ani_ref KeyboardDelegateImpl::KCERef_ = nullptr;
@@ -212,28 +213,27 @@ void KeyboardDelegateImpl::UnRegisterListener(std::string const &type, taihe::op
 void KeyboardDelegateImpl::RegisterListenerEvent(std::string const &type,
     taihe::callback_view<bool(KeyEvent_t const& event)> callback)
 {
-    IMSA_HILOGI("lmq RegisterListenerEvent enter");
     if (type != "keyEvent") {
         IMSA_HILOGE("subscribe failed, type: %{public}s.", type.c_str());
         return;
     }
-    if (handler_ == nullptr) {
-        IMSA_HILOGI("lmq handler_ is null");
-        auto runner = AppExecFwk::EventRunner::GetMainEventRunner();
-        if (!runner) {
-            IMSA_HILOGW("null EventRunner");
-        } else {
-            handler_ = std::make_shared<AppExecFwk::EventHandler>(runner);
+    {
+        std::lock_guard<std::mutex> lock(handlerMutex_);
+        if (handler_ == nullptr) {
+            auto runner = AppExecFwk::EventRunner::GetMainEventRunner();
+            if (!runner) {
+                IMSA_HILOGW("null EventRunner");
+            } else {
+                handler_ = std::make_shared<AppExecFwk::EventHandler>(runner);
+            }
         }
     }
-    IMSA_HILOGI("lmq make handler_");
     std::lock_guard<std::mutex> lock(mutex_);
     auto &cbVec = eventCbMap_[type];
     auto it = std::find_if(cbVec.begin(), cbVec.end(),
         [&callback](const auto &existingCb) {
         return callback == existingCb;
     });
-
     if (it == cbVec.end()) {
         cbVec.emplace_back(callback);
         IMSA_HILOGD("callback registered success");
@@ -242,10 +242,9 @@ void KeyboardDelegateImpl::RegisterListenerEvent(std::string const &type,
     }
 }
 
-void KeyboardDelegateImpl::UnRegisterListenerEvent(std::string const &type, 
+void KeyboardDelegateImpl::UnRegisterListenerEvent(std::string const &type,
     taihe::optional_view<taihe::callback<bool(KeyEvent_t const& event)>> callback)
 {
-    IMSA_HILOGI("lmq UnRegisterListenerEvent enter");
     if (type != "keyEvent") {
         IMSA_HILOGE("subscribe failed, type: %{public}s.", type.c_str());
         return;
@@ -261,14 +260,12 @@ void KeyboardDelegateImpl::UnRegisterListenerEvent(std::string const &type,
         IMSA_HILOGD("unregistered all %{public}s callback", type.c_str());
         return;
     }
-
     auto &callbacks = iter->second;
     auto onceCallback = callback.value();
     auto it = std::find_if(callbacks.begin(), callbacks.end(),
         [&onceCallback](const auto &existingCb) {
         return onceCallback == existingCb;
     });
-
     if (it != callbacks.end()) {
         IMSA_HILOGD("unregistered callback success");
         callbacks.erase(it);
@@ -385,6 +382,18 @@ void KeyboardDelegateImpl::OnEditorAttributeChange(const InputAttribute &inputAt
     }
 }
 
+bool KeyboardDelegateImpl::isRegistered(const std::string &type)
+{
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        if (eventCbMap_["keyEvent"].empty() && jsCbMap_[type].empty()) {
+            IMSA_HILOGW("callback is not registered.");
+            return false;
+        }
+    }
+    return true;
+}
+
 bool KeyboardDelegateImpl::OnDealKeyEvent(const std::shared_ptr<MMI::KeyEvent> &keyEvent, uint64_t cbId,
     const sptr<IRemoteObject> &channelObject)
 {
@@ -392,35 +401,34 @@ bool KeyboardDelegateImpl::OnDealKeyEvent(const std::shared_ptr<MMI::KeyEvent> &
         IMSA_HILOGE("keyEvent or channelObjectis nullptr");
         return false;
     }
+    std::string type = (keyEvent->GetKeyAction() == ARGC_TWO ? "keyDown" : "keyUp");
+    if (!isRegistered(type)) {
+        IMSA_HILOGW("key event callback is not registered.");
+        return false;
+    }
+    IMSA_HILOGD("run in.");
+    auto task = [keyEvent, cbId, type, channelObject]() {
+        DealKeyEvent(keyEvent, cbId, type, channelObject);
+    };
+    std::lock_guard<std::mutex> lock(handlerMutex_);
     if (handler_ == nullptr) {
         IMSA_HILOGE("handler_ is nullptr");
         return false;
     }
-    IMSA_HILOGD("run in.");
-    auto task = [keyEvent, cbId, channelObject]() {
-        DealKeyEvent(keyEvent, cbId, channelObject);
-    };
     handler_->PostTask(task, "OnDealKeyEvent", 0, AppExecFwk::EventQueue::Priority::VIP);
     return true;
 }
 
 void KeyboardDelegateImpl::DealKeyEvent(const std::shared_ptr<MMI::KeyEvent> &keyEvent,
-    uint64_t cbId, const sptr<IRemoteObject> &channelObject)
+    uint64_t cbId, const std::string &type, const sptr<IRemoteObject> &channelObject)
 {
     bool isKeyEventConsumed = false;
     bool isKeyCodeConsumed = false;
-    std::string type = (keyEvent->GetKeyAction() == ARGC_TWO ? "keyDown" : "keyUp");
-    IMSA_HILOGI("lmq DealKeyEvent enter, type: %{public}s", type.c_str());
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (eventCbMap_["keyEvent"].empty() && jsCbMap_[type].empty()) {
-            IMSA_HILOGW("key event callback is not registered.");
-            return;
-        }
         auto &cbEventVec = eventCbMap_["keyEvent"];
         for (auto &cb : cbEventVec) {
             isKeyEventConsumed = cb(CommonConvert::ToTaiheKeyEvent(keyEvent));
-            IMSA_HILOGI("lmq DealKeyEvent keyEvent, isKeyEventConsumed: %{public}d", isKeyEventConsumed);
             break;
         }
         auto &cbCodeVec = jsCbMap_[type];
@@ -431,7 +439,6 @@ void KeyboardDelegateImpl::DealKeyEvent(const std::shared_ptr<MMI::KeyEvent> &ke
                 .keyAction = keyEvent->GetKeyAction(),
             };
             isKeyCodeConsumed = func(event);
-            IMSA_HILOGI("lmq DealKeyEvent keyCode, isKeyCodeConsumed: %{public}d", isKeyCodeConsumed);
             break;
         }
     }
@@ -441,13 +448,11 @@ void KeyboardDelegateImpl::DealKeyEvent(const std::shared_ptr<MMI::KeyEvent> &ke
             IMSA_HILOGW("keyEvent is not consumed by ime");
         }
         consumeResult = InputMethodAbility::GetInstance().HandleUnconsumedKey(keyEvent);
-        IMSA_HILOGI("lmq DealKeyEvent HandleUnconsumedKey, consumeResult: %{public}d", consumeResult);
     }
     auto ret = InputMethodAbility::GetInstance().HandleKeyEventResult(cbId, consumeResult, channelObject);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("handle keyEvent failed:%{public}d", ret);
     }
-    IMSA_HILOGE("handle HandleKeyEventResult result:%{public}d", ret);
 }
 } // namespace MiscServices
 } // namespace OHOS

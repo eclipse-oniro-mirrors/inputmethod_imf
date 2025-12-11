@@ -39,9 +39,9 @@ public:
     void RegisterListener(std::string const &type, callbackTypes &&cb, uintptr_t opq);
     void UnRegisterListener(std::string const &type, taihe::optional_view<uintptr_t> opq);
     void RegisterListenerEvent(std::string const &type,
-        taihe::callback_view<bool(::ohos::multimodalInput::keyEvent::KeyEvent const& event)> callback);
-    void UnRegisterListenerEvent(std::string const &type, 
-        taihe::optional_view<taihe::callback<bool(::ohos::multimodalInput::keyEvent::KeyEvent const& event)>> callback);
+        taihe::callback_view<bool(KeyEvent_t const& event)> callback);
+    void UnRegisterListenerEvent(std::string const &type,
+        taihe::optional_view<taihe::callback<bool(KeyEvent_t const& event)>> callback);
     bool OnKeyEvent(int32_t keyCode, int32_t keyStatus, sptr<KeyEventConsumerProxy> &consumer) override;
     bool OnKeyEvent(const std::shared_ptr<MMI::KeyEvent> &keyEvent, sptr<KeyEventConsumerProxy> &consumer) override;
     void OnCursorUpdate(int32_t positionX, int32_t positionY, int32_t height) override;
@@ -54,9 +54,10 @@ public:
     void OnKeyCodeConsumeResult(bool isConsumed, sptr<KeyEventConsumerProxy> consumer);
 private:
     static std::mutex mutex_;
+    static std::mutex handlerMutex_;
     static std::map<std::string, std::vector<std::unique_ptr<CallbackObjects>>> jsCbMap_;
 
-    static std::map<std::string, std::vector<taihe::callback_view<bool(KeyEvent_t const& event)>>> eventCbMap_;
+    static std::map<std::string, std::vector<taihe::callback<bool(KeyEvent_t const& event)>>> eventCbMap_;
     static std::mutex keyboardMutex_;
     static ani_ref KCERef_;
     static std::shared_ptr<KeyboardDelegateImpl> keyboardDelegate_;
@@ -66,8 +67,9 @@ private:
     static ani_env* env_;
     static ani_vm* vm_;
     static std::shared_ptr<AppExecFwk::EventHandler> handler_;
+    static bool isRegistered(const std::string &type);
     static void DealKeyEvent(const std::shared_ptr<MMI::KeyEvent> &keyEvent,
-        uint64_t cbId, const sptr<IRemoteObject> &channelObject);
+        uint64_t cbId, const std::string &type, const sptr<IRemoteObject> &channelObject);
 
     bool keyEventConsume_ = false;
     bool keyCodeConsume_ = false;
