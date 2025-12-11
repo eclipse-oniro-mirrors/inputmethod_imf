@@ -45,13 +45,13 @@ void InputMethodPanelListener::Subscribe(uint32_t windowId, const std::string &t
         return;
     }
     auto subscriptionAction = [&type, &env, &callbackRef, &cb](uint32_t windowId,
-        std::map<std::string, std::unique_ptr<CallbackObjects>> &cbs) -> bool {
+        std::map<std::string, std::shared_ptr<CallbackObjects>> &cbs) -> bool {
         if (cbs.find(type) != cbs.end()) {
             env->GlobalReference_Delete(callbackRef);
             IMSA_HILOGI("callback already registered, type: %{public}s!", type.c_str());
             return true;
         }
-        auto result = cbs.try_emplace(type, std::make_unique<CallbackObjects>(cb, callbackRef));
+        auto result = cbs.try_emplace(type, std::make_shared<CallbackObjects>(cb, callbackRef));
         bool inserted = result.second;
 
         if (inserted) {
@@ -68,22 +68,22 @@ void InputMethodPanelListener::RemoveInfo(uint32_t windowId, const std::string &
 {
     std::lock_guard<std::mutex> lock(mutex_);
     jsCbMap_.ComputeIfPresent(windowId,
-        [&type](auto windowId, std::map<std::string, std::unique_ptr<CallbackObjects>> &cbs) {
+        [&type](auto windowId, std::map<std::string, std::shared_ptr<CallbackObjects>> &cbs) {
             cbs.erase(type);
             return !cbs.empty();
         });
 }
 
-std::unique_ptr<CallbackObjects> InputMethodPanelListener::GetCallback(uint32_t windowId, const std::string &type)
+std::shared_ptr<CallbackObjects> InputMethodPanelListener::GetCallback(uint32_t windowId, const std::string &type)
 {
-    std::unique_ptr<CallbackObjects> callBack = nullptr;
+    std::shared_ptr<CallbackObjects> callBack = nullptr;
     jsCbMap_.ComputeIfPresent(windowId,
-        [&type, &callBack](auto windowId, std::map<std::string, std::unique_ptr<CallbackObjects>> &cbs) {
+        [&type, &callBack](auto windowId, std::map<std::string, std::shared_ptr<CallbackObjects>> &cbs) {
         auto it = cbs.find(type);
         if (it == cbs.end()) {
             return !cbs.empty();
         }
-        callBack = std::move(it->second);
+        callBack = it->second;
         return !cbs.empty();
     });
     return callBack;
@@ -130,14 +130,12 @@ void InputMethodPanelListener::OnSizeChange(uint32_t windowId, const WindowSize 
 void InputMethodPanelListener::OnSizeChange(uint32_t windowId, const WindowSize &size,
     const PanelAdjustInfo &keyboardArea, const std::string &event)
 {
-    std::string type = "sizeUpdate";
     std::lock_guard<std::mutex> lock(mutex_);
-    auto cbVec = GetCallback(windowId, type);
+    auto cbVec = GetCallback(windowId, event);
     if (cbVec == nullptr) {
         IMSA_HILOGE("callBack is nullptr!");
         return;
     }
-    auto &func = std::get<taihe::callback<void(uintptr_t, KeyboardArea_t const&)>>(cbVec->callback);
     ani_env* env = taihe::get_env();
     if (env == nullptr) {
         IMSA_HILOGE("env is nullptr");
@@ -155,7 +153,13 @@ void InputMethodPanelListener::OnSizeChange(uint32_t windowId, const WindowSize 
         .left = keyboardArea.left,
         .right = keyboardArea.right
     };
-    func(windowSize, area);
+    if (event == "sizeUpdate") {
+        auto &func = std::get<taihe::callback<void(uintptr_t, KeyboardArea_t const&)>>(cbVec->callback);
+        func(windowSize, area);
+    } else {
+        auto &func = std::get<taihe::callback<void(uintptr_t, taihe::optional_view<KeyboardArea_t>)>>(cbVec->callback);
+        func(windowSize, taihe::optional<KeyboardArea_t>(std::in_place_t{}, area));
+    }
 }
 
 void InputMethodPanelListener::SetEventHandler(std::shared_ptr<AppExecFwk::EventHandler> handler)

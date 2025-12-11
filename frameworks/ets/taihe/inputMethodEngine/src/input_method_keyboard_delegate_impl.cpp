@@ -23,6 +23,7 @@ using namespace taihe;
 std::mutex KeyboardDelegateImpl::mutex_;
 std::mutex KeyboardDelegateImpl::keyboardMutex_;
 std::map<std::string, std::vector<std::unique_ptr<CallbackObjects>>> KeyboardDelegateImpl::jsCbMap_;
+std::map<std::string, std::vector<taihe::callback_view<bool(KeyEvent_t const& event)>>> KeyboardDelegateImpl::eventCbMap_;
 std::shared_ptr<AppExecFwk::EventHandler> KeyboardDelegateImpl::handler_{ nullptr };
 std::shared_ptr<KeyboardDelegateImpl> KeyboardDelegateImpl::keyboardDelegate_{ nullptr };
 ani_ref KeyboardDelegateImpl::KCERef_ = nullptr;
@@ -140,15 +141,6 @@ void KeyboardDelegateImpl::RegisterListener(std::string const &type, callbackTyp
         IMSA_HILOGE("subscribe failed, type: %{public}s.", type.c_str());
         return;
     }
-    if (handler_ == nullptr) {
-        auto runner = AppExecFwk::EventRunner::GetMainEventRunner();
-        if (!runner) {
-            IMSA_HILOGW("null EventRunner");
-        } else {
-            handler_ = std::make_shared<AppExecFwk::EventHandler>(runner);
-        }
-    }
-
     std::lock_guard<std::mutex> lock(mutex_);
     ani_object callbackObj = reinterpret_cast<ani_object>(opq);
     ani_ref callbackRef;
@@ -214,6 +206,76 @@ void KeyboardDelegateImpl::UnRegisterListener(std::string const &type, taihe::op
     }
     if (callbacks.empty()) {
         jsCbMap_.erase(iter);
+    }
+}
+
+void KeyboardDelegateImpl::RegisterListenerEvent(std::string const &type,
+    taihe::callback_view<bool(KeyEvent_t const& event)> callback)
+{
+    IMSA_HILOGI("lmq RegisterListenerEvent enter");
+    if (type != "keyEvent") {
+        IMSA_HILOGE("subscribe failed, type: %{public}s.", type.c_str());
+        return;
+    }
+    if (handler_ == nullptr) {
+        IMSA_HILOGI("lmq handler_ is null");
+        auto runner = AppExecFwk::EventRunner::GetMainEventRunner();
+        if (!runner) {
+            IMSA_HILOGW("null EventRunner");
+        } else {
+            handler_ = std::make_shared<AppExecFwk::EventHandler>(runner);
+        }
+    }
+    IMSA_HILOGI("lmq make handler_");
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto &cbVec = eventCbMap_[type];
+    auto it = std::find_if(cbVec.begin(), cbVec.end(),
+        [&callback](const auto &existingCb) {
+        return callback == existingCb;
+    });
+
+    if (it == cbVec.end()) {
+        cbVec.emplace_back(callback);
+        IMSA_HILOGD("callback registered success");
+    } else {
+        IMSA_HILOGD("%{public}s is already registered", type.c_str());
+    }
+}
+
+void KeyboardDelegateImpl::UnRegisterListenerEvent(std::string const &type, 
+    taihe::optional_view<taihe::callback<bool(KeyEvent_t const& event)>> callback)
+{
+    IMSA_HILOGI("lmq UnRegisterListenerEvent enter");
+    if (type != "keyEvent") {
+        IMSA_HILOGE("subscribe failed, type: %{public}s.", type.c_str());
+        return;
+    }
+    std::lock_guard<std::mutex> lock(mutex_);
+    const auto iter = eventCbMap_.find(type);
+    if (iter == eventCbMap_.end()) {
+        IMSA_HILOGE("%{public}s is not registered", type.c_str());
+        return;
+    }
+    if (!callback.has_value()) {
+        eventCbMap_.erase(iter);
+        IMSA_HILOGD("unregistered all %{public}s callback", type.c_str());
+        return;
+    }
+
+    auto &callbacks = iter->second;
+    auto onceCallback = callback.value();
+    auto it = std::find_if(callbacks.begin(), callbacks.end(),
+        [&onceCallback](const auto &existingCb) {
+        return onceCallback == existingCb;
+    });
+
+    if (it != callbacks.end()) {
+        IMSA_HILOGD("unregistered callback success");
+        callbacks.erase(it);
+    }
+    if (callbacks.empty()) {
+        eventCbMap_.erase(iter);
+        IMSA_HILOGD("callback is empty");
     }
 }
 
@@ -348,16 +410,17 @@ void KeyboardDelegateImpl::DealKeyEvent(const std::shared_ptr<MMI::KeyEvent> &ke
     bool isKeyEventConsumed = false;
     bool isKeyCodeConsumed = false;
     std::string type = (keyEvent->GetKeyAction() == ARGC_TWO ? "keyDown" : "keyUp");
+    IMSA_HILOGI("lmq DealKeyEvent enter, type: %{public}s", type.c_str());
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        if (jsCbMap_["keyEvent"].empty() && jsCbMap_[type].empty()) {
+        if (eventCbMap_["keyEvent"].empty() && jsCbMap_[type].empty()) {
             IMSA_HILOGW("key event callback is not registered.");
             return;
         }
-        auto &cbEventVec = jsCbMap_["keyEvent"];
+        auto &cbEventVec = eventCbMap_["keyEvent"];
         for (auto &cb : cbEventVec) {
-            auto &func = std::get<taihe::callback<bool(KeyEvent_t const&)>>(cb->callback);
-            isKeyEventConsumed = func(CommonConvert::ToTaiheKeyEvent(keyEvent));
+            isKeyEventConsumed = cb(CommonConvert::ToTaiheKeyEvent(keyEvent));
+            IMSA_HILOGI("lmq DealKeyEvent keyEvent, isKeyEventConsumed: %{public}d", isKeyEventConsumed);
             break;
         }
         auto &cbCodeVec = jsCbMap_[type];
@@ -368,6 +431,7 @@ void KeyboardDelegateImpl::DealKeyEvent(const std::shared_ptr<MMI::KeyEvent> &ke
                 .keyAction = keyEvent->GetKeyAction(),
             };
             isKeyCodeConsumed = func(event);
+            IMSA_HILOGI("lmq DealKeyEvent keyCode, isKeyCodeConsumed: %{public}d", isKeyCodeConsumed);
             break;
         }
     }
@@ -377,11 +441,13 @@ void KeyboardDelegateImpl::DealKeyEvent(const std::shared_ptr<MMI::KeyEvent> &ke
             IMSA_HILOGW("keyEvent is not consumed by ime");
         }
         consumeResult = InputMethodAbility::GetInstance().HandleUnconsumedKey(keyEvent);
+        IMSA_HILOGI("lmq DealKeyEvent HandleUnconsumedKey, consumeResult: %{public}d", consumeResult);
     }
     auto ret = InputMethodAbility::GetInstance().HandleKeyEventResult(cbId, consumeResult, channelObject);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("handle keyEvent failed:%{public}d", ret);
     }
+    IMSA_HILOGE("handle HandleKeyEventResult result:%{public}d", ret);
 }
 } // namespace MiscServices
 } // namespace OHOS

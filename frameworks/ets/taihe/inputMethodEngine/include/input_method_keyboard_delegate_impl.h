@@ -38,6 +38,10 @@ public:
     static ani_ref GetKeyboardDelegateInstance(ani_env *env);
     void RegisterListener(std::string const &type, callbackTypes &&cb, uintptr_t opq);
     void UnRegisterListener(std::string const &type, taihe::optional_view<uintptr_t> opq);
+    void RegisterListenerEvent(std::string const &type,
+        taihe::callback_view<bool(::ohos::multimodalInput::keyEvent::KeyEvent const& event)> callback);
+    void UnRegisterListenerEvent(std::string const &type, 
+        taihe::optional_view<taihe::callback<bool(::ohos::multimodalInput::keyEvent::KeyEvent const& event)>> callback);
     bool OnKeyEvent(int32_t keyCode, int32_t keyStatus, sptr<KeyEventConsumerProxy> &consumer) override;
     bool OnKeyEvent(const std::shared_ptr<MMI::KeyEvent> &keyEvent, sptr<KeyEventConsumerProxy> &consumer) override;
     void OnCursorUpdate(int32_t positionX, int32_t positionY, int32_t height) override;
@@ -51,6 +55,8 @@ public:
 private:
     static std::mutex mutex_;
     static std::map<std::string, std::vector<std::unique_ptr<CallbackObjects>>> jsCbMap_;
+
+    static std::map<std::string, std::vector<taihe::callback_view<bool(KeyEvent_t const& event)>>> eventCbMap_;
     static std::mutex keyboardMutex_;
     static ani_ref KCERef_;
     static std::shared_ptr<KeyboardDelegateImpl> keyboardDelegate_;
@@ -96,14 +102,15 @@ class IMFKeyboardDelegateImpl {
         KeyboardDelegateImpl::GetInstance()->UnRegisterListener("keyUp", opq);
     }
 
-    void OnKeyEvent(taihe::callback_view<bool(KeyEvent_t const&)> callback, uintptr_t opq)
+    void OnKeyEvent(taihe::callback_view<bool(KeyEvent_t const& event)> callback)
     {
-        KeyboardDelegateImpl::GetInstance()->RegisterListener("keyEvent", callback, opq);
+        KeyboardDelegateImpl::GetInstance()->RegisterListenerEvent("keyEvent", callback);
     }
 
-    void OffKeyEvent(taihe::optional_view<uintptr_t> opq)
+    void OffKeyEvent(
+        taihe::optional_view<taihe::callback<bool(KeyEvent_t const& event)>> callback)
     {
-        KeyboardDelegateImpl::GetInstance()-> UnRegisterListener("keyEvent", opq);
+        KeyboardDelegateImpl::GetInstance()-> UnRegisterListenerEvent("keyEvent", callback);
     }
 
     void OnCursorContextChange(taihe::callback_view<void(int32_t, int32_t, int32_t)> callback, uintptr_t opq)
