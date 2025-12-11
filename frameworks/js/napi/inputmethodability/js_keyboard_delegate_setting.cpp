@@ -73,7 +73,8 @@ napi_value JsKeyboardDelegateSetting::Init(napi_env env, napi_value exports)
     };
     napi_value cons = nullptr;
     IMF_CALL(napi_define_class(env, KDS_CLASS_NAME.c_str(), KDS_CLASS_NAME.size(), JsConstructor, nullptr,
-                       sizeof(properties) / sizeof(napi_property_descriptor), properties, &cons));
+                               sizeof(properties) / sizeof(napi_property_descriptor), 
+                               properties, &cons));
     IMF_CALL(napi_create_reference(env, cons, 1, &KDSRef_));
     IMF_CALL(napi_set_named_property(env, exports, KDS_CLASS_NAME.c_str(), cons));
     return exports;

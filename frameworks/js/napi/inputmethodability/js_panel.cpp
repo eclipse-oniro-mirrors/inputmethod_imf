@@ -70,7 +70,8 @@ napi_value JsPanel::Init(napi_env env)
         DECLARE_NAPI_FUNCTION("setShadow", SetShadow),
     };
     IMF_CALL(napi_define_class(env, CLASS_NAME.c_str(), CLASS_NAME.size(), JsNew, nullptr,
-                       sizeof(properties) / sizeof(napi_property_descriptor), properties, &constructor));
+                               sizeof(properties) / sizeof(napi_property_descriptor), 
+                               properties, &constructor));
     CHECK_RETURN(constructor != nullptr, "failed to define class!", nullptr);
     IMF_CALL(napi_create_reference(env, constructor, 1, &panelConstructorRef_));
     return constructor;

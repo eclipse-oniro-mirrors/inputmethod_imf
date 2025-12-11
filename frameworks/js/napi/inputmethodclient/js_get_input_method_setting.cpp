@@ -73,7 +73,7 @@ napi_value JsGetInputMethodSetting::Init(napi_env env, napi_value exports)
     };
     napi_value cons = nullptr;
     IMF_CALL(napi_define_class(env, CLASS_NAME.c_str(), CLASS_NAME.size(), JsNew, nullptr,
-                           sizeof(properties) / sizeof(api_property_descriptor),
+                           sizeof(properties) / sizeof(napi_property_descriptor),
                            properties, &constructor));
     IMF_CALL(napi_create_reference(env, cons, 1, &IMSRef_));
     IMF_CALL(napi_set_named_property(env, exports, IMS_CLASS_NAME.c_str(), cons));
