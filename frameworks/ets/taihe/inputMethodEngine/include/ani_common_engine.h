@@ -18,8 +18,6 @@
 
 #include "input_method_property.h"
 #include "input_method_utils.h"
-#include "ohos.inputMethod.impl.hpp"
-#include "ohos.inputMethod.proj.hpp"
 #include "ohos.inputMethodEngine.proj.hpp"
 #include "ohos.inputMethodEngine.impl.hpp"
 #include "ohos.inputMethodEngine.PanelRect.ani.1.hpp"
@@ -45,7 +43,7 @@ using GradientMode_t = ohos::inputMethodEngine::GradientMode;
 using FluidLightMode_t = ohos::inputMethodEngine::FluidLightMode;
 using CommandDataType_t = ohos::inputMethodEngine::CommandDataType;
 using SecurityMode_t = ohos::inputMethodEngine::SecurityMode;
-using KeyEventType_t = ohos::inputMethodEngine::KeyEventType;
+using KeyEventType_t = ohos::inputMethodEngine::KeyEvent;
 using KeyEvent_t = ohos::multimodalInput::keyEvent::KeyEvent;
 using Action_t = ohos::multimodalInput::keyEvent::Action;
 using InputEvent_t = ohos::multimodalInput::inputEvent::InputEvent;

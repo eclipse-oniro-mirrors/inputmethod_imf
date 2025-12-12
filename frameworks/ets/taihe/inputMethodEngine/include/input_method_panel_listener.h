@@ -42,9 +42,9 @@ public:
     void SetEventHandler(std::shared_ptr<AppExecFwk::EventHandler> handler);
 
 private:
-    std::unique_ptr<CallbackObjects> GetCallback(uint32_t windowId, const std::string &type);
+    std::shared_ptr<CallbackObjects> GetCallback(uint32_t windowId, const std::string &type);
     std::mutex mutex_;
-    ConcurrentMap<uint32_t, std::map<std::string, std::unique_ptr<CallbackObjects>>> jsCbMap_;
+    ConcurrentMap<uint32_t, std::map<std::string, std::shared_ptr<CallbackObjects>>> jsCbMap_;
     static std::mutex listenerMutex_;
     static std::shared_ptr<InputMethodPanelListener> instance_;
     mutable std::shared_mutex eventHandlerMutex_;

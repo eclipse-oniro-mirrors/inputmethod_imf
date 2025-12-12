@@ -21,7 +21,6 @@ import { LocalStorage } from '@ohos.arkui.stateManagement';
 import { BusinessError, AsyncCallback, Callback } from '@ohos.base';
 """)
 @!sts_inject_into_module("import * as ohos_InputMethodSubtype from './@ohos.InputMethodSubtype';")
-@!sts_inject_into_module("import * as ohos_multimodalInput_keyEvent from './@ohos.multimodalInput.keyEvent';")
 
 from ohos.InputMethodSubtype use InputMethodSubtype;
 from ohos.multimodalInput.keyEvent use KeyEvent as InputKeyEvent;
@@ -204,7 +203,7 @@ struct EnhancedPanelRect {
     fullScreenMode: Optional<bool>;
 }
 
-struct KeyEventType {
+struct KeyEvent {
     @readonly keyCode: i32;
     @readonly keyAction: i32;
 }
@@ -387,26 +386,14 @@ interface InputClient {
 
 interface KeyboardDelegate {
 
-    OnKeyDown(callback: (event: KeyEventType) => bool, @sts_last opq: Opaque): void;
-    OffKeyDown(opq: Optional<@sts_type("Function1<KeyEventType, boolean>") Opaque>): void;
+    OnKeyDown(callback: (event: KeyEvent) => bool, @sts_last opq: Opaque): void;
+    OffKeyDown(opq: Optional<@sts_type("Function1<KeyEvent, boolean>") Opaque>): void;
 
-    OnKeyUp(callback: (event: KeyEventType) => bool, @sts_last opq: Opaque): void;
-    OffKeyUp(opq: Optional<@sts_type("Function1<KeyEventType, boolean>") Opaque>): void;
+    OnKeyUp(callback: (event: KeyEvent) => bool, @sts_last opq: Opaque): void;
+    OffKeyUp(opq: Optional<@sts_type("Function1<KeyEvent, boolean>") Opaque>): void;
 
-    @!sts_inject_into_interface("""
-        onkeyEvent(callback: (data: object) => object): void;
-        offkeyEvent(callback?: (data: object) => object): void;
-    """)
-    @!sts_inject_into_class("""
-        onkeyEvent(callback: object) {
-            return this.onKeyEvent(callback as (data: ohos_multimodalInput_keyEvent.KeyEvent) => boolean, callback);
-        }
-        offkeyEvent(callback?: Object) {
-            return this.offKeyEvent(callback);
-        }
-    """)
-    OnKeyEvent(callback: (event: InputKeyEvent) => bool, opq: Opaque);
-    OffKeyEvent(opq: Optional<Opaque>);
+    OnKeyEvent(callback: (event: InputKeyEvent) => bool);
+    OffKeyEvent(callback: Optional<(event: InputKeyEvent) => bool>);
 
     OnCursorContextChange(callback: (x: i32, y: i32, height: i32) => void, @sts_last opq: Opaque): void;
     OffCursorContextChange(opq: Optional<@sts_type("Function3<int, int, int , void>") Opaque>): void;
@@ -445,7 +432,7 @@ interface Panel {
     MoveToAsync(id: i64, x: i32, y: i32): void;
 
     @gen_promise("getDisplayIdImpl")
-    GetDisplayIdSync(id: i64): u32;
+    GetDisplayIdSync(id: i64): i64;
 
     @gen_async("showImpl")
     @gen_promise("showImpl")
@@ -481,8 +468,8 @@ interface Panel {
     OnSizeUpdate(callback: (size: @sts_type("window.Size") Opaque, keyboardArea: KeyboardArea) => void, @sts_last opq: Opaque): void;
     OffSizeUpdate(opq: Optional<@sts_type("Function2<window.Size, KeyboardArea, void>") Opaque>): void;
 
-    OnSizeChange(callback: (size: @sts_type("window.Size") Opaque, keyboardArea: Optional<KeyboardArea>) => void, @sts_last opq: Opaque): void;
-    OffSizeChange(opq: Optional<@sts_type("Function2<window.Size, KeyboardAreaData, void>") Opaque>): void;
+    OnSizeChange(callback: (size: @sts_type("window.Size") Opaque, @optional keyboardArea: Optional<KeyboardArea>) => void, @sts_last opq: Opaque): void;
+    OffSizeChange(opq: Optional<(size: @sts_type("window.Size") Opaque, @optional keyboardArea: Optional<KeyboardArea>) => void>): void;
 
     LineUp(): i64;
     @!sts_inject_into_interface("""
@@ -497,7 +484,7 @@ interface Panel {
         moveTo(x: int, y: int): Promise<void>;
         moveTo(x: int, y: int, callback: AsyncCallback<void>): void;
 
-        getDisplayId(): Promise<int>;
+        getDisplayId(): Promise<long>;
 
         show(): Promise<void>;
         show(callback: AsyncCallback<void>): void;
@@ -561,7 +548,7 @@ interface Panel {
             this.moveToImpl(this.lineUp(), x, y, callback);
         }
 
-        getDisplayId(): Promise<int> {
+        getDisplayId(): Promise<long> {
             return this.getDisplayIdImpl(this.lineUp());
         }
 

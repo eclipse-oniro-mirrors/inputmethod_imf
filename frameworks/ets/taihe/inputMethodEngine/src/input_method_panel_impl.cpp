@@ -265,7 +265,7 @@ void PanelImpl::AdjustPanelRectEnhanced(PanelFlag_t flag, EnhancedPanelRect_t co
     }
 }
 
-uint32_t PanelImpl::GetDisplayIdSync(int64_t id)
+int64_t PanelImpl::GetDisplayIdSync(int64_t id)
 {
     if (!jobQueue_.Wait(static_cast<int64_t>(id))) {
         IMSA_HILOGW("wait timeout id: %{public}" PRId64 "", id);
@@ -276,23 +276,23 @@ uint32_t PanelImpl::GetDisplayIdSync(int64_t id)
         set_business_error(JsUtils::Convert(ErrorCode::ERROR_IME),
             JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IME)));
         jobQueue_.Pop();
-        return static_cast<uint32_t>(displayId);
+        return static_cast<int64_t>(displayId);
     }
     auto ret = inputMethodPanel_->GetDisplayId(displayId);
     jobQueue_.Pop();
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("failed get displayId!");
         set_business_error(JsUtils::Convert(ret), JsUtils::ToMessage(JsUtils::Convert(ret)));
-        return static_cast<uint32_t>(displayId);
+        return static_cast<int64_t>(displayId);
     }
     if (displayId > UINT32_MAX) {
         IMSA_HILOGE("displayId is too large, displayId: %{public}" PRIu64 "", displayId);
         set_business_error(JsUtils::Convert(ErrorCode::ERROR_WINDOW_MANAGER),
             JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_WINDOW_MANAGER)));
-        return static_cast<uint32_t>(displayId);
+        return static_cast<int64_t>(displayId);
     }
     IMSA_HILOGI("get displayId success!");
-    return static_cast<uint32_t>(displayId);
+    return static_cast<int64_t>(displayId);
 }
 
 ImmersiveMode_t PanelImpl::GetImmersiveMode()
