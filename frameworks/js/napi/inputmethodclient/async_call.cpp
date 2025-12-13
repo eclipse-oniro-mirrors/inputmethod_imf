@@ -33,11 +33,11 @@ AsyncCall::AsyncCall(napi_env env, napi_callback_info info, std::shared_ptr<Cont
     : env_(env)
 {
     context_ = new (std::nothrow) AsyncContext();
-    size_t argc = ARGC_MAX;
     if (context_ == nullptr) {
         IMSA_HILOGE("context_  is nullptr");
         return;
     }
+    size_t argc = ARGC_MAX;
     napi_value self = nullptr;
     napi_value argv[ARGC_MAX] = { nullptr };
     IMF_CALL_RETURN_VOID(napi_get_cb_info(env, info, &argc, argv, &self, nullptr));
