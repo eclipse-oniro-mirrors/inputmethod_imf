@@ -98,8 +98,8 @@ napi_value JsInputMethodEngineSetting::Init(napi_env env, napi_value exports)
         DECLARE_NAPI_STATIC_PROPERTY("GradientMode", GetJsGradientModeProperty(env)),
         DECLARE_NAPI_STATIC_PROPERTY("FluidLightMode", GetJsFluidLightModeProperty(env))
     };
-    NAPI_CALL(
-        env, napi_define_properties(env, exports, sizeof(descriptor) / sizeof(napi_property_descriptor), descriptor));
+    IMF_CALL(
+        napi_define_properties(env, exports, sizeof(descriptor) / sizeof(napi_property_descriptor), descriptor));
     return InitProperty(env, exports);
 }
 
@@ -113,10 +113,11 @@ napi_value JsInputMethodEngineSetting::InitProperty(napi_env env, napi_value exp
         DECLARE_NAPI_FUNCTION("getSecurityMode", GetSecurityMode),
     };
     napi_value cons = nullptr;
-    NAPI_CALL(env, napi_define_class(env, IMES_CLASS_NAME.c_str(), IMES_CLASS_NAME.size(), JsConstructor, nullptr,
-                       sizeof(properties) / sizeof(napi_property_descriptor), properties, &cons));
-    NAPI_CALL(env, napi_create_reference(env, cons, 1, &IMESRef_));
-    NAPI_CALL(env, napi_set_named_property(env, exports, IMES_CLASS_NAME.c_str(), cons));
+    IMF_CALL(napi_define_class(env, IMES_CLASS_NAME.c_str(), IMES_CLASS_NAME.size(), JsConstructor, nullptr,
+                               sizeof(properties) / sizeof(napi_property_descriptor),
+                               properties, &cons));
+    IMF_CALL(napi_create_reference(env, cons, 1, &IMESRef_));
+    IMF_CALL(napi_set_named_property(env, exports, IMES_CLASS_NAME.c_str(), cons));
     return exports;
 }
 
@@ -139,11 +140,11 @@ napi_value JsInputMethodEngineSetting::GetJsPanelTypeProperty(napi_env env)
     napi_value panelType = nullptr;
     napi_value typeSoftKeyboard = nullptr;
     napi_value typeStatusBar = nullptr;
-    NAPI_CALL(env, napi_create_int32(env, static_cast<int32_t>(PanelType::SOFT_KEYBOARD), &typeSoftKeyboard));
-    NAPI_CALL(env, napi_create_int32(env, static_cast<int32_t>(PanelType::STATUS_BAR), &typeStatusBar));
-    NAPI_CALL(env, napi_create_object(env, &panelType));
-    NAPI_CALL(env, napi_set_named_property(env, panelType, "SOFT_KEYBOARD", typeSoftKeyboard));
-    NAPI_CALL(env, napi_set_named_property(env, panelType, "STATUS_BAR", typeStatusBar));
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(PanelType::SOFT_KEYBOARD), &typeSoftKeyboard));
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(PanelType::STATUS_BAR), &typeStatusBar));
+    IMF_CALL(napi_create_object(env, &panelType));
+    IMF_CALL(napi_set_named_property(env, panelType, "SOFT_KEYBOARD", typeSoftKeyboard));
+    IMF_CALL(napi_set_named_property(env, panelType, "STATUS_BAR", typeStatusBar));
     return panelType;
 }
 
@@ -153,13 +154,13 @@ napi_value JsInputMethodEngineSetting::GetJsPanelFlagProperty(napi_env env)
     napi_value flagFixed = nullptr;
     napi_value flagFloating = nullptr;
     napi_value flagCandidate = nullptr;
-    NAPI_CALL(env, napi_create_int32(env, static_cast<int32_t>(PanelFlag::FLG_FIXED), &flagFixed));
-    NAPI_CALL(env, napi_create_int32(env, static_cast<int32_t>(PanelFlag::FLG_FLOATING), &flagFloating));
-    NAPI_CALL(env, napi_create_int32(env, static_cast<int32_t>(PanelFlag::FLG_CANDIDATE_COLUMN), &flagCandidate));
-    NAPI_CALL(env, napi_create_object(env, &panelFlag));
-    NAPI_CALL(env, napi_set_named_property(env, panelFlag, "FLG_FIXED", flagFixed));
-    NAPI_CALL(env, napi_set_named_property(env, panelFlag, "FLG_FLOATING", flagFloating));
-    NAPI_CALL(env, napi_set_named_property(env, panelFlag, "FLAG_CANDIDATE", flagCandidate));
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(PanelFlag::FLG_FIXED), &flagFixed));
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(PanelFlag::FLG_FLOATING), &flagFloating));
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(PanelFlag::FLG_CANDIDATE_COLUMN), &flagCandidate));
+    IMF_CALL(napi_create_object(env, &panelFlag));
+    IMF_CALL(napi_set_named_property(env, panelFlag, "FLG_FIXED", flagFixed));
+    IMF_CALL(napi_set_named_property(env, panelFlag, "FLG_FLOATING", flagFloating));
+    IMF_CALL(napi_set_named_property(env, panelFlag, "FLAG_CANDIDATE", flagCandidate));
     return panelFlag;
 }
 
@@ -170,15 +171,15 @@ napi_value JsInputMethodEngineSetting::GetJsDirectionProperty(napi_env env)
     napi_value cursorDown = nullptr;
     napi_value cursorLeft = nullptr;
     napi_value cursorRight = nullptr;
-    NAPI_CALL(env, napi_create_int32(env, static_cast<int32_t>(Direction::UP), &cursorUp));
-    NAPI_CALL(env, napi_create_int32(env, static_cast<int32_t>(Direction::DOWN), &cursorDown));
-    NAPI_CALL(env, napi_create_int32(env, static_cast<int32_t>(Direction::LEFT), &cursorLeft));
-    NAPI_CALL(env, napi_create_int32(env, static_cast<int32_t>(Direction::RIGHT), &cursorRight));
-    NAPI_CALL(env, napi_create_object(env, &direction));
-    NAPI_CALL(env, napi_set_named_property(env, direction, "CURSOR_UP", cursorUp));
-    NAPI_CALL(env, napi_set_named_property(env, direction, "CURSOR_DOWN", cursorDown));
-    NAPI_CALL(env, napi_set_named_property(env, direction, "CURSOR_LEFT", cursorLeft));
-    NAPI_CALL(env, napi_set_named_property(env, direction, "CURSOR_RIGHT", cursorRight));
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(Direction::UP), &cursorUp));
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(Direction::DOWN), &cursorDown));
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(Direction::LEFT), &cursorLeft));
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(Direction::RIGHT), &cursorRight));
+    IMF_CALL(napi_create_object(env, &direction));
+    IMF_CALL(napi_set_named_property(env, direction, "CURSOR_UP", cursorUp));
+    IMF_CALL(napi_set_named_property(env, direction, "CURSOR_DOWN", cursorDown));
+    IMF_CALL(napi_set_named_property(env, direction, "CURSOR_LEFT", cursorLeft));
+    IMF_CALL(napi_set_named_property(env, direction, "CURSOR_RIGHT", cursorRight));
     return direction;
 }
 
@@ -189,15 +190,15 @@ napi_value JsInputMethodEngineSetting::GetJsExtendActionProperty(napi_env env)
     napi_value actionCut = nullptr;
     napi_value actionCopy = nullptr;
     napi_value actionPaste = nullptr;
-    NAPI_CALL(env, napi_create_int32(env, static_cast<int32_t>(ExtendAction::SELECT_ALL), &actionSelectAll));
-    NAPI_CALL(env, napi_create_int32(env, static_cast<int32_t>(ExtendAction::CUT), &actionCut));
-    NAPI_CALL(env, napi_create_int32(env, static_cast<int32_t>(ExtendAction::COPY), &actionCopy));
-    NAPI_CALL(env, napi_create_int32(env, static_cast<int32_t>(ExtendAction::PASTE), &actionPaste));
-    NAPI_CALL(env, napi_create_object(env, &action));
-    NAPI_CALL(env, napi_set_named_property(env, action, "SELECT_ALL", actionSelectAll));
-    NAPI_CALL(env, napi_set_named_property(env, action, "CUT", actionCut));
-    NAPI_CALL(env, napi_set_named_property(env, action, "COPY", actionCopy));
-    NAPI_CALL(env, napi_set_named_property(env, action, "PASTE", actionPaste));
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(ExtendAction::SELECT_ALL), &actionSelectAll));
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(ExtendAction::CUT), &actionCut));
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(ExtendAction::COPY), &actionCopy));
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(ExtendAction::PASTE), &actionPaste));
+    IMF_CALL(napi_create_object(env, &action));
+    IMF_CALL(napi_set_named_property(env, action, "SELECT_ALL", actionSelectAll));
+    IMF_CALL(napi_set_named_property(env, action, "CUT", actionCut));
+    IMF_CALL(napi_set_named_property(env, action, "COPY", actionCopy));
+    IMF_CALL(napi_set_named_property(env, action, "PASTE", actionPaste));
     return action;
 }
 
@@ -219,18 +220,18 @@ napi_value JsInputMethodEngineSetting::GetJsSecurityModeProperty(napi_env env)
     napi_value securityMode = nullptr;
     napi_value basic = nullptr;
     napi_value full = nullptr;
-    NAPI_CALL(env, napi_create_int32(env, static_cast<int32_t>(SecurityMode::BASIC), &basic));
-    NAPI_CALL(env, napi_create_int32(env, static_cast<int32_t>(SecurityMode::FULL), &full));
-    NAPI_CALL(env, napi_create_object(env, &securityMode));
-    NAPI_CALL(env, napi_set_named_property(env, securityMode, "BASIC", basic));
-    NAPI_CALL(env, napi_set_named_property(env, securityMode, "FULL", full));
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(SecurityMode::BASIC), &basic));
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(SecurityMode::FULL), &full));
+    IMF_CALL(napi_create_object(env, &securityMode));
+    IMF_CALL(napi_set_named_property(env, securityMode, "BASIC", basic));
+    IMF_CALL(napi_set_named_property(env, securityMode, "FULL", full));
     return securityMode;
 }
 
 napi_value JsInputMethodEngineSetting::GetJsImmersiveModeProperty(napi_env env)
 {
     napi_value immersive = nullptr;
-    NAPI_CALL(env, napi_create_object(env, &immersive));
+    IMF_CALL(napi_create_object(env, &immersive));
     bool ret = JsUtil::Object::WriteProperty(
         env, immersive, "NONE_IMMERSIVE", static_cast<int32_t>(ImmersiveMode::NONE_IMMERSIVE));
     ret = ret &&
@@ -247,7 +248,7 @@ napi_value JsInputMethodEngineSetting::GetJsImmersiveModeProperty(napi_env env)
 napi_value JsInputMethodEngineSetting::GetJsGradientModeProperty(napi_env env)
 {
     napi_value gradientMode = nullptr;
-    NAPI_CALL(env, napi_create_object(env, &gradientMode));
+    IMF_CALL(napi_create_object(env, &gradientMode));
     bool ret = JsUtil::Object::WriteProperty(env, gradientMode, "NONE", static_cast<int32_t>(GradientMode::NONE));
     ret = ret &&
         JsUtil::Object::WriteProperty(
@@ -258,7 +259,7 @@ napi_value JsInputMethodEngineSetting::GetJsGradientModeProperty(napi_env env)
 napi_value JsInputMethodEngineSetting::GetJsFluidLightModeProperty(napi_env env)
 {
     napi_value fluidLightMode = nullptr;
-    NAPI_CALL(env, napi_create_object(env, &fluidLightMode));
+    IMF_CALL(napi_create_object(env, &fluidLightMode));
     bool ret = JsUtil::Object::WriteProperty(
         env, fluidLightMode, "NONE", static_cast<int32_t>(FluidLightMode::NONE));
     ret = ret && JsUtil::Object::WriteProperty(
@@ -269,7 +270,7 @@ napi_value JsInputMethodEngineSetting::GetJsFluidLightModeProperty(napi_env env)
 napi_value JsInputMethodEngineSetting::GetJsRequestKeyboardReasonProperty(napi_env env)
 {
     napi_value requestKeyboardReason = nullptr;
-    NAPI_CALL(env, napi_create_object(env, &requestKeyboardReason));
+    IMF_CALL(napi_create_object(env, &requestKeyboardReason));
     bool ret = JsUtil::Object::WriteProperty(
         env, requestKeyboardReason, "NONE", static_cast<int32_t>(RequestKeyboardReason::NONE));
     ret = ret &&
@@ -320,7 +321,7 @@ bool JsInputMethodEngineSetting::InitInputMethodSetting()
 napi_value JsInputMethodEngineSetting::JsConstructor(napi_env env, napi_callback_info cbinfo)
 {
     napi_value thisVar = nullptr;
-    NAPI_CALL(env, napi_get_cb_info(env, cbinfo, nullptr, nullptr, &thisVar, nullptr));
+    IMF_CALL(napi_get_cb_info(env, cbinfo, nullptr, nullptr, &thisVar, nullptr));
     auto setting = GetInputMethodEngineSetting();
     if (setting == nullptr || !InitInputMethodSetting()) {
         IMSA_HILOGE("failed to get setting.");
@@ -419,7 +420,7 @@ napi_value JsInputMethodEngineSetting::Subscribe(napi_env env, napi_callback_inf
     napi_value argv[ARGC_MAX] = { nullptr };
     napi_value thisVar = nullptr;
     void *data = nullptr;
-    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
     std::string type;
     // 2 means least param num.
     if (argc < 2 || !JsUtil::GetValue(env, argv[0], type) ||
@@ -566,7 +567,7 @@ napi_value JsInputMethodEngineSetting::GetSecurityMode(napi_env env, napi_callba
     IMSA_HILOGD("start get security mode.");
     size_t argc = 1;
     napi_value argv[1] = { nullptr };
-    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
     int32_t security;
     int32_t ret = InputMethodAbility::GetInstance().GetSecurityMode(security);
     if (ret != ErrorCode::NO_ERROR) {
@@ -583,7 +584,7 @@ napi_value JsInputMethodEngineSetting::UnSubscribe(napi_env env, napi_callback_i
     napi_value argv[ARGC_TWO] = { nullptr };
     napi_value thisVar = nullptr;
     void *data = nullptr;
-    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
     std::string type;
     // 1 means least param num.
     if (argc < 1 || !JsUtil::GetValue(env, argv[0], type) ||

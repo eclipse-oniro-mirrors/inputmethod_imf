@@ -69,10 +69,11 @@ napi_value JsPanel::Init(napi_env env)
         DECLARE_NAPI_FUNCTION("setSystemPanelButtonColor", SetSystemPanelButtonColor),
         DECLARE_NAPI_FUNCTION("setShadow", SetShadow),
     };
-    NAPI_CALL(env, napi_define_class(env, CLASS_NAME.c_str(), CLASS_NAME.size(), JsNew, nullptr,
-                       sizeof(properties) / sizeof(napi_property_descriptor), properties, &constructor));
+    IMF_CALL(napi_define_class(env, CLASS_NAME.c_str(), CLASS_NAME.size(), JsNew, nullptr,
+                               sizeof(properties) / sizeof(napi_property_descriptor),
+                               properties, &constructor));
     CHECK_RETURN(constructor != nullptr, "failed to define class!", nullptr);
-    NAPI_CALL(env, napi_create_reference(env, constructor, 1, &panelConstructorRef_));
+    IMF_CALL(napi_create_reference(env, constructor, 1, &panelConstructorRef_));
     return constructor;
 }
 
@@ -257,11 +258,11 @@ napi_value JsPanel::MoveTo(napi_env env, napi_callback_info info)
 napi_value JsPanel::StartMoving(napi_env env, napi_callback_info info)
 {
     napi_value self = nullptr;
-    NAPI_CALL(env, napi_get_cb_info(env, info, 0, nullptr, &self, nullptr));
+    IMF_CALL(napi_get_cb_info(env, info, 0, nullptr, &self, nullptr));
     RESULT_CHECK_RETURN(env, (self != nullptr), JsUtils::Convert(ErrorCode::ERROR_IME),
                         "", TYPE_NONE, JsUtil::Const::Null(env));
     void *native = nullptr;
-    NAPI_CALL(env, napi_unwrap(env, self, &native));
+    IMF_CALL(napi_unwrap(env, self, &native));
     RESULT_CHECK_RETURN(env, (native != nullptr), JsUtils::Convert(ErrorCode::ERROR_IME),
                         "", TYPE_NONE, JsUtil::Const::Null(env));
     auto inputMethodPanel = reinterpret_cast<JsPanel *>(native)->GetNative();
@@ -399,7 +400,7 @@ napi_value JsPanel::ChangeFlag(napi_env env, napi_callback_info info)
     size_t argc = ARGC_MAX;
     napi_value argv[ARGC_MAX] = { nullptr };
     napi_value thisVar = nullptr;
-    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr));
     PARAM_CHECK_RETURN(env, argc > 0, "at least one parameter is required!", TYPE_NONE, nullptr);
     int32_t panelFlag = 0;
     // 0 means the first param flag<PanelFlag>
@@ -424,7 +425,7 @@ napi_value JsPanel::SetPrivacyMode(napi_env env, napi_callback_info info)
     size_t argc = ARGC_MAX;
     napi_value argv[ARGC_MAX] = { nullptr };
     napi_value thisVar = nullptr;
-    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr));
     PARAM_CHECK_RETURN(env, argc > 0, "at least one parameter is required!", TYPE_NONE, nullptr);
     bool isPrivacyMode = false;
     // 0 means the first param isPrivacyMode<boolean>
@@ -451,7 +452,7 @@ napi_value JsPanel::Subscribe(napi_env env, napi_callback_info info)
     size_t argc = ARGC_MAX;
     napi_value argv[ARGC_MAX] = { nullptr };
     napi_value thisVar = nullptr;
-    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr));
     std::string type;
     // 2 means least param num.
     if (argc < 2 || !JsUtil::GetValue(env, argv[0], type) ||
@@ -487,7 +488,7 @@ napi_value JsPanel::UnSubscribe(napi_env env, napi_callback_info info)
     size_t argc = ARGC_MAX;
     napi_value argv[ARGC_MAX] = { nullptr };
     napi_value thisVar = nullptr;
-    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr));
     std::string type;
     // 1 means least param num.
     PARAM_CHECK_RETURN(env, argc >= 1, "at least one parameter is required!", TYPE_NONE, nullptr);
@@ -827,7 +828,7 @@ napi_value JsPanel::SetImmersiveMode(napi_env env, napi_callback_info info)
     napi_value argv[ARGC_MAX] = { nullptr };
     napi_value thisVar = nullptr;
     napi_value retVal = JsUtil::Const::Null(env);
-    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr));
     PARAM_CHECK_RETURN(env, argc > 0, "at least one parameter is required", TYPE_NONE, retVal);
     int32_t immersiveMode = 0;
     // 0 means the first param immersiveMode<ImmersiveMode>
@@ -855,7 +856,7 @@ napi_value JsPanel::SetImmersiveEffect(napi_env env, napi_callback_info info)
     napi_value argv[ARGC_MAX] = { nullptr };
     napi_value thisVar = nullptr;
     napi_value retVal = JsUtil::Const::Null(env);
-    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, nullptr));
     PARAM_CHECK_RETURN(env, argc > 0, "at least one parameter is required", TYPE_NONE, retVal);
 
     PARAM_CHECK_RETURN(env, JsUtil::GetType(env, argv[0]) == napi_object, "param effect type must be ImmersiveEffect",
@@ -879,7 +880,7 @@ napi_value JsPanel::GetImmersiveMode(napi_env env, napi_callback_info info)
 {
     napi_value thisVar = nullptr;
     napi_value retVal = JsUtil::Const::Null(env);
-    NAPI_CALL(env, napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr));
+    IMF_CALL(napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr));
     auto panel = UnwrapPanel(env, thisVar);
     RESULT_CHECK_RETURN(env, panel != nullptr, JsUtils::Convert(ErrorCode::ERROR_IME), "", TYPE_NONE, retVal);
     JsEventInfo eventInfo = { std::chrono::system_clock::now(), JsEvent::GET_IMMERSIVE_MODE };
@@ -888,7 +889,7 @@ napi_value JsPanel::GetImmersiveMode(napi_env env, napi_callback_info info)
     auto immersiveMode = panel->GetImmersiveMode();
     jsQueue_.Pop();
     napi_value jsImmersiveMode = nullptr;
-    NAPI_CALL(env, napi_create_int32(env, static_cast<int32_t>(immersiveMode), &jsImmersiveMode));
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(immersiveMode), &jsImmersiveMode));
     return jsImmersiveMode;
 }
 
@@ -925,10 +926,10 @@ napi_value JsPanel::SetShadow(napi_env env, napi_callback_info info)
 {
     napi_value thisVar = nullptr;
     napi_value retVal = JsUtil::Const::Null(env);
-    NAPI_CALL(env, napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr));
+    IMF_CALL(napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr));
     size_t argc = 4; // 4 means JsAPI:SetShadow need 4 params.
     napi_value argv[4] = { nullptr };
-    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
     auto panel = UnwrapPanel(env, thisVar);
     RESULT_CHECK_RETURN(env, panel != nullptr, JsUtils::Convert(ErrorCode::ERROR_IME), "", TYPE_NONE, retVal);
     JsEventInfo eventInfo = { std::chrono::system_clock::now(), JsEvent::SET_SHADOW };
