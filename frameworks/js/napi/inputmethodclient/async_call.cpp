@@ -170,6 +170,12 @@ void AsyncCall::OnExecuteSeq(napi_env env, void *data)
 
 void AsyncCall::OnComplete(napi_env env, napi_status status, void *data)
 {
+    napi_handle_scope scope = nullptr;
+    napi_open_handle_scope(env, &scope);
+    if (scope == nullptr) {
+        IMSA_HILOGE("scope is nullptr!");
+        return;
+    }
     AsyncContext *context = reinterpret_cast<AsyncContext *>(data);
     napi_value output = nullptr;
     if (context == nullptr || context->ctx == nullptr) {
@@ -206,6 +212,7 @@ void AsyncCall::OnComplete(napi_env env, napi_status status, void *data)
         napi_call_function(env, nullptr, callback, ARG_BUTT, result, &returnValue);
     }
     DeleteContext(env, context);
+    napi_close_handle_scope(env, scope);
 }
 
 void AsyncCall::DeleteContext(napi_env env, AsyncContext *context)
