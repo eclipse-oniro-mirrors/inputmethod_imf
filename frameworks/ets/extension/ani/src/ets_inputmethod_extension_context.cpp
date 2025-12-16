@@ -139,10 +139,12 @@ ani_object CreateETSInputMethodExtensionContext(
     if ((status = env->Object_New(cls, method, &contextObj, (ani_long)workContext.release())) != ANI_OK ||
         contextObj == nullptr) {
         IMSA_HILOGE("Failed to create object, status : %{public}d", status);
+        delete distributeContextPtr;
         return nullptr;
     }
     if (!AbilityRuntime::ContextUtil::SetNativeContextLong(env, contextObj, (ani_long)(distributeContextPtr))) {
         IMSA_HILOGE("Failed to setNativeContextLong ");
+        delete distributeContextPtr;
         return nullptr;
     }
     AbilityRuntime::ContextUtil::CreateEtsBaseContext(env, cls, contextObj, context);

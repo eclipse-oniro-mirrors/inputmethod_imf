@@ -39,7 +39,7 @@ public:
     void UpdateRegion(uintptr_t inputRegion);
     void AdjustPanelRect(PanelFlag_t flag, PanelRect_t const& rect);
     void AdjustPanelRectEnhanced(PanelFlag_t flag, EnhancedPanelRect_t const& rect);
-    uint32_t GetDisplayIdSync(int64_t id);
+    int64_t GetDisplayIdSync(int64_t id);
     ImmersiveMode_t GetImmersiveMode();
     void SetImmersiveMode(ImmersiveMode_t mode);
     void SetPrivacyMode(bool isPrivacyMode);
@@ -125,7 +125,7 @@ public:
         PanelImpl::GetInstance()->MoveToAsync(id, x, y);
     }
 
-    uint32_t GetDisplayIdSync(int64_t id)
+    int64_t GetDisplayIdSync(int64_t id)
     {
         return PanelImpl::GetInstance()->GetDisplayIdSync(id);
     }
@@ -226,9 +226,9 @@ public:
         PanelImpl::GetInstance()->RegisterListener("sizeChange", callback, opq);
     }
 
-    void OffSizeChange(taihe::optional_view<uintptr_t> opq)
+    void OffSizeChange(taihe::optional_view<taihe::callback<void(uintptr_t, taihe::optional_view<KeyboardArea_t>)>> opq)
     {
-        PanelImpl::GetInstance()->UnRegisterListener("sizeChange", opq);
+        PanelImpl::GetInstance()->UnRegisterListener("sizeChange", nullptr);
     }
 
     int64_t LineUp()

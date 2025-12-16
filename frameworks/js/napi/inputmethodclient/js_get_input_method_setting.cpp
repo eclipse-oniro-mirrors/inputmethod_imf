@@ -45,14 +45,14 @@ std::shared_ptr<AppExecFwk::EventHandler> JsGetInputMethodSetting::handler_{ nul
 napi_value JsGetInputMethodSetting::Init(napi_env env, napi_value exports)
 {
     napi_value maxTypeNumber = nullptr;
-    NAPI_CALL(env, napi_create_int32(env, MAX_TYPE_NUM, &maxTypeNumber));
+    IMF_CALL(napi_create_int32(env, MAX_TYPE_NUM, &maxTypeNumber));
 
     napi_property_descriptor descriptor[] = {
         DECLARE_NAPI_FUNCTION("getInputMethodSetting", GetInputMethodSetting),
         DECLARE_NAPI_FUNCTION("getSetting", GetSetting),
         DECLARE_NAPI_PROPERTY("MAX_TYPE_NUM", maxTypeNumber),
     };
-    NAPI_CALL(env,
+    IMF_CALL(
         napi_define_properties(env, exports, sizeof(descriptor) / sizeof(napi_property_descriptor), descriptor));
 
     napi_property_descriptor properties[] = {
@@ -72,10 +72,11 @@ napi_value JsGetInputMethodSetting::Init(napi_env env, napi_value exports)
         DECLARE_NAPI_FUNCTION("off", UnSubscribe),
     };
     napi_value cons = nullptr;
-    NAPI_CALL(env, napi_define_class(env, IMS_CLASS_NAME.c_str(), IMS_CLASS_NAME.size(), JsConstructor, nullptr,
-                       sizeof(properties) / sizeof(napi_property_descriptor), properties, &cons));
-    NAPI_CALL(env, napi_create_reference(env, cons, 1, &IMSRef_));
-    NAPI_CALL(env, napi_set_named_property(env, exports, IMS_CLASS_NAME.c_str(), cons));
+    IMF_CALL(napi_define_class(env, IMS_CLASS_NAME.c_str(), IMS_CLASS_NAME.size(), JsConstructor, nullptr,
+                               sizeof(properties) / sizeof(napi_property_descriptor),
+                               properties, &cons));
+    IMF_CALL(napi_create_reference(env, cons, 1, &IMSRef_));
+    IMF_CALL(napi_set_named_property(env, exports, IMS_CLASS_NAME.c_str(), cons));
     return exports;
 }
 
@@ -86,7 +87,7 @@ napi_value JsGetInputMethodSetting::JsConstructor(napi_env env, napi_callback_in
         handler_ = AppExecFwk::EventHandler::Current();
     }
     napi_value thisVar = nullptr;
-    NAPI_CALL(env, napi_get_cb_info(env, cbinfo, nullptr, nullptr, &thisVar, nullptr));
+    IMF_CALL(napi_get_cb_info(env, cbinfo, nullptr, nullptr, &thisVar, nullptr));
 
     auto delegate = GetInputMethodSettingInstance();
     if (delegate == nullptr) {
@@ -263,7 +264,7 @@ napi_value JsGetInputMethodSetting::GetInputMethodsSync(napi_env env, napi_callb
     IMSA_HILOGD("run in");
     size_t argc = ARGC_MAX;
     napi_value argv[ARGC_MAX] = { nullptr };
-    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
 
     bool enable = false;
     // 0 means first param index
@@ -465,7 +466,7 @@ napi_value JsGetInputMethodSetting::IsPanelShown(napi_env env, napi_callback_inf
     // 2 means required param num
     size_t argc = 2;
     napi_value argv[2] = { nullptr };
-    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
     // 1 means least param num
     PARAM_CHECK_RETURN(env, argc >= 1, "at least one parameter is required!", TYPE_NONE, JsUtil::Const::Null(env));
     // 0 means parameter of info<PanelInfo>
@@ -600,7 +601,7 @@ napi_value JsGetInputMethodSetting::Subscribe(napi_env env, napi_callback_info i
     napi_value argv[ARGC_TWO] = { nullptr };
     napi_value thisVar = nullptr;
     void *data = nullptr;
-    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
     std::string type;
     // 2 means least param num.
     if (argc < 2 || !JsUtil::GetValue(env, argv[0], type) ||
@@ -672,7 +673,7 @@ napi_value JsGetInputMethodSetting::UnSubscribe(napi_env env, napi_callback_info
     napi_value argv[ARGC_TWO] = { nullptr };
     napi_value thisVar = nullptr;
     void *data = nullptr;
-    NAPI_CALL(env, napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
     std::string type;
     // 1 means least param num.
     if (argc < 1 || !JsUtil::GetValue(env, argv[0], type) ||

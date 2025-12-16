@@ -336,5 +336,15 @@ void InputMethodAbilityImpl::ReceivePrivateCommand(
     }
 }
 
+bool InputMethodAbilityImpl::IsCallbackRegistered(const std::string &type)
+{
+    IMSA_HILOGD("type: %{public}s.", type.c_str());
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (jsCbMap_[type].empty()) {
+        IMSA_HILOGE("%{public}s cb-vector is empty", type.c_str());
+        return false;
+    }
+    return true;
+}
 } // namespace MiscServices
 } // namespace OHOS

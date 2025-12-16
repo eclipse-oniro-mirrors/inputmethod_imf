@@ -597,6 +597,10 @@ int32_t InputMethodPanel::AdjustPanelRect(
     }
     IMSA_HILOGI("success, type/flag: %{public}d/%{public}d.", static_cast<int32_t>(panelType_),
         static_cast<int32_t>(panelFlag_));
+    IMSA_HILOGI("LandscapeKeyboardRect_:[%{public}s], PortraitKeyboardRect_:[%{public}s],"
+        "LandscapePanelRect_:[%{public}s], PortraitPanelRect_:[%{public}s]",
+        resultParams.LandscapeKeyboardRect_.ToString().c_str(), resultParams.PortraitKeyboardRect_.ToString().c_str(),
+        resultParams.LandscapePanelRect_.ToString().c_str(), resultParams.PortraitPanelRect_.ToString().c_str());
     return ErrorCode::NO_ERROR;
 }
 
@@ -1038,8 +1042,14 @@ int32_t InputMethodPanel::UpdateRegion(std::vector<Rosen::Rect> region)
     SetHotAreas(hotAreas);
     if (isPortrait) {
         IMSA_HILOGI("success, portrait: %{public}s", HotArea::ToString(hotAreas.portrait.keyboardHotArea).c_str());
+        IMSA_HILOGI("wmsHotAreas, portraitKeyboardHotAreas_: %{public}s, portraitPanelHotAreas_:%{public}s",
+            HotArea::ToString(wmsHotAreas.portraitKeyboardHotAreas_).c_str(),
+            HotArea::ToString(wmsHotAreas.portraitPanelHotAreas_).c_str());
     } else {
         IMSA_HILOGI("success, landscape: %{public}s", HotArea::ToString(hotAreas.landscape.keyboardHotArea).c_str());
+        IMSA_HILOGI("wmsHotAreas, landscapeKeyboardHotAreas_: %{public}s, landscapePanelHotAreas_:%{public}s",
+            HotArea::ToString(wmsHotAreas.landscapeKeyboardHotAreas_).c_str(),
+            HotArea::ToString(wmsHotAreas.landscapePanelHotAreas_).c_str());
     }
     return ErrorCode::NO_ERROR;
 }
@@ -1158,8 +1168,7 @@ std::tuple<std::vector<std::string>, std::vector<std::string>> InputMethodPanel:
     } else if (panelFlag == PanelFlag::FLG_FLOATING) {
         flag = "floating";
     }
-    if (Rosen::DisplayManager::GetInstance().IsFoldable() &&
-        Rosen::DisplayManager::GetInstance().GetFoldStatus() != Rosen::FoldStatus::FOLDED) {
+    if (IsDisplayUnfolded()) {
         foldStatus = "foldable";
     }
     std::vector<std::string> lanPanel = { flag, foldStatus, "landscape" };
@@ -1862,8 +1871,13 @@ bool InputMethodPanel::IsDisplayPortrait()
 
 bool InputMethodPanel::IsDisplayUnfolded()
 {
-    return Rosen::DisplayManager::GetInstance().IsFoldable() &&
-           Rosen::DisplayManager::GetInstance().GetFoldStatus() != Rosen::FoldStatus::FOLDED;
+    if (Rosen::DisplayManager::GetInstance().IsFoldable()) {
+        Rosen::FoldStatus foldStatus = Rosen::DisplayManager::GetInstance().GetFoldStatus();
+        IMSA_HILOGI("DMS foldStatus: %{public}u", static_cast<uint32_t>(foldStatus));
+        return !(foldStatus == Rosen::FoldStatus::FOLDED ||
+            foldStatus == Rosen::FoldStatus::FOLD_STATE_FOLDED_WITH_SECOND_HALF_FOLDED);
+    }
+    return false;
 }
 
 bool InputMethodPanel::IsSizeValid(

@@ -2512,5 +2512,19 @@ HWTEST_F(InputMethodControllerTest, TestPushCtrlEventQueue_FAILED, TestSize.Leve
     InputMethodController::ctrlEventQueue_.timeout_ = MAX_ATTACH_TIMEOUT;
 }
 
+/**
+ * @tc.name: TestSetImcInnerListener
+ * @tc.desc: Test SetImcInnerListener
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, TestSetImcInnerListener, TestSize.Level0)
+{
+    IMSA_HILOGI("TestSetImcInnerListener START");
+    const std::shared_ptr<ImcInnerListener> listener = std::make_shared<ImcInnerListener>();
+    auto lastLinsenter = inputMethodController_->GetImcInnerListener();
+    inputMethodController_->SetImcInnerListener(listener);
+    EXPECT_NE(inputMethodController_->imcInnerListener_, nullptr);
+    inputMethodController_->SetImcInnerListener(lastLinsenter);
+}
 } // namespace MiscServices
 } // namespace OHOS

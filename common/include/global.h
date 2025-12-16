@@ -175,6 +175,18 @@ static constexpr HiviewDFX::HiLogLabel g_SMALL_SERVICES_LABEL = { LOG_CORE, 0xD0
     (void)HILOG_IMPL(LOG_CORE, LOG_WARN, OHOS::MiscServices::g_SMALL_SERVICES_LABEL.domain,                      \
         OHOS::MiscServices::g_SMALL_SERVICES_LABEL.tag, "line: %{public}d, function: %{public}s," fmt, __LINE__, \
         __FUNCTION__, ##__VA_ARGS__)
+
+#define IMF_RETVAL_NOTHING
+#define IMF_CALL_BASE(theCall, retVal)                                      \
+    do {                                                                    \
+        if ((theCall) != napi_ok) {                                         \
+            IMSA_HILOGE("napi call failed, theCall: %{public}s", #theCall); \
+            return retVal;                                                  \
+        }                                                                   \
+    } while (0)
+#define IMF_CALL(theCall)             IMF_CALL_BASE(theCall, nullptr)
+#define IMF_CALL_RETURN_VOID(theCall) IMF_CALL_BASE(theCall, IMF_RETVAL_NOTHING)
+
 using Function = std::function<bool()>;
 bool BlockRetry(uint32_t interval, uint32_t maxRetryTimes, Function func);
 using RetryFunction  = std::function<bool(int32_t &)>;

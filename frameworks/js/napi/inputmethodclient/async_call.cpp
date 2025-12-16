@@ -33,11 +33,14 @@ AsyncCall::AsyncCall(napi_env env, napi_callback_info info, std::shared_ptr<Cont
     : env_(env)
 {
     context_ = new (std::nothrow) AsyncContext();
-    NAPI_ASSERT_RETURN_VOID(env, context_ != nullptr, "context_ != nullptr");
+    if (context_ == nullptr) {
+        IMSA_HILOGE("context_  is nullptr");
+        return;
+    }
     size_t argc = ARGC_MAX;
     napi_value self = nullptr;
     napi_value argv[ARGC_MAX] = { nullptr };
-    NAPI_CALL_RETURN_VOID(env, napi_get_cb_info(env, info, &argc, argv, &self, nullptr));
+    IMF_CALL_RETURN_VOID(napi_get_cb_info(env, info, &argc, argv, &self, nullptr));
     napi_valuetype valueType = napi_undefined;
     argc = std::min(argc, maxParamCount);
     if (argc > 0) {
@@ -51,7 +54,7 @@ AsyncCall::AsyncCall(napi_env env, napi_callback_info info, std::shared_ptr<Cont
         IMSA_HILOGE("context is nullptr!");
         return;
     }
-    NAPI_CALL_RETURN_VOID(env, (*context)(env, argc, argv, self));
+    IMF_CALL_RETURN_VOID((*context)(env, argc, argv, self));
     context_->ctx = std::move(context);
     napi_create_reference(env, self, 1, &context_->self);
 }

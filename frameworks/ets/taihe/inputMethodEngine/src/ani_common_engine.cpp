@@ -744,31 +744,30 @@ bool CommonConvert::ParseEnhancedPanelRect(ani_env* env, EnhancedPanelRect_t con
     return true;
 }
 
-ani_object CommonConvert::CreateAniWindowStatus(ani_env* env, Rosen::WindowStatus status)
+ani_enum_item CommonConvert::CreateAniWindowStatus(ani_env* env, Rosen::WindowStatus status)
 {
     if (env == nullptr) {
         IMSA_HILOGE("env is nullptr");
-        return CreateAniUndefined(env);
+        return nullptr;
     }
-    ani_class aniClass;
-    ani_status ret = env->FindClass("std.core.Int", &aniClass);
+    ani_ref aniRef;
+    env->GetUndefined(&aniRef);
+    ani_enum_item undef = static_cast<ani_enum_item>(aniRef);
+
+    ani_enum enumType;
+    ani_status ret = env->FindEnum("@ohos.window.window.WindowStatusType", &enumType);
     if (ret != ANI_OK) {
-        IMSA_HILOGE("[ANI] class not found");
-        return CreateAniUndefined(env);
+        IMSA_HILOGE("[ANI] WindowStatusType not found");
+        return undef;
     }
-    ani_method aniCtor;
-    ret = env->Class_FindMethod(aniClass, "", "i:", &aniCtor);
+    ani_enum_item enumItem;
+    ret = env->Enum_GetEnumItemByIndex(enumType, ani_int(status), &enumItem);
     if (ret != ANI_OK) {
-        IMSA_HILOGE("[ANI] ctor not found");
-        return CreateAniUndefined(env);
+        IMSA_HILOGE("[ANI] get enum item failed");
+        return undef;
     }
-    ani_object aniStatus;
-    ret = env->Object_New(aniClass, aniCtor, &aniStatus, ani_int(status));
-    if (ret != ANI_OK) {
-        IMSA_HILOGE("[ANI] fail to create new obj");
-        return CreateAniUndefined(env);
-    }
-    return aniStatus;
+
+    return enumItem;
 }
 
 ani_object CommonConvert::CreateAniRect(ani_env* env, Rosen::Rect rect)

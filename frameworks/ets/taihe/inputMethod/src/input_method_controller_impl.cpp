@@ -44,13 +44,9 @@ const std::set<std::string> InputMethodControllerImpl::TEXT_EVENT_TYPE{
     "sendFunctionKey",
     "moveCursor",
     "handleExtendAction",
-    "selectByRange",
-    "selectByMovement",
     "getLeftTextOfCursor",
     "getRightTextOfCursor",
     "getTextIndexAtCursor",
-    "setPreviewText",
-    "finishTextPreview"
 };
 
 std::shared_ptr<InputMethodControllerImpl> InputMethodControllerImpl::GetInstance()
@@ -133,6 +129,10 @@ void InputMethodControllerImpl::AttachWithReason(bool showKeyboard, TextConfig_t
     }
     if (textConfig.windowId.has_value()) {
         config.windowId = textConfig.windowId.value();
+    }
+
+    if (IsTextPreviewSupported()) {
+        config.inputAttribute.isTextPreviewSupported = true;
     }
 
     int32_t errCode = ErrorCode::ERROR_CLIENT_NULL_POINTER;
@@ -436,6 +436,11 @@ void InputMethodControllerImpl::ChangeSelectionSync(::taihe::string_view text, i
     icu::UnicodeString unicode_str = icu::UnicodeString::fromUTF8(std::string(text));
     int32_t length = unicode_str.length();
     const UChar* utf16_data = unicode_str.getBuffer();
+    if (utf16_data == nullptr) {
+        set_business_error(IMFErrorCode::EXCEPTION_PARAMCHECK, "text is invalid");
+        IMSA_HILOGE("InputMethodControllerImpl::ChangeSelection failed, text is invalid!");
+        return;
+    }
     std::u16string u16_string(reinterpret_cast<const char16_t*>(utf16_data), length);
     int32_t errCode = ErrorCode::ERROR_CLIENT_NULL_POINTER;
     auto instance = InputMethodController::GetInstance();
@@ -551,22 +556,7 @@ void InputMethodControllerImpl::recvMessage(::taihe::optional_view<MessageHandle
     }
     if (msgHandler.has_value()) {
         IMSA_HILOGI("RecvMessage on.");
-        ani_object onTerminatedCB = reinterpret_cast<ani_object>(msgHandler.value().onTerminated);
-        ani_object onMessageCB = reinterpret_cast<ani_object>(msgHandler.value().onMessage);
-        ani_env *env = taihe::get_env();
-        if (env == nullptr) {
-            IMSA_HILOGE("env is nullptr, RecvMessage failed!");
-            set_business_error(IMFErrorCode::EXCEPTION_PARAMCHECK,
-                JsUtils::ToMessage(IMFErrorCode::EXCEPTION_PARAMCHECK));
-            return;
-        }
-        ani_vm* vm = nullptr;
-        if (env->GetVM(&vm) != ANI_OK) {
-            IMSA_HILOGE("GetVM failed");
-            return;
-        }
-        std::shared_ptr<MsgHandlerCallbackInterface> callback =
-            std::make_shared<AniMessageHandler>(vm, onTerminatedCB, onMessageCB);
+        std::shared_ptr<MsgHandlerCallbackInterface> callback = std::make_shared<AniMessageHandler>(msgHandler.value());
         instance->RegisterMsgHandler(callback);
     } else {
         IMSA_HILOGI("RecvMessage off.");
@@ -605,6 +595,25 @@ void InputMethodControllerImpl::UpdateTextPreviewState(const std::string &type)
         }
         instance->UpdateTextPreviewState(false);
     }
+}
+
+bool InputMethodControllerImpl::IsRegister(const std::string &type)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    if (jsCbMap_.empty() || jsCbMap_.find(type) == jsCbMap_.end()) {
+        IMSA_HILOGD("methodName: %{public}s is not registered!", type.c_str());
+        return false;
+    }
+    if (jsCbMap_[type].empty()) {
+        IMSA_HILOGD("methodName: %{public}s cb-vector is empty!", type.c_str());
+        return false;
+    }
+    return true;
+}
+
+bool InputMethodControllerImpl::IsTextPreviewSupported()
+{
+    return IsRegister("setPreviewText") && IsRegister("finishTextPreview");
 }
 } // namespace MiscServices
 } // namespace OHOS

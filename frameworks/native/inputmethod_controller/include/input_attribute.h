@@ -101,6 +101,13 @@ struct ExtraConfigInner : public Parcelable {
         }
         return true;
     }
+
+    bool IsMarshallingPass()
+    {
+        Parcel parcel;
+        return Marshalling(parcel);
+    }
+
     static ExtraConfigInner *Unmarshalling(Parcel &in)
     {
         ExtraConfigInner *data = new (std::nothrow) ExtraConfigInner();

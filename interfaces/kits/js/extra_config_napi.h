@@ -21,20 +21,22 @@
 
 namespace OHOS {
 namespace MiscServices {
-constexpr uint32_t DEFAULT_MAX_EXTRA_CONFIG_SIZE = 128 * 1024; // 128K
-constexpr uint32_t MAX_EXTRA_CONFIG_SIZE = 1024 * 1024; // 1M
+constexpr uint32_t DEFAULT_MAX_EXTRA_CONFIG_SIZE = 32 * 1024; // 32K
 
 class JsExtraConfig {
 public:
     JsExtraConfig() = default;
     ~JsExtraConfig() = default;
-    static napi_status GetValue(napi_env env, napi_value in, ExtraConfig &out, uint32_t maxLen = MAX_EXTRA_CONFIG_SIZE);
+    static napi_status GetValue(napi_env env, napi_value in, ExtraConfig &out,
+        uint32_t maxLen = DEFAULT_MAX_EXTRA_CONFIG_SIZE);
     static napi_status GetValue(napi_env env, napi_value in, CustomSettings &out,
-        uint32_t maxLen = MAX_EXTRA_CONFIG_SIZE);
-    static napi_status GetValue(napi_env env, napi_value in, CustomValueType &out, uint32_t &valueSize);
+        uint32_t maxLen = DEFAULT_MAX_EXTRA_CONFIG_SIZE);
     static napi_status CreateExtraConfig(napi_env env, const ExtraConfig &in, napi_value &out);
     static napi_status GetExtraConfig(napi_env env, napi_value in, ExtraConfig &out,
         uint32_t maxLen = DEFAULT_MAX_EXTRA_CONFIG_SIZE);
+
+private:
+    static napi_status GetValue(napi_env env, napi_value in, CustomValueType &out, uint32_t &valueSize);
 };
 } // namespace MiscServices
 } // namespace OHOS

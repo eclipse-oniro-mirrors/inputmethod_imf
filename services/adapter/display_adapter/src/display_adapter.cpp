@@ -87,7 +87,7 @@ bool DisplayAdapter::IsRestrictedMainDisplayId(uint64_t displayId)
     if (IsImeShowable(displayId)) {
         return false;
     }
-    IMSA_HILOGD("display: %{public}" PRIu64 " not support show ime.", displayId);
+    IMSA_HILOGD("display:%{public}" PRIu64 " not support show ime.", displayId);
     return true;
 }
 

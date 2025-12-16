@@ -74,6 +74,8 @@ private:
     static std::shared_ptr<InputMethodControllerImpl> controller_;
     static const std::set<std::string> TEXT_EVENT_TYPE;
     void UpdateTextPreviewState(const std::string &type);
+    bool IsRegister(const std::string &type);
+    bool IsTextPreviewSupported();
 };
 
 class IMFControllerImpl {

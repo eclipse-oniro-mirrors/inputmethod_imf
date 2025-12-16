@@ -519,11 +519,11 @@ HWTEST_F(InputMethodAbilityTest, testSetInputAttribute, TestSize.Level0)
     EXPECT_EQ(inputMethodAbility_.inputAttribute_.callingScreenId, 0); // calling display changed, update
 
     inputAttribute.callingScreenId = 100;
-    inputAttribute.callingDisplayId = 1;
+    inputAttribute.callingDisplayId = 12;
     inputMethodAbility_.inputAttribute_.callingScreenId = 123;
     inputMethodAbility_.inputAttribute_.callingDisplayId = 111;
     inputMethodAbility_.SetInputAttribute(inputAttribute);
-    EXPECT_EQ(inputMethodAbility_.inputAttribute_.callingDisplayId, 1);
+    EXPECT_EQ(inputMethodAbility_.inputAttribute_.callingDisplayId, 12);
     EXPECT_EQ(inputMethodAbility_.inputAttribute_.callingScreenId, 0); // calling display changed but invalid, use zero
 }
 
