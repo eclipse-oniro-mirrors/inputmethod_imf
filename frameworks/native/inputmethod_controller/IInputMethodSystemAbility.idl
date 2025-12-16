@@ -62,7 +62,7 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void IsSystemApp([out] boolean resultValue);
     void HideCurrentInputDeprecated([in] unsigned int windowId);
     void ShowCurrentInputDeprecated([in] unsigned int windowId);
-    void SetCallingWindow([in] unsigned int windowId, [in] IInputClient client, [out] unsigned int finalWindowId);
+    void SetCallingWindow([in] unsigned int windowId, [in] IInputClient client);
     void GetInputStartInfo(
         [out] boolean isInputStart, [out] unsigned int callingWndId, [out] int requestKeyboardReason);
     void RegisterProxyIme([in] unsigned long displayId, [in] IInputMethodCore core, [in] IRemoteObject agent);

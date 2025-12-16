@@ -337,7 +337,7 @@ public:
     InputAttribute inputAttribute = {};
     CursorInfo cursorInfo = {};
     TextSelection textSelection = {};
-    uint32_t windowId = INVALID_WINDOW_ID;
+    uint32_t windowId = INVALID_WINDOW_ID;  // editor in
     double positionY = 0;
     double height = 0;
     std::unordered_map<std::string, PrivateDataValue> privateCommand = {};
@@ -399,7 +399,7 @@ struct TextConfig {
     InputAttribute inputAttribute = {};
     CursorInfo cursorInfo = {};
     Range range = {};
-    uint32_t windowId = INVALID_WINDOW_ID;
+    uint32_t windowId = INVALID_WINDOW_ID;  // editor in
     double positionY = 0;
     double height = 0;
     bool newEditBox = false;
@@ -556,9 +556,12 @@ struct ResponseDataInner : public Parcelable {
 };
 
 struct FocusedInfo {
-    uint32_t windowId{ ImfCommonConst::INVALID_WINDOW_ID };
-    uint64_t displayId{ ImfCommonConst::DEFAULT_DISPLAY_ID };
-    uint64_t displayGroupId{ ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID };
+    uint32_t windowId{ ImfCommonConst::INVALID_WINDOW_ID };                      // editor in
+    uint64_t displayId{ ImfCommonConst::DEFAULT_DISPLAY_ID };                    // editor in
+    uint64_t displayGroupId{ ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID };         // editor in
+    uint32_t keyboardWindowId{ ImfCommonConst::INVALID_WINDOW_ID };              // keyboard in
+    uint64_t keyboardDisplayId{ ImfCommonConst::DEFAULT_DISPLAY_ID };            // keyboard in
+    uint64_t keyboardDisplayGroupId{ ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID }; // keyboard in
     pid_t uiExtensionHostPid{ ImfCommonConst::INVALID_PID };
 };
 } // namespace MiscServices

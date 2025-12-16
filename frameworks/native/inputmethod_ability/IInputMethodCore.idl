@@ -34,7 +34,7 @@ interface OHOS.MiscServices.IInputMethodCore {
     [oneway] void OnClientInactive([in] IRemoteObject channel);
     [oneway] void OnSetInputType([in] int inputType);
     void OnCallingDisplayIdChanged([in] unsigned long displayId);
-    void OnCallingWindowIdChanged([in] unsigned int windowId, [in] unsigned int finalWindowId);
+    void OnCallingWindowIdChanged([in] unsigned int editorWindowId, [in] unsigned int keyboardWindowId);
     void OnSendPrivateData([in] Value value);
     void NotifyPreemption();
 }

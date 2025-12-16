@@ -611,12 +611,11 @@ int32_t InputMethodSystemAbility::GenerateClientInfo(
     clientInfo.config.privateCommand.insert_or_assign(
         "displayId", PrivateDataValue(static_cast<int32_t>(callingDisplayId)));
     clientInfo.name = ImfHiSysEventUtil::GetAppName(tokenId);
-    clientInfo.config.inputAttribute.windowId = focusedInfo.windowId;
-    clientInfo.config.inputAttribute.displayId = focusedInfo.displayId;
     clientInfo.clientGroupId = focusedInfo.displayGroupId;
-    auto finalDisplayId = DisplayAdapter::GetFinalDisplayId(focusedInfo.displayId);
-    clientInfo.config.inputAttribute.callingDisplayId = finalDisplayId;
-    clientInfo.config.inputAttribute.displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(finalDisplayId);
+    clientInfo.config.inputAttribute.displayId = focusedInfo.displayId;
+    clientInfo.config.inputAttribute.windowId = focusedInfo.keyboardWindowId;
+    clientInfo.config.inputAttribute.callingDisplayId = focusedInfo.keyboardDisplayId;
+    clientInfo.config.inputAttribute.displayGroupId = focusedInfo.keyboardDisplayGroupId;
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session != nullptr) {
         clientInfo.config.inputAttribute.needAutoInputNumkey =
@@ -1074,8 +1073,7 @@ ErrCode InputMethodSystemAbility::UpdateListenEventFlag(const InputClientInfoInn
         userId, { clientInfo.eventFlag, clientInfo.client, IPCSkeleton::GetCallingPid() });
 }
 // LCOV_EXCL_START
-ErrCode InputMethodSystemAbility::SetCallingWindow(
-    uint32_t windowId, const sptr<IInputClient> &client, uint32_t &finalWindowId)
+ErrCode InputMethodSystemAbility::SetCallingWindow(uint32_t windowId, const sptr<IInputClient> &client)
 {
     IMSA_HILOGD("IMF SA setCallingWindow enter");
     auto pid = IPCSkeleton::GetCallingPid();
@@ -1091,7 +1089,6 @@ ErrCode InputMethodSystemAbility::SetCallingWindow(
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
     }
-    finalWindowId = checkRet.second.windowId;
     return session->OnSetCallingWindow(checkRet.second, client, windowId);
 }
 // LCOV_EXCL_STOP

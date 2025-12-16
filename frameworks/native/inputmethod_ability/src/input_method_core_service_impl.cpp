@@ -126,9 +126,9 @@ ErrCode InputMethodCoreServiceImpl::OnCallingDisplayIdChanged(uint64_t displayId
     return InputMethodAbility::GetInstance().OnCallingDisplayIdChanged(displayId);
 }
 
-ErrCode InputMethodCoreServiceImpl::OnCallingWindowIdChanged(uint32_t windowId, uint32_t finalWindowId)
+ErrCode InputMethodCoreServiceImpl::OnCallingWindowIdChanged(uint32_t editorWindowId, uint32_t keyboardWindowId)
 {
-    InputMethodAbility::GetInstance().SetCallingWindow(windowId, finalWindowId);
+    InputMethodAbility::GetInstance().SetCallingWindow(editorWindowId, keyboardWindowId);
     return ERR_OK;
 }
 

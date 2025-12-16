@@ -1792,23 +1792,22 @@ void PerUserSession::HandleWindowIdChanged(
         return;
     }
     auto oldKeyboardGroupId = clientInfo->config.inputAttribute.displayGroupId;
-    auto newKeyboardDisplayId = DisplayAdapter::GetFinalDisplayId(focusedInfo.displayId);
-    auto newKeyboardGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(newKeyboardDisplayId);
+    auto newKeyboardGroupId = focusedInfo.keyboardDisplayGroupId;
     if (!IsSameClientGroup(oldKeyboardGroupId, newKeyboardGroupId)) {
         IMSA_HILOGW("not same keyboard group:%{public}" PRIu64 "/%{public}" PRIu64 ".", oldKeyboardGroupId,
             newKeyboardGroupId);
         return;
     }
-    auto newWindowId = focusedInfo.windowId;
-    auto oldKeyboardDisplayId = clientInfo->config.inputAttribute.callingDisplayId;
-    clientInfo->config.windowId = newWindowId;
-    clientInfo->config.inputAttribute.windowId = newWindowId;
-    clientInfo->config.inputAttribute.displayId = focusedInfo.displayId;
-    clientInfo->config.inputAttribute.callingDisplayId = newKeyboardDisplayId;
-    auto callingDisplayId = WindowAdapter::GetDisplayIdByWindowId(newWindowId);
     clientInfo->config.privateCommand.insert_or_assign(
-        "displayId", PrivateDataValue(static_cast<int32_t>(callingDisplayId)));
-    NotifyCallingWindowIdChanged(newWindowId, GetImeData(clientInfo->bindImeData), windowId);
+        "displayId", PrivateDataValue(static_cast<int32_t>(focusedInfo.displayId)));
+
+    auto oldKeyboardDisplayId = clientInfo->config.inputAttribute.callingDisplayId;
+    auto newKeyboardDisplayId = focusedInfo.keyboardDisplayId;
+    clientInfo->config.windowId = windowId;
+    clientInfo->config.inputAttribute.displayId = focusedInfo.displayId;
+    clientInfo->config.inputAttribute.windowId = focusedInfo.keyboardWindowId;
+    clientInfo->config.inputAttribute.callingDisplayId = newKeyboardDisplayId;
+    NotifyCallingWindowIdChanged(windowId, GetImeData(clientInfo->bindImeData), focusedInfo.keyboardWindowId);
     if (oldKeyboardDisplayId != newKeyboardDisplayId) {
         NotifyCallingDisplayChanged(newKeyboardDisplayId, GetImeData(clientInfo->bindImeData));
     }
@@ -2740,6 +2739,7 @@ void PerUserSession::OnCallingDisplayIdChanged(
         displayId);
     auto [clientGroup, clientInfo] = GetClientBoundImeByWindowId(windowId);
     if (clientGroup == nullptr || clientInfo == nullptr) {
+        IMSA_HILOGD("not window keyboard in changed:%{public}d.", windowId);
         return;
     }
     auto oldClientGroupId = clientInfo->clientGroupId;
@@ -2751,7 +2751,7 @@ void PerUserSession::OnCallingDisplayIdChanged(
         return;
     }
     auto oldKeyboardGroupId = clientInfo->config.inputAttribute.displayGroupId;
-    auto newKeyboardDisplayId = DisplayAdapter::GetFinalDisplayId(displayId);
+    auto newKeyboardDisplayId = displayId;
     auto newKeyboardGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(newKeyboardDisplayId);
     // Cross-group scenarios are handled by the attach.
     if (!IsSameClientGroup(oldKeyboardGroupId, newKeyboardGroupId)) {
@@ -2763,6 +2763,7 @@ void PerUserSession::OnCallingDisplayIdChanged(
     auto oldKeyboardDisplayId = clientInfo->config.inputAttribute.callingDisplayId;
     clientInfo->config.inputAttribute.callingDisplayId = newKeyboardDisplayId;
     if (newKeyboardDisplayId == oldKeyboardDisplayId) {
+        IMSA_HILOGD("same, no need to deal.");
         return;
     }
     NotifyCallingDisplayChanged(newKeyboardDisplayId, GetImeData(clientInfo->bindImeData));
@@ -2787,15 +2788,15 @@ int32_t PerUserSession::NotifyCallingDisplayChanged(uint64_t displayId, const st
 }
 
 int32_t PerUserSession::NotifyCallingWindowIdChanged(
-    uint32_t finalWindowId, const std::shared_ptr<ImeData> &imeData, uint32_t windowId)
+    uint32_t editorWindowId, const std::shared_ptr<ImeData> &imeData, uint32_t keyboardWindowId)
 {
-    IMSA_HILOGD("enter windowId/finalWindowId:%{public}u/%{public}u.", windowId, finalWindowId);
+    IMSA_HILOGD("enter editorWindowId/keyboardWindowId:%{public}u/%{public}u.", editorWindowId, keyboardWindowId);
     if (imeData == nullptr || !imeData->IsRealIme()) {
         IMSA_HILOGD("bind ime not real ime");
         return ErrorCode::ERROR_IME_NOT_STARTED;
     }
-    auto callBack = [&imeData, windowId, finalWindowId]() -> int32_t {
-        imeData->core->OnCallingWindowIdChanged(windowId, finalWindowId);
+    auto callBack = [&imeData, editorWindowId, keyboardWindowId]() -> int32_t {
+        imeData->core->OnCallingWindowIdChanged(editorWindowId, keyboardWindowId);
         return ErrorCode::NO_ERROR;
     };
     auto ret = RequestIme(imeData, RequestType::NORMAL, callBack);

@@ -950,7 +950,7 @@ napi_value JsGetInputMethodController::ShowSoftKeyboard(napi_env env, napi_callb
         if (argc > 0) {
             int64_t displayId = 0;
             if (JsUtil::GetValue(env, argv[0], displayId) && displayId >= 0) {
-                ctxt->displayId = displayId;
+                ctxt->displayId = static_cast<uint64_t>(displayId);
             }
         }
         return napi_ok;
@@ -982,7 +982,7 @@ napi_value JsGetInputMethodController::HideSoftKeyboard(napi_env env, napi_callb
         if (argc > 0) {
             int64_t displayId = 0;
             if (JsUtil::GetValue(env, argv[0], displayId) && displayId >= 0) {
-                ctxt->displayId = displayId;
+                ctxt->displayId = static_cast<uint64_t>(displayId);
             }
         }
         return napi_ok;

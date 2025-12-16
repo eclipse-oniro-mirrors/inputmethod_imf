@@ -427,22 +427,23 @@ int32_t InputMethodAbility::DispatchKeyEvent(
     return ErrorCode::NO_ERROR;
 }
 
-void InputMethodAbility::SetCallingWindow(uint32_t windowId, uint32_t finalWindowId)
+void InputMethodAbility::SetCallingWindow(uint32_t editorWindowId, uint32_t keyboardWindowId)
 {
-    IMSA_HILOGD("InputMethodAbility windowId: %{public}d.", windowId);
+    IMSA_HILOGD("InputMethodAbility editorWindowId/keyboardWindowId: %{public}d/%{public}d.", editorWindowId,
+        keyboardWindowId);
     {
         std::lock_guard<std::mutex> lock(inputAttrLock_);
-        inputAttribute_.windowId = finalWindowId;
+        inputAttribute_.windowId = keyboardWindowId;
     }
-    panels_.ForEach([finalWindowId](const PanelType &panelType, const std::shared_ptr<InputMethodPanel> &panel) {
-        panel->SetCallingWindow(finalWindowId);
+    panels_.ForEach([keyboardWindowId](const PanelType &panelType, const std::shared_ptr<InputMethodPanel> &panel) {
+        panel->SetCallingWindow(keyboardWindowId);
         return false;
     });
     if (imeListener_ == nullptr) {
         IMSA_HILOGD("imeListener_ is nullptr!");
         return;
     }
-    imeListener_->OnSetCallingWindow(windowId);
+    imeListener_->OnSetCallingWindow(editorWindowId);
 }
 
 void InputMethodAbility::OnCursorUpdate(int32_t positionX, int32_t positionY, int32_t height)
