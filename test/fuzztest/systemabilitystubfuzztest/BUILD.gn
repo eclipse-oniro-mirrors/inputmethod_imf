@@ -44,7 +44,6 @@ group("system_ability_stub_fuzztest") {
     ":PanelStatusChangeFuzzTest",
     ":ReleaseInputFuzzTest",
     ":RequestHideInputFuzzTest",
-    ":RequestShowInputFuzzTest",
     ":ShowCurrentInputDeprecatedFuzzTest",
     ":ShowCurrentInputFuzzTest",
     ":ShowInputFuzzTest",
@@ -509,23 +508,6 @@ ohos_fuzztest("ShowInputFuzzTest") {
   ]
 
   sources = [ "showinput_fuzzer/showinput_fuzzer.cpp" ]
-
-  deps = common_deps
-
-  external_deps = common_external_deps
-}
-
-ohos_fuzztest("RequestShowInputFuzzTest") {
-  module_out_path = "imf/imf"
-
-  fuzz_config_file = "${inputmethod_path}/test/fuzztest/systemabilitystubfuzztest/requestshowinput_fuzzer"
-
-  include_dirs = [
-    "${inputmethod_path}/test/fuzztest/systemabilitystubfuzztest/requestshowinput_fuzzer",
-    "${inputmethod_path}/test/fuzztest/systemabilitystubfuzztest/common",
-  ]
-
-  sources = [ "requestshowinput_fuzzer/requestshowinput_fuzzer.cpp" ]
 
   deps = common_deps
 

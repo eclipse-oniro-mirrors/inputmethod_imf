@@ -27,9 +27,9 @@ public:
     MOCK_METHOD3(StartInput,
         int32_t(const InputClientInfoInner &, std::vector<sptr<IRemoteObject>> &, std::vector<BindImeInfo> &));
     MOCK_METHOD2(ReleaseInput, int32_t(const sptr<IInputClient> &, uint32_t));
-    MOCK_METHOD0(ShowCurrentInputDeprecated, int32_t());
-    MOCK_METHOD3(ShowInput, int32_t(const sptr<IInputClient> &, uint32_t, int32_t));
-    MOCK_METHOD0(HideCurrentInputDeprecated, int32_t());
+    MOCK_METHOD1(ShowCurrentInputDeprecated, int32_t(uint32_t));
+    MOCK_METHOD4(ShowInput, int32_t(const sptr<IInputClient> &, uint32_t, uint32_t, int32_t));
+    MOCK_METHOD1(HideCurrentInputDeprecated, int32_t(uint32_t));
 };
 } // namespace MiscServices
 } // namespace OHOS

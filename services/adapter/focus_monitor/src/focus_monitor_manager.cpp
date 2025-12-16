@@ -30,12 +30,12 @@ FocusMonitorManager &FocusMonitorManager::GetInstance()
     return focusMonitorManager;
 }
 
-void FocusMonitorManager::RegisterFocusChangedListener(const FocusHandle &handle)
+int32_t FocusMonitorManager::RegisterFocusChangedListener(const FocusHandle &handle)
 {
     sptr<IFocusChangedListener> listener = new (std::nothrow) FocusChangedListener(handle);
     if (listener == nullptr) {
         IMSA_HILOGE("failed to create listener");
-        return;
+        return ErrorCode::ERROR_IMSA_MALLOC_FAILED;
     }
 #ifdef SCENE_BOARD_ENABLE
     WMError ret = WindowManagerLite::GetInstance().RegisterFocusChangedListener(listener);
@@ -43,6 +43,10 @@ void FocusMonitorManager::RegisterFocusChangedListener(const FocusHandle &handle
     WMError ret = WindowManager::GetInstance().RegisterFocusChangedListener(listener);
 #endif
     IMSA_HILOGI("register focus changed listener ret: %{public}d", ret);
+    if (ret != WMError::WM_OK) {
+        return ErrorCode::ERROR_WINDOW_MANAGER;
+    }
+    return ErrorCode::NO_ERROR;
 }
 } // namespace MiscServices
 } // namespace OHOS

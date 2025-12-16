@@ -65,10 +65,10 @@ public:
 
 class TaskImsaHideKeyboard : public Task {
 public:
-    explicit TaskImsaHideKeyboard() : Task(TASK_TYPE_IMSA_HIDE_KEYBOARD)
+    explicit TaskImsaHideKeyboard(uint64_t displayGroupId, bool isCheckGroupId) : Task(TASK_TYPE_IMSA_HIDE_KEYBOARD)
     {
-        auto func = []() {
-            InputMethodAbility::GetInstance().HideKeyboard();
+        auto func = [displayGroupId, isCheckGroupId]() {
+            InputMethodAbility::GetInstance().HideKeyboard(displayGroupId, isCheckGroupId);
         };
         actions_.emplace_back(std::make_unique<Action>(func));
     }

@@ -1473,6 +1473,7 @@ void InputMethodPanel::PanelStatusChangeToImc(const InputWindowStatus &status, c
     info.windowInfo.top = panelRect.posY_;
     info.windowInfo.width = panelRect.width_;
     info.windowInfo.height = panelRect.height_;
+    info.windowInfo.displayId = GetCurDisplayId();
     IMSA_HILOGD("rect: %{public}s, status: %{public}d, panelFlag: %{public}d.", panelRect.ToString().c_str(), status,
         info.panelInfo.panelFlag);
     proxy->PanelStatusChange(static_cast<uint32_t>(status), info);

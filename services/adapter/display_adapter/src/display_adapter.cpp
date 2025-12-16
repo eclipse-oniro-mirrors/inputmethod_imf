@@ -68,17 +68,27 @@ bool DisplayAdapter::IsFocusable(uint64_t displayId)
 uint64_t DisplayAdapter::GetFinalDisplayId(uint64_t displayId)
 {
     IMSA_HILOGD("run in, display: %{public}" PRIu64 ".", displayId);
-    if (displayId == DEFAULT_DISPLAY_ID) {
+    if (!IsRestrictedMainDisplayId(displayId)) {
         return displayId;
+    }
+    return DEFAULT_DISPLAY_ID;
+}
+
+bool DisplayAdapter::IsRestrictedMainDisplayId(uint64_t displayId)
+{
+    IMSA_HILOGD("run in, display: %{public}" PRIu64 ".", displayId);
+    if (displayId == DEFAULT_DISPLAY_ID) {
+        return false;
     }
     if (ImeInfoInquirer::GetInstance().IsRestrictedMainDisplayId(displayId)) {
-        return DEFAULT_DISPLAY_ID;
+        IMSA_HILOGD("display: %{public}" PRIu64 " not support show ime.", displayId);
+        return true;
     }
     if (IsImeShowable(displayId)) {
-        return displayId;
+        return false;
     }
-    IMSA_HILOGD("display: %{public}" PRIu64 " not support show ime.", displayId);
-    return DEFAULT_DISPLAY_ID;
+    IMSA_HILOGD("display:%{public}" PRIu64 " not support show ime.", displayId);
+    return true;
 }
 
 sptr<DisplayInfo> DisplayAdapter::GetDisplayInfo(uint64_t displayId)

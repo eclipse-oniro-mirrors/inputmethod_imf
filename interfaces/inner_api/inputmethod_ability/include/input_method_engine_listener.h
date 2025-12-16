@@ -42,7 +42,7 @@ public:
     }
     virtual bool IsEnable()
     {
-        return false;
+        return true;
     }
     virtual bool IsCallbackRegistered(const std::string &type)
     {

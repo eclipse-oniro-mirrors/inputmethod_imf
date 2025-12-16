@@ -49,9 +49,9 @@ ErrCode InputMethodCoreServiceImpl::ShowKeyboard(int32_t requestKeyboardReason)
     return ERR_OK;
 }
 
-ErrCode InputMethodCoreServiceImpl::HideKeyboard()
+ErrCode InputMethodCoreServiceImpl::HideKeyboard(uint64_t displayGroupId, bool isCheckGroupId)
 {
-    auto task = std::make_shared<TaskImsaHideKeyboard>();
+    auto task = std::make_shared<TaskImsaHideKeyboard>(displayGroupId, isCheckGroupId);
     TaskManager::GetInstance().PostTask(task);
     return ERR_OK;
 }
@@ -124,6 +124,12 @@ ErrCode InputMethodCoreServiceImpl::OnClientInactive(const sptr<IRemoteObject> &
 ErrCode InputMethodCoreServiceImpl::OnCallingDisplayIdChanged(uint64_t displayId)
 {
     return InputMethodAbility::GetInstance().OnCallingDisplayIdChanged(displayId);
+}
+
+ErrCode InputMethodCoreServiceImpl::OnCallingWindowIdChanged(uint32_t windowId, uint32_t finalWindowId)
+{
+    InputMethodAbility::GetInstance().SetCallingWindow(windowId, finalWindowId);
+    return ERR_OK;
 }
 
 ErrCode InputMethodCoreServiceImpl::OnSendPrivateData(const Value &Value)

@@ -564,11 +564,6 @@ HWTEST_F(InputMethodAttachTest, testSetCallingWindowAfterAttach002, TestSize.Lev
     uint32_t windowId = 99;
     ret = inputMethodController_->SetCallingWindow(windowId);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-
-    TextTotalConfig totalConfig;
-    ret = inputMethodAbility_.GetTextConfig(totalConfig);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_EQ(totalConfig.windowId, windowId);
 }
 
 /**

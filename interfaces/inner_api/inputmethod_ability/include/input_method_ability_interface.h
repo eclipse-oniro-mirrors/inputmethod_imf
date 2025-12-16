@@ -40,7 +40,7 @@ public:
      * @return Returns 0 for success, others for failure.
      * @since 18
      */
-    int32_t RegisterProxyIme(uint64_t displayId);
+    int32_t RegisterProxyIme(uint64_t displayId = 0);
     /**
      * @brief Unregister proxy input method.
      *
@@ -50,7 +50,7 @@ public:
      * @return Returns 0 for success, others for failure.
      * @since 18
      */
-    int32_t UnregisterProxyIme(uint64_t displayId);
+    int32_t UnregisterProxyIme(uint64_t displayId = 0);
     /**
      * @brief Bind the input method mirror to the current input session.
      *

@@ -26,6 +26,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     /* Run your code on data */
     FuzzedDataProvider provider(data, size);
     ImfSaStubFuzzUtil::FuzzInputMethodSystemAbility(provider,
-        IInputMethodSystemAbilityIpcCode::COMMAND_UN_REGISTERED_PROXY_IME);
+        IInputMethodSystemAbilityIpcCode::COMMAND_UNREGISTER_PROXY_IME);
     return 0;
 }

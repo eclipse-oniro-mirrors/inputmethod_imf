@@ -457,6 +457,10 @@ napi_value JsUtils::GetValue(napi_env env, const InputWindowInfo &in)
     napi_create_uint32(env, in.height, &height);
     napi_set_named_property(env, info, "height", height);
 
+    napi_value displayId = nullptr;
+    napi_create_uint32(env, static_cast<uint32_t>(in.displayId), &displayId);
+    napi_set_named_property(env, info, "displayId", displayId);
+
     return info;
 }
 

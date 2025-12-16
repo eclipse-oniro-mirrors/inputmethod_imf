@@ -26,14 +26,13 @@ interface OHOS.MiscServices.IInputClient;
 interface OHOS.MiscServices.IInputMethodCore;
 interface OHOS.MiscServices.IInputMethodSystemAbility {
     void StartInput([in] InputClientInfoInner inputClientInfoInner, [out] IRemoteObject[] agents, [out] BindImeInfo[] imeInfos);
-    void ShowCurrentInput([in] unsigned int type);
-    void HideCurrentInput();
-    void StopInputSession();
-    void ShowInput([in] IInputClient client, [in] unsigned int type, [in] int requestKeyboardReason);
-    void HideInput([in] IInputClient client);
+    void ShowCurrentInput([in]unsigned long displayId, [in] unsigned int type);
+    void HideCurrentInput([in]unsigned long displayId);
+    void StopInputSession([in] unsigned int windowId);
+    void ShowInput([in] IInputClient client, [in] unsigned int windowId, [in] unsigned int type, [in] int requestKeyboardReason);
+    void HideInput([in] IInputClient client, [in] unsigned int windowId);
     void ReleaseInput([in] IInputClient client, [in] unsigned int sessionId);
-    void RequestShowInput();
-    void RequestHideInput([in] boolean isFocusTriggered);
+    void RequestHideInput([in] unsigned int windowId, [in] boolean isFocusTriggered);
     void GetDefaultInputMethod([out] Property prop, [in] boolean isBrief);
     void GetInputMethodConfig([out] ElementName inputMethodConfig);
     void GetCurrentInputMethod([out] Property resultValue);
@@ -42,7 +41,6 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void DisplayOptionalInputMethod();
     void SetCoreAndAgent([in] IInputMethodCore core, [in] IRemoteObject agent);
     void InitConnect();
-    void UnRegisteredProxyIme([in] int type, [in] IInputMethodCore core);
     void ListCurrentInputMethodSubtype([out] SubProperty[] subProps);
     void ListInputMethodSubtype([in] String name, [out] SubProperty[] subProps);
     void SwitchInputMethod([in] String bundleName, [in] String name, [in] unsigned int trigger);
@@ -54,7 +52,7 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void StartInputType([in] int type);
     [oneway] void StartInputTypeAsync([in] int type);
     void ExitCurrentInputType();
-    void IsPanelShown([in] PanelInfo panelInfo, [out] boolean isShown);
+    void IsPanelShown([in]unsigned long displayId, [in] PanelInfo panelInfo, [out] boolean isShown);
     void GetSecurityMode([out] int security);
     void IsDefaultIme();
     void IsDefaultImeSet([out] boolean resultValue);
@@ -62,9 +60,9 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void ConnectSystemCmd([in] IRemoteObject channel, [out] IRemoteObject agent);
     void GetInputMethodState([out] int state);
     void IsSystemApp([out] boolean resultValue);
-    void HideCurrentInputDeprecated();
-    void ShowCurrentInputDeprecated();
-    void SetCallingWindow([in] unsigned int windowId, [in] IInputClient client);
+    void HideCurrentInputDeprecated([in] unsigned int windowId);
+    void ShowCurrentInputDeprecated([in] unsigned int windowId);
+    void SetCallingWindow([in] unsigned int windowId, [in] IInputClient client, [out] unsigned int finalWindowId);
     void GetInputStartInfo(
         [out] boolean isInputStart, [out] unsigned int callingWndId, [out] int requestKeyboardReason);
     void RegisterProxyIme([in] unsigned long displayId, [in] IInputMethodCore core, [in] IRemoteObject agent);

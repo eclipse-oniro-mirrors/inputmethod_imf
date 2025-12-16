@@ -128,7 +128,7 @@ void TestDispatchKeyEvent(FuzzedDataProvider &provider)
 void TestSetCallingWindow(FuzzedDataProvider &provider)
 {
     int32_t fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
-    InputMethodAbility::GetInstance().SetCallingWindow(fuzzedInt32);
+    InputMethodAbility::GetInstance().SetCallingWindow(fuzzedInt32, fuzzedInt32);
 }
 
 void TestCallingDisplayIdChanged(FuzzedDataProvider &provider)

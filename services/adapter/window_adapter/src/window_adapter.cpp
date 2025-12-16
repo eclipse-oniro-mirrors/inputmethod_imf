@@ -15,7 +15,10 @@
 
 #include "window_adapter.h"
 
+#include <chrono>
 #include <cinttypes>
+#include <ranges>
+#include <thread>
 
 #include "global.h"
 #include "window.h"
@@ -25,6 +28,7 @@ namespace OHOS {
 namespace MiscServices {
 using namespace OHOS::Rosen;
 using WMError = OHOS::Rosen::WMError;
+using namespace std::chrono_literals;
 #ifdef SCENE_BOARD_ENABLE
 constexpr int32_t MAX_TIMEOUT = 5000; //5ms
 #endif
@@ -205,6 +209,166 @@ bool WindowAdapter::GetDisplayId(int64_t callingPid, uint64_t &displayId)
 #else
     IMSA_HILOGI("capability not supported");
     return true;
+#endif
+}
+
+int32_t WindowAdapter::StoreAllDisplayGroupInfos()
+{
+#ifdef SCENE_BOARD_ENABLE
+    std::unordered_map<uint64_t, uint64_t> displayGroupIds;
+    std::vector<FocusChangeInfo> focusWindowInfos;
+    auto ret = GetAllDisplayGroupInfos(displayGroupIds, focusWindowInfos);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetAllGroupInfo failed, ret: %{public}d", ret);
+        return ret;
+    }
+#else
+    IMSA_HILOGI("capability not supported");
+#endif
+    return ErrorCode::NO_ERROR;
+}
+
+int32_t WindowAdapter::GetAllFocusWindowInfos(std::vector<FocusChangeInfo> &focusWindowInfos)
+{
+    std::unordered_map<uint64_t, uint64_t> displayGroupIds;
+    auto ret = GetAllDisplayGroupInfos(displayGroupIds, focusWindowInfos);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetAllGroupInfo failed, ret: %{public}d", ret);
+        return ret;
+    }
+    for (const auto &[key, value] : displayGroupIds) {
+        IMSA_HILOGD("display:%{public}" PRIu64 "/%{public}" PRIu64 ".", key, value);
+    }
+    for (const auto &info : focusWindowInfos) {
+        IMSA_HILOGD("focus:%{public}d/%{public}" PRIu64 "/%{public}" PRIu64 "/%{public}d", info.windowId_,
+            info.displayGroupId_, info.realDisplayId_, info.pid_);
+    }
+    return ErrorCode::NO_ERROR;
+}
+
+uint64_t WindowAdapter::GetDisplayGroupId(uint64_t displayId)
+{
+    IMSA_HILOGD("by displayId run in:%{public}" PRIu64 ".", displayId);
+    std::lock_guard<std::mutex> lock(displayGroupIdsLock_);
+    auto iter = displayGroupIds_.find(displayId);
+    if (iter != displayGroupIds_.end()) {
+        IMSA_HILOGD("by displayId:%{public}" PRIu64 "/%{public}" PRIu64 ".", displayId, iter->second);
+        return iter->second;
+    }
+    return DEFAULT_DISPLAY_GROUP_ID;
+}
+
+bool WindowAdapter::IsDefaultDisplayGroup(uint64_t displayId)
+{
+    return GetDisplayGroupId(displayId) == DEFAULT_DISPLAY_GROUP_ID;
+}
+
+uint64_t WindowAdapter::GetDisplayGroupId(uint32_t windowId)
+{
+    IMSA_HILOGD("by windowId run in:%{public}d.", windowId);
+    auto displayId = GetDisplayIdByWindowId(windowId);
+    std::lock_guard<std::mutex> lock(displayGroupIdsLock_);
+    auto iter = displayGroupIds_.find(displayId);
+    if (iter != displayGroupIds_.end()) {
+        IMSA_HILOGD("by windowId:%{public}d/%{public}" PRIu64 "/%{public}" PRIu64 ".", windowId, displayId,
+            iter->second);
+        return iter->second;
+    }
+    return DEFAULT_DISPLAY_GROUP_ID;
+}
+
+int32_t WindowAdapter::GetAllDisplayGroupInfos(
+    std::unordered_map<uint64_t, uint64_t> &displayGroupIds, std::vector<FocusChangeInfo> &focusWindowInfos)
+{
+#ifdef SCENE_BOARD_ENABLE
+    std::vector<sptr<FocusChangeInfo>> focusWindowInfoPtr;
+    WindowManagerLite::GetInstance().GetAllGroupInfo(displayGroupIds, focusWindowInfoPtr);
+    for (const auto &info : focusWindowInfoPtr) {
+        if (info != nullptr) {
+            focusWindowInfos.push_back(*info);
+        }
+    }
+    std::sort(focusWindowInfos.begin(), focusWindowInfos.end(),
+        [](const FocusChangeInfo &a, const FocusChangeInfo &b) { return a.displayId_ < b.displayId_; });
+
+    GetInstance().SetDisplayGroupIds(displayGroupIds);
+    GetInstance().SetFocusWindowInfos(focusWindowInfos);
+    return ErrorCode::NO_ERROR;
+#else
+    return ErrorCode::NO_ERROR;
+#endif
+}
+
+void WindowAdapter::SetDisplayGroupIds(const std::unordered_map<uint64_t, uint64_t> &displayGroupIds)
+{
+    std::lock_guard<std::mutex> lock(displayGroupIdsLock_);
+    displayGroupIds_ = displayGroupIds;
+}
+
+void WindowAdapter::SetFocusWindowInfos(const std::vector<Rosen::FocusChangeInfo> &focusWindowInfos)
+{
+    std::lock_guard<std::mutex> lock(focusWindowInfosLock_);
+    focusWindowInfos_ = focusWindowInfos;
+}
+
+void WindowAdapter::OnDisplayGroupInfoChanged(uint64_t displayId, uint64_t displayGroupId, bool isAdd)
+{
+    IMSA_HILOGI("display change:%{public}" PRIu64 "/%{public}" PRIu64 "/%{public}d.", displayId,
+        displayGroupId, isAdd);
+    std::lock_guard<std::mutex> lock(displayGroupIdsLock_);
+    if (isAdd) {
+        displayGroupIds_[displayId] = displayGroupId;
+        return;
+    }
+    auto iter = displayGroupIds_.find(displayId);
+    if (iter == displayGroupIds_.end()) {
+        return;
+    }
+    displayGroupIds_.erase(displayId);
+}
+
+void WindowAdapter::OnFocused(const FocusChangeInfo &focusWindowInfo)
+{
+    std::lock_guard<std::mutex> lock(focusWindowInfosLock_);
+    auto iter =
+        std::find_if(focusWindowInfos_.begin(), focusWindowInfos_.end(), [&focusWindowInfo](const auto &focusInfo) {
+            return focusWindowInfo.displayGroupId_ == focusInfo.displayGroupId_;
+        });
+    if (iter != focusWindowInfos_.end()) {
+        focusWindowInfos_.erase(iter);
+    }
+    auto insertPos = std::lower_bound(focusWindowInfos_.begin(), focusWindowInfos_.end(), focusWindowInfo,
+        [](const FocusChangeInfo &a, const FocusChangeInfo &b) { return a.displayId_ < b.displayId_; });
+    focusWindowInfos_.insert(insertPos, focusWindowInfo);
+}
+
+void WindowAdapter::OnUnFocused(const FocusChangeInfo &focusWindowInfo)
+{
+    std::lock_guard<std::mutex> lock(focusWindowInfosLock_);
+    auto iter = std::find_if(focusWindowInfos_.begin(), focusWindowInfos_.end(),
+        [&focusWindowInfo](const auto &focusInfo) { return focusWindowInfo.windowId_ == focusInfo.windowId_; });
+    if (iter == focusWindowInfos_.end()) {
+        return;
+    }
+    focusWindowInfos_.erase(iter);
+}
+
+int32_t WindowAdapter::RegisterAllGroupInfoChangedListener()
+{
+#ifdef SCENE_BOARD_ENABLE
+    sptr<AllGroupInfoChangedListenerImpl> listener = new (std::nothrow) AllGroupInfoChangedListenerImpl();
+    if (listener == nullptr) {
+        IMSA_HILOGE("failed to create listener");
+        return ErrorCode::ERROR_IMSA_MALLOC_FAILED;
+    }
+    auto wmErr = WindowManagerLite::GetInstance().RegisterAllGroupInfoChangedListener(listener);
+    IMSA_HILOGI("register AllGroupInfoChangedListener ret: %{public}d", wmErr);
+    if (wmErr != WMError::WM_OK) {
+        return ErrorCode::ERROR_WINDOW_MANAGER;
+    }
+    return ErrorCode::NO_ERROR;
+#else
+    return ErrorCode::NO_ERROR;
 #endif
 }
 } // namespace MiscServices

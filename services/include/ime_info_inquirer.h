@@ -113,6 +113,7 @@ public:
     bool IsCapacitySupport(const std::string &capacityName);
     bool GetCompatibleDeviceType(const std::string &bundleName, std::string &compatibleDeviceType);
     bool GetSaInfo(const std::string &saName, SaInfo &saInfo);
+    bool IsUIExtension(int64_t pid);
 
 private:
     ImeInfoInquirer() = default;

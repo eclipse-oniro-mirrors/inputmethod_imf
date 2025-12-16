@@ -31,6 +31,7 @@ public:
     static bool IsFocusable(uint64_t displayId);
     static bool IsImeShowable(uint64_t displayId);
     static uint64_t GetFinalDisplayId(uint64_t displayId);
+    static bool IsRestrictedMainDisplayId(uint64_t displayId);
 
 private:
     static sptr<OHOS::Rosen::DisplayInfo> GetDisplayInfo(uint64_t displayId);

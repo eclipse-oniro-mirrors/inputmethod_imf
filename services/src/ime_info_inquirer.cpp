@@ -12,10 +12,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
 #include "ime_info_inquirer.h"
+
+#include <cinttypes>
+
 #include "app_mgr_client.h"
 #include "bundle_mgr_client.h"
+#include "display_adapter.h"
 #include "full_ime_info_manager.h"
 #include "ime_enabled_info_manager.h"
 #include "input_type_manager.h"
@@ -27,7 +30,7 @@
 #include "parameters.h"
 #include "singleton.h"
 #include "system_ability_definition.h"
-#include "display_adapter.h"
+#include "ui_extension_utils.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -1136,6 +1139,22 @@ std::vector<std::string> ImeInfoInquirer::GetRunningIme(int32_t userId)
         }
     }
     return bundleNames;
+}
+
+bool ImeInfoInquirer::IsUIExtension(int64_t pid)
+{
+    RunningProcessInfo info;
+    auto appMgrClient = DelayedSingleton<AppMgrClient>::GetInstance();
+    if (appMgrClient == nullptr) {
+        IMSA_HILOGE("appMgrClient is nullptr.");
+        return false;
+    }
+    auto ret = appMgrClient->GetRunningProcessInfoByPid(pid, info);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetRunningProcessInfosByPid:%{public}" PRId64 " failed: %{public}d!", pid, ret);
+        return false;
+    }
+    return UIExtensionUtils::IsUIExtension(info.extensionType_);
 }
 
 bool ImeInfoInquirer::IsDefaultImeSet(int32_t userId)

@@ -61,7 +61,8 @@
               "cJSON",
               "icu",
               "selinux_adapter",
-              "runtime_core"
+              "runtime_core",
+              "ace_engine"
           ]
       }, 
       "build": {

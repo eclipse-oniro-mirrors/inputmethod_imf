@@ -42,6 +42,7 @@
 #include "inputmethod_text_editor_proxy_capi.h"
 #include "inputmethod_inputmethod_proxy_capi.h"
 #include "inputmethod_attach_options_capi.h"
+#include "native/drag_and_drop.h"
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
@@ -66,6 +67,30 @@ extern "C" {
  */
 InputMethod_ErrorCode OH_InputMethodController_Attach(InputMethod_TextEditorProxy *textEditorProxy,
     InputMethod_AttachOptions *options, InputMethod_InputMethodProxy **inputMethodProxy);
+
+/**
+ * @brief Attach application to the input method service.
+ *
+ * @param context UIContext pointer of the page where the attach will be performed.
+ * @param textEditorProxy Represents a pointer to an {@link InputMethod_TextEditorProxy} instance.
+ *     The caller needs to manage the lifecycle of textEditorProxy.
+ *     If the call succeeds, caller cannot release textEditorProxy until the next attach or detach call.
+ * @param options Represents a pointer to an {@link InputMethod_AttachOptions} instance.
+ *     The options when attaching input method.
+ * @param inputMethodProxy Represents a pointer to an {@link InputMethod_InputMethodProxy} instance.
+ *     Lifecycle is mantianed until the next attach or detach call.
+ * @return Returns a specific error code.
+ *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - parameter check failed.
+ *     {@link IME_ERR_IMCLIENT} - input method client error.
+ *     {@link IME_ERR_IMMS} - input method manager service error.
+ *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
+ * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
+ * @since 23
+ */
+InputMethod_ErrorCode OH_InputMethodController_AttachWithUIContext(ArkUI_ContextHandle context,
+    InputMethod_TextEditorProxy *textEditorProxy, InputMethod_AttachOptions *options,
+    InputMethod_InputMethodProxy **inputMethodProxy);
 
 /**
  * @brief Detach application from the input method service.

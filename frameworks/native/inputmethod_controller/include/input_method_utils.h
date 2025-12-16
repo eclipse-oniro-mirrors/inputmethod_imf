@@ -154,15 +154,15 @@ struct CursorInfoInner : public Parcelable {
         if (!out.WriteDouble(left)) {
             return false;
         }
-    
+
         if (!out.WriteDouble(top)) {
             return false;
         }
-    
+
         if (!out.WriteDouble(width)) {
             return false;
         }
-    
+
         if (!out.WriteDouble(height)) {
             return false;
         }
@@ -264,7 +264,7 @@ struct RangeInner : public Parcelable {
         if (!out.WriteInt32(start)) {
             return false;
         }
-    
+
         if (!out.WriteInt32(end)) {
             return false;
         }
@@ -553,6 +553,13 @@ struct ResponseDataInner : public Parcelable {
         return data;
     }
     ResponseData rspData = std::monostate{};
+};
+
+struct FocusedInfo {
+    uint32_t windowId{ ImfCommonConst::INVALID_WINDOW_ID };
+    uint64_t displayId{ ImfCommonConst::DEFAULT_DISPLAY_ID };
+    uint64_t displayGroupId{ ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID };
+    pid_t uiExtensionHostPid{ ImfCommonConst::INVALID_PID };
 };
 } // namespace MiscServices
 } // namespace OHOS
