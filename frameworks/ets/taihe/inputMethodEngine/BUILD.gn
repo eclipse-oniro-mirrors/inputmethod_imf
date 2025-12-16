@@ -64,8 +64,6 @@ taihe_shared_library("inputmethod_engine_taihe_native") {
   ]
   sources = get_target_outputs(":run_taihe")
   sources += [
-    "${inputmethod_path}/frameworks/ets/taihe/inputMethod/src/ani_callback_object.cpp",
-    "${inputmethod_path}/frameworks/ets/taihe/inputMethod/src/ani_message_handler.cpp",
     "${inputmethod_path}/frameworks/js/napi/inputmethodclient/js_utils.cpp",
     "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_method_utils.cpp",
     "src/ani_common_engine.cpp",
