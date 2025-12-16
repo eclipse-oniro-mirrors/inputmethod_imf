@@ -28,8 +28,6 @@
 #include "input_method_ability_impl.h"
 #include "input_method_client_impl.h"
 #include "input_method_keyboard_delegate_impl.h"
-#include "ani_callback_object.h"
-#include "ani_message_handler.h"
 
 using namespace OHOS::MiscServices;
 namespace {
