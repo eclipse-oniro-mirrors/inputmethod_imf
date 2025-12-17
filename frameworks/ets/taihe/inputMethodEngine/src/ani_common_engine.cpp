@@ -800,33 +800,5 @@ ani_object CommonConvert::CreateAniRect(ani_env* env, Rosen::Rect rect)
     CallAniMethodVoid(env, aniRect, aniClass, "<set>height", nullptr, ani_int(rect.height_));
     return aniRect;
 }
-
-WindowInfo_t CommonConvert::NativeWindowInfoToAni(ani_env* env, MiscServices::CallingWindowInfo &windowInfo)
-{
-    WindowInfo_t info {};
-    if (env == nullptr) {
-        IMSA_HILOGE("env is nullptr");
-        return info;
-    }
-    ani_class cls;
-    if (env->FindClass("@ohos.inputMethodEngine.inputMethodEngine._taihe_WindowInfo_inner", &cls) != ANI_OK) {
-        IMSA_HILOGE("[ANI] class not found");
-        return info;
-    }
-    ani_method ctor;
-    if (env->Class_FindMethod(cls, "<ctor>", nullptr, &ctor) != ANI_OK) {
-        IMSA_HILOGE("[ANI] ctor not found");
-        return info;
-    }
-    ani_object aniInfo;
-    if (env->Object_New(cls, ctor, &aniInfo) != ANI_OK) {
-        IMSA_HILOGE("[ANI] fail to new obj");
-        return info;
-    }
-    CallAniMethodVoid(env, aniInfo, cls, "<set>rect", nullptr, CreateAniRect(env, windowInfo.rect));
-    CallAniMethodVoid(env, aniInfo, cls, "<set>status", nullptr, CreateAniWindowStatus(env, windowInfo.status));
-    info = taihe::from_ani<WindowInfo_t>(env, aniInfo);
-    return info;
-}
 } // namespace MiscServices
 } // namespace OHOS

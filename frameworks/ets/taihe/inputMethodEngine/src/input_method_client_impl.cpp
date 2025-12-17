@@ -22,7 +22,6 @@ namespace MiscServices {
 using namespace taihe;
 std::mutex InputMethodClientImpl::engineMutex_;
 std::shared_ptr<InputMethodClientImpl> InputMethodClientImpl::textInputClientEngine_ {nullptr};
-ani_ref InputMethodClientImpl::TICRef_ = nullptr;
 std::shared_ptr<InputMethodClientImpl> InputMethodClientImpl::GetInstance()
 {
     if (textInputClientEngine_ == nullptr) {
@@ -57,53 +56,6 @@ bool InputMethodClientImpl::Init()
         return false;
     }
     return true;
-}
-
-ani_ref InputMethodClientImpl::GetInputClientInstance(ani_env *env)
-{
-    ani_ref result = nullptr;
-    if (env == nullptr) {
-        IMSA_HILOGE("InputMethodClientImpl: env is nullptr");
-        return result;
-    }
-    ani_class cls;
-    if (ANI_OK != env->FindClass("@ohos.inputMethodEngine.inputMethodEngine._taihe_InputClient_inner", &cls)) {
-        IMSA_HILOGE("InputMethodClientImpl: FindClass failed");
-        return result;
-    }
-
-    ani_method ctor;
-    if (ANI_OK != env->Class_FindMethod(cls, "<ctor>", nullptr, &ctor)) {
-        IMSA_HILOGE("InputMethodClientImpl: Class_FindMethod 'constructor' failed");
-        return result;
-    }
-
-    ani_object obj;
-    if (ANI_OK != env->Object_New(cls, ctor, &obj)) {
-        IMSA_HILOGE("InputMethodClientImpl: Object_New ani_object failed");
-        return result;
-    }
-    if (ANI_OK != env->GlobalReference_Create(reinterpret_cast<ani_ref>(obj), &TICRef_)) {
-        IMSA_HILOGE("InputMethodClientImpl: GlobalReference_Create TICRef_ failed");
-        return result;
-    }
-    if (TICRef_ == nullptr) {
-        IMSA_HILOGE("InputMethodClientImpl: TICRef_ is nullptr");
-        return result;
-    }
-    ani_wref wref;
-    if ((env->WeakReference_Create(TICRef_, &wref)) != ANI_OK) {
-        IMSA_HILOGE("InputMethodClientImpl: create weakref error");
-        return result;
-    }
-
-    ani_boolean wasReleased;
-    if ((env->WeakReference_GetReference(wref, &wasReleased, &result)) != ANI_OK) {
-        IMSA_HILOGE("InputMethodClientImpl: create ref error");
-        return result;
-    }
-    IMSA_HILOGI("InputMethodClientImpl: success");
-    return result;
 }
 
 void InputMethodClientImpl::RegisterListener(std::string const &type, callbackTypes &&cb, uintptr_t opq)

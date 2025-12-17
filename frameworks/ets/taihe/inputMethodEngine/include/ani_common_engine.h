@@ -183,7 +183,6 @@ public:
         EnhancedLayoutParams& param, HotAreas& hotAreas);
     static ani_enum_item CreateAniWindowStatus(ani_env* env, Rosen::WindowStatus type);
     static ani_object CreateAniRect(ani_env* env, Rosen::Rect rect);
-    static WindowInfo_t NativeWindowInfoToAni(ani_env* env, MiscServices::CallingWindowInfo &windowInfo);
 };
 } // namespace MiscServices
 } // namespace OHOS

@@ -19,20 +19,11 @@
 #include "stdexcept"
 
 #include "ani_common_engine.h"
-#include "panel_info.h"
-#include "input_attribute.h"
-#include "input_method_utils.h"
-#include "input_method_ability.h"
-#include "js_utils.h"
-#include "input_method_panel_impl.h"
 #include "input_method_ability_impl.h"
-#include "input_method_client_impl.h"
 #include "input_method_keyboard_delegate_impl.h"
 
 using namespace OHOS::MiscServices;
 namespace {
-constexpr size_t ARGC_ONE = 1;
-constexpr size_t ARGC_TWO = 2;
 // To be implemented.
 
 ohos::inputMethodEngine::Ability GetInputMethodAbility()
