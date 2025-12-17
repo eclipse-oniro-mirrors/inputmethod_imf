@@ -27,52 +27,6 @@ std::map<std::string, std::vector<std::unique_ptr<CallbackObjects>>> KeyboardDel
 std::map<std::string, std::vector<taihe::callback<bool(KeyEvent_t const& event)>>> KeyboardDelegateImpl::eventCbMap_;
 std::shared_ptr<AppExecFwk::EventHandler> KeyboardDelegateImpl::handler_{ nullptr };
 std::shared_ptr<KeyboardDelegateImpl> KeyboardDelegateImpl::keyboardDelegate_{ nullptr };
-ani_ref KeyboardDelegateImpl::KCERef_ = nullptr;
-ani_env* KeyboardDelegateImpl::env_ {nullptr};
-ani_vm* KeyboardDelegateImpl::vm_ {nullptr};
-ani_vm* KeyboardDelegateImpl::GetAniVm(ani_env* env)
-{
-    if (env == nullptr) {
-        IMSA_HILOGE("null env");
-        return nullptr;
-    }
-    ani_vm* vm = nullptr;
-    if (env->GetVM(&vm) != ANI_OK) {
-        IMSA_HILOGE("GetVM failed");
-        return nullptr;
-    }
-    return vm;
-}
-
-ani_env* KeyboardDelegateImpl::GetAniEnv(ani_vm* vm)
-{
-    if (vm == nullptr) {
-        IMSA_HILOGE("null vm");
-        return nullptr;
-    }
-    ani_env* env = nullptr;
-    if (vm->GetEnv(ANI_VERSION_1, &env) != ANI_OK) {
-        IMSA_HILOGE("GetEnv failed");
-        return nullptr;
-    }
-    return env;
-}
-
-ani_env* KeyboardDelegateImpl::AttachAniEnv(ani_vm* vm)
-{
-    if (vm == nullptr) {
-        IMSA_HILOGE("null vm");
-        return nullptr;
-    }
-    ani_env *workerEnv = nullptr;
-    ani_options aniArgs {0, nullptr};
-    if (vm->AttachCurrentThread(&aniArgs, ANI_VERSION_1, &workerEnv) != ANI_OK) {
-        IMSA_HILOGE("Attach Env failed");
-        return nullptr;
-    }
-    return workerEnv;
-}
-
 std::shared_ptr<KeyboardDelegateImpl> KeyboardDelegateImpl::GetInstance()
 {
     if (keyboardDelegate_ == nullptr) {
@@ -89,53 +43,6 @@ std::shared_ptr<KeyboardDelegateImpl> KeyboardDelegateImpl::GetInstance()
     return keyboardDelegate_;
 }
 
-ani_ref KeyboardDelegateImpl::GetKeyboardDelegateInstance(ani_env *env)
-{
-    ani_ref result = nullptr;
-    if (env == nullptr) {
-        IMSA_HILOGE("KeyboardDelegateImpl: env is nullptr");
-        return result;
-    }
-    ani_class cls;
-    if (ANI_OK != env->FindClass("@ohos.inputMethodEngine.inputMethodEngine._taihe_KeyboardDelegate_inner", &cls)) {
-        IMSA_HILOGE("KeyboardDelegateImpl: FindClass failed");
-        return result;
-    }
-
-    ani_method ctor;
-    if (ANI_OK != env->Class_FindMethod(cls, "<ctor>", nullptr, &ctor)) {
-        IMSA_HILOGE("KeyboardDelegateImpl: Class_FindMethod 'constructor' failed");
-        return result;
-    }
-    ani_object obj;
-    if (ANI_OK != env->Object_New(cls, ctor, &obj)) {
-        IMSA_HILOGE("KeyboardDelegateImpl: Object_New ani_object failed");
-        return result;
-    }
-    if (ANI_OK != env->GlobalReference_Create(reinterpret_cast<ani_ref>(obj), &KCERef_)) {
-        IMSA_HILOGE("KeyboardDelegateImpl: GlobalReference_Create KCERef_ failed");
-        return result;
-    }
-
-    if (KCERef_ == nullptr) {
-        IMSA_HILOGE("KeyboardDelegateImpl: KCERef_ is nullptr");
-        return result;
-    }
-    ani_wref wref;
-    if ((env->WeakReference_Create(KCERef_, &wref)) != ANI_OK) {
-        IMSA_HILOGE("KeyboardDelegateImpl: create weakref error");
-        return result;
-    }
-
-    ani_boolean wasReleased;
-    if ((env->WeakReference_GetReference(wref, &wasReleased, &result)) != ANI_OK) {
-        IMSA_HILOGE("KeyboardDelegateImpl: create ref error");
-        return result;
-    }
-    IMSA_HILOGI("KeyboardDelegateImpl: success");
-    return result;
-}
-
 void KeyboardDelegateImpl::RegisterListener(std::string const &type, callbackTypes &&cb, uintptr_t opq)
 {
     if (!EventChecker::IsValidEventType(EventSubscribeModule::KEYBOARD_DELEGATE, type)) {
@@ -150,8 +57,6 @@ void KeyboardDelegateImpl::RegisterListener(std::string const &type, callbackTyp
         IMSA_HILOGE("Failed to register %{public}s", type.c_str());
         return;
     }
-    env_ = env;
-    vm_ = GetAniVm(env);
     auto &cbVec = jsCbMap_[type];
     bool isDuplicate =
         std::any_of(cbVec.begin(), cbVec.end(), [env, callbackRef](std::unique_ptr<CallbackObjects> &obj) {

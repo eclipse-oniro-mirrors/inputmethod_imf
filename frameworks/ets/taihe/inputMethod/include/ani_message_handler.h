@@ -17,7 +17,6 @@
 
 #include <mutex>
 #include "msg_handler_callback_interface.h"
-#include "ani_callback_object.h"
 #include "ohos.inputMethod.proj.hpp"
 #include "ohos.inputMethod.impl.hpp"
 #include "taihe/runtime.hpp"

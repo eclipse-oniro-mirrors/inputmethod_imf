@@ -35,7 +35,6 @@ namespace MiscServices {
 class KeyboardDelegateImpl : public KeyboardListener {
 public:
     static std::shared_ptr<KeyboardDelegateImpl> GetInstance();
-    static ani_ref GetKeyboardDelegateInstance(ani_env *env);
     void RegisterListener(std::string const &type, callbackTypes &&cb, uintptr_t opq);
     void UnRegisterListener(std::string const &type, taihe::optional_view<uintptr_t> opq);
     void RegisterListenerEvent(std::string const &type,
@@ -59,13 +58,7 @@ private:
 
     static std::map<std::string, std::vector<taihe::callback<bool(KeyEvent_t const& event)>>> eventCbMap_;
     static std::mutex keyboardMutex_;
-    static ani_ref KCERef_;
     static std::shared_ptr<KeyboardDelegateImpl> keyboardDelegate_;
-    static ani_vm* GetAniVm(ani_env* env);
-    static ani_env* GetAniEnv(ani_vm* vm);
-    static ani_env* AttachAniEnv(ani_vm* vm);
-    static ani_env* env_;
-    static ani_vm* vm_;
     static std::shared_ptr<AppExecFwk::EventHandler> handler_;
     static bool isRegistered(const std::string &type);
     static void DealKeyEvent(const std::shared_ptr<MMI::KeyEvent> &keyEvent,

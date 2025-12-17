@@ -30,7 +30,6 @@ namespace MiscServices {
 class InputMethodClientImpl : public TextInputClientListener {
 public:
     static std::shared_ptr<InputMethodClientImpl> GetInstance();
-    static ani_ref GetInputClientInstance(ani_env *env);
     static bool InitTextInputClientEngine();
     static bool Init();
     void RegisterListener(std::string const &type, callbackTypes &&cb, uintptr_t opq);
@@ -40,7 +39,6 @@ private:
     std::mutex mutex_;
     std::map<std::string, std::vector<std::unique_ptr<CallbackObjects>>> jsCbMap_;
     static std::mutex engineMutex_;
-    static ani_ref TICRef_;
     static std::shared_ptr<InputMethodClientImpl> textInputClientEngine_;
 };
 } // namespace MiscServices
