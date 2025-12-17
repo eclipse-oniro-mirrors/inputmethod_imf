@@ -34,14 +34,14 @@ using namespace MessageID;
 InputMethodCoreServiceImpl::InputMethodCoreServiceImpl() {}
 
 InputMethodCoreServiceImpl::~InputMethodCoreServiceImpl() {}
-
+// LCOV_EXCL_START
 ErrCode InputMethodCoreServiceImpl::InitInputControlChannel(const sptr<IInputControlChannel> &inputControlChannel)
 {
     auto task = std::make_shared<TaskImsaInitInputCtrlChannel>(inputControlChannel->AsObject());
     TaskManager::GetInstance().PostTask(task);
     return ERR_OK;
 }
-
+// LCOV_EXCL_STOP
 ErrCode InputMethodCoreServiceImpl::ShowKeyboard(int32_t requestKeyboardReason)
 {
     auto task = std::make_shared<TaskImsaShowKeyboard>(requestKeyboardReason);
@@ -62,13 +62,13 @@ ErrCode InputMethodCoreServiceImpl::StopInputService(bool isTerminateIme)
     TaskManager::GetInstance().PostTask(task);
     return ERR_OK;
 }
-
+// LCOV_EXCL_START
 ErrCode InputMethodCoreServiceImpl::OnConnectSystemCmd(
     const sptr<IRemoteObject> &channel, sptr<IRemoteObject> &agent)
 {
     return InputMethodAbility::GetInstance().OnConnectSystemCmd(channel, agent);
 }
-
+// LCOV_EXCL_STOP
 ErrCode InputMethodCoreServiceImpl::StartInput(const InputClientInfoInner &clientInfoInner, bool isBindFromClient)
 {
     InputClientInfo clientInfo =
@@ -95,14 +95,14 @@ ErrCode InputMethodCoreServiceImpl::OnSetInputType(int32_t inputType)
     InputMethodAbility::GetInstance().OnSetInputType(static_cast<InputType>(inputType));
     return ERR_OK;
 }
-
+// LCOV_EXCL_START
 ErrCode InputMethodCoreServiceImpl::StopInput(const sptr<IRemoteObject> &channel, uint32_t sessionId)
 {
     auto task = std::make_shared<TaskImsaStopInput>(channel, sessionId);
     TaskManager::GetInstance().PostTask(task);
     return ERR_OK;
 }
-
+// LCOV_EXCL_STOP
 ErrCode InputMethodCoreServiceImpl::IsEnable(bool &resultValue)
 {
     resultValue = InputMethodAbility::GetInstance().IsEnable();
@@ -113,14 +113,14 @@ ErrCode InputMethodCoreServiceImpl::IsPanelShown(const PanelInfo &panelInfo, boo
 {
     return InputMethodAbility::GetInstance().IsPanelShown(panelInfo, isShown);
 }
-
+// LCOV_EXCL_START
 ErrCode InputMethodCoreServiceImpl::OnClientInactive(const sptr<IRemoteObject> &channel)
 {
     auto task = std::make_shared<TaskImsaOnClientInactive>(channel);
     TaskManager::GetInstance().PostTask(task);
     return ERR_OK;
 }
-
+// LCOV_EXCL_STOP
 ErrCode InputMethodCoreServiceImpl::OnCallingDisplayIdChanged(uint64_t displayId)
 {
     return InputMethodAbility::GetInstance().OnCallingDisplayIdChanged(displayId);

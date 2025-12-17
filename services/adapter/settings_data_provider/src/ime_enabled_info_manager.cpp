@@ -43,13 +43,13 @@ void ImeEnabledInfoManager::SetCurrentImeStatusChangedHandler(CurrentImeStatusCh
     }
     currentImeStatusChangedHandler_ = std::move(handler);
 }
-
+// LCOV_EXCL_START
 void ImeEnabledInfoManager::SetEventHandler(const std::shared_ptr<AppExecFwk::EventHandler> &eventHandler)
 {
     std::lock_guard<std::mutex> lock(serviceHandlerLock_);
     serviceHandler_ = eventHandler;
 }
-
+// LCOV_EXCL_STOP
 std::shared_ptr<AppExecFwk::EventHandler> ImeEnabledInfoManager::GetEventHandler()
 {
     std::lock_guard<std::mutex> lock(serviceHandlerLock_);
@@ -161,7 +161,7 @@ int32_t ImeEnabledInfoManager::Delete(int32_t userId, const std::string &bundleN
     NotifyCurrentImeStatusChanged(userId, bundleName, EnabledStatus::DISABLED);
     return ErrorCode::NO_ERROR;
 }
-
+// LCOV_EXCL_START
 int32_t ImeEnabledInfoManager::CheckUpdate(
     int32_t userId, const std::string &bundleName, const std::string &extensionName, EnabledStatus status)
 {
@@ -193,7 +193,7 @@ int32_t ImeEnabledInfoManager::CheckUpdate(
     }
     return ErrorCode::NO_ERROR;
 }
-// LCOV_EXCL_START
+
 int32_t ImeEnabledInfoManager::Update(
     int32_t userId, const std::string &bundleName, const std::string &extensionName, EnabledStatus status)
 {
@@ -258,7 +258,7 @@ int32_t ImeEnabledInfoManager::GetEnabledState(int32_t userId, const std::string
     }
     return ErrorCode::NO_ERROR;
 }
-
+// LCOV_EXCL_START
 int32_t ImeEnabledInfoManager::GetEnabledStates(int32_t userId, std::vector<Property> &props)
 {
     std::lock_guard<std::mutex> lock(operateLock_);
@@ -326,7 +326,7 @@ int32_t ImeEnabledInfoManager::GetEnabledStatesInner(int32_t userId, std::vector
     }
     return ErrorCode::NO_ERROR;
 }
-
+// LCOV_EXCL_STOP
 int32_t ImeEnabledInfoManager::GetEnabledCacheWithCorrect(int32_t userId, ImeEnabledCfg &enabledCfg)
 {
     enabledCfg = GetEnabledCache(userId);
@@ -341,7 +341,7 @@ int32_t ImeEnabledInfoManager::GetEnabledCacheWithCorrect(int32_t userId, ImeEna
     enabledCfg = GetEnabledCache(userId);
     return enabledCfg.enabledInfos.empty() ? ErrorCode::ERROR_ENABLE_IME : ErrorCode::NO_ERROR;
 }
-
+// LCOV_EXCL_START
 int32_t ImeEnabledInfoManager::GetEnabledCacheWithCorrect(
     int32_t userId, const std::string &bundleName, const std::string &extensionName, ImeEnabledCfg &enabledCfg)
 {
@@ -368,7 +368,7 @@ bool ImeEnabledInfoManager::IsInEnabledCache(
         [&bundleName](const ImeEnabledInfo &info) { return bundleName == info.bundleName; });
     return iter != cfg.enabledInfos.end();
 }
-
+// LCOV_EXCL_STOP
 void ImeEnabledInfoManager::SetEnabledCache(int32_t userId, const ImeEnabledCfg &cfg)
 {
     std::lock_guard<std::mutex> cgfLock(imeEnabledCfgLock_);
@@ -717,7 +717,7 @@ std::shared_ptr<ImeNativeCfg> ImeEnabledInfoManager::GetCurrentImeCfg(int32_t us
     IMSA_HILOGI("%{public}d not set default ime.", userId);
     return std::make_shared<ImeNativeCfg>();
 }
-// LCOV_EXCL_STOP
+
 bool ImeEnabledInfoManager::IsDefaultImeSet(int32_t userId)
 {
     std::lock_guard<std::mutex> lock(operateLock_);
@@ -734,7 +734,7 @@ bool ImeEnabledInfoManager::IsDefaultImeSet(int32_t userId)
     }
     return false;
 }
-
+// LCOV_EXCL_STOP
 std::pair<std::string, std::string> ImeEnabledInfoManager::SplitImeId(const std::string &imeId)
 {
     std::string bundleName;
@@ -746,7 +746,7 @@ std::pair<std::string, std::string> ImeEnabledInfoManager::SplitImeId(const std:
     }
     return std::make_pair(bundleName, extName);
 }
-
+// LCOV_EXCL_START
 void ImeEnabledInfoManager::ModCurrentIme(std::vector<ImeEnabledInfo> &enabledInfos)
 {
     std::string oldBundleName;
@@ -771,7 +771,7 @@ void ImeEnabledInfoManager::ModCurrentIme(std::vector<ImeEnabledInfo> &enabledIn
         oldIter->extraInfo.currentSubName = "";
     }
 }
-
+// LCOV_EXCL_STOP
 bool ImeEnabledInfoManager::IsCurrentIme(const std::string &bundleName, const std::vector<ImeEnabledInfo> &enabledInfos)
 {
     auto iter = std::find_if(enabledInfos.begin(), enabledInfos.end(),

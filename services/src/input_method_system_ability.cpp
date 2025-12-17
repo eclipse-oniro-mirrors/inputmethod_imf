@@ -1063,6 +1063,10 @@ ErrCode InputMethodSystemAbility::UpdateListenEventFlag(const InputClientInfoInn
     IMSA_HILOGD("finalEventFlag: %{public}u, eventFlag: %{public}u.", clientInfo.eventFlag, eventFlag);
     if (EventStatusManager::IsImeHideOn(eventFlag) || EventStatusManager::IsImeShowOn(eventFlag) ||
         EventStatusManager::IsInputStatusChangedOn(eventFlag)) {
+        if (identityChecker_ == nullptr) {
+            IMSA_HILOGE("identityChecker_ is nullptr!");
+            return ErrorCode::ERROR_NULL_POINTER;
+        }
         if (!identityChecker_->IsSystemApp(IPCSkeleton::GetCallingFullTokenID()) &&
             !identityChecker_->IsNativeSa(IPCSkeleton::GetCallingTokenID())) {
             IMSA_HILOGE("not system application!");
@@ -1210,6 +1214,10 @@ ErrCode InputMethodSystemAbility::IsCurrentImeByPid(int32_t pid, bool& resultVal
 
 int32_t InputMethodSystemAbility::IsPanelShown(uint64_t displayId, const PanelInfo &panelInfo, bool &isShown)
 {
+    if (identityChecker_ == nullptr) {
+        IMSA_HILOGE("identityChecker_ is nullptr!");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
     if (!identityChecker_->IsSystemApp(IPCSkeleton::GetCallingFullTokenID())) {
         IMSA_HILOGE("not system application!");
         return ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION;
@@ -1233,6 +1241,10 @@ ErrCode InputMethodSystemAbility::SwitchInputMethod(const std::string &bundleNam
     const std::string &subName, uint32_t trigger)
 {
     // IMSA not check permission, add this verify for prevent counterfeit
+    if (identityChecker_ == nullptr) {
+        IMSA_HILOGE("identityChecker_ is nullptr!");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
     if (static_cast<SwitchTrigger>(trigger) == SwitchTrigger::IMSA) {
         IMSA_HILOGW("caller counterfeit!");
         return ErrorCode::ERROR_BAD_PARAMETERS;
