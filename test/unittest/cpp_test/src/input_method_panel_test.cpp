@@ -106,6 +106,9 @@ public:
     static void TestHidePanel(const std::shared_ptr<InputMethodPanel> &panel);
     static void TestIsPanelShown(const PanelInfo &info, bool expectedResult);
     static void TriggerPanelStatusChangeToImc(const std::shared_ptr<InputMethodPanel> &panel, InputWindowStatus status);
+    static void TriggerKeyboardPanelInfoChange(
+        const std::shared_ptr<InputMethodPanel> &panel, const Rosen::KeyboardPanelInfo &info);
+    static void TriggerVisibilityChange(const std::shared_ptr<InputMethodPanel> &panel, bool isVisible);
     static void TestAdjust();
     static int32_t GetDisplaySize(DisplaySize &size);
     class PanelStatusListenerImpl : public PanelStatusListener {
@@ -466,6 +469,29 @@ void InputMethodPanelTest::TriggerPanelStatusChangeToImc(
         IdentityCheckerMock::SetBundleNameValid(true);
         // add for SetTestTokenID in mainThread, but has no effect for other thread ipc
         panel->PanelStatusChangeToImc(status, { 0, 0, 0, 0 });
+        IdentityCheckerMock::SetBundleNameValid(false);
+    }
+}
+
+void InputMethodPanelTest::TriggerKeyboardPanelInfoChange(
+    const std::shared_ptr<InputMethodPanel> &panel, const Rosen::KeyboardPanelInfo &info)
+{
+    ASSERT_NE(panel, nullptr);
+    if (isScbEnable_) {
+        IdentityCheckerMock::SetBundleNameValid(true);
+        // add for SetTestTokenID in mainThread, but has no effect for other thread ipc
+        panel->OnKeyboardPanelInfoChange(info);
+        IdentityCheckerMock::SetBundleNameValid(false);
+    }
+}
+
+void InputMethodPanelTest::TriggerVisibilityChange(const std::shared_ptr<InputMethodPanel> &panel, bool isVisible)
+{
+    ASSERT_NE(panel, nullptr);
+    if (isScbEnable_) {
+        IdentityCheckerMock::SetBundleNameValid(true);
+        // add for SetTestTokenID in mainThread, but has no effect for other thread ipc
+        panel->OnVisibilityChange(isVisible);
         IdentityCheckerMock::SetBundleNameValid(false);
     }
 }
@@ -3571,6 +3597,144 @@ HWTEST_F(InputMethodPanelTest, testConvertToWMSHotArea, TestSize.Level0)
     EXPECT_EQ(result.portraitPanelHotAreas_[0], hotAreas.portrait.panelHotArea[0]);
 
     InputMethodPanelTest::DestroyPanel(inputMethodPanel);
+}
+
+/**
+ * @tc.name: TestKeyboardPanelInfoChangeListener001
+ * @tc.desc: Test keyboard panel status changes when panel invisible.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, TestKeyboardPanelInfoChangeListener001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::TestKeyboardPanelInfoChangeListener001 start.");
+    // system app for RegisterImeEventListener and currentIme for PanelStatusChangeToImc
+    IdentityCheckerMock::SetSystemApp(true);
+    IdentityCheckerMock::SetBundleNameValid(true);
+    auto listener = std::make_shared<InputMethodSettingListenerImpl>();
+    ImeEventMonitorManager::GetInstance().RegisterImeEventListener(EVENT_IME_SHOW_MASK | EVENT_IME_HIDE_MASK, listener);
+
+    // create fixed soft keyboard panel
+    auto panel = InputMethodPanelTest::CreatePanel();
+    ASSERT_NE(panel, nullptr);
+    panel->UnregisterVisibilityChangeListener();
+    Rosen::KeyboardPanelInfo info;
+
+    // imeShow
+    panel->isVisible_.store(false);
+    InputMethodPanelTest::ImcPanelListeningTestRestore();
+    InputMethodPanelTest::TestShowPanel(panel);
+    info.isShowing_ = true;
+    InputMethodPanelTest::TriggerKeyboardPanelInfoChange(panel, info);
+    InputMethodPanelTest::ImcPanelShowNumCheck(0);
+    // imeHide
+    panel->isVisible_.store(false);
+    InputMethodPanelTest::ImcPanelListeningTestRestore();
+    InputMethodPanelTest::TestHidePanel(panel);
+    info.isShowing_ = false;
+    InputMethodPanelTest::TriggerKeyboardPanelInfoChange(panel, info);
+    InputMethodPanelTest::ImcPanelHideNumCheck(1);
+
+    InputMethodPanelTest::DestroyPanel(panel);
+    ImeEventMonitorManager::GetInstance().UnRegisterImeEventListener(
+        EVENT_IME_SHOW_MASK | EVENT_IME_HIDE_MASK, listener);
+    IdentityCheckerMock::SetSystemApp(false);
+    IdentityCheckerMock::SetBundleNameValid(false);
+}
+
+/**
+ * @tc.name: TestKeyboardPanelInfoChangeListener002
+ * @tc.desc: Test keyboard panel status changes when panel visible.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, TestKeyboardPanelInfoChangeListener002, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::TestKeyboardPanelInfoChangeListener002 start.");
+    // system app for RegisterImeEventListener and currentIme for PanelStatusChangeToImc
+    IdentityCheckerMock::SetSystemApp(true);
+    IdentityCheckerMock::SetBundleNameValid(true);
+    auto listener = std::make_shared<InputMethodSettingListenerImpl>();
+    ImeEventMonitorManager::GetInstance().RegisterImeEventListener(EVENT_IME_SHOW_MASK | EVENT_IME_HIDE_MASK, listener);
+
+    // create fixed soft keyboard panel
+    auto panel = InputMethodPanelTest::CreatePanel();
+    ASSERT_NE(panel, nullptr);
+    panel->UnregisterVisibilityChangeListener();
+    Rosen::KeyboardPanelInfo info;
+
+    // imeShow
+    panel->isVisible_.store(true);
+    InputMethodPanelTest::ImcPanelListeningTestRestore();
+    InputMethodPanelTest::TestShowPanel(panel);
+    info.isShowing_ = true;
+    InputMethodPanelTest::TriggerKeyboardPanelInfoChange(panel, info);
+    InputMethodPanelTest::ImcPanelShowNumCheck(1);
+    // imeHide
+    panel->isVisible_.store(true);
+    InputMethodPanelTest::ImcPanelListeningTestRestore();
+    InputMethodPanelTest::TestHidePanel(panel);
+    info.isShowing_ = false;
+    InputMethodPanelTest::TriggerKeyboardPanelInfoChange(panel, info);
+    InputMethodPanelTest::ImcPanelHideNumCheck(1);
+
+    InputMethodPanelTest::DestroyPanel(panel);
+    ImeEventMonitorManager::GetInstance().UnRegisterImeEventListener(
+        EVENT_IME_SHOW_MASK | EVENT_IME_HIDE_MASK, listener);
+    IdentityCheckerMock::SetSystemApp(false);
+    IdentityCheckerMock::SetBundleNameValid(false);
+}
+
+/**
+ * @tc.name: TestVisibilityChangeListener001
+ * @tc.desc: Test visibility change listener when window_ nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, TestVisibilityChangeListener001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::TestVisibilityChangeListener001 start.");
+    // create fixed soft keyboard panel
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    int32_t ret = inputMethodPanel->RegisterVisibilityChangeListener();
+    EXPECT_EQ(ret, ErrorCode::ERROR_OPERATE_PANEL);
+    ret = inputMethodPanel->UnregisterVisibilityChangeListener();
+    EXPECT_EQ(ret, ErrorCode::ERROR_OPERATE_PANEL);
+}
+
+/**
+ * @tc.name: TestVisibilityChangeListener002
+ * @tc.desc: Test visibility change listener when window_ nullptr.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, TestVisibilityChangeListener002, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::TestVisibilityChangeListener002 start.");
+    // system app for RegisterImeEventListener and currentIme for PanelStatusChangeToImc
+    IdentityCheckerMock::SetSystemApp(true);
+    IdentityCheckerMock::SetBundleNameValid(true);
+    auto listener = std::make_shared<InputMethodSettingListenerImpl>();
+    ImeEventMonitorManager::GetInstance().RegisterImeEventListener(EVENT_IME_SHOW_MASK | EVENT_IME_HIDE_MASK, listener);
+
+    // create fixed soft keyboard panel
+    auto panel = InputMethodPanelTest::CreatePanel();
+    ASSERT_NE(panel, nullptr);
+
+    // imeShow
+    InputMethodPanelTest::ImcPanelListeningTestRestore();
+    InputMethodPanelTest::TestShowPanel(panel);
+    bool isVisible = true;
+    InputMethodPanelTest::TriggerVisibilityChange(panel, isVisible);
+    InputMethodPanelTest::ImcPanelShowNumCheck(1);
+    // imeHide
+    InputMethodPanelTest::ImcPanelListeningTestRestore();
+    InputMethodPanelTest::TestHidePanel(panel);
+    isVisible = false;
+    InputMethodPanelTest::TriggerVisibilityChange(panel, isVisible);
+    InputMethodPanelTest::ImcPanelHideNumCheck(1);
+
+    InputMethodPanelTest::DestroyPanel(panel);
+    ImeEventMonitorManager::GetInstance().UnRegisterImeEventListener(
+        EVENT_IME_SHOW_MASK | EVENT_IME_HIDE_MASK, listener);
+    IdentityCheckerMock::SetSystemApp(false);
+    IdentityCheckerMock::SetBundleNameValid(false);
 }
 } // namespace MiscServices
 } // namespace OHOS

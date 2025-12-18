@@ -797,8 +797,7 @@ void JsGetInputMethodSetting::OnImeHide(const ImeWindowInfo &info)
 
 void JsGetInputMethodSetting::OnPanelStatusChange(const std::string &type, const InputWindowInfo &info)
 {
-    IMSA_HILOGD("type: %{public}s, rect[%{public}d, %{public}d, %{public}u, %{public}u].", type.c_str(), info.left,
-        info.top, info.width, info.height);
+    IMSA_HILOGD("JsGetInputMethodSetting, type: %{public}s, window: %{public}s", type.c_str(), info.ToString().c_str());
     auto entry = GetEntry(type, [&info](UvEntry &entry) { entry.windowInfo = { info }; });
     if (entry == nullptr) {
         IMSA_HILOGD("failed to get uv entry.");
