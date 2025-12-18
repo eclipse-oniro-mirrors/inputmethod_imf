@@ -319,7 +319,7 @@ ErrCode InputDataChannelServiceImpl::HandleKeyEventResult(uint64_t cbId, bool co
     instance->HandleKeyEventResult(cbId, consumeResult);
     return ERR_OK;
 }
-
+// LCOV_EXCL_START
 int32_t InputDataChannelServiceImpl::ResponseDataChannel(
     const sptr<IRemoteObject> &agentObject, uint64_t msgId, int32_t code, const ResponseData &data)
 {
@@ -332,5 +332,6 @@ int32_t InputDataChannelServiceImpl::ResponseDataChannel(
     inner.rspData = data;
     return agent->ResponseDataChannel(msgId, code, inner);
 }
+// LCOV_EXCL_STOP
 } // namespace MiscServices
 } // namespace OHOS

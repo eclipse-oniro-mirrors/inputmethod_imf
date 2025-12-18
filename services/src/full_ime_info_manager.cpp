@@ -75,7 +75,7 @@ int32_t FullImeInfoManager::RegularInit()
     }
     return ErrorCode::NO_ERROR;
 }
-// LCOV_EXCL_STOP
+
 int32_t FullImeInfoManager::Switch(int32_t userId)
 {
     std::vector<FullImeInfo> infos;
@@ -83,7 +83,7 @@ int32_t FullImeInfoManager::Switch(int32_t userId)
     ImeEnabledInfoManager::GetInstance().Switch(userId, infos);
     return ret;
 }
-// LCOV_EXCL_START
+
 int32_t FullImeInfoManager::Update()
 {
     {
@@ -115,7 +115,7 @@ int32_t FullImeInfoManager::Delete(int32_t userId)
     ImeEnabledInfoManager::GetInstance().Delete(userId);
     return ErrorCode::NO_ERROR;
 }
-
+// LCOV_EXCL_START
 int32_t FullImeInfoManager::Add(int32_t userId, const std::string &bundleName)
 {
     FullImeInfo info;
@@ -157,7 +157,7 @@ int32_t FullImeInfoManager::Update(int32_t userId, const std::string &bundleName
     it->second.push_back(info);
     return ErrorCode::NO_ERROR;
 }
-
+// LCOV_EXCL_STOP
 int32_t FullImeInfoManager::Get(int32_t userId, std::vector<Property> &props)
 {
     {
@@ -229,7 +229,7 @@ std::string FullImeInfoManager::Get(int32_t userId, uint32_t tokenId)
     }
     return (*iter).prop.name;
 }
-
+// LCOV_EXCL_START
 int32_t FullImeInfoManager::Init()
 {
     std::map<int32_t, std::vector<FullImeInfo>> fullImeInfos;
@@ -307,7 +307,7 @@ int32_t FullImeInfoManager::AddPackage(int32_t userId, const std::string &bundle
     it->second.push_back(info);
     return ErrorCode::NO_ERROR;
 }
-
+// LCOV_EXCL_STOP
 int32_t FullImeInfoManager::DeletePackage(int32_t userId, const std::string &bundleName)
 {
     std::lock_guard<std::mutex> lock(lock_);

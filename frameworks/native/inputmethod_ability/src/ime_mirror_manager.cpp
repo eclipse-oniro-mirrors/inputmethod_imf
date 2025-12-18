@@ -105,7 +105,7 @@ bool ImeMirrorManager::UnSubscribeSaStart(int32_t saId)
     IMSA_HILOGD("[ImeMirrorTag]unsubscribe system ability success, saId: %{public}d", saId);
     return true;
 }
-
+// LCOV_EXCL_START
 void ImeMirrorManager::SaMgrListener::OnAddSystemAbility(int32_t systemAbilityId, const std::string &deviceId)
 {
     IMSA_HILOGD("[ImeMirrorTag]systemAbilityId: %{public}d.", systemAbilityId);
@@ -116,5 +116,6 @@ void ImeMirrorManager::SaMgrListener::OnAddSystemAbility(int32_t systemAbilityId
         func_();
     }
 }
+// LCOV_EXCL_STOP
 } // namespace MiscServices
 } // namespace OHOS

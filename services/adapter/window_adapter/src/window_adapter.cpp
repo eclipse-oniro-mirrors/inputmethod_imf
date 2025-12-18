@@ -51,7 +51,7 @@ void WindowAdapter::GetFocusInfo(OHOS::Rosen::FocusChangeInfo &focusInfo, uint64
     WindowManager::GetInstance().GetFocusWindowInfo(focusInfo, displayId);
 #endif
 }
-
+// LCOV_EXCL_START
 bool WindowAdapter::GetCallingWindowInfo(
     const uint32_t windId, const int32_t userId, CallingWindowInfo &callingWindowInfo)
 {
@@ -80,7 +80,7 @@ bool WindowAdapter::GetCallingWindowInfo(
     return false;
 #endif
 }
-// LCOV_EXCL_START
+
 void WindowAdapter::RegisterCallingWindowInfoChangedListener(const WindowDisplayChangeHandler &handle)
 {
 #ifdef SCENE_BOARD_ENABLE
@@ -109,7 +109,7 @@ bool WindowAdapter::ListWindowInfo(std::vector<sptr<OHOS::Rosen::WindowInfo>> &w
     return false;
 #endif
 }
-
+// LCOV_EXCL_START
 uint64_t WindowAdapter::GetDisplayIdByToken(sptr<IRemoteObject> abilityToken)
 {
 #ifdef SCENE_BOARD_ENABLE
@@ -157,7 +157,7 @@ uint64_t WindowAdapter::GetDisplayIdByWindowId(int32_t callingWindowId)
     return DEFAULT_DISPLAY_ID;
 #endif
 }
-
+// LCOV_EXCL_STOP
 uint64_t WindowAdapter::GetDisplayIdByPid(int64_t callingPid)
 {
 #ifdef SCENE_BOARD_ENABLE

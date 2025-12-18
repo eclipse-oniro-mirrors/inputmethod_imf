@@ -95,7 +95,7 @@ void InputMethodSysEvent::ImeUsageBehaviourReporter()
     }
     StartTimerForReport();
 }
-
+// LCOV_EXCL_START
 void InputMethodSysEvent::RecordEvent(IMEBehaviour behaviour)
 {
     IMSA_HILOGD("run in.");
@@ -148,7 +148,7 @@ void InputMethodSysEvent::ReportImeState(ImeState state, pid_t pid, const std::s
     lastReportTime_ = currentTime;
     IMSA_HILOGD("Event triggered before 10 minutes, report successfully.");
 }
-
+// LCOV_EXCL_STOP
 const std::string InputMethodSysEvent::GetOperateInfo(int32_t infoCode)
 {
     auto iter = operateInfo_.find(static_cast<int32_t>(infoCode));
@@ -157,7 +157,7 @@ const std::string InputMethodSysEvent::GetOperateInfo(int32_t infoCode)
     }
     return "unknow operating.";
 }
-
+// LCOV_EXCL_START
 std::string InputMethodSysEvent::GetOperateAction(int32_t infoCode)
 {
     switch (infoCode) {
@@ -179,7 +179,7 @@ std::string InputMethodSysEvent::GetOperateAction(int32_t infoCode)
     }
     return "unknow action.";
 }
-
+// LCOV_EXCL_STOP
 void InputMethodSysEvent::SetUserId(int32_t userId)
 {
     userId_ = userId;

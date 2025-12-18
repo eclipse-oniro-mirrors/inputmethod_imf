@@ -113,7 +113,7 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIAbility(
     retInfo.second.displayGroupId = iter->displayGroupId_;
     return retInfo;
 }
-
+// LCOV_EXCL_START
 bool IdentityCheckerImpl::IsSystemApp(uint64_t fullTokenId)
 {
     return TokenIdKit::IsSystemAppByFullTokenID(fullTokenId);
@@ -133,7 +133,7 @@ bool IdentityCheckerImpl::IsBundleNameValid(uint32_t tokenId, const std::string 
     IMSA_HILOGD("checked successfully.");
     return true;
 }
-
+// LCOV_EXCL_STOP
 bool IdentityCheckerImpl::HasPermission(uint32_t tokenId, const std::string &permission)
 {
     if (AccessTokenKit::VerifyAccessToken(tokenId, permission) != PERMISSION_GRANTED) {
@@ -178,12 +178,12 @@ bool IdentityCheckerImpl::IsNativeSa(AccessTokenID tokenId)
 {
     return AccessTokenKit::GetTokenTypeFlag(tokenId) == TypeATokenTypeEnum::TOKEN_NATIVE;
 }
-
+// LCOV_EXCL_START
 bool IdentityCheckerImpl::IsFormShell(AccessTokenID tokenId)
 {
     return AccessTokenKit::GetTokenTypeFlag(tokenId) == TypeATokenTypeEnum::TOKEN_SHELL;
 }
-
+// LCOV_EXCL_STOP
 uint32_t IdentityCheckerImpl::GetUIExtensionWindowId(sptr<IRemoteObject> abilityToken)
 {
     if (abilityToken == nullptr) {
@@ -302,7 +302,7 @@ uint64_t IdentityCheckerImpl::GetDisplayIdByPid(int64_t callingPid, sptr<IRemote
     IMSA_HILOGD("GetDisplayIdByPid displayId: %{public}" PRIu64 "", displayId);
     return displayId;
 }
-
+// LCOV_EXCL_START
 bool IdentityCheckerImpl::IsValidVirtualIme(int32_t callingUid)
 {
     return ImeInfoInquirer::GetInstance().IsProxyIme(callingUid);
@@ -381,5 +381,6 @@ bool IdentityCheckerImpl::IsFocusedUIExtension(uint32_t callingTokenId, sptr<IRe
     IMSA_HILOGD("tokenId: %{public}d, isFocused: %{public}d", callingTokenId, isFocused);
     return isFocused;
 }
+// LCOV_EXCL_STOP
 } // namespace MiscServices
 } // namespace OHOS

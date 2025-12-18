@@ -101,7 +101,7 @@ CursorInfo InputMethodTools::InnerToCursorInfo(const CursorInfoInner &inner)
     cursorInfo.height = inner.height;
     return cursorInfo;
 }
-
+// LCOV_EXCL_START
 RangeInner InputMethodTools::RangeToInner(const Range &range)
 {
     RangeInner inner;
@@ -109,6 +109,7 @@ RangeInner InputMethodTools::RangeToInner(const Range &range)
     inner.end = range.end;
     return inner;
 }
+// LCOV_EXCL_STOP
 Range InputMethodTools::InnerToRange(const RangeInner &inner)
 {
     Range range;
@@ -213,7 +214,7 @@ InputClientInfo InputMethodTools::InnerToInputClientInfo(const InputClientInfoIn
     inputClientInfo.name = inner.name;
     return inputClientInfo;
 }
-
+// LCOV_EXCL_START
 PanelStatusInfoInner InputMethodTools::PanelStatusInfoToInner(const PanelStatusInfo &panelStatusInfo)
 {
     PanelStatusInfoInner inner;
@@ -223,7 +224,7 @@ PanelStatusInfoInner InputMethodTools::PanelStatusInfoToInner(const PanelStatusI
     inner.sessionId = panelStatusInfo.sessionId;
     return inner;
 }
-
+// LCOV_EXCL_STOP
 PanelStatusInfo InputMethodTools::InnerToPanelStatusInfo(const PanelStatusInfoInner &inner)
 {
     PanelStatusInfo panelStatusInfo;

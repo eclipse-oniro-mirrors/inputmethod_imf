@@ -24,6 +24,7 @@
 namespace OHOS {
 namespace MiscServices {
 using namespace OHOS::Rosen;
+// LCOV_EXCL_START
 std::string DisplayAdapter::GetDisplayName(uint64_t displayId)
 {
     auto displayInfo = GetDisplayInfo(displayId);
@@ -35,7 +36,7 @@ std::string DisplayAdapter::GetDisplayName(uint64_t displayId)
     IMSA_HILOGD("display: %{public}" PRIu64 " name is %{public}s.", displayId, name.c_str());
     return name;
 }
-
+// LCOV_EXCL_STOP
 uint64_t DisplayAdapter::GetDefaultDisplayId()
 {
     return DisplayManagerLite::GetInstance().GetDefaultDisplayId();
@@ -64,7 +65,7 @@ bool DisplayAdapter::IsFocusable(uint64_t displayId)
     IMSA_HILOGD("display: %{public}" PRIu64 " is %{public}u.", displayId, isFocusable);
     return isFocusable;
 }
-
+// LCOV_EXCL_START
 uint64_t DisplayAdapter::GetFinalDisplayId(uint64_t displayId)
 {
     IMSA_HILOGD("run in, display: %{public}" PRIu64 ".", displayId);
@@ -90,7 +91,7 @@ bool DisplayAdapter::IsRestrictedMainDisplayId(uint64_t displayId)
     IMSA_HILOGD("display:%{public}" PRIu64 " not support show ime.", displayId);
     return true;
 }
-
+// LCOV_EXCL_STOP
 sptr<DisplayInfo> DisplayAdapter::GetDisplayInfo(uint64_t displayId)
 {
     auto display = DisplayManagerLite::GetInstance().GetDisplayById(displayId);

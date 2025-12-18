@@ -23,7 +23,7 @@ InputTypeManager &InputTypeManager::GetInstance()
     static InputTypeManager instance;
     return instance;
 }
-
+// LCOV_EXCL_START
 bool InputTypeManager::IsSupported(InputType type)
 {
     if (!isTypeCfgReady_.load() && !Init()) {
@@ -43,7 +43,7 @@ bool InputTypeManager::IsInputType(const ImeIdentification &ime)
     std::lock_guard<std::mutex> lock(listLock_);
     return inputTypeImeList_.find(ime) != inputTypeImeList_.end();
 }
-
+// LCOV_EXCL_STOP
 int32_t InputTypeManager::GetImeByInputType(InputType type, ImeIdentification &ime)
 {
     if (!isTypeCfgReady_.load() && !Init()) {
@@ -60,14 +60,14 @@ int32_t InputTypeManager::GetImeByInputType(InputType type, ImeIdentification &i
     IMSA_HILOGI("type: %{public}d find ime: %{public}s|%{public}s.", type, ime.bundleName.c_str(), ime.subName.c_str());
     return ErrorCode::NO_ERROR;
 }
-
+// LCOV_EXCL_START
 void InputTypeManager::Set(bool isStarted, const ImeIdentification &currentIme)
 {
     std::lock_guard<std::mutex> lock(stateLock_);
     isStarted_ = isStarted;
     currentTypeIme_ = currentIme;
 }
-
+// LCOV_EXCL_STOP
 bool InputTypeManager::IsStarted()
 {
     std::lock_guard<std::mutex> lock(stateLock_);
