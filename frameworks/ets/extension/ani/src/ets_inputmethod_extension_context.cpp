@@ -273,9 +273,7 @@ void ETSInputMethodExtensionContext::OnDestroy(ani_env *env, ani_object aniObj, 
         AsyncCallback(env, callback, aniObject, nullptr);
         return;
     }
-    errCode = context->TerminateAbility();
-    aniObject = AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(env, errCode);
-    AsyncCallback(env, callback, aniObject, nullptr);
+    AsyncCallback(env, callback, nullptr, nullptr);
 }
 } // namespace MiscServices
 } // namespace OHOS
