@@ -30,22 +30,16 @@ uint64_t ClientGroup::GetDisplayGroupId()
 }
 
 int32_t ClientGroup::AddClientInfo(
-    const sptr<IRemoteObject> &inputClient, const InputClientInfo &clientInfo, ClientAddEvent event)
+    const sptr<IRemoteObject> &inputClient, const InputClientInfo &clientInfo)
 {
     auto cacheInfo = GetClientInfo(inputClient);
     if (cacheInfo != nullptr) {
         IMSA_HILOGD("info is existed.");
-        if (event == PREPARE_INPUT) {
-            if (cacheInfo->uiExtensionTokenId == IMF_INVALID_TOKENID
-                && clientInfo.uiExtensionTokenId != IMF_INVALID_TOKENID) {
-                UpdateClientInfo(inputClient, { { UpdateFlag::UIEXTENSION_TOKENID, clientInfo.uiExtensionTokenId } });
-            }
-            UpdateClientInfo(inputClient,
-                { { UpdateFlag::TEXT_CONFIG, clientInfo.config }, { UpdateFlag::CLIENT_TYPE, clientInfo.type } });
-        }
-        if (event == START_LISTENING) {
-            UpdateClientInfo(inputClient, { { UpdateFlag::EVENTFLAG, clientInfo.eventFlag } });
-        }
+        UpdateClientInfo(inputClient,
+            { { UpdateFlag::TEXT_CONFIG, clientInfo.config }, { UpdateFlag::CLIENT_TYPE, clientInfo.type },
+                { UpdateFlag::UIEXTENSION_TOKENID, clientInfo.uiExtensionTokenId },
+                { UpdateFlag::UIEXTENSION_HOST_WINDOW_PID, clientInfo.uiExtensionHostPid },
+                { UpdateFlag::CLIENT_GROUP_ID, clientInfo.clientGroupId } });
         return ErrorCode::NO_ERROR;
     }
     auto info = std::make_shared<InputClientInfo>(clientInfo);
@@ -74,20 +68,11 @@ int32_t ClientGroup::AddClientInfo(
     return ErrorCode::NO_ERROR;
 }
 // LCOV_EXCL_STOP
-void ClientGroup::RemoveClientInfo(const sptr<IRemoteObject> &client, bool isClientDied)
+void ClientGroup::RemoveClientInfo(const sptr<IRemoteObject> &client)
 {
     auto clientInfo = GetClientInfo(client);
     if (clientInfo == nullptr) {
         IMSA_HILOGD("client already removed.");
-        return;
-    }
-    // if client is subscriber and the release is not because of the client died, do not remove
-    if (clientInfo->eventFlag != NO_EVENT_ON && !isClientDied) {
-        IMSA_HILOGD("is subscriber, do not remove.");
-        auto isShowKeyboard = false;
-        auto bindImeType = ImeType::NONE;
-        UpdateClientInfo(
-            client, { { UpdateFlag::BINDIMETYPE, bindImeType }, { UpdateFlag::ISSHOWKEYBOARD, isShowKeyboard } });
         return;
     }
     if (clientInfo->deathRecipient != nullptr) {
@@ -99,8 +84,9 @@ void ClientGroup::RemoveClientInfo(const sptr<IRemoteObject> &client, bool isCli
     IMSA_HILOGI("client[%{public}d] is removed.", clientInfo->pid);
 }
 // LCOV_EXCL_START
-void ClientGroup::UpdateClientInfo(const sptr<IRemoteObject> &client, const std::unordered_map<UpdateFlag,
-    std::variant<bool, uint32_t, ImeType, ClientState, TextTotalConfig, ClientType, pid_t>> &updateInfos)
+void ClientGroup::UpdateClientInfo(const sptr<IRemoteObject> &client,
+    const std::unordered_map<UpdateFlag, std::variant<bool, uint32_t, ImeType, ClientState, TextTotalConfig,
+                                             ClientType, pid_t, std::shared_ptr<BindImeData>, uint64_t>> &updateInfos)
 {
     if (client == nullptr) {
         IMSA_HILOGE("client is nullptr!");
@@ -114,16 +100,8 @@ void ClientGroup::UpdateClientInfo(const sptr<IRemoteObject> &client, const std:
     }
     for (const auto &updateInfo : updateInfos) {
         switch (updateInfo.first) {
-            case UpdateFlag::EVENTFLAG: {
-                VariantUtil::GetValue(updateInfo.second, it->second->eventFlag);
-                break;
-            }
             case UpdateFlag::ISSHOWKEYBOARD: {
                 VariantUtil::GetValue(updateInfo.second, it->second->isShowKeyboard);
-                break;
-            }
-            case UpdateFlag::BINDIMETYPE: {
-                VariantUtil::GetValue(updateInfo.second, it->second->bindImeType);
                 break;
             }
             case UpdateFlag::STATE: {
@@ -142,8 +120,16 @@ void ClientGroup::UpdateClientInfo(const sptr<IRemoteObject> &client, const std:
                 VariantUtil::GetValue(updateInfo.second, it->second->type);
                 break;
             }
-            case UpdateFlag::BIND_IME_PID: {
-                VariantUtil::GetValue(updateInfo.second, it->second->bindImePid);
+            case UpdateFlag::BIND_IME_DATA: {
+                VariantUtil::GetValue(updateInfo.second, it->second->bindImeData);
+                break;
+            }
+            case UpdateFlag::UIEXTENSION_HOST_WINDOW_PID: {
+                VariantUtil::GetValue(updateInfo.second, it->second->uiExtensionHostPid);
+                break;
+            }
+            case UpdateFlag::CLIENT_GROUP_ID: {
+                VariantUtil::GetValue(updateInfo.second, it->second->clientGroupId);
                 break;
             }
             default:
@@ -154,15 +140,74 @@ void ClientGroup::UpdateClientInfo(const sptr<IRemoteObject> &client, const std:
 
 std::shared_ptr<InputClientInfo> ClientGroup::GetClientInfo(pid_t pid)
 {
+    std::lock_guard<std::recursive_mutex> lock(mtx_);
     auto iter = std::find_if(
         mapClients_.begin(), mapClients_.end(), [pid](const auto &mapClient) { return mapClient.second->pid == pid; });
     if (iter == mapClients_.end()) {
         IMSA_HILOGD("not found.");
         return nullptr;
     }
-    std::lock_guard<std::recursive_mutex> lock(mtx_);
     return iter->second;
 }
+
+std::shared_ptr<InputClientInfo> ClientGroup::GetClientInfoByHostPid(pid_t hostPid)
+{
+    std::lock_guard<std::recursive_mutex> lock(mtx_);
+    auto iter = std::find_if(mapClients_.begin(), mapClients_.end(), [hostPid](const auto &mapClient) {
+        auto clientInfo = mapClient.second;
+        return clientInfo != nullptr && clientInfo->uiExtensionHostPid == hostPid;
+    });
+    if (iter == mapClients_.end()) {
+        IMSA_HILOGD("not found.");
+        return nullptr;
+    }
+    return iter->second;
+}
+
+std::shared_ptr<InputClientInfo> ClientGroup::GetClientInfoByBindIme(pid_t bindImePid)
+{
+    std::lock_guard<std::recursive_mutex> lock(mtx_);
+    auto iter = std::find_if(mapClients_.begin(), mapClients_.end(), [bindImePid](const auto &mapClient) {
+        auto clientInfo = mapClient.second;
+        return clientInfo != nullptr && clientInfo->bindImeData != nullptr
+               && clientInfo->bindImeData->pid == bindImePid;
+    });
+    if (iter == mapClients_.end()) {
+        IMSA_HILOGD("not found.");
+        return nullptr;
+    }
+    return iter->second;
+}
+
+std::shared_ptr<InputClientInfo> ClientGroup::GetClientInfoBoundRealIme()
+{
+    std::lock_guard<std::recursive_mutex> lock(mtx_);
+    auto iter = std::find_if(mapClients_.begin(), mapClients_.end(), [](const auto &mapClient) {
+        auto clientInfo = mapClient.second;
+        return clientInfo != nullptr && clientInfo->bindImeData != nullptr && clientInfo->bindImeData->IsRealIme();
+    });
+    if (iter == mapClients_.end()) {
+        IMSA_HILOGD("not found.");
+        return nullptr;
+    }
+    return iter->second;
+}
+
+std::shared_ptr<InputClientInfo> ClientGroup::GetClientBoundImeByWindowId(uint32_t windowId)
+{
+    std::lock_guard<std::recursive_mutex> lock(mtx_);
+    auto iter = std::find_if(mapClients_.begin(), mapClients_.end(), [windowId](const auto &mapClient) {
+        auto clientInfo = mapClient.second;
+        return clientInfo != nullptr && clientInfo->config.inputAttribute.windowId == windowId
+               && clientInfo->bindImeData != nullptr;
+    });
+    if (iter == mapClients_.end()) {
+        IMSA_HILOGD("not found.");
+        return nullptr;
+    }
+    return iter->second;
+}
+
 // LCOV_EXCL_STOP
 std::shared_ptr<InputClientInfo> ClientGroup::GetCurrentClientInfo()
 {
@@ -273,91 +318,6 @@ bool ClientGroup::IsCurClientUnFocused(int32_t pid, int32_t uid)
         return true;
     }
     return clientInfo->pid == pid && clientInfo->uid == uid;
-}
-
-int32_t ClientGroup::NotifyInputStartToClients(uint32_t callingWndId, int32_t requestKeyboardReason)
-{
-    IMSA_HILOGD("NotifyInputStartToClients enter");
-    auto clientMap = GetClientMap();
-    for (const auto &client : clientMap) {
-        auto clientInfo = client.second;
-        if (clientInfo == nullptr || clientInfo->client == nullptr ||
-            !EventStatusManager::IsInputStatusChangedOn(clientInfo->eventFlag)) {
-            IMSA_HILOGD("nullptr clientInfo or no need to notify");
-            continue;
-        }
-        int32_t ret = clientInfo->client->NotifyInputStart(callingWndId, requestKeyboardReason);
-        if (ret != ErrorCode::NO_ERROR) {
-            IMSA_HILOGE("failed to notify OnInputStart, errorCode: %{public}d", ret);
-            continue;
-        }
-    }
-    return ErrorCode::NO_ERROR;
-}
-
-int32_t ClientGroup::NotifyInputStopToClients()
-{
-    IMSA_HILOGD("NotifyInputStopToClients enter");
-    auto clientMap = GetClientMap();
-    for (const auto &client : clientMap) {
-        auto clientInfo = client.second;
-        if (clientInfo == nullptr || clientInfo->client == nullptr
-            || !EventStatusManager::IsInputStatusChangedOn(clientInfo->eventFlag)) {
-            IMSA_HILOGD("nullptr clientInfo or no need to notify");
-            continue;
-        }
-        int32_t ret = clientInfo->client->NotifyInputStop();
-        if (ret != ErrorCode::NO_ERROR) {
-            IMSA_HILOGE("failed to notify OnInputStop, errorCode: %{public}d", ret);
-            continue;
-        }
-    }
-    return ErrorCode::NO_ERROR;
-}
-
-int32_t ClientGroup::NotifyPanelStatusChange(const InputWindowStatus &status, const ImeWindowInfo &info)
-{
-    auto clientMap = GetClientMap();
-    for (const auto &client : clientMap) {
-        auto clientInfo = client.second;
-        if (clientInfo == nullptr) {
-            IMSA_HILOGD("client nullptr or no need to notify.");
-            continue;
-        }
-        if (status == InputWindowStatus::SHOW && !EventStatusManager::IsImeShowOn(clientInfo->eventFlag)) {
-            IMSA_HILOGD("has not imeShow callback");
-            continue;
-        }
-        if (status == InputWindowStatus::HIDE && !EventStatusManager::IsImeHideOn(clientInfo->eventFlag)) {
-            IMSA_HILOGD("has not imeHide callback");
-            continue;
-        }
-        int32_t ret = clientInfo->client->OnPanelStatusChange(static_cast<uint32_t>(status), info);
-        if (ret != ErrorCode::NO_ERROR) {
-            IMSA_HILOGE("failed to NotifyPanelStatusChange, ret: %{public}d", ret);
-            continue;
-        }
-    }
-    return ErrorCode::NO_ERROR;
-}
-// LCOV_EXCL_STOP
-int32_t ClientGroup::NotifyImeChangeToClients(const Property &property, const SubProperty &subProperty)
-{
-    auto clientMap = GetClientMap();
-    for (const auto &client : clientMap) {
-        auto clientInfo = client.second;
-        if (clientInfo == nullptr || !EventStatusManager::IsImeChangeOn(clientInfo->eventFlag)) {
-            IMSA_HILOGD("client nullptr or no need to notify.");
-            continue;
-        }
-        IMSA_HILOGD("notify client: [%{public}d]", static_cast<int32_t>(clientInfo->pid));
-        int32_t ret = clientInfo->client->OnSwitchInput(property, subProperty);
-        if (ret != ErrorCode::NO_ERROR) {
-            IMSA_HILOGE("notify failed, ret: %{public}d, uid: %{public}d!", ret, static_cast<int32_t>(clientInfo->uid));
-            continue;
-        }
-    }
-    return ErrorCode::NO_ERROR;
 }
 
 std::shared_ptr<InputClientInfo> ClientGroup::GetClientInfo(sptr<IRemoteObject> inputClient)

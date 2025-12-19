@@ -52,8 +52,7 @@ public:
     static InputMethodAbility &GetInstance();
     int32_t SetCoreAndAgent();
     int32_t InitConnect();
-    int32_t UnRegisteredProxyIme(UnRegisteredType type);
-    int32_t RegisterProxyIme(uint64_t displayId = DEFAULT_DISPLAY_ID);
+    int32_t RegisterProxyIme(uint64_t displayId);
     int32_t UnregisterProxyIme(uint64_t displayId);
     int32_t BindImeMirror();
     int32_t UnbindImeMirror();
@@ -75,7 +74,7 @@ public:
     int32_t SelectByMovement(int32_t direction, const AsyncIpcCallBack &callback = nullptr);
     int32_t DispatchKeyEvent(
         const std::shared_ptr<MMI::KeyEvent> &keyEvent, uint64_t cbId, const sptr<IRemoteObject> &channelObject);
-    void SetCallingWindow(uint32_t windowId);
+    void SetCallingWindow(uint32_t windowId, uint32_t finalWindowId);
     int32_t GetEnterKeyType(int32_t &keyType);
     int32_t GetInputPattern(int32_t &inputPattern);
     int32_t GetTextIndexAtCursor(int32_t &index, const AsyncIpcCallBack &callback = nullptr);
@@ -127,7 +126,7 @@ public:
     int32_t StartInput(const InputClientInfo &clientInfo, bool isBindFromClient);
     int32_t StopInput(sptr<IRemoteObject> channelObj, uint32_t sessionId);
     int32_t ShowKeyboard(int32_t requestKeyboardReason);
-    int32_t HideKeyboard();
+    int32_t HideKeyboard(uint64_t displayGroupId, bool isCheckGroupId);
     int32_t OnDiscardTypingText();
     int32_t OnNotifyPreemption();
 

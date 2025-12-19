@@ -67,6 +67,14 @@ ohos_fuzztest("SystemAbilityStubFuzzTest") {
     "window_manager:libdm_lite",
   ]
 
+  defines = []
+  if (window_manager_use_sceneboard) {
+    external_deps += [ "window_manager:libwm_lite" ]
+    defines += [ "SCENE_BOARD_ENABLE" ]
+  } else {
+    external_deps += [ "window_manager:libwm" ]
+  }
+
   if (build_selinux) {
     external_deps += [ "selinux_adapter:librestorecon" ]
     cflags += [ "-DWITH_SELINUX" ]

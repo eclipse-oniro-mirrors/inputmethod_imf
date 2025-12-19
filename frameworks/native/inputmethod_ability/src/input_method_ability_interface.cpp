@@ -27,12 +27,12 @@ InputMethodAbilityInterface &InputMethodAbilityInterface::GetInstance()
 
 int32_t InputMethodAbilityInterface::RegisteredProxy()
 {
-    return InputMethodAbility::GetInstance().RegisterProxyIme();
+    return InputMethodAbility::GetInstance().RegisterProxyIme(0);
 }
 
 int32_t InputMethodAbilityInterface::UnRegisteredProxy(UnRegisteredType type)
 {
-    return InputMethodAbility::GetInstance().UnRegisteredProxyIme(type);
+    return InputMethodAbility::GetInstance().UnregisterProxyIme(0);
 }
 
 int32_t InputMethodAbilityInterface::RegisterProxyIme(uint64_t displayId)

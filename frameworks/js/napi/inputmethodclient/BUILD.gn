@@ -66,6 +66,7 @@ ohos_shared_library("inputmethod") {
     "ability_base:want",
     "ability_runtime:abilitykit_native",
     "ability_runtime:extensionkit_native",
+    "ace_engine:ace_uicontent",
     "c_utils:utils",
     "eventhandler:libeventhandler",
     "ffrt:libffrt",

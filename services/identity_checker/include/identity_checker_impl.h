@@ -16,27 +16,47 @@
 #ifndef SERVICES_INCLUDE_IDENTITY_CHECKER_IMPL_H
 #define SERVICES_INCLUDE_IDENTITY_CHECKER_IMPL_H
 
+#include "focus_change_info.h"
 #include "identity_checker.h"
-
 namespace OHOS {
 namespace MiscServices {
 class IdentityCheckerImpl : public IdentityChecker {
 public:
-    bool IsFocused(int64_t callingPid, uint32_t callingTokenId, int64_t focusedPid = INVALID_PID,
-        bool isAttach = false, sptr<IRemoteObject> abilityToken = nullptr) override;
+    std::pair<bool, FocusedInfo> IsFocused(int64_t callingPid, uint32_t callingTokenId, uint32_t windowId = 0,
+        const sptr<IRemoteObject> &abilityToken = nullptr) override;
     bool IsSystemApp(uint64_t fullTokenId) override;
     bool IsBundleNameValid(uint32_t tokenId, const std::string &validBundleName) override;
     bool HasPermission(uint32_t tokenId, const std::string &permission) override;
+    std::pair<bool, FocusedInfo> CheckBroker(Security::AccessToken::AccessTokenID tokenId) override;
     bool IsBroker(Security::AccessToken::AccessTokenID tokenId) override;
     bool IsNativeSa(Security::AccessToken::AccessTokenID tokenId) override;
     bool IsFormShell(Security::AccessToken::AccessTokenID tokenId) override;
     std::string GetBundleNameByToken(uint32_t tokenId) override;
     uint32_t GetUIExtensionWindowId(sptr<IRemoteObject> abilityToken = nullptr) override;
-    bool IsFocusedUIExtension(uint32_t callingTokenId, sptr<IRemoteObject> abilityToken = nullptr) override;
+    bool IsFocusedUIExtension(uint32_t callingTokenId) override;
     uint64_t GetDisplayIdByWindowId(int32_t callingWindowId) override;
     uint64_t GetDisplayIdByPid(int64_t callingPid, sptr<IRemoteObject> abilityToken = nullptr) override;
     bool IsValidVirtualIme(int32_t callingUid) override;
     bool IsSpecialSaUid() override;
+    bool IsUIExtension(int64_t pid) override;
+
+private:
+    std::pair<bool, FocusedInfo> IsFocusedUIAbility(
+        int64_t callingPid, uint32_t windowId, const std::vector<Rosen::FocusChangeInfo> &focusWindowInfos);
+    std::pair<bool, FocusedInfo> IsFocusedUIAbility(
+        int64_t callingPid, uint64_t displayId, const std::vector<Rosen::FocusChangeInfo> &focusWindowInfos);
+    std::pair<bool, FocusedInfo> IsFocusedUIAbility(
+        int64_t callingPid, const std::vector<Rosen::FocusChangeInfo> &focusWindowInfos);
+    std::pair<bool, FocusedInfo> IsFocusedUIExtension(uint32_t callingTokenId, const sptr<IRemoteObject> &abilityToken,
+        const std::vector<Rosen::FocusChangeInfo> &focusWindowInfos);
+    std::pair<bool, FocusedInfo> IsFocusedUIExtension(
+        uint32_t windowId, uint64_t displayId, const std::vector<Rosen::FocusChangeInfo> &focusWindowInfos);
+    std::pair<bool, FocusedInfo> IsFocusedUIExtension(
+        uint32_t callingTokenId, const std::vector<Rosen::FocusChangeInfo> &focusWindowInfos);
+    bool IsBrokerInner(Security::AccessToken::AccessTokenID tokenId);
+    std::pair<bool, FocusedInfo> IsFocusedScbNotEnable(
+        int64_t callingPid, uint32_t callingTokenId, uint32_t windowId, const sptr<IRemoteObject> &abilityToken);
+    bool IsFocusedUIExtension(uint32_t callingTokenId, sptr<IRemoteObject> abilityToken);
 };
 } // namespace MiscServices
 } // namespace OHOS

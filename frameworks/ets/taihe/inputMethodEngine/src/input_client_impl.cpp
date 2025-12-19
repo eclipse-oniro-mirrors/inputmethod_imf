@@ -243,7 +243,6 @@ void InputClientImpl::SendPrivateCommandAsync(taihe::map_view<taihe::string, Com
 
 ohos::inputMethodEngine::WindowInfoCallback InputClientImpl::GetCallingWindowInfoAsync()
 {
-    WindowInfo_t result {};
     CallingWindowInfo windowInfo {};
     int32_t ret = InputMethodAbility::GetInstance().GetCallingWindowInfo(windowInfo);
     if (ret != ErrorCode::NO_ERROR) {
@@ -256,7 +255,13 @@ ohos::inputMethodEngine::WindowInfoCallback InputClientImpl::GetCallingWindowInf
         IMSA_HILOGE("env is nullptr, GetCallingWindowInfo failed!");
         return ohos::inputMethodEngine::WindowInfoCallback::make_type_null();
     }
-    result = CommonConvert::NativeWindowInfoToAni(env, windowInfo);
+    uintptr_t rect = reinterpret_cast<uintptr_t>(CommonConvert::CreateAniRect(env, windowInfo.rect));
+    ani_object tmpStatus = static_cast<ani_object>(CommonConvert::CreateAniWindowStatus(env, windowInfo.status));
+    uintptr_t status = reinterpret_cast<uintptr_t>(tmpStatus);
+    WindowInfo_t result {
+        .rect = rect,
+        .status = status
+    };
     return ohos::inputMethodEngine::WindowInfoCallback::make_type_WindowInfo(result);
 }
 

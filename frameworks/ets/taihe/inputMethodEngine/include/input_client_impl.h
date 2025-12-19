@@ -18,7 +18,6 @@
 #include "ohos.inputMethodEngine.proj.hpp"
 #include "ohos.inputMethodEngine.impl.hpp"
 #include "ohos.inputMethodEngine.InputMethodAbility.ani.1.hpp"
-#include "ani_message_handler.h"
 namespace OHOS {
 namespace MiscServices {
 class InputClientImpl {

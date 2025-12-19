@@ -31,12 +31,13 @@ enum class UpdateFlag : uint32_t {
     TEXT_CONFIG,
     UIEXTENSION_TOKENID,
     CLIENT_TYPE,
-    BIND_IME_PID,
+    BIND_IME_DATA,
+    UIEXTENSION_HOST_WINDOW_PID,
+    CLIENT_GROUP_ID,
 };
 enum class ImeType : int32_t {
     IME = 0,
     PROXY_IME,
-    PROXY_AGENT_IME,
     IME_MIRROR,
     NONE
 };
@@ -53,6 +54,18 @@ enum ClientType : uint32_t {
     CLIENT_TYPE_END,
 };
 
+struct BindImeData {
+    pid_t pid;
+    ImeType type{ ImeType::IME };
+    BindImeData(pid_t pidParam, ImeType typeParam) : pid(pidParam), type(typeParam)
+    {
+    }
+    bool IsRealIme() const
+    {
+        return type == ImeType::IME;
+    }
+};
+
 constexpr uint32_t NO_EVENT_ON = 0;
 constexpr uint32_t IMF_INVALID_TOKENID = 0;
 constexpr uint64_t DEFAULT_DISPLAY_ID = 0;
@@ -61,9 +74,7 @@ struct InputClientInfo {
     pid_t pid { -1 };                        // process id
     pid_t uid { -1 };                        // uid
     int32_t userID { 0 };                    // user id of input client
-    uint64_t displayId { DEFAULT_DISPLAY_ID };
     bool isShowKeyboard { false };           // soft keyboard status
-    ImeType bindImeType { ImeType::NONE };   // type of the ime client bind
     TextTotalConfig config = {};             // text config
     uint32_t eventFlag { NO_EVENT_ON };      // the flag of the all listen event
     InputAttribute attribute;                // the input client attribute
@@ -73,20 +84,20 @@ struct InputClientInfo {
     ClientState state { ClientState::INACTIVE };          // the state of input client
     bool isNotifyInputStart { true };
     bool needHide { false }; // panel needs to be hidden first, when input pattern is switched between pwd and normal
-    uint32_t uiExtensionTokenId { IMF_INVALID_TOKENID }; // the value is valid only in curClient and only UIExtension
+    uint32_t uiExtensionTokenId{ IMF_INVALID_TOKENID }; // the value is valid only in curClient and only UIExtension
+    pid_t uiExtensionHostPid{ INVALID_PID };
     RequestKeyboardReason requestKeyboardReason { RequestKeyboardReason::NONE }; // show keyboard reason
     ClientType type{ INNER_KIT };                                               // for hiSysEvent
     std::string name; // for hiSysEvent, client name:SA/processName app/bundleName
-    pid_t bindImePid { -1 };
+    std::shared_ptr<BindImeData> bindImeData{ nullptr };
+    uint64_t clientGroupId{ 0 };
 };
 
 struct InputClientInfoInner : public Parcelable {
     pid_t pid { -1 };                        // process id
     pid_t uid { -1 };                        // uid
     int32_t userID { 0 };                    // user id of input client
-    uint64_t displayId { DEFAULT_DISPLAY_ID };
     bool isShowKeyboard { false };           // soft keyboard status
-    ImeType bindImeType { ImeType::NONE };   // type of the ime client bind
     TextTotalConfigInner config = {};             // text config
     uint32_t eventFlag { NO_EVENT_ON };      // the flag of the all listen event
     InputAttributeInner attribute;                // the input client attribute

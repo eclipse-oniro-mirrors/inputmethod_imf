@@ -12,16 +12,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "inputmethod_controller_capi.h"
+
 #include <map>
 #include <mutex>
 
 #include "global.h"
 #include "input_method_controller.h"
 #include "input_method_utils.h"
-#include "inputmethod_controller_capi.h"
 #include "native_inputmethod_types.h"
 #include "native_inputmethod_utils.h"
 #include "native_text_changed_listener.h"
+#include "node_module_inner.h"
+#include "ui_content.h"
 using namespace OHOS::MiscServices;
 #ifdef __cplusplus
 extern "C" {
@@ -144,6 +147,66 @@ static TextConfig ConstructTextConfig(const InputMethod_TextConfig &config)
     textConfig.inputAttribute.placeholder = std::u16string(config.placeholder, placeholderLength);
     textConfig.inputAttribute.abilityName =  std::u16string(config.abilityName, abilityNameLength);
     return textConfig;
+}
+
+InputMethod_ErrorCode OH_InputMethodController_AttachWithUIContext(ArkUI_ContextHandle context,
+    InputMethod_TextEditorProxy *textEditorProxy, InputMethod_AttachOptions *options,
+    InputMethod_InputMethodProxy **inputMethodProxy)
+{
+    if (context == nullptr || (IsValidTextEditorProxy(textEditorProxy) != IME_ERR_OK) || options == nullptr ||
+        inputMethodProxy == nullptr) {
+        IMSA_HILOGE("invalid parameter");
+        return IME_ERR_NULL_POINTER;
+    }
+
+    auto *uiContext = reinterpret_cast<ArkUI_Context*>(context);
+    int32_t id = OHOS::Ace::UIContent::GetUIContentWindowID(uiContext->id);
+    if (id < 0) {
+        IMSA_HILOGE("failed to get windowId with instanceId: %{public}d", uiContext->id);
+        return IME_ERR_PARAMCHECK;
+    }
+    auto windowId = static_cast<uint32_t>(id);
+
+    InputMethod_ErrorCode errCode = GetInputMethodProxy(textEditorProxy);
+    if (errCode != IME_ERR_OK) {
+        return errCode;
+    }
+
+    InputMethod_TextConfig config;
+    textEditorProxy->getTextConfigFunc(textEditorProxy, &config);
+
+    auto textConfig = ConstructTextConfig(config);
+    textConfig.windowId = windowId;
+
+    auto controller = InputMethodController::GetInstance();
+    if (controller == nullptr) {
+        IMSA_HILOGE("controller is nullptr");
+        return IME_ERR_NULL_POINTER;
+    }
+    OHOS::sptr<NativeTextChangedListener> listener = nullptr;
+    {
+        std::lock_guard<std::mutex> guard(g_textEditorProxyMapMutex);
+        if (g_inputMethodProxy != nullptr) {
+            listener = g_inputMethodProxy->listener;
+        }
+    }
+    AttachOptions attachOptions;
+    attachOptions.isShowKeyboard = options->showKeyboard;
+    attachOptions.requestKeyboardReason =
+        static_cast<RequestKeyboardReason>(static_cast<int32_t>(options->requestKeyboardReason));
+    int32_t err = controller->Attach(listener, attachOptions, textConfig, ClientType::CAPI);
+    if (err == ErrorCode::NO_ERROR) {
+        errCode = IME_ERR_OK;
+        std::lock_guard<std::mutex> guard(g_textEditorProxyMapMutex);
+        if (g_inputMethodProxy != nullptr) {
+            g_inputMethodProxy->attached = true;
+        }
+        *inputMethodProxy = g_inputMethodProxy;
+    } else {
+        errCode = ErrorCodeConvert(err);
+    }
+
+    return errCode;
 }
 
 InputMethod_ErrorCode OH_InputMethodController_Attach(InputMethod_TextEditorProxy *textEditor,

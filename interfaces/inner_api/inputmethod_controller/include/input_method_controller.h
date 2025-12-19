@@ -517,7 +517,8 @@ public:
      * @return Returns 0 for success, others for failure.
      * @since 6
      */
-    IMF_API int32_t ShowSoftKeyboard(ClientType type = ClientType::INNER_KIT);
+    IMF_API int32_t ShowSoftKeyboard(
+        ClientType type = ClientType::INNER_KIT, uint64_t displayId = ImfCommonConst::DEFAULT_DISPLAY_ID);
 
     /**
      * @brief Hide soft keyboard.
@@ -527,7 +528,7 @@ public:
      * @return Returns 0 for success, others for failure.
      * @since 6
      */
-    IMF_API int32_t HideSoftKeyboard();
+    IMF_API int32_t HideSoftKeyboard(uint64_t displayId = ImfCommonConst::DEFAULT_DISPLAY_ID);
 
     /**
      * @brief Stop current input session.
@@ -572,16 +573,6 @@ public:
      * @since 6
      */
     IMF_API int32_t HideCurrentInput();
-
-    /**
-     * @brief Request to show input method.
-     *
-     * This function is used to request to show input method.
-     *
-     * @return Returns 0 for success, others for failure.
-     * @since 11
-     */
-    IMF_API int32_t RequestShowInput();
 
     /**
      * @brief Request to hide input method.
@@ -853,7 +844,8 @@ public:
      * @return Returns 0 for success, others for failure.
      * @since 11
      */
-    IMF_API int32_t IsPanelShown(const PanelInfo &panelInfo, bool &isShown);
+    IMF_API int32_t IsPanelShown(
+        const PanelInfo &panelInfo, bool &isShown, uint64_t displayId = ImfCommonConst::DEFAULT_DISPLAY_ID);
     int32_t UpdateListenEventFlag(uint32_t finalEventFlag, uint32_t eventFlag, bool isOn);
 
     /**
@@ -1047,7 +1039,7 @@ private:
     std::pair<int64_t, std::string> GetBindImeInfo();
     int32_t SetPreviewTextInner(const std::string &text, const Range &range);
     int32_t ShowTextInputInner(const AttachOptions &attachOptions, ClientType type);
-    int32_t ShowSoftKeyboardInner(ClientType type);
+    int32_t ShowSoftKeyboardInner(uint64_t displayId, ClientType type);
     void ReportClientShow(int32_t eventCode, int32_t errCode, ClientType type);
     void GetWindowScaleCoordinate(uint32_t windowId, CursorInfo &cursorInfo);
     void CalibrateImmersiveParam(InputAttribute &inputAttribute);
@@ -1056,6 +1048,7 @@ private:
     int32_t SendRequestToImeMirrorAgent(std::function<int32_t(std::shared_ptr<IInputMethodAgent>)> task);
     void SetInputReady(const std::vector<sptr<IRemoteObject>> &agentObjects, const std::vector<BindImeInfo> &imeInfos);
     std::shared_ptr<ImcInnerListener> GetImcInnerListener();
+    int32_t SetCallingWindowByIMSA(uint32_t windowId);
     void NotifyAttachFailure(int32_t errCode);
     struct CtrlEventInfo {
         std::chrono::steady_clock::time_point timestamp;

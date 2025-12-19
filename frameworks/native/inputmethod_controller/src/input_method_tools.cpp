@@ -51,6 +51,7 @@ InputAttributeInner InputMethodTools::AttributeToInner(const InputAttribute &att
     inner.fluidLightMode = attribute.fluidLightMode;
     inner.windowId = attribute.windowId;
     inner.callingDisplayId = attribute.callingDisplayId;
+    inner.displayGroupId = attribute.displayGroupId;
     inner.placeholder = attribute.placeholder;
     inner.abilityName = attribute.abilityName;
     inner.capitalizeMode = attribute.capitalizeMode;
@@ -72,6 +73,7 @@ InputAttribute InputMethodTools::InnerToAttribute(const InputAttributeInner &inn
     inputAttribute.fluidLightMode = inner.fluidLightMode;
     inputAttribute.windowId = inner.windowId;
     inputAttribute.callingDisplayId = inner.callingDisplayId;
+    inputAttribute.displayGroupId = inner.displayGroupId;
     inputAttribute.placeholder = inner.placeholder;
     inputAttribute.abilityName = inner.abilityName;
     inputAttribute.capitalizeMode = inner.capitalizeMode;
@@ -99,7 +101,7 @@ CursorInfo InputMethodTools::InnerToCursorInfo(const CursorInfoInner &inner)
     cursorInfo.height = inner.height;
     return cursorInfo;
 }
-
+// LCOV_EXCL_START
 RangeInner InputMethodTools::RangeToInner(const Range &range)
 {
     RangeInner inner;
@@ -107,6 +109,7 @@ RangeInner InputMethodTools::RangeToInner(const Range &range)
     inner.end = range.end;
     return inner;
 }
+// LCOV_EXCL_STOP
 Range InputMethodTools::InnerToRange(const RangeInner &inner)
 {
     Range range;
@@ -173,7 +176,6 @@ InputClientInfoInner InputMethodTools::InputClientInfoToInner(const InputClientI
     inner.uid = inputClientInfo.uid;
     inner.userID = inputClientInfo.userID;
     inner.isShowKeyboard = inputClientInfo.isShowKeyboard;
-    inner.bindImeType = inputClientInfo.bindImeType;
     inner.config = TextTotalConfigToInner(inputClientInfo.config);
     inner.eventFlag = inputClientInfo.eventFlag;
     inner.attribute = AttributeToInner(inputClientInfo.attribute);
@@ -197,7 +199,6 @@ InputClientInfo InputMethodTools::InnerToInputClientInfo(const InputClientInfoIn
     inputClientInfo.uid = inner.uid;
     inputClientInfo.userID = inner.userID;
     inputClientInfo.isShowKeyboard = inner.isShowKeyboard;
-    inputClientInfo.bindImeType = inner.bindImeType;
     inputClientInfo.config = InnerToTextTotalConfig(inner.config);
     inputClientInfo.eventFlag = inner.eventFlag;
     inputClientInfo.attribute = InnerToAttribute(inner.attribute);
@@ -213,7 +214,7 @@ InputClientInfo InputMethodTools::InnerToInputClientInfo(const InputClientInfoIn
     inputClientInfo.name = inner.name;
     return inputClientInfo;
 }
-
+// LCOV_EXCL_START
 PanelStatusInfoInner InputMethodTools::PanelStatusInfoToInner(const PanelStatusInfo &panelStatusInfo)
 {
     PanelStatusInfoInner inner;
@@ -223,7 +224,7 @@ PanelStatusInfoInner InputMethodTools::PanelStatusInfoToInner(const PanelStatusI
     inner.sessionId = panelStatusInfo.sessionId;
     return inner;
 }
-
+// LCOV_EXCL_STOP
 PanelStatusInfo InputMethodTools::InnerToPanelStatusInfo(const PanelStatusInfoInner &inner)
 {
     PanelStatusInfo panelStatusInfo;

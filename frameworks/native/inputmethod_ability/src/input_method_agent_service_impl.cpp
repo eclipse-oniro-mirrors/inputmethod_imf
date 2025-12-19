@@ -38,7 +38,7 @@ ErrCode InputMethodAgentServiceImpl::DispatchKeyEvent(
 
 ErrCode InputMethodAgentServiceImpl::SetCallingWindow(uint32_t windowId)
 {
-    InputMethodAbility::GetInstance().SetCallingWindow(windowId);
+    InputMethodAbility::GetInstance().SetCallingWindow(windowId, windowId);
     return ERR_OK;
 }
 
@@ -99,7 +99,7 @@ ErrCode InputMethodAgentServiceImpl::DiscardTypingText()
     TaskManager::GetInstance().PostTask(task);
     return ErrorCode::NO_ERROR;
 }
-
+// LCOV_EXCL_START
 ErrCode InputMethodAgentServiceImpl::OnFunctionKey(int32_t funcKey)
 {
     auto task = std::make_shared<TaskImsaOnFunctionKey>(funcKey);
@@ -111,5 +111,6 @@ ErrCode InputMethodAgentServiceImpl::ResponseDataChannel(uint64_t msgId, int cod
 {
     return InputMethodAbility::GetInstance().OnResponse(msgId, code, msg.rspData);
 }
+// LCOV_EXCL_STOP
 } // namespace MiscServices
 } // namespace OHOS

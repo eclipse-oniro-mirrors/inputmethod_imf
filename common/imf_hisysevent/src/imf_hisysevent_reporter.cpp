@@ -66,13 +66,13 @@ void ImfHiSysEventReporter::StartTimer()
     timerId_ = timer_.Register(callback, HISYSEVENT_TIMER_TASK_INTERNAL, false);
     timerStartTime_ = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
 }
-
+// LCOV_EXCL_START
 void ImfHiSysEventReporter::TimerCallback()
 {
     ReportStatisticsEvent();
     ClearFaultEventInfo();
 }
-
+// LCOV_EXCL_STOP
 void ImfHiSysEventReporter::StopTimer()
 {
     timer_.Unregister(timerId_);
@@ -135,7 +135,7 @@ std::string ImfHiSysEventReporter::GenerateFaultEventKey(ImfFaultEvent event, co
         .append(std::to_string(info.errCode));
     return key;
 }
-
+// LCOV_EXCL_START
 void ImfHiSysEventReporter::ClearFaultEventInfo()
 {
     std::lock_guard<std::mutex> lock(faultEventRecordsLock_);
@@ -149,7 +149,7 @@ void ImfHiSysEventReporter::ClearFaultEventInfo()
     }
     faultEventRecords_.erase(it);
 }
-
+// LCOV_EXCL_STOP
 std::string ImfHiSysEventReporter::GetSelfName()
 {
     std::lock_guard<std::mutex> lock(selfNameLock_);

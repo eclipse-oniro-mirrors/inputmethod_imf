@@ -481,22 +481,6 @@ HWTEST_F(InputMethodDfxTest, InputMethodDfxTest_Hisysevent_UnBind, TestSize.Leve
 }
 
 /**
- * @tc.name: InputMethodDfxTest_Hisysevent_Bind
- * @tc.desc: Hisysevent Bind.
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodDfxTest, InputMethodDfxTest_Hisysevent_Bind, TestSize.Level1)
-{
-    IMSA_HILOGI("InputMethodDfxTest::InputMethodDfxTest_Hisysevent_Bind");
-    auto watcherImeChange = std::make_shared<WatcherImeChange>(std::to_string(static_cast<int32_t>(ImeState::BIND)),
-        std::to_string(static_cast<int32_t>(getpid())), TddUtil::currentBundleNameMock_);
-    auto imeStateBind = []() {
-        inputMethodController_->RequestShowInput();
-    };
-    EXPECT_TRUE(InputMethodDfxTest::WriteAndWatchImeChange(watcherImeChange, imeStateBind));
-}
-
-/**
  * @tc.name: InputMethod_Dump_HELP
  * @tc.desc: InputMethodDump.
  * @tc.type: FUNC

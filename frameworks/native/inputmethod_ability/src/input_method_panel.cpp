@@ -718,6 +718,9 @@ void InputMethodPanel::UpdateLayoutInfo(PanelFlag panelFlag, const LayoutParams 
     if (panelFlag_ != panelFlag || IsNeedNotify(panelFlag)) {
         InputMethodAbility::GetInstance().NotifyPanelStatus(true, panelFlag);
     }
+    if (panelType_ == SOFT_KEYBOARD && panelFlag == FLG_CANDIDATE_COLUMN) {
+        PanelStatusChangeToImc(InputWindowStatus::HIDE, { 0, 0, 0, 0 });
+    }
     panelFlag_ = panelFlag;
 }
 
@@ -1449,7 +1452,7 @@ void InputMethodPanel::PanelStatusChangeToImc(const InputWindowStatus &status, c
     info.panelInfo.panelType = panelType_;
     info.panelInfo.panelFlag = panelFlag_;
     if (info.panelInfo.panelType != SOFT_KEYBOARD || info.panelInfo.panelFlag == FLG_CANDIDATE_COLUMN) {
-        IMSA_HILOGD("no need to deal.");
+        IMSA_HILOGW("no need to deal.");
         return;
     }
     auto proxy = ImaUtils::GetImsaProxy();
@@ -1473,6 +1476,7 @@ void InputMethodPanel::PanelStatusChangeToImc(const InputWindowStatus &status, c
     info.windowInfo.top = panelRect.posY_;
     info.windowInfo.width = panelRect.width_;
     info.windowInfo.height = panelRect.height_;
+    info.windowInfo.displayId = GetCurDisplayId();
     IMSA_HILOGD("rect: %{public}s, status: %{public}d, panelFlag: %{public}d.", panelRect.ToString().c_str(), status,
         info.panelInfo.panelFlag);
     proxy->PanelStatusChange(static_cast<uint32_t>(status), info);

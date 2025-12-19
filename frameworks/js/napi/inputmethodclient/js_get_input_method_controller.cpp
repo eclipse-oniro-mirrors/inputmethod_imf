@@ -17,9 +17,9 @@
 #include <set>
 
 #include "event_checker.h"
-#include "inputmethod_trace.h"
 #include "input_method_controller.h"
 #include "input_method_utils.h"
+#include "inputmethod_trace.h"
 #include "js_callback_handler.h"
 #include "js_get_input_method_textchange_listener.h"
 #include "js_util.h"
@@ -27,6 +27,7 @@
 #include "napi/native_node_api.h"
 #include "string_ex.h"
 #include "string_utils.h"
+#include "ui_content.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -78,6 +79,7 @@ napi_value JsGetInputMethodController::Init(napi_env env, napi_value info)
 
     napi_property_descriptor properties[] = {
         DECLARE_NAPI_FUNCTION("attach", Attach),
+        DECLARE_NAPI_FUNCTION("attachWithUIContext", AttachWithUIContext),
         DECLARE_NAPI_FUNCTION("detach", Detach),
         DECLARE_NAPI_FUNCTION("showTextInput", ShowTextInput),
         DECLARE_NAPI_FUNCTION("hideTextInput", HideTextInput),
@@ -676,6 +678,55 @@ napi_value JsGetInputMethodController::Attach(napi_env env, napi_callback_info i
     return asyncCall.Call(env, exec, "attach");
 }
 
+napi_value JsGetInputMethodController::AttachWithUIContext(napi_env env, napi_callback_info info)
+{
+    IMSA_HILOGI("Js, run in.");
+    InputMethodSyncTrace tracer("JsGetInputMethodController_AttachWithUIContext");
+    auto ctxt = std::make_shared<AttachContext>();
+    auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
+        // 1 - check parameter num
+        PARAM_CHECK_RETURN(env, argc > 1, "at least two parameters is required!", TYPE_NONE, napi_generic_failure);
+        // 2 - get windowId from UIContext
+        PARAM_CHECK_RETURN(
+            env, JsUtil::GetType(env, argv[0]) == napi_object, "uiContext", TYPE_OBJECT, napi_generic_failure);
+        PARAM_CHECK_RETURN(env, GetWindowIdFromUIContext(env, argv[0], ctxt->windowId),
+            "uiContext convert failed, type must be UIContext", TYPE_NONE, napi_generic_failure);
+        // 3 - get TextConfig
+        PARAM_CHECK_RETURN(env, JsGetInputMethodController::GetValue(env, argv[1], ctxt->textConfig),
+            "textConfig covert failed, type must be TextConfig!", TYPE_NONE, napi_generic_failure);
+        ctxt->textConfig.windowId = ctxt->windowId;
+        if (JsGetInputMethodController::IsTextPreviewSupported()) {
+            ctxt->textConfig.inputAttribute.isTextPreviewSupported = true;
+        }
+        // 4 - get AttachOptions
+        if (argc > 2) {
+            JsAttachOptions::Read(env, argv[2], ctxt->attachOptions);
+        }
+        ctxt->info = { std::chrono::system_clock::now(), ctxt->attribute };
+        attachQueue_.Push(ctxt->info);
+        ctxt->textListener =
+            JsGetInputMethodTextChangedListener::GetTextListener(GetEventHandler(), ctxt->textConfig.newEditBox);
+        return napi_ok;
+    };
+    auto exec = [ctxt, env](AsyncCall::Context *ctx) {
+        attachQueue_.Wait(ctxt->info);
+        int32_t errCode = ErrorCode::ERROR_CLIENT_NULL_POINTER;
+        auto instance = InputMethodController::GetInstance();
+        if (instance != nullptr) {
+            errCode = instance->Attach(ctxt->textListener, ctxt->attachOptions, ctxt->textConfig, ClientType::JS);
+        }
+        attachQueue_.Pop();
+        ctxt->SetErrorCode(errCode);
+        if (errCode == ErrorCode::NO_ERROR) {
+            ctxt->SetState(napi_ok);
+        }
+    };
+    ctxt->SetAction(std::move(input));
+    // 3 means JsAPI:attach has 3 params at most.
+    AsyncCall asyncCall(env, info, ctxt, 3);
+    return asyncCall.Call(env, exec, "attachWithUIContext");
+}
+
 napi_value JsGetInputMethodController::Detach(napi_env env, napi_callback_info info)
 {
     return HandleSoftKeyboard(
@@ -894,33 +945,65 @@ napi_value JsGetInputMethodController::UpdateAttribute(napi_env env, napi_callba
 napi_value JsGetInputMethodController::ShowSoftKeyboard(napi_env env, napi_callback_info info)
 {
     InputMethodSyncTrace tracer("JsGetInputMethodController_ShowSoftKeyboard");
-    return HandleSoftKeyboard(
-        env, info,
-        [] () -> int32_t {
-            auto instance = InputMethodController::GetInstance();
-            if (instance == nullptr) {
-                IMSA_HILOGE("GetInstance return nullptr!");
-                return ErrorCode::ERROR_CLIENT_NULL_POINTER;
+    auto ctxt = std::make_shared<HandleContext>();
+    auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
+        if (argc > 0) {
+            int64_t displayId = 0;
+            if (JsUtil::GetValue(env, argv[0], displayId) && displayId >= 0) {
+                ctxt->displayId = displayId;
             }
-            return instance->ShowSoftKeyboard(ClientType::JS);
-        },
-        false, true);
+        }
+        return napi_ok;
+    };
+    auto exec = [ctxt](AsyncCall::Context *ctx) {
+        int32_t errCode = ErrorCode::ERROR_CLIENT_NULL_POINTER;
+        auto instance = InputMethodController::GetInstance();
+        if (instance != nullptr) {
+            IMSA_HILOGD("target displayId: %{public}" PRIu64 "", ctxt->displayId);
+            errCode = instance->ShowSoftKeyboard(ClientType::JS, ctxt->displayId);
+        }
+        ctxt->SetErrorCode(errCode);
+        if (errCode == ErrorCode::NO_ERROR) {
+            ctxt->status = napi_ok;
+            ctxt->SetState(napi_ok);
+        }
+    };
+    ctxt->SetAction(std::move(input));
+    // 1 means JsAPI has 1 param at most.
+    AsyncCall asyncCall(env, info, ctxt, 1);
+    return asyncCall.Call(env, exec, "showSoftKeyboard");
 }
 
 napi_value JsGetInputMethodController::HideSoftKeyboard(napi_env env, napi_callback_info info)
 {
     InputMethodSyncTrace tracer("JsGetInputMethodController_HideSoftKeyboard");
-    return HandleSoftKeyboard(
-        env, info,
-        [] () -> int32_t {
-            auto instance = InputMethodController::GetInstance();
-            if (instance == nullptr) {
-                IMSA_HILOGE("GetInstance return nullptr!");
-                return ErrorCode::ERROR_CLIENT_NULL_POINTER;
+    auto ctxt = std::make_shared<HandleContext>();
+    auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
+        if (argc > 0) {
+            int64_t displayId = 0;
+            if (JsUtil::GetValue(env, argv[0], displayId) && displayId >= 0) {
+                ctxt->displayId = displayId;
             }
-            return instance->HideSoftKeyboard();
-        },
-        false, true);
+        }
+        return napi_ok;
+    };
+    auto exec = [ctxt](AsyncCall::Context *ctx) {
+        int32_t errCode = ErrorCode::ERROR_CLIENT_NULL_POINTER;
+        auto instance = InputMethodController::GetInstance();
+        if (instance != nullptr) {
+            IMSA_HILOGD("target displayId: %{public}" PRIu64 "", ctxt->displayId);
+            errCode = instance->HideSoftKeyboard(ctxt->displayId);
+        }
+        ctxt->SetErrorCode(errCode);
+        if (errCode == ErrorCode::NO_ERROR) {
+            ctxt->status = napi_ok;
+            ctxt->SetState(napi_ok);
+        }
+    };
+    ctxt->SetAction(std::move(input));
+    // 1 means JsAPI has 1 param at most.
+    AsyncCall asyncCall(env, info, ctxt, 1);
+    return asyncCall.Call(env, exec, "hideSoftKeyboard");
 }
 
 napi_value JsGetInputMethodController::StopInputSession(napi_env env, napi_callback_info info)
@@ -1527,6 +1610,46 @@ void JsGetInputMethodController::UpdateTextPreviewState(const std::string &type)
         }
         instance->UpdateTextPreviewState(false);
     }
+}
+
+bool JsGetInputMethodController::GetWindowIdFromUIContext(napi_env env, napi_value jsObject, uint32_t &windowId)
+{
+    int32_t instanceId = 0;
+    if (!JsUtil::Object::ReadProperty(env, jsObject, "instanceId_", instanceId)) {
+        IMSA_HILOGE("failed to read instanceId_");
+        return false;
+    }
+    int32_t id = Ace::UIContent::GetUIContentWindowID(instanceId);
+    if (id < 0) {
+        IMSA_HILOGE("failed to get windowId with instanceId: %{public}d", instanceId);
+        return false;
+    }
+    windowId = static_cast<uint32_t>(id);
+    IMSA_HILOGI("windowId: %{public}u, instanceId: %{public}d", windowId, instanceId);
+    return true;
+}
+
+napi_value JsAttachOptions::Write(napi_env env, const AttachOptions &nativeObject)
+{
+    napi_value jsObject = nullptr;
+    napi_create_object(env, &jsObject);
+    bool ret = JsUtil::Object::WriteProperty(env, jsObject, "showKeyboard", nativeObject.isShowKeyboard);
+    ret = ret && JsUtil::Object::WriteProperty(
+        env, jsObject, "requestKeyboardReason", static_cast<int32_t>(nativeObject.requestKeyboardReason));
+    return ret ? jsObject : JsUtil::Const::Null(env);
+}
+
+bool JsAttachOptions::Read(napi_env env, napi_value jsObject, AttachOptions &nativeObject)
+{
+    bool showKeyboard = true;
+    if (JsUtils::ReadOptionalProperty(env, jsObject, { napi_boolean, TYPE_BOOLEAN, "showKeyboard" }, showKeyboard)) {
+        nativeObject.isShowKeyboard = showKeyboard;
+    }
+    int32_t reason = static_cast<int32_t>(RequestKeyboardReason::NONE);
+    if (JsUtils::ReadOptionalProperty(env, jsObject, { napi_number, TYPE_NUMBER, "requestKeyboardReason" }, reason)) {
+        nativeObject.requestKeyboardReason = static_cast<RequestKeyboardReason>(reason);
+    }
+    return true;
 }
 } // namespace MiscServices
 } // namespace OHOS

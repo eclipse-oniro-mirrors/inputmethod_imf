@@ -519,11 +519,11 @@ HWTEST_F(InputMethodAbilityTest, testSetInputAttribute, TestSize.Level0)
     EXPECT_EQ(inputMethodAbility_.inputAttribute_.callingScreenId, 0); // calling display changed, update
 
     inputAttribute.callingScreenId = 100;
-    inputAttribute.callingDisplayId = 1;
+    inputAttribute.callingDisplayId = 12;
     inputMethodAbility_.inputAttribute_.callingScreenId = 123;
     inputMethodAbility_.inputAttribute_.callingDisplayId = 111;
     inputMethodAbility_.SetInputAttribute(inputAttribute);
-    EXPECT_EQ(inputMethodAbility_.inputAttribute_.callingDisplayId, 1);
+    EXPECT_EQ(inputMethodAbility_.inputAttribute_.callingDisplayId, 12);
     EXPECT_EQ(inputMethodAbility_.inputAttribute_.callingScreenId, 0); // calling display changed but invalid, use zero
 }
 
@@ -549,7 +549,9 @@ HWTEST_F(InputMethodAbilityTest, testShowKeyboardWithoutImeListener, TestSize.Le
 HWTEST_F(InputMethodAbilityTest, testHideKeyboardWithoutImeListener, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbilityTest testHideKeyboardWithoutImeListener start.");
-    auto ret = inputMethodAbility_.HideKeyboard();
+    uint64_t displayGroupId = 0;
+    bool isCheckGroupId = false;
+    auto ret = inputMethodAbility_.HideKeyboard(displayGroupId, isCheckGroupId);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 }
 
@@ -1143,7 +1145,7 @@ HWTEST_F(InputMethodAbilityTest, testSetCallingWindow001, TestSize.Level0)
     InputMethodAbilityTest::showKeyboard_ = true;
     inputMethodAbility_.SetImeListener(std::make_shared<InputMethodEngineListenerImpl>());
     uint32_t windowId = 10;
-    inputMethodAbility_.SetCallingWindow(windowId);
+    inputMethodAbility_.SetCallingWindow(windowId, windowId);
     InputMethodAbilityTest::imeListenerCv_.wait_for(lock, std::chrono::seconds(DEALY_TIME), [windowId] {
         return InputMethodAbilityTest::windowId_ == windowId;
     });
@@ -1191,7 +1193,9 @@ HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatusInfo_001, TestSize.Level0)
     EXPECT_TRUE(TextListener::WaitNotifyPanelStatusInfoCallback(statusInfo));
 
     TextListener::ResetParam();
-    ret = inputMethodAbility_.HideKeyboard();
+    uint64_t displayGroupId = 0;
+    bool isCheckGroupId = false;
+    ret = inputMethodAbility_.HideKeyboard(displayGroupId, isCheckGroupId);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     EXPECT_TRUE(TextListener::WaitSendKeyboardStatusCallback(KeyboardStatus::HIDE));
     PanelStatusInfo statusInfo1;
@@ -2250,7 +2254,7 @@ HWTEST_F(InputMethodAbilityTest, testInvokeAttachOptionsCallback, TestSize.Level
     uint64_t displayid = 0;
     uint64_t displayidNew = 1;
     auto ret = inputMethodAbility_.IsDisplayChanged(displayid, displayidNew);
-    EXPECT_FALSE(ret);
+    EXPECT_TRUE(ret);
 }
 
 /**
@@ -2491,6 +2495,39 @@ HWTEST_F(InputMethodAbilityTest, testTimer_001, TestSize.Level0)
     EXPECT_NE(inputMethodAbility_.timerId_, 0);
     inputMethodAbility_.StopTimer();
     EXPECT_EQ(inputMethodAbility_.timerId_, 0);
+}
+/**
+ * @tc.name: testHideKeyboard_001
+ * @tc.desc: InputMethodAbility Timer_001
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodAbilityTest, testHideKeyboard_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testHideKeyboard_001 START");
+    uint64_t displayGroupId = 1;
+    uint64_t isCheckGroupId = true;
+    uint64_t displayGroupId1 = 3;
+    uint64_t isCheckGroupId1 = false;
+    InputAttribute attribute;
+    attribute.displayGroupId = displayGroupId;
+    inputMethodAbility_.imeListener_ = nullptr;
+    inputMethodAbility_.SetInputAttribute(attribute);
+    // check pass
+    auto ret = inputMethodAbility_.HideKeyboard(displayGroupId, isCheckGroupId);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IME);
+
+    // no need check, same displayGroupId
+    ret = inputMethodAbility_.HideKeyboard(displayGroupId, isCheckGroupId1);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IME);
+
+    // no need check, different displayGroupId
+    ret = inputMethodAbility_.HideKeyboard(displayGroupId1, isCheckGroupId1);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IME);
+
+    // check failed
+    ret = inputMethodAbility_.HideKeyboard(displayGroupId1, isCheckGroupId);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 }
 } // namespace MiscServices
 } // namespace OHOS

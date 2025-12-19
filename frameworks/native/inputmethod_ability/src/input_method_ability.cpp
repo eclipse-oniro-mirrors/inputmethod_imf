@@ -16,6 +16,8 @@
 #include "input_method_ability.h"
 
 #include <unistd.h>
+
+#include <cinttypes>
 #include <utility>
 
 #include "common_timer_errors.h"
@@ -139,18 +141,6 @@ int32_t InputMethodAbility::InitConnect()
     return ErrorCode::NO_ERROR;
 }
 
-int32_t InputMethodAbility::UnRegisteredProxyIme(UnRegisteredType type)
-{
-    IMSA_HILOGD("type %{public}d", type);
-    isBound_.store(false);
-    auto proxy = GetImsaProxy();
-    if (proxy == nullptr) {
-        IMSA_HILOGE("imsa proxy is nullptr!");
-        return ErrorCode::ERROR_NULL_POINTER;
-    }
-    return proxy->UnRegisteredProxyIme(static_cast<int32_t>(type), coreStub_);
-}
-
 int32_t InputMethodAbility::RegisterProxyIme(uint64_t displayId)
 {
     IMSA_HILOGD("IMA, displayId: %{public}" PRIu64 "", displayId);
@@ -165,15 +155,13 @@ int32_t InputMethodAbility::RegisterProxyIme(uint64_t displayId)
         IMSA_HILOGE("agent nullptr");
         return ErrorCode::ERROR_NULL_POINTER;
     }
-    int32_t ret = displayId == DEFAULT_DISPLAY_ID ?
-        proxy->SetCoreAndAgent(coreStub_, agentStub_->AsObject()) :
-        proxy->RegisterProxyIme(displayId, coreStub_, agentStub_->AsObject());
+    int32_t ret = proxy->RegisterProxyIme(displayId, coreStub_, agentStub_->AsObject());
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("failed, displayId: %{public}" PRIu64 ", ret: %{public}d!", displayId, ret);
         return ret;
     }
     isBound_.store(true);
-    isProxyIme_.store(displayId != DEFAULT_DISPLAY_ID);
+    isProxyIme_.store(true);
     IMSA_HILOGD("set successfully, displayId: %{public}" PRIu64 "", displayId);
     return ErrorCode::NO_ERROR;
 }
@@ -351,25 +339,8 @@ bool InputMethodAbility::IsDisplayChanged(uint64_t oldDisplayId, uint64_t newDis
         IMSA_HILOGD("screen not changed!");
         return false;
     }
-    auto proxy = GetImsaProxy();
-    if (proxy == nullptr) {
-        IMSA_HILOGE("imsa proxy is nullptr!");
-        return false;
-    }
-    bool ret = false;
-    int32_t result = proxy->IsRestrictedDefaultImeByDisplay(oldDisplayId, ret);
-    if (result != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("failed to get oldDisplay info , result is %{public}d!", result);
-        return false;
-    }
-    if (!ret) {
-        result = proxy->IsRestrictedDefaultImeByDisplay(newDisplayId, ret);
-        if (result != ErrorCode::NO_ERROR) {
-            IMSA_HILOGE("failed to get newDisplay info , result is %{public}d!", result);
-            return false;
-        }
-    }
-    return ret;
+    IMSA_HILOGD("screen changed!");
+    return true;
 }
 
 void InputMethodAbility::OnSetSubtype(SubProperty subProperty)
@@ -456,15 +427,15 @@ int32_t InputMethodAbility::DispatchKeyEvent(
     return ErrorCode::NO_ERROR;
 }
 
-void InputMethodAbility::SetCallingWindow(uint32_t windowId)
+void InputMethodAbility::SetCallingWindow(uint32_t windowId, uint32_t finalWindowId)
 {
     IMSA_HILOGD("InputMethodAbility windowId: %{public}d.", windowId);
     {
         std::lock_guard<std::mutex> lock(inputAttrLock_);
-        inputAttribute_.windowId = windowId;
+        inputAttribute_.windowId = finalWindowId;
     }
-    panels_.ForEach([windowId](const PanelType &panelType, const std::shared_ptr<InputMethodPanel> &panel) {
-        panel->SetCallingWindow(windowId);
+    panels_.ForEach([finalWindowId](const PanelType &panelType, const std::shared_ptr<InputMethodPanel> &panel) {
+        panel->SetCallingWindow(finalWindowId);
         return false;
     });
     if (imeListener_ == nullptr) {
@@ -545,9 +516,14 @@ int32_t InputMethodAbility::OnDiscardTypingText()
     return imeListener_->OnDiscardTypingText();
 }
 
-int32_t InputMethodAbility::HideKeyboard()
+int32_t InputMethodAbility::HideKeyboard(uint64_t displayGroupId, bool isCheckGroupId)
 {
     std::lock_guard<std::recursive_mutex> lock(keyboardCmdLock_);
+    if (isCheckGroupId && displayGroupId != GetInputAttribute().displayGroupId) {
+        IMSA_HILOGD("not same group:%{public}" PRIu64 "/%{public}" PRIu64 ".", displayGroupId,
+            GetInputAttribute().displayGroupId);
+        return ErrorCode::NO_ERROR;
+    }
     int32_t cmdCount = ++cmdId_;
     return HideKeyboardImplWithoutLock(cmdCount, 0);
 }
@@ -1697,13 +1673,7 @@ int32_t InputMethodAbility::GetCallingWindowInfo(CallingWindowInfo &windowInfo)
         IMSA_HILOGE("panel not found!");
         return ErrorCode::ERROR_PANEL_NOT_FOUND;
     }
-    TextTotalConfig textConfig;
-    int32_t ret = GetTextConfig(textConfig);
-    if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("failed to get window id, ret: %{public}d!", ret);
-        return ErrorCode::ERROR_GET_TEXT_CONFIG;
-    }
-    ret = panel->SetCallingWindow(textConfig.windowId);
+    auto ret = panel->SetCallingWindow(GetInputAttribute().windowId);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("failed to set calling window, ret: %{public}d!", ret);
         return ret;

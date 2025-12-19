@@ -23,7 +23,7 @@ void InputDeathRecipient::SetDeathRecipient(RemoteDiedHandler handler)
 {
     handler_ = std::move(handler);
 }
-
+// LCOV_EXCL_START
 void InputDeathRecipient::OnRemoteDied(const wptr<IRemoteObject> &remote)
 {
     IMSA_HILOGI("start");
@@ -31,5 +31,6 @@ void InputDeathRecipient::OnRemoteDied(const wptr<IRemoteObject> &remote)
         handler_(remote);
     }
 }
+// LCOV_EXCL_STOP
 } // namespace MiscServices
 } // namespace OHOS

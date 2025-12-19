@@ -48,7 +48,7 @@ sptr<ImeSystemCmdChannel> ImeSystemCmdChannel::GetInstance()
     }
     return instance_;
 }
-
+// LCOV_EXCL_START
 sptr<IInputMethodSystemAbility> ImeSystemCmdChannel::GetSystemAbilityProxy()
 {
     std::lock_guard<std::mutex> lock(abilityLock_);
@@ -78,7 +78,7 @@ sptr<IInputMethodSystemAbility> ImeSystemCmdChannel::GetSystemAbilityProxy()
     systemAbility_ = iface_cast<IInputMethodSystemAbility>(systemAbility);
     return systemAbility_;
 }
-// LCOV_EXCL_START
+
 void ImeSystemCmdChannel::OnRemoteSaDied(const wptr<IRemoteObject> &remote)
 {
     IMSA_HILOGI("input method service death.");
@@ -88,7 +88,7 @@ void ImeSystemCmdChannel::OnRemoteSaDied(const wptr<IRemoteObject> &remote)
     }
     ClearSystemCmdAgent();
 }
-// LCOV_EXCL_STOP
+
 int32_t ImeSystemCmdChannel::ConnectSystemCmd(const sptr<OnSystemCmdListener> &listener)
 {
     IMSA_HILOGD("start.");
@@ -168,7 +168,7 @@ void ImeSystemCmdChannel::OnSystemCmdAgentDied(const wptr<IRemoteObject> &remote
     ClearSystemCmdAgent();
     RunConnectSystemCmd();
 }
-
+// LCOV_EXCL_STOP
 sptr<IInputMethodAgent> ImeSystemCmdChannel::GetSystemCmdAgent()
 {
     IMSA_HILOGD("GetSystemCmdAgent start.");
@@ -187,7 +187,7 @@ sptr<OnSystemCmdListener> ImeSystemCmdChannel::GetSystemCmdListener()
     std::lock_guard<std::mutex> lock(systemCmdListenerLock_);
     return systemCmdListener_;
 }
-
+// LCOV_EXCL_START
 void ImeSystemCmdChannel::ClearSystemCmdAgent()
 {
     {
@@ -196,7 +196,7 @@ void ImeSystemCmdChannel::ClearSystemCmdAgent()
     }
     isSystemCmdConnect_.store(false);
 }
-
+// LCOV_EXCL_STOP
 int32_t ImeSystemCmdChannel::ReceivePrivateCommand(
     const std::unordered_map<std::string, PrivateDataValue> &privateCommand)
 {
@@ -239,7 +239,7 @@ int32_t ImeSystemCmdChannel::NotifyPanelStatus(const SysPanelStatus &sysPanelSta
     listener->NotifyPanelStatus(sysPanelStatus);
     return ErrorCode::NO_ERROR;
 }
-
+// LCOV_EXCL_START
 int32_t ImeSystemCmdChannel::SetPanelShadow(const Shadow &shadow)
 {
     auto listener = GetSystemCmdListener();
@@ -274,7 +274,7 @@ std::string ImeSystemCmdChannel::GetSmartMenuCfg()
     }
     return profiles[0];
 }
-// LCOV_EXCL_START
+
 void ImeSystemCmdChannel::GetExtensionInfo(
     std::vector<ExtensionAbilityInfo> extensionInfos, ExtensionAbilityInfo &extInfo)
 {
@@ -288,7 +288,7 @@ void ImeSystemCmdChannel::GetExtensionInfo(
         }
     }
 }
-// LCOV_EXCL_STOP
+
 int32_t ImeSystemCmdChannel::GetDefaultImeCfg(std::shared_ptr<Property> &property)
 {
     IMSA_HILOGD("InputMethodAbility::GetDefaultImeCfg start.");
@@ -305,5 +305,6 @@ int32_t ImeSystemCmdChannel::GetDefaultImeCfg(std::shared_ptr<Property> &propert
     property = std::make_shared<Property>(prop);
     return ret;
 }
+// LCOV_EXCL_STOP
 } // namespace MiscServices
 } // namespace OHOS

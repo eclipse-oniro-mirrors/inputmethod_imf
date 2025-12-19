@@ -679,12 +679,15 @@ HWTEST_F(InputMethodControllerTest, testIMCAttach003, TestSize.Level0)
 HWTEST_F(InputMethodControllerTest, testIsKeyboardCallingProcess_001, TestSize.Level0)
 {
     IMSA_HILOGI("IMC testIsKeyboardCallingProcess_001 Test START");
-    auto ret = inputMethodController_->IsKeyboardCallingProcess(0, 0);
+    auto closeRet = inputMethodController_->Close();
+    EXPECT_EQ(closeRet, ErrorCode::NO_ERROR);
+    auto ret = inputMethodController_->IsKeyboardCallingProcess(getpid(), 0);
     EXPECT_FALSE(ret);
  
     imeListener_->isInputStart_ = false;
     TextListener::ResetParam();
-    inputMethodController_->Attach(textListener_, true);
+    auto attachRet = inputMethodController_->Attach(textListener_, true);
+    EXPECT_EQ(attachRet, ErrorCode::NO_ERROR);
     ret = inputMethodController_->IsKeyboardCallingProcess(getpid(), 0);
     EXPECT_TRUE(ret);
  
@@ -1326,20 +1329,6 @@ HWTEST_F(InputMethodControllerTest, testIMCHideTextInput, TestSize.Level0)
 }
 
 /**
- * @tc.name: testIMCRequestShowInput.
- * @tc.desc: IMC testIMCRequestShowInput.
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodControllerTest, testIMCRequestShowInput, TestSize.Level0)
-{
-    IMSA_HILOGI("IMC testIMCRequestShowInput Test START");
-    imeListener_->keyboardState_ = false;
-    int32_t ret = InputMethodControllerTest::inputMethodController_->RequestShowInput();
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_TRUE(WaitKeyboardStatus(true));
-}
-
-/**
  * @tc.name: testIMCRequestHideInput.
  * @tc.desc: IMC testIMCRequestHideInput.
  * @tc.type: FUNC
@@ -1837,7 +1826,8 @@ HWTEST_F(InputMethodControllerTest, testIsPanelShown, TestSize.Level0)
     inputMethodController_->Attach(textListener_, false, inputAttribute);
     const PanelInfo panelInfo;
     bool isShown = false;
-    auto ret = inputMethodController_->IsPanelShown(panelInfo, isShown);
+    uint64_t displayId = 0;
+    auto ret = inputMethodController_->IsPanelShown(panelInfo, isShown, displayId);
     EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
 }
 
@@ -2317,12 +2307,7 @@ HWTEST_F(InputMethodControllerTest, TestClientNullptr, TestSize.Level0)
     auto sessionTemp = std::make_shared<PerUserSession>(0, nullptr);
     sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
     InputClientInfo clientInfo = { .client = nullptr };
-
     sessionTemp->GetWant(nullptr);
-    auto ret = sessionTemp->OnUpdateListenEventFlag(clientInfo);
-    EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
-
-    sessionTemp->HandleBindImeChanged(clientInfo, nullptr);
     std::shared_ptr<InputClientInfo> ptr = nullptr;
     sessionTemp->ClearRequestKeyboardReason(ptr);
     auto info = std::make_shared<InputClientInfo>();

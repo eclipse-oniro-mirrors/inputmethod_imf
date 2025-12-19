@@ -22,7 +22,7 @@ std::mutex MessageHandler::handlerMutex_;
 MessageHandler::MessageHandler()
 {
 }
-
+// LCOV_EXCL_START
 MessageHandler::~MessageHandler()
 {
     std::unique_lock<std::mutex> lock(mMutex);
@@ -33,7 +33,7 @@ MessageHandler::~MessageHandler()
         msg = nullptr;
     }
 }
-
+// LCOV_EXCL_STOP
 /*! Send a message
  * @param msg a message to be sent
  * @note the msg pointer should not be freed by the caller

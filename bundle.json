@@ -61,7 +61,8 @@
               "cJSON",
               "icu",
               "selinux_adapter",
-              "runtime_core"
+              "runtime_core",
+              "ace_engine"
           ]
       }, 
       "build": {
@@ -74,7 +75,8 @@
                   "//base/inputmethod/imf/frameworks/js/napi/inputmethodpanel:panel",
                   "//base/inputmethod/imf/frameworks/ndk:ohinputmethod",
                   "//base/inputmethod/imf/frameworks/ets/taihe/inputMethod:inputmethod_taihe",
-                  "//base/inputmethod/imf/frameworks/ets/taihe/inputMethodEngine:inputmethod_engine_taihe"
+                  "//base/inputmethod/imf/frameworks/ets/taihe/inputMethodEngine:inputmethod_engine_taihe",
+                  "//base/inputmethod/imf/frameworks/ets/inputmethodlist:inputmethod_list_dialog"
               ], 
               "service_group": [
                   "//base/inputmethod/imf/etc/init:inputmethodservice.cfg", 

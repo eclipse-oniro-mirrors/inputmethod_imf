@@ -72,7 +72,6 @@ taihe_shared_library("inputmethod_taihe_native") {
   sources += [
     "${inputmethod_path}/frameworks/js/napi/inputmethodclient/js_utils.cpp",
     "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_method_utils.cpp",
-    "src/ani_callback_object.cpp",
     "src/ani_constructor.cpp",
     "src/ani_message_handler.cpp",
     "src/input_method_controller_impl.cpp",
