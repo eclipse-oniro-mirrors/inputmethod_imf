@@ -267,14 +267,7 @@ uint64_t WindowAdapter::GetDisplayGroupId(uint32_t windowId)
 {
     IMSA_HILOGD("by windowId run in:%{public}d.", windowId);
     auto displayId = GetDisplayIdByWindowId(windowId);
-    std::lock_guard<std::mutex> lock(displayGroupIdsLock_);
-    auto iter = displayGroupIds_.find(displayId);
-    if (iter != displayGroupIds_.end()) {
-        IMSA_HILOGD("by windowId:%{public}d/%{public}" PRIu64 "/%{public}" PRIu64 ".", windowId, displayId,
-            iter->second);
-        return iter->second;
-    }
-    return DEFAULT_DISPLAY_GROUP_ID;
+    return GetDisplayGroupId(displayId);
 }
 
 int32_t WindowAdapter::GetAllDisplayGroupInfos(

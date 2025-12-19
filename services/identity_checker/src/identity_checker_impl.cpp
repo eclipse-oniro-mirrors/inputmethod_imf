@@ -210,7 +210,19 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(uint32_t 
             return IsFocusedUIExtension(windowId, displayIdByWindow, focusWindowInfos);
         }
     }
-    return IsFocusedUIExtension(callingTokenId, focusWindowInfos);
+
+    std::pair<bool, FocusedInfo> retInfo{ false, {} };
+    constexpr size_t MAX_FOCUS_UI_EXTENSION_CHECK_LOOP = 3;
+    auto focusSize = focusWindowInfos.size();
+    for (size_t i = 0; i < focusSize && i < MAX_FOCUS_UI_EXTENSION_CHECK_LOOP; i++) {
+        retInfo = IsFocusedUIExtension(focusWindowInfos[i].realDisplayId_, callingTokenId, focusWindowInfos);
+        if (retInfo.first) {
+            IMSA_HILOGD(
+                "loop %{public}zu, focus ui extension in %{public}" PRIu64 ".", i, focusWindowInfos[i].realDisplayId_);
+            return retInfo;
+        }
+    }
+    return retInfo;
 }
 
 std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(
@@ -227,7 +239,7 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(
         return retInfo;
     }
     retInfo.first = true;
-    retInfo.second.displayId = iter->realDisplayId_;
+    retInfo.second. = iter->realDisplayId_;
     retInfo.second.windowId = iter->windowId_;
     retInfo.second.displayGroupId = iter->displayGroupId_;
     retInfo.second.uiExtensionHostPid = iter->pid_;
@@ -235,7 +247,7 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(
 }
 
 std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(
-    uint32_t callingTokenId, const std::vector<FocusChangeInfo> &focusWindowInfos)
+    uint64_t displayId, uint32_t callingTokenId, const std::vector<FocusChangeInfo> &focusWindowInfos)
 {
     std::pair<bool, FocusedInfo> retInfo{ false, {} };
     auto client = AbilityManagerClient::GetInstance();
@@ -244,7 +256,7 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(
         return retInfo;
     }
     bool isFocused = false;
-    auto ret = client->CheckUIExtensionIsFocused(callingTokenId, isFocused);
+    auto ret = client->CheckUIExtensionIsFocused(callingTokenId, isFocused, displayId);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("failed to CheckUIExtensionIsFocused, ret: %{public}d!", ret);
         return retInfo;
@@ -253,8 +265,9 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(
     if (!isFocused) {
         return retInfo;
     }
-    auto iter = std::find_if(focusWindowInfos.begin(), focusWindowInfos.end(), [](const auto &focusWindowInfo) {
-        return focusWindowInfo.displayGroupId_ == WindowAdapter::GetInstance().GetDisplayGroupId(DEFAULT_DISPLAY_ID);
+    auto iter =
+        std::find_if(focusWindowInfos.begin(), focusWindowInfos.end(), [displayId](const auto &focusWindowInfo) {
+            return focusWindowInfo.displayGroupId_ == WindowAdapter::GetInstance().GetDisplayGroupId(displayId);
     });
     if (iter == focusWindowInfos.end()) {
         return retInfo;

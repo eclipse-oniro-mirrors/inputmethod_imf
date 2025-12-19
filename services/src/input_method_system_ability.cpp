@@ -1625,7 +1625,7 @@ ErrCode InputMethodSystemAbility::GetCurrentInputMethodSubtype(SubProperty& resu
 {
     auto prop = ImeInfoInquirer::GetInstance().GetCurrentSubtype(GetCallingUserId());
     if (prop == nullptr) {
-        IMSA_HILOGE("prop is nullptr");
+        IMSA_HILOGE("prop is nullptr!");
         return ErrorCode::ERROR_NULL_POINTER;
     }
     resultValue = *prop;
