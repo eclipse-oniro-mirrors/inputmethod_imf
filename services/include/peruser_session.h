@@ -290,7 +290,7 @@ private:
         const std::shared_ptr<ClientGroup> &clientGroup);
     int32_t NotifyCallingDisplayChanged(uint64_t displayId, const std::shared_ptr<ImeData> &imeData);
     int32_t NotifyCallingWindowIdChanged(
-        uint32_t finalWindowId, const std::shared_ptr<ImeData> &imeData, uint32_t windowId);
+        uint32_t editorWindowId, const std::shared_ptr<ImeData> &imeData, uint32_t keyboardWindowId);
     ImfCallingWindowInfo GetCallingWindowInfo(const InputClientInfo &clientInfo);
     bool GetCallingWindowInfo(const InputClientInfo &clientInfo, Rosen::CallingWindowInfo &callingWindowInfo);
     int32_t SendPrivateData(const std::unordered_map<std::string, PrivateDataValue> &privateCommand);

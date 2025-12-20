@@ -29,6 +29,7 @@
 #include "system_param_adapter.h"
 #include "ime_state_manager_factory.h"
 #include "inputmethod_message_handler.h"
+#include "identity_checker_impl.h"
 #undef private
 #include <gtest/gtest.h>
 #include <gtest/hwext/gtest-multithread.h>
@@ -65,6 +66,7 @@ using namespace testing::mt;
 namespace OHOS {
 namespace MiscServices {
 using namespace AppExecFwk;
+using namespace Rosen;
 class InputMethodPrivateMemberTest : public testing::Test {
 public:
     static void SetUpTestCase(void);
@@ -3906,6 +3908,39 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_IsShowSameRealImeInMainDis
     newClientInfo.config.inputAttribute.callingDisplayId = ImfCommonConst::DEFAULT_DISPLAY_ID;
     ret = userSession->IsShowSameRealImeInMainDisplayInMultiGroup(newClientInfo, oldClientInfo);
     EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.name: IdentityCheckerImpl_GenerateFocusInfo
+ * @tc.desc: IdentityCheckerImpl_GenerateFocusInfo
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, IdentityCheckerImpl_GenerateFocusInfo, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::IdentityCheckerImpl_GenerateFocusInfo start.");
+    IdentityCheckerImpl impl;
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultMainDisplayScreenList.clear();
+    FocusChangeInfo focusWindowInfo;
+    focusWindowInfo.windowId_ = 10;
+    focusWindowInfo.realDisplayId_ = 1000;
+    focusWindowInfo.displayGroupId_ = 1;
+    std::vector<FocusChangeInfo> focusWindowInfos;
+    focusWindowInfos.push_back(focusWindowInfo);
+    auto focusedInfo = impl.GenerateFocusInfo(focusWindowInfo, focusWindowInfos);
+    EXPECT_EQ(focusedInfo.keyboardWindowId, focusWindowInfo.windowId_);
+
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultMainDisplayScreenList.insert("");
+    focusedInfo = impl.GenerateFocusInfo(focusWindowInfo, focusWindowInfos);
+    EXPECT_EQ(focusedInfo.keyboardWindowId, 0);
+
+    FocusChangeInfo focusWindowInfo1;
+    focusWindowInfo1.windowId_ = 20;
+    focusWindowInfo1.realDisplayId_ = ImfCommonConst::DEFAULT_DISPLAY_ID;
+    focusWindowInfo1.displayGroupId_ = ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID;
+    focusWindowInfos.push_back(focusWindowInfo1);
+    focusedInfo = impl.GenerateFocusInfo(focusWindowInfo, focusWindowInfos);
+    EXPECT_EQ(focusedInfo.keyboardWindowId, focusWindowInfo1.windowId_);
 }
 } // namespace MiscServices
 } // namespace OHOS
