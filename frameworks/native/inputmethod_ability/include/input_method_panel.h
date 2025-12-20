@@ -113,7 +113,34 @@ private:
     };
     void RegisterKeyboardPanelInfoChangeListener();
     void UnregisterKeyboardPanelInfoChangeListener();
+    void OnKeyboardPanelInfoChange(const Rosen::KeyboardPanelInfo &keyboardPanelInfo);
+    void OnPanelHeightChange(const Rosen::KeyboardPanelInfo &keyboardPanelInfo);
     void HandleKbPanelInfoChange(const Rosen::KeyboardPanelInfo &keyboardPanelInfo);
+    sptr<Rosen::IKeyboardPanelInfoChangeListener> kbPanelInfoListener_ { nullptr };
+
+private:
+    class VisibilityChangeListener : public Rosen::IWindowVisibilityChangedListener {
+    public:
+        using ChangeHandler = std::function<void(bool)>;
+        explicit VisibilityChangeListener(ChangeHandler handler) : handler_(std::move(handler)) { }
+        ~VisibilityChangeListener() = default;
+        void OnWindowVisibilityChangedCallback(const bool isVisible) override
+        {
+            if (handler_ != nullptr) {
+                handler_(isVisible);
+            }
+        }
+
+    private:
+        ChangeHandler handler_ = nullptr;
+    };
+    int32_t RegisterVisibilityChangeListener();
+    int32_t UnregisterVisibilityChangeListener();
+    void OnVisibilityChange(bool isVisible);
+    std::atomic<bool> isVisible_{ false };
+    sptr<Rosen::IWindowVisibilityChangedListener> visibilityChangeListener_{ nullptr };
+
+private:
     bool IsHidden();
     int32_t SetPanelProperties();
     std::string GeneratePanelName();
@@ -174,7 +201,6 @@ private:
         const Rosen::KeyboardLayoutParams &wmsParams, bool isEnhanced);
     Rosen::KeyboardLayoutParams ConvertToWMSParam(PanelFlag panelFlag, const EnhancedLayoutParams &layoutParams);
     Rosen::KeyboardTouchHotAreas ConvertToWMSHotArea(const HotAreas &hotAreas);
-    void OnPanelHeightChange(const Rosen::KeyboardPanelInfo &keyboardPanelInfo);
     int32_t GetKeyboardArea(PanelFlag panelFlag, const WindowSize &size, PanelAdjustInfo &keyboardArea);
     int32_t GetWindowOrientation(PanelFlag panelFlag, uint32_t windowWidth, bool &isPortrait);
     int32_t GetInputWindowAvoidArea(PanelFlag panelFlag, Rosen::Rect &windowRect);
@@ -231,7 +257,6 @@ private:
     std::shared_ptr<PanelStatusListener> panelStatusListener_ = nullptr;
 
     static std::atomic<uint32_t> sequenceId_;
-    sptr<Rosen::IKeyboardPanelInfoChangeListener> kbPanelInfoListener_ { nullptr };
     bool isScbEnable_ { false };
 
     std::mutex panelAdjustLock_;
@@ -280,6 +305,7 @@ private:
 
     std::mutex getInsetsMutex_;
     std::mutex parseParamsMutex_;
+    std::mutex panelStatusChangeMutex_;
 
     std::atomic<bool> hasSetSize_ { false };
 };
