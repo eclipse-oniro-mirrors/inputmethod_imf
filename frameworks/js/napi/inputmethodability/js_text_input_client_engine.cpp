@@ -242,9 +242,10 @@ napi_value JsTextInputClientEngine::GetTextInputClientInstance(napi_env env)
 
 napi_value JsTextInputClientEngine::GetResult(napi_env env, std::string &text)
 {
+    JsUtil::ScopeGuard scopeGuard(env);
     napi_value jsText = nullptr;
     napi_create_string_utf8(env, text.c_str(), NAPI_AUTO_LENGTH, &jsText);
-    return jsText;
+    return scopeGuard.Escape(jsText);
 }
 
 napi_status JsTextInputClientEngine::GetSelectRange(napi_env env, napi_value argv, std::shared_ptr<SelectContext> ctxt)
