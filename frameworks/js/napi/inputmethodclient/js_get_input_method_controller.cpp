@@ -1519,6 +1519,12 @@ int32_t JsGetInputMethodController::JsMessageHandler::OnTerminated()
             IMSA_HILOGI("jsCallback is nullptr!.");
             return;
         }
+        napi_handle_scope scope = nullptr;
+        napi_open_handle_scope(jsCallback->env_, &scope);
+        if (scope == nullptr) {
+            IMSA_HILOGE("scope is nullptr!");
+            return;
+        }
         napi_get_reference_value(jsCallback->env_, jsCallback->onTerminatedCallback_, &callback);
         if (callback != nullptr) {
             napi_get_global(jsCallback->env_, &global);
@@ -1530,6 +1536,7 @@ int32_t JsGetInputMethodController::JsMessageHandler::OnTerminated()
                 output = nullptr;
             }
         }
+        napi_close_handle_scope(jsCallback->env_, scope);
     };
     eventHandler->PostTask(task, "IMC_MsgHandler_OnTerminated", 0, AppExecFwk::EventQueue::Priority::VIP);
     return ErrorCode::NO_ERROR;

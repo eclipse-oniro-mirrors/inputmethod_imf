@@ -83,12 +83,20 @@ public:
 
         virtual napi_status operator()(napi_env env, napi_value *result)
         {
+            napi_handle_scope scope = nullptr;
+            napi_open_handle_scope(env, &scope);
+            if (scope == nullptr) {
+                IMSA_HILOGE("scope is nullptr!");
+                return napi_invalid_arg;
+            }
             if (output_ == nullptr) {
                 *result = nullptr;
+                napi_close_handle_scope(env, scope);
                 return napi_ok;
             }
             auto ret = output_(env, result);
             output_ = nullptr;
+            napi_close_handle_scope(env, scope);
             return ret;
         }
 

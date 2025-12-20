@@ -535,23 +535,33 @@ void JSInputMethodExtensionConnection::HandleOnAbilityConnectDone(const AppExecF
     }
 
     napi_value obj = nullptr;
+    napi_handle_scope scope = nullptr;
+    napi_open_handle_scope(env_, &scope);
+    if (scope == nullptr) {
+        IMSA_HILOGE("scope is nullptr!");
+        return;
+    }
     if (napi_get_reference_value(env_, jsConnectionObject_, &obj) != napi_ok) {
         IMSA_HILOGE("failed to get jsConnectionObject_!");
+        napi_close_handle_scope(env_, scope);
         return;
     }
     if (obj == nullptr) {
         IMSA_HILOGE("failed to get object!");
+        napi_close_handle_scope(env_, scope);
         return;
     }
     napi_value methodOnConnect = nullptr;
     napi_get_named_property(env_, obj, "onConnect", &methodOnConnect);
     if (methodOnConnect == nullptr) {
         IMSA_HILOGE("failed to get onConnect from object!");
+        napi_close_handle_scope(env_, scope);
         return;
     }
     IMSA_HILOGI("JSInputMethodExtensionConnection::CallFunction onConnect, success.");
     napi_value callResult = nullptr;
     napi_call_function(env_, obj, methodOnConnect, ARGC_TWO, argv, &callResult);
+    napi_close_handle_scope(env_, scope);
     IMSA_HILOGI("OnAbilityConnectDone end.");
 }
 
@@ -585,21 +595,39 @@ void JSInputMethodExtensionConnection::HandleOnAbilityDisconnectDone(const AppEx
         return;
     }
     napi_value obj = nullptr;
+    napi_handle_scope scope = nullptr;
+    napi_open_handle_scope(env_, &scope);
+    if (scope == nullptr) {
+        IMSA_HILOGE("scope is nullptr!");
+        return;
+    }
     if (napi_get_reference_value(env_, jsConnectionObject_, &obj) != napi_ok) {
         IMSA_HILOGE("failed to get jsConnectionObject_!");
+        napi_close_handle_scope(env_, scope);
         return;
     }
     if (obj == nullptr) {
         IMSA_HILOGE("failed to get object!");
+        napi_close_handle_scope(env_, scope);
         return;
     }
     napi_value method = nullptr;
     napi_get_named_property(env_, obj, "onDisconnect", &method);
     if (method == nullptr) {
         IMSA_HILOGE("failed to get onDisconnect from object!");
+        napi_close_handle_scope(env_, scope);
         return;
     }
     // release connect
+    HandleOnAbilityDisconnect(element);
+    IMSA_HILOGI("OnAbilityDisconnectDone CallFunction success.");
+    napi_value callResult = nullptr;
+    napi_call_function(env_, obj, method, ARGC_ONE, argv, &callResult);
+    napi_close_handle_scope(env_, scope);
+}
+
+void JSInputMethodExtensionConnection::HandleOnAbilityDisconnect(const AppExecFwk::ElementName &element)
+{
     std::string bundleName = element.GetBundleName();
     std::string abilityName = element.GetAbilityName();
     {
@@ -620,9 +648,6 @@ void JSInputMethodExtensionConnection::HandleOnAbilityDisconnectDone(const AppEx
             IMSA_HILOGI("OnAbilityDisconnectDone erase connects_.size: %{public}zu.", connects_.size());
         }
     }
-    IMSA_HILOGI("OnAbilityDisconnectDone CallFunction success.");
-    napi_value callResult = nullptr;
-    napi_call_function(env_, obj, method, ARGC_ONE, argv, &callResult);
 }
 
 void JSInputMethodExtensionConnection::SetJsConnectionObject(napi_value jsConnectionObject)

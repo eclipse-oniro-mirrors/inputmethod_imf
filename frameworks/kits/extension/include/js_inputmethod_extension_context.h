@@ -45,6 +45,7 @@ private:
         int resultCode);
     void HandleOnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int resultCode);
     void ReleaseConnection();
+    void HandleOnAbilityDisconnect(const AppExecFwk::ElementName &element);
 
 private:
     napi_env env_;
