@@ -14,24 +14,24 @@
 import("//build/config/components/ets_frontend/ets2abc_config.gni")
 import("//build/ohos.gni")
 
-generate_static_abc("dialog_ets_abc") {
+generate_static_abc("inputmethod_dialog_ets_abc") {
   base_url = "./"
   files = [ "./@ohos.inputMethodList.ets" ]
   ui_enable = "True"
   is_boot_abc = "True"
   device_dst_file = "/system/framework/inputmethod_dialog_ets_abc.abc"
-  dst_file = target_out_dir + "/inputmethod_dialog_ets_abc/modules_static.abc"
-  out_puts = [ target_out_dir + "/inputmethod_dialog_ets_abc/modules_static.abc" ]
+  dst_file = target_out_dir + "/inputmethod_dialog_ets_abc/inputmethod_dialog_ets_abc.abc"
+  out_puts = [ target_out_dir + "/inputmethod_dialog_ets_abc/inputmethod_dialog_ets_abc.abc" ]
 }
 
-ohos_copy("copy_dialog_ets_abc") {
+ohos_copy("copy_inputmethod_dialog_ets_abc") {
   sources = [
-    target_out_dir + "/inputmethod_dialog_ets_abc/modules_static.abc"
+    target_out_dir + "/inputmethod_dialog_ets_abc/inputmethod_dialog_ets_abc.abc"
   ]
   outputs = [
     target_out_dir + "/inputmethod_dialog_ets_abc.abc"
   ]
-  deps = [ ":dialog_ets_abc" ]
+  deps = [ ":inputmethod_dialog_ets_abc" ]
 }
 
 ohos_prebuilt_etc("inputmethod_dialog_ets_abc_etc") {
@@ -39,7 +39,7 @@ ohos_prebuilt_etc("inputmethod_dialog_ets_abc_etc") {
   module_install_dir = "framework"
   subsystem_name = "inputmethod"
   part_name = "imf"
-  deps = [ ":copy_dialog_ets_abc" ]
+  deps = [ ":copy_inputmethod_dialog_ets_abc" ]
 }
 
 group("inputmethod_list_dialog") {
