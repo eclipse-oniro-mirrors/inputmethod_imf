@@ -148,6 +148,10 @@ ohos_shared_library("inputmethod_service") {
     "window_manager:libwsutils",
   ]
 
+  if (imf_restore_in_high_cpu_usage) {
+    external_deps += [ "hiview:libucollection_client" ]
+  }
+
   defines = []
   if (imf_screenlock_mgr_enable) {
     defines += [ "IMF_SCREENLOCK_MGR_ENABLE" ]
@@ -162,6 +166,9 @@ ohos_shared_library("inputmethod_service") {
 
   if (imf_on_demand_start_stop_sa_enable) {
     defines += [ "IMF_ON_DEMAND_START_STOP_SA_ENABLE" ]
+  }
+  if (imf_restore_in_high_cpu_usage) {
+    defines += [ "IMF_RESTORE_IN_HIGH_CPU_USAGE" ]
   }
   subsystem_name = "inputmethod"
   part_name = "imf"
@@ -264,6 +271,9 @@ ohos_static_library("inputmethod_service_static") {
     "window_manager:libwsutils",
     "window_manager:libdm_lite",
   ]
+  if (imf_restore_in_high_cpu_usage) {
+    external_deps += [ "hiview:libucollection_client" ]
+  }
 
   defines = []
   if (imf_screenlock_mgr_enable) {
