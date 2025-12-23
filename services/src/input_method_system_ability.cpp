@@ -62,6 +62,8 @@ using namespace std::chrono;
 using namespace HiviewDFX;
 constexpr uint32_t FATAL_TIMEOUT = 30;    // 30s
 constexpr int64_t WARNING_TIMEOUT = 5000; // 5s
+constexpr uint32_t MAX_RETRIES = 3;
+constexpr uint32_t INTERVALMS_RETRY = 2000; // 2s
 REGISTER_SYSTEM_ABILITY_BY_ID(InputMethodSystemAbility, INPUT_METHOD_SYSTEM_ABILITY_ID, true);
 constexpr std::int32_t INIT_INTERVAL = 10000L;
 constexpr std::int32_t WMS_RETRY_INTERVAL = 60000;  // 1min
@@ -611,12 +613,11 @@ int32_t InputMethodSystemAbility::GenerateClientInfo(
     clientInfo.config.privateCommand.insert_or_assign(
         "displayId", PrivateDataValue(static_cast<int32_t>(callingDisplayId)));
     clientInfo.name = ImfHiSysEventUtil::GetAppName(tokenId);
-    clientInfo.config.inputAttribute.windowId = focusedInfo.windowId;
-    clientInfo.config.inputAttribute.displayId = focusedInfo.displayId;
     clientInfo.clientGroupId = focusedInfo.displayGroupId;
-    auto finalDisplayId = DisplayAdapter::GetFinalDisplayId(focusedInfo.displayId);
-    clientInfo.config.inputAttribute.callingDisplayId = finalDisplayId;
-    clientInfo.config.inputAttribute.displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(finalDisplayId);
+    clientInfo.config.inputAttribute.displayId = focusedInfo.displayId;
+    clientInfo.config.inputAttribute.windowId = focusedInfo.keyboardWindowId;
+    clientInfo.config.inputAttribute.callingDisplayId = focusedInfo.keyboardDisplayId;
+    clientInfo.config.inputAttribute.displayGroupId = focusedInfo.keyboardDisplayGroupId;
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session != nullptr) {
         clientInfo.config.inputAttribute.needAutoInputNumkey =
@@ -1078,8 +1079,7 @@ ErrCode InputMethodSystemAbility::UpdateListenEventFlag(const InputClientInfoInn
         userId, { clientInfo.eventFlag, clientInfo.client, IPCSkeleton::GetCallingPid() });
 }
 // LCOV_EXCL_START
-ErrCode InputMethodSystemAbility::SetCallingWindow(
-    uint32_t windowId, const sptr<IInputClient> &client, uint32_t &finalWindowId)
+ErrCode InputMethodSystemAbility::SetCallingWindow(uint32_t windowId, const sptr<IInputClient> &client)
 {
     IMSA_HILOGD("IMF SA setCallingWindow enter");
     auto pid = IPCSkeleton::GetCallingPid();
@@ -1095,7 +1095,6 @@ ErrCode InputMethodSystemAbility::SetCallingWindow(
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
     }
-    finalWindowId = checkRet.second.windowId;
     return session->OnSetCallingWindow(checkRet.second, client, windowId);
 }
 // LCOV_EXCL_STOP
@@ -2167,12 +2166,23 @@ int32_t InputMethodSystemAbility::InitKeyEventMonitor()
 {
     IMSA_HILOGI("InputMethodSystemAbility::InitKeyEventMonitor start.");
     auto handler = [this]() {
-        auto switchTrigger = [this](uint32_t keyCode) { return SwitchByCombinationKey(keyCode);};
-        int32_t ret = KeyboardEvent::GetInstance().AddKeyEventMonitor(switchTrigger);
-        IMSA_HILOGI("SubscribeKeyboardEvent add monitor: %{public}s.",
-            ret == ErrorCode::NO_ERROR ? "success" : "failed");
         // Check device capslock status and ime cfg corrent, when device power-up.
         HandleImeCfgCapsState();
+
+        for (int32_t attempt = 1; attempt <= MAX_RETRIES; attempt++) {
+            auto switchTrigger = [this](uint32_t keyCode) { return SwitchByCombinationKey(keyCode);};
+            int32_t ret = KeyboardEvent::GetInstance().AddKeyEventMonitor(switchTrigger);
+            if (ret == ErrorCode::NO_ERROR) {
+                IMSA_HILOGI("SubscribeKeyboardEvent add monitor: success.");
+                break;
+            } else {
+                IMSA_HILOGW("SubscribeKeyboardEvent add monitor: failed. attempt: %{public}d, Retrying...", attempt);
+                std::this_thread::sleep_for(std::chrono::milliseconds(INTERVALMS_RETRY));
+            }
+            if (attempt == MAX_RETRIES) {
+                IMSA_HILOGE("SubscribeKeyboardEvent add monitor: failed after %{public}d attempts.", MAX_RETRIES);
+            }
+        }
     };
     auto imCommonEventManager = ImCommonEventManager::GetInstance();
     if (imCommonEventManager == nullptr) {

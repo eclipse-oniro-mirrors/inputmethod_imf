@@ -130,6 +130,8 @@ int32_t ImeEventMonitorManagerImpl::OnImeChange(const Property &property, const 
 
 int32_t ImeEventMonitorManagerImpl::OnPanelStatusChange(const InputWindowStatus &status, const ImeWindowInfo &info)
 {
+    IMSA_HILOGD("ImeEventMonitorManagerImpl, status: %{public}u, window: %{public}s", static_cast<uint32_t>(status),
+        info.windowInfo.ToString().c_str());
     if (status == InputWindowStatus::HIDE) {
         return OnImeHide(info);
     }

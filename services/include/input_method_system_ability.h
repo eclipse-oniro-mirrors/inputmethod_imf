@@ -61,7 +61,7 @@ public:
     ErrCode InitConnect() override;
     ErrCode PanelStatusChange(uint32_t status, const ImeWindowInfo &info) override;
     ErrCode UpdateListenEventFlag(const InputClientInfoInner &clientInfoInner, uint32_t eventFlag) override;
-    ErrCode SetCallingWindow(uint32_t windowId, const sptr<IInputClient> &client, uint32_t &finalWindowId) override;
+    ErrCode SetCallingWindow(uint32_t windowId, const sptr<IInputClient> &client) override;
     ErrCode GetInputStartInfo(bool &isInputStart, uint32_t &callingWndId, int32_t &requestKeyboardReason) override;
     ErrCode SendPrivateData(const Value &value) override;
 

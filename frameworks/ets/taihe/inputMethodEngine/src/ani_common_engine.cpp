@@ -783,7 +783,7 @@ ani_object CommonConvert::CreateAniRect(ani_env* env, Rosen::Rect rect)
         return CreateAniUndefined(env);
     }
     ani_method aniCtor;
-    ret = env->Class_FindMethod(aniClass, "<ctor>", ":V", &aniCtor);
+    ret = env->Class_FindMethod(aniClass, "<ctor>", ":", &aniCtor);
     if (ret != ANI_OK) {
         IMSA_HILOGE("[ANI] ctor not found");
         return CreateAniUndefined(env);

@@ -138,11 +138,11 @@ struct InputAttribute {
     int32_t immersiveMode = 0;
     int32_t gradientMode { 0 };
     int32_t fluidLightMode { 0 };
-    uint32_t windowId = 0;         // editor window
-    uint64_t displayId = 0;        // editor window in
-    uint64_t callingDisplayId = 0; // keyboard show
-    uint64_t displayGroupId = 0;   // keyboard show
-    uint64_t callingScreenId = 0;  // keyboard show
+    uint64_t displayId = 0;        // editor in
+    uint32_t windowId = 0;         // keyboard in
+    uint64_t callingDisplayId = 0; // keyboard in
+    uint64_t displayGroupId = 0;   // keyboard in
+    uint64_t callingScreenId = 0;  // keyboard in
     std::u16string placeholder { u"" };
     std::u16string abilityName { u"" };
     CapitalizeMode capitalizeMode = CapitalizeMode::NONE;
@@ -211,9 +211,9 @@ struct InputAttributeInner : public Parcelable {
     int32_t immersiveMode = 0;
     int32_t gradientMode { 0 };
     int32_t fluidLightMode { 0 };
-    uint32_t windowId = 0;         // editor window
-    uint64_t callingDisplayId = 0; // keyboard show
-    uint64_t displayGroupId = 0;   // keyboard show
+    uint32_t windowId = 0;         // keyboard in
+    uint64_t callingDisplayId = 0; // keyboard in
+    uint64_t displayGroupId = 0;   // keyboard in
     std::u16string placeholder { u"" };
     std::u16string abilityName { u"" };
     CapitalizeMode capitalizeMode = CapitalizeMode::NONE;

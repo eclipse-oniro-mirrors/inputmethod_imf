@@ -950,7 +950,7 @@ napi_value JsGetInputMethodController::ShowSoftKeyboard(napi_env env, napi_callb
         if (argc > 0) {
             int64_t displayId = 0;
             if (JsUtil::GetValue(env, argv[0], displayId) && displayId >= 0) {
-                ctxt->displayId = displayId;
+                ctxt->displayId = static_cast<uint64_t>(displayId);
             }
         }
         return napi_ok;
@@ -982,7 +982,7 @@ napi_value JsGetInputMethodController::HideSoftKeyboard(napi_env env, napi_callb
         if (argc > 0) {
             int64_t displayId = 0;
             if (JsUtil::GetValue(env, argv[0], displayId) && displayId >= 0) {
-                ctxt->displayId = displayId;
+                ctxt->displayId = static_cast<uint64_t>(displayId);
             }
         }
         return napi_ok;
@@ -1519,6 +1519,12 @@ int32_t JsGetInputMethodController::JsMessageHandler::OnTerminated()
             IMSA_HILOGI("jsCallback is nullptr!.");
             return;
         }
+        napi_handle_scope scope = nullptr;
+        napi_open_handle_scope(jsCallback->env_, &scope);
+        if (scope == nullptr) {
+            IMSA_HILOGE("scope is nullptr!");
+            return;
+        }
         napi_get_reference_value(jsCallback->env_, jsCallback->onTerminatedCallback_, &callback);
         if (callback != nullptr) {
             napi_get_global(jsCallback->env_, &global);
@@ -1530,6 +1536,7 @@ int32_t JsGetInputMethodController::JsMessageHandler::OnTerminated()
                 output = nullptr;
             }
         }
+        napi_close_handle_scope(jsCallback->env_, scope);
     };
     eventHandler->PostTask(task, "IMC_MsgHandler_OnTerminated", 0, AppExecFwk::EventQueue::Priority::VIP);
     return ErrorCode::NO_ERROR;

@@ -36,7 +36,7 @@ export interface Pattern {
   selectedIcon: Resource;
 }
 
-class SubType implements jsonx.JsonElementSerializable  {
+class SubType implements jsonx.JsonElementDeserializable  {
   public name: string | undefined ='';
   public id: string | undefined = '';
   public isCurrent: boolean | undefined = false;

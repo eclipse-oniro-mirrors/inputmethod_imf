@@ -1131,6 +1131,10 @@ int32_t InputMethodController::SetCallingWindow(uint32_t windowId)
         IMSA_HILOGD("not editable.");
         return ErrorCode::ERROR_CLIENT_NOT_EDITABLE;
     }
+    {
+        std::lock_guard<std::mutex> lock(textConfigLock_);
+        textConfig_.windowId = windowId;
+    }
     auto ret = SetCallingWindowByIMSA(windowId);
     if (ret == ErrorCode::NO_ERROR) {
         return ret;
@@ -1142,39 +1146,21 @@ int32_t InputMethodController::SetCallingWindow(uint32_t windowId)
     }
     IMSA_HILOGI("windowId: %{public}d.", windowId);
     agent->SetCallingWindow(windowId);
-    {
-        std::lock_guard<std::mutex> lock(textConfigLock_);
-        textConfig_.windowId = windowId;
-    }
-    {
-        std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
-        clientInfo_.config.windowId = windowId;
-    }
     return ErrorCode::NO_ERROR;
 }
 
 int32_t InputMethodController::SetCallingWindowByIMSA(uint32_t windowId)
 {
-    auto finalWindowId = windowId;
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
         IMSA_HILOGE("proxy is nullptr!");
         return ErrorCode::ERROR_SERVICE_START_FAILED;
     }
-    auto ret = proxy->SetCallingWindow(windowId, clientInfo_.client, finalWindowId);
+    auto ret = proxy->SetCallingWindow(windowId, clientInfo_.client);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("failed:%{public}d!", ret);
         return ret;
     }
-    {
-        std::lock_guard<std::mutex> lock(textConfigLock_);
-        textConfig_.windowId = finalWindowId;
-    }
-    {
-        std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
-        clientInfo_.config.windowId = finalWindowId;
-    }
-    IMSA_HILOGI("windowId/finalWindowId: %{public}u/%{public}u.", windowId, finalWindowId);
     return ErrorCode::NO_ERROR;
 }
 

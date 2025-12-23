@@ -85,6 +85,7 @@ int32_t InputMethodPanel::CreatePanel(
     if (panelInfo.panelType == SOFT_KEYBOARD) {
         isScbEnable_ = Rosen::SceneBoardJudgement::IsSceneBoardEnabled();
         if (isScbEnable_) {
+            RegisterVisibilityChangeListener();
             RegisterKeyboardPanelInfoChangeListener();
         }
     }
@@ -274,6 +275,7 @@ int32_t InputMethodPanel::DestroyPanel()
     }
     if (panelType_ == SOFT_KEYBOARD) {
         UnregisterKeyboardPanelInfoChangeListener();
+        UnregisterVisibilityChangeListener();
     }
     auto result = window_->Destroy();
     IMSA_HILOGI("destroy ret: %{public}d.", result);
@@ -1789,10 +1791,9 @@ int32_t InputMethodPanel::GetWindowOrientation(PanelFlag panelFlag, uint32_t win
 
 void InputMethodPanel::RegisterKeyboardPanelInfoChangeListener()
 {
-    kbPanelInfoListener_ =
-        new (std::nothrow) KeyboardPanelInfoChangeListener([this](const KeyboardPanelInfo &keyboardPanelInfo) {
-            OnPanelHeightChange(keyboardPanelInfo);
-            HandleKbPanelInfoChange(keyboardPanelInfo);
+    kbPanelInfoListener_ = new (std::nothrow)
+        KeyboardPanelInfoChangeListener([this](const KeyboardPanelInfo &keyboardPanelInfo) {
+            OnKeyboardPanelInfoChange(keyboardPanelInfo);
         });
     if (kbPanelInfoListener_ == nullptr) {
         return;
@@ -1802,6 +1803,17 @@ void InputMethodPanel::RegisterKeyboardPanelInfoChangeListener()
     }
     auto ret = window_->RegisterKeyboardPanelInfoChangeListener(kbPanelInfoListener_);
     IMSA_HILOGD("ret: %{public}d.", ret);
+}
+
+void InputMethodPanel::OnKeyboardPanelInfoChange(const Rosen::KeyboardPanelInfo &keyboardPanelInfo)
+{
+    std::lock_guard<std::mutex> lock(panelStatusChangeMutex_);
+    if (keyboardPanelInfo.isShowing_ && !isVisible_.load()) {
+        IMSA_HILOGE("window invisible now, cancel this showing notification");
+        return;
+    }
+    OnPanelHeightChange(keyboardPanelInfo);
+    HandleKbPanelInfoChange(keyboardPanelInfo);
 }
 
 void InputMethodPanel::OnPanelHeightChange(const Rosen::KeyboardPanelInfo &keyboardPanelInfo)
@@ -1842,7 +1854,7 @@ void InputMethodPanel::UnregisterKeyboardPanelInfoChangeListener()
 
 void InputMethodPanel::HandleKbPanelInfoChange(const KeyboardPanelInfo &keyboardPanelInfo)
 {
-    IMSA_HILOGD("start.");
+    IMSA_HILOGD("start, isShowing: %{public}d", keyboardPanelInfo.isShowing_);
     InputWindowStatus status = InputWindowStatus::HIDE;
     if (keyboardPanelInfo.isShowing_) {
         status = InputWindowStatus::SHOW;
@@ -2669,6 +2681,52 @@ void InputMethodPanel::WaitSetUIContent()
         waitTime += WAITTIME;
         IMSA_HILOGI("InputMethodPanel show pannel waitTime %{public}d.", waitTime);
     }
+}
+
+int32_t InputMethodPanel::RegisterVisibilityChangeListener()
+{
+    visibilityChangeListener_ = new (std::nothrow) VisibilityChangeListener([this](bool isVisible) {
+        OnVisibilityChange(isVisible);
+    });
+    if (visibilityChangeListener_ == nullptr) {
+        IMSA_HILOGE("failed to new VisibilityChangeListener");
+        return ErrorCode::ERROR_IMA_NULLPTR;
+    }
+    if (window_ == nullptr) {
+        IMSA_HILOGE("window_ is nullptr");
+        return ErrorCode::ERROR_OPERATE_PANEL;
+    }
+    auto ret = window_->RegisterWindowVisibilityChangeListener(visibilityChangeListener_);
+    IMSA_HILOGI("register result: %{public}d", ret);
+    return ret == WMError::WM_OK ? ErrorCode::NO_ERROR : ErrorCode::ERROR_WINDOW_MANAGER;
+}
+
+int32_t InputMethodPanel::UnregisterVisibilityChangeListener()
+{
+    if (window_ == nullptr) {
+        IMSA_HILOGE("window_ is nullptr");
+        return ErrorCode::ERROR_OPERATE_PANEL;
+    }
+    auto ret = window_->UnregisterWindowVisibilityChangeListener(visibilityChangeListener_);
+    IMSA_HILOGI("unregister result: %{public}d", ret);
+    visibilityChangeListener_ = nullptr;
+    isVisible_.store(false);
+    return ret == WMError::WM_OK ? ErrorCode::NO_ERROR : ErrorCode::ERROR_WINDOW_MANAGER;
+}
+
+void InputMethodPanel::OnVisibilityChange(bool isVisible)
+{
+    std::lock_guard<std::mutex> lock(panelStatusChangeMutex_);
+    IMSA_HILOGI("isVisible: %{public}d", isVisible);
+    isVisible_.store(isVisible);
+    InputWindowStatus status = InputWindowStatus::HIDE;
+    Rosen::Rect rect{};
+    if (isVisible) {
+        status = InputWindowStatus::SHOW;
+        auto keyboardLayout = GetKeyboardLayoutParams();
+        rect = IsDisplayPortrait() ? keyboardLayout.PortraitPanelRect_ : keyboardLayout.LandscapePanelRect_;
+    }
+    PanelStatusChangeToImc(status, rect);
 }
 } // namespace MiscServices
 } // namespace OHOS

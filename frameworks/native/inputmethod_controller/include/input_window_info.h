@@ -38,6 +38,15 @@ struct InputWindowInfo : public Parcelable {
     uint32_t height{ 0 };  // the height of inputWindow
     uint64_t displayId{ ImfCommonConst::DEFAULT_DISPLAY_ID };
 
+    std::string ToString() const
+    {
+        std::string info;
+        info.append(name + ", ");
+        info.append("[displayId/left/top/width/height]: " + std::to_string(displayId) + std::to_string(left) + "/" +
+                    std::to_string(top) + "/" + std::to_string(width) + "/" + std::to_string(height));
+        return info;
+    }
+
     bool ReadFromParcel(Parcel &in)
     {
         name = in.ReadString();
