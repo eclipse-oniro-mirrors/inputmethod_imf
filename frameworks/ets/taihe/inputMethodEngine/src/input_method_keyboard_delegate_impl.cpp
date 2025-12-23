@@ -329,6 +329,10 @@ void KeyboardDelegateImpl::DealKeyEvent(const std::shared_ptr<MMI::KeyEvent> &ke
 {
     bool isKeyEventConsumed = false;
     bool isKeyCodeConsumed = false;
+    if (keyEvent == nullptr) {
+        IMSA_HILOGW("keyEvent is nullptr");
+        return;
+    }
     {
         std::lock_guard<std::mutex> lock(mutex_);
         auto &cbEventVec = eventCbMap_["keyEvent"];

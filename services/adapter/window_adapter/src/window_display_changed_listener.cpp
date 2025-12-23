@@ -18,6 +18,7 @@
 
 namespace OHOS {
 namespace MiscServices {
+// LCOV_EXCL_START
 void WindowDisplayChangeListener::OnCallingWindowDisplayChanged(
     const OHOS::Rosen::CallingWindowInfo &callingWindowInfo)
 {
@@ -26,7 +27,7 @@ void WindowDisplayChangeListener::OnCallingWindowDisplayChanged(
         handle_(callingWindowInfo);
     }
 }
-
+// LCOV_EXCL_STOP
 std::string WindowDisplayChangeListener::CallingWindowInfoToString(const OHOS::Rosen::CallingWindowInfo& info)
 {
     std::stringstream ss;

@@ -24,15 +24,6 @@ namespace OHOS {
 namespace MiscServices {
 // LCOV_EXCL_START
 constexpr int32_t SUCCESS = 0;
-bool FileOperator::Create(const std::string &path, mode_t mode)
-{
-    auto ret = mkdir(path.c_str(), mode);
-    if (ret != SUCCESS) {
-        IMSA_HILOGE("%{public}s mkdir failed, errno:%{public}d!", path.c_str(), errno);
-        return false;
-    }
-    return true;
-}
 // LCOV_EXCL_STOP
 bool FileOperator::IsExist(const std::string &path)
 {

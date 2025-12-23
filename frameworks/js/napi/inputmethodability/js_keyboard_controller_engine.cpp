@@ -57,6 +57,7 @@ napi_value JsKeyboardControllerEngine::JsConstructor(napi_env env, napi_callback
         auto *objInfo = reinterpret_cast<JsKeyboardControllerEngine *>(data);
         if (objInfo != nullptr) {
             delete objInfo;
+            objInfo = nullptr;
         }
     };
     napi_status status = napi_wrap(env, thisVar, controllerObject, finalize, nullptr, nullptr);

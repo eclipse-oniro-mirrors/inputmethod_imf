@@ -229,6 +229,7 @@ void ImCommonEventManager::EventSubscriber::OnBundleResChanged(const CommonEvent
     if (msgHandle == nullptr) {
         IMSA_HILOGE("MessageHandler is nullptr!");
         delete msg;
+        msg = nullptr;
         return;
     }
     msgHandle->SendMessage(msg);
@@ -289,6 +290,7 @@ void ImCommonEventManager::EventSubscriber::HandleLargeMemoryStateUpdate(const E
     if (msgHandle == nullptr) {
         IMSA_HILOGE("MessageHandler is nullptr!");
         delete msg;
+        msg = nullptr;
         return;
     }
     msgHandle->SendMessage(msg);

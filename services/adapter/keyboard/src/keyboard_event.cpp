@@ -29,16 +29,16 @@ int32_t KeyboardEvent::AddKeyEventMonitor(KeyHandle handle)
 {
     IMSA_HILOGI("KeyboardEvent::AddKeyEventMonitor start.");
     std::shared_ptr<InputEventCallback> callback = std::make_shared<InputEventCallback>();
+    if (callback == nullptr) {
+        IMSA_HILOGE("callback is nullptr!");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
     callback->SetKeyHandle(handle);
     auto manager = InputManager::GetInstance();
     if (manager == nullptr) {
         return ErrorCode::ERROR_NULL_POINTER;
     }
     int32_t monitorId = manager->AddMonitor([callback](std::shared_ptr<MMI::KeyEvent> keyEvent) {
-        if (callback == nullptr) {
-            IMSA_HILOGE("callback is nullptr!");
-            return;
-        }
         callback->OnInputEvent(keyEvent);
     });
     if (monitorId < 0) {

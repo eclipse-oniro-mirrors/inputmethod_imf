@@ -33,6 +33,7 @@ thread_local napi_ref JsPanel::panelConstructorRef_ = nullptr;
 std::mutex JsPanel::panelConstructorMutex_;
 constexpr int32_t MAX_WAIT_TIME = 10;
 constexpr int32_t MAX_INPUT_REGION_LEN = 4;
+constexpr int32_t PARAMS_NUM_TWO = 2;
 const constexpr char *LANDSCAPE_REGION_PARAM_NAME = "landscapeInputRegion";
 const constexpr char *PORTRAIT_REGION_PARAM_NAME = "portraitInputRegion";
 FFRTBlockQueue<JsEventInfo> JsPanel::jsQueue_{ MAX_WAIT_TIME };
@@ -93,6 +94,7 @@ napi_value JsPanel::JsNew(napi_env env, napi_callback_info info)
         CHECK_RETURN_VOID(jsPanel != nullptr, "finalize nullptr!");
         jsPanel->GetNative() = nullptr;
         delete jsPanel;
+        jsPanel = nullptr;
     };
     napi_value thisVar = nullptr;
     napi_status status = napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr);
@@ -130,28 +132,7 @@ napi_value JsPanel::SetUiContent(napi_env env, napi_callback_info info)
     IMSA_HILOGI("JsPanel start.");
     auto ctxt = std::make_shared<PanelContentContext>(env, info);
     auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
-        napi_status status = napi_generic_failure;
-        PARAM_CHECK_RETURN(env, argc >= 1, "at least one parameter is required!", TYPE_NONE, status);
-        // 0 means the first param path<std::string>
-        PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[0], ctxt->path) == napi_ok,
-            "js param path covert failed, must be string!", TYPE_NONE, status);
-        // if type of argv[1] is object, we will get value of 'storage' from it.
-        if (argc >= 2) {
-            napi_valuetype valueType = napi_undefined;
-            status = napi_typeof(env, argv[1], &valueType);
-            CHECK_RETURN(status == napi_ok, "get valueType failed!", status);
-            if (valueType == napi_object) {
-                napi_ref storage = nullptr;
-                napi_create_reference(env, argv[1], 1, &storage);
-                auto contentStorage = (storage == nullptr) ? nullptr
-                                                           : std::shared_ptr<NativeReference>(
-                                                                 reinterpret_cast<NativeReference *>(storage));
-                ctxt->contentStorage = contentStorage;
-            }
-        }
-        ctxt->info = { std::chrono::system_clock::now(), JsEvent::SET_UI_CONTENT };
-        jsQueue_.Push(ctxt->info);
-        return napi_ok;
+        return CheckSetUiContentParams(env, argc, ctxt, argv);
     };
 
     auto exec = [ctxt](AsyncCall::Context *ctx) { ctxt->SetState(napi_ok); };
@@ -175,6 +156,40 @@ napi_value JsPanel::SetUiContent(napi_env env, napi_callback_info info)
     // 3 means JsAPI:setUiContent has 3 params at most.
     AsyncCall asyncCall(env, info, ctxt, 3);
     return asyncCall.Call(env, exec, "setUiContent");
+}
+
+napi_status JsPanel::CheckSetUiContentParams(napi_env env, size_t argc, std::shared_ptr<PanelContentContext> ctxt,
+    napi_value *argv)
+{
+    napi_status status = napi_generic_failure;
+    PARAM_CHECK_RETURN(env, argc >= 1, "at least one parameter is required!", TYPE_NONE, status);
+    // 0 means the first param path<std::string>
+    PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[0], ctxt->path) == napi_ok,
+        "js param path covert failed, must be string!", TYPE_NONE, status);
+    // if type of argv[1] is object, we will get value of 'storage' from it.
+    if (argc >= PARAMS_NUM_TWO) {
+        napi_valuetype valueType = napi_undefined;
+        status = napi_typeof(env, argv[1], &valueType);
+        CHECK_RETURN(status == napi_ok, "get valueType failed!", status);
+        if (valueType == napi_object) {
+            napi_ref storage = nullptr;
+            napi_handle_scope scope = nullptr;
+            napi_open_handle_scope(env, &scope);
+            if (scope == nullptr) {
+                IMSA_HILOGE("scope is nullptr!");
+                return napi_generic_failure;
+            }
+            napi_create_reference(env, argv[1], 1, &storage);
+            napi_close_handle_scope(env, scope);
+            auto contentStorage = (storage == nullptr) ? nullptr
+                                                        : std::shared_ptr<NativeReference>(
+                                                                reinterpret_cast<NativeReference *>(storage));
+            ctxt->contentStorage = contentStorage;
+        }
+    }
+    ctxt->info = { std::chrono::system_clock::now(), JsEvent::SET_UI_CONTENT };
+    jsQueue_.Push(ctxt->info);
+    return napi_ok;
 }
 
 napi_value JsPanel::Resize(napi_env env, napi_callback_info info)

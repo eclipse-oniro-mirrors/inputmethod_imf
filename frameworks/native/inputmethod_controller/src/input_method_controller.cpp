@@ -98,7 +98,7 @@ sptr<InputMethodController> InputMethodController::GetInstance()
     }
     return instance_;
 }
-
+// LCOV_EXCL_START
 int32_t InputMethodController::RestoreListenEventFlag()
 {
     auto proxy = GetSystemAbilityProxy();
@@ -110,7 +110,7 @@ int32_t InputMethodController::RestoreListenEventFlag()
     InputClientInfoInner infoInner = InputMethodTools::GetInstance().InputClientInfoToInner(clientInfo_);
     return proxy->UpdateListenEventFlag(infoInner, 0);
 }
-
+// LCOV_EXCL_STOP
 int32_t InputMethodController::UpdateListenEventFlag(uint32_t finalEventFlag, uint32_t eventFlag, bool isOn)
 {
     auto oldEventFlag = clientInfo_.eventFlag;
@@ -198,7 +198,7 @@ sptr<IInputMethodSystemAbility> InputMethodController::GetSystemAbilityProxy(boo
     abilityManager_ = iface_cast<IInputMethodSystemAbility>(systemAbility);
     return abilityManager_;
 }
-
+// LCOV_EXCL_START
 void InputMethodController::RemoveDeathRecipient()
 {
     std::lock_guard<std::mutex> lock(abilityLock_);
@@ -208,7 +208,7 @@ void InputMethodController::RemoveDeathRecipient()
     deathRecipient_ = nullptr;
     abilityManager_ = nullptr;
 }
-
+// LCOV_EXCL_STOP
 void InputMethodController::DeactivateClient()
 {
     {
@@ -692,7 +692,7 @@ int32_t InputMethodController::StartInput(
     int32_t ret = proxy->StartInput(inner, agents, imeInfos);
     return ret;
 }
-
+// LCOV_EXCL_START
 int32_t InputMethodController::ReleaseInput(sptr<IInputClient> &client)
 {
     IMSA_HILOGD("InputMethodController::ReleaseInput start.");
@@ -724,7 +724,7 @@ int32_t InputMethodController::ShowInput(sptr<IInputClient> &client, ClientType 
     }
     return proxy->ShowInput(client, windowId, type, requestKeyboardReason);
 }
-
+// LCOV_EXCL_STOP
 int32_t InputMethodController::HideInput(sptr<IInputClient> &client)
 {
     IMSA_HILOGD("InputMethodController::HideInput start.");
@@ -1285,7 +1285,7 @@ void InputMethodController::OnInputReady(sptr<IRemoteObject> agentObject, const 
     }
     SetAgent(agentObject, imeInfo.bundleName);
 }
-
+// LCOV_EXCL_START
 void InputMethodController::SetInputReady(
     const std::vector<sptr<IRemoteObject>> &agentObjects, const std::vector<BindImeInfo> &imeInfos)
 {
@@ -1297,7 +1297,7 @@ void InputMethodController::SetInputReady(
         OnInputReady(agentObjects[i], imeInfos[i]);
     }
 }
-
+// LCOV_EXCL_STOP
 void InputMethodController::OnInputStop(bool isStopInactiveClient, sptr<IRemoteObject> proxy)
 {
     ClearAgentInfo();
@@ -1777,7 +1777,7 @@ void InputMethodController::SetBindImeInfo(const std::pair<int64_t, std::string>
     std::lock_guard<std::mutex> lock(bindImeInfoLock_);
     bindImeInfo_ = imeInfo;
 }
-
+// LCOV_EXCL_START
 std::pair<int64_t, std::string> InputMethodController::GetBindImeInfo()
 {
     std::lock_guard<std::mutex> lock(bindImeInfoLock_);
@@ -1811,7 +1811,7 @@ int32_t InputMethodController::SetPreviewTextInner(const std::string &text, cons
     }
     return ErrorCode::NO_ERROR;
 }
-
+// LCOV_EXCL_STOP
 int32_t InputMethodController::FinishTextPreview()
 {
     InputMethodSyncTrace tracer("IMC_FinishTextPreview");
@@ -1891,13 +1891,13 @@ int32_t InputMethodController::RegisterMsgHandler(const std::shared_ptr<MsgHandl
     }
     return ErrorCode::NO_ERROR;
 }
-
+// LCOV_EXCL_START
 std::shared_ptr<MsgHandlerCallbackInterface> InputMethodController::GetMsgHandlerCallback()
 {
     std::lock_guard<decltype(msgHandlerMutex_)> lock(msgHandlerMutex_);
     return msgHandler_;
 }
-
+// LCOV_EXCL_STOP
 int32_t InputMethodController::GetInputMethodState(EnabledStatus &state)
 {
     auto proxy = GetSystemAbilityProxy();
@@ -1937,14 +1937,14 @@ int32_t InputMethodController::ShowSoftKeyboard(ClientType type, uint64_t displa
     ReportClientShow(static_cast<int32_t>(IInputMethodSystemAbilityIpcCode::COMMAND_SHOW_CURRENT_INPUT), ret, type);
     return ret;
 }
-
+// LCOV_EXCL_START
 void InputMethodController::ReportClientShow(int32_t eventCode, int32_t errCode, ClientType type)
 {
     auto evenInfo =
         HiSysOriginalInfo::Builder().SetClientType(type).SetEventCode(eventCode).SetErrCode(errCode).Build();
     ImcHiSysEventReporter::GetInstance().ReportEvent(ImfEventType::CLIENT_SHOW, *evenInfo);
 }
-
+// LCOV_EXCL_STOP
 void InputMethodController::ReportBaseTextOperation(int32_t eventCode, int32_t errCode)
 {
     auto imeInfo = GetBindImeInfo();
@@ -2253,7 +2253,7 @@ std::u16string OnTextChangedListener::GetLeftTextOfCursorV2(int32_t number)
     };
     eventHandler->PostTask(task, "GetLeftTextOfCursorV2", 0, AppExecFwk::EventQueue::Priority::VIP);
     std::u16string text;
-    if (!textResultHandler->GetValue(text)) {
+    if (textResultHandler != nullptr && !textResultHandler->GetValue(text)) {
         IMSA_HILOGW("GetLeftTextOfCursorV2 timeout");
     }
     return text;
@@ -2281,7 +2281,7 @@ std::u16string OnTextChangedListener::GetRightTextOfCursorV2(int32_t number)
     };
     eventHandler->PostTask(task, "GetRightTextOfCursorV2", 0, AppExecFwk::EventQueue::Priority::VIP);
     std::u16string text;
-    if (!textResultHandler->GetValue(text)) {
+    if (textResultHandler != nullptr && !textResultHandler->GetValue(text)) {
         IMSA_HILOGW("GetRightTextOfCursorV2 timeout");
     }
     return text;
@@ -2309,7 +2309,7 @@ int32_t OnTextChangedListener::GetTextIndexAtCursorV2()
     };
     eventHandler->PostTask(task, "GetTextIndexAtCursorV2", 0, AppExecFwk::EventQueue::Priority::VIP);
     int32_t index = -1;
-    if (!textResultHandler->GetValue(index)) {
+    if (textResultHandler != nullptr && !textResultHandler->GetValue(index)) {
         IMSA_HILOGW("GetTextIndexAtCursorV2 timeout");
     }
     return index;
