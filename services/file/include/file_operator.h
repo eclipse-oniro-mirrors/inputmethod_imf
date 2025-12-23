@@ -24,7 +24,6 @@ namespace OHOS {
 namespace MiscServices {
 class FileOperator {
 public:
-    static bool Create(const std::string &path, mode_t mode);
     static bool IsExist(const std::string &path);
     static bool Read(const std::string &path, std::string &content);
     static bool Read(const std::string &path, const std::string &key, std::string &content);

@@ -312,6 +312,7 @@ void InputMethodSettingImpl::EnableInputMethodSync(::taihe::string_view bundleNa
     auto instance = InputMethodController::GetInstance();
     if (instance == nullptr) {
         IMSA_HILOGE("GetInstance return nullptr!");
+        return;
     }
     errCode = instance->EnableIme(std::string(bundleName), std::string(extensionName),
         static_cast<OHOS::MiscServices::EnabledStatus>(enabledState.get_value()));

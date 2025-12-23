@@ -47,6 +47,7 @@ FullImeInfoManager::FullImeInfoManager()
             auto instance = MessageHandler::Instance();
             if (instance == nullptr) {
                 delete msg;
+                msg = nullptr;
                 return;
             }
             instance->SendMessage(msg);

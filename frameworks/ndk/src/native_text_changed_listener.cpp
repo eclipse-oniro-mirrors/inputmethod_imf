@@ -239,11 +239,12 @@ int32_t NativeTextChangedListener::ReceivePrivateCommand(
         return ErrorCode::ERROR_NULL_POINTER;
     }
 
-    auto freeCommand = [command](size_t index) {
+    auto freeCommand = [&command](size_t index) {
         for (size_t i = 0; i < index; i++) {
             delete command[i];
         }
         delete[] command;
+        command = nullptr;
     };
 
     size_t index = 0;

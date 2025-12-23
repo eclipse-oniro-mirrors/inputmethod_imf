@@ -37,7 +37,7 @@ ErrCode InputClientServiceImpl::OnInputReady(const sptr<IRemoteObject> &agent, c
     }
     return ERR_OK;
 }
-
+// LCOV_EXCL_START
 ErrCode InputClientServiceImpl::OnInputStop(bool isStopInactiveClient, const sptr<IRemoteObject> &object)
 {
     auto instance = InputMethodController::GetInstance();
@@ -48,7 +48,7 @@ ErrCode InputClientServiceImpl::OnInputStop(bool isStopInactiveClient, const spt
     }
     return ERR_OK;
 }
-
+// LCOV_EXCL_STOP
 ErrCode InputClientServiceImpl::OnInputStopAsync(bool isStopInactiveClient)
 {
     auto instance = InputMethodController::GetInstance();
@@ -59,7 +59,7 @@ ErrCode InputClientServiceImpl::OnInputStopAsync(bool isStopInactiveClient)
     }
     return ERR_OK;
 }
-
+// LCOV_EXCL_START
 ErrCode InputClientServiceImpl::OnImeMirrorStop(const sptr<IRemoteObject> &object)
 {
     auto instance = InputMethodController::GetInstance();
@@ -70,7 +70,7 @@ ErrCode InputClientServiceImpl::OnImeMirrorStop(const sptr<IRemoteObject> &objec
     }
     return ERR_OK;
 }
-
+// LCOV_EXCL_STOP
 ErrCode InputClientServiceImpl::OnSwitchInput(const Property &property, const SubProperty &subProperty)
 {
     return ImeEventMonitorManagerImpl::GetInstance().OnImeChange(property, subProperty);

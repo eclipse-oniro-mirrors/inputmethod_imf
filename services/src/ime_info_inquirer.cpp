@@ -805,6 +805,9 @@ int32_t ImeInfoInquirer::GetDefaultInputMethod(const int32_t userId, std::shared
     FullImeInfo imeInfo;
     if (FullImeInfoManager::GetInstance().Get(userId, defaultIme->name, imeInfo)) {
         prop = std::make_shared<Property>(imeInfo.prop);
+        if (prop == nullptr) {
+            return ErrorCode::ERROR_NULL_POINTER;
+        }
         prop->id = defaultIme->id;
         return ErrorCode::NO_ERROR;
     }

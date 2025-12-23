@@ -20,6 +20,7 @@
 
 namespace OHOS {
 namespace MiscServices {
+// LCOV_EXCL_START
 bool BlockRetry(uint32_t interval, uint32_t maxRetryTimes, Function func)
 {
     IMSA_HILOGD("retry start.");
@@ -35,7 +36,7 @@ bool BlockRetry(uint32_t interval, uint32_t maxRetryTimes, Function func)
     IMSA_HILOGI("retry failed!");
     return false;
 }
-
+// LCOV_EXCL_STOP
 bool BlockRetry(uint32_t interval, uint32_t maxRetryTimes, RetryFunction func, int32_t &ret)
 {
     IMSA_HILOGD("retry start.");

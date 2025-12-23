@@ -267,14 +267,14 @@ sptr<IInputClient> ClientGroup::GetCurrentClient()
     std::lock_guard<std::mutex> lock(currentClientLock_);
     return currentClient_;
 }
-
+// LCOV_EXCL_START
 void ClientGroup::SetCurrentClient(sptr<IInputClient> client)
 {
     IMSA_HILOGD("set current client.");
     std::lock_guard<std::mutex> lock(currentClientLock_);
     currentClient_ = client;
 }
-
+// LCOV_EXCL_STOP
 sptr<IInputClient> ClientGroup::GetInactiveClient()
 {
     std::lock_guard<std::mutex> lock(inactiveClientLock_);

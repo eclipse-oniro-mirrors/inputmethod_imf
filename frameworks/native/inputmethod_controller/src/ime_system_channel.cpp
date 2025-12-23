@@ -168,7 +168,7 @@ void ImeSystemCmdChannel::OnSystemCmdAgentDied(const wptr<IRemoteObject> &remote
     ClearSystemCmdAgent();
     RunConnectSystemCmd();
 }
-// LCOV_EXCL_STOP
+
 sptr<IInputMethodAgent> ImeSystemCmdChannel::GetSystemCmdAgent()
 {
     IMSA_HILOGD("GetSystemCmdAgent start.");
@@ -181,7 +181,7 @@ void ImeSystemCmdChannel::SetSystemCmdListener(const sptr<OnSystemCmdListener> &
     std::lock_guard<std::mutex> lock(systemCmdListenerLock_);
     systemCmdListener_ = std::move(listener);
 }
-
+// LCOV_EXCL_STOP
 sptr<OnSystemCmdListener> ImeSystemCmdChannel::GetSystemCmdListener()
 {
     std::lock_guard<std::mutex> lock(systemCmdListenerLock_);

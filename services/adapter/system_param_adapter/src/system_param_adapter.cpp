@@ -71,6 +71,7 @@ void SystemParamAdapter::HandleSysParamChanged(
     auto mesHandler = MessageHandler::Instance();
     if (mesHandler == nullptr) {
         delete msg;
+        msg = nullptr;
         return;
     }
     mesHandler->SendMessage(msg);

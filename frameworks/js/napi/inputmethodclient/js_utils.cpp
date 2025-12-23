@@ -525,7 +525,8 @@ napi_value JsUtils::GetValue(napi_env env, const std::vector<uint8_t> &in)
     IMF_CALL(napi_create_arraybuffer(env, length, &data, &arrayBuffer));
     // 0 means the size of data.
     CHECK_RETURN(length != 0, "Data size is 0.", arrayBuffer);
-    if (memcpy_s(data, length, reinterpret_cast<const void *>(in.data()), length) != 0) {
+    size_t safeLength = std::min(length, in.size());
+    if (memcpy_s(data, length, reinterpret_cast<const void *>(in.data()), safeLength) != 0) {
         return nullptr;
     }
     return arrayBuffer;

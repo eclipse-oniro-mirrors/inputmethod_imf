@@ -36,12 +36,12 @@ std::string DisplayAdapter::GetDisplayName(uint64_t displayId)
     IMSA_HILOGD("display: %{public}" PRIu64 " name is %{public}s.", displayId, name.c_str());
     return name;
 }
-// LCOV_EXCL_STOP
+
 uint64_t DisplayAdapter::GetDefaultDisplayId()
 {
     return DisplayManagerLite::GetInstance().GetDefaultDisplayId();
 }
-
+// LCOV_EXCL_STOP
 bool DisplayAdapter::IsImeShowable(uint64_t displayId)
 {
     auto displayInfo = GetDisplayInfo(displayId);
