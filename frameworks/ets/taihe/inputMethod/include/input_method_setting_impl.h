@@ -79,31 +79,6 @@ public:
     {
         return InputMethodSettingImpl::GetInstance().GetAllInputMethodsSync();
     }
-    void OnImeHideImpl(taihe::callback_view<void(taihe::array_view<InputWindowInfo_t>)> f, uintptr_t opq)
-    {
-        InputMethodSettingImpl::GetInstance().RegisterImeEvent("imeHide", EVENT_IME_HIDE_MASK, f, opq);
-    }
-    void OffImeHideImpl(taihe::optional_view<uintptr_t> opq)
-    {
-        InputMethodSettingImpl::GetInstance().UnregisterImeEvent("imeHide", EVENT_IME_HIDE_MASK, opq);
-    }
-    void OnImeShowImpl(taihe::callback_view<void(taihe::array_view<InputWindowInfo_t>)> f, uintptr_t opq)
-    {
-        InputMethodSettingImpl::GetInstance().RegisterImeEvent("imeShow", EVENT_IME_SHOW_MASK, f, opq);
-    }
-    void OffImeShowImpl(taihe::optional_view<uintptr_t> opq)
-    {
-        InputMethodSettingImpl::GetInstance().UnregisterImeEvent("imeShow", EVENT_IME_SHOW_MASK, opq);
-    }
-    void OnImeChangeImpl(taihe::callback_view<void(InputMethodProperty_t const &, InputMethodSubtype_t const &)> f,
-        uintptr_t opq)
-    {
-        InputMethodSettingImpl::GetInstance().RegisterImeEvent("imeChange", EVENT_IME_CHANGE_MASK, f, opq);
-    }
-    void OffImeChangeImpl(taihe::optional_view<uintptr_t> opq)
-    {
-        InputMethodSettingImpl::GetInstance().UnregisterImeEvent("imeChange", EVENT_IME_CHANGE_MASK, opq);
-    }
 
     void OnImeHide(taihe::callback_view<void(taihe::array_view<InputWindowInfo_t>)> f, uintptr_t opq)
     {
