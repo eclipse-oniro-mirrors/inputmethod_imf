@@ -17,7 +17,8 @@
       ], 
       "features": [
           "imf_screenlock_mgr_enable",
-          "imf_on_demand_start_stop_sa_enable"
+          "imf_on_demand_start_stop_sa_enable",
+          "imf_restore_in_high_cpu_usage"
       ], 
       "hisysevent_config": [
           "//base/inputmethod/imf/hisysevent.yaml",
@@ -62,7 +63,8 @@
               "icu",
               "selinux_adapter",
               "runtime_core",
-              "ace_engine"
+              "ace_engine",
+              "hiview"
           ]
       }, 
       "build": {

@@ -19,6 +19,9 @@
 
 #include "ability_manager_client.h"
 #include "combination_key.h"
+#ifdef IMF_RESTORE_IN_HIGH_CPU_USAGE
+#include "cpu_collector_client.h"
+#endif
 #include "display_adapter.h"
 #include "full_ime_info_manager.h"
 #include "im_common_event_manager.h"
@@ -81,6 +84,10 @@ constexpr int64_t DELAY_UNLOAD_SA_TIME = 20000; // 20s
 constexpr int32_t REFUSE_UNLOAD_DELAY_TIME = 1000; // 1s
 #endif
 const constexpr char *IMMERSIVE_EFFECT_CAP_NAME = "immersive_effect";
+#ifdef IMF_RESTORE_IN_HIGH_CPU_USAGE
+const constexpr double PERCENTAGE_MULTIPLIER = 100.0;
+const constexpr int32_t CPU_USAGE_HIGH_PERCENT = 70;
+#endif
 InputMethodSystemAbility::InputMethodSystemAbility(int32_t systemAbilityId, bool runOnCreate)
     : SystemAbility(systemAbilityId, runOnCreate), state_(ServiceRunningState::STATE_NOT_START)
 {
@@ -2985,8 +2992,34 @@ void InputMethodSystemAbility::OnSysMemChanged()
         session->TryDisconnectIme();
         return;
     }
+#ifdef IMF_RESTORE_IN_HIGH_CPU_USAGE
+    int32_t cpuUsage = GetCpuUsage();
+    if (cpuUsage > CPU_USAGE_HIGH_PERCENT) {
+        IMSA_HILOGD("lite device current cpu usage %{public}d is high then 70, no need startinput", cpuUsage);
+        return;
+    }
+#endif
     session->TryStartIme();
 }
+
+#ifdef IMF_RESTORE_IN_HIGH_CPU_USAGE
+int32_t InputMethodSystemAbility::GetCpuUsage()
+{
+    int32_t cpuUsage = 0;
+    auto collector = OHOS::HiviewDFX::UCollectClient::CpuCollector::Create();
+    if (collector == nullptr) {
+        IMSA_HILOGE("collector is nullptr");
+        return cpuUsage;
+    }
+    auto collectResult = collector->GetSysCpuUsage();
+    int32_t retCode = collectResult.retCode;
+    IMSA_HILOGI("retCode of collectResult: %{public}d", retCode);
+    if (retCode == OHOS::HiviewDFX::UCollect::UcError::SUCCESS) {
+        cpuUsage = static_cast<int>(collectResult.data * PERCENTAGE_MULTIPLIER);
+    }
+    return cpuUsage;
+}
+#endif
 // LCOV_EXCL_STOP
 } // namespace MiscServices
 } // namespace OHOS
