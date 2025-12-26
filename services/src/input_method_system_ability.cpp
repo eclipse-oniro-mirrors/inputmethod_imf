@@ -2677,10 +2677,6 @@ int32_t InputMethodSystemAbility::StartInputType(int32_t userId, InputType type)
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
     }
-    if (!WindowAdapter::GetInstance().IsDefaultDisplayGroup(GetCallingDisplayId())) {
-        IMSA_HILOGI("only need input type in default display");
-        return ErrorCode::NO_ERROR;
-    }
     ImeIdentification ime;
     int32_t ret = InputTypeManager::GetInstance().GetImeByInputType(type, ime);
     if (ret != ErrorCode::NO_ERROR) {

@@ -285,10 +285,9 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(
     if (!isFocused) {
         return retInfo;
     }
-    auto iter =
-        std::find_if(focusWindowInfos.begin(), focusWindowInfos.end(), [displayId](const auto &focusWindowInfo) {
-            return focusWindowInfo.displayGroupId_ == WindowAdapter::GetInstance().GetDisplayGroupId(displayId);
-    });
+    auto displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId);
+    auto iter = std::find_if(focusWindowInfos.begin(), focusWindowInfos.end(),
+        [displayGroupId](const auto &focusWindowInfo) { return focusWindowInfo.displayGroupId_ == displayGroupId; });
     if (iter == focusWindowInfos.end()) {
         return retInfo;
     }
