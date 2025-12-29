@@ -99,7 +99,6 @@ ohos_shared_library("inputmethod_extension") {
     "c_utils:utils",
     "eventhandler:libeventhandler",
     "hilog:libhilog",
-    "i18n:intl_util",
     "input:libmmi-client",
     "ipc:ipc_napi",
     "ipc:ipc_single",

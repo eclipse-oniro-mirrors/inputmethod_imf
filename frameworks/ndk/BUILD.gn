@@ -109,7 +109,6 @@ ohos_static_library("ohinputmethod_static") {
     "ace_engine:ace_uicontent",
     "c_utils:utils",
     "eventhandler:libeventhandler",
-    "hilog:libhilog",
     "input:libmmi-client",
     "ipc:ipc_single",
   ]

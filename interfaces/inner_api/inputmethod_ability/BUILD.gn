@@ -99,7 +99,6 @@ ohos_source_set("input_control_channel_proxy") {
   deps = [ ":input_control_channel_interface" ]
   external_deps = [
     "c_utils:utils",
-    "hilog:libhilog",
     "ipc:ipc_single",
     "samgr:samgr_proxy",
   ]
@@ -119,7 +118,6 @@ ohos_source_set("input_control_channel_stub") {
   deps = [ ":input_control_channel_interface" ]
   external_deps = [
     "c_utils:utils",
-    "hilog:libhilog",
     "ipc:ipc_single",
     "samgr:samgr_proxy",
   ]
@@ -225,7 +223,6 @@ ohos_source_set("input_method_extension_stub") {
   deps = [ ":input_method_extension_interface" ]
   external_deps = [
     "c_utils:utils",
-    "hilog:libhilog",
     "ipc:ipc_single",
     "samgr:samgr_proxy",
   ]
@@ -298,7 +295,6 @@ ohos_source_set("input_method_client_types") {
   deps = [ ":input_method_system_ability_interface" ]
   external_deps = [
     "c_utils:utils",
-    "hilog:libhilog",
     "ipc:ipc_single",
   ]
   subsystem_name = "inputmethod"
@@ -317,7 +313,6 @@ ohos_source_set("keyevent_consumer_stub") {
   deps = [ ":keyevent_consumer_interface" ]
   external_deps = [
     "c_utils:utils",
-    "hilog:libhilog",
     "ipc:ipc_single",
     "samgr:samgr_proxy",
   ]

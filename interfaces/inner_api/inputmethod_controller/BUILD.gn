@@ -164,7 +164,6 @@ ohos_source_set("oninputstop_notify_stub") {
   deps = [ ":oninputstop_notify_interface" ]
   external_deps = [
     "c_utils:utils",
-    "hilog:libhilog",
     "ipc:ipc_single",
   ]
   subsystem_name = "inputmethod"
@@ -183,7 +182,6 @@ ohos_source_set("oninputstop_notify_proxy") {
   deps = [ ":oninputstop_notify_interface" ]
   external_deps = [
     "c_utils:utils",
-    "hilog:libhilog",
     "ipc:ipc_single",
   ]
   subsystem_name = "inputmethod"
