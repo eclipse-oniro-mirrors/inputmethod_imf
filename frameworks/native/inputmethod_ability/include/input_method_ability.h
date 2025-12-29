@@ -40,7 +40,6 @@
 #include "msg_handler_callback_interface.h"
 #include "private_command_interface.h"
 #include "system_cmd_channel_proxy.h"
-#include "timer.h"
 #include "inputmethod_message_handler.h"
 #include "input_data_channel_proxy_wrap.h"
 #include "ime_mirror_manager.h"
@@ -247,14 +246,6 @@ private:
     HiSysEventClientInfo bindClientInfo_;
     bool isInputStartNotified_ = false;
     ImeMirrorManager imeMirrorMgr_;
-
-    void StartTimer();
-    void ResetTimer();
-    void StopTimer();
-    void TimerCallback();
-    std::mutex timerLock_;
-    Utils::Timer timer_{ "OS_imfLightEventTimer" };
-    uint32_t timerId_{ 0 };
 
     std::mutex colorPrivateCommandLock_;
     std::unordered_map<std::string, PrivateDataValue> colorPrivateCommand_ = { { "sys_cmd", 1 } };
