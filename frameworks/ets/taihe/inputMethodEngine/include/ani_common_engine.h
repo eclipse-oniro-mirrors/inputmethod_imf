@@ -92,7 +92,7 @@ private:
 using callbackTypes = std::variant<taihe::callback<void(int32_t)>,
     taihe::callback<void(taihe::map_view<taihe::string, CommandDataType_t>)>, taihe::callback<void(SecurityMode_t)>,
     taihe::callback<void(InputMethodSubtype_t const&)>, taihe::callback<void(KeyboardController_t, InputClient_t)>,
-    taihe::callback<void(int32_t, int32_t, int32_t)>, taihe::callback<void(int32_t, int32_t, int32_t, int32_t)>,
+    taihe::callback<void(double, double, double)>, taihe::callback<void(int32_t, int32_t, int32_t, int32_t)>,
     taihe::callback<bool(KeyEventType_t const&)>, taihe::callback<bool(KeyEvent_t const&)>,
     taihe::callback<void(taihe::string_view)>, taihe::callback<void(EditorAttribute_t const&)>,
     taihe::callback<void(uintptr_t, taihe::optional_view<KeyboardArea_t>)>,

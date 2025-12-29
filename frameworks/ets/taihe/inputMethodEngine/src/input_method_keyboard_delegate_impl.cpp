@@ -249,7 +249,7 @@ void KeyboardDelegateImpl::OnCursorUpdate(int32_t positionX, int32_t positionY, 
     std::lock_guard<std::mutex> lock(mutex_);
     auto &cbVec = jsCbMap_[type];
     for (auto &cb : cbVec) {
-        auto &func = std::get<taihe::callback<void(int32_t, int32_t, int32_t)>>(cb->callback);
+        auto &func = std::get<taihe::callback<void(double, double, double)>>(cb->callback);
         func(positionX, positionY, height);
     }
 }
