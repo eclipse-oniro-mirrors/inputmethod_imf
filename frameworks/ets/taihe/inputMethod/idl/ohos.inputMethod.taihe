@@ -18,6 +18,7 @@
 
 @!sts_inject_into_module("""
 import { Callback } from '@ohos.base';
+import { UIContext } from "@ohos.arkui.UIContext";
 """)
 
 @!namespace("@ohos.inputMethod", "inputMethod")
@@ -54,9 +55,9 @@ enum EnabledState : i32 {
 
 enum CapitalizeMode : i32 {
     NONE = 0,
-    SENTENCES = 3,
-    WORDS = 4,
-    CHARACTERS = 5
+    SENTENCES = 1,
+    WORDS = 2,
+    CHARACTERS = 3
 }
 
 struct InputMethodProperty {
@@ -76,22 +77,27 @@ struct InputWindowInfo {
     top: i32;
     width: i64;
     height: i64;
+    displayId: Optional<i64>;
 }
 
 interface InputMethodSetting {
     @gen_async("getInputMethods")
     @gen_promise("getInputMethods")
-    GetInputMethodsSync(enable: bool): Array<InputMethodProperty>;
+    GetInputMethodsAsync(enable: bool): Array<InputMethodProperty>;
     @gen_async("listCurrentInputMethodSubtype")
     @gen_promise("listCurrentInputMethodSubtype")
     ListCurrentInputMethodSubtypeSync(): Array<InputMethodSubtype>;
     @gen_async("listInputMethodSubtype")
     @gen_promise("listInputMethodSubtype")
     ListInputMethodSubtypeSync(inputMethodProperty: InputMethodProperty): Array<InputMethodSubtype>;
+    @overload("isPanelShown")
     IsPanelShown(panelInfo: PanelInfo): bool;
+    @overload("isPanelShown")
+    IsPanelShownId(panelInfo: PanelInfo, displayId: i64): bool;
+
     @gen_async("getAllInputMethods")
     @gen_promise("getAllInputMethods")
-    GetAllInputMethodsSync(): Array<InputMethodProperty>;
+    GetAllInputMethodsAsync(): Array<InputMethodProperty>;
 
     OnImeChange(callback: (inputMethodProperty: InputMethodProperty, inputMethodSubtype: InputMethodSubtype) => void, @sts_last opq: Opaque): void;
     OffImeChange(opq: Optional<@sts_type("Function2<InputMethodProperty, ohos_InputMethodSubtype.InputMethodSubtype, void>") Opaque>): void;
@@ -107,6 +113,9 @@ interface InputMethodSetting {
 
     @gen_promise("enableInputMethod")
     EnableInputMethodSync(bundleName: String, extensionName: String, enabledState: EnabledState): void;
+
+    GetInputMethodsSync(enable: bool): Array<InputMethodProperty>;
+    GetAllInputMethodsSync(): Array<InputMethodProperty>;
 }
 
 struct CursorInfo {
@@ -176,6 +185,8 @@ struct FunctionKey {
 struct InputAttribute {
     textInputType: TextInputType;
     enterKeyType: EnterKeyType;
+    placeholder: Optional<String>;
+    abilityName: Optional<String>;
 }
 
 struct TextConfig {
@@ -183,8 +194,9 @@ struct TextConfig {
     cursorInfo: Optional<CursorInfo>;
     selection: Optional<Range>;
     windowId: Optional<i32>;
+    newEditBox: Optional<bool>;
+    capitalizeMode: Optional<CapitalizeMode>;
 }
-
 
 enum KeyboardStatus : i32 {
     NONE = 0,
@@ -203,10 +215,20 @@ union UndefinedType {
   @undefined undefined;
 }
 
+struct AttachOptions {
+    showKeyboard: Optional<bool>;
+    requestKeyboardReason: Optional<RequestKeyboardReason>;
+}
+
 interface InputMethodController {
     @gen_async("hideSoftKeyboard")
     @gen_promise("hideSoftKeyboard")
     HideSoftKeyboardSync();
+
+    @gen_promise("hideSoftKeyboard")
+    @overload("HideSoftKeyboardId")
+    HideSoftKeyboardIdSync(displayId: i64);
+
     @gen_promise("showTextInput")
     ShowTextInputHasParam(requestKeyboardReason: RequestKeyboardReason);
     @gen_async("showTextInput")
@@ -220,6 +242,8 @@ interface InputMethodController {
     AttachSync(showKeyboard: bool, textConfig: TextConfig);
     @gen_promise("attach")
     AttachWithReason(showKeyboard: bool, textConfig: TextConfig, requestKeyboardReason: RequestKeyboardReason);
+    @gen_promise("attachWithUIContext")
+    AttachWithUIContextSync(uiContext: @sts_type("UIContext") Opaque, textConfig: TextConfig, attachOptions: Optional<AttachOptions>);
     @gen_async("detach")
     @gen_promise("detach")
     DetachSync();
@@ -293,6 +317,10 @@ interface InputMethodController {
     @gen_promise("showSoftKeyboard")
     ShowSoftKeyboardSync(): void;
 
+    @gen_promise("showSoftKeyboard")
+    @overload("showSoftKeyboardId")
+    ShowSoftKeyboardIdSync(displayId: i64): void;
+
     @gen_promise("sendMessage")
     SendMessageSync(msgId: String, msgParam: Optional<@arraybuffer Array<u8>>): void;
 
@@ -319,3 +347,20 @@ function SetSimpleKeyboardEnabled(enable: bool): void;
 @gen_async("switchCurrentInputMethodAndSubtype")
 @gen_promise("switchCurrentInputMethodAndSubtype")
 function SwitchCurrentInputMethodAndSubtypeSync(inputMethodProperty: InputMethodProperty, inputMethodSubtype: InputMethodSubtype): bool;
+
+enum AttachFailureReason : i32 {
+    CALLER_NOT_FOCUSED = 0,
+    IME_ABNORMAL = 1,
+    SERVICE_ABNORMAL = 2
+}
+
+@!sts_inject("""
+    function onAttachmentDidFail(callback: (info: AttachFailureReason) => void) {
+        return onAttachmentDidFailImpl(callback, callback);
+    }
+    function offAttachmentDidFail(callback?: (info: AttachFailureReason) => void) {
+        return offAttachmentDidFailImpl(callback);
+    }
+""")
+function onAttachmentDidFailImpl(f: (info: AttachFailureReason) => void, opq: Opaque);
+function offAttachmentDidFailImpl(opq: Optional<Opaque>);

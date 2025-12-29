@@ -110,6 +110,8 @@ EditorAttribute_t CommonConvert::NativeAttributeToAni(const InputAttribute &inpu
         ConvertGraMode(static_cast<GradientMode>(inputAttribute.gradientMode)));
     result.fluidLightMode = taihe::optional<FluidLightMode_t>(std::in_place_t{},
         ConvertFLMode(static_cast<FluidLightMode>(inputAttribute.fluidLightMode)));
+    result.extraConfig = taihe::optional<InputMethodExtraConfig_t>(
+        std::in_place_t{}, NativeCommandToAni(inputAttribute.extraConfig.customSettings));
     return result;
 }
 
@@ -799,6 +801,90 @@ ani_object CommonConvert::CreateAniRect(ani_env* env, Rosen::Rect rect)
     CallAniMethodVoid(env, aniRect, aniClass, "<set>width", nullptr, ani_int(rect.width_));
     CallAniMethodVoid(env, aniRect, aniClass, "<set>height", nullptr, ani_int(rect.height_));
     return aniRect;
+}
+
+SystemPanelInsets_t CommonConvert::NativeInsetsToAni(const SystemPanelInsets &insets)
+{
+    SystemPanelInsets_t out = {
+        .left = insets.left,
+        .right = insets.right,
+        .bottom = insets.bottom
+    };
+    return out;
+}
+
+Shadow CommonConvert::AniConvertShadowToNative(double radius, taihe::string_view color, double offsetX, double offsetY)
+{
+    Shadow shadow = {};
+    shadow.radius = radius;
+    shadow.color = std::string(color);
+    shadow.offsetX = offsetX;
+    shadow.offsetY = offsetY;
+    return shadow;
+}
+
+bool CommonConvert::AniFillColorDataToNative(FillColorData_t const &in, std::string &out)
+{
+    if (in.get_tag() == FillColorData_t::tag_t::uValue) {
+        return true;
+    }
+    if (in.get_tag() == FillColorData_t::tag_t::type_String) {
+        out = std::string(in.get_type_String_ref());
+    }
+    if (out.empty()) {
+        IMSA_HILOGE("fillColor is empty");
+        return false;
+    }
+    return true;
+}
+
+bool CommonConvert::AniBackgroundColorDataToNative(BackgroundColorData_t const &in, std::string &out)
+{
+    if (in.get_tag() == BackgroundColorData_t::tag_t::uValue) {
+        return true;
+    }
+    if (in.get_tag() == BackgroundColorData_t::tag_t::type_String) {
+        out = std::string(in.get_type_String_ref());
+    }
+    if (out.empty()) {
+        IMSA_HILOGE("backgroundColor is empty");
+        return false;
+    }
+    return true;
+}
+
+CustomValueType_t CommonConvert::ConvertToDataValue(const CustomValueType &value)
+{
+    size_t idx = value.index();
+    if (idx == static_cast<size_t>(CustomValueTypeValue::CUSTOM_VALUE_TYPE_STRING)) {
+        auto stringValue = std::get_if<std::string>(&value);
+        if (stringValue != nullptr) {
+            return CustomValueType_t::make_type_String(*stringValue);
+        }
+    } else if (idx == static_cast<size_t>(CustomValueTypeValue::CUSTOM_VALUE_TYPE_BOOL)) {
+        auto boolValue = std::get_if<bool>(&value);
+        if (boolValue != nullptr) {
+            return CustomValueType_t::make_type_Bool(*boolValue);
+        }
+    } else if (idx == static_cast<size_t>(CustomValueTypeValue::CUSTOM_VALUE_TYPE_NUMBER)) {
+        auto numberValue = std::get_if<int32_t>(&value);
+        if (numberValue != nullptr) {
+            return CustomValueType_t::make_type_Int(*numberValue);
+        }
+    }
+    return CustomValueType_t::make_type_Bool(true);
+}
+
+InputMethodExtraConfig_t CommonConvert::NativeCommandToAni(const CustomSettings &valueMap)
+{
+    taihe::map<taihe::string, CustomValueType_t> result(valueMap.size());
+    for (const auto &[key, value] : valueMap) {
+        result.emplace(key, ConvertToDataValue(value));
+    }
+    InputMethodExtraConfig_t config {
+        .customSettings = result
+    };
+    return config;
 }
 } // namespace MiscServices
 } // namespace OHOS

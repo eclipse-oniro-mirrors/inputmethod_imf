@@ -27,6 +27,7 @@
 #include "ohos.inputMethodEngine.impl.hpp"
 #include "input_method_ability.h"
 #include "block_queue.h"
+#include "sys_panel_status.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -35,6 +36,10 @@ public:
     static std::shared_ptr<PanelImpl> GetInstance();
     ~PanelImpl();
     void CreatePanel(uintptr_t ctx, PanelInfo_t const& info, std::shared_ptr<InputMethodPanel> &panel);
+    SystemPanelInsets_t GetSystemPanelCurrentInsetsAsync(int64_t id, int64_t displayId);
+    void SetSystemPanelButtonColorAsync(int64_t id, FillColorData_t const& fillColor,
+        BackgroundColorData_t const& backgroundColor);
+    void SetShadow(double radius, ::taihe::string_view color, double offsetX, double offsetY);
     void StartMoving();
     void UpdateRegion(uintptr_t inputRegion);
     void AdjustPanelRect(PanelFlag_t flag, PanelRect_t const& rect);
@@ -143,6 +148,22 @@ public:
     void SetKeepScreenOnAsync(bool isKeepScreenOn)
     {
         PanelImpl::GetInstance()->SetKeepScreenOnAsync(isKeepScreenOn);
+    }
+
+    SystemPanelInsets_t GetSystemPanelCurrentInsetsAsync(int64_t id, int64_t displayId)
+    {
+        return PanelImpl::GetInstance()->GetSystemPanelCurrentInsetsAsync(id, displayId);
+    }
+
+    void SetSystemPanelButtonColorAsync(int64_t id, FillColorData_t const& fillColor,
+        BackgroundColorData_t const& backgroundColor)
+    {
+        PanelImpl::GetInstance()->SetSystemPanelButtonColorAsync(id, fillColor, backgroundColor);
+    }
+
+    void SetShadow(double radius, ::taihe::string_view color, double offsetX, double offsetY)
+    {
+        PanelImpl::GetInstance()->SetShadow(radius, color, offsetX, offsetY);
     }
 
     void StartMoving()

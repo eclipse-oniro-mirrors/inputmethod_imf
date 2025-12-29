@@ -14,6 +14,7 @@
  */
 
 #include "ohos.inputMethodEngine.ani.hpp"
+#include "ohos.inputMethod.ExtraConfig.ani.hpp"
 #include "global.h"
 #if __has_include(<ani.h>)
 #include <ani.h>
@@ -34,6 +35,10 @@ ANI_EXPORT ani_status ANI_Constructor(ani_vm *vm, uint32_t *result)
         return ANI_ERROR;
     }
     ani_status status = ANI_OK;
+    if (ANI_OK != ohos::inputMethod::ExtraConfig::ANIRegister(env)) {
+        IMSA_HILOGE("Error from ohos::inputMethod::ExtraConfig::ANIRegister");
+        status = ANI_ERROR;
+    }
     if (ANI_OK != ohos::inputMethodEngine::ANIRegister(env)) {
         IMSA_HILOGE("Error from ohos::inputMethodEngine::ANIRegister");
         status = ANI_ERROR;

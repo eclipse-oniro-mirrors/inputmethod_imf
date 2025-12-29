@@ -24,6 +24,7 @@
 #include "ohos.inputMethod.proj.hpp"
 #include "stdexcept"
 #include "taihe/runtime.hpp"
+#include "input_method_impl.h"
 
 using namespace taihe;
 using namespace ohos::inputMethod;
@@ -191,6 +192,16 @@ bool SwitchCurrentInputMethodAndSubtypeSync(::ohos::inputMethod::InputMethodProp
     IMSA_HILOGI("SwitchCurrentInputMethodAndSubtype success.");
     return true;
 }
+
+void onAttachmentDidFailImpl(taihe::callback_view<void(AttachFailureReason_t info)> f, uintptr_t opq)
+{
+    InputMethodImpl::GetInstance()->RegisterListener("attachmentDidFail", f, opq);
+}
+
+void offAttachmentDidFailImpl(taihe::optional_view<uintptr_t> opq)
+{
+    InputMethodImpl::GetInstance()->UnRegisterListener("attachmentDidFail", opq);
+}
 } // namespace
 
 TH_EXPORT_CPP_API_GetSetting(GetSetting);
@@ -204,3 +215,5 @@ TH_EXPORT_CPP_API_SwitchInputMethodSync(SwitchInputMethodSync);
 TH_EXPORT_CPP_API_SwitchCurrentInputMethodSubtypeSync(SwitchCurrentInputMethodSubtypeSync);
 TH_EXPORT_CPP_API_SetSimpleKeyboardEnabled(SetSimpleKeyboardEnabled);
 TH_EXPORT_CPP_API_SwitchCurrentInputMethodAndSubtypeSync(SwitchCurrentInputMethodAndSubtypeSync);
+TH_EXPORT_CPP_API_onAttachmentDidFailImpl(onAttachmentDidFailImpl);
+TH_EXPORT_CPP_API_offAttachmentDidFailImpl(offAttachmentDidFailImpl);
