@@ -24,7 +24,7 @@
 
 namespace OHOS {
 namespace MiscServices {
-const uint32_t AMS_INIT_TIMEOUT_MS = 5000;
+const uint32_t AMS_INIT_TIMEOUT_MS = 15000;
 
 class TaskAmsInit : public Task {
 public:

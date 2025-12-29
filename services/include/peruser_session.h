@@ -62,7 +62,7 @@ enum class ImeAction : uint32_t {
     DO_ACTION_IN_IME_EVENT_CONVERT_FAILED,
 };
 struct ImeData {
-    static constexpr int64_t START_TIME_OUT = 8000;
+    static constexpr int64_t START_TIME_OUT = 18000;
     sptr<IInputMethodCore> core{ nullptr };
     sptr<IRemoteObject> agent{ nullptr };
     sptr<InputDeathRecipient> deathRecipient{ nullptr };
