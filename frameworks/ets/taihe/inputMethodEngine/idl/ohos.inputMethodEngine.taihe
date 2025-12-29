@@ -395,8 +395,8 @@ interface KeyboardDelegate {
     OnKeyEvent(callback: (event: InputKeyEvent) => bool);
     OffKeyEvent(callback: Optional<(event: InputKeyEvent) => bool>);
 
-    OnCursorContextChange(callback: (x: i32, y: i32, height: i32) => void, @sts_last opq: Opaque): void;
-    OffCursorContextChange(opq: Optional<@sts_type("Function3<int, int, int , void>") Opaque>): void;
+    OnCursorContextChange(callback: (x: f64, y: f64, height: f64) => void, @sts_last opq: Opaque): void;
+    OffCursorContextChange(opq: Optional<@sts_type("Function3<double, double, double, void>") Opaque>): void;
 
     OnSelectionChange(callback: (oldBegin: i32, oldEnd: i32, newBegin: i32, newEnd: i32) => void, @sts_last opq: Opaque): void;
     OffSelectionChange(opq: Optional<@sts_type("Function4<int, int, int, int, void>") Opaque>): void;

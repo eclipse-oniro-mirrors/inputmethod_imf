@@ -108,7 +108,7 @@ class IMFKeyboardDelegateImpl {
         KeyboardDelegateImpl::GetInstance()-> UnRegisterListenerEvent("keyEvent", callback);
     }
 
-    void OnCursorContextChange(taihe::callback_view<void(int32_t, int32_t, int32_t)> callback, uintptr_t opq)
+    void OnCursorContextChange(taihe::callback_view<void(double, double, double)> callback, uintptr_t opq)
     {
         KeyboardDelegateImpl::GetInstance()->RegisterListener("cursorContextChange", callback, opq);
     }
