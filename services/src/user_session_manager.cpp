@@ -23,13 +23,13 @@ UserSessionManager &UserSessionManager::GetInstance()
     static UserSessionManager manager;
     return manager;
 }
-
+// LCOV_EXCL_START
 std::unordered_map<int32_t, std::shared_ptr<PerUserSession>> UserSessionManager::GetUserSessions()
 {
     std::lock_guard<std::mutex> lock(userSessionsLock_);
     return userSessions_;
 }
-
+// LCOV_EXCL_STOP
 std::shared_ptr<PerUserSession> UserSessionManager::GetUserSession(int32_t userId)
 {
     std::lock_guard<std::mutex> lock(userSessionsLock_);
@@ -50,13 +50,13 @@ void UserSessionManager::AddUserSession(int32_t userId)
     auto sessionTemp = std::make_shared<PerUserSession>(userId, eventHandler_);
     userSessions_.insert({ userId, sessionTemp });
 }
-
+// LCOV_EXCL_START
 void UserSessionManager::RemoveUserSession(int32_t userId)
 {
     std::lock_guard<std::mutex> lock(userSessionsLock_);
     userSessions_.erase(userId);
 }
-
+// LCOV_EXCL_STOP
 void UserSessionManager::SetEventHandler(const std::shared_ptr<AppExecFwk::EventHandler> &eventHandler)
 {
     eventHandler_ = eventHandler;

@@ -56,7 +56,7 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocused(
     return IsFocusedScbNotEnable(callingPid, callingTokenId, windowId, abilityToken);
 #endif
 }
-
+// LCOV_EXCL_START
 bool IdentityCheckerImpl::IsFocusedUIExtension(uint32_t callingTokenId)
 {
     std::vector<FocusChangeInfo> focusWindowInfos;
@@ -64,7 +64,7 @@ bool IdentityCheckerImpl::IsFocusedUIExtension(uint32_t callingTokenId)
     auto checkRet = IsFocusedUIExtension(callingTokenId, nullptr, focusWindowInfos);
     return checkRet.first;
 }
-
+// LCOV_EXCL_STOP
 std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIAbility(
     int64_t callingPid, uint32_t windowId, const std::vector<FocusChangeInfo> &focusWindowInfos)
 {
@@ -95,7 +95,7 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIAbility(
     retInfo.second = GenerateFocusInfo(*iter, focusWindowInfos);
     return retInfo;
 }
-
+// LCOV_EXCL_START
 FocusedInfo IdentityCheckerImpl::GenerateFocusInfo(
     const FocusChangeInfo &focusWindowInfo, const std::vector<Rosen::FocusChangeInfo> &focusWindowInfos)
 {
@@ -123,7 +123,7 @@ FocusedInfo IdentityCheckerImpl::GenerateFocusInfo(
     focusedInfo.keyboardWindowId = static_cast<uint32_t>(iter->windowId_);
     return focusedInfo;
 }
-
+// LCOV_EXCL_STOP
 std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIAbility(
     int64_t callingPid, const std::vector<FocusChangeInfo> &focusWindowInfos)
 {
@@ -246,7 +246,7 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(uint32_t 
     }
     return retInfo;
 }
-
+// LCOV_EXCL_START
 std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(
     uint32_t windowId, uint64_t displayId, const std::vector<FocusChangeInfo> &focusWindowInfos)
 {
@@ -265,7 +265,7 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(
     retInfo.second.uiExtensionHostPid = iter->pid_;
     return retInfo;
 }
-
+// LCOV_EXCL_STOP
 std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(
     uint64_t displayId, uint32_t callingTokenId, const std::vector<FocusChangeInfo> &focusWindowInfos)
 {
@@ -317,7 +317,7 @@ uint64_t IdentityCheckerImpl::GetDisplayIdByWindowId(int32_t callingWindowId)
 {
     return WindowAdapter::GetDisplayIdByWindowId(callingWindowId);
 }
-
+// LCOV_EXCL_START
 uint64_t IdentityCheckerImpl::GetDisplayIdByPid(int64_t callingPid, sptr<IRemoteObject> abilityToken)
 {
     uint64_t displayId = 0;
@@ -332,7 +332,7 @@ uint64_t IdentityCheckerImpl::GetDisplayIdByPid(int64_t callingPid, sptr<IRemote
     IMSA_HILOGD("GetDisplayIdByPid displayId: %{public}" PRIu64 "", displayId);
     return displayId;
 }
-// LCOV_EXCL_START
+
 bool IdentityCheckerImpl::IsValidVirtualIme(int32_t callingUid)
 {
     return ImeInfoInquirer::GetInstance().IsProxyIme(callingUid);

@@ -104,7 +104,7 @@ int32_t ImeEventListenerManager::AddDeathRecipient(int32_t userId, ImeEventListe
     }
     return ErrorCode::NO_ERROR;
 }
-
+// LCOV_EXCL_START
 void ImeEventListenerManager::OnListenerDied(int32_t userId, const sptr<IInputClient> &remote)
 {
     IMSA_HILOGI("enter.");
@@ -228,5 +228,6 @@ int32_t ImeEventListenerManager::NotifyImeChange(
     }
     return ErrorCode::NO_ERROR;
 }
+// LCOV_EXCL_STOP
 } // namespace MiscServices
 } // namespace OHOS

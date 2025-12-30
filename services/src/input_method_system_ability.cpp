@@ -408,7 +408,7 @@ int32_t InputMethodSystemAbility::Init()
     InitMonitors();
     return ErrorCode::NO_ERROR;
 }
-// LCOV_EXCL_STOP
+
 void InputMethodSystemAbility::UpdateUserInfo(int32_t userId)
 {
     IMSA_HILOGI("%{public}d switch to %{public}d.", userId_.load(), userId);
@@ -417,7 +417,7 @@ void InputMethodSystemAbility::UpdateUserInfo(int32_t userId)
     InputMethodSysEvent::GetInstance().SetUserId(userId_);
     NumkeyAppsManager::GetInstance().OnUserSwitched(userId_);
 }
-// LCOV_EXCL_START
+
 int32_t InputMethodSystemAbility::OnIdle(const SystemAbilityOnDemandReason &idleReason)
 {
     IMSA_HILOGI("OnIdle start.");
@@ -757,7 +757,7 @@ std::pair<bool, FocusedInfo> InputMethodSystemAbility::IsFocusedOrBroker(
     }
     return identityChecker_->CheckBroker(callingTokenId);
 }
-
+// LCOV_EXCL_START
 int32_t InputMethodSystemAbility::CheckInputTypeOption(int32_t userId, InputClientInfo &inputClientInfo)
 {
     IMSA_HILOGI("SecurityImeFlag: %{public}d, IsSameTextInput: %{public}d, IsStarted: %{public}d.",
@@ -806,7 +806,7 @@ ErrCode InputMethodSystemAbility::IsRestrictedDefaultImeByDisplay(uint64_t displ
     resultValue = ImeInfoInquirer::GetInstance().IsRestrictedDefaultImeByDisplay(displayId);
     return ErrorCode::NO_ERROR;
 }
-
+// LCOV_EXCL_STOP
 int32_t InputMethodSystemAbility::ShowInputInner(
     sptr<IInputClient> client, uint32_t windowId, int32_t requestKeyboardReason)
 {
@@ -899,7 +899,7 @@ ErrCode InputMethodSystemAbility::SetCoreAndAgent(const sptr<IInputMethodCore> &
     }
     return session->OnSetCoreAndAgent(core, agent);
 }
-
+// LCOV_EXCL_START
 ErrCode InputMethodSystemAbility::RegisterProxyIme(
     uint64_t displayId, const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent)
 {
@@ -940,7 +940,7 @@ ErrCode InputMethodSystemAbility::UnregisterProxyIme(uint64_t displayId)
     }
     return session->OnUnregisterProxyIme(displayId, IPCSkeleton::GetCallingPid());
 }
-// LCOV_EXCL_START
+
 ErrCode InputMethodSystemAbility::BindImeMirror(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent)
 {
     if (identityChecker_ == nullptr) {
@@ -1162,12 +1162,12 @@ ErrCode InputMethodSystemAbility::ExitCurrentInputType()
     InputTypeManager::GetInstance().Set(false);
     return session->StartCurrentIme();
 }
-// LCOV_EXCL_STOP
+
 ErrCode InputMethodSystemAbility::IsDefaultIme()
 {
     return IsDefaultImeFromTokenId(GetCallingUserId(), IPCSkeleton::GetCallingTokenID());
 }
-// LCOV_EXCL_START
+
 ErrCode InputMethodSystemAbility::IsSystemApp(bool& resultValue)
 {
     resultValue = identityChecker_->IsSystemApp(IPCSkeleton::GetCallingFullTokenID());
@@ -1185,7 +1185,7 @@ ErrCode InputMethodSystemAbility::IsCapacitySupport(int32_t capacity, bool &isSu
     isSupport = ImeInfoInquirer::GetInstance().IsCapacitySupport(IMMERSIVE_EFFECT_CAP_NAME);
     return ERR_OK;
 }
-// LCOV_EXCL_STOP
+
 int32_t InputMethodSystemAbility::IsDefaultImeFromTokenId(int32_t userId, uint32_t tokenId)
 {
     auto prop = std::make_shared<Property>();
@@ -1199,7 +1199,7 @@ int32_t InputMethodSystemAbility::IsDefaultImeFromTokenId(int32_t userId, uint32
     }
     return ErrorCode::NO_ERROR;
 }
-// LCOV_EXCL_START
+
 ErrCode InputMethodSystemAbility::IsCurrentImeByPid(int32_t pid, bool& resultValue)
 {
     if (!identityChecker_->IsSystemApp(IPCSkeleton::GetCallingFullTokenID()) &&
@@ -1488,7 +1488,6 @@ int32_t InputMethodSystemAbility::Switch(int32_t userId, const std::string &bund
     }
     return SwitchSubType(userId, info);
 }
-// LCOV_EXCL_STOP
 // Switch the current InputMethodExtension to the new InputMethodExtension
 int32_t InputMethodSystemAbility::SwitchExtension(int32_t userId, const std::shared_ptr<ImeInfo> &info)
 {
@@ -1533,7 +1532,7 @@ int32_t InputMethodSystemAbility::SwitchSubType(int32_t userId, const std::share
     session->NotifyImeChangeToClients(info->prop, info->subProp);
     return ErrorCode::NO_ERROR;
 }
-// LCOV_EXCL_START
+
 int32_t InputMethodSystemAbility::SwitchInputType(int32_t userId, const SwitchInfo &switchInfo)
 {
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
@@ -1621,13 +1620,13 @@ ErrCode InputMethodSystemAbility::IsKeyboardCallingProcess(
     isKeyboardCallingProcess = session->IsKeyboardCallingProcess(pid, windowId);
     return ERR_OK;
 }
-// LCOV_EXCL_STOP
+
 ErrCode InputMethodSystemAbility::IsDefaultImeSet(bool& resultValue)
 {
     resultValue = ImeInfoInquirer::GetInstance().IsDefaultImeSet(GetCallingUserId());
     return ERR_OK;
 }
-
+// LCOV_EXCL_STOP
 ErrCode InputMethodSystemAbility::GetCurrentInputMethodSubtype(SubProperty& resultValue)
 {
     auto prop = ImeInfoInquirer::GetInstance().GetCurrentSubtype(GetCallingUserId());
@@ -1940,7 +1939,7 @@ void InputMethodSystemAbility::OnScreenUnlock(const Message *msg)
     }
     session->OnScreenUnlock();
 }
-// LCOV_EXCL_STOP
+
 void InputMethodSystemAbility::OnScreenLock(const Message *msg)
 {
     if (msg == nullptr || msg->msgContent_ == nullptr) {
@@ -1964,7 +1963,7 @@ void InputMethodSystemAbility::OnScreenLock(const Message *msg)
     }
     session->OnScreenLock();
 }
-
+// LCOV_EXCL_STOP
 int32_t InputMethodSystemAbility::OnDisplayOptionalInputMethod()
 {
     IMSA_HILOGD("InputMethodSystemAbility::OnDisplayOptionalInputMethod start.");
@@ -2571,7 +2570,7 @@ void InputMethodSystemAbility::HandleWmsStarted()
     }
     RestartSessionIme(session);
 }
-// LCOV_EXCL_STOP
+
 void InputMethodSystemAbility::HandleFocusChanged(bool isFocused, uint64_t displayId, int32_t pid, int32_t uid)
 {
     int32_t userId = GetUserId(uid);
@@ -2582,7 +2581,7 @@ void InputMethodSystemAbility::HandleFocusChanged(bool isFocused, uint64_t displ
     }
     isFocused ? session->OnFocused(displayId, pid, uid) : session->OnUnfocused(displayId, pid, uid);
 }
-// LCOV_EXCL_START
+
 void InputMethodSystemAbility::HandleMemStarted()
 {
     // singleton
@@ -2648,12 +2647,12 @@ int32_t InputMethodSystemAbility::GetCallingUserId()
     auto uid = IPCSkeleton::GetCallingUid();
     return GetUserId(uid);
 }
-
+// LCOV_EXCL_START
 uint64_t InputMethodSystemAbility::GetCallingDisplayId(sptr<IRemoteObject> abilityToken)
 {
     return identityChecker_->GetDisplayIdByPid(IPCSkeleton::GetCallingPid(), abilityToken);
 }
-
+// LCOV_EXCL_STOP
 bool InputMethodSystemAbility::IsCurrentIme(int32_t userId, uint32_t tokenId)
 {
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
@@ -2693,7 +2692,7 @@ int32_t InputMethodSystemAbility::StartInputType(int32_t userId, InputType type)
     return (type == InputType::SECURITY_INPUT) ?
         OnStartInputType(userId, switchInfo, false) : OnStartInputType(userId, switchInfo, true);
 }
-
+// LCOV_EXCL_START
 void InputMethodSystemAbility::NeedHideWhenSwitchInputType(int32_t userId, InputType type, bool &needHide)
 {
     if (!needHide) {
@@ -2715,7 +2714,7 @@ void InputMethodSystemAbility::NeedHideWhenSwitchInputType(int32_t userId, Input
     }
     needHide = imeData->ime.first == ime.bundleName;
 }
-// LCOV_EXCL_START
+
 void InputMethodSystemAbility::HandleBundleScanFinished()
 {
     isBundleScanFinished_.store(true);

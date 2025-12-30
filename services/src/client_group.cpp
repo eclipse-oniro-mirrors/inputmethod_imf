@@ -208,7 +208,6 @@ std::shared_ptr<InputClientInfo> ClientGroup::GetClientBoundImeByWindowId(uint32
     return iter->second;
 }
 
-// LCOV_EXCL_STOP
 std::shared_ptr<InputClientInfo> ClientGroup::GetCurrentClientInfo()
 {
     auto client = GetCurrentClient();
@@ -218,7 +217,7 @@ std::shared_ptr<InputClientInfo> ClientGroup::GetCurrentClientInfo()
     }
     return GetClientInfo(client->AsObject());
 }
-// LCOV_EXCL_START
+
 int64_t ClientGroup::GetCurrentClientPid()
 {
     auto clientInfo = GetCurrentClientInfo();

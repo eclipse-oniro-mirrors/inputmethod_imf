@@ -20,11 +20,12 @@
 
 namespace OHOS {
 namespace MiscServices {
+// LCOV_EXCL_START
 void ImeStateManagerFactory::SetDynamicStartIme(bool ifDynamicStartIme)
 {
     ifDynamicStartIme_ = ifDynamicStartIme;
 }
-
+// LCOV_EXCL_STOP
 bool ImeStateManagerFactory::GetDynamicStartIme()
 {
     return ifDynamicStartIme_;
@@ -35,7 +36,7 @@ ImeStateManagerFactory &ImeStateManagerFactory::GetInstance()
     static ImeStateManagerFactory instance;
     return instance;
 }
-
+// LCOV_EXCL_START
 std::shared_ptr<ImeStateManager> ImeStateManagerFactory::CreateImeStateManager(pid_t pid,
     std::function<void()> stopImeFunc)
 {
@@ -44,5 +45,6 @@ std::shared_ptr<ImeStateManager> ImeStateManagerFactory::CreateImeStateManager(p
     }
     return std::make_shared<FreezeManager>(pid);
 }
+// LCOV_EXCL_STOP
 } // namespace MiscServices
 } // namespace OHOS

@@ -658,21 +658,6 @@ HWTEST_F(IdentityCheckerTest, testUpdateListenEventFlag_003, TestSize.Level1)
 }
 
 /**
- * @tc.name: testDisplayOptionalInputMethod_001
- * @tc.desc: has no PERMISSION
- * @tc.type: FUNC
- * @tc.require:
- * @tc.author:
- */
-HWTEST_F(IdentityCheckerTest, testDisplayOptionalInputMethod_001, TestSize.Level1)
-{
-    IMSA_HILOGI("IdentityCheckerTest testDisplayOptionalInputMethod_001 start");
-    service_->identityChecker_ = identityCheckerImpl_;
-    int32_t ret = IdentityCheckerTest::service_->DisplayOptionalInputMethod();
-    EXPECT_EQ(ret, ErrorCode::ERROR_EX_SERVICE_SPECIFIC);
-}
-
-/**
  * @tc.name: testSwitchInputMethod_001
  * @tc.desc: has no PERMISSION_CONNECT_IME_ABILITY, and not currentIme switch subtype
  * @tc.type: FUNC

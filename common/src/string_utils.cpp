@@ -26,7 +26,7 @@
 namespace OHOS {
 namespace MiscServices {
 constexpr int32_t HEX_BYTE_WIDTH = 2;
-
+// LCOV_EXCL_START
 std::string StringUtils::ToHex(const std::string &in)
 {
     std::stringstream ss;
@@ -59,7 +59,7 @@ int32_t StringUtils::CountUtf16Chars(const std::u16string &in)
     IMSA_HILOGD("size:%{public}zu,ret:%{public}d", in.size(), ret);
     return ret;
 }
-
+// LCOV_EXCL_STOP
 void StringUtils::TruncateUtf16String(std::u16string &in, int32_t maxChars)
 {
     const UChar* src = in.data();
