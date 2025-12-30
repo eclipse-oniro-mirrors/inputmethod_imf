@@ -897,7 +897,12 @@ sptr<OHOS::AppExecFwk::IBundleMgr> ImeInfoInquirer::GetBundleMgr()
         IMSA_HILOGE("remoteObject is nullptr!");
         return nullptr;
     }
-    return iface_cast<AppExecFwk::IBundleMgr>(remoteObject);
+    auto bundleMgr = iface_cast<AppExecFwk::IBundleMgr>(remoteObject);
+    if (bundleMgr == nullptr) {
+        IMSA_HILOGE("bundleMgr is nullptr!");
+        return nullptr;
+    }
+    return bundleMgr;
 }
 
 std::shared_ptr<SubProperty> ImeInfoInquirer::FindTargetSubtypeByCondition(const std::vector<SubProperty> &subProps,
@@ -1101,7 +1106,8 @@ bool ImeInfoInquirer::IsInputMethod(int32_t userId, const std::string &bundleNam
         return false;
     }
     BundleInfo bundleInfo;
-    auto ret = bmg->GetBundleInfo(bundleName, BundleFlag::GET_BUNDLE_WITH_EXTENSION_INFO, bundleInfo, userId);
+    std::string bundleNameCopy = bundleName;
+    auto ret = bmg->GetBundleInfo(bundleNameCopy, BundleFlag::GET_BUNDLE_WITH_EXTENSION_INFO, bundleInfo, userId);
     if (!ret) {
         return false;
     }

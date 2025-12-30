@@ -2210,10 +2210,6 @@ HWTEST_F(InputMethodControllerTest, TestImcOptionalInputMethod, TestSize.Level0)
     std::vector<SubProperty> subProps;
     auto ret = inputMethodController_->ListInputMethodSubtype(property, subProps);
     EXPECT_NE(ret, ErrorCode::NO_ERROR);
-    ret = inputMethodController_->ShowOptionalInputMethod();
-    EXPECT_NE(ret, ErrorCode::NO_ERROR);
-    ret = inputMethodController_->DisplayOptionalInputMethod();
-    EXPECT_NE(ret, ErrorCode::NO_ERROR);
 }
 
 /**

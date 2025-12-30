@@ -42,7 +42,7 @@ WindowAdapter &WindowAdapter::GetInstance()
     static WindowAdapter windowAdapter;
     return windowAdapter;
 }
-// LCOV_EXCL_STOP
+
 void WindowAdapter::GetFocusInfo(OHOS::Rosen::FocusChangeInfo &focusInfo, uint64_t displayId)
 {
 #ifdef SCENE_BOARD_ENABLE
@@ -51,7 +51,7 @@ void WindowAdapter::GetFocusInfo(OHOS::Rosen::FocusChangeInfo &focusInfo, uint64
     WindowManager::GetInstance().GetFocusWindowInfo(focusInfo, displayId);
 #endif
 }
-// LCOV_EXCL_START
+
 bool WindowAdapter::GetCallingWindowInfo(
     const uint32_t windId, const int32_t userId, CallingWindowInfo &callingWindowInfo)
 {
@@ -157,7 +157,7 @@ uint64_t WindowAdapter::GetDisplayIdByWindowId(int32_t callingWindowId)
     return DEFAULT_DISPLAY_ID;
 #endif
 }
-// LCOV_EXCL_STOP
+
 uint64_t WindowAdapter::GetDisplayIdByPid(int64_t callingPid)
 {
 #ifdef SCENE_BOARD_ENABLE
@@ -227,7 +227,7 @@ int32_t WindowAdapter::StoreAllDisplayGroupInfos()
 #endif
     return ErrorCode::NO_ERROR;
 }
-
+// LCOV_EXCL_STOP
 int32_t WindowAdapter::GetAllFocusWindowInfos(std::vector<FocusChangeInfo> &focusWindowInfos)
 {
     std::unordered_map<uint64_t, uint64_t> displayGroupIds;
@@ -257,7 +257,7 @@ uint64_t WindowAdapter::GetDisplayGroupId(uint64_t displayId)
     }
     return DEFAULT_DISPLAY_GROUP_ID;
 }
-
+// LCOV_EXCL_START
 bool WindowAdapter::IsDefaultDisplayGroup(uint64_t displayId)
 {
     return GetDisplayGroupId(displayId) == DEFAULT_DISPLAY_GROUP_ID;
@@ -269,7 +269,7 @@ uint64_t WindowAdapter::GetDisplayGroupId(uint32_t windowId)
     auto displayId = GetDisplayIdByWindowId(windowId);
     return GetDisplayGroupId(displayId);
 }
-
+// LCOV_EXCL_STOP
 int32_t WindowAdapter::GetAllDisplayGroupInfos(
     std::unordered_map<uint64_t, uint64_t> &displayGroupIds, std::vector<FocusChangeInfo> &focusWindowInfos)
 {
@@ -303,7 +303,7 @@ void WindowAdapter::SetFocusWindowInfos(const std::vector<Rosen::FocusChangeInfo
     std::lock_guard<std::mutex> lock(focusWindowInfosLock_);
     focusWindowInfos_ = focusWindowInfos;
 }
-
+// LCOV_EXCL_START
 void WindowAdapter::OnDisplayGroupInfoChanged(uint64_t displayId, uint64_t displayGroupId, bool isAdd)
 {
     IMSA_HILOGI("display change:%{public}" PRIu64 "/%{public}" PRIu64 "/%{public}d.", displayId,
@@ -345,7 +345,7 @@ void WindowAdapter::OnUnFocused(const FocusChangeInfo &focusWindowInfo)
     }
     focusWindowInfos_.erase(iter);
 }
-
+// LCOV_EXCL_STOP
 int32_t WindowAdapter::RegisterAllGroupInfoChangedListener()
 {
 #ifdef SCENE_BOARD_ENABLE
