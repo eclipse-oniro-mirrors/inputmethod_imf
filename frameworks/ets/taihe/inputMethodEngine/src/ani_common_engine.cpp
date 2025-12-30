@@ -579,7 +579,7 @@ bool CommonConvert::GetBooleanOrUndefined(ani_env* env, ani_object param, const 
 
     ani_boolean result = 0;
     if ((status = env->Object_CallMethodByName_Boolean(
-        reinterpret_cast<ani_object>(obj), "unboxed", nullptr, &result)) != ANI_OK) {
+        reinterpret_cast<ani_object>(obj), "toBoolean", nullptr, &result)) != ANI_OK) {
         IMSA_HILOGE("status : %{public}d", status);
         return false;
     }
@@ -611,7 +611,7 @@ bool CommonConvert::GetIntOrUndefined(ani_env* env, ani_object param, const char
     }
 
     ani_int result = 0;
-    if ((status = env->Object_CallMethodByName_Int(reinterpret_cast<ani_object>(obj), "unboxed", nullptr, &result)) !=
+    if ((status = env->Object_CallMethodByName_Int(reinterpret_cast<ani_object>(obj), "toInt", nullptr, &result)) !=
         ANI_OK) {
         IMSA_HILOGE("status : %{public}d", status);
         return false;
