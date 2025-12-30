@@ -257,11 +257,6 @@ union Ability {
     @null type_null;
 }
 
-union KeyboardAreaData {
-    type_KeyboardArea: KeyboardArea;
-    @undefined uValue;
-}
-
 union FillColorData {
     @undefined uValue;
     type_String: String;
@@ -608,11 +603,6 @@ interface Panel {
         }
     """)
 }
-
-@!sts_inject("""
-export type OnMessageCallback = (msgId: string, msgParam?: ArrayBuffer) => void;
-export type OnTerminatedCallback = Callback<void>;
-""")
 
 struct MessageHandler {
     onMessage: (msgId: String, @optional msgParam: Optional<@arraybuffer Array<u8>>) => void;

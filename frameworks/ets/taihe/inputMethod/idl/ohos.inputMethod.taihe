@@ -29,15 +29,6 @@ from ohos.InputMethodSubtype use InputMethodSubtype;
 static { loadLibrary("inputmethod_taihe_native.z") }
 """)
 
-@!sts_inject("""
-export type SetPreviewTextCallback = (text: string, range: Range) => void;
-""")
-
-@!sts_inject("""
-export type OnMessageCallback = (msgId: string, msgParam?: ArrayBuffer) => void;
-export type OnTerminatedCallback = Callback<void>;
-""")
-
 struct MessageHandler {
     onMessage: (msgId: String, @optional msgParam: Optional<@arraybuffer Array<u8>>) => void;
     onTerminated: (data: UndefinedType) => void;
@@ -354,13 +345,5 @@ enum AttachFailureReason : i32 {
     SERVICE_ABNORMAL = 2
 }
 
-@!sts_inject("""
-    function onAttachmentDidFail(callback: (info: AttachFailureReason) => void) {
-        return onAttachmentDidFailImpl(callback, callback);
-    }
-    function offAttachmentDidFail(callback?: (info: AttachFailureReason) => void) {
-        return offAttachmentDidFailImpl(callback);
-    }
-""")
-function onAttachmentDidFailImpl(f: (info: AttachFailureReason) => void, opq: Opaque);
-function offAttachmentDidFailImpl(opq: Optional<Opaque>);
+function OnAttachmentDidFail(callback: (data: AttachFailureReason) => void);
+function OffAttachmentDidFail(callback: Optional<(data: AttachFailureReason) => void>);

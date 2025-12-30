@@ -22,7 +22,9 @@ namespace MiscServices {
 std::mutex InputMethodImpl::jsCbsLock_;
 std::mutex InputMethodImpl::listenerMutex_;
 std::shared_ptr<InputMethodImpl> InputMethodImpl::listener_{ nullptr };
-std::unordered_map<std::string, std::vector<std::shared_ptr<CallbackObject>>> InputMethodImpl::jsCbMap_;
+std::unordered_map<std::string,
+    std::vector<taihe::callback<void(AttachFailureReason_t data)>>> InputMethodImpl::jsCbMap_;
+constexpr const char *ATTACH_FAIL_CB_EVENT_TYPE = "attachmentDidFail";
 std::shared_ptr<InputMethodImpl> InputMethodImpl::GetInstance()
 {
     if (listener_ == nullptr) {
@@ -43,108 +45,67 @@ void InputMethodImpl::SetImcInnerListener()
     instance->SetImcInnerListener(listener_);
 }
 
-void InputMethodImpl::RegisterListener(std::string const &type, callbackType &&cb, uintptr_t opq)
+void InputMethodImpl::RegisterListener(std::string const &type,
+    taihe::callback_view<void(AttachFailureReason_t data)> callback)
 {
     IMSA_HILOGD("event type: %{public}s.", type.c_str());
     SetImcInnerListener();
-    ani_object callbackObj = reinterpret_cast<ani_object>(opq);
-    ani_ref callbackRef;
-    ani_env *env = taihe::get_env();
-    if (env == nullptr || ANI_OK != env->GlobalReference_Create(callbackObj, &callbackRef)) {
-        IMSA_HILOGE("ani_env is nullptr or GlobalReference_Create failed, type: %{public}s!", type.c_str());
-        return;
+    {
+        std::lock_guard<std::mutex> lock(jsCbsLock_);
+        auto &cbVec = jsCbMap_[type];
+        auto it = std::find_if(cbVec.begin(), cbVec.end(),
+            [&callback](const auto &existingCb) {
+            return callback == existingCb;
+        });
+        if (it == cbVec.end()) {
+            cbVec.emplace_back(callback);
+            IMSA_HILOGD("callback registered success");
+        } else {
+            IMSA_HILOGD("add %{public}s callback succeed.", type.c_str());
+        }
     }
-
-    std::lock_guard<std::mutex> lock(jsCbsLock_);
-    auto &cbVec = jsCbMap_[type];
-    bool isDuplicate = std::any_of(cbVec.begin(), cbVec.end(),
-        [env, callbackRef](std::shared_ptr<CallbackObject> &obj) {
-        ani_boolean isEqual = false;
-        return (ANI_OK == env->Reference_StrictEquals(callbackRef, obj->ref, &isEqual)) && isEqual;
-    });
-    if (isDuplicate) {
-        env->GlobalReference_Delete(callbackRef);
-        IMSA_HILOGI("callback already registered, type: %{public}s!", type.c_str());
-        return;
-    }
-    cbVec.emplace_back(std::make_shared<CallbackObject>(cb, callbackRef));
-    IMSA_HILOGD("add %{public}s callback succeed.", type.c_str());
 }
 
-void InputMethodImpl::UnRegisterListener(std::string const &type, taihe::optional_view<uintptr_t> opq)
+void InputMethodImpl::UnRegisterListener(std::string const &type,
+    taihe::optional_view<taihe::callback<void(AttachFailureReason_t data)>> callback)
 {
     IMSA_HILOGD("event type: %{public}s.", type.c_str());
-    ani_env *env = taihe::get_env();
-    if (env == nullptr) {
-        IMSA_HILOGE("ani_env is nullptr!");
-        return;
-    }
     std::lock_guard<std::mutex> lock(jsCbsLock_);
     const auto iter = jsCbMap_.find(type);
     if (iter == jsCbMap_.end()) {
-        IMSA_HILOGE("no callback for event:%{public}s!", type.c_str());
+        IMSA_HILOGE("%{public}s is not registered", type.c_str());
         return;
     }
-
-    if (!opq.has_value()) {
-        IMSA_HILOGD("remove all callbacks for event:%{public}s.", type.c_str());
+    if (!callback.has_value()) {
         jsCbMap_.erase(iter);
+        IMSA_HILOGD("unregistered all %{public}s callback", type.c_str());
         return;
     }
-
-    GlobalRefGuard guard(env, reinterpret_cast<ani_object>(opq.value()));
-    if (!guard) {
-        IMSA_HILOGE("GlobalRefGuard is false!");
-        return;
-    }
-
-    const auto pred = [env, targetRef = guard.get()](std::shared_ptr<CallbackObject> &obj) {
-        ani_boolean is_equal = false;
-        return (ANI_OK == env->Reference_StrictEquals(targetRef, obj->ref, &is_equal)) && is_equal;
-    };
     auto &callbacks = iter->second;
-    const auto it = std::find_if(callbacks.begin(), callbacks.end(), pred);
-    if (it == callbacks.end()) {
-        IMSA_HILOGD("callback for event:%{public}s may be removed already!", type.c_str());
-        return;
+    auto onceCallback = callback.value();
+    auto it = std::find_if(callbacks.begin(), callbacks.end(),
+        [&onceCallback](const auto &existingCb) {
+        return onceCallback == existingCb;
+    });
+    if (it != callbacks.end()) {
+        IMSA_HILOGD("unregistered callback success");
+        callbacks.erase(it);
     }
-    callbacks.erase(it);
-    IMSA_HILOGD("remove %{public}s callback succeed.", type.c_str());
     if (callbacks.empty()) {
         jsCbMap_.erase(iter);
+        IMSA_HILOGD("callback is empty");
     }
-}
-
-std::vector<std::shared_ptr<CallbackObject>> InputMethodImpl::GetJsCbObjects(const std::string &type)
-{
-    IMSA_HILOGD("type: %{public}s", type.c_str());
-    std::lock_guard<std::mutex> lock(jsCbsLock_);
-    auto iter = jsCbMap_.find(type);
-    if (iter == jsCbMap_.end()) {
-        IMSA_HILOGD("%{public}s not register.", type.c_str());
-        return {};
-    }
-    return iter->second;
 }
 
 void InputMethodImpl::OnAttachmentDidFail(AttachFailureReason reason)
 {
     IMSA_HILOGD("reason: %{public}d.", reason);
-    auto jsCbObjects = GetJsCbObjects(ATTACH_FAIL_CB_EVENT_TYPE);
-    for (const auto &jsCbObject : jsCbObjects) {
-        OnAttachmentDidFail(reason, jsCbObject);
+    std::lock_guard<std::mutex> lock(jsCbsLock_);
+    auto &cbVec = jsCbMap_[ATTACH_FAIL_CB_EVENT_TYPE];
+    for (auto &cb : cbVec) {
+        AttachFailureReason_t tmpReason = EnumConvert::ConvertAttachFailureReason(reason);
+        cb(tmpReason);
     }
-}
-
-void InputMethodImpl::OnAttachmentDidFail(AttachFailureReason reason, const std::shared_ptr<CallbackObject> &jsCbObject)
-{
-    if (jsCbObject == nullptr) {
-        IMSA_HILOGE("jsCbObject is nullptr.");
-        return;
-    }
-    auto &func = std::get<taihe::callback<void(AttachFailureReason_t)>>(jsCbObject->callback);
-    AttachFailureReason_t tmpReason = EnumConvert::ConvertAttachFailureReason(reason);
-    func(tmpReason);
 }
 } // namespace MiscServices
 } // namespace OHOS

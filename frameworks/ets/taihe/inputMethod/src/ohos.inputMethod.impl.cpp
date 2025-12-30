@@ -193,14 +193,14 @@ bool SwitchCurrentInputMethodAndSubtypeSync(::ohos::inputMethod::InputMethodProp
     return true;
 }
 
-void onAttachmentDidFailImpl(taihe::callback_view<void(AttachFailureReason_t info)> f, uintptr_t opq)
+void OnAttachmentDidFail(taihe::callback_view<void(AttachFailureReason_t data)> callback)
 {
-    InputMethodImpl::GetInstance()->RegisterListener("attachmentDidFail", f, opq);
+    InputMethodImpl::GetInstance()->RegisterListener("attachmentDidFail", callback);
 }
 
-void offAttachmentDidFailImpl(taihe::optional_view<uintptr_t> opq)
+void OffAttachmentDidFail(taihe::optional_view<taihe::callback<void(AttachFailureReason_t data)>> callback)
 {
-    InputMethodImpl::GetInstance()->UnRegisterListener("attachmentDidFail", opq);
+    InputMethodImpl::GetInstance()->UnRegisterListener("attachmentDidFail", callback);
 }
 } // namespace
 
@@ -215,5 +215,5 @@ TH_EXPORT_CPP_API_SwitchInputMethodSync(SwitchInputMethodSync);
 TH_EXPORT_CPP_API_SwitchCurrentInputMethodSubtypeSync(SwitchCurrentInputMethodSubtypeSync);
 TH_EXPORT_CPP_API_SetSimpleKeyboardEnabled(SetSimpleKeyboardEnabled);
 TH_EXPORT_CPP_API_SwitchCurrentInputMethodAndSubtypeSync(SwitchCurrentInputMethodAndSubtypeSync);
-TH_EXPORT_CPP_API_onAttachmentDidFailImpl(onAttachmentDidFailImpl);
-TH_EXPORT_CPP_API_offAttachmentDidFailImpl(offAttachmentDidFailImpl);
+TH_EXPORT_CPP_API_OnAttachmentDidFail(OnAttachmentDidFail);
+TH_EXPORT_CPP_API_OffAttachmentDidFail(OffAttachmentDidFail);

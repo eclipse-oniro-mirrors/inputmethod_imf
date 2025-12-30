@@ -30,19 +30,20 @@ namespace OHOS {
 namespace MiscServices {
 class InputMethodImpl : public ImcInnerListener {
 public:
+    InputMethodImpl() = default;
+    ~InputMethodImpl() = default;
     static std::shared_ptr<InputMethodImpl> GetInstance();
-    void RegisterListener(std::string const &type, callbackType &&cb, uintptr_t opq);
-    void UnRegisterListener(std::string const &type, taihe::optional_view<uintptr_t> opq);
-    static void OnAttachmentDidFail(AttachFailureReason reason, const std::shared_ptr<CallbackObject> &jsCbObject);
+    void RegisterListener(std::string const &type, taihe::callback_view<void(AttachFailureReason_t data)> callback);
+    void UnRegisterListener(std::string const &type,
+        taihe::optional_view<taihe::callback<void(AttachFailureReason_t data)>> callback);
     void OnAttachmentDidFail(AttachFailureReason reason) override;
 private:
+    DISALLOW_COPY_AND_MOVE(InputMethodImpl);
     static std::mutex jsCbsLock_;
     static std::mutex listenerMutex_;
     static std::shared_ptr<InputMethodImpl> listener_;
-    static constexpr const char *ATTACH_FAIL_CB_EVENT_TYPE = "attachmentDidFail";
-    static std::unordered_map<std::string, std::vector<std::shared_ptr<CallbackObject>>> jsCbMap_;
+    static std::unordered_map<std::string, std::vector<taihe::callback<void(AttachFailureReason_t data)>>> jsCbMap_;
     static void SetImcInnerListener();
-    std::vector<std::shared_ptr<CallbackObject>> GetJsCbObjects(const std::string &type);
 };
 } // namespace MiscServices
 } // namespace OHOS
