@@ -36,7 +36,7 @@ public:
     static std::shared_ptr<PanelImpl> GetInstance();
     ~PanelImpl();
     void CreatePanel(uintptr_t ctx, PanelInfo_t const& info, std::shared_ptr<InputMethodPanel> &panel);
-    SystemPanelInsets_t GetSystemPanelCurrentInsetsAsync(int64_t id, int64_t displayId);
+    SystemPanelInsetsData_t GetSystemPanelCurrentInsetsAsync(int64_t id, int64_t displayId);
     void SetSystemPanelButtonColorAsync(int64_t id, FillColorData_t const& fillColor,
         BackgroundColorData_t const& backgroundColor);
     void SetShadow(double radius, ::taihe::string_view color, double offsetX, double offsetY);
@@ -150,7 +150,7 @@ public:
         PanelImpl::GetInstance()->SetKeepScreenOnAsync(isKeepScreenOn);
     }
 
-    SystemPanelInsets_t GetSystemPanelCurrentInsetsAsync(int64_t id, int64_t displayId)
+    SystemPanelInsetsData_t GetSystemPanelCurrentInsetsAsync(int64_t id, int64_t displayId)
     {
         return PanelImpl::GetInstance()->GetSystemPanelCurrentInsetsAsync(id, displayId);
     }

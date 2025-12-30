@@ -66,6 +66,7 @@ using ExtendAction_t = ohos::inputMethodEngine::ExtendAction;
 using UndefinedType_t = ohos::inputMethodEngine::UndefinedType;
 using WindowInfo_t = ohos::inputMethodEngine::WindowInfo;
 using SystemPanelInsets_t = ohos::inputMethodEngine::SystemPanelInsets;
+using SystemPanelInsetsData_t = ohos::inputMethodEngine::SystemPanelInsetsData;
 using FillColorData_t = ohos::inputMethodEngine::FillColorData;
 using BackgroundColorData_t = ohos::inputMethodEngine::BackgroundColorData;
 using CustomValueType_t = ohos::inputMethod::ExtraConfig::CustomValueType;

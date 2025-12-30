@@ -227,6 +227,11 @@ struct SystemPanelInsets {
     @readonly bottom: i32;
 }
 
+union SystemPanelInsetsData {
+    @null type_null;
+    type_SystemPanelInsets: SystemPanelInsets;
+}
+
 union EditorAttributeCallback {
     type_EditorAttribute: EditorAttribute;
     @null type_null;
@@ -464,7 +469,7 @@ interface Panel {
     SetKeepScreenOnAsync(isKeepScreenOn: bool): void;
 
     @gen_promise("getSystemPanelCurrentInsetsImpl")
-    GetSystemPanelCurrentInsetsAsync(id: i64, displayId: i64): SystemPanelInsets;
+    GetSystemPanelCurrentInsetsAsync(id: i64, displayId: i64): SystemPanelInsetsData;
 
     @gen_promise("setSystemPanelButtonColorImpl")
     SetSystemPanelButtonColorAsync(id: i64, fillColor: FillColorData, backgroundColor: BackgroundColorData): void;
@@ -518,7 +523,7 @@ interface Panel {
         hide(): Promise<void>;
         hide(callback: AsyncCallback<void>): void;
 
-        getSystemPanelCurrentInsets(displayId: long): Promise<SystemPanelInsets>;
+        getSystemPanelCurrentInsets(displayId: long): Promise<SystemPanelInsets | null>;
 
         setSystemPanelButtonColor(fillColor: string | undefined, backgroundColor: string | undefined): Promise<void>;
     """)
@@ -595,7 +600,7 @@ interface Panel {
         hide(callback: AsyncCallback<void>): void {
             this.hideImpl(this.lineUp(), callback);
         }
-        getSystemPanelCurrentInsets(displayId: long): Promise<SystemPanelInsets> {
+        getSystemPanelCurrentInsets(displayId: long): Promise<SystemPanelInsets | null> {
             return this.getSystemPanelCurrentInsetsImpl(this.lineUp(), displayId);
         }
         setSystemPanelButtonColor(fillColor: string | undefined, backgroundColor: string | undefined): Promise<void> {

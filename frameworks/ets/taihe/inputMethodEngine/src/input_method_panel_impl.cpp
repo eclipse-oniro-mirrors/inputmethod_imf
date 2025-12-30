@@ -98,18 +98,17 @@ void PanelImpl::CreatePanel(uintptr_t ctx, PanelInfo_t const& info, std::shared_
     IMSA_HILOGE("CreatePanel failed, panel is nullptr!");
 }
 
-SystemPanelInsets_t PanelImpl::GetSystemPanelCurrentInsetsAsync(int64_t id, int64_t displayId)
+SystemPanelInsetsData_t PanelImpl::GetSystemPanelCurrentInsetsAsync(int64_t id, int64_t displayId)
 {
     if (!jobQueue_.Wait(static_cast<int64_t>(id))) {
         IMSA_HILOGW("wait timeout id: %{public}" PRId64 "", id);
     }
-    SystemPanelInsets_t result {};
     if (inputMethodPanel_ == nullptr) {
         IMSA_HILOGE("panel is nullptr!");
         set_business_error(JsUtils::Convert(ErrorCode::ERROR_IME),
             JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IME)));
         jobQueue_.Pop();
-        return result;
+        return SystemPanelInsetsData_t::make_type_null();
     }
     uint64_t tmpId = static_cast<uint64_t>(displayId);
     SystemPanelInsets insets = {0, 0, 0};
@@ -118,10 +117,11 @@ SystemPanelInsets_t PanelImpl::GetSystemPanelCurrentInsetsAsync(int64_t id, int6
     if (code != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("GetSystemPanelCurrentInsets failed!");
         set_business_error(JsUtils::Convert(code), JsUtils::ToMessage(JsUtils::Convert(code)));
-        return result;
+        return SystemPanelInsetsData_t::make_type_null();
     }
     IMSA_HILOGI("GetSystemPanelCurrentInsets success!");
-    return CommonConvert::NativeInsetsToAni(insets);
+    SystemPanelInsets_t result = CommonConvert::NativeInsetsToAni(insets);
+    return SystemPanelInsetsData_t::make_type_SystemPanelInsets(result);
 }
 
 void PanelImpl::SetSystemPanelButtonColorAsync(int64_t id, FillColorData_t const& fillColor,
