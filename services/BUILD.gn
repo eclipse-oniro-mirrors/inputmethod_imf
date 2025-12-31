@@ -256,7 +256,6 @@ ohos_static_library("inputmethod_service_static") {
     "data_share:datashare_consumer",
     "eventhandler:libeventhandler",
     "hicollie:libhicollie",
-    "hilog:libhilog",
     "i18n:intl_util",
     "init:libbeget_proxy",
     "init:libbegetutil",
