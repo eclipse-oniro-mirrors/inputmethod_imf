@@ -521,6 +521,12 @@ void JSInputMethodExtensionConnection::HandleOnAbilityConnectDone(const AppExecF
     const sptr<IRemoteObject> &remoteObject, int resultCode)
 {
     IMSA_HILOGI("HandleOnAbilityConnectDone start, resultCode:%{public}d.", resultCode);
+    napi_handle_scope scope = nullptr;
+    napi_open_handle_scope(env_, &scope);
+    if (scope == nullptr) {
+        IMSA_HILOGE("scope is nullptr!");
+        return;
+    }
     // wrap ElementName
     napi_value napiElementName = OHOS::AppExecFwk::WrapElementName(env_, element);
 
@@ -531,16 +537,11 @@ void JSInputMethodExtensionConnection::HandleOnAbilityConnectDone(const AppExecF
 
     if (jsConnectionObject_ == nullptr) {
         IMSA_HILOGE("jsConnectionObject_ is nullptr!");
+        napi_close_handle_scope(env_, scope);
         return;
     }
 
     napi_value obj = nullptr;
-    napi_handle_scope scope = nullptr;
-    napi_open_handle_scope(env_, &scope);
-    if (scope == nullptr) {
-        IMSA_HILOGE("scope is nullptr!");
-        return;
-    }
     if (napi_get_reference_value(env_, jsConnectionObject_, &obj) != napi_ok) {
         IMSA_HILOGE("failed to get jsConnectionObject_!");
         napi_close_handle_scope(env_, scope);
@@ -588,19 +589,20 @@ void JSInputMethodExtensionConnection::HandleOnAbilityDisconnectDone(const AppEx
     int resultCode)
 {
     IMSA_HILOGI("HandleOnAbilityDisconnectDone start, resultCode:%{public}d.", resultCode);
-    napi_value napiElementName = OHOS::AppExecFwk::WrapElementName(env_, element);
-    napi_value argv[] = { napiElementName };
-    if (jsConnectionObject_ == nullptr) {
-        IMSA_HILOGE("jsConnectionObject_ is nullptr!");
-        return;
-    }
-    napi_value obj = nullptr;
     napi_handle_scope scope = nullptr;
     napi_open_handle_scope(env_, &scope);
     if (scope == nullptr) {
         IMSA_HILOGE("scope is nullptr!");
         return;
     }
+    napi_value napiElementName = OHOS::AppExecFwk::WrapElementName(env_, element);
+    napi_value argv[] = { napiElementName };
+    if (jsConnectionObject_ == nullptr) {
+        IMSA_HILOGE("jsConnectionObject_ is nullptr!");
+        napi_close_handle_scope(env_, scope);
+        return;
+    }
+    napi_value obj = nullptr;
     if (napi_get_reference_value(env_, jsConnectionObject_, &obj) != napi_ok) {
         IMSA_HILOGE("failed to get jsConnectionObject_!");
         napi_close_handle_scope(env_, scope);
