@@ -1238,7 +1238,7 @@ void PerUserSession::StartImeInImeDied()
     StartImeIfInstalled(StartReason::RESTART_AFTER_DIED);
 }
 
-void PerUserSession::StartImeIfInstalled(StartReason startReasaon)
+void PerUserSession::StartImeIfInstalled(StartReason startReason)
 {
     auto imeToStart = GetRealCurrentIme(false);
     if (imeToStart == nullptr || imeToStart->imeId.empty()) {
@@ -1249,7 +1249,7 @@ void PerUserSession::StartImeIfInstalled(StartReason startReasaon)
         IMSA_HILOGE("imeToStart is not installed, imeId = %{public}s!", imeToStart->imeId.c_str());
         return;
     }
-    StartCurrentIme(false, startReasaon);
+    StartCurrentIme(false, startReason);
 }
 
 void PerUserSession::ReplaceCurrentClient(
@@ -1719,6 +1719,7 @@ int32_t PerUserSession::StartInputService(const std::shared_ptr<ImeNativeCfg> &i
     if (ime->startReason != StartReason::RESTART_AFTER_DIED) {
         std::unordered_map<std::string, std::string> payload;
         payload["bundleName"] = imeToStart->bundleName;
+        payload["abilityName"] = imeToStart->extName;
         ResourceSchedule::ResSchedClient::GetInstance().ReportData(
             ResourceSchedule::ResType::RES_TYPE_START_INPUT_METHOD_PROCESS, 0, payload);
     }
