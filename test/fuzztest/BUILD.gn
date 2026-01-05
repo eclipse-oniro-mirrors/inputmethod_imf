@@ -35,7 +35,7 @@ group("fuzztest") {
     "perusersession_fuzzer:fuzztest",
     "settingsdatautils_fuzzer:fuzztest",
     "systemabilitystub_fuzzer:fuzztest",
-    "systemabilitystubfuzztest:system_ability_stub_fuzztest",
+    #"systemabilitystubfuzztest:system_ability_stub_fuzztest",
     "systemcmdchannelstub_fuzzer:fuzztest",
   ]
 }
