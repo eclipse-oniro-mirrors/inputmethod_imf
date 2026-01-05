@@ -3035,27 +3035,25 @@ HWTEST_F(InputMethodPanelTest, testSetShadow_003, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPanelTest::testSetShadow_003 start.");
     auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    inputMethodPanel->panelType_ = SOFT_KEYBOARD;
+    inputMethodPanel->panelFlag_ = FLG_FLOATING;
+    Shadow shadow = { 0.0, "#000000", 0.0, 0.0};
+    auto ret = inputMethodPanel->SetShadow(shadow);
+    EXPECT_EQ(ret, ErrorCode::ERROR_WINDOW_MANAGER);
+
     PanelInfo panelInfo;
     panelInfo.panelType = SOFT_KEYBOARD;
     panelInfo.panelFlag = FLG_FLOATING;
-    auto ret = inputMethodPanel->CreatePanel(nullptr, panelInfo);
+    ret = inputMethodPanel->CreatePanel(nullptr, panelInfo);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     ima_.isSystemApp_ = true;
-    Shadow shadow = { 0.0, "#000000", 0.0, 0.0};
+    shadow = { 0.0, "#000000", 0.0, 0.0};
     ret = inputMethodPanel->SetShadow(shadow);
-    if (isScbEnable_) {
-        EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
-    } else {
-        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    }
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
  
     shadow = { 20.0, "#000000", 0.0, 0.0};
     ret = inputMethodPanel->SetShadow(shadow);
-    if (isScbEnable_) {
-        EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
-    } else {
-        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    }
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     InputMethodPanelTest::DestroyPanel(inputMethodPanel);
 }
  

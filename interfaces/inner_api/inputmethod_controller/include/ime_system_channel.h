@@ -39,9 +39,6 @@ public:
     virtual void NotifyPanelStatus(const SysPanelStatus &sysPanelStatus)
     {
     }
-    virtual void SetPanelShadow(const Shadow &shadow)
-    {
-    }
 };
 using PrivateDataValue = std::variant<std::string, bool, int32_t>;
 class ImeSystemCmdChannel : public RefBase, public PrivateCommandInterface {
@@ -92,7 +89,6 @@ public:
     int32_t ReceivePrivateCommand(
         const std::unordered_map<std::string, PrivateDataValue> &privateCommand) override;
     int32_t NotifyPanelStatus(const SysPanelStatus &sysPanelStatus);
-    int32_t SetPanelShadow(const Shadow &shadow);
     void OnConnectCmdReady(const sptr<IRemoteObject> &agentObject);
     IMF_API int32_t GetDefaultImeCfg(std::shared_ptr<Property> &property);
 
