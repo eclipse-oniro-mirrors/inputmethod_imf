@@ -29,7 +29,6 @@
 #include "panel_info.h"
 #include "window_change_listener_impl.h"
 #include "wm_common.h"
-#include "sys_panel_status.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -90,6 +89,7 @@ public:
     int32_t GetSystemPanelCurrentInsets(uint64_t displayId, SystemPanelInsets &systemPanelInsets);
     int32_t SetSystemPanelButtonColor(const std::string &fillColor, const std::string &backgroundColor);
     int32_t SetShadow(const Shadow &shadow);
+    int32_t CovertSetShadowResult(const Rosen::WMError ret, const SetShadowOperation operation);
     bool IsKeyboardBottomElevated(PanelFlag flag);
     bool IsFunctionButtonVisible(bool isKeyboardElevated);
     uint32_t windowId_ = INVALID_WINDOW_ID;

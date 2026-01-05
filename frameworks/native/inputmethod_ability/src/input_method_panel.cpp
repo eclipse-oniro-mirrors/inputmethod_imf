@@ -2345,15 +2345,13 @@ int32_t InputMethodPanel::SetShadow(const Shadow &shadow)
     }
     if (shadow.radius == 0.0f) {
         if (panelType_ == PanelType::SOFT_KEYBOARD && isScbEnable_) {
-            return InputMethodAbility::GetInstance().SetPanelShadow(shadow);
+            Rosen::ShadowsInfo shadowsInfo = Rosen::ShadowsInfo(shadow.radius,
+                shadow.color, shadow.offsetX, shadow.offsetY, true, false, false, false);
+            auto ret = window_->SyncShadowsToComponent(shadowsInfo);
+            return CovertSetShadowResult(ret, SetShadowOperation::SYNC_TO_COMPONENT);
         }
         auto ret = window_->SetShadowRadius(shadow.radius);
-        if (ret != WMError::WM_OK) {
-            IMSA_HILOGE("SetShadowRadius error: %{public}d!", ret);
-            return ret == WMError::WM_ERROR_INVALID_PARAM ? ErrorCode::ERROR_PARAMETER_CHECK_FAILED :
-                                                            ErrorCode::ERROR_WINDOW_MANAGER;
-        }
-        return ErrorCode::NO_ERROR;
+        return CovertSetShadowResult(ret, SetShadowOperation::SET_WINDOW_RADIUS);
     }
     uint32_t colorValue = 0;
     if (shadow.radius < 0.0f || !ColorParser::Parse(shadow.color, colorValue)) {
@@ -2366,34 +2364,36 @@ int32_t InputMethodPanel::SetShadow(const Shadow &shadow)
 
 int32_t InputMethodPanel::SetWindowShadow(const Shadow &shadow)
 {
-    if (panelType_ == PanelType::SOFT_KEYBOARD && isScbEnable_) {
-        return InputMethodAbility::GetInstance().SetPanelShadow(shadow);
-    }
     if (window_ == nullptr) {
         IMSA_HILOGE("window_ is nullptr!");
         return ErrorCode::ERROR_WINDOW_MANAGER;
     }
+    if (panelType_ == PanelType::SOFT_KEYBOARD && isScbEnable_) {
+        Rosen::ShadowsInfo shadowsInfo = Rosen::ShadowsInfo(shadow.radius,
+            shadow.color, shadow.offsetX, shadow.offsetY, true, true, true, true);
+        auto ret = window_->SyncShadowsToComponent(shadowsInfo);
+        return CovertSetShadowResult(ret, SetShadowOperation::SYNC_TO_COMPONENT);
+    }
     auto ret = window_->SetShadowRadius(shadow.radius);
     if (ret != WMError::WM_OK) {
-        IMSA_HILOGE("SetShadowRadius error: %{public}d!", ret);
-        return ret == WMError::WM_ERROR_INVALID_PARAM ? ErrorCode::ERROR_PARAMETER_CHECK_FAILED :
-                                                        ErrorCode::ERROR_WINDOW_MANAGER;
+        return CovertSetShadowResult(ret, SetShadowOperation::SET_WINDOW_RADIUS);
     }
     ret = window_->SetShadowColor(shadow.color);
     if (ret != WMError::WM_OK) {
-        IMSA_HILOGE("SetShadowColor error: %{public}d!", ret);
-        return ret == WMError::WM_ERROR_INVALID_PARAM ? ErrorCode::ERROR_PARAMETER_CHECK_FAILED :
-                                                        ErrorCode::ERROR_WINDOW_MANAGER;
+        return CovertSetShadowResult(ret, SetShadowOperation::SET_WINDOW_COLOR);
     }
     ret = window_->SetShadowOffsetX(shadow.offsetX);
     if (ret != WMError::WM_OK) {
-        IMSA_HILOGE("SetShadowOffsetX error: %{public}d!", ret);
-        return ret == WMError::WM_ERROR_INVALID_PARAM ? ErrorCode::ERROR_PARAMETER_CHECK_FAILED :
-                                                        ErrorCode::ERROR_WINDOW_MANAGER;
+        return CovertSetShadowResult(ret, SetShadowOperation::SET_WINDOW_OFFSETX);
     }
     ret = window_->SetShadowOffsetY(shadow.offsetY);
+    return CovertSetShadowResult(ret, SetShadowOperation::SET_WINDOW_OFFSETY);
+}
+
+int32_t InputMethodPanel::CovertSetShadowResult(const Rosen::WMError ret, const SetShadowOperation operation)
+{
     if (ret != WMError::WM_OK) {
-        IMSA_HILOGE("SetShadowOffsetY error: %{public}d!", ret);
+        IMSA_HILOGE("SetShadow operation %{public}d error: %{public}d!", static_cast<int32_t>(operation), ret);
         return ret == WMError::WM_ERROR_INVALID_PARAM ? ErrorCode::ERROR_PARAMETER_CHECK_FAILED :
                                                         ErrorCode::ERROR_WINDOW_MANAGER;
     }

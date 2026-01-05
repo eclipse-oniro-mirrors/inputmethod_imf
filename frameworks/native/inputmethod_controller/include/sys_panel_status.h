@@ -24,53 +24,6 @@
 
 namespace OHOS {
 namespace MiscServices {
-struct Shadow : public Parcelable {
-    double radius;
-    std::string color;
-    double offsetX;
-    double offsetY;
-    Shadow(double radius, std::string color, double offsetX, double offsetY) : radius(radius),
-        color(color), offsetX(offsetX), offsetY(offsetY) {}
- 
-    Shadow() = default;
- 
-    bool ReadFromParcel(Parcel &in)
-    {
-        radius = in.ReadDouble();
-        color = in.ReadString();
-        offsetX = in.ReadDouble();
-        offsetY = in.ReadDouble();
-        return true;
-    }
- 
-    bool Marshalling(Parcel &out) const
-    {
-        if (!out.WriteDouble(radius)) {
-            return false;
-        }
-        if (!out.WriteString(color)) {
-            return false;
-        }
-        if (!out.WriteDouble(offsetX)) {
-            return false;
-        }
-        if (!out.WriteDouble(offsetY)) {
-            return false;
-        }
-        return true;
-    }
- 
-    static Shadow *Unmarshalling(Parcel &in)
-    {
-        Shadow *data = new (std::nothrow) Shadow();
-        if (data && !data->ReadFromParcel(in)) {
-            delete data;
-            data = nullptr;
-        }
-        return data;
-    }
-};
-
 struct SysPanelStatus : public Parcelable {
     InputType inputType = InputType::NONE;
     int32_t flag = FLG_FIXED;

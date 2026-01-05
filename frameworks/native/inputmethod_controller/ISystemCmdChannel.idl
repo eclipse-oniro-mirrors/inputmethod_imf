@@ -19,5 +19,4 @@ sequenceable sys_panel_status..OHOS.MiscServices.Shadow;
 interface OHOS.MiscServices.ISystemCmdChannel {
     [ipccode 0, oneway] void SendPrivateCommand([in] Value value);
     [oneway] void NotifyPanelStatus([in] SysPanelStatus sysPanelStatus);
-    [oneway] void SetPanelShadow([in] Shadow shadow);
 }

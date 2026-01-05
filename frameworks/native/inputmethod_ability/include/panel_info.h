@@ -32,6 +32,25 @@ enum PanelFlag {
     FLG_CANDIDATE_COLUMN,
 };
 
+enum SetShadowOperation {
+    SYNC_TO_COMPONENT = 0,
+    SET_WINDOW_RADIUS,
+    SET_WINDOW_COLOR,
+    SET_WINDOW_OFFSETX,
+    SET_WINDOW_OFFSETY
+};
+
+struct Shadow {
+    double radius;
+    std::string color;
+    double offsetX;
+    double offsetY;
+    Shadow(double radius, std::string color, double offsetX, double offsetY) : radius(radius),
+        color(color), offsetX(offsetX), offsetY(offsetY) {}
+ 
+    Shadow() = default;
+};
+
 struct PanelInfo : public Parcelable {
     PanelType panelType = SOFT_KEYBOARD;
     PanelFlag panelFlag = FLG_FIXED;
