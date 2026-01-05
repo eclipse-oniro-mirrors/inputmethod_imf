@@ -519,6 +519,7 @@ napi_value JsUtils::GetValue(napi_env env, const Rosen::Rect &in)
 
 napi_value JsUtils::GetValue(napi_env env, const std::vector<uint8_t> &in)
 {
+    JsUtil::ScopeGuard scopeGuard(env);
     void *data = nullptr;
     napi_value arrayBuffer = nullptr;
     size_t length = in.size();
@@ -571,6 +572,7 @@ napi_status JsUtils::GetMessageHandlerCallbackParam(napi_value *argv,
         return napi_generic_failure;
     }
     napi_value jsMsgId = nullptr;
+    JsUtil::ScopeGuard scopeGuard(jsMessageHandler->env_);
     auto status = napi_create_string_utf8(
         jsMessageHandler->env_, arrayBuffer.msgId.c_str(), NAPI_AUTO_LENGTH, &jsMsgId);
     if (status != napi_ok) {

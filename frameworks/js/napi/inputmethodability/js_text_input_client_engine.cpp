@@ -245,7 +245,7 @@ napi_value JsTextInputClientEngine::GetResult(napi_env env, std::string &text)
     JsUtil::ScopeGuard scopeGuard(env);
     napi_value jsText = nullptr;
     napi_create_string_utf8(env, text.c_str(), NAPI_AUTO_LENGTH, &jsText);
-    return scopeGuard.Escape(jsText);
+    return jsText;
 }
 
 napi_status JsTextInputClientEngine::GetSelectRange(napi_env env, napi_value argv, std::shared_ptr<SelectContext> ctxt)
@@ -1504,6 +1504,7 @@ int32_t JsTextInputClientEngine::JsMessageHandler::OnTerminated()
             IMSA_HILOGI("jsCallback is nullptr!.");
             return;
         }
+        JsUtil::ScopeGuard scopeGuard(jsCallback->env_);
         napi_get_reference_value(jsCallback->env_, jsCallback->onTerminatedCallback_, &callback);
         if (callback != nullptr) {
             napi_get_global(jsCallback->env_, &global);
@@ -1539,6 +1540,7 @@ int32_t JsTextInputClientEngine::JsMessageHandler::OnMessage(const ArrayBuffer &
             IMSA_HILOGI("jsCallbackObject is nullptr!.");
             return;
         }
+        JsUtil::ScopeGuard scopeGuard(jsCallbackObject->env_);
         napi_get_reference_value(jsCallbackObject->env_, jsCallbackObject->onMessageCallback_, &callback);
         if (callback != nullptr) {
             napi_get_global(jsCallbackObject->env_, &global);

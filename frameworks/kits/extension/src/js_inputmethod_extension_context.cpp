@@ -521,13 +521,8 @@ void JSInputMethodExtensionConnection::HandleOnAbilityConnectDone(const AppExecF
     const sptr<IRemoteObject> &remoteObject, int resultCode)
 {
     IMSA_HILOGI("HandleOnAbilityConnectDone start, resultCode:%{public}d.", resultCode);
-    napi_handle_scope scope = nullptr;
-    napi_open_handle_scope(env_, &scope);
-    if (scope == nullptr) {
-        IMSA_HILOGE("scope is nullptr!");
-        return;
-    }
     // wrap ElementName
+    JsUtil::ScopeGuard scopeGuard(env_);
     napi_value napiElementName = OHOS::AppExecFwk::WrapElementName(env_, element);
 
     // wrap RemoteObject
@@ -537,32 +532,27 @@ void JSInputMethodExtensionConnection::HandleOnAbilityConnectDone(const AppExecF
 
     if (jsConnectionObject_ == nullptr) {
         IMSA_HILOGE("jsConnectionObject_ is nullptr!");
-        napi_close_handle_scope(env_, scope);
         return;
     }
 
     napi_value obj = nullptr;
     if (napi_get_reference_value(env_, jsConnectionObject_, &obj) != napi_ok) {
         IMSA_HILOGE("failed to get jsConnectionObject_!");
-        napi_close_handle_scope(env_, scope);
         return;
     }
     if (obj == nullptr) {
         IMSA_HILOGE("failed to get object!");
-        napi_close_handle_scope(env_, scope);
         return;
     }
     napi_value methodOnConnect = nullptr;
     napi_get_named_property(env_, obj, "onConnect", &methodOnConnect);
     if (methodOnConnect == nullptr) {
         IMSA_HILOGE("failed to get onConnect from object!");
-        napi_close_handle_scope(env_, scope);
         return;
     }
     IMSA_HILOGI("JSInputMethodExtensionConnection::CallFunction onConnect, success.");
     napi_value callResult = nullptr;
     napi_call_function(env_, obj, methodOnConnect, ARGC_TWO, argv, &callResult);
-    napi_close_handle_scope(env_, scope);
     IMSA_HILOGI("OnAbilityConnectDone end.");
 }
 
@@ -589,35 +579,26 @@ void JSInputMethodExtensionConnection::HandleOnAbilityDisconnectDone(const AppEx
     int resultCode)
 {
     IMSA_HILOGI("HandleOnAbilityDisconnectDone start, resultCode:%{public}d.", resultCode);
-    napi_handle_scope scope = nullptr;
-    napi_open_handle_scope(env_, &scope);
-    if (scope == nullptr) {
-        IMSA_HILOGE("scope is nullptr!");
-        return;
-    }
+    JsUtil::ScopeGuard scopeGuard(env_);
     napi_value napiElementName = OHOS::AppExecFwk::WrapElementName(env_, element);
     napi_value argv[] = { napiElementName };
     if (jsConnectionObject_ == nullptr) {
         IMSA_HILOGE("jsConnectionObject_ is nullptr!");
-        napi_close_handle_scope(env_, scope);
         return;
     }
     napi_value obj = nullptr;
     if (napi_get_reference_value(env_, jsConnectionObject_, &obj) != napi_ok) {
         IMSA_HILOGE("failed to get jsConnectionObject_!");
-        napi_close_handle_scope(env_, scope);
         return;
     }
     if (obj == nullptr) {
         IMSA_HILOGE("failed to get object!");
-        napi_close_handle_scope(env_, scope);
         return;
     }
     napi_value method = nullptr;
     napi_get_named_property(env_, obj, "onDisconnect", &method);
     if (method == nullptr) {
         IMSA_HILOGE("failed to get onDisconnect from object!");
-        napi_close_handle_scope(env_, scope);
         return;
     }
     // release connect
@@ -625,7 +606,6 @@ void JSInputMethodExtensionConnection::HandleOnAbilityDisconnectDone(const AppEx
     IMSA_HILOGI("OnAbilityDisconnectDone CallFunction success.");
     napi_value callResult = nullptr;
     napi_call_function(env_, obj, method, ARGC_ONE, argv, &callResult);
-    napi_close_handle_scope(env_, scope);
 }
 
 void JSInputMethodExtensionConnection::HandleOnAbilityDisconnect(const AppExecFwk::ElementName &element)

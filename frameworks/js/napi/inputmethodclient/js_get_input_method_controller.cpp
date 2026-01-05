@@ -1561,6 +1561,7 @@ int32_t JsGetInputMethodController::JsMessageHandler::OnMessage(const ArrayBuffe
             IMSA_HILOGI("jsCallbackObject is nullptr!.");
             return;
         }
+        JsUtil::ScopeGuard scopeGuard(jsCallbackObject->env_);
         napi_get_reference_value(jsCallbackObject->env_, jsCallbackObject->onMessageCallback_, &callback);
         if (callback != nullptr) {
             napi_get_global(jsCallbackObject->env_, &global);
