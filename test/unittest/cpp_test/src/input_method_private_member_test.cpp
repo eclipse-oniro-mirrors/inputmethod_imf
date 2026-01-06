@@ -3448,6 +3448,17 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_HandleInMultiGroup, TestSi
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_HandleInMultiGroup start.");
     auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    userSession->clientGroupMap_.clear();
+    auto newImeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, 100);
+    newImeData->type = ImeType::IME_MIRROR;
+    InputClientInfo newClientInfo;
+    // newImeData is nullptr
+    userSession->HandleRealImeInInMultiGroup(newClientInfo, nullptr);
+    // newImeData is not real ime
+    userSession->HandleRealImeInInMultiGroup(newClientInfo, newImeData);
+    // newImeData is real ime
+    newImeData->type = ImeType::IME;
+    userSession->HandleRealImeInInMultiGroup(newClientInfo, newImeData);
     pid_t pid = 100;
     pid_t pid1 = 1000;
     int64_t displayGroupId = 100;
@@ -3455,7 +3466,6 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_HandleInMultiGroup, TestSi
     sptr<IInputClient> currentClient = new (std::nothrow) InputClientServiceImpl();
     sptr<IInputClient> inactiveClient = new (std::nothrow) InputClientServiceImpl();
     // not same client group
-    InputClientInfo newClientInfo;
     newClientInfo.clientGroupId = displayGroupId;
     newClientInfo.pid = pid;
     std::shared_ptr<ClientGroup> oldClientGroup =
@@ -3468,7 +3478,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_HandleInMultiGroup, TestSi
     oldClientGroup->mapClients_.insert_or_assign(currentClient->AsObject(), oldClientInfo);
     oldClientGroup->SetCurrentClient(currentClient);
     oldClientGroup->SetInactiveClient(inactiveClient);
-    userSession->HandleInMultiGroup(newClientInfo, oldClientGroup, oldClientInfo);
+    userSession->HandleInMultiGroup(newClientInfo, oldClientGroup, oldClientInfo, true);
     EXPECT_EQ(oldClientGroup->GetCurrentClient(), nullptr);
     EXPECT_EQ(oldClientGroup->GetInactiveClient(), inactiveClient);
     EXPECT_TRUE(oldClientGroup->mapClients_.empty());
