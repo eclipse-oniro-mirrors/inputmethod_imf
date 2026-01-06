@@ -373,40 +373,6 @@ void JsKeyboardPanelManager::NotifyPanelStatus(const SysPanelStatus &sysPanelSta
     eventHandler->PostTask(task, type, 0, AppExecFwk::EventQueue::Priority::VIP);
 }
 
-void JsKeyboardPanelManager::SetPanelShadow(const Shadow &shadow)
-{
-    IMSA_HILOGD("start");
-    std::string type = "setPanelShadow";
-    auto entry =
-        GetEntry(type, [shadow](UvEntry &entry) { entry.shadow = shadow; });
-    if (entry == nullptr) {
-        return;
-    }
-    auto eventHandler = GetEventHandler();
-    if (eventHandler == nullptr) {
-        IMSA_HILOGE("eventHandler is nullptr!");
-        return;
-    }
-    auto task = [entry]() {
-        auto paramGetter = [entry](napi_env env, napi_value *args, uint8_t argc) -> bool {
-            if (argc < 1) {
-                return false;
-            }
-            napi_value jsObject = JsPanelShadow::Write(env, entry->shadow);
-            if (jsObject == nullptr) {
-                IMSA_HILOGE("jsObject is nullptr!");
-                return false;
-            }
-            // 0 means the first param of callback.
-            args[0] = { jsObject };
-            return true;
-        };
-        // 1 means callback has 1 params.
-        JsCallbackHandler::Traverse(entry->vecCopy, { 1, paramGetter });
-    };
-    eventHandler->PostTask(task, type, 0, AppExecFwk::EventQueue::Priority::VIP);
-}
-
 std::shared_ptr<AppExecFwk::EventHandler> JsKeyboardPanelManager::GetEventHandler()
 {
     if (handler_ == nullptr) {

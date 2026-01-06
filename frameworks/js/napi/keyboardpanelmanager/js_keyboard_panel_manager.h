@@ -87,7 +87,6 @@ public:
 
     void ReceivePrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand) override;
     void NotifyPanelStatus(const SysPanelStatus &sysPanelStatus) override;
-    void SetPanelShadow(const Shadow &shadow) override;
 
 private:
     void RegisterListener(napi_value callback, std::string type, std::shared_ptr<JSCallbackObject> callbackObj);

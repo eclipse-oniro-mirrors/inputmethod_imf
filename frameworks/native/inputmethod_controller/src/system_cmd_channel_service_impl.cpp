@@ -39,15 +39,7 @@ ErrCode SystemCmdChannelServiceImpl::SendPrivateCommand(const Value &value)
     }
     return channel->ReceivePrivateCommand(privateCommand);
 }
-// LCOV_EXCL_START
-ErrCode SystemCmdChannelServiceImpl::SetPanelShadow(const Shadow &shadow)
-{
-    auto channel = ImeSystemCmdChannel::GetInstance();
-    if (channel == nullptr) {
-        return ErrorCode::ERROR_NULL_POINTER;
-    }
-    return channel->SetPanelShadow(shadow);
-}
+
 // LCOV_EXCL_STOP
 ErrCode SystemCmdChannelServiceImpl::NotifyPanelStatus(const SysPanelStatus &sysPanelStatus)
 {
