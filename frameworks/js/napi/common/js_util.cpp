@@ -143,12 +143,5 @@ bool JsUtil::GetValueU16String(napi_env env, napi_value in, std::u16string &out)
     out.resize(size);
     return status == napi_ok;
 }
-
-napi_value JsUtil::ScopeGuard::Escape(napi_value value)
-{
-    napi_value result = nullptr;
-    napi_escape_handle(env_, scope_, value, &result);
-    return result;
-}
 } // namespace MiscServices
 } // namespace OHOS

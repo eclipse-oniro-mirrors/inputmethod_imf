@@ -135,18 +135,16 @@ public:
     public:
         explicit ScopeGuard(napi_env env) : env_(env), scope_(nullptr)
         {
-            napi_open_escapable_handle_scope(env_, &scope_);
+            napi_open_handle_scope(env_, &scope_);
         }
         ~ScopeGuard()
         {
-            napi_close_escapable_handle_scope(env_, scope_);
+            napi_close_handle_scope(env_, scope_);
         }
 
-        napi_value Escape(napi_value value);
-
     private:
-        napi_env env_ = nullptr;
-        napi_escapable_handle_scope scope_ = nullptr;
+        napi_env env_;
+        napi_handle_scope scope_;
     };
 };
 } // namespace MiscServices
