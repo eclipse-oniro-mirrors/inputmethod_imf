@@ -20,12 +20,18 @@ namespace OHOS {
 namespace MiscServices {
 std::mutex InputMethodTextChangedListener::listenerMutex_;
 sptr<InputMethodTextChangedListener> InputMethodTextChangedListener::inputMethodListener_{ nullptr };
-sptr<InputMethodTextChangedListener> InputMethodTextChangedListener::GetInstance()
+sptr<InputMethodTextChangedListener> InputMethodTextChangedListener::GetInstance(bool newEditBox)
 {
-    if (inputMethodListener_ == nullptr) {
+    IMSA_HILOGD("newEditBox is %{public}d.", newEditBox);
+    if (newEditBox) {
         std::lock_guard<std::mutex> lock(listenerMutex_);
+        inputMethodListener_ = new (std::nothrow) InputMethodTextChangedListener();
+    } else {
         if (inputMethodListener_ == nullptr) {
-            inputMethodListener_ = new (std::nothrow) InputMethodTextChangedListener();
+            std::lock_guard<std::mutex> lock(listenerMutex_);
+            if (inputMethodListener_ == nullptr) {
+                inputMethodListener_ = new (std::nothrow) InputMethodTextChangedListener();
+            }
         }
     }
     return inputMethodListener_;

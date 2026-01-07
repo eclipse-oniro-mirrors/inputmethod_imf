@@ -139,9 +139,8 @@ void InputMethodControllerImpl::AttachWithReason(bool showKeyboard, TextConfig_t
     int32_t errCode = ErrorCode::ERROR_CLIENT_NULL_POINTER;
     auto instance = InputMethodController::GetInstance();
     if (instance != nullptr) {
-        IMSA_HILOGI("InputMethodController instance is not nullptr!");
-        errCode =
-            instance->Attach(InputMethodTextChangedListener::GetInstance(), attachOptions, config, ClientType::JS);
+        errCode = instance->Attach(InputMethodTextChangedListener::GetInstance(config.newEditBox),
+            attachOptions, config, ClientType::JS);
     }
     if (errCode != ErrorCode::NO_ERROR) {
         set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
@@ -184,9 +183,8 @@ void InputMethodControllerImpl::AttachWithUIContextSync(uintptr_t uiContext, Tex
     int32_t errCode = ErrorCode::ERROR_CLIENT_NULL_POINTER;
     auto instance = InputMethodController::GetInstance();
     if (instance != nullptr) {
-        IMSA_HILOGI("InputMethodController instance is not nullptr!");
-        errCode =
-            instance->Attach(InputMethodTextChangedListener::GetInstance(), opts, config, ClientType::JS);
+        errCode = instance->Attach(InputMethodTextChangedListener::GetInstance(config.newEditBox),
+            opts, config, ClientType::JS);
     }
     if (errCode != ErrorCode::NO_ERROR) {
         set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));

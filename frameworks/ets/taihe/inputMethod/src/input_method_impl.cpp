@@ -61,7 +61,7 @@ void InputMethodImpl::RegisterListener(std::string const &type,
             cbVec.emplace_back(callback);
             IMSA_HILOGD("callback registered success");
         } else {
-            IMSA_HILOGD("add %{public}s callback succeed.", type.c_str());
+            IMSA_HILOGD("%{public}s is already registered", type.c_str());
         }
     }
 }

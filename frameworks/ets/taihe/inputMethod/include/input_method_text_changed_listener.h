@@ -22,7 +22,7 @@ class InputMethodTextChangedListener : public OnTextChangedListener {
 public:
     InputMethodTextChangedListener() = default;
     ~InputMethodTextChangedListener() = default;
-    static sptr<InputMethodTextChangedListener> GetInstance();
+    static sptr<InputMethodTextChangedListener> GetInstance(bool newEditBox = false);
 
     void InsertText(const std::u16string &text) override;
     void DeleteForward(int32_t length) override;
