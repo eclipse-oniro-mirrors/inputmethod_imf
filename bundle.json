@@ -102,7 +102,7 @@
                   "//base/inputmethod/imf/tools/ime:ime"
               ]
           },
-          "inner_api": [
+          "inner_kits": [
               {
                   "name": "//base/inputmethod/imf/interfaces/inner_api/inputmethod_controller:inputmethod_client", 
                   "header": {
