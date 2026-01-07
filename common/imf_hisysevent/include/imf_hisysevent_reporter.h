@@ -38,7 +38,7 @@ public:
 
 protected:
     ImfHiSysEventReporter() = default;
-    ~ImfHiSysEventReporter();
+    virtual ~ImfHiSysEventReporter();
 
 private:
     virtual bool IsValidErrCode(int32_t errCode)
