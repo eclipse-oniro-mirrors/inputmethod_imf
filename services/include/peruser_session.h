@@ -184,8 +184,6 @@ public:
     std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> GetClientBySelfPid(pid_t clientPid);
     std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> GetClientBySelfPidOrHostPid(
         pid_t clientPid);
-    void HandleRealImeInInMultiGroup(InputClientInfo &newClientInfo);
-    void HandleSameClientInMultiGroup(InputClientInfo &newClientInfo);
 
 private:
     struct ResetManager {
@@ -327,9 +325,11 @@ private:
         InputClientInfo &newClientInfo, const std::shared_ptr<InputClientInfo> &oldClientInfo);
     bool IsSameImeType(const std::shared_ptr<BindImeData> &oldIme, const std::shared_ptr<ImeData> &newIme);
     bool IsSameClientGroup(uint64_t oldGroupId, uint64_t newGroupId);
-    void HandleSameImeInMultiGroup(InputClientInfo &newClientInfo, const std::shared_ptr<ImeData> &newImeData);
-    void HandleInMultiGroup(InputClientInfo &newClientInfo, const std::shared_ptr<ClientGroup> &oldClientGroup,
-        const std::shared_ptr<InputClientInfo> &oldClientInfo);
+    void HandleSameClientInMultiGroup(const InputClientInfo &newClientInfo);
+    void HandleRealImeInInMultiGroup(const InputClientInfo &newClientInfo, const std::shared_ptr<ImeData> &newImeData);
+    void HandleSameImeInMultiGroup(const InputClientInfo &newClientInfo, const std::shared_ptr<ImeData> &newImeData);
+    void HandleInMultiGroup(const InputClientInfo &newClientInfo, const std::shared_ptr<ClientGroup> &oldClientGroup,
+        const std::shared_ptr<InputClientInfo> &oldClientInfo, bool needStopIme = false);
     void HandleWindowIdChanged(
         const FocusedInfo &focusedInfo, const std::shared_ptr<InputClientInfo> &clientInfo, uint32_t windowId);
     void RemoveDeathRecipient(const sptr<InputDeathRecipient> &deathRecipient, const sptr<IRemoteObject> &object);

@@ -398,6 +398,7 @@ int32_t PerUserSession::OnPrepareInput(const InputClientInfo &clientInfo)
         IMSA_HILOGE("client is nullptr");
         return ErrorCode::ERROR_CLIENT_NULL_POINTER;
     }
+    HandleSameClientInMultiGroup(clientInfo);
     return AddClientInfo(clientInfo.client->AsObject(), clientInfo);
 }
 
@@ -500,7 +501,6 @@ int32_t PerUserSession::OnStartInput(
         return ErrorCode::ERROR_IMSA_NULLPTR;
     }
     HandleBindImeChanged(inputClientInfo, data, clientGroup);
-    HandleSameImeInMultiGroup(inputClientInfo, data);
     inputClientInfo.config.requestKeyboardReason = inputClientInfo.requestKeyboardReason;
     int32_t ret = BindClientWithIme(std::make_shared<InputClientInfo>(inputClientInfo), data, true);
     if (ret != ErrorCode::NO_ERROR) {
@@ -669,8 +669,9 @@ int32_t PerUserSession::BindClientWithIme(
         IMSA_HILOGE("not found group");
         return ErrorCode::ERROR_IMSA_NULLPTR;
     }
-    IMSA_HILOGD("imePid: %{public}d, isShowKeyboard: %{public}d, isBindFromClient: %{public}d.", imeData->pid,
-        clientInfo->isShowKeyboard, isBindFromClient);
+    IMSA_HILOGD("imePid: %{public}d, isShowKeyboard: %{public}d, isBindFromClient: %{public}d, groupId: "
+                "%{public}" PRIu64 ".",
+        imeData->pid, clientInfo->isShowKeyboard, isBindFromClient, groupId);
     if (!imeData->imeExtendInfo.privateCommand.empty()) {
         auto ret = SendPrivateData(imeData->imeExtendInfo.privateCommand);
         if (ret != ErrorCode::NO_ERROR) {
@@ -704,6 +705,8 @@ int32_t PerUserSession::BindClientWithIme(
     if (imeData->IsImeMirror()) {
         return ErrorCode::NO_ERROR;
     }
+    HandleSameImeInMultiGroup(*clientInfo, imeData);
+    HandleRealImeInInMultiGroup(*clientInfo, imeData);
     auto bindImeData = std::make_shared<BindImeData>(imeData->pid, imeData->type);
     clientGroup->UpdateClientInfo(clientInfo->client->AsObject(),
         { { UpdateFlag::ISSHOWKEYBOARD, clientInfo->isShowKeyboard }, { UpdateFlag::STATE, ClientState::ACTIVE },
@@ -717,7 +720,7 @@ int32_t PerUserSession::BindClientWithIme(
 }
 
 void PerUserSession::HandleSameImeInMultiGroup(
-    InputClientInfo &newClientInfo, const std::shared_ptr<ImeData> &newImeData)
+    const InputClientInfo &newClientInfo, const std::shared_ptr<ImeData> &newImeData)
 {
     if (newImeData == nullptr) {
         return;
@@ -726,20 +729,25 @@ void PerUserSession::HandleSameImeInMultiGroup(
     HandleInMultiGroup(newClientInfo, oldClientGroup, oldClientInfo);
 }
 
-void PerUserSession::HandleRealImeInInMultiGroup(InputClientInfo &newClientInfo)
+void PerUserSession::HandleRealImeInInMultiGroup(
+    const InputClientInfo &newClientInfo, const std::shared_ptr<ImeData> &newImeData)
 {
+    if (newImeData == nullptr || !newImeData->IsRealIme()) {
+        return;
+    }
     auto [oldClientGroup, oldClientInfo] = GetClientBoundRealIme();
     HandleInMultiGroup(newClientInfo, oldClientGroup, oldClientInfo);
 }
 
-void PerUserSession::HandleSameClientInMultiGroup(InputClientInfo &newClientInfo)
+void PerUserSession::HandleSameClientInMultiGroup(const InputClientInfo &newClientInfo)
 {
     auto [oldClientGroup, oldClientInfo] = GetClientBySelfPidOrHostPid(newClientInfo.pid);
-    HandleInMultiGroup(newClientInfo, oldClientGroup, oldClientInfo);
+    HandleInMultiGroup(newClientInfo, oldClientGroup, oldClientInfo, true);
 }
 
-void PerUserSession::HandleInMultiGroup(InputClientInfo &newClientInfo,
-    const std::shared_ptr<ClientGroup> &oldClientGroup, const std::shared_ptr<InputClientInfo> &oldClientInfo)
+void PerUserSession::HandleInMultiGroup(const InputClientInfo &newClientInfo,
+    const std::shared_ptr<ClientGroup> &oldClientGroup, const std::shared_ptr<InputClientInfo> &oldClientInfo,
+    bool needStopIme)
 {
     if (oldClientGroup == nullptr || oldClientInfo == nullptr) {
         return;
@@ -748,9 +756,11 @@ void PerUserSession::HandleInMultiGroup(InputClientInfo &newClientInfo,
         IMSA_HILOGD("same group.");
         return;
     }
-    IMSA_HILOGI("not same group.");
-    StopImeInput(GetImeData(oldClientInfo->bindImeData), oldClientInfo, 0);
-    newClientInfo.isNotifyInputStart = true;
+    IMSA_HILOGI("needStopIme:%{public}d, remove client:%{public}d from group:%{public}" PRIu64 ".", needStopIme,
+        oldClientInfo->pid, oldClientInfo->clientGroupId);
+    if (needStopIme) {
+        StopImeInput(GetImeData(oldClientInfo->bindImeData), oldClientInfo, 0);
+    }
     if (oldClientInfo->pid != newClientInfo.pid) {
         StopClientInput(oldClientInfo, IsSameClient(oldClientInfo->client, oldClientGroup->GetInactiveClient()));
     }

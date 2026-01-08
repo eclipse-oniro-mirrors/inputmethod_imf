@@ -588,7 +588,6 @@ int32_t InputMethodSystemAbility::PrepareInput(
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
     }
-    session->HandleSameClientInMultiGroup(clientInfo);
     return session->OnPrepareInput(clientInfo);
 }
 
@@ -736,7 +735,6 @@ int32_t InputMethodSystemAbility::StartInputInner(
     }
     auto imeToBind = session->GetReadyImeDataToBind(displayId);
     if (imeToBind == nullptr || imeToBind->IsRealIme()) {
-        session->HandleRealImeInInMultiGroup(inputClientInfo);
         session->SetIsNeedReportQos(inputClientInfo.isShowKeyboard);
         ret = CheckInputTypeOption(userId, inputClientInfo);
         session->SetIsNeedReportQos(false);
@@ -1270,10 +1268,6 @@ ErrCode InputMethodSystemAbility::SwitchInputMethod(const std::string &bundleNam
         IMSA_HILOGW("ime %{public}s not enable, stopped!", bundleName.c_str());
         return ErrorCode::ERROR_ENABLE_IME;
     }
-    if (identityChecker_->IsFormShell(IPCSkeleton::GetCallingFullTokenID()) && session->IsImeSwitchForbidden()) {
-        IMSA_HILOGE("ime switch is forbidden, can not switch input method");
-        return ErrorCode::ERROR_SWITCH_IME;
-    }
     auto currentImeCfg = ImeCfgManager::GetInstance().GetCurrentImeCfg(userId);
     if (switchInfo.subName.empty() && switchInfo.bundleName == currentImeCfg->bundleName) {
         switchInfo.subName = currentImeCfg->subName;
@@ -1317,12 +1311,26 @@ int32_t InputMethodSystemAbility::StartSwitch(int32_t userId, const SwitchInfo &
         return ErrorCode::ERROR_IMSA_GET_IME_INFO_FAILED;
     }
     InputTypeManager::GetInstance().Set(false);
-    int32_t ret = 0;
+    int32_t ret = ErrorCode::NO_ERROR;
     {
         InputMethodSyncTrace tracer("InputMethodSystemAbility_OnSwitchInputMethod");
         std::string targetImeName = info->prop.name + "/" + info->prop.id;
         if (!switchInfo.isTmpImeSwitchSubtype) {
             ImeCfgManager::GetInstance().ModifyImeCfg({ userId, targetImeName, switchInfo.subName, true });
+        }
+        GetValidSubtype(switchInfo.subName, info);
+        if (session->IsImeSwitchForbidden()) {
+            if (!switchInfo.isTmpImeSwitchSubtype) {
+                session->NotifyImeChangeToClients(info->prop, info->subProp);
+            }
+            /* The following process is designed to prevent the failure of switching between uppercase(chinese)
+             * and lowercase(english) via shortcut keys or the pc status bar */
+            auto imeData = session->GetRealImeData();
+            if (imeData != nullptr && imeData->ime.first == switchInfo.bundleName) {
+                IMSA_HILOGD("subtype switch in special scene:%{public}s.", info->subProp.id.c_str());
+                session->SwitchSubtype(info->subProp);
+            }
+            return ret;
         }
         auto targetIme = std::make_shared<ImeNativeCfg>(
             ImeNativeCfg{ targetImeName, info->prop.name, switchInfo.subName, info->prop.id });
@@ -1332,7 +1340,6 @@ int32_t InputMethodSystemAbility::StartSwitch(int32_t userId, const SwitchInfo &
                 ret, switchInfo.bundleName, "switch input method failed!");
             return ret;
         }
-        GetValidSubtype(switchInfo.subName, info);
         if (!switchInfo.isTmpImeSwitchSubtype) {
             session->NotifyImeChangeToClients(info->prop, info->subProp);
         }
@@ -1994,9 +2001,6 @@ int32_t InputMethodSystemAbility::SwitchByCombinationKey(uint32_t state)
     if (CombinationKey::IsMatch(CombinationKeyFunction::SWITCH_LANGUAGE, state)) {
         IMSA_HILOGI("switch language.");
         return SwitchLanguage();
-    }
-    if (session->IsImeSwitchForbidden()) {
-        return ErrorCode::NO_ERROR;
     }
     if (CombinationKey::IsMatch(CombinationKeyFunction::SWITCH_IME, state)) {
         IMSA_HILOGI("switch ime.");
