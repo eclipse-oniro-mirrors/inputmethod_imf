@@ -98,6 +98,90 @@ void PanelImpl::CreatePanel(uintptr_t ctx, PanelInfo_t const& info, std::shared_
     IMSA_HILOGE("CreatePanel failed, panel is nullptr!");
 }
 
+SystemPanelInsetsData_t PanelImpl::GetSystemPanelCurrentInsetsAsync(int64_t id, int64_t displayId)
+{
+    if (!jobQueue_.Wait(static_cast<int64_t>(id))) {
+        IMSA_HILOGW("wait timeout id: %{public}" PRId64 "", id);
+    }
+    if (inputMethodPanel_ == nullptr) {
+        IMSA_HILOGE("panel is nullptr!");
+        set_business_error(JsUtils::Convert(ErrorCode::ERROR_IME),
+            JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IME)));
+        jobQueue_.Pop();
+        return SystemPanelInsetsData_t::make_type_null();
+    }
+    uint64_t tmpId = static_cast<uint64_t>(displayId);
+    SystemPanelInsets insets = {0, 0, 0};
+    auto code = inputMethodPanel_->GetSystemPanelCurrentInsets(tmpId, insets);
+    jobQueue_.Pop();
+    if (code != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetSystemPanelCurrentInsets failed!");
+        set_business_error(JsUtils::Convert(code), JsUtils::ToMessage(JsUtils::Convert(code)));
+        return SystemPanelInsetsData_t::make_type_null();
+    }
+    IMSA_HILOGI("GetSystemPanelCurrentInsets success!");
+    SystemPanelInsets_t result = CommonConvert::NativeInsetsToAni(insets);
+    return SystemPanelInsetsData_t::make_type_SystemPanelInsets(result);
+}
+
+void PanelImpl::SetSystemPanelButtonColorAsync(int64_t id, FillColorData_t const& fillColor,
+    BackgroundColorData_t const& backgroundColor)
+{
+    if (!jobQueue_.Wait(static_cast<int64_t>(id))) {
+        IMSA_HILOGW("wait timeout id: %{public}" PRId64 "", id);
+    }
+    if (inputMethodPanel_ == nullptr) {
+        IMSA_HILOGE("panel is nullptr!");
+        set_business_error(JsUtils::Convert(ErrorCode::ERROR_IME),
+            JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IME)));
+        jobQueue_.Pop();
+        return;
+    }
+    std::string tmpFillColor = "";
+    std::string tmpBackgroundColor = "";
+    auto fillResult = CommonConvert::AniFillColorDataToNative(fillColor, tmpFillColor);
+    auto BackgroundResult = CommonConvert::AniBackgroundColorDataToNative(backgroundColor, tmpBackgroundColor);
+    if (!fillResult || !BackgroundResult) {
+        IMSA_HILOGE("fillColor or backgroundColor is empty!");
+        set_business_error(IMFErrorCode::EXCEPTION_PARAMCHECK,
+            JsUtils::ToMessage(IMFErrorCode::EXCEPTION_PARAMCHECK));
+        jobQueue_.Pop();
+        return;
+    }
+    auto code = inputMethodPanel_->SetSystemPanelButtonColor(tmpFillColor, tmpBackgroundColor);
+    jobQueue_.Pop();
+    if (code != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("SetSystemPanelButtonColor failed!");
+        set_business_error(JsUtils::Convert(code), JsUtils::ToMessage(JsUtils::Convert(code)));
+        return;
+    }
+    IMSA_HILOGI("SetSystemPanelButtonColor success!");
+}
+
+void PanelImpl::SetShadow(double radius, ::taihe::string_view color, double offsetX, double offsetY)
+{
+    int64_t id = LineUp();
+    if (!jobQueue_.Wait(static_cast<int64_t>(id))) {
+        IMSA_HILOGW("wait timeout id: %{public}" PRId64 "", id);
+    }
+    if (inputMethodPanel_ == nullptr) {
+        IMSA_HILOGE("panel is nullptr!");
+        set_business_error(JsUtils::Convert(ErrorCode::ERROR_IME),
+            JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IME)));
+        jobQueue_.Pop();
+        return;
+    }
+    Shadow shadow = CommonConvert::AniConvertShadowToNative(radius, color, offsetX, offsetY);
+    auto code = inputMethodPanel_->SetShadow(shadow);
+    jobQueue_.Pop();
+    if (code != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("SetShadow failed!");
+        set_business_error(JsUtils::Convert(code), JsUtils::ToMessage(JsUtils::Convert(code)));
+        return;
+    }
+    IMSA_HILOGI("SetShadow success!");
+}
+
 void PanelImpl::StartMoving()
 {
     if (inputMethodPanel_ == nullptr) {

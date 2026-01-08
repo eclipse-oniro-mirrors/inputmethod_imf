@@ -15,7 +15,7 @@
 
 #ifndef INPUTMETHOD_IMF_IMC_INNER_LISTENER_H
 #define INPUTMETHOD_IMF_IMC_INNER_LISTENER_H
-
+#include <map>
 namespace OHOS {
 namespace MiscServices {
 enum class AttachFailureReason : int32_t {

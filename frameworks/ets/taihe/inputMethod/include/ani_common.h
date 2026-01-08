@@ -20,9 +20,11 @@
 
 #include "input_method_property.h"
 #include "input_method_utils.h"
+#include "imc_inner_listener.h"
 #include "ohos.inputMethod.impl.hpp"
 #include "ohos.inputMethod.proj.hpp"
 #include "taihe/runtime.hpp"
+#include "ui_content.h"
 using InputMethodProperty_t = ohos::inputMethod::InputMethodProperty;
 using InputMethodSubtype_t = ohos::InputMethodSubtype::InputMethodSubtype;
 using PanelInfo_t = ohos::inputMethod::Panel::PanelInfo;
@@ -40,6 +42,8 @@ using EnabledState_t = ::ohos::inputMethod::EnabledState;
 using MessageHandler_t = ::ohos::inputMethod::MessageHandler;
 using InputAttribute_t = ::ohos::inputMethod::InputAttribute;
 using UndefinedType_t = ::ohos::inputMethod::UndefinedType;
+using AttachFailureReason_t = ohos::inputMethod::AttachFailureReason;
+using AttachOptions_t = ohos::inputMethod::AttachOptions;
 namespace OHOS {
 namespace MiscServices {
 constexpr const int32_t SELECT_ALL = 0;
@@ -55,7 +59,7 @@ using callbackType = std::variant<taihe::callback<int32_t()>, taihe::callback<ta
     taihe::callback<void(ExtendAction_t const)>, taihe::callback<void(taihe::array_view<InputWindowInfo_t>)>,
     taihe::callback<void(InputMethodProperty_t const &, InputMethodSubtype_t const &)>,
     taihe::callback<void(::taihe::string_view text, ::ohos::inputMethod::Range const& range)>,
-    taihe::callback<void(UndefinedType_t const&)>>;
+    taihe::callback<void(UndefinedType_t const&)>, taihe::callback<void(AttachFailureReason_t)>>;
 
 struct CallbackObject {
     CallbackObject(callbackType cb, ani_ref ref) : callback(cb), ref(ref)
@@ -192,6 +196,20 @@ public:
         }
     }
 
+    static AttachFailureReason_t ConvertAttachFailureReason(AttachFailureReason reason)
+    {
+        switch (reason) {
+            case AttachFailureReason::CALLER_NOT_FOCUSED:
+                return AttachFailureReason_t::key_t::CALLER_NOT_FOCUSED;
+            case AttachFailureReason::IME_ABNORMAL:
+                return AttachFailureReason_t::key_t::IME_ABNORMAL;
+            case AttachFailureReason::SERVICE_ABNORMAL:
+                return AttachFailureReason_t::key_t::SERVICE_ABNORMAL;
+            default:
+                return AttachFailureReason_t::key_t::CALLER_NOT_FOCUSED;
+        }
+    }
+
     static ani_object Uint8ArrayToObject(ani_env *env, const std::vector<uint8_t> values)
     {
         ani_object aniObject = nullptr;
@@ -236,6 +254,73 @@ public:
             return nullptr;
         }
         return aniObject;
+    }
+
+    static void AniTextConfigToNative(TextConfig_t const &textConfig, TextConfig &config)
+    {
+        config.inputAttribute.inputPattern = textConfig.inputAttribute.textInputType.get_value();
+        config.inputAttribute.enterKeyType = textConfig.inputAttribute.enterKeyType.get_value();
+        if (textConfig.inputAttribute.placeholder.has_value()) {
+            config.inputAttribute.placeholder = Str8ToStr16(std::string(textConfig.inputAttribute.placeholder.value()));
+        }
+        if (textConfig.inputAttribute.abilityName.has_value()) {
+            config.inputAttribute.abilityName = Str8ToStr16(std::string(textConfig.inputAttribute.abilityName.value()));
+        }
+        if (textConfig.cursorInfo.has_value()) {
+            config.cursorInfo.left = textConfig.cursorInfo.value().left;
+            config.cursorInfo.top = textConfig.cursorInfo.value().top;
+            config.cursorInfo.width = textConfig.cursorInfo.value().width;
+            config.cursorInfo.height = textConfig.cursorInfo.value().height;
+        }
+        if (textConfig.selection.has_value()) {
+            config.range.start = textConfig.selection.value().start;
+            config.range.end = textConfig.selection.value().end;
+        }
+        if (textConfig.windowId.has_value()) {
+            config.windowId = textConfig.windowId.value();
+        }
+        if (textConfig.newEditBox.has_value()) {
+            config.newEditBox = textConfig.newEditBox.value();
+        }
+        if (textConfig.capitalizeMode.has_value()) {
+            config.inputAttribute.capitalizeMode =
+                static_cast<CapitalizeMode>(textConfig.capitalizeMode.value().get_value());
+        }
+    }
+
+    static bool ParseUiContextGetWindowId(ani_env* env, ani_object uiContext, uint32_t &windowId)
+    {
+        ani_class cls;
+        if (env == nullptr) {
+            IMSA_HILOGE("env is nullptr");
+            return false;
+        }
+        ani_int intNum = 0;
+        if (ANI_OK != env->Object_GetPropertyByName_Int(uiContext, "instanceId_", &intNum)) {
+            IMSA_HILOGE("get instanceId_ failed");
+            return false;
+        }
+        int32_t id = Ace::UIContent::GetUIContentWindowID(intNum);
+        if (id < 0) {
+            IMSA_HILOGE("failed to get windowId with instanceId: %{public}d", intNum);
+            return false;
+        }
+        windowId = static_cast<uint32_t>(id);
+        IMSA_HILOGI("windowId: %{public}u, instanceId: %{public}d", windowId, intNum);
+        return true;
+    }
+
+    static AttachOptions AniAttachOptionsToNative(const AttachOptions_t &opts)
+    {
+        AttachOptions options {};
+        if (opts.showKeyboard.has_value()) {
+            options.isShowKeyboard = opts.showKeyboard.value();
+        }
+        if (opts.requestKeyboardReason.has_value()) {
+            options.requestKeyboardReason =
+                static_cast<RequestKeyboardReason>(opts.requestKeyboardReason.value().get_value());
+        }
+        return options;
     }
 };
 

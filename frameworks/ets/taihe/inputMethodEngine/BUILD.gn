@@ -21,10 +21,16 @@ part_name = "imf"
 taihe_generated_file_path =
     "$taihe_file_path/out/$subsystem_name/$part_name/inputMethodEngine"
 
+copy_taihe_idl("copy_taihe_deps") {
+  sources = [ "idl/ohos.inputMethod.ExtraConfig.taihe" ]
+}
+
 copy_taihe_idl("inputMethodEngine_taihe") {
   sources = [ "idl/ohos.inputMethodEngine.taihe" ]
-  deps =
-      [ "${inputmethod_path}/frameworks/ets/taihe/inputMethod:copy_taihe_deps" ]
+  deps = [
+    ":copy_taihe_deps",
+    "${inputmethod_path}/frameworks/ets/taihe/inputMethod:copy_taihe_deps",
+  ]
   external_deps = [
     "input:input_event_taihe",
     "input:key_code_taihe",
@@ -38,6 +44,8 @@ ohos_taihe("run_taihe") {
   outputs = [
     "$taihe_generated_file_path/src/ohos.inputMethodEngine.ani.cpp",
     "$taihe_generated_file_path/src/ohos.inputMethodEngine.abi.c",
+    "$taihe_generated_file_path/src/ohos.inputMethod.ExtraConfig.ani.cpp",
+    "$taihe_generated_file_path/src/ohos.inputMethod.ExtraConfig.abi.c",
   ]
 }
 
@@ -120,9 +128,26 @@ ohos_prebuilt_etc("inputmethod_engine_etc") {
   deps = [ ":inputmethod_engine_abc" ]
 }
 
+generate_static_abc("inputmethod_extraconfig_abc") {
+  base_url = "$taihe_generated_file_path"
+  files = [ "$taihe_generated_file_path/@ohos.inputMethod.ExtraConfig.ets" ]
+  is_boot_abc = "True"
+  device_dst_file = "/system/framework/inputmethod_extraconfig_abc.abc"
+  dependencies = [ ":run_taihe" ]
+}
+
+ohos_prebuilt_etc("inputmethod_extraconfig_etc") {
+  source = "$target_out_dir/inputmethod_extraconfig_abc.abc"
+  module_install_dir = "framework"
+  part_name = "$part_name"
+  subsystem_name = "$subsystem_name"
+  deps = [ ":inputmethod_extraconfig_abc" ]
+}
+
 group("inputmethod_engine_taihe") {
   deps = [
     ":inputmethod_engine_etc",
     ":inputmethod_engine_taihe_native",
+    ":inputmethod_extraconfig_etc",
   ]
 }

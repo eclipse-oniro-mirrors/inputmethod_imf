@@ -73,6 +73,22 @@ void InputMethodControllerImpl::HideSoftKeyboardSync()
     IMSA_HILOGI("InputMethodControllerImpl::HideSoftKeyboard success");
 }
 
+void InputMethodControllerImpl::HideSoftKeyboardIdSync(int64_t displayId)
+{
+    uint64_t id = 0;
+    if (displayId >= 0) {
+        id = static_cast<uint64_t>(displayId);
+    }
+    IMSA_HILOGD("target displayId: %{public}" PRIu64 "", id);
+    int32_t errCode = InputMethodController::GetInstance()->HideSoftKeyboard(id);
+    if (errCode != ErrorCode::NO_ERROR) {
+        set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
+        IMSA_HILOGE("InputMethodControllerImpl::HideSoftKeyboard failed, errCode: %{public}d!", errCode);
+        return;
+    }
+    IMSA_HILOGI("InputMethodControllerImpl::HideSoftKeyboard success");
+}
+
 void InputMethodControllerImpl::ShowTextInputHasParam(RequestKeyboardReason_t requestKeyboardReason)
 {
     AttachOptions attachOptions;
@@ -115,22 +131,7 @@ void InputMethodControllerImpl::AttachWithReason(bool showKeyboard, TextConfig_t
     attachOptions.isShowKeyboard = showKeyboard;
     attachOptions.requestKeyboardReason = static_cast<RequestKeyboardReason>(requestKeyboardReason.get_value());
     TextConfig config;
-    config.inputAttribute.inputPattern = textConfig.inputAttribute.textInputType.get_value();
-    config.inputAttribute.enterKeyType = textConfig.inputAttribute.enterKeyType.get_value();
-    if (textConfig.cursorInfo.has_value()) {
-        config.cursorInfo.left = textConfig.cursorInfo.value().left;
-        config.cursorInfo.top = textConfig.cursorInfo.value().top;
-        config.cursorInfo.width = textConfig.cursorInfo.value().width;
-        config.cursorInfo.height = textConfig.cursorInfo.value().height;
-    }
-    if (textConfig.selection.has_value()) {
-        config.range.start = textConfig.selection.value().start;
-        config.range.end = textConfig.selection.value().end;
-    }
-    if (textConfig.windowId.has_value()) {
-        config.windowId = textConfig.windowId.value();
-    }
-
+    EnumConvert::AniTextConfigToNative(textConfig, config);
     if (IsTextPreviewSupported()) {
         config.inputAttribute.isTextPreviewSupported = true;
     }
@@ -138,9 +139,8 @@ void InputMethodControllerImpl::AttachWithReason(bool showKeyboard, TextConfig_t
     int32_t errCode = ErrorCode::ERROR_CLIENT_NULL_POINTER;
     auto instance = InputMethodController::GetInstance();
     if (instance != nullptr) {
-        IMSA_HILOGI("InputMethodController instance is not nullptr!");
-        errCode =
-            instance->Attach(InputMethodTextChangedListener::GetInstance(), attachOptions, config, ClientType::JS);
+        errCode = instance->Attach(InputMethodTextChangedListener::GetInstance(config.newEditBox),
+            attachOptions, config, ClientType::JS);
     }
     if (errCode != ErrorCode::NO_ERROR) {
         set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
@@ -148,6 +148,50 @@ void InputMethodControllerImpl::AttachWithReason(bool showKeyboard, TextConfig_t
         return;
     }
     IMSA_HILOGI("InputMethodControllerImpl::Attach success");
+}
+
+void InputMethodControllerImpl::AttachWithUIContextSync(uintptr_t uiContext, TextConfig_t const& textConfig,
+    taihe::optional_view<AttachOptions_t> attachOptions)
+{
+    auto context = reinterpret_cast<ani_object>(uiContext);
+    if (context == nullptr) {
+        IMSA_HILOGE("uiContext is invalid");
+        set_business_error(IMFErrorCode::EXCEPTION_PARAMCHECK, "uiContext is invalid");
+        return;
+    }
+    ani_env* env = taihe::get_env();
+    if (env == nullptr) {
+        IMSA_HILOGE("env is nullptr");
+        return;
+    }
+    uint32_t windowId = 0;
+    if (!EnumConvert::ParseUiContextGetWindowId(env, context, windowId)) {
+        IMSA_HILOGE("uiContext convert failed");
+        set_business_error(IMFErrorCode::EXCEPTION_PARAMCHECK, "uiContext convert failed");
+        return;
+    }
+    TextConfig config;
+    EnumConvert::AniTextConfigToNative(textConfig, config);
+    config.windowId = windowId;
+    if (IsTextPreviewSupported()) {
+        config.inputAttribute.isTextPreviewSupported = true;
+    }
+    AttachOptions opts {};
+    if (attachOptions.has_value()) {
+        opts = EnumConvert::AniAttachOptionsToNative(attachOptions.value());
+    }
+    int32_t errCode = ErrorCode::ERROR_CLIENT_NULL_POINTER;
+    auto instance = InputMethodController::GetInstance();
+    if (instance != nullptr) {
+        errCode = instance->Attach(InputMethodTextChangedListener::GetInstance(config.newEditBox),
+            opts, config, ClientType::JS);
+    }
+    if (errCode != ErrorCode::NO_ERROR) {
+        set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
+        IMSA_HILOGE("InputMethodControllerImpl::AttachWithUIContext failed, errCode: %{public}d!", errCode);
+        return;
+    }
+    IMSA_HILOGI("InputMethodControllerImpl::AttachWithUIContext success");
 }
 
 void InputMethodControllerImpl::DetachSync()
@@ -504,6 +548,29 @@ void InputMethodControllerImpl::ShowSoftKeyboardSync()
         return;
     }
     errCode = instance->ShowSoftKeyboard(ClientType::JS);
+    if (errCode != ErrorCode::NO_ERROR) {
+        set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
+        IMSA_HILOGE("InputMethodControllerImpl::ShowSoftKeyboard failed, errCode: %{public}d!", errCode);
+        return;
+    }
+    IMSA_HILOGI("InputMethodControllerImpl::ShowSoftKeyboard success!");
+}
+
+void InputMethodControllerImpl::ShowSoftKeyboardIdSync(int64_t displayId)
+{
+    uint64_t id = 0;
+    if (displayId >= 0) {
+        id = static_cast<uint64_t>(displayId);
+    }
+    int32_t errCode = ErrorCode::ERROR_CLIENT_NULL_POINTER;
+    auto instance = InputMethodController::GetInstance();
+    if (instance == nullptr) {
+        IMSA_HILOGE("InputMethodControllerImpl::GetInstance return nullptr!");
+        set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
+        return;
+    }
+    IMSA_HILOGD("target displayId: %{public}" PRIu64 "", id);
+    errCode = instance->ShowSoftKeyboard(ClientType::JS, id);
     if (errCode != ErrorCode::NO_ERROR) {
         set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
         IMSA_HILOGE("InputMethodControllerImpl::ShowSoftKeyboard failed, errCode: %{public}d!", errCode);

@@ -32,12 +32,15 @@ class InputMethodControllerImpl : public ControllerListener {
 public:
     static std::shared_ptr<InputMethodControllerImpl> GetInstance();
     void HideSoftKeyboardSync();
+    void HideSoftKeyboardIdSync(int64_t displayId);
     void ShowTextInputHasParam(RequestKeyboardReason_t requestKeyboardReason);
     void ShowTextInputSync();
     void HideTextInputSync();
     void AttachSync(bool showKeyboard, TextConfig_t const &textConfig);
     void AttachWithReason(bool showKeyboard, TextConfig_t const &textConfig,
         RequestKeyboardReason_t requestKeyboardReason);
+    void AttachWithUIContextSync(uintptr_t uiContext, TextConfig_t const& textConfig,
+        taihe::optional_view<AttachOptions_t> attachOptions);
     void DetachSync();
     void RegisterListener(std::string const &type, callbackType &&cb, uintptr_t opq);
     void UnRegisterListener(std::string const &type, taihe::optional_view<uintptr_t> opq);
@@ -61,6 +64,7 @@ public:
     void UpdateAttributeSync(InputAttribute_t const& attribute);
     bool StopInputSessionSync();
     void ShowSoftKeyboardSync();
+    void ShowSoftKeyboardIdSync(int64_t displayId);
     void SendMessageSync(::taihe::string_view msgId, ::taihe::optional_view<::taihe::array<uint8_t>> msgParam);
     void recvMessage(::taihe::optional_view<MessageHandler_t> msgHandler);
     void UpdateCursorSync(::ohos::inputMethod::CursorInfo const& cursorInfo);
@@ -84,6 +88,10 @@ public:
     {
         InputMethodControllerImpl::GetInstance()->HideSoftKeyboardSync();
     }
+    void HideSoftKeyboardIdSync(int64_t displayId)
+    {
+        InputMethodControllerImpl::GetInstance()->HideSoftKeyboardIdSync(displayId);
+    }
     void ShowTextInputHasParam(RequestKeyboardReason_t requestKeyboardReason)
     {
         InputMethodControllerImpl::GetInstance()->ShowTextInputHasParam(requestKeyboardReason);
@@ -104,6 +112,11 @@ public:
         RequestKeyboardReason_t requestKeyboardReason)
     {
         InputMethodControllerImpl::GetInstance()->AttachWithReason(showKeyboard, textConfig, requestKeyboardReason);
+    }
+    void AttachWithUIContextSync(uintptr_t uiContext, TextConfig_t const& textConfig,
+        taihe::optional_view<AttachOptions_t> attachOptions)
+    {
+        InputMethodControllerImpl::GetInstance()->AttachWithUIContextSync(uiContext, textConfig, attachOptions);
     }
     void DetachSync()
     {
@@ -250,6 +263,10 @@ public:
     void ShowSoftKeyboardSync()
     {
         InputMethodControllerImpl::GetInstance()->ShowSoftKeyboardSync();
+    }
+    void ShowSoftKeyboardIdSync(int64_t displayId)
+    {
+        InputMethodControllerImpl::GetInstance()->ShowSoftKeyboardIdSync(displayId);
     }
     void SendMessageSync(::taihe::string_view msgId, ::taihe::optional_view<::taihe::array<uint8_t>> msgParam)
     {

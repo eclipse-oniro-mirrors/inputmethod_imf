@@ -20,6 +20,8 @@
 #include "input_method_utils.h"
 #include "ohos.inputMethodEngine.proj.hpp"
 #include "ohos.inputMethodEngine.impl.hpp"
+#include "ohos.inputMethod.ExtraConfig.proj.hpp"
+#include "ohos.inputMethod.ExtraConfig.impl.hpp"
 #include "ohos.inputMethodEngine.PanelRect.ani.1.hpp"
 #include "ohos.inputMethodEngine.EnhancedPanelRect.ani.1.hpp"
 #include "ohos.inputMethodEngine.WindowInfo.ani.1.hpp"
@@ -30,6 +32,8 @@
 #include "wm_common.h"
 #include "panel_common.h"
 #include "calling_window_info.h"
+#include "sys_panel_status.h"
+#include "extra_config.h"
 
 using InputMethodSubtype_t = ohos::InputMethodSubtype::InputMethodSubtype;
 using EnhancedPanelRect_t = ohos::inputMethodEngine::EnhancedPanelRect;
@@ -61,6 +65,12 @@ using ImmersiveEffect_t = ohos::inputMethodEngine::ImmersiveEffect;
 using ExtendAction_t = ohos::inputMethodEngine::ExtendAction;
 using UndefinedType_t = ohos::inputMethodEngine::UndefinedType;
 using WindowInfo_t = ohos::inputMethodEngine::WindowInfo;
+using SystemPanelInsets_t = ohos::inputMethodEngine::SystemPanelInsets;
+using SystemPanelInsetsData_t = ohos::inputMethodEngine::SystemPanelInsetsData;
+using FillColorData_t = ohos::inputMethodEngine::FillColorData;
+using BackgroundColorData_t = ohos::inputMethodEngine::BackgroundColorData;
+using CustomValueType_t = ohos::inputMethod::ExtraConfig::CustomValueType;
+using InputMethodExtraConfig_t = ohos::inputMethod::ExtraConfig::InputMethodExtraConfig;
 namespace OHOS {
 namespace MiscServices {
 using ValueMap = std::unordered_map<std::string, PrivateDataValue>;
@@ -183,6 +193,12 @@ public:
         EnhancedLayoutParams& param, HotAreas& hotAreas);
     static ani_enum_item CreateAniWindowStatus(ani_env* env, Rosen::WindowStatus type);
     static ani_object CreateAniRect(ani_env* env, Rosen::Rect rect);
+    static SystemPanelInsets_t NativeInsetsToAni(const SystemPanelInsets &insets);
+    static Shadow AniConvertShadowToNative(double radius, taihe::string_view color, double offsetX, double offsetY);
+    static bool AniFillColorDataToNative(FillColorData_t const &in, std::string &out);
+    static bool AniBackgroundColorDataToNative(BackgroundColorData_t const &in, std::string &out);
+    static CustomValueType_t ConvertToDataValue(const CustomValueType &value);
+    static InputMethodExtraConfig_t NativeCommandToAni(const CustomSettings &valueMap);
 };
 } // namespace MiscServices
 } // namespace OHOS
