@@ -303,6 +303,19 @@ InputMethodController::QueueGuard::~QueueGuard()
     ctrlEventQueue_.Pop();
 }
 
+int32_t InputMethodController::GetClientType(ClientType &type)
+{
+    if (!IsBound()) {
+        return ErrorCode::ERROR_CLIENT_NOT_BOUND;
+    }
+    {
+        std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
+        type = clientInfo_.type;
+    }
+    IMSA_HILOGD("client type: %{public}u", static_cast<uint32_t>(type));
+    return ErrorCode::NO_ERROR;
+}
+
 int32_t InputMethodController::Attach(
     sptr<OnTextChangedListener> listener, bool isShowKeyboard, const TextConfig &textConfig, ClientType type)
 {

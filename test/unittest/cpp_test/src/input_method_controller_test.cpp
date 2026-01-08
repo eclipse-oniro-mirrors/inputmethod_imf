@@ -2240,7 +2240,7 @@ HWTEST_F(InputMethodControllerTest, TestNotifyOnInputStopFinished001, TestSize.L
     UserSessionManager::GetInstance().userSessions_.insert({0, sessionTemp});
     auto ret = channelProxy->NotifyOnInputStopFinished();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    UserSessionManager::GetInstance().userSessions_.clear();
+    UserSessionManager::GetInstance().userSessions_.erase(0);
 }
  
 /**
@@ -2264,7 +2264,7 @@ HWTEST_F(InputMethodControllerTest, TestOnInputStopAsync, TestSize.Level0)
 
 /**
  * @tc.name: TestResponseDataChannel
- * @tc.desc: Test ResponseDataChannel： agent channel isnullptr
+ * @tc.desc: Test ResponseDataChannel: agent channel is nullptr
  * @tc.type: FUNC
  */
 HWTEST_F(InputMethodControllerTest, TestResponseDataChannel, TestSize.Level0)
@@ -2521,6 +2521,39 @@ HWTEST_F(InputMethodControllerTest, TestSetImcInnerListener, TestSize.Level0)
     inputMethodController_->SetImcInnerListener(listener);
     EXPECT_NE(inputMethodController_->imcInnerListener_, nullptr);
     inputMethodController_->SetImcInnerListener(lastLinsenter);
+}
+
+/**
+ * @tc.name: TestGetClientType01
+ * @tc.desc: Test GetClientType when not bound.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, TestGetClientType01, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC TestGetClientType01 START");
+    inputMethodController_->isBound_.store(false);
+    ClientType type;
+    int32_t ret = inputMethodController_->GetClientType(type);
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_BOUND);
+}
+
+/**
+ * @tc.name: TestGetClientType02
+ * @tc.desc: Test GetClientType when attached to ArkUI component.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, TestGetClientType02, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC TestGetClientType02 START");
+    inputMethodController_->Close();
+    auto listener = GetTextListener();
+    ASSERT_NE(listener, nullptr);
+    int32_t ret = inputMethodController_->Attach(listener, ClientType::INNER_KIT_ARKUI);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ClientType type;
+    ret = inputMethodController_->GetClientType(type);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_EQ(type, ClientType::INNER_KIT_ARKUI);
 }
 } // namespace MiscServices
 } // namespace OHOS
