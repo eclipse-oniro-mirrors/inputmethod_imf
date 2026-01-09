@@ -364,5 +364,62 @@ int32_t WindowAdapter::RegisterAllGroupInfoChangedListener()
     return ErrorCode::NO_ERROR;
 #endif
 }
+
+int32_t WindowAdapter::RegisterWindowDisplayIdChangedListener(const WindowDisplayChangeHandler &handler)
+{
+#ifdef SCENE_BOARD_ENABLE
+    sptr<WindowDisplayChangedListenerImpl> listener = new (std::nothrow) WindowDisplayChangedListenerImpl(handler);
+    if (listener == nullptr) {
+        IMSA_HILOGE("failed to create listener");
+        return ErrorCode::ERROR_IMSA_MALLOC_FAILED;
+    }
+    std::unordered_set<WindowInfoKey> observedInfo;
+    observedInfo.insert(WindowInfoKey::DISPLAY_ID);
+    listener->AddInterestInfo(WindowInfoKey::WINDOW_ID);
+    auto wmErr = WindowManagerLite::GetInstance().RegisterWindowInfoChangeListener(observedInfo, listener);
+    IMSA_HILOGI("register WindowInfoChangeListener ret: %{public}d", wmErr);
+    if (wmErr != WMError::WM_OK) {
+        return ErrorCode::ERROR_WINDOW_MANAGER;
+    }
+    return ErrorCode::NO_ERROR;
+#else
+    return ErrorCode::NO_ERROR;
+#endif
+}
+
+void WindowAdapter::WindowDisplayChangedListenerImpl::OnWindowInfoChanged(const WindowInfoList &windowInfoList)
+{
+    if (windowInfoList.empty) {
+        IMSA_HILOGE("windowInfoList is empty");
+        return;
+    }
+    auto userId = OsAccountAdapter::GetOsAccountLocalIdFromUid(IPCSkeleton::GetCallingUid());
+    IMSA_HILOGI("user:%{public}d windowInfoList size is:%{public}zu.", userId, windowInfoList.size());
+    uint64_t displayId = 0;
+    int32_t windowId = 0;
+    for (const auto &infoMap, windowInfoList) {
+        auto displayIdIter = infoMap.find(WindowInfoKey::DISPLAY_ID);
+        if (displayIdIter == infoMap.end()) {
+            IMSA_HILOGE("displayId not find.");
+            continue;
+        }
+        auto windowIdIter = infoMap.find(WindowInfoKey::WINDOW_ID);
+        if (windowIdIter == infoMap.end()) {
+            IMSA_HILOGE("windowId not find.");
+            continue;
+        }
+        if (!VariantUtil::GetValue(displayIdIter->second, displayId)) {
+            IMSA_HILOGE("displayId type is error.");
+            continue;
+        }
+        if (!VariantUtil::GetValue(windowIdIter->second, windowId)) {
+            IMSA_HILOGE("windowId type is error.");
+            continue;
+        }
+        if (handler_ != nullptr) {
+            handler_(userId, windowId, displayId);
+        }
+    }
+}
 } // namespace MiscServices
 } // namespace OHOS

@@ -1799,16 +1799,14 @@ int32_t InputMethodAbility::OnCallingDisplayIdChanged(uint64_t displayId)
         IMSA_HILOGD("imeListener_ is nullptr!");
         return ErrorCode::NO_ERROR;
     }
-    auto windowId = GetInputAttribute().windowId;
-    auto task = [this, windowId]() {
-        panels_.ForEach([windowId](const PanelType &panelType, const std::shared_ptr<InputMethodPanel> &panel) {
-            if (panel != nullptr) {
-                panel->SetCallingWindow(windowId);
-            }
-            return false;
-        });
-    };
-    imeListener_->PostTaskToEventHandler(task, "SetCallingWindow");
+    if (displayId == GetInputAttribute().displayId) {
+        return ErrorCode::NO_ERROR;
+    }
+    auto panel = GetSoftKeyboardPanel();
+    if (panel != nullptr) {
+        HidePanel(panel, panel->GetPanelFlag(), Trigger::IMF, 0);
+    }
+    // HideKeyboard(0, false);
     {
         std::lock_guard<std::mutex> lock(inputAttrLock_);
         inputAttribute_.callingDisplayId = displayId;

@@ -2282,21 +2282,18 @@ int32_t InputMethodSystemAbility::InitFocusChangedMonitor()
         });
 }
 
-void InputMethodSystemAbility::InitWindowDisplayChangedMonitor()
+int32_t InputMethodSystemAbility::InitWindowDisplayChangedMonitor()
 {
     IMSA_HILOGD("enter.");
-    auto callBack = [this](OHOS::Rosen::CallingWindowInfo callingWindowInfo) {
-        IMSA_HILOGD("WindowDisplayChanged callbak.");
-        int32_t userId = callingWindowInfo.userId_;
+    auto callBack = [this](int32_t userId, int32_t windowId, uint64_t displayId) {
         auto session = UserSessionManager::GetInstance().GetUserSession(userId);
         if (session == nullptr) {
-            IMSA_HILOGE("[%{public}d] session is nullptr!", userId);
+            IMSA_HILOGE("user %{public}d session is nullptr!", userId);
             return;
         };
-        session->OnCallingDisplayIdChanged(
-            callingWindowInfo.windowId_, callingWindowInfo.callingPid_, callingWindowInfo.displayId_);
+        session->OnWindowDisplayIdChanged(windowId, displayId);
     };
-    WindowAdapter::GetInstance().RegisterCallingWindowInfoChangedListener(callBack);
+    return WindowAdapter::GetInstance().RegisterWindowDisplayIdChangedListener(callBack);
 }
 
 void InputMethodSystemAbility::RegisterSecurityModeObserver()
@@ -2564,7 +2561,13 @@ void InputMethodSystemAbility::HandleWmsStarted()
     if (isScbEnable_.load()) {
         IMSA_HILOGI("scb enable, register WMS connection listener.");
         InitWmsConnectionMonitor();
-        InitWindowDisplayChangedMonitor();
+        ret = InitWindowDisplayChangedMonitor();
+        if (ret != ErrorCode::NO_ERROR) {
+            auto callback = [=]() { InitWindowDisplayChangedMonitor(); };
+            if (serviceHandler_ != nullptr) {
+                serviceHandler_->PostTask(callback, WMS_RETRY_INTERVAL);
+            }
+        }
         return;
     }
     // clear client

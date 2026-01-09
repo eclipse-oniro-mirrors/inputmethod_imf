@@ -24,6 +24,7 @@
 #include "window_display_changed_listener.h"
 namespace OHOS {
 namespace MiscServices {
+using WindowDisplayChangeHandler = std::function<void(int32_t, int32_t, uint64_t)>;
 class WindowAdapter final {
 public:
     static constexpr uint64_t DEFAULT_DISPLAY_ID = 0;
@@ -49,6 +50,17 @@ public:
     void OnFocused(const Rosen::FocusChangeInfo &focusWindowInfo);
     void OnUnFocused(const Rosen::FocusChangeInfo &focusWindowInfo);
     int32_t RegisterAllGroupInfoChangedListener();
+    int32_t RegisterWindowDisplayIdChangedListener(const WindowDisplayChangeHandler &handler);
+
+    class WindowDisplayChangedListenerImpl : public OHOS::Rosen::IWindowInfoChangedListener {
+    public:
+        explicit WindowDisplayChangedListenerImpl(const WindowDisplayChangeHandler &handler) : handler_(handler){};
+        ~WindowDisplayChangedListenerImpl() = default;
+        void OnWindowInfoChanged(const OHOS::Rosen::WindowInfoList &windowInfoList) override;
+
+    private:
+        WindowDisplayChangeHandler handler_;
+    };
 
     class AllGroupInfoChangedListenerImpl : public OHOS::Rosen::IAllGroupInfoChangedListener {
     public:

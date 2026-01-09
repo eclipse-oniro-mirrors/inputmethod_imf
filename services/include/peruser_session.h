@@ -163,7 +163,7 @@ public:
         uint64_t displayId, bool &isInputStart, uint32_t &callingWndId, int32_t &requestKeyboardReason);
     bool IsSaReady(int32_t saId);
     void TryUnloadSystemAbility();
-    void OnCallingDisplayIdChanged(const int32_t windowId, const int32_t callingPid, const uint64_t displayId);
+    void OnWindowDisplayIdChanged(const int32_t windowId, const int32_t callingPid, const uint64_t displayId);
     ImfCallingWindowInfo GetFinalCallingWindowInfo(const InputClientInfo &clientInfo);
     bool SpecialScenarioCheck();
     int32_t SpecialSendPrivateData(const std::unordered_map<std::string, PrivateDataValue> &privateCommand);
@@ -326,7 +326,7 @@ private:
     bool IsSameImeType(const std::shared_ptr<BindImeData> &oldIme, const std::shared_ptr<ImeData> &newIme);
     bool IsSameClientGroup(uint64_t oldGroupId, uint64_t newGroupId);
     void HandleSameClientInMultiGroup(const InputClientInfo &newClientInfo);
-    void HandleRealImeInInMultiGroup(const InputClientInfo &newClientInfo, const std::shared_ptr<ImeData> &newImeData);
+    void HandleRealImeInMultiGroup(const InputClientInfo &newClientInfo, const std::shared_ptr<ImeData> &newImeData);
     void HandleSameImeInMultiGroup(const InputClientInfo &newClientInfo, const std::shared_ptr<ImeData> &newImeData);
     void HandleInMultiGroup(const InputClientInfo &newClientInfo, const std::shared_ptr<ClientGroup> &oldClientGroup,
         const std::shared_ptr<InputClientInfo> &oldClientInfo, bool needStopIme = false);

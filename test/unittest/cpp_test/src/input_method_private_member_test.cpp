@@ -3453,12 +3453,12 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_HandleInMultiGroup, TestSi
     newImeData->type = ImeType::IME_MIRROR;
     InputClientInfo newClientInfo;
     // newImeData is nullptr
-    userSession->HandleRealImeInInMultiGroup(newClientInfo, nullptr);
+    userSession->HandleRealImeInMultiGroup(newClientInfo, nullptr);
     // newImeData is not real ime
-    userSession->HandleRealImeInInMultiGroup(newClientInfo, newImeData);
+    userSession->HandleRealImeInMultiGroup(newClientInfo, newImeData);
     // newImeData is real ime
     newImeData->type = ImeType::IME;
-    userSession->HandleRealImeInInMultiGroup(newClientInfo, newImeData);
+    userSession->HandleRealImeInMultiGroup(newClientInfo, newImeData);
     pid_t pid = 100;
     pid_t pid1 = 1000;
     int64_t displayGroupId = 100;

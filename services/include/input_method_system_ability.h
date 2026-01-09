@@ -167,7 +167,7 @@ private:
     bool InitMemMgrMonitor();
     void InitWmsConnectionMonitor();
     int32_t InitFocusChangedMonitor();
-    void InitWindowDisplayChangedMonitor();
+    int32_t InitWindowDisplayChangedMonitor();
     bool InitPasteboardMonitor();
     bool InitHaMonitor();
     int32_t SwitchByCombinationKey(uint32_t state);
