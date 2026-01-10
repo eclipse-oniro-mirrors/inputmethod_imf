@@ -997,6 +997,15 @@ public:
      */
     IMF_API int32_t RegisterWindowScaleCallbackHandler(WindowScaleCallback&& callback);
 
+    /**
+     * @brief Get the type of the current client.
+     *
+     * @param type Indicates the type of current client.
+     * @return Returns 0 for success, others for failure.
+     * @since 23
+     */
+    IMF_API int32_t GetClientType(ClientType &type);
+
     void HandleKeyEventResult(uint64_t cbId, bool consumeResult);
 
     IMF_API void SetImcInnerListener(const std::shared_ptr<ImcInnerListener> &imcInnerListener);
