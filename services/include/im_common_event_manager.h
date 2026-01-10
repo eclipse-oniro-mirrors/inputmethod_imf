@@ -63,6 +63,7 @@ public:
         std::map<std::string, EventListenerFunc> EventManagerFunc_;
         void HandlePackageEvent(int32_t messageId, const EventFwk::CommonEventData &data);
         void HandleUserEvent(int32_t messageId, const EventFwk::CommonEventData &data);
+        std::pair<bool, int32_t> IfNeedToBeProcessed(int32_t messageId, int32_t userId, const std::string &bundleName);
     };
 
 private:
