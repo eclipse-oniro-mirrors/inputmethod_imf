@@ -30,6 +30,7 @@
 #include "ime_state_manager_factory.h"
 #include "inputmethod_message_handler.h"
 #include "identity_checker_impl.h"
+#include "client_group.h"
 #undef private
 #include <gtest/gtest.h>
 #include <gtest/hwext/gtest-multithread.h>
@@ -3453,12 +3454,12 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_HandleInMultiGroup, TestSi
     newImeData->type = ImeType::IME_MIRROR;
     InputClientInfo newClientInfo;
     // newImeData is nullptr
-    userSession->HandleRealImeInInMultiGroup(newClientInfo, nullptr);
+    userSession->HandleRealImeInMultiGroup(newClientInfo, nullptr);
     // newImeData is not real ime
-    userSession->HandleRealImeInInMultiGroup(newClientInfo, newImeData);
+    userSession->HandleRealImeInMultiGroup(newClientInfo, newImeData);
     // newImeData is real ime
     newImeData->type = ImeType::IME;
-    userSession->HandleRealImeInInMultiGroup(newClientInfo, newImeData);
+    userSession->HandleRealImeInMultiGroup(newClientInfo, newImeData);
     pid_t pid = 100;
     pid_t pid1 = 1000;
     int64_t displayGroupId = 100;
@@ -3554,6 +3555,45 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_GetClientBoundImeByWindowI
     // group is not nullptr, clientInfo find
     auto [clientGroup2, clientInfo2] = userSession->GetClientBoundImeByWindowId(windowId);
     EXPECT_NE(clientGroup2, nullptr);
+}
+
+/**
+ * @tc.name: ClientGroup_GetCurrentClientInfoBoundRealIme
+ * @tc.desc: ClientGroup_GetCurrentClientInfoBoundRealIme
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, ClientGroup_GetCurrentClientInfoBoundRealIme, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::ClientGroup_GetCurrentClientInfoBoundRealIme start.");
+    auto clientGroup = std::make_shared<ClientGroup>(0, nullptr);
+    // has no current client
+    auto clientInfo = clientGroup->GetCurrentClientInfoBoundRealIme();
+    EXPECT_EQ(clientInfo, nullptr);
+    // has current client, has no client info
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    clientGroup->currentClient_ = client;
+    clientInfo = clientGroup->GetCurrentClientInfoBoundRealIme();
+    EXPECT_EQ(clientInfo, nullptr);
+    // has current client, has client info, client info is nullptr
+    clientGroup->mapClients_.insert_or_assign(client->AsObject(), nullptr);
+    clientInfo = clientGroup->GetCurrentClientInfoBoundRealIme();
+    EXPECT_EQ(clientInfo, nullptr);
+    // has current client, has client info, bindImeData is nullptr
+    auto info = std::make_shared<InputClientInfo>();
+    clientGroup->mapClients_.insert_or_assign(client->AsObject(), info);
+    clientInfo = clientGroup->GetCurrentClientInfoBoundRealIme();
+    EXPECT_EQ(clientInfo, nullptr);
+    // has current client, has client info, bindImeData is not real ime
+    info->bindImeData = std::make_shared<BindImeData>(100, ImeType::PROXY_IME);
+    clientGroup->mapClients_.insert_or_assign(client->AsObject(), info);
+    clientInfo = clientGroup->GetCurrentClientInfoBoundRealIme();
+    EXPECT_EQ(clientInfo, nullptr);
+    // has current client, has client info, bindImeData is real ime
+    info->bindImeData = std::make_shared<BindImeData>(100, ImeType::IME);
+    clientGroup->mapClients_.insert_or_assign(client->AsObject(), info);
+    clientInfo = clientGroup->GetCurrentClientInfoBoundRealIme();
+    EXPECT_NE(clientInfo, nullptr);
 }
 
 /**
