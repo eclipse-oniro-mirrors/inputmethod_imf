@@ -193,6 +193,28 @@ std::shared_ptr<InputClientInfo> ClientGroup::GetClientInfoBoundRealIme()
     return iter->second;
 }
 
+std::shared_ptr<InputClientInfo> ClientGroup::GetCurrentClientInfoBoundRealIme()
+{
+    std::lock_guard<std::recursive_mutex> lock(mtx_);
+    auto currentClient = GetCurrentClient();
+    if (currentClient == nullptr) {
+        IMSA_HILOGD("has no currentClient.");
+        return nullptr;
+    }
+    auto iter = mapClients_.find(currentClient);
+    if (iter == mapClients_.end()) {
+        return nullptr;
+    }
+    auto clientInfo = iter->second;
+    if (clientInfo == nullptr) {
+        return nullptr;
+    }
+    if (clientInfo->bindImeData != nullptr && clientInfo->bindImeData->IsRealIme()) {
+        return clientInfo;
+    }
+    return nullptr;
+}
+
 std::shared_ptr<InputClientInfo> ClientGroup::GetClientBoundImeByWindowId(uint32_t windowId)
 {
     std::lock_guard<std::recursive_mutex> lock(mtx_);

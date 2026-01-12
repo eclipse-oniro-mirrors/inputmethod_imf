@@ -947,14 +947,11 @@ std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> PerUse
         if (group == nullptr) {
             continue;
         }
-        auto currentClientInfo = group->GetCurrentClientInfo();
+        auto currentClientInfo = group->GetCurrentClientInfoBoundRealIme();
         if (currentClientInfo == nullptr) {
             continue;
         }
-        auto bindImeData = currentClientInfo->bindImeData;
-        if (bindImeData != nullptr && bindImeData->IsRealIme()) {
-            return { group, currentClientInfo };
-        }
+        return { group, currentClientInfo };
     }
     return { nullptr, nullptr };
 }
