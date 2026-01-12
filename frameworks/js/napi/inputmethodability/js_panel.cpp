@@ -184,10 +184,9 @@ napi_status JsPanel::CheckSetUiContentParams(napi_env env, size_t argc, std::sha
                                                         : std::shared_ptr<NativeReference>(
                                                                 reinterpret_cast<NativeReference *>(storage));
             ctxt->contentStorage = contentStorage;
-            napi_delete_reference(env, storage);
         }
-        napi_close_handle_scope(env, scope);
     }
+    napi_close_handle_scope(env, scope);
     ctxt->info = { std::chrono::system_clock::now(), JsEvent::SET_UI_CONTENT };
     jsQueue_.Push(ctxt->info);
     return napi_ok;
