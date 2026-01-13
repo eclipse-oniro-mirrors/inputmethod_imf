@@ -326,7 +326,7 @@ private:
     bool IsSameImeType(const std::shared_ptr<BindImeData> &oldIme, const std::shared_ptr<ImeData> &newIme);
     bool IsSameClientGroup(uint64_t oldGroupId, uint64_t newGroupId);
     void HandleSameClientInMultiGroup(const InputClientInfo &newClientInfo);
-    void HandleRealImeInInMultiGroup(const InputClientInfo &newClientInfo, const std::shared_ptr<ImeData> &newImeData);
+    void HandleRealImeInMultiGroup(const InputClientInfo &newClientInfo, const std::shared_ptr<ImeData> &newImeData);
     void HandleSameImeInMultiGroup(const InputClientInfo &newClientInfo, const std::shared_ptr<ImeData> &newImeData);
     void HandleInMultiGroup(const InputClientInfo &newClientInfo, const std::shared_ptr<ClientGroup> &oldClientGroup,
         const std::shared_ptr<InputClientInfo> &oldClientInfo, bool needStopIme = false);

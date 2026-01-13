@@ -706,7 +706,7 @@ int32_t PerUserSession::BindClientWithIme(
         return ErrorCode::NO_ERROR;
     }
     HandleSameImeInMultiGroup(*clientInfo, imeData);
-    HandleRealImeInInMultiGroup(*clientInfo, imeData);
+    HandleRealImeInMultiGroup(*clientInfo, imeData);
     auto bindImeData = std::make_shared<BindImeData>(imeData->pid, imeData->type);
     clientGroup->UpdateClientInfo(clientInfo->client->AsObject(),
         { { UpdateFlag::ISSHOWKEYBOARD, clientInfo->isShowKeyboard }, { UpdateFlag::STATE, ClientState::ACTIVE },
@@ -729,7 +729,7 @@ void PerUserSession::HandleSameImeInMultiGroup(
     HandleInMultiGroup(newClientInfo, oldClientGroup, oldClientInfo);
 }
 
-void PerUserSession::HandleRealImeInInMultiGroup(
+void PerUserSession::HandleRealImeInMultiGroup(
     const InputClientInfo &newClientInfo, const std::shared_ptr<ImeData> &newImeData)
 {
     if (newImeData == nullptr || !newImeData->IsRealIme()) {
@@ -947,14 +947,11 @@ std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> PerUse
         if (group == nullptr) {
             continue;
         }
-        auto currentClientInfo = group->GetCurrentClientInfo();
+        auto currentClientInfo = group->GetCurrentClientInfoBoundRealIme();
         if (currentClientInfo == nullptr) {
             continue;
         }
-        auto bindImeData = currentClientInfo->bindImeData;
-        if (bindImeData != nullptr && bindImeData->IsRealIme()) {
-            return { group, currentClientInfo };
-        }
+        return { group, currentClientInfo };
     }
     return { nullptr, nullptr };
 }

@@ -44,6 +44,7 @@ public:
     std::shared_ptr<InputClientInfo> GetClientInfoByBindIme(pid_t bindImePid);
     std::shared_ptr<InputClientInfo> GetClientInfoByHostPid(pid_t hostPid);
     std::shared_ptr<InputClientInfo> GetClientInfoBoundRealIme();
+    std::shared_ptr<InputClientInfo> GetCurrentClientInfoBoundRealIme();
     std::shared_ptr<InputClientInfo> GetCurrentClientInfo();
     std::shared_ptr<InputClientInfo> GetClientBoundImeByWindowId(uint32_t windowId);
     int64_t GetCurrentClientPid();
