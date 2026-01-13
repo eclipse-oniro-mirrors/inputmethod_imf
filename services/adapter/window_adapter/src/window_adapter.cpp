@@ -257,6 +257,19 @@ uint64_t WindowAdapter::GetDisplayGroupId(uint64_t displayId)
     }
     return DEFAULT_DISPLAY_GROUP_ID;
 }
+
+bool WindowAdapter::HasDisplayGroupId(uint64_t displayGroupId)
+{
+    if (displayGroupId == DEFAULT_DISPLAY_GROUP_ID) {
+        return true;
+    }
+    IMSA_HILOGD("displayGroupId:%{public}" PRIu64 ".", displayGroupId);
+    std::lock_guard<std::mutex> lock(displayGroupIdsLock_);
+    auto iter = std::find_if(displayGroupIds_.begin(), displayGroupIds_.end(),
+        [displayGroupId](const std::pair<uint64_t, uint64_t> &pair) { return pair.second == displayGroupId; });
+    return iter != displayGroupIds_.end();
+}
+
 // LCOV_EXCL_START
 bool WindowAdapter::IsDefaultDisplayGroup(uint64_t displayId)
 {

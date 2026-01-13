@@ -31,6 +31,7 @@
 #include "inputmethod_message_handler.h"
 #include "identity_checker_impl.h"
 #include "client_group.h"
+#include "window_adapter.h"
 #undef private
 #include <gtest/gtest.h>
 #include <gtest/hwext/gtest-multithread.h>
@@ -59,7 +60,6 @@
 #include "keyboard_event.h"
 #include "os_account_manager.h"
 #include "tdd_util.h"
-#include "window_adapter.h"
 #include "display_adapter.h"
 
 using namespace testing::ext;
@@ -3991,6 +3991,54 @@ HWTEST_F(InputMethodPrivateMemberTest, IdentityCheckerImpl_GenerateFocusInfo, Te
     focusWindowInfos.push_back(focusWindowInfo1);
     focusedInfo = impl.GenerateFocusInfo(focusWindowInfo, focusWindowInfos);
     EXPECT_EQ(focusedInfo.keyboardWindowId, focusWindowInfo1.windowId_);
+}
+
+/**
+ * @tc.name: PerUserSession_NeedHideRealIme
+ * @tc.desc: PerUserSession_NeedHideRealIme
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_NeedHideRealIme, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_NeedHideRealIme start.");
+    uint64_t clientGroupIdParam = 1;
+    uint64_t clientGroupIdParam1 = 2;
+    uint64_t clientGroupIdParam2 = 3;
+    uint64_t displayId = 100;
+    uint64_t displayId1 = 1001;
+    uint64_t clientGroupId = 1;
+    uint64_t keyboardGroupId = 2;
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    // has no client info
+    auto need = userSession->NeedHideRealIme(clientGroupIdParam);
+    EXPECT_TRUE(need);
+    // has client bound real ime, clientGroupId not exist, keyboardGroupId not exist
+    auto group = std::make_shared<ClientGroup>(ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID, nullptr);
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    auto info = std::make_shared<InputClientInfo>();
+    info->clientGroupId = clientGroupId;
+    info->config.inputAttribute.displayGroupId = keyboardGroupId;
+    info->bindImeData = std::make_shared<BindImeData>(100, ImeType::IME);
+    group->mapClients_.insert_or_assign(client->AsObject(), info);
+    userSession->clientGroupMap_.insert_or_assign(ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID, group);
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+    need = userSession->NeedHideRealIme(clientGroupIdParam);
+    EXPECT_TRUE(need);
+    // clientGroupId exist, but keyboardGroupId not exist
+    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(displayId, clientGroupId);
+    need = userSession->NeedHideRealIme(clientGroupIdParam);
+    EXPECT_TRUE(need);
+    // clientGroupId == clientGroupIdParam
+    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(displayId1, keyboardGroupId);
+    need = userSession->NeedHideRealIme(clientGroupIdParam);
+    EXPECT_TRUE(need);
+    // clientGroupId != clientGroupIdParam, keyboardGroupId == clientGroupIdParam
+    need = userSession->NeedHideRealIme(clientGroupIdParam1);
+    EXPECT_TRUE(need);
+    // keyboardGroupId != clientGroupIdParam, clientGroupId != clientGroupIdParam
+    need = userSession->NeedHideRealIme(clientGroupIdParam2);
+    EXPECT_FALSE(need);
 }
 } // namespace MiscServices
 } // namespace OHOS

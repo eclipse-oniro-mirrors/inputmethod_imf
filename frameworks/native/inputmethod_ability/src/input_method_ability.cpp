@@ -514,14 +514,9 @@ int32_t InputMethodAbility::OnDiscardTypingText()
     return imeListener_->OnDiscardTypingText();
 }
 
-int32_t InputMethodAbility::HideKeyboard(uint64_t displayGroupId, bool isCheckGroupId)
+int32_t InputMethodAbility::HideKeyboard()
 {
     std::lock_guard<std::recursive_mutex> lock(keyboardCmdLock_);
-    if (isCheckGroupId && displayGroupId != GetInputAttribute().displayGroupId) {
-        IMSA_HILOGD("not same group:%{public}" PRIu64 "/%{public}" PRIu64 ".", displayGroupId,
-            GetInputAttribute().displayGroupId);
-        return ErrorCode::NO_ERROR;
-    }
     int32_t cmdCount = ++cmdId_;
     return HideKeyboardImplWithoutLock(cmdCount, 0);
 }

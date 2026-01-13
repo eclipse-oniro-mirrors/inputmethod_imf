@@ -44,6 +44,7 @@ public:
     uint64_t GetDisplayGroupId(uint64_t displayId);
     bool IsDefaultDisplayGroup(uint64_t displayId);
     uint64_t GetDisplayGroupId(uint32_t windowId);
+    bool HasDisplayGroupId(uint64_t displayGroupId);
     int32_t StoreAllDisplayGroupInfos();
     void OnDisplayGroupInfoChanged(uint64_t displayId, uint64_t displayGroupId, bool isAdd);
     void OnFocused(const Rosen::FocusChangeInfo &focusWindowInfo);
