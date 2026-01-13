@@ -40,7 +40,7 @@ InputMethodExtension *InputMethodExtension::Create(const std::unique_ptr<Runtime
         case Runtime::Language::CJ:
             return CreateCjInputMethodExtension();
         case Runtime::Language::ETS:
-            return MiscServices::OHOS_ABILITY_ETSInputMethodExtension(runtime);
+            return MiscServices::CreateETSInputMethodExtension(runtime);
         default:
             return new (std::nothrow) InputMethodExtension();
     }

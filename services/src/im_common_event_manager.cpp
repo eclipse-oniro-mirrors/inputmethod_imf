@@ -376,7 +376,7 @@ std::pair<bool, int32_t> ImCommonEventManager::EventSubscriber::IfNeedToBeProces
     } else if (messageId == MessageID::MSG_ID_PACKAGE_CHANGED) {
         // inputMethod update to no inputMethod, remove it
         if (fullImeManager.Has(userId, bundleName) && !imeInquirer.IsInputMethod(userId, bundleName)) {
-            IMSA_HILOGW("inputMethod update to no inputMethod, need remove it, bundleName:%{public}s", bundleName.c_str());
+            IMSA_HILOGW("inputMethod update to no inputMethod, remove it, bundleName:%{public}s", bundleName.c_str());
             return { true, MessageID::MSG_ID_PACKAGE_REMOVED };
         }
     }
