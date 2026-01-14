@@ -879,7 +879,6 @@ ErrCode InputMethodSystemAbility::RequestHideInput(uint32_t windowId, bool isFoc
     auto displayId = WindowAdapter::GetDisplayIdByWindowId(windowId);
     auto displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId);
     bool isRestrictedMainShow = DisplayAdapter::IsRestrictedMainDisplayId(displayId);
-    IMSA_HILOGI("displayGroupId:%{public}" PRIu64 ".", displayGroupId);
     return session->OnRequestHideInput(displayGroupId, isRestrictedMainShow);
 }
 

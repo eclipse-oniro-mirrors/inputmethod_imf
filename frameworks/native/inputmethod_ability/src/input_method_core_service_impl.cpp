@@ -49,9 +49,9 @@ ErrCode InputMethodCoreServiceImpl::ShowKeyboard(int32_t requestKeyboardReason)
     return ERR_OK;
 }
 
-ErrCode InputMethodCoreServiceImpl::HideKeyboard(uint64_t displayGroupId, bool isCheckGroupId)
+ErrCode InputMethodCoreServiceImpl::HideKeyboard()
 {
-    auto task = std::make_shared<TaskImsaHideKeyboard>(displayGroupId, isCheckGroupId);
+    auto task = std::make_shared<TaskImsaHideKeyboard>();
     TaskManager::GetInstance().PostTask(task);
     return ERR_OK;
 }

@@ -128,8 +128,7 @@ int32_t PerUserSession::HideKeyboard(
         IMSA_HILOGE("%{public}d ime is not exist!", clientInfo->pid);
         return ErrorCode::ERROR_IME_NOT_STARTED;
     }
-    auto ret = RequestIme(data, RequestType::NORMAL,
-        [&data, groupId = clientInfo->clientGroupId] { return data->core->HideKeyboard(groupId, false); });
+    auto ret = RequestIme(data, RequestType::NORMAL, [&data] { return data->core->HideKeyboard(); });
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("failed to hide keyboard, ret: %{public}d!", ret);
         return ErrorCode::ERROR_KBD_HIDE_FAILED;
@@ -351,12 +350,14 @@ int32_t PerUserSession::OnRequestHideInput(uint64_t clientGroupId, bool isRestri
 {
     IMSA_HILOGD("PerUserSession::OnRequestHideInput start.");
     auto realImeData = GetRealImeData(true);
-    if (realImeData != nullptr) {
-        auto ret = RequestIme(realImeData, RequestType::REQUEST_HIDE,
-            [&realImeData, clientGroupId] { return realImeData->core->HideKeyboard(clientGroupId, true); });
+    if (realImeData != nullptr && NeedHideRealIme(clientGroupId)) {
+        IMSA_HILOGI("need hide:%{public}" PRIu64 "/%{public}d.", clientGroupId, isRestrictedMainShow);
+        auto ret = RequestIme(
+            realImeData, RequestType::REQUEST_HIDE, [&realImeData] { return realImeData->core->HideKeyboard(); });
         if (ret != ErrorCode::NO_ERROR) {
             IMSA_HILOGE("failed to hide keyboard, ret: %{public}d!", ret);
         }
+        RestoreCurrentImeSubType();
     }
     auto clientGroup = GetClientGroupByGroupId(clientGroupId);
     if (clientGroup == nullptr) {
@@ -376,19 +377,37 @@ int32_t PerUserSession::OnRequestHideInput(uint64_t clientGroupId, bool isRestri
     }
     if (clientInfo != nullptr) {
         auto data = GetImeData(clientInfo->bindImeData);
-        if (data != nullptr && (!data->IsRealIme() || isRestrictedMainShow)) {
-            auto ret = RequestIme(data, RequestType::REQUEST_HIDE,
-                [&data, clientGroupId] { return data->core->HideKeyboard(clientGroupId, false); });
+        if (data != nullptr) {
+            auto ret = RequestIme(data, RequestType::REQUEST_HIDE, [&data] { return data->core->HideKeyboard(); });
             if (ret != ErrorCode::NO_ERROR) {
                 IMSA_HILOGE("failed to hide keyboard, ret: %{public}d!", ret);
             }
-        }
-        if (data != nullptr && data->IsRealIme()) {
-            RestoreCurrentImeSubType();
+            if (data->IsRealIme()) {
+                RestoreCurrentImeSubType();
+            }
         }
     }
     ImeEventListenerManager::GetInstance().NotifyInputStop(userId_, clientGroup->GetDisplayGroupId());
     return ErrorCode::NO_ERROR;
+}
+
+bool PerUserSession::NeedHideRealIme(uint64_t clientGroupId)
+{
+    auto [clientGroup, clientInfo] = GetClientBoundRealIme();
+    if (clientInfo == nullptr) {
+        return true;
+    }
+    if (!WindowAdapter::GetInstance().HasDisplayGroupId(clientInfo->clientGroupId)
+        || !WindowAdapter::GetInstance().HasDisplayGroupId(clientInfo->config.inputAttribute.displayGroupId)) {
+        return true;
+    }
+    /* requestHide triggered by the group where the edit box resides/where the soft keyboard resides
+     * special scenarios: specifying keyboard show in the main display */
+    if (clientInfo->clientGroupId == clientGroupId
+        || clientInfo->config.inputAttribute.displayGroupId == clientGroupId) {
+        return true;
+    }
+    return false;
 }
 
 int32_t PerUserSession::OnPrepareInput(const InputClientInfo &clientInfo)

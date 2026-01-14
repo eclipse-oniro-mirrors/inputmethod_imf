@@ -334,6 +334,7 @@ private:
         const FocusedInfo &focusedInfo, const std::shared_ptr<InputClientInfo> &clientInfo, uint32_t windowId);
     void RemoveDeathRecipient(const sptr<InputDeathRecipient> &deathRecipient, const sptr<IRemoteObject> &object);
     bool IsDefaultGroup(uint64_t clientGroupId);
+    bool NeedHideRealIme(uint64_t clientGroupId);
     std::mutex imeStartLock_;
 
     BlockData<bool> isImeStarted_{ MAX_IME_START_TIME, false };

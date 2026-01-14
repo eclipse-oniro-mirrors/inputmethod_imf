@@ -124,7 +124,7 @@ public:
     int32_t StartInput(const InputClientInfo &clientInfo, bool isBindFromClient);
     int32_t StopInput(sptr<IRemoteObject> channelObj, uint32_t sessionId);
     int32_t ShowKeyboard(int32_t requestKeyboardReason);
-    int32_t HideKeyboard(uint64_t displayGroupId, bool isCheckGroupId);
+    int32_t HideKeyboard();
     int32_t OnDiscardTypingText();
     int32_t OnNotifyPreemption();
 
