@@ -362,6 +362,31 @@ void ImCommonEventManager::EventSubscriber::ChangePackage(const EventFwk::Common
     HandlePackageEvent(MessageID::MSG_ID_PACKAGE_CHANGED, data);
 }
 
+std::pair<bool, int32_t> ImCommonEventManager::EventSubscriber::IfNeedToBeProcessed(
+    int32_t messageId, int32_t userId, const std::string &bundleName)
+{
+    auto &fullImeManager = FullImeInfoManager::GetInstance();
+    auto &imeInquirer = ImeInfoInquirer::GetInstance();
+
+    if (messageId == MessageID::MSG_ID_PACKAGE_REMOVED) {
+        if (!fullImeManager.Has(userId, bundleName)) {
+            return { false, messageId };
+        }
+        return { true, messageId };
+    } else if (messageId == MessageID::MSG_ID_PACKAGE_CHANGED) {
+        // inputMethod update to no inputMethod, remove it
+        if (fullImeManager.Has(userId, bundleName) && !imeInquirer.IsInputMethod(userId, bundleName)) {
+            IMSA_HILOGW("inputMethod update to no inputMethod, remove it, bundleName:%{public}s", bundleName.c_str());
+            return { true, MessageID::MSG_ID_PACKAGE_REMOVED };
+        }
+    }
+
+    if (!imeInquirer.IsInputMethod(userId, bundleName)) {
+        return { false, messageId };
+    }
+    return { true, messageId };
+}
+
 void ImCommonEventManager::EventSubscriber::HandlePackageEvent(int32_t messageId, const EventFwk::CommonEventData &data)
 {
     auto const &want = data.GetWant();
@@ -374,14 +399,10 @@ void ImCommonEventManager::EventSubscriber::HandlePackageEvent(int32_t messageId
     }
     IMSA_HILOGD(
         "messageId:%{public}d, bundleName:%{public}s, userId:%{public}d", messageId, bundleName.c_str(), userId);
-    if (messageId == MessageID::MSG_ID_PACKAGE_REMOVED) {
-        if (!FullImeInfoManager::GetInstance().Has(userId, bundleName)) {
-            return;
-        }
-    } else {
-        if (!ImeInfoInquirer::GetInstance().IsInputMethod(userId, bundleName)) {
-            return;
-        }
+    bool needToBeProcessed = true;
+    std::tie(needToBeProcessed, messageId) = IfNeedToBeProcessed(messageId, userId, bundleName);
+    if (!needToBeProcessed) {
+        return;
     }
     MessageParcel *parcel = new (std::nothrow) MessageParcel();
     if (parcel == nullptr) {

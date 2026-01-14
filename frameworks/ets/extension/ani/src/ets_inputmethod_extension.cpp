@@ -32,6 +32,7 @@
 namespace OHOS {
 namespace MiscServices {
 using namespace AbilityRuntime;
+extern "C" __attribute__((visibility("default")))
 AbilityRuntime::InputMethodExtension *OHOS_ABILITY_ETSInputMethodExtension(
     const std::unique_ptr<AbilityRuntime::Runtime> &runtime)
 {

@@ -78,6 +78,7 @@ constexpr const char *SELECT_DIALOG_ACTION = "action.system.inputmethodchoose";
 constexpr const char *SELECT_DIALOG_HAP = "com.ohos.inputmethodchoosedialog";
 constexpr const char *SELECT_DIALOG_ABILITY = "InputMethod";
 constexpr const char *IME_MIRROR_CAP_NAME = "ime_mirror";
+constexpr uint64_t IMF_HILOG_DOMAIN = 0xD001C10;
 #ifdef IMF_ON_DEMAND_START_STOP_SA_ENABLE
 constexpr const char *UNLOAD_SA_TASK = "unloadInputMethodSaTask";
 constexpr int64_t DELAY_UNLOAD_SA_TIME = 20000; // 20s
@@ -335,7 +336,8 @@ int32_t InputMethodSystemAbility::OnExtension(const std::string &extension, Mess
     if (extension == "restore") {
         int32_t fd = data.ReadFileDescriptor();
         if (fd >= 0) {
-            close(fd);
+            fdsan_exchange_owner_tag(fd, 0, IMF_HILOG_DOMAIN);
+            fdsan_close_with_tag(fd, IMF_HILOG_DOMAIN);
         }
         std::string bundleName = GetRestoreBundleName(data);
         if (!IsValidBundleName(bundleName)) {

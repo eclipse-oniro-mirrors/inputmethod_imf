@@ -253,7 +253,7 @@ ohos_unittest("InputMethodServiceTest") {
   deps = [
     "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
-    "${inputmethod_path}/services:inputmethod_service",
+    "${inputmethod_path}/services:inputmethod_service_static",
     "${inputmethod_path}/test/common:inputmethod_test_common",
     "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
     "${inputmethod_path}/test/unittest/resource/ohos_test:copy_ohos_test",
@@ -272,6 +272,8 @@ ohos_unittest("InputMethodServiceTest") {
     "ipc:ipc_single",
     "napi:ace_napi",
     "window_manager:libdm",
+    "data_share:datashare_common",
+    "data_share:datashare_consumer",
   ]
 
   if (window_manager_use_sceneboard) {
