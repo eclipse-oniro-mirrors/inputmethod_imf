@@ -209,6 +209,10 @@ void ImCommonEventManager::EventSubscriber::OnBundleResChanged(const CommonEvent
     // -1 represent invalid bundleResChangeType
     auto resChangeType = want.GetIntParam(COMMON_EVENT_PARAM_BUNDLE_RES_CHANGE_TYPE, -1);
     IMSA_HILOGD("%{public}d/%{public}d bundle res changed!", userId, resChangeType);
+    if (resChangeType != static_cast<int>(ImfBundleResourceChangeType::SYSTEM_LANGUE_CHANGE)) {
+        IMSA_HILOGD("resChangeType is %{public}d, not SYSTEM_LANGUE_CHANGE!", resChangeType);
+        return;
+    }
     MessageParcel *parcel = new (std::nothrow) MessageParcel();
     if (parcel == nullptr) {
         IMSA_HILOGE("Parcel is nullptr!");
