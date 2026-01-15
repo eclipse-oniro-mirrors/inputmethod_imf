@@ -61,6 +61,7 @@ using namespace OHOS::Rosen;
 constexpr uint32_t STOP_IME_TIME = 600;
 constexpr const char *STRICT_MODE = "strictMode";
 constexpr const char *ISOLATED_SANDBOX = "isolatedSandbox";
+constexpr const char *SUB_NAME = "subName";
 constexpr uint32_t CHECK_IME_RUNNING_RETRY_INTERVAL = 60;
 constexpr uint32_t CHECK_IME_RUNNING_RETRY_TIMES = 10;
 constexpr uint32_t MAX_RESTART_NUM = 3;
@@ -1699,6 +1700,13 @@ AAFwk::Want PerUserSession::GetWant(const std::shared_ptr<ImeNativeCfg> &ime)
     want.SetElementName(ime->bundleName, ime->extName);
     want.SetParam(STRICT_MODE, !(status == EnabledStatus::FULL_EXPERIENCE_MODE));
     want.SetParam(ISOLATED_SANDBOX, isolatedSandBox);
+    auto defaultIme = ImeInfoInquirer::GetInstance().GetDefaultImeCfg();
+    if (defaultIme != nullptr) {
+        if (defaultIme->bundleName == ime->bundleName) {
+            want.SetParam(SUB_NAME, ime->subName);
+            IMSA_HILOGD("set param subName: %{public}s", ime->subName.c_str());
+        }
+    }
     IMSA_HILOGI("StartInputService userId: %{public}d, ime: %{public}s, mode: %{public}d, isolatedSandbox: %{public}d",
         userId_, ime->imeId.c_str(), static_cast<int32_t>(status), isolatedSandBox);
     return want;
