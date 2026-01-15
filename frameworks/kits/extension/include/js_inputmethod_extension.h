@@ -154,30 +154,14 @@ private:
     CacheDisplay cacheDisplay_;
 
 protected:
-    class JsInputMethodExtensionDisplayListener : public Rosen::DisplayManager::IDisplayListener {
+    class JsInputMethodExtensionDisplayAttributeListener : public Rosen::DisplayManager::IDisplayAttributeListener {
     public:
-        explicit JsInputMethodExtensionDisplayListener(const std::weak_ptr<JsInputMethodExtension> &extension)
+        explicit JsInputMethodExtensionDisplayAttributeListener(const std::weak_ptr<JsInputMethodExtension> &extension)
         {
             jsInputMethodExtension_ = extension;
         }
 
-        void OnCreate(Rosen::DisplayId displayId) override
-        {
-            auto inputMethodSptr = jsInputMethodExtension_.lock();
-            if (inputMethodSptr != nullptr) {
-                inputMethodSptr->OnCreate(displayId);
-            }
-        }
-
-        void OnDestroy(Rosen::DisplayId displayId) override
-        {
-            auto inputMethodSptr = jsInputMethodExtension_.lock();
-            if (inputMethodSptr != nullptr) {
-                inputMethodSptr->OnDestroy(displayId);
-            }
-        }
-
-        void OnChange(Rosen::DisplayId displayId) override
+        void OnAttributeChange(Rosen::DisplayId displayId, const std::vector<std::string>& attributes) override
         {
             auto inputMethodSptr = jsInputMethodExtension_.lock();
             if (inputMethodSptr != nullptr) {
@@ -190,13 +174,11 @@ protected:
         std::weak_ptr<JsInputMethodExtension> jsInputMethodExtension_;
     };
 
-    void OnCreate(Rosen::DisplayId displayId);
-    void OnDestroy(Rosen::DisplayId displayId);
     void OnChange(Rosen::DisplayId displayId);
     void CheckNeedAdjustKeyboard(Rosen::DisplayId displayId);
 
 private:
-    sptr<JsInputMethodExtensionDisplayListener> displayListener_ = nullptr;
+    sptr<JsInputMethodExtensionDisplayAttributeListener> displayListener_ = nullptr;
 };
 } // namespace AbilityRuntime
 } // namespace OHOS

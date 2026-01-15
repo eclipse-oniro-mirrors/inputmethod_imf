@@ -154,14 +154,18 @@ void JsInputMethodExtension::Init(const std::shared_ptr<AbilityLocalRecord> &rec
 void JsInputMethodExtension::ListenWindowManager()
 {
     IMSA_HILOGD("register window manager service listener.");
+    if (FOLD_SCREEN_TYPE.empty() || FOLD_SCREEN_TYPE[0] != *EXTEND_FOLD_TYPE) {
+        IMSA_HILOGD("The current device is a non-foldable device.");
+        return;
+    }
     auto jsInputMethodExtension = std::static_pointer_cast<JsInputMethodExtension>(shared_from_this());
-    displayListener_ = sptr<JsInputMethodExtensionDisplayListener>::MakeSptr(jsInputMethodExtension);
+    displayListener_ = sptr<JsInputMethodExtensionDisplayAttributeListener>::MakeSptr(jsInputMethodExtension);
     if (displayListener_ == nullptr) {
         IMSA_HILOGE("failed to create display listener!");
         return;
     }
-
-    Rosen::DisplayManager::GetInstance().RegisterDisplayListener(displayListener_);
+    std::vector<std::string> attributes = {"rotation", "width", "height"};
+    Rosen::DisplayManager::GetInstance().RegisterDisplayAttributeListener(attributes, displayListener_);
 }
 
 void JsInputMethodExtension::OnConfigurationUpdated(const AppExecFwk::Configuration &config)
@@ -418,16 +422,6 @@ void JsInputMethodExtension::GetSrcPath(std::string &srcPath)
         srcPath.erase(srcPath.rfind('.'));
         srcPath.append(".abc");
     }
-}
-
-void JsInputMethodExtension::OnCreate(Rosen::DisplayId displayId)
-{
-    IMSA_HILOGD("enter");
-}
-
-void JsInputMethodExtension::OnDestroy(Rosen::DisplayId displayId)
-{
-    IMSA_HILOGD("exit");
 }
 
 void JsInputMethodExtension::CheckNeedAdjustKeyboard(Rosen::DisplayId displayId)
