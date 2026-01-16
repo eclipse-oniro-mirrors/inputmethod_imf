@@ -84,6 +84,11 @@ private:
     static std::mutex instanceLock_;
     static sptr<ImCommonEventManager> instance_;
 };
+
+enum class ImfBundleResourceChangeType {
+    // for langue changed
+    SYSTEM_LANGUE_CHANGE = 0x00000001,
+};
 } // namespace MiscServices
 } // namespace OHOS
 #endif // SERVICES_INCLUDE_IM_COMMON_EVENT_MANAGER_H

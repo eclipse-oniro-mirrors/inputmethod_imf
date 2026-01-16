@@ -2902,6 +2902,39 @@ HWTEST_F(InputMethodPrivateMemberTest, ImCommonEventManager_OnBundleResChanged, 
 }
 
 /**
+ * @tc.name: ImCommonEventManager_SystemLangueChange
+ * @tc.desc: ImCommonEventManager_SystemLangueChange
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, ImCommonEventManager_SystemLangueChange, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::ImCommonEventManager_SystemLangueChange start.");
+    EventFwk::MatchingSkills matchingSkills;
+    EventFwk::CommonEventSubscribeInfo subscriberInfo(matchingSkills);
+    auto subscriber = std::make_shared<ImCommonEventManager::EventSubscriber>(subscriberInfo);
+    auto msgHandler = MessageHandler::Instance();
+    ASSERT_NE(msgHandler, nullptr);
+    while (!msgHandler->mQueue.empty()) {
+        msgHandler->mQueue.pop();
+    }
+    AAFwk::Want want;
+    int32_t type = 3;  // 3 is not SYSTEM_LANGUE_CHANGE
+    // 1 represent valid userId
+    want.SetParam(COMMON_EVENT_PARAM_USER_ID, 1);
+    want.SetParam(COMMON_EVENT_PARAM_BUNDLE_RES_CHANGE_TYPE, type);
+    EventFwk::CommonEventData data;
+    data.SetWant(want);
+    subscriber->OnBundleResChanged(data);
+
+    int32_t languageType = 1; // 1 is SYSTEM_LANGUE_CHANGE
+    want.SetParam(COMMON_EVENT_PARAM_BUNDLE_RES_CHANGE_TYPE, languageType);
+    data.SetWant(want);
+    subscriber->OnBundleResChanged(data);
+    EXPECT_TRUE(msgHandler->mQueue.empty());
+}
+
+/**
  * @tc.name: ImeInfoInquirer_GetSaInfo
  * @tc.desc: ImeInfoInquirer_GetSaInfo
  * @tc.type: FUNC
