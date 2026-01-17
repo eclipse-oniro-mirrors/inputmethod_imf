@@ -22,9 +22,13 @@
 #include "display_manager.h"
 #include "inputmethod_extension.h"
 #include "system_ability_status_change_stub.h"
+#include "parameters.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
+
+const std::string FOLD_SCREEN_TYPE = OHOS::system::GetParameter("const.window.foldscreen.type", "0,0,0,0");
+constexpr const char *EXTEND_FOLD_TYPE = "4";
 /**
  * @brief Basic inputmethod components.
  */
@@ -154,30 +158,14 @@ private:
     CacheDisplay cacheDisplay_;
 
 protected:
-    class CjInputMethodExtensionDisplayListener : public Rosen::DisplayManager::IDisplayListener {
+    class CjInputMethodExtensionDisplayAttributeListener : public Rosen::DisplayManager::IDisplayAttributeListener {
     public:
-        explicit CjInputMethodExtensionDisplayListener(const std::weak_ptr<CjInputMethodExtension> &extension)
+        explicit CjInputMethodExtensionDisplayAttributeListener(const std::weak_ptr<CjInputMethodExtension> &extension)
         {
             cjInputMethodExtension_ = extension;
         }
 
-        void OnCreate(Rosen::DisplayId displayId) override
-        {
-            auto inputMethodSptr = cjInputMethodExtension_.lock();
-            if (inputMethodSptr != nullptr) {
-                inputMethodSptr->OnCreate(displayId);
-            }
-        }
-
-        void OnDestroy(Rosen::DisplayId displayId) override
-        {
-            auto inputMethodSptr = cjInputMethodExtension_.lock();
-            if (inputMethodSptr != nullptr) {
-                inputMethodSptr->OnDestroy(displayId);
-            }
-        }
-
-        void OnChange(Rosen::DisplayId displayId) override
+        void OnAttributeChange(Rosen::DisplayId displayId, const std::vector<std::string>& attributes) override
         {
             auto inputMethodSptr = cjInputMethodExtension_.lock();
             if (inputMethodSptr != nullptr) {
@@ -190,30 +178,31 @@ protected:
         std::weak_ptr<CjInputMethodExtension> cjInputMethodExtension_;
     };
 
-    void OnCreate(Rosen::DisplayId displayId);
-    void OnDestroy(Rosen::DisplayId displayId);
     void OnChange(Rosen::DisplayId displayId);
     void CheckNeedAdjustKeyboard(Rosen::DisplayId displayId);
 
 private:
     class SystemAbilityStatusChangeListener : public OHOS::SystemAbilityStatusChangeStub {
     public:
-        SystemAbilityStatusChangeListener(sptr<CjInputMethodExtensionDisplayListener> displayListener)
+        SystemAbilityStatusChangeListener(sptr<CjInputMethodExtensionDisplayAttributeListener> displayListener)
             : listener_(displayListener) { };
         ~SystemAbilityStatusChangeListener()
         {
             if (listener_ != nullptr) {
-                Rosen::DisplayManager::GetInstance().RegisterDisplayListener(listener_);
+                if (!FOLD_SCREEN_TYPE.empty() && FOLD_SCREEN_TYPE[0] == *EXTEND_FOLD_TYPE) {
+                    std::vector<std::string> attributes = {"rotation", "width", "height"};
+                    Rosen::DisplayManager::GetInstance().RegisterDisplayAttributeListener(attributes, listener_);
+                }
             }
         }
         void OnAddSystemAbility(int32_t systemAbilityId, const std::string &deviceId) override;
         void OnRemoveSystemAbility(int32_t systemAbilityId, const std::string &deviceId) override { }
 
     private:
-        sptr<CjInputMethodExtensionDisplayListener> listener_ = nullptr;
+        sptr<CjInputMethodExtensionDisplayAttributeListener> listener_ = nullptr;
     };
 
-    sptr<CjInputMethodExtensionDisplayListener> displayListener_ = nullptr;
+    sptr<CjInputMethodExtensionDisplayAttributeListener> displayListener_ = nullptr;
 };
 } // namespace AbilityRuntime
 } // namespace OHOS

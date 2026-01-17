@@ -24,6 +24,8 @@ namespace OHOS {
 namespace MiscServices {
 AbilityRuntime::InputMethodExtension *CreateETSInputMethodExtension(
     const std::unique_ptr<AbilityRuntime::Runtime> &runtime);
+AbilityRuntime::InputMethodExtension *OHOS_ABILITY_ETSInputMethodExtension(
+    const std::unique_ptr<AbilityRuntime::Runtime> &runtime);
 } // namespace MiscServices
 } // namespace OHOS
 

@@ -84,30 +84,15 @@ struct CacheDisplay {
     CacheDisplay cacheDisplay_;
 
 protected:
-    class EtsInputMethodExtensionDisplayListener : public Rosen::DisplayManager::IDisplayListener {
+    class EtsInputMethodExtensionDisplayAttributeListener : public Rosen::DisplayManager::IDisplayAttributeListener {
     public:
-        explicit EtsInputMethodExtensionDisplayListener(const std::weak_ptr<ETSInputMethodExtension> &extension)
+        explicit EtsInputMethodExtensionDisplayAttributeListener(
+            const std::weak_ptr<ETSInputMethodExtension> &extension)
         {
             etsInputMethodExtension_ = extension;
         }
 
-        void OnCreate(Rosen::DisplayId displayId) override
-        {
-            auto inputMethodSptr = etsInputMethodExtension_.lock();
-            if (inputMethodSptr != nullptr) {
-                inputMethodSptr->OnListenerCreate(displayId);
-            }
-        }
-
-        void OnDestroy(Rosen::DisplayId displayId) override
-        {
-            auto inputMethodSptr = etsInputMethodExtension_.lock();
-            if (inputMethodSptr != nullptr) {
-                inputMethodSptr->OnListenerDestroy(displayId);
-            }
-        }
-
-        void OnChange(Rosen::DisplayId displayId) override
+        void OnAttributeChange(Rosen::DisplayId displayId, const std::vector<std::string>& attributes) override
         {
             auto inputMethodSptr = etsInputMethodExtension_.lock();
             if (inputMethodSptr != nullptr) {
@@ -120,13 +105,11 @@ protected:
         std::weak_ptr<ETSInputMethodExtension> etsInputMethodExtension_;
     };
 
-    void OnListenerCreate(Rosen::DisplayId displayId);
-    void OnListenerDestroy(Rosen::DisplayId displayId);
     void OnListenerChange(Rosen::DisplayId displayId);
     void ListenerCheckNeedAdjustKeyboard(Rosen::DisplayId displayId);
 
 private:
-    sptr<EtsInputMethodExtensionDisplayListener> displayListener_ = nullptr;
+    sptr<EtsInputMethodExtensionDisplayAttributeListener> displayListener_ = nullptr;
 };
 }
 }
