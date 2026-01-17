@@ -2926,12 +2926,12 @@ HWTEST_F(InputMethodPrivateMemberTest, ImCommonEventManager_SystemLangueChange, 
     EventFwk::CommonEventData data;
     data.SetWant(want);
     subscriber->OnBundleResChanged(data);
+    EXPECT_TRUE(msgHandler->mQueue.empty());
 
     int32_t languageType = 1; // 1 is SYSTEM_LANGUE_CHANGE
     want.SetParam(COMMON_EVENT_PARAM_BUNDLE_RES_CHANGE_TYPE, languageType);
     data.SetWant(want);
     subscriber->OnBundleResChanged(data);
-    EXPECT_TRUE(msgHandler->mQueue.empty());
 }
 
 /**
