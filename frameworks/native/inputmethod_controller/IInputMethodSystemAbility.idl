@@ -26,8 +26,8 @@ interface OHOS.MiscServices.IInputClient;
 interface OHOS.MiscServices.IInputMethodCore;
 interface OHOS.MiscServices.IInputMethodSystemAbility {
     void StartInput([in] InputClientInfoInner inputClientInfoInner, [out] IRemoteObject[] agents, [out] BindImeInfo[] imeInfos);
-    void ShowCurrentInput([in]unsigned long displayId, [in] unsigned int type);
-    void HideCurrentInput([in]unsigned long displayId);
+    void ShowCurrentInput([in] unsigned int type);
+    void HideCurrentInput();
     void StopInputSession([in] unsigned int windowId);
     void ShowInput([in] IInputClient client, [in] unsigned int windowId, [in] unsigned int type, [in] int requestKeyboardReason);
     void HideInput([in] IInputClient client, [in] unsigned int windowId);
@@ -52,7 +52,7 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void StartInputType([in] int type);
     [oneway] void StartInputTypeAsync([in] int type);
     void ExitCurrentInputType();
-    void IsPanelShown([in]unsigned long displayId, [in] PanelInfo panelInfo, [out] boolean isShown);
+    void IsPanelShown([in] PanelInfo panelInfo, [out] boolean isShown);
     void GetSecurityMode([out] int security);
     void IsDefaultIme();
     void IsDefaultImeSet([out] boolean resultValue);
@@ -73,4 +73,7 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void IsCapacitySupport([in] int capacity, [out] boolean isSupport);
     void BindImeMirror([in] IInputMethodCore core, [in] IRemoteObject agent);
     void UnbindImeMirror();
+    void ShowCurrentInput([in]unsigned long displayId, [in] unsigned int type);
+    void HideCurrentInput([in]unsigned long displayId);
+    void IsPanelShown([in]unsigned long displayId, [in] PanelInfo panelInfo, [out] boolean isShown);
 }

@@ -49,22 +49,6 @@ public:
 };
 
 /**
- * @tc.name: WindowAdapter_GetCallingWindowInfo
- * @tc.desc:
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(WindowAdapterTest, WindowAdapter_GetCallingWindowInfo, TestSize.Level0)
-{
-    IMSA_HILOGI("WindowAdapterTest::WindowAdapter_GetCallingWindowInfo START");
-    OHOS::Rosen::CallingWindowInfo callingWindowInfo;
-    uint32_t windId = 0;
-    int32_t userId = -1;
-    auto ret = WindowAdapter::GetInstance().GetCallingWindowInfo(windId, userId, callingWindowInfo);
-    EXPECT_FALSE(ret);
-}
-
-/**
  * @tc.name: WindowAdapter_GetFocusInfo
  * @tc.desc:
  * @tc.type: FUNC

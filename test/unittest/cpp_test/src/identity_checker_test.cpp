@@ -464,8 +464,7 @@ HWTEST_F(IdentityCheckerTest, testHideCurrentInput_001, TestSize.Level1)
 {
     IMSA_HILOGI("IdentityCheckerTest testHideCurrentInput_001 start");
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = true;
-    uint64_t displayId = 0;
-    int32_t ret = IdentityCheckerTest::service_->HideCurrentInput(displayId);
+    int32_t ret = IdentityCheckerTest::service_->HideCurrentInput();
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOUND);
 }
 
@@ -481,8 +480,7 @@ HWTEST_F(IdentityCheckerTest, testHideCurrentInput_002, TestSize.Level1)
     IMSA_HILOGI("IdentityCheckerTest testHideCurrentInput_002 start");
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = false;
     IdentityCheckerTest::IdentityCheckerMock::hasPermission_ = false;
-    uint64_t displayId = 0;
-    int32_t ret = IdentityCheckerTest::service_->HideCurrentInput(displayId);
+    int32_t ret = IdentityCheckerTest::service_->HideCurrentInput();
     EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
 }
 
@@ -499,8 +497,7 @@ HWTEST_F(IdentityCheckerTest, testHideCurrentInput_003, TestSize.Level1)
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = false;
     IdentityCheckerTest::IdentityCheckerMock::hasPermission_ = true;
     IdentityCheckerTest::IdentityCheckerMock::isFocused_ = false;
-    uint64_t displayId = 0;
-    int32_t ret = IdentityCheckerTest::service_->HideCurrentInput(displayId);
+    int32_t ret = IdentityCheckerTest::service_->HideCurrentInput();
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOUND);
 }
 
@@ -515,8 +512,8 @@ HWTEST_F(IdentityCheckerTest, testShowCurrentInput_001, TestSize.Level1)
 {
     IMSA_HILOGI("IdentityCheckerTest testShowCurrentInput_001 start");
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = true;
-    uint64_t displayId = 0;
-    int32_t ret = IdentityCheckerTest::service_->ShowCurrentInput(displayId);
+    uint32_t type = 1;
+    int32_t ret = IdentityCheckerTest::service_->ShowCurrentInput(type);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOUND);
 }
 
@@ -532,8 +529,8 @@ HWTEST_F(IdentityCheckerTest, testShowCurrentInput_002, TestSize.Level1)
     IMSA_HILOGI("IdentityCheckerTest testShowCurrentInput_002 start");
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = false;
     IdentityCheckerTest::IdentityCheckerMock::hasPermission_ = false;
-    uint64_t displayId = 0;
-    int32_t ret = IdentityCheckerTest::service_->ShowCurrentInput(displayId);
+    uint32_t type = 1;
+    int32_t ret = IdentityCheckerTest::service_->ShowCurrentInput(type);
     EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
 }
 
@@ -550,8 +547,8 @@ HWTEST_F(IdentityCheckerTest, testShowCurrentInput_003, TestSize.Level1)
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = false;
     IdentityCheckerTest::IdentityCheckerMock::hasPermission_ = true;
     IdentityCheckerTest::IdentityCheckerMock::isFocused_ = false;
-    uint64_t displayId = 0;
-    int32_t ret = IdentityCheckerTest::service_->ShowCurrentInput(displayId);
+    uint32_t type = 1;
+    int32_t ret = IdentityCheckerTest::service_->ShowCurrentInput(type);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOUND);
 }
 
