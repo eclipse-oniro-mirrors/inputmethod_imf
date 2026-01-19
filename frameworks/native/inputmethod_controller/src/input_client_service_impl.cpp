@@ -38,22 +38,23 @@ ErrCode InputClientServiceImpl::OnInputReady(const sptr<IRemoteObject> &agent, c
     return ERR_OK;
 }
 // LCOV_EXCL_START
-ErrCode InputClientServiceImpl::OnInputStop(bool isStopInactiveClient, const sptr<IRemoteObject> &object)
+ErrCode InputClientServiceImpl::OnInputStop(
+    bool isStopInactiveClient, const sptr<IRemoteObject> &object, bool isSendKeyboardStatus)
 {
     auto instance = InputMethodController::GetInstance();
     if (instance != nullptr) {
-        instance->OnInputStop(isStopInactiveClient, object);
+        instance->OnInputStop(isStopInactiveClient, object, isSendKeyboardStatus);
     } else {
         IMSA_HILOGW("failed to get InputMethodController instance!");
     }
     return ERR_OK;
 }
 // LCOV_EXCL_STOP
-ErrCode InputClientServiceImpl::OnInputStopAsync(bool isStopInactiveClient)
+ErrCode InputClientServiceImpl::OnInputStopAsync(bool isStopInactiveClient, bool isSendKeyboardStatus)
 {
     auto instance = InputMethodController::GetInstance();
     if (instance != nullptr) {
-        instance->OnInputStop(isStopInactiveClient, nullptr);
+        instance->OnInputStop(isStopInactiveClient, nullptr, isSendKeyboardStatus);
     } else {
         IMSA_HILOGW("failed to get InputMethodController instance!");
     }

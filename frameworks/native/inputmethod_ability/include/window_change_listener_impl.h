@@ -22,9 +22,9 @@
 
 namespace OHOS {
 namespace MiscServices {
-using ChangeHandler = std::function<void(WindowSize size)>;
 class WindowChangeListenerImpl : public OHOS::Rosen::IWindowChangeListener {
 public:
+    using ChangeHandler = std::function<void(WindowSize size)>;
     explicit WindowChangeListenerImpl(ChangeHandler handler) : changeHandler_(std::move(handler)) {};
     virtual ~WindowChangeListenerImpl() {};
     void OnSizeChange(OHOS::Rosen::Rect rect, OHOS::Rosen::WindowSizeChangeReason reason,

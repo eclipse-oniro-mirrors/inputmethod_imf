@@ -633,7 +633,8 @@ public:
      *
      * @since 10
      */
-    void OnInputStop(bool isStopInactiveClient = false, sptr<IRemoteObject> proxy = nullptr);
+    void OnInputStop(bool isStopInactiveClient = false, const sptr<IRemoteObject> &proxy = nullptr,
+        bool isSendKeyboardStatus = true);
     void OnImeMirrorStop(sptr<IRemoteObject> object);
 
     /**

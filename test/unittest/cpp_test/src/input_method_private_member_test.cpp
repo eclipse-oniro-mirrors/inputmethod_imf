@@ -43,24 +43,26 @@
 
 #include "application_info.h"
 #include "combination_key.h"
+#include "display_adapter.h"
 #include "focus_change_listener.h"
 #include "global.h"
 #include "iinput_method_agent.h"
 #include "iinput_method_core.h"
-#include "ime_cfg_manager.h"
-#include "input_client_stub.h"
-#include "input_method_agent_proxy.h"
-#include "input_method_agent_stub.h"
-#include "input_method_core_stub.h"
 #include "im_common_event_manager.h"
-#include "input_method_agent_service_impl.h"
-#include "input_method_core_service_impl.h"
+#include "ime_cfg_manager.h"
 #include "input_client_service_impl.h"
+#include "input_client_stub.h"
+#include "input_method_ability.h"
+#include "input_method_agent_proxy.h"
+#include "input_method_agent_service_impl.h"
+#include "input_method_agent_stub.h"
+#include "input_method_core_service_impl.h"
+#include "input_method_core_stub.h"
+#include "input_method_engine_listener_impl.h"
 #include "itypes_util.h"
 #include "keyboard_event.h"
 #include "os_account_manager.h"
 #include "tdd_util.h"
-#include "display_adapter.h"
 
 using namespace testing::ext;
 using namespace testing::mt;
@@ -4072,6 +4074,318 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_NeedHideRealIme, TestSize.
     // keyboardGroupId != clientGroupIdParam, clientGroupId != clientGroupIdParam
     need = userSession->NeedHideRealIme(clientGroupIdParam2);
     EXPECT_FALSE(need);
+}
+
+/**
+ * @tc.name: PerUserSession_RequestHideRealIme_001
+ * @tc.desc: PerUserSession_RequestHideRealIme_001
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_RequestHideRealIme_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_RequestHideRealIme_001 start.");
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    // 1 - real ime data is nullptr
+    userSession->realImeData_ = nullptr;
+    bool ret = userSession->RequestHideRealIme(DEFAULT_DISPLAY_ID);
+    EXPECT_FALSE(ret);
+
+    // 2 - no need hide real ime
+    uint64_t clientGroupId = 1;
+    uint64_t keyboardGroupId = 2;
+    uint64_t invalidClientGroupId = 3;
+    pid_t realImePid = 10;
+    userSession->realImeData_ = std::make_shared<ImeData>(nullptr, nullptr, nullptr, realImePid);
+    userSession->realImeData_->imeStatus = ImeStatus::READY;
+    // client info
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+    auto info = std::make_shared<InputClientInfo>();
+    info->bindImeData = std::make_shared<BindImeData>(realImePid, ImeType::IME);
+    info->clientGroupId = clientGroupId;
+    info->config.inputAttribute.displayGroupId = keyboardGroupId;
+    // set { client, clientInfo } into clientGroup
+    auto clientGroup = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
+    clientGroup->mapClients_.insert_or_assign(client->AsObject(), info);
+    userSession->clientGroupMap_[DEFAULT_DISPLAY_ID] = clientGroup;
+    // set displayGroup valid
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(100, clientGroupId);
+    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(101, keyboardGroupId);
+    ret = userSession->RequestHideRealIme(invalidClientGroupId);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.name: PerUserSession_RequestHideProxyIme_001
+ * @tc.desc: RequestHideProxyIme success branches
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_RequestHideProxyIme_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_RequestHideProxyIme_001 start.");
+    uint64_t targetDisplayId = 3;
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    sptr<IInputMethodCore> core = new (std::nothrow) InputMethodCoreServiceImpl();
+    ASSERT_NE(core, nullptr);
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+    pid_t proxyImePid = 100;
+    auto proxyImeData = std::make_shared<ImeData>(core, nullptr, nullptr, proxyImePid);
+    std::vector<std::shared_ptr<ImeData>> proxyImeDataList = { proxyImeData };
+    auto clientGroup = std::make_shared<ClientGroup>(targetDisplayId, nullptr);
+    auto info = std::make_shared<InputClientInfo>();
+    info->bindImeData = std::make_shared<BindImeData>(proxyImePid, ImeType::PROXY_IME);
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(targetDisplayId, targetDisplayId);
+    InputMethodAbility::GetInstance().SetImeListener(std::make_shared<InputMethodEngineListenerImpl>());
+
+    // 1 - GetProxyImeData not nullptr, not enable
+    userSession->proxyImeData_.clear();
+    userSession->proxyImeData_.insert_or_assign(targetDisplayId, proxyImeDataList);
+    InputMethodEngineListenerImpl::isEnable_ = false;
+    bool ret = userSession->RequestHideProxyIme(targetDisplayId);
+    EXPECT_FALSE(ret);
+
+    // 2 - GetProxyImeData not nullptr, enable
+    userSession->proxyImeData_.clear();
+    userSession->proxyImeData_.insert_or_assign(targetDisplayId, proxyImeDataList);
+    InputMethodEngineListenerImpl::isEnable_ = true;
+    ret = userSession->RequestHideProxyIme(targetDisplayId);
+    EXPECT_TRUE(ret);
+
+    // 3 - GetProxyImeData nullptr
+    userSession->proxyImeData_.clear();
+    userSession->clientGroupMap_.clear();
+    userSession->proxyImeData_.insert_or_assign(DEFAULT_DISPLAY_ID, proxyImeDataList);
+    clientGroup->SetCurrentClient(client);
+    clientGroup->mapClients_.insert_or_assign(client->AsObject(), info);
+    userSession->clientGroupMap_[targetDisplayId] = clientGroup;
+    InputMethodEngineListenerImpl::isEnable_ = true;
+    ret = userSession->RequestHideProxyIme(targetDisplayId);
+    EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.name: PerUserSession_RequestHideProxyIme_002
+ * @tc.desc: RequestHideProxyIme exception branches
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_RequestHideProxyIme_002, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_RequestHideProxyIme_002 start.");
+    uint64_t targetDisplayId = 3;
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    sptr<IInputMethodCore> core = new (std::nothrow) InputMethodCoreServiceImpl();
+    ASSERT_NE(core, nullptr);
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+    pid_t proxyImePid = 100;
+    auto proxyImeData = std::make_shared<ImeData>(core, nullptr, nullptr, proxyImePid);
+    std::vector<std::shared_ptr<ImeData>> proxyImeDataList = { proxyImeData };
+    auto clientGroup = std::make_shared<ClientGroup>(targetDisplayId, nullptr);
+    auto info = std::make_shared<InputClientInfo>();
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(targetDisplayId, targetDisplayId);
+
+    // 1 - proxyImeData is nullptr, clientGroup is nullptr
+    userSession->proxyImeData_.clear();
+    userSession->clientGroupMap_.clear();
+    bool ret = userSession->RequestHideProxyIme(targetDisplayId);
+    EXPECT_FALSE(ret);
+
+    // 2 - currentClientInfo is nullptr
+    userSession->proxyImeData_.clear();
+    userSession->clientGroupMap_.clear();
+    clientGroup->SetCurrentClient(nullptr);
+    userSession->clientGroupMap_[targetDisplayId] = clientGroup;
+    ret = userSession->RequestHideProxyIme(targetDisplayId);
+    EXPECT_FALSE(ret);
+
+    // 3 - bindImeData is nullptr
+    userSession->proxyImeData_.clear();
+    userSession->clientGroupMap_.clear();
+    clientGroup->SetCurrentClient(client);
+    info->bindImeData = nullptr;
+    clientGroup->mapClients_.insert_or_assign(client->AsObject(), info);
+    userSession->clientGroupMap_[targetDisplayId] = clientGroup;
+    ret = userSession->RequestHideProxyIme(targetDisplayId);
+    EXPECT_FALSE(ret);
+
+    // 4 - proxyImeData is nullptr
+    userSession->proxyImeData_.clear();
+    userSession->clientGroupMap_.clear();
+    info->bindImeData = std::make_shared<BindImeData>(proxyImePid, ImeType::PROXY_IME);
+    clientGroup->mapClients_.insert_or_assign(client->AsObject(), info);
+    clientGroup->SetCurrentClient(client);
+    userSession->clientGroupMap_[targetDisplayId] = clientGroup;
+    ret = userSession->RequestHideProxyIme(targetDisplayId);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.name: PerUserSession_OnRequestHideInput_001
+ * @tc.desc: cover RequestHideRealIme and RequestHideProxyIme branches
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnRequestHideInput_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_OnRequestHideInput_001 start.");
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    // 1 - RequestHideRealIme false, RequestHideProxyIme false
+    userSession->realImeData_ = nullptr;
+    int32_t ret = userSession->OnRequestHideInput(DEFAULT_DISPLAY_ID, "");
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    // 2 - RequestHideRealIme false, RequestHideProxyIme true
+    uint64_t targetDisplayId = 3;
+    sptr<IInputMethodCore> core = new (std::nothrow) InputMethodCoreServiceImpl();
+    ASSERT_NE(core, nullptr);
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+    pid_t proxyImePid = 100;
+    auto proxyImeData = std::make_shared<ImeData>(core, nullptr, nullptr, proxyImePid);
+    std::vector<std::shared_ptr<ImeData>> proxyImeDataList = { proxyImeData };
+    auto clientGroup = std::make_shared<ClientGroup>(targetDisplayId, nullptr);
+    auto info = std::make_shared<InputClientInfo>();
+    info->bindImeData = std::make_shared<BindImeData>(proxyImePid, ImeType::PROXY_IME);
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(targetDisplayId, targetDisplayId);
+    userSession->proxyImeData_.clear();
+    userSession->proxyImeData_.insert_or_assign(targetDisplayId, proxyImeDataList);
+    ret = userSession->OnRequestHideInput(targetDisplayId, "");
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: PerUserSession_UpdateClientAfterRequestHide_001
+ * @tc.desc: currentClient and inactiveClient nullptr
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_UpdateClientAfterRequestHide_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_UpdateClientAfterRequestHide_001 start.");
+    uint64_t targetDisplayId = 3;
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto clientGroup = std::make_shared<ClientGroup>(targetDisplayId, nullptr);
+
+    // 1 - clientGroup == nullptr
+    userSession->clientGroupMap_.clear();
+    int32_t ret = userSession->UpdateClientAfterRequestHide(targetDisplayId, "");
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    // 2 - currentClient nullptr, inactiveClient nullptr
+    clientGroup->SetCurrentClient(nullptr);
+    clientGroup->SetInactiveClient(nullptr);
+    userSession->clientGroupMap_.insert_or_assign(targetDisplayId, clientGroup);
+    ret = userSession->UpdateClientAfterRequestHide(targetDisplayId, "");
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: PerUserSession_UpdateClientAfterRequestHide_002
+ * @tc.desc: currentClient exists
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_UpdateClientAfterRequestHide_002, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_UpdateClientAfterRequestHide_002 start.");
+    uint64_t targetDisplayId = 3;
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    std::string newBundleName = "newBundleName";
+    std::string oldBundleName = "oldClientBundleName";
+    auto info = std::make_shared<InputClientInfo>();
+    info->attribute.bundleName = oldBundleName;
+    auto clientGroup = std::make_shared<ClientGroup>(targetDisplayId, nullptr);
+    clientGroup->SetCurrentClient(client);
+    userSession->clientGroupMap_.insert_or_assign(targetDisplayId, clientGroup);
+
+    // 1 - callerBundleName empty
+    userSession->clientGroupMap_.insert_or_assign(targetDisplayId, clientGroup);
+    int32_t ret = userSession->UpdateClientAfterRequestHide(targetDisplayId, "");
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    // 2 - currentClient exists, callerBundleName not empty, clientInfo nullptr
+    clientGroup->mapClients_.clear();
+    ret = userSession->UpdateClientAfterRequestHide(targetDisplayId, newBundleName);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    // 3 - bundleName same
+    clientGroup->mapClients_.insert_or_assign(client->AsObject(), info);
+    ret = userSession->UpdateClientAfterRequestHide(targetDisplayId, oldBundleName);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    // 4 - bundleName not same
+    clientGroup->mapClients_.insert_or_assign(client->AsObject(), info);
+    ret = userSession->UpdateClientAfterRequestHide(targetDisplayId, newBundleName);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: PerUserSession_UpdateClientAfterRequestHide_003
+ * @tc.desc: inactive exists
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_UpdateClientAfterRequestHide_003, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_UpdateClientAfterRequestHide_003 start.");
+    uint64_t targetDisplayId = 3;
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    std::string newBundleName = "newBundleName";
+    std::string oldBundleName = "oldClientBundleName";
+    auto info = std::make_shared<InputClientInfo>();
+    info->attribute.bundleName = oldBundleName;
+    auto clientGroup = std::make_shared<ClientGroup>(targetDisplayId, nullptr);
+    clientGroup->SetCurrentClient(nullptr);
+    clientGroup->SetInactiveClient(client);
+    userSession->clientGroupMap_.insert_or_assign(targetDisplayId, clientGroup);
+    int32_t ret = userSession->UpdateClientAfterRequestHide(targetDisplayId, "");
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: PerUserSession_RemoveClient_001
+ * @tc.desc: inactive exists
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_RemoveClient_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_RemoveClient_001 start.");
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+    auto clientGroup = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    // 1 - needNotifyClient false
+    clientGroup->SetCurrentClient(nullptr);
+    clientGroup->SetInactiveClient(nullptr);
+    DetachOptions options = { .needNotifyClient = false };
+    int32_t ret = userSession->RemoveClient(client, clientGroup, options);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    // 2 - needNotifyClient true
+    options.needNotifyClient = true;
+    ret = userSession->RemoveClient(client, clientGroup, options);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    // 3 - same to currentClient
+    clientGroup->SetCurrentClient(client);
+    ret = userSession->RemoveClient(client, clientGroup, options);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    // 4 - same to inactiveClient
+    clientGroup->SetCurrentClient(nullptr);
+    clientGroup->SetInactiveClient(client);
+    ret = userSession->RemoveClient(client, clientGroup, options);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 }
 } // namespace MiscServices
 } // namespace OHOS

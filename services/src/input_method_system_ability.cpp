@@ -861,12 +861,17 @@ ErrCode InputMethodSystemAbility::RequestHideInput(uint32_t windowId, bool isFoc
     AccessTokenID tokenId = IPCSkeleton::GetCallingTokenID();
     auto pid = IPCSkeleton::GetCallingPid();
     auto [isFocused, focusedInfo] = identityChecker_->IsFocused(pid, tokenId, windowId);
-    if (!isFocused) {
+    std::string callerBundleName;
+    if (isFocused) {
+        IMSA_HILOGD("caller focused, bundleName: %{public}s", callerBundleName.c_str());
+        callerBundleName = identityChecker_->GetBundleNameByToken(tokenId);
+    } else {
         if (isFocusTriggered) {
+            IMSA_HILOGD("not focused");
             return ErrorCode::ERROR_STATUS_PERMISSION_DENIED;
         }
-        auto hasPermission = identityChecker_->HasPermission(tokenId, std::string(PERMISSION_CONNECT_IME_ABILITY));
-        if (!hasPermission) {
+        if (!identityChecker_->HasPermission(tokenId, std::string(PERMISSION_CONNECT_IME_ABILITY))) {
+            IMSA_HILOGD("permission denied");
             return ErrorCode::ERROR_STATUS_PERMISSION_DENIED;
         }
     }
@@ -876,10 +881,7 @@ ErrCode InputMethodSystemAbility::RequestHideInput(uint32_t windowId, bool isFoc
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_NULL_POINTER;
     }
-    auto displayId = WindowAdapter::GetDisplayIdByWindowId(windowId);
-    auto displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId);
-    bool isRestrictedMainShow = DisplayAdapter::IsRestrictedMainDisplayId(displayId);
-    return session->OnRequestHideInput(displayGroupId, isRestrictedMainShow);
+    return session->OnRequestHideInput(WindowAdapter::GetDisplayIdByWindowId(windowId), callerBundleName);
 }
 
 ErrCode InputMethodSystemAbility::SetCoreAndAgent(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent)

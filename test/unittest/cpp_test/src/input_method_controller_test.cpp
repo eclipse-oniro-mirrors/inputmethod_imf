@@ -1814,6 +1814,40 @@ HWTEST_F(InputMethodControllerTest, testOnInputStop, TestSize.Level0)
 }
 
 /**
+ * @tc.name: testIMCOnInputStop_002.
+ * @tc.desc: IMC test OnInputStop parameter: isSendKeyboardStatus
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, testIMCOnInputStop_002, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testIMCOnInputStop_002 Test START");
+    TextListener::ResetParam();
+    // 1 - isSendKeyboardStatus false
+    TextListener::keyboardStatus_ = KeyboardStatus::SHOW;
+    InputMethodControllerTest::inputMethodController_->OnInputStop(false, nullptr, false);
+    EXPECT_FALSE(TextListener::WaitSendKeyboardStatusCallback(KeyboardStatus::HIDE));
+    // 2 - isSendKeyboardStatus true, isStopInactiveClient false
+    TextListener::keyboardStatus_ = KeyboardStatus::SHOW;
+    InputMethodControllerTest::inputMethodController_->OnInputStop(false, nullptr, true);
+    EXPECT_TRUE(TextListener::WaitSendKeyboardStatusCallback(KeyboardStatus::HIDE));
+    // 3 - isSendKeyboardStatus true, isStopInactiveClient true, IsFromTs true
+    TextListener::keyboardStatus_ = KeyboardStatus::SHOW;
+    TextListener::isFromTs_ = true;
+    InputMethodControllerTest::inputMethodController_->textListener_ = InputMethodControllerTest::textListener_;
+    InputMethodControllerTest::inputMethodController_->OnInputStop(true, nullptr, true);
+    EXPECT_FALSE(TextListener::WaitSendKeyboardStatusCallback(KeyboardStatus::HIDE));
+    // 4 - isSendKeyboardStatus true, isStopInactiveClient true, IsFromTs false
+    TextListener::keyboardStatus_ = KeyboardStatus::SHOW;
+    TextListener::isFromTs_ = false;
+    InputMethodControllerTest::inputMethodController_->textListener_ = InputMethodControllerTest::textListener_;
+    InputMethodControllerTest::inputMethodController_->OnInputStop(true, nullptr, true);
+    EXPECT_TRUE(TextListener::WaitSendKeyboardStatusCallback(KeyboardStatus::HIDE));
+
+    TextListener::ResetParam();
+    InputMethodController::GetInstance()->textListener_ = nullptr;
+}
+
+/**
  * @tc.name: testIsPanelShown
  * @tc.desc: IMC testIsPanelShown
  * @tc.type: IMC
@@ -2256,9 +2290,9 @@ HWTEST_F(InputMethodControllerTest, TestOnInputStopAsync, TestSize.Level0)
     InputClientInfo clientInfo = { .client = client };
     std::shared_ptr<InputClientInfo> sharedClientInfo = std::make_shared<InputClientInfo>(clientInfo);
     isNotifyFinished_.SetValue(false);
-    sessionTemp->StopClientInput(sharedClientInfo, false, false);
+    sessionTemp->StopClientInput(sharedClientInfo);
     isNotifyFinished_.SetValue(true);
-    sessionTemp->StopClientInput(sharedClientInfo, false, false);
+    sessionTemp->StopClientInput(sharedClientInfo);
     EXPECT_TRUE(isNotifyFinished_.GetValue());
 }
 
