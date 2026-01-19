@@ -85,6 +85,7 @@ constexpr int64_t DELAY_UNLOAD_SA_TIME = 20000; // 20s
 constexpr int32_t REFUSE_UNLOAD_DELAY_TIME = 1000; // 1s
 #endif
 const constexpr char *IMMERSIVE_EFFECT_CAP_NAME = "immersive_effect";
+const constexpr char *SYSTEM_PANEL_CAP_NAME = "system_panel";
 #ifdef IMF_RESTORE_IN_HIGH_CPU_USAGE
 const constexpr double PERCENTAGE_MULTIPLIER = 100.0;
 const constexpr int32_t CPU_USAGE_HIGH_PERCENT = 70;
@@ -1176,12 +1177,16 @@ ErrCode InputMethodSystemAbility::IsSystemApp(bool& resultValue)
 ErrCode InputMethodSystemAbility::IsCapacitySupport(int32_t capacity, bool &isSupport)
 {
     IMSA_HILOGI("capacity:%{public}d", capacity);
-    if (capacity != static_cast<int32_t>(CapacityType::IMMERSIVE_EFFECT)) {
+    if (capacity < 0 || capacity >= static_cast<int32_t>(CapacityType::END)) {
         IMSA_HILOGE("capacity is invalid!");
         return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
     }
-
-    isSupport = ImeInfoInquirer::GetInstance().IsCapacitySupport(IMMERSIVE_EFFECT_CAP_NAME);
+    if (capacity == static_cast<int32_t>(CapacityType::IMMERSIVE_EFFECT)) {
+        isSupport = ImeInfoInquirer::GetInstance().IsCapacitySupport(IMMERSIVE_EFFECT_CAP_NAME);
+    }
+    if (capacity == static_cast<int32_t>(CapacityType::SYSTEM_PANEL)) {
+        isSupport = ImeInfoInquirer::GetInstance().IsCapacitySupport(SYSTEM_PANEL_CAP_NAME);
+    }
     return ERR_OK;
 }
 

@@ -1570,6 +1570,10 @@ int32_t InputMethodAbility::SendPrivateCommand(const std::unordered_map<std::str
         auto systemChannel = GetSystemCmdChannelProxy();
         if (systemChannel == nullptr) {
             UpdateColorPrivateCommand(privateCommand);
+            if (!IsSystemPanelSupported()) {
+                IMSA_HILOGW("not input method panel!");
+                return ErrorCode::NO_ERROR;
+            }
             IMSA_HILOGE("channel is nullptr!");
             return ErrorCode::ERROR_SYSTEM_CMD_CHANNEL_ERROR;
         }
@@ -1891,6 +1895,23 @@ int32_t InputMethodAbility::IsCapacitySupport(int32_t capacity, bool &isSupport)
     }
 
     return proxy->IsCapacitySupport(capacity, isSupport);
+}
+
+bool InputMethodAbility::IsSystemPanelSupported()
+{
+    if (isSysPanelSupport_ != 0) {
+        return isSysPanelSupport_ == 1;
+    }
+    std::lock_guard<std::mutex> lock(isSysPanelSupportMutex_);
+    bool isSupportTemp = false;
+    int32_t ret = IsCapacitySupport(static_cast<int32_t>(CapacityType::SYSTEM_PANEL), isSupportTemp);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("IsCapacitySupport failed, ret:%{public}d", ret);
+        return false;
+    }
+    isSysPanelSupport_ = isSupportTemp ? 1 : -1;
+    IMSA_HILOGI("isSupportTemp:%{public}d", isSupportTemp);
+    return isSupportTemp;
 }
 
 int32_t InputMethodAbility::OnNotifyPreemption()
