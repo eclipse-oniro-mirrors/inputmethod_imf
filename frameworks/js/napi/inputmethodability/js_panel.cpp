@@ -162,7 +162,6 @@ napi_status JsPanel::CheckSetUiContentParams(napi_env env, size_t argc, std::sha
     napi_value *argv)
 {
     napi_status status = napi_generic_failure;
-    napi_handle_scope scope = nullptr;
     JsUtil::ScopeGuard scopeGuard(env);
     PARAM_CHECK_RETURN(env, argc >= 1, "at least one parameter is required!", TYPE_NONE, status);
     // 0 means the first param path<std::string>

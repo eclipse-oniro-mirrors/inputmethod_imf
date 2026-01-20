@@ -1587,6 +1587,7 @@ HWTEST_F(InputMethodAbilityTest, testSendPrivateCommand_004, TestSize.Level0)
     InputMethodAbilityTest::GetIMCAttachIMA();
     IdentityCheckerMock::SetBundleNameValid(true);
     inputMethodAbility_.systemCmdChannelProxy_ = nullptr;
+    inputMethodAbility_.isSysPanelSupport_ = 1;
     auto ret = inputMethodAbility_.SendPrivateCommand(privateCommand);
     EXPECT_EQ(ret, ErrorCode::ERROR_SYSTEM_CMD_CHANNEL_ERROR);
     InputMethodAbilityTest::GetIMCDetachIMA();

@@ -3418,6 +3418,7 @@ HWTEST_F(InputMethodPanelTest, testSetSystemPanelButtonColor1, TestSize.Level0)
     ASSERT_NE(inputMethodPanel, nullptr);
     std::string fillColor = "#FFFFFF";
     std::string backgroundColor = "";
+    ima_.isSysPanelSupport_ = 1;
     auto ret = inputMethodPanel->SetSystemPanelButtonColor(fillColor, backgroundColor);
     if (isScbEnable_) {
         EXPECT_EQ(ret, ErrorCode::ERROR_SYSTEM_CMD_CHANNEL_ERROR);
@@ -3449,6 +3450,7 @@ HWTEST_F(InputMethodPanelTest, testSetSystemPanelButtonColor2, TestSize.Level0)
     ASSERT_NE(inputMethodPanel, nullptr);
     std::string fillColor = "#FFFFFF";
     std::string backgroundColor = "#FF0000";
+    ima_.isSysPanelSupport_ = 1;
     auto ret = inputMethodPanel->SetSystemPanelButtonColor(fillColor, backgroundColor);
     if (isScbEnable_) {
         EXPECT_EQ(ret, ErrorCode::ERROR_SYSTEM_CMD_CHANNEL_ERROR);
