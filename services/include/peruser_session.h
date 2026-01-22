@@ -141,7 +141,7 @@ public:
     bool RestartIme();
     void AddRestartIme();
 
-    bool IsEnable(const std::shared_ptr<ImeData> &data);
+    bool IsEnable(const std::shared_ptr<ImeData> &data, uint64_t displayId = 0);
     bool IsBoundToClient(uint64_t displayId);
     bool IsCurrentImeByPid(int32_t pid);
     int32_t RestoreCurrentImeSubType();

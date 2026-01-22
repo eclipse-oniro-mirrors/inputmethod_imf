@@ -1890,7 +1890,7 @@ HWTEST_F(InputMethodAbilityTest, BranchCoverage001, TestSize.Level0)
     auto ret2 = InputMethodAbilityTest::inputMethodAbility_.IsCurrentIme();
     EXPECT_TRUE(ret2);
 
-    ret2 = InputMethodAbilityTest::inputMethodAbility_.IsEnable();
+    ret2 = InputMethodAbilityTest::inputMethodAbility_.IsEnable(0);
     EXPECT_FALSE(ret2);
 }
 

@@ -57,7 +57,7 @@ public:
     void OnInputFinish() override
     {
     }
-    bool IsEnable() override
+    bool IsEnable(uint64_t displayId) override
     {
         printf("=====IsEnable.=====\n");
         return true;
