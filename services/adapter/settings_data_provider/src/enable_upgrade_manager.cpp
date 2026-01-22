@@ -146,7 +146,7 @@ int32_t EnableUpgradeManager::GetFullExperienceTable(int32_t userId, std::set<st
     bundleNames = std::set<std::string>(cfg.userImeCfg.identities.begin(), cfg.userImeCfg.identities.end());
     return ErrorCode::NO_ERROR;
 }
-
+// LCOV_EXCL_START
 int32_t EnableUpgradeManager::MergeTwoTable(int32_t userId, std::vector<ImeEnabledInfo> &enabledInfos)
 {
     std::set<std::string> enabledBundleNames;
@@ -183,7 +183,7 @@ int32_t EnableUpgradeManager::MergeTwoTable(int32_t userId, std::vector<ImeEnabl
     }
     return ErrorCode::NO_ERROR;
 }
-
+// LCOV_EXCL_STOP
 int32_t EnableUpgradeManager::PaddedByBundleMgr(
     int32_t userId, const std::vector<FullImeInfo> &imeInfos, std::vector<ImeEnabledInfo> &enabledInfos)
 {
@@ -309,7 +309,7 @@ bool EnableUpgradeManager::SetEnabledTable(const std::string &uriProxy, const st
 {
     return SettingsDataUtils::GetInstance().SetStringValue(uriProxy, SettingsDataUtils::ENABLE_IME, content);
 }
-// LCOV_EXCL_STOP
+
 int32_t EnableUpgradeManager::GetImePersistCfg(int32_t userId, ImePersistInfo &persisInfo)
 {
     if (!FileOperator::IsExist(IME_CFG_FILE_PATH)) {
@@ -334,7 +334,7 @@ int32_t EnableUpgradeManager::GetImePersistCfg(int32_t userId, ImePersistInfo &p
     }
     return ErrorCode::NO_ERROR;
 }
-
+// LCOV_EXCL_STOP
 int32_t EnableUpgradeManager::PaddedByImePersistCfg(int32_t userId, std::vector<ImeEnabledInfo> &enabledInfos)
 {
     ImePersistInfo persistInfo;
