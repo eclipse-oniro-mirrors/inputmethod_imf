@@ -389,11 +389,12 @@ ani_ref ETSInputMethodExtension::CallObjectMethod(bool withResult, const char *n
     va_list args;
     if (withResult) {
         va_start(args, signature);
-        if ((status = env->Object_CallMethod_Ref_V(etsAbilityObj_->aniObj, method, &res, args)) != ANI_OK) {
+        status = env->Object_CallMethod_Ref_V(etsAbilityObj_->aniObj, method, &res, args);
+        va_end(args);
+        if (status != ANI_OK) {
             IMSA_HILOGE("Object_CallMethod_Ref_V status : %{public}d", status);
             return nullptr;
         }
-        va_end(args);
         return res;
     }
     va_start(args, signature);
