@@ -109,7 +109,7 @@ RangeInner InputMethodTools::RangeToInner(const Range &range)
     inner.end = range.end;
     return inner;
 }
-// LCOV_EXCL_STOP
+
 Range InputMethodTools::InnerToRange(const RangeInner &inner)
 {
     Range range;
@@ -117,7 +117,7 @@ Range InputMethodTools::InnerToRange(const RangeInner &inner)
     range.end = inner.end;
     return range;
 }
-
+// LCOV_EXCL_STOP
 TextSelectionInner InputMethodTools::TextSelectionToInner(const TextSelection &textSelection)
 {
     TextSelectionInner inner;
