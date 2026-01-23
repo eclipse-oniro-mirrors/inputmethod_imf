@@ -141,7 +141,7 @@ private:
             }
             delete task;
         };
-        if (napi_send_event(env, asyncTask, napi_eprio_high) != napi_status::napi_ok) {
+        if (napi_send_event(env, asyncTask, napi_eprio_high, "ime_OnStartAbility") != napi_status::napi_ok) {
             napiAsyncTask->Reject(env, CreateJsError(env, ERROR_CODE_ONE, "send event failed"));
         } else {
             napiAsyncTask.release();
@@ -194,7 +194,7 @@ private:
             task->Reject(env, CreateJsError(env, errcode, "Start Ability failed."));
             delete task;
         };
-        if (napi_send_event(env, asyncTask, napi_eprio_high) != napi_status::napi_ok) {
+        if (napi_send_event(env, asyncTask, napi_eprio_high, "ime_OnStartAbilityWithAccount") != napi_status::napi_ok) {
             napiAsyncTask->Reject(env, CreateJsError(env, ERROR_CODE_ONE, "send event failed"));
         } else {
             napiAsyncTask.release();
@@ -231,7 +231,7 @@ private:
             }
             delete task;
         };
-        if (napi_send_event(env, asyncTask, napi_eprio_high) != napi_status::napi_ok) {
+        if (napi_send_event(env, asyncTask, napi_eprio_high, "ime_OnTerminateAbility") != napi_status::napi_ok) {
             napiAsyncTask->Reject(env, CreateJsError(env, ERROR_CODE_ONE, "send event failed"));
         } else {
             napiAsyncTask.release();
@@ -282,7 +282,7 @@ private:
             task->Resolve(env, CreateJsUndefined(env));
             delete task;
         };
-        if (napi_send_event(env, asyncTask, napi_eprio_high) != napi_status::napi_ok) {
+        if (napi_send_event(env, asyncTask, napi_eprio_high, "ime_OnConnectAbility") != napi_status::napi_ok) {
             napiAsyncTask->Reject(env, CreateJsError(env, ERROR_CODE_ONE, "send event failed"));
         } else {
             napiAsyncTask.release();
@@ -341,7 +341,7 @@ private:
             task->Resolve(env, CreateJsUndefined(env));
             delete task;
         };
-        if (napi_send_event(env, asyncTask, napi_eprio_high) != napi_status::napi_ok) {
+        if (napi_send_event(env, asyncTask, napi_eprio_high, "ime_ConnectAbilityWithAccount") != napi_status::napi_ok) {
             napiAsyncTask->Reject(env, CreateJsError(env, ERROR_CODE_ONE, "send event failed"));
         } else {
             napiAsyncTask.release();
@@ -397,7 +397,7 @@ private:
                          : task->Reject(env, CreateJsError(env, errcode, "Disconnect Ability failed."));
             delete task;
         };
-        if (napi_send_event(env, asyncTask, napi_eprio_high) != napi_status::napi_ok) {
+        if (napi_send_event(env, asyncTask, napi_eprio_high, "ime_OnDisconnectAbility") != napi_status::napi_ok) {
             napiAsyncTask->Reject(env, CreateJsError(env, ERROR_CODE_ONE, "send event failed"));
         } else {
             napiAsyncTask.release();

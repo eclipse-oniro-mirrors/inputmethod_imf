@@ -239,7 +239,7 @@ int32_t ImeSystemCmdChannel::NotifyPanelStatus(const SysPanelStatus &sysPanelSta
     listener->NotifyPanelStatus(sysPanelStatus);
     return ErrorCode::NO_ERROR;
 }
-
+// LCOV_EXCL_START
 std::string ImeSystemCmdChannel::GetSmartMenuCfg()
 {
     std::shared_ptr<Property> defaultIme = nullptr;

@@ -297,6 +297,38 @@ int32_t PerUserSession::OnShowCurrentInput(uint64_t displayGroupId)
     return ShowKeyboard(client, clientGroup);
 }
 
+int32_t PerUserSession::OnShowCurrentInputInTargetDisplay(uint64_t displayId)
+{
+    IMSA_HILOGD("start.");
+    auto [clientGroup, clientInfo] = GetCurrentClientBoundRealIme();
+    if (clientInfo == nullptr) {
+        IMSA_HILOGE("clientInfo is nullptr");
+        return ErrorCode::ERROR_CLIENT_NOT_FOUND;
+    }
+    if (clientInfo->config.inputAttribute.callingDisplayId != displayId) {
+        IMSA_HILOGE("keyboard in displayId:%{public}" PRIu64 ", not in displayId:%{public}" PRIu64 ".",
+            clientInfo->config.inputAttribute.callingDisplayId, displayId);
+        return ErrorCode::ERROR_CLIENT_NOT_FOUND;
+    }
+    return ShowKeyboard(clientInfo->client, clientGroup);
+}
+
+int32_t PerUserSession::OnHideCurrentInputInTargetDisplay(uint64_t displayId)
+{
+    IMSA_HILOGD("start.");
+    auto [clientGroup, clientInfo] = GetCurrentClientBoundRealIme();
+    if (clientInfo == nullptr) {
+        IMSA_HILOGE("clientInfo is nullptr");
+        return ErrorCode::ERROR_CLIENT_NOT_FOUND;
+    }
+    if (clientInfo->config.inputAttribute.callingDisplayId != displayId) {
+        IMSA_HILOGE("keyboard in displayId:%{public}" PRIu64 ", not in displayId:%{public}" PRIu64 ".",
+            clientInfo->config.inputAttribute.callingDisplayId, displayId);
+        return ErrorCode::ERROR_CLIENT_NOT_FOUND;
+    }
+    return HideKeyboard(clientInfo->client, clientGroup);
+}
+
 int32_t PerUserSession::OnHideInput(sptr<IInputClient> client)
 {
     IMSA_HILOGD("PerUserSession::OnHideInput start.");
@@ -448,8 +480,8 @@ bool PerUserSession::NeedHideRealIme(uint64_t clientGroupId)
     if (clientInfo == nullptr) {
         return true;
     }
-    if (!WindowAdapter::GetInstance().HasDisplayGroupId(clientInfo->clientGroupId) ||
-        !WindowAdapter::GetInstance().HasDisplayGroupId(clientInfo->config.inputAttribute.displayGroupId)) {
+    if (!WindowAdapter::GetInstance().IsDisplayGroupIdExist(clientInfo->clientGroupId) ||
+        !WindowAdapter::GetInstance().IsDisplayGroupIdExist(clientInfo->config.inputAttribute.displayGroupId)) {
         return true;
     }
     /* requestHide triggered by the group where the edit box resides/where the soft keyboard resides
@@ -2051,26 +2083,45 @@ bool PerUserSession::IsCurrentImeByPid(int32_t pid)
 
 int32_t PerUserSession::IsPanelShown(uint64_t displayId, const PanelInfo &panelInfo, bool &isShown)
 {
-    auto clientGroup = GetClientGroup(displayId);
-    if (clientGroup == nullptr) {
-        IMSA_HILOGD("not in bound state.");
-        isShown = false;
-        return ErrorCode::NO_ERROR;
-    }
-    auto clientInfo = clientGroup->GetCurrentClientInfo();
+    auto [clientGroup, clientInfo] = GetCurrentClientBoundRealIme();
     if (clientInfo == nullptr) {
-        IMSA_HILOGD("has no current client.");
-        isShown = false;
-        return ErrorCode::NO_ERROR;
-    }
-    if (clientInfo->bindImeData == nullptr || !clientInfo->bindImeData->IsRealIme()) {
         IMSA_HILOGD("has no bind ime.");
         isShown = false;
         return ErrorCode::NO_ERROR;
     }
-    auto imeData = GetImeData(clientInfo->bindImeData);
+    if (clientInfo->config.inputAttribute.callingDisplayId != displayId) {
+        IMSA_HILOGE("keyboard in displayId:%{public}" PRIu64 ", not in displayId:%{public}" PRIu64 ".",
+            clientInfo->config.inputAttribute.callingDisplayId, displayId);
+        isShown = false;
+        return ErrorCode::NO_ERROR;
+    }
+    auto imeData = GetRealImeData(true);
     if (imeData == nullptr) {
-        IMSA_HILOGD("has no real ime.");
+        IMSA_HILOGD("has no ready real ime.");
+        isShown = false;
+        return ErrorCode::NO_ERROR;
+    }
+    return RequestIme(imeData, RequestType::NORMAL,
+        [&imeData, &panelInfo, &isShown] { return imeData->core->IsPanelShown(panelInfo, isShown); });
+}
+
+int32_t PerUserSession::IsPanelShown(const PanelInfo &panelInfo, bool &isShown)
+{
+    auto [clientGroup, clientInfo] = GetCurrentClientBoundRealIme();
+    if (clientInfo == nullptr) {
+        IMSA_HILOGD("has no bind ime.");
+        isShown = false;
+        return ErrorCode::NO_ERROR;
+    }
+    if (clientInfo->config.inputAttribute.displayGroupId != ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID) {
+        IMSA_HILOGE("keyboard in displayGroupId:%{public}" PRIu64 ", not in default displayGroup.",
+            clientInfo->config.inputAttribute.callingDisplayId);
+        isShown = false;
+        return ErrorCode::NO_ERROR;
+    }
+    auto imeData = GetRealImeData(true);
+    if (imeData == nullptr) {
+        IMSA_HILOGD("has no ready real ime.");
         isShown = false;
         return ErrorCode::NO_ERROR;
     }
@@ -2734,6 +2785,7 @@ void PerUserSession::HandleBindImeChanged(InputClientInfo &newClientInfo, const 
     }
     bool isClientInactive = false;
     {
+        // The following operations ensure timing sequence of HandleBindImeChanged and OnFocused
         std::lock_guard<std::mutex> lock(focusedClientLock_);
         oldClientInfo = clientGroup->GetCurrentClientInfo();
         if (oldClientInfo == nullptr) {
@@ -2746,11 +2798,16 @@ void PerUserSession::HandleBindImeChanged(InputClientInfo &newClientInfo, const 
         if (oldClientInfo == nullptr) {
             return;
         }
-        if (IsSameClient(newClientInfo.client, oldClientInfo->client)
-            && !IsSameIme(oldClientInfo->bindImeData, newImeData)) {
+        if (IsSameIme(oldClientInfo->bindImeData, newImeData)) {
+            IMSA_HILOGD("ime not changed, return!");
+            return;
+        }
+        if (IsSameClient(newClientInfo.client, oldClientInfo->client)) {
+            IMSA_HILOGD("same client, ime changed!");
             newClientInfo.isNotifyInputStart = true;
         }
         if (IsSameImeType(oldClientInfo->bindImeData, newImeData) && newImeData->IsRealIme()) {
+            IMSA_HILOGD("real ime switch, return!");
             return;
         }
         // has current client, but new client is not current client
@@ -2891,47 +2948,6 @@ int32_t PerUserSession::NotifyCallingWindowIdChanged(
         IMSA_HILOGE("notify calling window display changed failed, ret: %{public}d!", ret);
     }
     return ret;
-}
-
-ImfCallingWindowInfo PerUserSession::GetFinalCallingWindowInfo(const InputClientInfo &clientInfo)
-{
-    auto windowInfo = GetCallingWindowInfo(clientInfo);
-    windowInfo.displayId = DisplayAdapter::GetFinalDisplayId(windowInfo.displayId);
-    return windowInfo;
-}
-
-ImfCallingWindowInfo PerUserSession::GetCallingWindowInfo(const InputClientInfo &clientInfo)
-{
-    InputMethodSyncTrace tracer("GetCallingWindowInfo trace");
-    auto finalWindowId = clientInfo.config.windowId;
-    ImfCallingWindowInfo finalWindowInfo{ finalWindowId, 0 };
-    if (!SceneBoardJudgement::IsSceneBoardEnabled()) {
-        return finalWindowInfo;
-    }
-    CallingWindowInfo callingWindowInfo;
-    if (GetCallingWindowInfo(clientInfo, callingWindowInfo)) {
-        finalWindowInfo.displayId = callingWindowInfo.displayId_;
-        return finalWindowInfo;
-    }
-    FocusChangeInfo focusInfo;
-    WindowAdapter::GetFocusInfo(focusInfo);
-    if (!WindowAdapter::GetCallingWindowInfo(focusInfo.windowId_, userId_, callingWindowInfo)) {
-        IMSA_HILOGE("GetCallingWindowInfo error!");
-        return finalWindowInfo;
-    }
-    if (finalWindowId == INVALID_WINDOW_ID) {
-        finalWindowId = static_cast<uint32_t>(focusInfo.windowId_);
-    }
-    return { finalWindowId, callingWindowInfo.displayId_ };
-}
-
-bool PerUserSession::GetCallingWindowInfo(const InputClientInfo &clientInfo, CallingWindowInfo &callingWindowInfo)
-{
-    auto windowId = clientInfo.config.windowId;
-    if (windowId == INVALID_WINDOW_ID) {
-        return false;
-    }
-    return WindowAdapter::GetCallingWindowInfo(windowId, userId_, callingWindowInfo);
 }
 
 bool PerUserSession::SpecialScenarioCheck()

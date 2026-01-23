@@ -951,6 +951,7 @@ napi_value JsGetInputMethodController::ShowSoftKeyboard(napi_env env, napi_callb
             int64_t displayId = 0;
             if (JsUtil::GetValue(env, argv[0], displayId) && displayId >= 0) {
                 ctxt->displayId = static_cast<uint64_t>(displayId);
+                ctxt->hasDisplayIdParam = true;
             }
         }
         return napi_ok;
@@ -960,7 +961,11 @@ napi_value JsGetInputMethodController::ShowSoftKeyboard(napi_env env, napi_callb
         auto instance = InputMethodController::GetInstance();
         if (instance != nullptr) {
             IMSA_HILOGD("target displayId: %{public}" PRIu64 "", ctxt->displayId);
-            errCode = instance->ShowSoftKeyboard(ClientType::JS, ctxt->displayId);
+            if (ctxt->hasDisplayIdParam) {
+                errCode = instance->ShowSoftKeyboard(ctxt->displayId, ClientType::JS);
+            } else {
+                errCode = instance->ShowSoftKeyboard(ClientType::JS);
+            }
         }
         ctxt->SetErrorCode(errCode);
         if (errCode == ErrorCode::NO_ERROR) {
@@ -983,6 +988,7 @@ napi_value JsGetInputMethodController::HideSoftKeyboard(napi_env env, napi_callb
             int64_t displayId = 0;
             if (JsUtil::GetValue(env, argv[0], displayId) && displayId >= 0) {
                 ctxt->displayId = static_cast<uint64_t>(displayId);
+                ctxt->hasDisplayIdParam = true;
             }
         }
         return napi_ok;
@@ -992,7 +998,11 @@ napi_value JsGetInputMethodController::HideSoftKeyboard(napi_env env, napi_callb
         auto instance = InputMethodController::GetInstance();
         if (instance != nullptr) {
             IMSA_HILOGD("target displayId: %{public}" PRIu64 "", ctxt->displayId);
-            errCode = instance->HideSoftKeyboard(ctxt->displayId);
+            if (ctxt->hasDisplayIdParam) {
+                errCode = instance->HideSoftKeyboard(ctxt->displayId);
+            } else {
+                errCode = instance->HideSoftKeyboard();
+            }
         }
         ctxt->SetErrorCode(errCode);
         if (errCode == ErrorCode::NO_ERROR) {

@@ -110,7 +110,9 @@ public:
     int32_t OnReleaseInput(const sptr<IInputClient> &client, uint32_t sessionId);
     int32_t OnSetCoreAndAgent(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent);
     int32_t OnHideCurrentInput(uint64_t displayGroupId);
+    int32_t OnHideCurrentInputInTargetDisplay(uint64_t displayId);
     int32_t OnShowCurrentInput(uint64_t displayGroupId);
+    int32_t OnShowCurrentInputInTargetDisplay(uint64_t displayId);
     int32_t OnShowInput(sptr<IInputClient> client, int32_t requestKeyboardReason = 0);
     int32_t OnHideInput(sptr<IInputClient> client);
     int32_t OnRequestHideInput(uint64_t displayId, const std::string &callerBundleName);
@@ -145,6 +147,7 @@ public:
     bool IsBoundToClient(uint64_t displayId);
     bool IsCurrentImeByPid(int32_t pid);
     int32_t RestoreCurrentImeSubType();
+    int32_t IsPanelShown(const PanelInfo &panelInfo, bool &isShown);
     int32_t IsPanelShown(uint64_t displayId, const PanelInfo &panelInfo, bool &isShown);
     int32_t OnConnectSystemCmd(const sptr<IRemoteObject> &channel, sptr<IRemoteObject> &agent);
     int32_t RemoveAllCurrentClient();
@@ -164,7 +167,6 @@ public:
     bool IsSaReady(int32_t saId);
     void TryUnloadSystemAbility();
     void OnCallingDisplayIdChanged(const int32_t windowId, const int32_t callingPid, const uint64_t displayId);
-    ImfCallingWindowInfo GetFinalCallingWindowInfo(const InputClientInfo &clientInfo);
     bool SpecialScenarioCheck();
     int32_t SpecialSendPrivateData(const std::unordered_map<std::string, PrivateDataValue> &privateCommand);
     bool IsNumkeyAutoInputApp(const std::string &bundleName);
@@ -202,7 +204,7 @@ private:
 #else
     static const int MAX_IME_START_TIME = 1500;
 #endif
-    static const int MAX_NOTIFY_TIME = 5; //5ms
+    static const int MAX_NOTIFY_TIME = 10; //10ms
     std::mutex resetLock;
     std::map<TimeLimitType, ResetManager> managers_;
     using IpcExec = std::function<int32_t()>;
@@ -291,8 +293,6 @@ private:
     int32_t NotifyCallingDisplayChanged(uint64_t displayId, const std::shared_ptr<ImeData> &imeData);
     int32_t NotifyCallingWindowIdChanged(
         uint32_t editorWindowId, const std::shared_ptr<ImeData> &imeData, uint32_t keyboardWindowId);
-    ImfCallingWindowInfo GetCallingWindowInfo(const InputClientInfo &clientInfo);
-    bool GetCallingWindowInfo(const InputClientInfo &clientInfo, Rosen::CallingWindowInfo &callingWindowInfo);
     int32_t SendPrivateData(const std::unordered_map<std::string, PrivateDataValue> &privateCommand);
     void ClearRequestKeyboardReason(std::shared_ptr<InputClientInfo> &clientInfo);
     std::pair<std::string, std::string> GetImeUsedBeforeScreenLocked();

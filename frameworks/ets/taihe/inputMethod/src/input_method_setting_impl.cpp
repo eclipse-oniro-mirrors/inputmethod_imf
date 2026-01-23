@@ -119,7 +119,7 @@ bool InputMethodSettingImpl::IsPanelShownId(PanelInfo_t const &panelInfo, int64_
     }
     bool isShown = false;
     IMSA_HILOGD("target displayId: %{public}" PRIu64 "", id);
-    int32_t errorCode = InputMethodController::GetInstance()->IsPanelShown(info, isShown, id);
+    int32_t errorCode = InputMethodController::GetInstance()->IsPanelShown(id, info, isShown);
     if (errorCode != ErrorCode::NO_ERROR) {
         set_business_error(JsUtils::Convert(errorCode), "failed to query is panel shown!");
         IMSA_HILOGE("failed to query is panel shown, errCode:%{public}d!", errorCode);

@@ -25,6 +25,7 @@
 #include "key_event_result_handler.h"
 #include "task_manager.h"
 #include "input_data_channel_service_impl.h"
+#include "window_adapter.h"
 #undef private
 
 #include <event_handler.h>
@@ -1848,24 +1849,6 @@ HWTEST_F(InputMethodControllerTest, testIMCOnInputStop_002, TestSize.Level0)
 }
 
 /**
- * @tc.name: testIsPanelShown
- * @tc.desc: IMC testIsPanelShown
- * @tc.type: IMC
- * @tc.require:
- */
-HWTEST_F(InputMethodControllerTest, testIsPanelShown, TestSize.Level0)
-{
-    IMSA_HILOGI("IMC testIsPanelShown Test START");
-    InputAttribute inputAttribute = { .isTextPreviewSupported = true };
-    inputMethodController_->Attach(textListener_, false, inputAttribute);
-    const PanelInfo panelInfo;
-    bool isShown = false;
-    uint64_t displayId = 0;
-    auto ret = inputMethodController_->IsPanelShown(panelInfo, isShown, displayId);
-    EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
-}
-
-/**
  * @tc.name: testIMCDispatchKeyEvent_null
  * @tc.desc: test IMC DispatchKeyEvent with keyEvent null
  * @tc.type: FUNC
@@ -1874,9 +1857,11 @@ HWTEST_F(InputMethodControllerTest, testIsPanelShown, TestSize.Level0)
 HWTEST_F(InputMethodControllerTest, testIMCDispatchKeyEvent_null, TestSize.Level0)
 {
     IMSA_HILOGI("IMC testIMCDispatchKeyEvent_null Test START");
+    auto ret = inputMethodController_->Attach(textListener_, false);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     std::shared_ptr<MMI::KeyEvent> keyEvent = nullptr;
     KeyEventCallback callback;
-    auto ret = inputMethodController_->DispatchKeyEvent(keyEvent, callback);
+    ret = inputMethodController_->DispatchKeyEvent(keyEvent, callback);
     EXPECT_EQ(ret, ErrorCode::ERROR_EX_NULL_POINTER);
     std::this_thread::sleep_for(std::chrono::seconds(2)); // avoid EventHandler crash
 }
@@ -2588,6 +2573,233 @@ HWTEST_F(InputMethodControllerTest, TestGetClientType02, TestSize.Level0)
     ret = inputMethodController_->GetClientType(type);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     EXPECT_EQ(type, ClientType::INNER_KIT_ARKUI);
+}
+
+/**
+ * @tc.name: testHideSoftKeyboardWitchDisplayId_001
+ * @tc.desc: displayId not exist
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, testHideSoftKeyboardWitchDisplayId_001, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testHideSoftKeyboardWitchDisplayId_001 Test START");
+    uint64_t displayId = 1000;
+    IdentityCheckerMock::ResetParam();
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+    int32_t ret = inputMethodController_->HideSoftKeyboard(displayId);
+    EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+}
+
+/**
+ * @tc.name: testHideSoftKeyboardWitchDisplayId_002
+ * @tc.desc: displayId exist, is broker
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, testHideSoftKeyboardWitchDisplayId_002, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testHideSoftKeyboardWitchDisplayId_002 Test START");
+    uint64_t displayId = 1000;
+    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(displayId, 0);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetBroker(true);
+    int32_t ret = inputMethodController_->HideSoftKeyboard(displayId);
+    EXPECT_TRUE(ret != ErrorCode::ERROR_PARAMETER_CHECK_FAILED && ret != ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION
+                && ret != ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+    IdentityCheckerMock::ResetParam();
+}
+
+/**
+ * @tc.name: testHideSoftKeyboardWitchDisplayId_003
+ * @tc.desc: displayId exist, not broker, not sys app
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, testHideSoftKeyboardWitchDisplayId_003, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testHideSoftKeyboardWitchDisplayId_003 Test START");
+    uint64_t displayId = 1000;
+    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(displayId, 0);
+    IdentityCheckerMock::ResetParam();
+    int32_t ret = inputMethodController_->HideSoftKeyboard(displayId);
+    EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+}
+
+/**
+ * @tc.name: testHideSoftKeyboardWitchDisplayId_004
+ * @tc.desc: displayId exist, not broker, sys app, not has permission
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, testHideSoftKeyboardWitchDisplayId_004, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testHideSoftKeyboardWitchDisplayId_004 Test START");
+    uint64_t displayId = 1000;
+    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(displayId, 0);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetSystemApp(true);
+    int32_t ret = inputMethodController_->HideSoftKeyboard(displayId);
+    EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+    IdentityCheckerMock::ResetParam();
+}
+
+/**
+ * @tc.name: testHideSoftKeyboardWitchDisplayId_005
+ * @tc.desc: displayId exist, not broker, sys app, has permission
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, testHideSoftKeyboardWitchDisplayId_005, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testHideSoftKeyboardWitchDisplayId_005 Test START");
+    uint64_t displayId = 1000;
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(displayId, 0);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetSystemApp(true);
+    IdentityCheckerMock::SetPermission(true);
+    int32_t ret = inputMethodController_->HideSoftKeyboard(displayId);
+    EXPECT_TRUE(ret != ErrorCode::ERROR_PARAMETER_CHECK_FAILED && ret != ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION
+                && ret != ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+    IdentityCheckerMock::ResetParam();
+}
+
+/**
+ * @tc.name: testShowSoftKeyboardWitchDisplayId_001
+ * @tc.desc: displayId not exist
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, testShowSoftKeyboardWitchDisplayId_001, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testShowSoftKeyboardWitchDisplayId_001 Test START");
+    uint64_t displayId = 1000;
+    IdentityCheckerMock::ResetParam();
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+    int32_t ret = inputMethodController_->ShowSoftKeyboard(displayId);
+    EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+}
+
+/**
+ * @tc.name: testShowSoftKeyboardWitchDisplayId_002
+ * @tc.desc: displayId exist, is broker
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, testShowSoftKeyboardWitchDisplayId_002, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testShowSoftKeyboardWitchDisplayId_002 Test START");
+    uint64_t displayId = 1000;
+    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(displayId, 0);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetBroker(true);
+    int32_t ret = inputMethodController_->ShowSoftKeyboard(displayId);
+    EXPECT_TRUE(ret != ErrorCode::ERROR_PARAMETER_CHECK_FAILED && ret != ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION
+                && ret != ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+    IdentityCheckerMock::ResetParam();
+}
+
+/**
+ * @tc.name: testShowSoftKeyboardWitchDisplayId_003
+ * @tc.desc: displayId exist, not broker, not sys app
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, testShowSoftKeyboardWitchDisplayId_003, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testShowSoftKeyboardWitchDisplayId_003 Test START");
+    uint64_t displayId = 1000;
+    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(displayId, 0);
+    IdentityCheckerMock::ResetParam();
+    int32_t ret = inputMethodController_->ShowSoftKeyboard(displayId);
+    EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+}
+
+/**
+ * @tc.name: testShowSoftKeyboardWitchDisplayId_004
+ * @tc.desc: displayId exist, not broker, sys app, not has permission
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, testShowSoftKeyboardWitchDisplayId_004, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testShowSoftKeyboardWitchDisplayId_004 Test START");
+    uint64_t displayId = 1000;
+    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(displayId, 0);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetSystemApp(true);
+    int32_t ret = inputMethodController_->ShowSoftKeyboard(displayId);
+    EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+    IdentityCheckerMock::ResetParam();
+}
+
+/**
+ * @tc.name: testShowSoftKeyboardWitchDisplayId_005
+ * @tc.desc: displayId exist, not broker, sys app, has permission
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, testShowSoftKeyboardWitchDisplayId_005, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testShowSoftKeyboardWitchDisplayId_005 Test START");
+    uint64_t displayId = 1000;
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(displayId, 0);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetSystemApp(true);
+    IdentityCheckerMock::SetPermission(true);
+    int32_t ret = inputMethodController_->ShowSoftKeyboard(displayId);
+    EXPECT_TRUE(ret != ErrorCode::ERROR_PARAMETER_CHECK_FAILED && ret != ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION
+                && ret != ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+    IdentityCheckerMock::ResetParam();
+}
+
+/**
+ * @tc.name: testIsPanelShown_001
+ * @tc.desc: IMC testIsPanelShown
+ * @tc.type: IMC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, testIsPanelShown_001, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testIsPanelShown_001 Test START");
+    inputMethodController_->Close();
+    const PanelInfo panelInfo;
+    bool isShown = false;
+    uint64_t displayId = 0;
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetSystemApp(true);
+    auto ret = inputMethodController_->IsPanelShown(panelInfo, isShown);
+    EXPECT_NE(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+    ret = inputMethodController_->IsPanelShown(displayId, panelInfo, isShown);
+    EXPECT_NE(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+    IdentityCheckerMock::ResetParam();
+}
+
+/**
+ * @tc.name: testIsPanelShown_002
+ * @tc.desc: IMC testIsPanelShown
+ * @tc.type: IMC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, testIsPanelShown_002, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testIsPanelShown_002 Test START");
+    InputAttribute inputAttribute = { .isTextPreviewSupported = true };
+    inputMethodController_->Attach(textListener_, false, inputAttribute);
+    const PanelInfo panelInfo;
+    bool isShown = false;
+    uint64_t displayId = 0;
+    IdentityCheckerMock::ResetParam();
+    auto ret = inputMethodController_->IsPanelShown(panelInfo, isShown);
+    EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+    ret = inputMethodController_->IsPanelShown(displayId, panelInfo, isShown);
+    EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+    IdentityCheckerMock::SetSystemApp(true);
+    ret = inputMethodController_->IsPanelShown(panelInfo, isShown);
+    EXPECT_NE(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+    ret = inputMethodController_->IsPanelShown(displayId, panelInfo, isShown);
+    EXPECT_NE(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+    IdentityCheckerMock::ResetParam();
 }
 } // namespace MiscServices
 } // namespace OHOS

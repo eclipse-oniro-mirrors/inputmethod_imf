@@ -54,42 +54,39 @@ bool DisplayAdapter::IsImeShowable(uint64_t displayId)
     return isImeShowable;
 }
 
-bool DisplayAdapter::IsFocusable(uint64_t displayId)
-{
-    auto displayInfo = GetDisplayInfo(displayId);
-    if (displayInfo == nullptr) {
-        IMSA_HILOGE("displayInfo is null!");
-        return true;
-    }
-    auto isFocusable = displayInfo->GetSupportsFocus();
-    IMSA_HILOGD("display: %{public}" PRIu64 " is %{public}u.", displayId, isFocusable);
-    return isFocusable;
-}
 // LCOV_EXCL_START
-uint64_t DisplayAdapter::GetFinalDisplayId(uint64_t displayId)
-{
-    IMSA_HILOGD("run in, display: %{public}" PRIu64 ".", displayId);
-    if (!IsRestrictedMainDisplayId(displayId)) {
-        return displayId;
-    }
-    return DEFAULT_DISPLAY_ID;
-}
-
 bool DisplayAdapter::IsRestrictedMainDisplayId(uint64_t displayId)
 {
     IMSA_HILOGD("run in, display: %{public}" PRIu64 ".", displayId);
     if (displayId == DEFAULT_DISPLAY_ID) {
         return false;
     }
-    if (ImeInfoInquirer::GetInstance().IsRestrictedMainDisplayId(displayId)) {
-        IMSA_HILOGD("display: %{public}" PRIu64 " not support show ime.", displayId);
-        return true;
-    }
     if (IsImeShowable(displayId)) {
         return false;
     }
     IMSA_HILOGD("display:%{public}" PRIu64 " not support show ime.", displayId);
     return true;
+}
+
+/* return value:first:isRestrictedMainDisplay,  second:bundleName */
+std::pair<bool, std::string> DisplayAdapter::GetRestrictedMainDisplayInfo(uint64_t displayId)
+{
+    IMSA_HILOGD("run in, display: %{public}" PRIu64 ".", displayId);
+    bool isRestrictedMainDisplay = false;
+    std::string bundleName;
+    if (displayId == DEFAULT_DISPLAY_ID) {
+        return { isRestrictedMainDisplay, bundleName };
+    }
+    auto displayInfo = GetDisplayInfo(displayId);
+    if (displayInfo == nullptr) {
+        IMSA_HILOGE("displayInfo is null!");
+        return { isRestrictedMainDisplay, bundleName };
+    }
+    isRestrictedMainDisplay = !displayInfo->GetSupportsInput();
+    if (isRestrictedMainDisplay) {
+        bundleName = displayInfo->GetBundleName();
+    }
+    return { isRestrictedMainDisplay, bundleName };
 }
 // LCOV_EXCL_STOP
 sptr<DisplayInfo> DisplayAdapter::GetDisplayInfo(uint64_t displayId)

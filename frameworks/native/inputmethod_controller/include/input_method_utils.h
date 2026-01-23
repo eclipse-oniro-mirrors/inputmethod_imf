@@ -89,6 +89,7 @@ enum class ExtendAction {
 
 enum class CapacityType: int32_t {
     IMMERSIVE_EFFECT,
+    SYSTEM_PANEL,
     END,
 };
 

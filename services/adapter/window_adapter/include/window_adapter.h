@@ -31,8 +31,6 @@ public:
     static constexpr uint32_t DEFAULT_DISPLAY_GROUP_ID = 0;
     ~WindowAdapter();
     static WindowAdapter &GetInstance();
-    static bool GetCallingWindowInfo(
-        const uint32_t windId, const int32_t userId, Rosen::CallingWindowInfo &callingWindowInfo);
     static void GetFocusInfo(OHOS::Rosen::FocusChangeInfo &focusInfo, uint64_t displayId = DEFAULT_DISPLAY_ID);
     static uint64_t GetDisplayIdByPid(int64_t callingPid);
     static uint64_t GetDisplayIdByWindowId(int32_t callingWindowId);
@@ -44,7 +42,8 @@ public:
     uint64_t GetDisplayGroupId(uint64_t displayId);
     bool IsDefaultDisplayGroup(uint64_t displayId);
     uint64_t GetDisplayGroupId(uint32_t windowId);
-    bool HasDisplayGroupId(uint64_t displayGroupId);
+    bool IsDisplayGroupIdExist(uint64_t displayGroupId);
+    bool IsDisplayIdExist(uint64_t displayId);
     int32_t StoreAllDisplayGroupInfos();
     void OnDisplayGroupInfoChanged(uint64_t displayId, uint64_t displayGroupId, bool isAdd);
     void OnFocused(const Rosen::FocusChangeInfo &focusWindowInfo);

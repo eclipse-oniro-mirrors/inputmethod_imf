@@ -44,6 +44,7 @@ struct HandleContext : public AsyncCall::Context {
     bool isHandle = false;
     napi_status status = napi_generic_failure;
     uint64_t displayId{ 0 };
+    bool hasDisplayIdParam{ false };
     uint32_t windowId{ 0 };
     HandleContext() : Context(nullptr, nullptr){};
     HandleContext(InputAction input, OutputAction output) : Context(std::move(input), std::move(output)){};

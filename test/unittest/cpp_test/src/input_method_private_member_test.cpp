@@ -41,6 +41,7 @@
 #include <string>
 #include <vector>
 
+#include "app_mgr_adapter.h"
 #include "application_info.h"
 #include "combination_key.h"
 #include "display_adapter.h"
@@ -2827,55 +2828,6 @@ HWTEST_F(InputMethodPrivateMemberTest, IMSA_IsTmpIme, TestSize.Level0)
 }
 
 /**
- * @tc.name: PerUserSession_GetFinalCallingWindowInfo
- * @tc.desc: PerUserSession_GetFinalCallingWindowInfo
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_GetFinalCallingWindowInfo, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_GetFinalCallingWindowInfo start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
-    Rosen::CallingWindowInfo callingWindowInfo;
-    Rosen::FocusChangeInfo focusInfo;
-    WindowAdapter::GetFocusInfo(focusInfo);
-    WindowAdapter::GetCallingWindowInfo(focusInfo.windowId_, userSession->userId_, callingWindowInfo);
-    auto screenName = DisplayAdapter::GetDisplayName(callingWindowInfo.displayId_);
-    ImeInfoInquirer::GetInstance().systemConfig_.defaultMainDisplayScreenList.insert(screenName);
-    InputClientInfo clientInfo;
-    clientInfo.config.windowId = focusInfo.windowId_;
-    ImfCallingWindowInfo windowInfo = userSession->GetFinalCallingWindowInfo(clientInfo);
-    EXPECT_TRUE(windowInfo.displayId == DisplayAdapter::GetDefaultDisplayId());
-}
-
-/**
- * @tc.name: DisplayAdapter_GetFinalDisplayId
- * @tc.desc: DisplayAdapter_GetFinalDisplayId
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(InputMethodPrivateMemberTest, DisplayAdapter_GetFinalDisplayId, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodPrivateMemberTest::DisplayAdapter_GetFinalDisplayId start.");
-    ImeInfoInquirer::GetInstance().systemConfig_.defaultMainDisplayScreenList.clear();
-    uint64_t defaultDisplayId = DisplayAdapter::DEFAULT_DISPLAY_ID;
-    auto finalDisplayId = DisplayAdapter::GetFinalDisplayId(defaultDisplayId);
-    EXPECT_EQ(finalDisplayId, defaultDisplayId);
-
-    ImeInfoInquirer::GetInstance().systemConfig_.defaultMainDisplayScreenList.insert("");
-    uint64_t displayId = 2000;
-    finalDisplayId = DisplayAdapter::GetFinalDisplayId(displayId);
-    EXPECT_EQ(finalDisplayId, defaultDisplayId);
-
-    ImeInfoInquirer::GetInstance().systemConfig_.defaultMainDisplayScreenList.clear();
-    finalDisplayId = DisplayAdapter::GetFinalDisplayId(displayId);
-    EXPECT_EQ(finalDisplayId, displayId);
-
-    auto isFocusable = DisplayAdapter::IsFocusable(displayId);
-    EXPECT_TRUE(isFocusable);
-}
-
-/**
  * @tc.name: ImCommonEventManager_OnBundleResChanged
  * @tc.desc: ImCommonEventManager_OnBundleResChanged
  * @tc.type: FUNC
@@ -3632,64 +3584,6 @@ HWTEST_F(InputMethodPrivateMemberTest, ClientGroup_GetCurrentClientInfoBoundReal
 }
 
 /**
- * @tc.name: PerUserSession_IsPanelShown
- * @tc.desc: PerUserSession_IsPanelShown
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_IsPanelShown, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_IsPanelShown start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
-    pid_t pid = 1000;
-    PanelInfo panelInfo;
-    bool isShown = false;
-    userSession->clientGroupMap_.clear();
-    // clientGroupMap_ is empty
-    auto ret = userSession->IsPanelShown(ImfCommonConst::DEFAULT_DISPLAY_ID, panelInfo, isShown);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_FALSE(isShown);
-    // clientGroupMap_ is not empty, has no current client
-    auto group = std::make_shared<ClientGroup>(ImfCommonConst::DEFAULT_DISPLAY_ID, nullptr);
-    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
-    auto info = std::make_shared<InputClientInfo>();
-    info->client = client;
-    group->mapClients_.insert_or_assign(client->AsObject(), info);
-    userSession->clientGroupMap_.insert_or_assign(ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID, group);
-    ret = userSession->IsPanelShown(ImfCommonConst::DEFAULT_DISPLAY_ID, panelInfo, isShown);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_FALSE(isShown);
-    // clientGroupMap_ is not empty, has current client, bindImeData is nullptr
-    group->SetCurrentClient(client);
-    userSession->clientGroupMap_.insert_or_assign(ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID, group);
-    ret = userSession->IsPanelShown(ImfCommonConst::DEFAULT_DISPLAY_ID, panelInfo, isShown);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_FALSE(isShown);
-    // clientGroupMap_ is not empty, has current client, bindImeData not nullptr, not real ime
-    info->bindImeData = std::make_shared<BindImeData>(pid, ImeType::PROXY_IME);
-    group->mapClients_.insert_or_assign(client->AsObject(), info);
-    userSession->clientGroupMap_.insert_or_assign(ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID, group);
-    ret = userSession->IsPanelShown(ImfCommonConst::DEFAULT_DISPLAY_ID, panelInfo, isShown);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_FALSE(isShown);
-    // clientGroupMap_ is not empty, has current client, bindImeData not nullptr, real ime, has no realImeData
-    info->bindImeData = std::make_shared<BindImeData>(pid, ImeType::IME);
-    group->mapClients_.insert_or_assign(client->AsObject(), info);
-    userSession->clientGroupMap_.insert_or_assign(ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID, group);
-    userSession->realImeData_ = nullptr;
-    ret = userSession->IsPanelShown(ImfCommonConst::DEFAULT_DISPLAY_ID, panelInfo, isShown);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_FALSE(isShown);
-    // clientGroupMap_ is not empty, has current client, bindImeData not nullptr, real ime, has realImeData
-    auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, pid);
-    imeData->type = ImeType::IME;
-    userSession->realImeData_ = imeData;
-    ret = userSession->IsPanelShown(ImfCommonConst::DEFAULT_DISPLAY_ID, panelInfo, isShown);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_FALSE(isShown);
-}
-
-/**
  * @tc.name: PerUserSession_OnCallingDisplayIdChanged
  * @tc.desc: PerUserSession_OnCallingDisplayIdChanged
  * @tc.type: FUNC
@@ -3996,14 +3890,14 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_IsShowSameRealImeInMainDis
 }
 
 /**
- * @tc.name: IdentityCheckerImpl_GenerateFocusInfo
- * @tc.desc: IdentityCheckerImpl_GenerateFocusInfo
+ * @tc.name: IdentityCheckerImpl_GenerateFocusCheckRet
+ * @tc.desc: IdentityCheckerImpl_GenerateFocusCheckRet
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F(InputMethodPrivateMemberTest, IdentityCheckerImpl_GenerateFocusInfo, TestSize.Level0)
+HWTEST_F(InputMethodPrivateMemberTest, IdentityCheckerImpl_GenerateFocusCheckRet, TestSize.Level0)
 {
-    IMSA_HILOGI("InputMethodPrivateMemberTest::IdentityCheckerImpl_GenerateFocusInfo start.");
+    IMSA_HILOGI("InputMethodPrivateMemberTest::IdentityCheckerImpl_GenerateFocusCheckRet start.");
     IdentityCheckerImpl impl;
     ImeInfoInquirer::GetInstance().systemConfig_.defaultMainDisplayScreenList.clear();
     FocusChangeInfo focusWindowInfo;
@@ -4012,20 +3906,8 @@ HWTEST_F(InputMethodPrivateMemberTest, IdentityCheckerImpl_GenerateFocusInfo, Te
     focusWindowInfo.displayGroupId_ = 1;
     std::vector<FocusChangeInfo> focusWindowInfos;
     focusWindowInfos.push_back(focusWindowInfo);
-    auto focusedInfo = impl.GenerateFocusInfo(focusWindowInfo, focusWindowInfos);
-    EXPECT_EQ(focusedInfo.keyboardWindowId, focusWindowInfo.windowId_);
-
-    ImeInfoInquirer::GetInstance().systemConfig_.defaultMainDisplayScreenList.insert("");
-    focusedInfo = impl.GenerateFocusInfo(focusWindowInfo, focusWindowInfos);
-    EXPECT_EQ(focusedInfo.keyboardWindowId, 0);
-
-    FocusChangeInfo focusWindowInfo1;
-    focusWindowInfo1.windowId_ = 20;
-    focusWindowInfo1.realDisplayId_ = ImfCommonConst::DEFAULT_DISPLAY_ID;
-    focusWindowInfo1.displayGroupId_ = ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID;
-    focusWindowInfos.push_back(focusWindowInfo1);
-    focusedInfo = impl.GenerateFocusInfo(focusWindowInfo, focusWindowInfos);
-    EXPECT_EQ(focusedInfo.keyboardWindowId, focusWindowInfo1.windowId_);
+    auto focusedRet = impl.GenerateFocusCheckRet(focusWindowInfo, focusWindowInfos);
+    EXPECT_EQ(focusedRet.second.keyboardWindowId, focusWindowInfo.windowId_);
 }
 
 /**
@@ -4385,6 +4267,128 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_RemoveClient_001, TestSize
     clientGroup->SetCurrentClient(nullptr);
     clientGroup->SetInactiveClient(client);
     ret = userSession->RemoveClient(client, clientGroup, options);
+
+/*
+ * @tc.name: AppMgrAdapter_HasBundleName
+ * @tc.desc: AppMgrAdapter_HasBundleName
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, AppMgrAdapter_HasBundleName, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::AppMgrAdapter_HasBundleName start.");
+    pid_t pid = 0;
+    std::string bundleName;
+    // bundleName is empty
+    auto hasBundleName = AppMgrAdapter::HasBundleName(pid, bundleName);
+    EXPECT_FALSE(hasBundleName);
+
+    // bundleName not empty, pid not find
+    bundleName = " testBundleName";
+    hasBundleName = AppMgrAdapter::HasBundleName(pid, bundleName);
+    EXPECT_FALSE(hasBundleName);
+
+    // bundleName not empty, pid find, bundleName not find
+    bundleName = " testBundleName";
+    hasBundleName = AppMgrAdapter::HasBundleName(getpid(), bundleName);
+    EXPECT_FALSE(hasBundleName);
+}
+
+/**
+ * @tc.name: IMSA_HideCurrentInput
+ * @tc.desc: IMSA_HideCurrentInput
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, IMSA_HideCurrentInput, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::IMSA_HideCurrentInput start.");
+    uint64_t displayId = 100;
+    InputMethodSystemAbility imsa;
+    // session not found
+    auto ret = imsa.HideCurrentInput(displayId);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND);
+
+    // identityChecker_ is nullptr
+    imsa.userId_ = 10;
+    auto userSession = std::make_shared<PerUserSession>(imsa.userId_);
+    UserSessionManager::GetInstance().userSessions_.insert_or_assign(imsa.userId_, userSession);
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(displayId, 0);
+    ret = imsa.HideCurrentInput(displayId);
+    EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
+
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+}
+
+/**
+ * @tc.name: IMSA_ShowCurrentInputInner
+ * @tc.desc: IMSA_ShowCurrentInputInner
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, IMSA_ShowCurrentInputInner, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::IMSA_ShowCurrentInputInner start.");
+    uint64_t displayId = 100;
+    InputMethodSystemAbility imsa;
+    // session not found
+    auto ret = imsa.ShowCurrentInputInner(displayId);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND);
+
+    // identityChecker_ is nullptr
+    imsa.userId_ = 10;
+    auto userSession = std::make_shared<PerUserSession>(imsa.userId_);
+    UserSessionManager::GetInstance().userSessions_.insert_or_assign(imsa.userId_, userSession);
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(displayId, 0);
+    ret = imsa.ShowCurrentInputInner(displayId);
+    EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
+
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+}
+
+/**
+ * @tc.name: PerUserSession_IsPanelShown_001
+ * @tc.desc: IsPanelShown with displayId
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_IsPanelShown_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_IsPanelShown_001 start.");
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    PanelInfo panelInfo;
+    bool isShown = false;
+    userSession->clientGroupMap_.clear();
+    // clientInfo is empty
+    auto ret = userSession->IsPanelShown(ImfCommonConst::DEFAULT_DISPLAY_ID, panelInfo, isShown);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_FALSE(isShown);
+    // clientInfo is not empty, but keyboard displayId not same
+    auto group = std::make_shared<ClientGroup>(ImfCommonConst::DEFAULT_DISPLAY_ID, nullptr);
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    auto info = std::make_shared<InputClientInfo>();
+    info->client = client;
+    info->config.inputAttribute.callingDisplayId = 10;
+    group->SetCurrentClient(client);
+    group->mapClients_.insert_or_assign(client->AsObject(), info);
+    userSession->clientGroupMap_.insert_or_assign(ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID, group);
+    ret = userSession->IsPanelShown(ImfCommonConst::DEFAULT_DISPLAY_ID, panelInfo, isShown);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_FALSE(isShown);
+    // clientInfo is not empty, keyboard displayId same, real ime data not exist
+    info->config.inputAttribute.callingDisplayId = ImfCommonConst::DEFAULT_DISPLAY_ID;
+    group->mapClients_.insert_or_assign(client->AsObject(), info);
+    userSession->clientGroupMap_.insert_or_assign(ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID, group);
+    ret = userSession->IsPanelShown(ImfCommonConst::DEFAULT_DISPLAY_ID, panelInfo, isShown);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_FALSE(isShown);
+    // has real ime
+    auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, 100);
+    imeData->imeStatus = ImeStatus::READY;
+    userSession->realImeData_ = imeData;
+    ret = userSession->IsPanelShown(ImfCommonConst::DEFAULT_DISPLAY_ID, panelInfo, isShown);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 }
 } // namespace MiscServices

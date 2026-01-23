@@ -187,7 +187,7 @@ int32_t NumkeyAppsManager::ParseWhiteList(std::unordered_set<std::string> &list)
         return ErrorCode::NO_ERROR;
     }
     NumkeyAppListCfg whiteListCfg;
-    if (!whiteListCfg.Unmarshall(valueStr)) {
+    if (!valueStr.empty() && !whiteListCfg.Unmarshall(valueStr)) {
         IMSA_HILOGE("unmarshall failed");
         return ErrorCode::ERROR_PARSE_CONFIG_FILE;
     }
@@ -211,7 +211,7 @@ int32_t NumkeyAppsManager::ParseBlockList(int32_t userId, std::unordered_set<std
         return ErrorCode::NO_ERROR;
     }
     UserBlockListCfg blockListCfg;
-    if (!blockListCfg.Unmarshall(valueStr)) {
+    if (!valueStr.empty() && !blockListCfg.Unmarshall(valueStr)) {
         IMSA_HILOGE("unmarshall failed");
         return ErrorCode::ERROR_PARSE_CONFIG_FILE;
     }

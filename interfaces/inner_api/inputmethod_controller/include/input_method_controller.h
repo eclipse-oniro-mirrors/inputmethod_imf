@@ -511,24 +511,48 @@ public:
     /**
      * @brief Show soft keyboard.
      *
-     * This function is used to show soft keyboard of current client.
+     * This function is used to show soft keyboard of current client that is in the default display group.
      *
      * @param type   Indicates the type of caller.
      * @return Returns 0 for success, others for failure.
      * @since 6
      */
-    IMF_API int32_t ShowSoftKeyboard(
-        ClientType type = ClientType::INNER_KIT, uint64_t displayId = ImfCommonConst::DEFAULT_DISPLAY_ID);
+    IMF_API int32_t ShowSoftKeyboard(ClientType type = ClientType::INNER_KIT);
+
+    /**
+     * @brief Show soft keyboard.
+     *
+     * This function is used to show the soft keyboard of the current client that is showing in the target displayId
+     *
+     * @param displayId Indicates the target displayId.
+     * @param type   Indicates the type of caller.
+     * @return Returns 0 for success, others for failure.
+     * @since 23
+     */
+    IMF_API int32_t ShowSoftKeyboard(uint64_t displayId, ClientType type = ClientType::INNER_KIT);
 
     /**
      * @brief Hide soft keyboard.
      *
-     * This function is used to hide soft keyboard of current client, and keep binding.
+     * This function is used to hide soft keyboard of current client that is in the default display group
+     * and keep binding.
      *
      * @return Returns 0 for success, others for failure.
      * @since 6
      */
-    IMF_API int32_t HideSoftKeyboard(uint64_t displayId = ImfCommonConst::DEFAULT_DISPLAY_ID);
+    IMF_API int32_t HideSoftKeyboard();
+
+    /**
+     * @brief Hide soft keyboard.
+     *
+     * This function is used to hide soft keyboard of current client that is showing in the target displayId,
+     * and keep binding.
+     *
+     * @param displayId Indicates the target displayId.
+     * @return Returns 0 for success, others for failure.
+     * @since 23
+     */
+    IMF_API int32_t HideSoftKeyboard(uint64_t displayId);
 
     /**
      * @brief Stop current input session.
@@ -838,15 +862,28 @@ public:
     /**
      * @brief Query whether the specific type panel is shown.
      *
-     * This function is used to query whether the specific type panel is shown.
+     * This function is used to query whether the specific type panel is shown in the default display group.
      *
      * @param panelInfo Indicates the info of the panel.
      * @param isShown Indicates the state of the specific panel.
      * @return Returns 0 for success, others for failure.
      * @since 11
      */
-    IMF_API int32_t IsPanelShown(
-        const PanelInfo &panelInfo, bool &isShown, uint64_t displayId = ImfCommonConst::DEFAULT_DISPLAY_ID);
+    IMF_API int32_t IsPanelShown(const PanelInfo &panelInfo, bool &isShown);
+
+    /**
+     * @brief Query whether the specific type panel is shown.
+     *
+     * This function is used to query whether the specific type panel is shown in the target displayId.
+     *
+     * @param panelInfo Indicates the info of the panel.
+     * @param isShown Indicates the state of the specific panel.
+     * @param displayId Indicates the target displayId.
+     * @return Returns 0 for success, others for failure.
+     * @since 23
+     */
+    IMF_API int32_t IsPanelShown(uint64_t displayId, const PanelInfo &panelInfo, bool &isShown);
+
     int32_t UpdateListenEventFlag(uint32_t finalEventFlag, uint32_t eventFlag, bool isOn);
 
     /**
@@ -1049,6 +1086,7 @@ private:
     std::pair<int64_t, std::string> GetBindImeInfo();
     int32_t SetPreviewTextInner(const std::string &text, const Range &range);
     int32_t ShowTextInputInner(const AttachOptions &attachOptions, ClientType type);
+    int32_t ShowSoftKeyboardInner(ClientType type);
     int32_t ShowSoftKeyboardInner(uint64_t displayId, ClientType type);
     void ReportClientShow(int32_t eventCode, int32_t errCode, ClientType type);
     void GetWindowScaleCoordinate(uint32_t windowId, CursorInfo &cursorInfo);
