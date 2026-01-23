@@ -4267,6 +4267,8 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_RemoveClient_001, TestSize
     clientGroup->SetCurrentClient(nullptr);
     clientGroup->SetInactiveClient(client);
     ret = userSession->RemoveClient(client, clientGroup, options);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
 
 /*
  * @tc.name: AppMgrAdapter_HasBundleName
