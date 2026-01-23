@@ -88,19 +88,10 @@ taihe_shared_library("inputmethod_taihe_native") {
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client",
   ]
   external_deps = [
-    "ability_base:want",
     "ability_runtime:abilitykit_native",
-    "ability_runtime:ani_base_context",
-    "ability_runtime:extensionkit_native",
     "ace_engine:ace_uicontent",
     "bundle_framework:bms_ani_common",
-    "c_utils:utils",
-    "eventhandler:libeventhandler",
     "ffrt:libffrt",
-    "hilog:libhilog",
-    "icu:shared_icui18n",
-    "icu:shared_icuuc",
-    "ipc:ipc_core",
     "ipc:ipc_single",
   ]
 }
