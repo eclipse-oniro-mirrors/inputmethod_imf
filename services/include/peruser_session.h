@@ -115,7 +115,7 @@ public:
     int32_t OnShowCurrentInputInTargetDisplay(uint64_t displayId);
     int32_t OnShowInput(sptr<IInputClient> client, int32_t requestKeyboardReason = 0);
     int32_t OnHideInput(sptr<IInputClient> client);
-    int32_t OnRequestHideInput(uint64_t displayGroupId, bool isRestrictedMainShow);
+    int32_t OnRequestHideInput(uint64_t displayId, const std::string &callerBundleName);
     void OnSecurityChange(int32_t security);
     void OnHideSoftKeyBoardSelf();
     void NotifyImeChangeToClients(const Property &property, const SubProperty &subProperty);
@@ -253,14 +253,16 @@ private:
     int32_t BindClientWithIme(const std::shared_ptr<InputClientInfo> &clientInfo,
         const std::shared_ptr<ImeData> &imeData, bool isBindFromClient = false);
     void UnBindClientWithIme(const std::shared_ptr<InputClientInfo> &currentClientInfo, const DetachOptions &options);
-    void StopClientInput(
-        const std::shared_ptr<InputClientInfo> &clientInfo, bool isStopInactiveClient = false, bool isAsync = false);
+    void StopClientInput(const std::shared_ptr<InputClientInfo> &clientInfo, DetachOptions options = {});
     void StopImeInput(const std::shared_ptr<ImeData> &imeData, const std::shared_ptr<InputClientInfo> &clientInfo,
         uint32_t sessionId);
 
     int32_t HideKeyboard(const sptr<IInputClient> &currentClient, const std::shared_ptr<ClientGroup> &clientGroup);
     int32_t ShowKeyboard(const sptr<IInputClient> &currentClient, const std::shared_ptr<ClientGroup> &clientGroup,
         int32_t requestKeyboardReason = 0);
+    bool RequestHideRealIme(uint64_t displayGroupId);
+    bool RequestHideProxyIme(uint64_t displayId);
+    int32_t UpdateClientAfterRequestHide(uint64_t displayGroupId, const std::string &callerBundleName);
 
     int32_t InitInputControlChannel();
     void StartImeInImeDied();

@@ -535,6 +535,8 @@ struct DetachOptions {
     bool isUnbindFromClient{ false };
     bool isInactiveClient{ false };
     bool isNotifyClientAsync{ false };
+    bool needNotifyClient{ false };
+    bool isSendKeyboardStatus{ true };
 };
 
 enum class ResponseDataType : uint64_t { NONE_TYPE = 0, STRING_TYPE, INT32_TYPE };

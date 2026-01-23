@@ -32,8 +32,9 @@ public:
     InputClientServiceImpl();
     ~InputClientServiceImpl();
     ErrCode OnInputReady(const sptr<IRemoteObject> &agent, const BindImeInfo &imeInfo) override;
-    ErrCode OnInputStop(bool isStopInactiveClient, const sptr<IRemoteObject> &object) override;
-    ErrCode OnInputStopAsync(bool isStopInactiveClient) override;
+    ErrCode OnInputStop(
+        bool isStopInactiveClient, const sptr<IRemoteObject> &object, bool isSendKeyboardStatus) override;
+    ErrCode OnInputStopAsync(bool isStopInactiveClient, bool isSendKeyboardStatus) override;
     ErrCode OnSwitchInput(const Property& property, const SubProperty& subProperty) override;
     ErrCode OnPanelStatusChange(const uint32_t status, const ImeWindowInfo& info) override;
     ErrCode NotifyInputStart(uint32_t callingWndId, int32_t requestKeyboardReason) override;

@@ -1335,7 +1335,8 @@ void InputMethodController::SetInputReady(
     }
 }
 // LCOV_EXCL_STOP
-void InputMethodController::OnInputStop(bool isStopInactiveClient, sptr<IRemoteObject> proxy)
+void InputMethodController::OnInputStop(
+    bool isStopInactiveClient, const sptr<IRemoteObject> &proxy, bool isSendKeyboardStatus)
 {
     ClearAgentInfo();
     auto listener = GetTextListener();
@@ -1345,7 +1346,7 @@ void InputMethodController::OnInputStop(bool isStopInactiveClient, sptr<IRemoteO
             IMSA_HILOGD("finish text preview.");
             listener->FinishTextPreviewV2();
         }
-        if (!isStopInactiveClient || !listener->IsFromTs()) {
+        if (isSendKeyboardStatus && (!isStopInactiveClient || !listener->IsFromTs())) {
             listener->SendKeyboardStatusV2(KeyboardStatus::HIDE);
         }
     }
