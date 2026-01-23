@@ -29,9 +29,6 @@ namespace MiscServices {
 using namespace OHOS::Rosen;
 using WMError = OHOS::Rosen::WMError;
 using namespace std::chrono_literals;
-#ifdef SCENE_BOARD_ENABLE
-constexpr int32_t MAX_TIMEOUT = 5000; //5ms
-#endif
 // LCOV_EXCL_START
 WindowAdapter::~WindowAdapter()
 {
@@ -49,35 +46,6 @@ void WindowAdapter::GetFocusInfo(OHOS::Rosen::FocusChangeInfo &focusInfo, uint64
     WindowManagerLite::GetInstance().GetFocusWindowInfo(focusInfo, displayId);
 #else
     WindowManager::GetInstance().GetFocusWindowInfo(focusInfo, displayId);
-#endif
-}
-
-bool WindowAdapter::GetCallingWindowInfo(
-    const uint32_t windId, const int32_t userId, CallingWindowInfo &callingWindowInfo)
-{
-#ifdef SCENE_BOARD_ENABLE
-    IMSA_HILOGD("[%{public}d,%{public}d] run in.", userId, windId);
-    callingWindowInfo.windowId_ = static_cast<int32_t>(windId);
-    callingWindowInfo.userId_ = userId;
-    int64_t start =  std::chrono::duration_cast<std::chrono::microseconds>
-        (std::chrono::system_clock::now().time_since_epoch()).count();
-    auto wmErr = WindowManagerLite::GetInstance().GetCallingWindowInfo(callingWindowInfo);
-    int64_t end =  std::chrono::duration_cast<std::chrono::microseconds>
-        (std::chrono::system_clock::now().time_since_epoch()).count();
-    int64_t durTime = end - start;
-    if (durTime > MAX_TIMEOUT) {
-        IMSA_HILOGW("GetCallingWindowInfo cost [%{public}" PRId64 "]us", durTime);
-    }
-    if (wmErr != WMError::WM_OK) {
-        IMSA_HILOGE("[%{public}d,%{public}d,%{public}d] failed to get calling window info.", userId, windId, wmErr);
-        return false;
-    }
-    IMSA_HILOGD("callingWindowInfo:%{public}s",
-        WindowDisplayChangeListener::CallingWindowInfoToString(callingWindowInfo).c_str());
-    return true;
-#else
-    IMSA_HILOGE("capability not supported");
-    return false;
 #endif
 }
 
@@ -258,7 +226,7 @@ uint64_t WindowAdapter::GetDisplayGroupId(uint64_t displayId)
     return DEFAULT_DISPLAY_GROUP_ID;
 }
 
-bool WindowAdapter::HasDisplayGroupId(uint64_t displayGroupId)
+bool WindowAdapter::IsDisplayGroupIdExist(uint64_t displayGroupId)
 {
     if (displayGroupId == DEFAULT_DISPLAY_GROUP_ID) {
         return true;
@@ -268,6 +236,16 @@ bool WindowAdapter::HasDisplayGroupId(uint64_t displayGroupId)
     auto iter = std::find_if(displayGroupIds_.begin(), displayGroupIds_.end(),
         [displayGroupId](const std::pair<uint64_t, uint64_t> &pair) { return pair.second == displayGroupId; });
     return iter != displayGroupIds_.end();
+}
+
+bool WindowAdapter::IsDisplayIdExist(uint64_t displayId)
+{
+    if (displayId == DEFAULT_DISPLAY_ID) {
+        return true;
+    }
+    IMSA_HILOGD("displayId:%{public}" PRIu64 ".", displayId);
+    std::lock_guard<std::mutex> lock(displayGroupIdsLock_);
+    return displayGroupIds_.find(displayId) != displayGroupIds_.end();
 }
 
 // LCOV_EXCL_START

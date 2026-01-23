@@ -40,7 +40,9 @@ public:
     int32_t OnRemoteRequest(uint32_t code, MessageParcel &data, MessageParcel &reply, MessageOption &option) override;
     ErrCode StartInput(const InputClientInfoInner &inputClientInfoInner, std::vector<sptr<IRemoteObject>> &agents,
         std::vector<BindImeInfo> &imeInfos) override;
-    ErrCode ShowCurrentInput(uint64_t displayId, uint32_t type = static_cast<uint32_t>(ClientType::INNER_KIT)) override;
+    ErrCode ShowCurrentInput(uint32_t type) override;
+    ErrCode ShowCurrentInput(uint64_t displayId, uint32_t type) override;
+    ErrCode HideCurrentInput() override;
     ErrCode HideCurrentInput(uint64_t displayId) override;
     ErrCode ShowInput(const sptr<IInputClient> &client, uint32_t windowId,
         uint32_t type = static_cast<uint32_t>(ClientType::INNER_KIT), int32_t requestKeyboardReason = 0) override;
@@ -71,6 +73,7 @@ public:
     ErrCode StartInputType(int32_t type) override;
     ErrCode StartInputTypeAsync(int32_t type) override;
     ErrCode ExitCurrentInputType() override;
+    ErrCode IsPanelShown(const PanelInfo &panelInfo, bool &isShown) override;
     ErrCode IsPanelShown(uint64_t displayId, const PanelInfo &panelInfo, bool &isShown) override;
     ErrCode GetSecurityMode(int32_t &security) override;
     ErrCode ConnectSystemCmd(const sptr<IRemoteObject> &channel, sptr<IRemoteObject> &agent) override;
@@ -191,6 +194,7 @@ private:
     std::pair<bool, FocusedInfo> IsFocusedOrBroker(int64_t callingPid, uint32_t callingTokenId, uint32_t windowId = 0,
         const sptr<IRemoteObject> &abilityToken = nullptr);
     int32_t ShowInputInner(sptr<IInputClient> client, uint32_t windowId, int32_t requestKeyboardReason = 0);
+    int32_t ShowCurrentInputInner();
     int32_t ShowCurrentInputInner(uint64_t displayId);
     std::pair<int64_t, std::string> GetCurrentImeInfoForHiSysEvent(int32_t userId);
     int32_t GetScreenLockIme(int32_t userId, std::string &ime);

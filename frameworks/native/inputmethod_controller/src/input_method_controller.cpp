@@ -1177,6 +1177,22 @@ int32_t InputMethodController::SetCallingWindowByIMSA(uint32_t windowId)
     return ErrorCode::NO_ERROR;
 }
 
+int32_t InputMethodController::ShowSoftKeyboardInner(ClientType type)
+{
+    auto proxy = GetSystemAbilityProxy();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("proxy is nullptr!");
+        return ErrorCode::ERROR_SERVICE_START_FAILED;
+    }
+    IMSA_HILOGI("clientType:%{public}d.", type);
+    {
+        std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
+        clientInfo_.isShowKeyboard = true;
+    }
+    InputMethodSysEvent::GetInstance().OperateSoftkeyboardBehaviour(OperateIMEInfoCode::IME_SHOW_NORMAL);
+    return proxy->ShowCurrentInput(type);
+}
+
 int32_t InputMethodController::ShowSoftKeyboardInner(uint64_t displayId, ClientType type)
 {
     auto proxy = GetSystemAbilityProxy();
@@ -1184,16 +1200,12 @@ int32_t InputMethodController::ShowSoftKeyboardInner(uint64_t displayId, ClientT
         IMSA_HILOGE("proxy is nullptr!");
         return ErrorCode::ERROR_SERVICE_START_FAILED;
     }
-    IMSA_HILOGI("start.");
-    {
-        std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
-        clientInfo_.isShowKeyboard = true;
-    }
+    IMSA_HILOGI("displayId/clientType:%{public}" PRIu64 "/%{public}d.", displayId, type);
     InputMethodSysEvent::GetInstance().OperateSoftkeyboardBehaviour(OperateIMEInfoCode::IME_SHOW_NORMAL);
     return proxy->ShowCurrentInput(displayId, type);
 }
 
-int32_t InputMethodController::HideSoftKeyboard(uint64_t displayId)
+int32_t InputMethodController::HideSoftKeyboard()
 {
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
@@ -1205,6 +1217,18 @@ int32_t InputMethodController::HideSoftKeyboard(uint64_t displayId)
         std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
         clientInfo_.isShowKeyboard = false;
     }
+    InputMethodSysEvent::GetInstance().OperateSoftkeyboardBehaviour(OperateIMEInfoCode::IME_HIDE_NORMAL);
+    return proxy->HideCurrentInput();
+}
+
+int32_t InputMethodController::HideSoftKeyboard(uint64_t displayId)
+{
+    auto proxy = GetSystemAbilityProxy();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("proxy is nullptr!");
+        return ErrorCode::ERROR_EX_NULL_POINTER;
+    }
+    IMSA_HILOGI("displayId:%{public}" PRIu64 ".", displayId);
     InputMethodSysEvent::GetInstance().OperateSoftkeyboardBehaviour(OperateIMEInfoCode::IME_HIDE_NORMAL);
     return proxy->HideCurrentInput(displayId);
 }
@@ -1674,7 +1698,7 @@ int32_t InputMethodController::StartInputTypeAsync(InputType type)
     return proxy->StartInputTypeAsync(static_cast<int32_t>(type));
 }
 
-int32_t InputMethodController::IsPanelShown(const PanelInfo &panelInfo, bool &isShown, uint64_t displayId)
+int32_t InputMethodController::IsPanelShown(const PanelInfo &panelInfo, bool &isShown)
 {
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
@@ -1683,6 +1707,18 @@ int32_t InputMethodController::IsPanelShown(const PanelInfo &panelInfo, bool &is
     }
     IMSA_HILOGD("type: %{public}d, flag: %{public}d.", static_cast<int32_t>(panelInfo.panelType),
         static_cast<int32_t>(panelInfo.panelFlag));
+    return proxy->IsPanelShown(panelInfo, isShown);
+}
+
+int32_t InputMethodController::IsPanelShown(uint64_t displayId, const PanelInfo &panelInfo, bool &isShown)
+{
+    auto proxy = GetSystemAbilityProxy();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("proxy is nullptr!");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    IMSA_HILOGD("displayId/type/flag:%{public}" PRIu64 "/%{public}d/%{public}d.", displayId,
+                static_cast<int32_t>(panelInfo.panelType), static_cast<int32_t>(panelInfo.panelFlag));
     return proxy->IsPanelShown(displayId, panelInfo, isShown);
 }
 
@@ -1944,7 +1980,14 @@ int32_t InputMethodController::ShowTextInput(const AttachOptions &attachOptions,
     return ret;
 }
 
-int32_t InputMethodController::ShowSoftKeyboard(ClientType type, uint64_t displayId)
+int32_t InputMethodController::ShowSoftKeyboard(ClientType type)
+{
+    auto ret = ShowSoftKeyboardInner(type);
+    ReportClientShow(static_cast<int32_t>(IInputMethodSystemAbilityIpcCode::COMMAND_SHOW_CURRENT_INPUT), ret, type);
+    return ret;
+}
+
+int32_t InputMethodController::ShowSoftKeyboard(uint64_t displayId, ClientType type)
 {
     auto ret = ShowSoftKeyboardInner(displayId, type);
     ReportClientShow(static_cast<int32_t>(IInputMethodSystemAbilityIpcCode::COMMAND_SHOW_CURRENT_INPUT), ret, type);

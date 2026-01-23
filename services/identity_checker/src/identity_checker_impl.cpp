@@ -18,6 +18,7 @@
 
 #include "ability_manager_client.h"
 #include "accesstoken_kit.h"
+#include "app_mgr_adapter.h"
 #include "display_adapter.h"
 #include "global.h"
 #include "ime_info_inquirer.h"
@@ -83,20 +84,17 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIAbility(
     int64_t callingPid, uint64_t displayId, const std::vector<FocusChangeInfo> &focusWindowInfos)
 {
     auto displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId);
-    std::pair<bool, FocusedInfo> retInfo{ false, {} };
     auto iter = std::find_if(
         focusWindowInfos.begin(), focusWindowInfos.end(), [callingPid, displayGroupId](const auto focusWindowInfo) {
             return focusWindowInfo.pid_ == callingPid && focusWindowInfo.displayGroupId_ == displayGroupId;
         });
     if (iter == focusWindowInfos.end()) {
-        return retInfo;
+        return { false, {} };
     }
-    retInfo.first = true;
-    retInfo.second = GenerateFocusInfo(*iter, focusWindowInfos);
-    return retInfo;
+    return GenerateFocusCheckRet(*iter, focusWindowInfos);
 }
 // LCOV_EXCL_START
-FocusedInfo IdentityCheckerImpl::GenerateFocusInfo(
+std::pair<bool, FocusedInfo> IdentityCheckerImpl::GenerateFocusCheckRet(
     const FocusChangeInfo &focusWindowInfo, const std::vector<Rosen::FocusChangeInfo> &focusWindowInfos)
 {
     FocusedInfo focusedInfo;
@@ -106,36 +104,40 @@ FocusedInfo IdentityCheckerImpl::GenerateFocusInfo(
     focusedInfo.keyboardDisplayId = focusWindowInfo.realDisplayId_;
     focusedInfo.keyboardWindowId = static_cast<uint32_t>(focusWindowInfo.windowId_);
     focusedInfo.keyboardDisplayGroupId = focusWindowInfo.displayGroupId_;
-    if (!DisplayAdapter::IsRestrictedMainDisplayId(focusedInfo.displayId)) {
-        return focusedInfo;
+    auto [isRestrictedMainDisplay, bundleName] =
+        DisplayAdapter::GetRestrictedMainDisplayInfo(focusWindowInfo.realDisplayId_);
+    if (!isRestrictedMainDisplay) {
+        return { true, focusedInfo };
     }
-    focusedInfo.keyboardDisplayId = ImfCommonConst::DEFAULT_DISPLAY_ID;
-    focusedInfo.keyboardDisplayGroupId = ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID;
-    focusedInfo.keyboardWindowId = ImfCommonConst::INVALID_WINDOW_ID;
+    IMSA_HILOGI("restricted main display, bundleName:%{public}s!", bundleName.c_str());
     auto iter = std::find_if(focusWindowInfos.begin(), focusWindowInfos.end(),
         [displayId = ImfCommonConst::DEFAULT_DISPLAY_ID, displayGroupId = ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID](
             const auto focusWindowInfo) {
             return focusWindowInfo.realDisplayId_ == displayId && focusWindowInfo.displayGroupId_ == displayGroupId;
         });
     if (iter == focusWindowInfos.end()) {
-        return focusedInfo;
+        IMSA_HILOGE("main display has no focus!");
+        return { false, {} };
     }
+    focusedInfo.keyboardDisplayId = ImfCommonConst::DEFAULT_DISPLAY_ID;
+    focusedInfo.keyboardDisplayGroupId = ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID;
     focusedInfo.keyboardWindowId = static_cast<uint32_t>(iter->windowId_);
-    return focusedInfo;
+    if (bundleName.empty()) {
+        IMSA_HILOGW("bundleName is empty!");
+        return { true, focusedInfo };
+    }
+    return { true, focusedInfo };
 }
 // LCOV_EXCL_STOP
 std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIAbility(
     int64_t callingPid, const std::vector<FocusChangeInfo> &focusWindowInfos)
 {
-    std::pair<bool, FocusedInfo> retInfo{ false, {} };
     auto iter = std::find_if(focusWindowInfos.begin(), focusWindowInfos.end(),
         [callingPid](const auto focusWindowInfo) { return focusWindowInfo.pid_ == callingPid; });
     if (iter == focusWindowInfos.end()) {
-        return retInfo;
+        return { false, {} };
     }
-    retInfo.first = true;
-    retInfo.second = GenerateFocusInfo(*iter, focusWindowInfos);
-    return retInfo;
+    return GenerateFocusCheckRet(*iter, focusWindowInfos);
 }
 // LCOV_EXCL_START
 bool IdentityCheckerImpl::IsSystemApp(uint64_t fullTokenId)
@@ -170,15 +172,12 @@ bool IdentityCheckerImpl::HasPermission(uint32_t tokenId, const std::string &per
 
 std::pair<bool, FocusedInfo> IdentityCheckerImpl::CheckBroker(AccessTokenID tokenId)
 {
-    std::pair<bool, FocusedInfo> retInfo{ false, {} };
     if (!IsBrokerInner(tokenId)) {
-        return retInfo;
+        return { false, {} };
     }
     FocusChangeInfo focusInfo;
     WindowAdapter::GetFocusInfo(focusInfo);
-    retInfo.first = true;
-    retInfo.second = GenerateFocusInfo(focusInfo, { focusInfo });
-    return retInfo;
+    return GenerateFocusCheckRet(focusInfo, { focusInfo });
 }
 
 bool IdentityCheckerImpl::IsBroker(AccessTokenID tokenId)
@@ -250,7 +249,6 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(uint32_t 
 std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(
     uint32_t windowId, uint64_t displayId, const std::vector<FocusChangeInfo> &focusWindowInfos)
 {
-    std::pair<bool, FocusedInfo> retInfo{ false, {} };
     auto displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId);
     auto iter = std::find_if(
         focusWindowInfos.begin(), focusWindowInfos.end(), [displayGroupId, windowId](const auto focusWindowInfo) {
@@ -258,10 +256,9 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(
                    && windowId == static_cast<uint32_t>(focusWindowInfo.windowId_);
         });
     if (iter == focusWindowInfos.end()) {
-        return retInfo;
+        return { false, {} };
     }
-    retInfo.first = true;
-    retInfo.second = GenerateFocusInfo(*iter, focusWindowInfos);
+    auto retInfo = GenerateFocusCheckRet(*iter, focusWindowInfos);
     retInfo.second.uiExtensionHostPid = iter->pid_;
     return retInfo;
 }
@@ -291,8 +288,7 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(
     if (iter == focusWindowInfos.end()) {
         return retInfo;
     }
-    retInfo.first = true;
-    retInfo.second = GenerateFocusInfo(*iter, focusWindowInfos);
+    retInfo = GenerateFocusCheckRet(*iter, focusWindowInfos);
     retInfo.second.uiExtensionHostPid = iter->pid_;
     return retInfo;
 }

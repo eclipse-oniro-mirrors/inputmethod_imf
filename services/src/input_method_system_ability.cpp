@@ -1006,7 +1006,7 @@ ErrCode InputMethodSystemAbility::InitConnect()
     return session->InitConnect(pid);
 }
 
-ErrCode InputMethodSystemAbility::HideCurrentInput(uint64_t displayId)
+ErrCode InputMethodSystemAbility::HideCurrentInput()
 {
     AccessTokenID tokenId = IPCSkeleton::GetCallingTokenID();
     auto userId = GetCallingUserId();
@@ -1022,10 +1022,41 @@ ErrCode InputMethodSystemAbility::HideCurrentInput(uint64_t displayId)
             return ErrorCode::ERROR_STATUS_PERMISSION_DENIED;
         }
     }
-    return session->OnHideCurrentInput(WindowAdapter::GetInstance().GetDisplayGroupId(displayId));
+    return session->OnHideCurrentInput(ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID);
 }
 
-ErrCode InputMethodSystemAbility::ShowCurrentInputInner(uint64_t displayId)
+ErrCode InputMethodSystemAbility::HideCurrentInput(uint64_t displayId)
+{
+    AccessTokenID tokenId = IPCSkeleton::GetCallingTokenID();
+    auto userId = GetCallingUserId();
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+    if (session == nullptr) {
+        IMSA_HILOGE("%{public}d session is nullptr!", userId);
+        return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
+    }
+    if (!WindowAdapter::GetInstance().IsDisplayIdExist(displayId)) {
+        IMSA_HILOGE("displayId:%{public}" PRIu64 " not exist!", displayId);
+        return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+    }
+    if (identityChecker_ == nullptr) {
+        IMSA_HILOGE("identityChecker_ is nullptr!");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    if (identityChecker_->IsBroker(tokenId)) {
+        return session->OnHideCurrentInputInTargetDisplay(displayId);
+    }
+    if (!identityChecker_->IsSystemApp(IPCSkeleton::GetCallingFullTokenID())) {
+        IMSA_HILOGE("not system application!");
+        return ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION;
+    }
+    if (!identityChecker_->HasPermission(tokenId, std::string(PERMISSION_CONNECT_IME_ABILITY))) {
+        IMSA_HILOGE("not has connect ime ability permission!");
+        return ErrorCode::ERROR_STATUS_PERMISSION_DENIED;
+    }
+    return session->OnHideCurrentInputInTargetDisplay(displayId);
+}
+
+ErrCode InputMethodSystemAbility::ShowCurrentInputInner()
 {
     AccessTokenID tokenId = IPCSkeleton::GetCallingTokenID();
     auto userId = GetCallingUserId();
@@ -1041,7 +1072,38 @@ ErrCode InputMethodSystemAbility::ShowCurrentInputInner(uint64_t displayId)
             return ErrorCode::ERROR_STATUS_PERMISSION_DENIED;
         }
     }
-    return session->OnShowCurrentInput(WindowAdapter::GetInstance().GetDisplayGroupId(displayId));
+    return session->OnShowCurrentInput(ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID);
+}
+
+int32_t InputMethodSystemAbility::ShowCurrentInputInner(uint64_t displayId)
+{
+    AccessTokenID tokenId = IPCSkeleton::GetCallingTokenID();
+    auto userId = GetCallingUserId();
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+    if (session == nullptr) {
+        IMSA_HILOGE("%{public}d session is nullptr!", userId);
+        return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
+    }
+    if (!WindowAdapter::GetInstance().IsDisplayIdExist(displayId)) {
+        IMSA_HILOGE("displayId:%{public}" PRIu64 " not exist!", displayId);
+        return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+    }
+    if (identityChecker_ == nullptr) {
+        IMSA_HILOGE("identityChecker_ is nullptr!");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    if (identityChecker_->IsBroker(tokenId)) {
+        return session->OnShowCurrentInputInTargetDisplay(displayId);
+    }
+    if (!identityChecker_->IsSystemApp(IPCSkeleton::GetCallingFullTokenID())) {
+        IMSA_HILOGE("not system application!");
+        return ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION;
+    }
+    if (!identityChecker_->HasPermission(tokenId, std::string(PERMISSION_CONNECT_IME_ABILITY))) {
+        IMSA_HILOGE("not has connect ime ability permission!");
+        return ErrorCode::ERROR_STATUS_PERMISSION_DENIED;
+    }
+    return session->OnShowCurrentInputInTargetDisplay(displayId);
 }
 
 ErrCode InputMethodSystemAbility::PanelStatusChange(uint32_t status, const ImeWindowInfo &info)
@@ -1237,9 +1299,28 @@ int32_t InputMethodSystemAbility::IsPanelShown(uint64_t displayId, const PanelIn
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
-        return ErrorCode::ERROR_NULL_POINTER;
+        return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
     }
     return session->IsPanelShown(displayId, panelInfo, isShown);
+}
+
+int32_t InputMethodSystemAbility::IsPanelShown(const PanelInfo &panelInfo, bool &isShown)
+{
+    if (identityChecker_ == nullptr) {
+        IMSA_HILOGE("identityChecker_ is nullptr!");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    if (!identityChecker_->IsSystemApp(IPCSkeleton::GetCallingFullTokenID())) {
+        IMSA_HILOGE("not system application!");
+        return ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION;
+    }
+    auto userId = GetCallingUserId();
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+    if (session == nullptr) {
+        IMSA_HILOGE("%{public}d session is nullptr!", userId);
+        return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
+    }
+    return session->IsPanelShown(panelInfo, isShown);
 }
 
 int32_t InputMethodSystemAbility::DisplayOptionalInputMethod()
@@ -2839,6 +2920,27 @@ ErrCode InputMethodSystemAbility::ShowCurrentInput(uint64_t displayId, uint32_t 
         static_cast<int32_t>(IInputMethodSystemAbilityIpcCode::COMMAND_SHOW_CURRENT_INPUT))
                         .SetErrCode(ret)
                         .Build();
+    ImsaHiSysEventReporter::GetInstance().ReportEvent(ImfEventType::CLIENT_SHOW, *evenInfo);
+    return ret;
+}
+
+ErrCode InputMethodSystemAbility::ShowCurrentInput(uint32_t type)
+{
+    auto name = ImfHiSysEventUtil::GetAppName(IPCSkeleton::GetCallingTokenID());
+    auto pid = IPCSkeleton::GetCallingPid();
+    auto userId = GetCallingUserId();
+    auto imeInfo = GetCurrentImeInfoForHiSysEvent(userId);
+    auto ret = ShowCurrentInputInner();
+    auto evenInfo =
+        HiSysOriginalInfo::Builder()
+            .SetPeerName(name)
+            .SetPeerPid(pid)
+            .SetPeerUserId(userId)
+            .SetClientType(static_cast<ClientType>(type))
+            .SetImeName(imeInfo.second)
+            .SetEventCode(static_cast<int32_t>(IInputMethodSystemAbilityIpcCode::COMMAND_SHOW_CURRENT_INPUT))
+            .SetErrCode(ret)
+            .Build();
     ImsaHiSysEventReporter::GetInstance().ReportEvent(ImfEventType::CLIENT_SHOW, *evenInfo);
     return ret;
 }
