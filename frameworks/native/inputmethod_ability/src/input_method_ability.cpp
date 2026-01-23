@@ -1411,12 +1411,12 @@ bool InputMethodAbility::IsDefaultIme()
     return false;
 }
 
-bool InputMethodAbility::IsEnable()
+bool InputMethodAbility::IsEnable(uint64_t displayId)
 {
     if (imeListener_ == nullptr) {
         return false;
     }
-    return imeListener_->IsEnable();
+    return imeListener_->IsEnable(displayId);
 }
 
 bool InputMethodAbility::IsCallbackRegistered(const std::string &type)

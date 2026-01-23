@@ -641,12 +641,12 @@ void PerUserSession::RemoveProxyImeData(pid_t pid)
 std::shared_ptr<ImeData> PerUserSession::GetReadyImeDataToBind(uint64_t displayId)
 {
     auto proxyIme = GetProxyImeData(displayId);
-    if (proxyIme != nullptr && IsEnable(proxyIme)) {
+    if (proxyIme != nullptr && IsEnable(proxyIme, displayId)) {
         return proxyIme;
     }
     if (displayId != ImfCommonConst::DEFAULT_DISPLAY_ID) {
         proxyIme = GetProxyImeData(ImfCommonConst::DEFAULT_DISPLAY_ID);
-        if (proxyIme != nullptr && proxyIme->uid == ImfCommonConst::COL_PROXY_IME && IsEnable(proxyIme)) {
+        if (proxyIme != nullptr && proxyIme->uid == ImfCommonConst::COL_PROXY_IME && IsEnable(proxyIme, displayId)) {
             return proxyIme;
         }
     }
@@ -3206,13 +3206,13 @@ int32_t PerUserSession::PrepareImeInfos(const std::shared_ptr<ImeData> &imeData,
     return ErrorCode::NO_ERROR;
 }
 
-bool PerUserSession::IsEnable(const std::shared_ptr<ImeData> &data)
+bool PerUserSession::IsEnable(const std::shared_ptr<ImeData> &data, uint64_t displayId)
 {
     bool ret = false;
     if (data == nullptr || data->core == nullptr) {
         return false;
     }
-    data->core->IsEnable(ret);
+    data->core->IsEnable(ret, displayId);
     return ret;
 }
 

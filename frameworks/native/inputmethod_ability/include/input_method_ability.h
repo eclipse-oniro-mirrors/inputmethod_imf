@@ -85,7 +85,7 @@ public:
     int32_t ShowPanel(const std::shared_ptr<InputMethodPanel> &inputMethodPanel);
     int32_t HidePanel(const std::shared_ptr<InputMethodPanel> &inputMethodPanel);
     bool IsCurrentIme();
-    bool IsEnable();
+    bool IsEnable(uint64_t displayId);
     bool IsCallbackRegistered(const std::string &type);
     bool IsSystemApp();
     InputType GetInputType();

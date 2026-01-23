@@ -52,7 +52,7 @@ public:
     void OnSetSubtype(const SubProperty &property) override;
     void OnInputFinish() override;
     void ReceivePrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand) override;
-    bool IsEnable() override;
+    bool IsEnable(uint64_t displayId) override;
     bool PostTaskToEventHandler(std::function<void()> task, const std::string &taskName) override;
 
 private:

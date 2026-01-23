@@ -103,9 +103,9 @@ ErrCode InputMethodCoreServiceImpl::StopInput(const sptr<IRemoteObject> &channel
     return ERR_OK;
 }
 // LCOV_EXCL_STOP
-ErrCode InputMethodCoreServiceImpl::IsEnable(bool &resultValue)
+ErrCode InputMethodCoreServiceImpl::IsEnable(bool &resultValue, uint64_t displayId)
 {
-    resultValue = InputMethodAbility::GetInstance().IsEnable();
+    resultValue = InputMethodAbility::GetInstance().IsEnable(displayId);
     return ERR_OK;
 }
 

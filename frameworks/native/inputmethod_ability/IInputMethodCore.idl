@@ -27,7 +27,7 @@ interface OHOS.MiscServices.IInputMethodCore {
     void InitInputControlChannel([in] IInputControlChannel inputControlChannel);
     void StopInputService([in] boolean isTerminateIme);
     void SetSubtype([in] SubProperty property);
-    void IsEnable([out] boolean resultValue);
+    void IsEnable([out] boolean resultValue, [in] unsigned long displayId);
     void IsPanelShown([in] PanelInfo panelInfo, [out] boolean isShown);
     void OnSecurityChange([in] int security);
     void OnConnectSystemCmd([in] IRemoteObject channel, [out] IRemoteObject agent);
