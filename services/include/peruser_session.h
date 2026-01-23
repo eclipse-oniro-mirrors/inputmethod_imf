@@ -143,7 +143,7 @@ public:
     bool RestartIme();
     void AddRestartIme();
 
-    bool IsEnable(const std::shared_ptr<ImeData> &data, uint64_t displayId = 0);
+    bool IsEnable(const std::shared_ptr<ImeData> &data, uint64_t displayId);
     bool IsBoundToClient(uint64_t displayId);
     bool IsCurrentImeByPid(int32_t pid);
     int32_t RestoreCurrentImeSubType();
@@ -236,7 +236,7 @@ private:
     void RemoveRealImeData(pid_t pid);
     std::shared_ptr<ImeData> AddProxyImeData(
         uint64_t displayId, sptr<IInputMethodCore> core, sptr<IRemoteObject> agent, pid_t pid);
-    void AddProxyImeData(std::vector<std::shared_ptr<ImeData>> &imeDataList, const std::shared_ptr<ImeData> &imeData);
+    void AddProxyImeData(uint64_t displayId, std::vector<std::shared_ptr<ImeData>> &imeDataList, const std::shared_ptr<ImeData> &imeData);
     int32_t RemoveProxyImeData(uint64_t displayId, pid_t pid);
     void RemoveProxyImeData(pid_t pid);
     std::shared_ptr<ImeData> GetProxyImeData(pid_t pid);

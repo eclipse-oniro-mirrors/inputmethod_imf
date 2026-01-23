@@ -436,7 +436,7 @@ bool PerUserSession::RequestHideProxyIme(uint64_t displayId)
         }
         IMSA_HILOGD("get proxy ime data by clientInfo, displayId: %{public}" PRIu64 ".", displayId);
     }
-    if (!IsEnable(proxyImeData)) {
+    if (!IsEnable(proxyImeData, displayId)) {
         IMSA_HILOGD("not enable");
         return false;
     }
@@ -1422,12 +1422,12 @@ std::shared_ptr<ImeData> PerUserSession::AddProxyImeData(
     if (ret != ErrorCode::NO_ERROR) {
         return nullptr;
     }
-    AddProxyImeData(imeDataList, imeData);
+    AddProxyImeData(displayId, imeDataList, imeData);
     IMSA_HILOGI("add imeData with displayId: %{public}" PRIu64 ".", displayId);
     return imeData;
 }
 
-void PerUserSession::AddProxyImeData(
+void PerUserSession::AddProxyImeData(uint64_t displayId,
     std::vector<std::shared_ptr<ImeData>> &imeDataList, const std::shared_ptr<ImeData> &imeData)
 {
     if (imeDataList.empty()) {
@@ -1437,7 +1437,7 @@ void PerUserSession::AddProxyImeData(
     if (!isFirstPreemption_) {
         isFirstPreemption_ = true;
         const auto &lastImeData = imeDataList.back();
-        if (IsEnable(lastImeData) && !IsEnable(imeData)) {
+        if (IsEnable(lastImeData, displayId) && !IsEnable(imeData, displayId)) {
             imeDataList.insert(imeDataList.begin(), imeData);
             return;
         }
