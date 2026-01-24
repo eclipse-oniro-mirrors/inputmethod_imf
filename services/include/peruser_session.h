@@ -236,7 +236,8 @@ private:
     void RemoveRealImeData(pid_t pid);
     std::shared_ptr<ImeData> AddProxyImeData(
         uint64_t displayId, sptr<IInputMethodCore> core, sptr<IRemoteObject> agent, pid_t pid);
-    void AddProxyImeData(uint64_t displayId, std::vector<std::shared_ptr<ImeData>> &imeDataList, const std::shared_ptr<ImeData> &imeData);
+    void AddProxyImeData(uint64_t displayId,
+        std::vector<std::shared_ptr<ImeData>> &imeDataList, const std::shared_ptr<ImeData> &imeData);
     int32_t RemoveProxyImeData(uint64_t displayId, pid_t pid);
     void RemoveProxyImeData(pid_t pid);
     std::shared_ptr<ImeData> GetProxyImeData(pid_t pid);
