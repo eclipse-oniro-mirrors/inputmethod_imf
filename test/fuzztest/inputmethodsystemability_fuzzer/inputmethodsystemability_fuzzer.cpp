@@ -79,7 +79,7 @@ void SystemAbility(FuzzedDataProvider &provider)
 void FuzzInputType(FuzzedDataProvider &provider)
 {
     const int32_t type = provider.ConsumeIntegral<int32_t>();
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->StartInputType(type);
+    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->StartInputType(type, true);
     bool resultValue = provider.ConsumeBool();
     DelayedSingleton<InputMethodSystemAbility>::GetInstance()->IsInputTypeSupported(type, resultValue);
     sptr<IInputMethodCore> core = new InputMethodCoreServiceImpl();

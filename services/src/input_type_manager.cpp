@@ -99,6 +99,12 @@ bool InputTypeManager::IsVoiceKbImeStarted()
     return IsInputTypeImeStarted(type);
 }
 
+bool InputTypeManager::IsVoiceKbIme(const ImeIdentification &ime)
+{
+    ImeIdentification voiceKbIme;
+    return GetImeByInputType(InputType::VOICEKB_INPUT, voiceKbIme) == ErrorCode::NO_ERROR && voiceKbIme == ime;
+}
+
 bool InputTypeManager::IsInputTypeImeStarted(InputType type)
 {
     if (!IsStarted()) {

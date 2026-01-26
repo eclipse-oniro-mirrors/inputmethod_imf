@@ -846,7 +846,7 @@ public:
      * @return Returns 0 for success, others for failure.
      * @since 11
      */
-    IMF_API int32_t StartInputType(InputType type);
+    IMF_API int32_t StartInputType(InputType type, bool isPersistence = true);
 
     /**
      * @brief Start the input method which provides the specific input type.
@@ -857,7 +857,7 @@ public:
      * @return Returns 0 for success, others for failure.
      * @since 21
      */
-    IMF_API int32_t StartInputTypeAsync(InputType type);
+    IMF_API int32_t StartInputTypeAsync(InputType type, bool isPersistence = true);
 
     /**
      * @brief Query whether the specific type panel is shown.

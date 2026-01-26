@@ -1200,14 +1200,14 @@ ErrCode InputMethodSystemAbility::IsInputTypeSupported(int32_t type, bool &resul
     return ERR_OK;
 }
 
-ErrCode InputMethodSystemAbility::StartInputType(int32_t type)
+ErrCode InputMethodSystemAbility::StartInputType(int32_t type, bool isPersistence)
 {
-    return StartInputType(GetCallingUserId(), static_cast<InputType>(type));
+    return StartInputType(GetCallingUserId(), static_cast<InputType>(type), isPersistence);
 }
 // LCOV_EXCL_START
-ErrCode InputMethodSystemAbility::StartInputTypeAsync(int32_t type)
+ErrCode InputMethodSystemAbility::StartInputTypeAsync(int32_t type, bool isPersistence)
 {
-    return StartInputType(GetCallingUserId(), static_cast<InputType>(type));
+    return StartInputType(GetCallingUserId(), static_cast<InputType>(type), isPersistence);
 }
 
 ErrCode InputMethodSystemAbility::ExitCurrentInputType()
@@ -1523,7 +1523,7 @@ void InputMethodSystemAbility::GetValidSubtype(const std::string &subName, const
 }
 
 int32_t InputMethodSystemAbility::OnStartInputType(int32_t userId, const SwitchInfo &switchInfo,
-    bool isCheckPermission)
+    bool isCheckPermission, bool isPersistence)
 {
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
@@ -1545,7 +1545,7 @@ int32_t InputMethodSystemAbility::OnStartInputType(int32_t userId, const SwitchI
         session->GetSwitchQueue().Pop();
         return ErrorCode::NO_ERROR;
     }
-    int32_t ret = SwitchInputType(userId, switchInfo);
+    int32_t ret = SwitchInputType(userId, switchInfo, isPersistence);
     session->GetSwitchQueue().Pop();
     return ret;
 }
@@ -1629,7 +1629,7 @@ int32_t InputMethodSystemAbility::SwitchSubType(int32_t userId, const std::share
     return ErrorCode::NO_ERROR;
 }
 
-int32_t InputMethodSystemAbility::SwitchInputType(int32_t userId, const SwitchInfo &switchInfo)
+int32_t InputMethodSystemAbility::SwitchInputType(int32_t userId, const SwitchInfo &switchInfo, bool isPersistence)
 {
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
@@ -1641,18 +1641,31 @@ int32_t InputMethodSystemAbility::SwitchInputType(int32_t userId, const SwitchIn
         IMSA_HILOGE("targetIme is nullptr!");
         return ErrorCode::ERROR_IMSA_GET_IME_INFO_FAILED;
     }
+
     auto ret = session->StartIme(targetIme);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("start input method failed!");
         return ret;
     }
-    SubProperty prop;
-    prop.name = switchInfo.bundleName;
-    prop.id = switchInfo.subName;
-    ret = session->SwitchSubtype(prop);
-    if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("switch subtype failed!");
-        return ret;
+
+    ImeIdentification ime = { switchInfo.bundleName, switchInfo.subName };
+    bool isVoiceKbIme = InputTypeManager::GetInstance().IsVoiceKbIme(ime);
+    // Use SendPrivateCommand to notify when start voice keyboard temporarily.
+    if (isVoiceKbIme && !isPersistence) {
+        ret = session->SendVoicePrivateCommand(isPersistence);
+        if (ret != ErrorCode::NO_ERROR) {
+            IMSA_HILOGE("send voice private command failed!");
+            return ret;
+        }
+    } else {
+        SubProperty prop;
+        prop.name = switchInfo.bundleName;
+        prop.id = switchInfo.subName;
+        ret = session->SwitchSubtype(prop);
+        if (ret != ErrorCode::NO_ERROR) {
+            IMSA_HILOGE("switch subtype failed!");
+            return ret;
+        }
     }
     InputTypeManager::GetInstance().Set(true, { switchInfo.bundleName, switchInfo.subName });
     session->SetInputType();
@@ -2762,7 +2775,7 @@ bool InputMethodSystemAbility::IsCurrentIme(int32_t userId, uint32_t tokenId)
     return imeData != nullptr && bundleName == imeData->ime.first;
 }
 
-int32_t InputMethodSystemAbility::StartInputType(int32_t userId, InputType type)
+int32_t InputMethodSystemAbility::StartInputType(int32_t userId, InputType type, bool isPersistence)
 {
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
@@ -2781,9 +2794,9 @@ int32_t InputMethodSystemAbility::StartInputType(int32_t userId, InputType type)
     }
     SwitchInfo switchInfo = { std::chrono::system_clock::now(), ime.bundleName, ime.subName };
     session->GetSwitchQueue().Push(switchInfo);
-    IMSA_HILOGI("start input type: %{public}d.", type);
-    return (type == InputType::SECURITY_INPUT) ?
-        OnStartInputType(userId, switchInfo, false) : OnStartInputType(userId, switchInfo, true);
+    IMSA_HILOGI("start input type: %{public}d, isPersistence: %{pubilc}d.", type, isPersistence);
+    return (type == InputType::SECURITY_INPUT) ? OnStartInputType(userId, switchInfo, false) :
+        OnStartInputType(userId, switchInfo, true, isPersistence);
 }
 // LCOV_EXCL_START
 void InputMethodSystemAbility::NeedHideWhenSwitchInputType(int32_t userId, InputType type, bool &needHide)

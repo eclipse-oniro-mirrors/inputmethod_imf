@@ -1677,26 +1677,26 @@ bool InputMethodController::IsCurrentImeByPid(int32_t pid)
     return ret;
 }
 
-int32_t InputMethodController::StartInputType(InputType type)
+int32_t InputMethodController::StartInputType(InputType type, bool isPersistence)
 {
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
         IMSA_HILOGE("proxy is nullptr!");
         return ErrorCode::ERROR_NULL_POINTER;
     }
-    IMSA_HILOGI("type: %{public}d.", static_cast<int32_t>(type));
-    return proxy->StartInputType(static_cast<int32_t>(type));
+    IMSA_HILOGI("type: %{public}d, isPersistence: %{public}d.", static_cast<int32_t>(type), isPersistence);
+    return proxy->StartInputType(static_cast<int32_t>(type), isPersistence);
 }
 
-int32_t InputMethodController::StartInputTypeAsync(InputType type)
+int32_t InputMethodController::StartInputTypeAsync(InputType type, bool isPersistence)
 {
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
         IMSA_HILOGE("proxy is nullptr!");
         return ErrorCode::ERROR_NULL_POINTER;
     }
-    IMSA_HILOGI("type: %{public}d.", static_cast<int32_t>(type));
-    return proxy->StartInputTypeAsync(static_cast<int32_t>(type));
+    IMSA_HILOGI("type: %{public}d, isPersistence: %{public}d.", static_cast<int32_t>(type), isPersistence);
+    return proxy->StartInputTypeAsync(static_cast<int32_t>(type), isPersistence);
 }
 
 int32_t InputMethodController::IsPanelShown(const PanelInfo &panelInfo, bool &isShown)

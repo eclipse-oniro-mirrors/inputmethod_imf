@@ -26,6 +26,8 @@ namespace OHOS {
 namespace MiscServices {
 struct ImeExtendInfo {
     std::unordered_map<std::string, PrivateDataValue> privateCommand;
+    bool isVocieSubName { false };
+    bool isPersistence { true };
 };
 
 enum class StartReason {

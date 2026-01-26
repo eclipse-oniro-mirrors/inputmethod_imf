@@ -1102,7 +1102,9 @@ HWTEST_F(InputMethodPrivateMemberTest, TestServiceStartInputType, TestSize.Level
 {
     auto ret = service_->ExitCurrentInputType();
     EXPECT_NE(ret, ErrorCode::NO_ERROR);
-    ret = service_->StartInputType(static_cast<int32_t>(InputType::NONE));
+    ret = service_->StartInputType(static_cast<int32_t>(InputType::NONE), false);
+    EXPECT_NE(ret, ErrorCode::NO_ERROR);
+    ret = service_->StartInputType(static_cast<int32_t>(InputType::NONE), true);
     EXPECT_NE(ret, ErrorCode::NO_ERROR);
     const PanelInfo panelInfo;
     bool isShown = false;
@@ -1133,9 +1135,13 @@ HWTEST_F(InputMethodPrivateMemberTest, TestStartInputType, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest TestStartInputType TEST START");
     InputType type = InputType::NONE;
-    auto ret = service_->StartInputType(static_cast<int32_t>(type));
+    auto ret = service_->StartInputType(static_cast<int32_t>(type), false);
     EXPECT_NE(ret, ErrorCode::NO_ERROR);
-    ret = service_->StartInputType(static_cast<int32_t>(InputType::VOICEKB_INPUT));
+    ret = service_->StartInputType(static_cast<int32_t>(type), true);
+    EXPECT_NE(ret, ErrorCode::NO_ERROR);
+    ret = service_->StartInputType(static_cast<int32_t>(InputType::VOICEKB_INPUT), false);
+    EXPECT_NE(ret, ErrorCode::NO_ERROR);
+    ret = service_->StartInputType(static_cast<int32_t>(InputType::VOICEKB_INPUT), true);
     EXPECT_NE(ret, ErrorCode::NO_ERROR);
 }
 
@@ -1149,9 +1155,38 @@ HWTEST_F(InputMethodPrivateMemberTest, TestStartInputTypeAsync, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest TestStartInputTypeAsync TEST START");
     InputType type = InputType::NONE;
-    auto ret = service_->StartInputTypeAsync(static_cast<int32_t>(type));
+    auto ret = service_->StartInputTypeAsync(static_cast<int32_t>(type), false);
     EXPECT_NE(ret, ErrorCode::NO_ERROR);
-    ret = service_->StartInputTypeAsync(static_cast<int32_t>(InputType::VOICEKB_INPUT));
+    ret = service_->StartInputTypeAsync(static_cast<int32_t>(type), true);
+    EXPECT_NE(ret, ErrorCode::NO_ERROR);
+    ret = service_->StartInputTypeAsync(static_cast<int32_t>(InputType::VOICEKB_INPUT), false);
+    EXPECT_NE(ret, ErrorCode::NO_ERROR);
+    ret = service_->StartInputTypeAsync(static_cast<int32_t>(InputType::VOICEKB_INPUT), true);
+    EXPECT_NE(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ *@tc.name: SA_SendVoicePrivateCommand
+ *@tc.desc: SA_SendVoicePrivateCommand
+ *@tc.type: FUNC
+ *@tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_SendVoicePrivateCommand, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_SendVoicePrivateCommand start.");
+    PerUserSession session(MAIN_USER_ID);
+    std::string bundleName = "bundleName";
+    std::string extName = "extName";
+    auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, 100);
+    imeData->imeStatus = ImeStatus::READY;
+    imeData->ime = std::make_pair(bundleName, extName);
+    session.realImeData_ = imeData;
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = bundleName + "/" + extName;
+    auto ret = session.SendVoicePrivateCommand(true);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    session.realImeData_ = nullptr;
+    ret = session.SendVoicePrivateCommand(true);
     EXPECT_NE(ret, ErrorCode::NO_ERROR);
 }
 
