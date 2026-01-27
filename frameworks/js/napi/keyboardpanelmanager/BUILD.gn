@@ -55,6 +55,7 @@ ohos_shared_library("keyboardpanelmanager") {
 
   external_deps = [
     "ability_runtime:abilitykit_native",
+    "ability_runtime:napi_common",
     "ffrt:libffrt",
     "hilog:libhilog",
   ]

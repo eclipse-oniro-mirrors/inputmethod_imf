@@ -48,6 +48,7 @@ ohos_shared_library("extra_config_napi") {
 
   external_deps = [
     "ability_runtime:abilitykit_native",
+    "ability_runtime:napi_common",
     "c_utils:utils",
     "hilog:libhilog",
   ]
