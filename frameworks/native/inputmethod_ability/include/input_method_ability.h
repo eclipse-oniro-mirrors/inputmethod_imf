@@ -93,7 +93,7 @@ public:
     int32_t IsPanelShown(const PanelInfo &panelInfo, bool &isShown);
     int32_t GetSecurityMode(int32_t &security);
     int32_t OnSecurityChange(int32_t security);
-    int32_t OnConnectSystemCmd(const sptr<IRemoteObject> &channel, sptr<IRemoteObject> &agent);
+    int32_t OnConnectSystemCmd(const sptr<IRemoteObject> &channel);
     void OnClientInactive(const sptr<IRemoteObject> &channel);
     void NotifyKeyboardHeight(uint32_t panelHeight, PanelFlag panelFlag);
     int32_t SendPrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand,
@@ -205,7 +205,8 @@ private:
     void ReportImeStartInput(int32_t eventCode, int32_t errCode, bool isShowKeyboard, int64_t consumeTime = -1);
     void ClearBindInfo(const sptr<IRemoteObject> &channel);
     void OnInputDataChannelDied(const sptr<IRemoteObject> &dataChannelObject);
-    void UpdateColorPrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand);
+    void UpdatePrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand);
+    void PushPrivateCommand();
     void SetSysPanelStatus(const SysPanelStatus &sysPanelStatus);
     bool IsSystemPanelSupported();
     
@@ -215,7 +216,6 @@ private:
 
     sptr<IInputMethodCore> coreStub_ { nullptr };
     sptr<IInputMethodAgent> agentStub_ { nullptr };
-    sptr<IInputMethodAgent> systemAgentStub_ { nullptr };
     std::mutex imeCheckMutex_;
     bool isCurrentIme_ = false;
 
@@ -247,8 +247,8 @@ private:
     bool isInputStartNotified_ = false;
     ImeMirrorManager imeMirrorMgr_;
 
-    std::mutex colorPrivateCommandLock_;
-    std::unordered_map<std::string, PrivateDataValue> colorPrivateCommand_ = { { "sys_cmd", 1 } };
+    std::mutex privateCommandLock_;
+    std::vector<std::unordered_map<std::string, PrivateDataValue>> privateCommandData_;
 
     std::mutex sysPanelStatusLock_;
     SysPanelStatus sysPanelStatus_ { InputType::NONE, 0, 0, 0 } ;

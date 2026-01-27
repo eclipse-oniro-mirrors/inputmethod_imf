@@ -42,7 +42,7 @@ public:
     ErrCode IsEnable(bool &resultValue, uint64_t displayId) override;
     ErrCode IsPanelShown(const PanelInfo &panelInfo, bool &isShown) override;
     ErrCode OnSecurityChange(int32_t security) override;
-    ErrCode OnConnectSystemCmd(const sptr<IRemoteObject> &channel, sptr<IRemoteObject> &agent) override;
+    ErrCode OnConnectSystemCmd(const sptr<IRemoteObject> &channel) override;
     ErrCode OnClientInactive(const sptr<IRemoteObject> &channel) override;
     ErrCode OnSetInputType(int32_t inputType) override;
     ErrCode OnCallingDisplayIdChanged(uint64_t displayId) override;

@@ -63,10 +63,9 @@ ErrCode InputMethodCoreServiceImpl::StopInputService(bool isTerminateIme)
     return ERR_OK;
 }
 // LCOV_EXCL_START
-ErrCode InputMethodCoreServiceImpl::OnConnectSystemCmd(
-    const sptr<IRemoteObject> &channel, sptr<IRemoteObject> &agent)
+ErrCode InputMethodCoreServiceImpl::OnConnectSystemCmd(const sptr<IRemoteObject> &channel)
 {
-    return InputMethodAbility::GetInstance().OnConnectSystemCmd(channel, agent);
+    return InputMethodAbility::GetInstance().OnConnectSystemCmd(channel);
 }
 // LCOV_EXCL_STOP
 ErrCode InputMethodCoreServiceImpl::StartInput(const InputClientInfoInner &clientInfoInner, bool isBindFromClient)

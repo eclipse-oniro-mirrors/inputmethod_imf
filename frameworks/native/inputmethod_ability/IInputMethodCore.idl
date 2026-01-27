@@ -30,7 +30,7 @@ interface OHOS.MiscServices.IInputMethodCore {
     void IsEnable([out] boolean resultValue, [in] unsigned long displayId);
     void IsPanelShown([in] PanelInfo panelInfo, [out] boolean isShown);
     void OnSecurityChange([in] int security);
-    void OnConnectSystemCmd([in] IRemoteObject channel, [out] IRemoteObject agent);
+    void OnConnectSystemCmd([in] IRemoteObject channel);
     [oneway] void OnClientInactive([in] IRemoteObject channel);
     [oneway] void OnSetInputType([in] int inputType);
     void OnCallingDisplayIdChanged([in] unsigned long displayId);

@@ -19,6 +19,7 @@
 #include "input_method_controller.h"
 #include "input_method_system_ability.h"
 #include "key_event_util.h"
+#include "system_cmd_channel_service_impl.h"
 #include "task_manager.h"
 #undef private
 
@@ -302,8 +303,7 @@ void InputMethodAbilityTest::TestOnConnectSystemCmd()
         IMSA_HILOGI("TestOnConnectSystemCmd start %{public}d", count);
         sptr<IInputDataChannel> channel = new (std::nothrow) InputDataChannelServiceImpl();
         ASSERT_NE(channel, nullptr);
-        sptr<IRemoteObject> agent = nullptr;
-        auto ret = inputMethodAbility_.OnConnectSystemCmd(channel->AsObject(), agent);
+        auto ret = inputMethodAbility_.OnConnectSystemCmd(channel->AsObject());
         multiThreadExecTotalNum_++;
         EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     }
@@ -1592,6 +1592,65 @@ HWTEST_F(InputMethodAbilityTest, testSendPrivateCommand_004, TestSize.Level0)
     EXPECT_EQ(ret, ErrorCode::ERROR_SYSTEM_CMD_CHANNEL_ERROR);
     InputMethodAbilityTest::GetIMCDetachIMA();
     IdentityCheckerMock::SetBundleNameValid(false);
+}
+
+/**
+ * @tc.name: testSendPrivateCommand_005
+ * @tc.desc: IMA SendPrivateCommand with systemCmd is null.
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.author: zhangsaiyang
+ */
+HWTEST_F(InputMethodAbilityTest, testSendPrivateCommand_005, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testSendPrivateCommand_005 Test START");
+    std::unordered_map<std::string, PrivateDataValue> privateCommand;
+    privateCommand.emplace("sys_cmd", 1);
+    privateCommand.emplace("functionKeyColor", "#FF000000");
+    privateCommand.emplace("functionKeyPressColor", "#FF000000");
+    TextListener::ResetParam();
+    InputMethodAbilityTest::GetIMCAttachIMA();
+    IdentityCheckerMock::SetBundleNameValid(true);
+    inputMethodAbility_.systemCmdChannelProxy_ = nullptr;
+    inputMethodAbility_.isSysPanelSupport_ = 1;
+    int32_t num = 0;
+    while (num <= 11) {
+        auto ret = inputMethodAbility_.SendPrivateCommand(privateCommand);
+        EXPECT_EQ(ret, ErrorCode::ERROR_SYSTEM_CMD_CHANNEL_ERROR);
+        num++;
+    }
+    inputMethodAbility_.PushPrivateCommand();
+    EXPECT_EQ(10, inputMethodAbility_.privateCommandData_.size());
+    auto systemCmdChannelServiceImpl = new (std::nothrow) SystemCmdChannelServiceImpl();
+    inputMethodAbility_.systemCmdChannelProxy_ =
+        new (std::nothrow) SystemCmdChannelProxy(systemCmdChannelServiceImpl->AsObject());
+    inputMethodAbility_.PushPrivateCommand();
+    EXPECT_EQ(0, inputMethodAbility_.privateCommandData_.size());
+    InputMethodAbilityTest::GetIMCDetachIMA();
+    IdentityCheckerMock::SetBundleNameValid(false);
+}
+
+/**
+ * @tc.name: testConnectSystemCmd_001
+ * @tc.desc: IMA testConnectSystemCmd.
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.author: zhangsaiyang
+ */
+HWTEST_F(InputMethodAbilityTest, testConnectSystemCmd_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testConnectSystemCmd_001 Test START");
+    TextListener::ResetParam();
+    IdentityCheckerMock::SetBundleNameValid(true);
+    IdentityCheckerMock::SetPermission(true);
+    InputMethodAbilityTest::GetIMCAttachIMA();
+    auto systemCmdChannelServiceImpl = new (std::nothrow) SystemCmdChannelServiceImpl();
+    sptr<IRemoteObject> agent;
+    auto ret = InputMethodAbilityTest::imsa_->ConnectSystemCmd(systemCmdChannelServiceImpl->AsObject(), agent);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    InputMethodAbilityTest::GetIMCDetachIMA();
+    IdentityCheckerMock::SetBundleNameValid(false);
+    IdentityCheckerMock::SetPermission(false);
 }
 
 /**
