@@ -75,6 +75,9 @@ ani_class AniExtraConfig::AniGetClass(ani_env* env, const char* className)
 ani_method AniExtraConfig::AniGetClassMethod(ani_env* env, const char* className,
     const char* methodName, const char* signature)
 {
+    if (env == nullptr) {
+        return nullptr;
+    }
     ani_class retClass = AniGetClass(env, className);
     if (retClass == nullptr) {
         return nullptr;
