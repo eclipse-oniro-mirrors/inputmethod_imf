@@ -98,7 +98,8 @@ bool AniExtraConfig::ParseValue(ani_env* env, ani_object aniValue, CustomValueTy
     if (ANI_OK != env->Object_InstanceOf(aniValue, optionClass, &res)) {
         IMSA_HILOGE("to boolean failed");
         return false;
-    } else {
+    }
+    if (res) {
         ani_boolean value;
         if (ANI_OK != env->Object_CallMethodByName_Boolean(aniValue, "toBoolean", ":z", &value)) {
             IMSA_HILOGE("ParseValue, Object_CallMethodByName_Boolean failed!");
@@ -108,12 +109,12 @@ bool AniExtraConfig::ParseValue(ani_env* env, ani_object aniValue, CustomValueTy
         valueSize = sizeof(bool);
         return true;
     }
-
     env->FindClass("std.core.Int", &optionClass);
     if (ANI_OK != env->Object_InstanceOf(aniValue, optionClass, &res)) {
         IMSA_HILOGE("to int failed");
         return false;
-    } else {
+    }
+    if (res) {
         ani_int value = 0;
         if (ANI_OK != env->Object_CallMethodByName_Int(aniValue, "toInt", ":i", &value)) {
             IMSA_HILOGE("ParseValue, Object_CallMethodByName_Int failed!");
@@ -128,7 +129,8 @@ bool AniExtraConfig::ParseValue(ani_env* env, ani_object aniValue, CustomValueTy
     if (ANI_OK != env->Object_InstanceOf(aniValue, optionClass, &res)) {
         IMSA_HILOGE("to str failed");
         return false;
-    } else {
+    }
+    if (res) {
         auto tmpString = ConvertString(env, aniValue);
         valueObj = tmpString;
         valueSize = tmpString.size();
@@ -140,6 +142,10 @@ bool AniExtraConfig::ParseValue(ani_env* env, ani_object aniValue, CustomValueTy
 bool AniExtraConfig::ParseRecordItem(ani_env* env, ani_object entryIterator,
     ani_method iterNextMethod, ani_class iterResultClass, CustomSettings& out)
 {
+    if (env == nullptr) {
+        IMSA_HILOGE("env is null");
+        return false;
+    }
     ani_boolean iter_done = false;
     uint32_t totalSize = 0;
     while (!iter_done) {
@@ -166,7 +172,7 @@ bool AniExtraConfig::ParseRecordItem(ani_env* env, ani_object entryIterator,
         CustomValueType parseResult {};
         uint32_t valueSize = 0;
         ParseValue(env, static_cast<ani_object>(temp_ani_val), parseResult, valueSize);
-        if (totalSize > UINT32_MAX - keySize - valueSize) {
+        if ((keySize > UINT32_MAX - valueSize) || (totalSize > UINT32_MAX - keySize - valueSize)) {
             out.clear();
             IMSA_HILOGE("integer overflow detected in size calculation");
             return false;
@@ -232,7 +238,7 @@ bool AniExtraConfig::GetRecordOrUndefined(ani_env* env, ani_object in,
         IMSA_HILOGE("customSettings is undefined, ret: %{public}d", ret);
         return false;
     }
-    ret = env->Reference_IsNull(in, &isNull);
+    ret = env->Reference_IsNull(ref, &isNull);
     if (ret != ANI_OK || isNull) {
         IMSA_HILOGE("customSettings is null, ret: %{public}d", ret);
         return false;
@@ -244,12 +250,13 @@ bool AniExtraConfig::GetRecordOrUndefined(ani_env* env, ani_object in,
         return false;
     }
     ani_boolean result = false;
-    ret = env->Object_InstanceOf(in, cls, &result);
+    auto recordObj = static_cast<ani_object>(ref);
+    ret = env->Object_InstanceOf(recordObj, cls, &result);
     if (ret != ANI_OK || !result) {
-        IMSA_HILOGE("customSettings is not  record, ret: %{public}d", ret);
+        IMSA_HILOGE("customSettings is not record, ret: %{public}d", ret);
         return false;
     }
-    if (!ParseRecord(env, static_cast<ani_object>(ref), out, maxLen)) {
+    if (!ParseRecord(env, recordObj, out, maxLen)) {
         IMSA_HILOGE("ParseRecord failed");
         return false;
     }
@@ -283,6 +290,7 @@ bool AniExtraConfig::GetExtraConfig([[maybe_unused]]ani_env* env, ani_object in,
         IMSA_HILOGE("GetRecordOrUndefined failed");
         return false;
     }
+    IMSA_HILOGI("parse extraConfig success!");
     return true;
 }
 } // namespace MiscServices
