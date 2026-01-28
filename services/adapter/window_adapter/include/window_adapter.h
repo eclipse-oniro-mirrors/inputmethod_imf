@@ -28,6 +28,7 @@ class WindowAdapter final {
 public:
     static constexpr uint64_t DEFAULT_DISPLAY_ID = 0;
     static constexpr uint32_t DEFAULT_WINDOW_ID = 0;
+    static constexpr uint32_t SCB_ROOT_WINDOW_ID = 1;
     static constexpr uint32_t DEFAULT_DISPLAY_GROUP_ID = 0;
     ~WindowAdapter();
     static WindowAdapter &GetInstance();
@@ -35,6 +36,7 @@ public:
     static uint64_t GetDisplayIdByPid(int64_t callingPid);
     static uint64_t GetDisplayIdByWindowId(int32_t callingWindowId);
     static bool GetDisplayId(int64_t callingWindowId, uint64_t &displayId);
+    static uint64_t GetDisplayIdWithCorrect(int32_t windowId, uint64_t displayId);
     static uint64_t GetDisplayIdByToken(sptr<IRemoteObject> abilityToken);
     static bool ListWindowInfo(std::vector<sptr<OHOS::Rosen::WindowInfo>> &windowInfos);
     void RegisterCallingWindowInfoChangedListener(const WindowDisplayChangeHandler &handle);

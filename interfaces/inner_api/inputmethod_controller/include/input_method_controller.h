@@ -603,10 +603,13 @@ public:
      *
      * This function is used to request to hide input method.
      *
+     * @param callingWndId Indicates the id of the window which caller in.
+     * @param isFocusTriggered Indicates the caller is focused or not.
+     * @param displayId Indicates the id of the the display which caller in.
      * @return Returns 0 for success, others for failure.
      * @since 11
      */
-    IMF_API int32_t RequestHideInput(uint32_t callingWndId = 0, bool isFocusTriggered = false);
+    IMF_API int32_t RequestHideInput(uint32_t callingWndId = 0, bool isFocusTriggered = false, uint64_t displayId = 0);
 
     /**
      * @brief Show input method setting extension dialog.

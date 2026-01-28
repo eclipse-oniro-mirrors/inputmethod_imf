@@ -49,7 +49,7 @@ public:
     ErrCode HideInput(const sptr<IInputClient> &client, uint32_t windowId) override;
     ErrCode StopInputSession(uint32_t windowId) override;
     ErrCode ReleaseInput(const sptr<IInputClient> &client, uint32_t sessionId) override;
-    ErrCode RequestHideInput(uint32_t windowId, bool isFocusTriggered) override;
+    ErrCode RequestHideInput(uint32_t windowId, uint64_t displayId, bool isFocusTriggered) override;
     ErrCode GetDefaultInputMethod(Property &prop, bool isBrief) override;
     ErrCode GetInputMethodConfig(ElementName &inputMethodConfig) override;
     ErrCode GetCurrentInputMethod(Property &resultValue) override;
