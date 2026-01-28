@@ -545,16 +545,17 @@ void InputMethodController::Reset()
     RemoveDeathRecipient();
 }
 
-int32_t InputMethodController::RequestHideInput(uint32_t callingWndId, bool isFocusTriggered)
+int32_t InputMethodController::RequestHideInput(uint32_t callingWndId, bool isFocusTriggered, uint64_t displayId)
 {
-    IMSA_HILOGD("callingWndId/isFocusTriggered:%{public}u/%{public}d.", callingWndId, isFocusTriggered);
+    IMSA_HILOGD("callingWndId/displayId/isFocusTriggered:%{public}u/%{public}" PRIu64 "/%{public}d.", callingWndId,
+        displayId, isFocusTriggered);
     auto proxy = TryGetSystemAbilityProxy();
     if (proxy == nullptr) {
         IMSA_HILOGE("proxy is nullptr!");
         return ErrorCode::ERROR_EX_NULL_POINTER;
     }
     IMSA_HILOGD("InputMethodController start.");
-    return proxy->RequestHideInput(callingWndId, isFocusTriggered);
+    return proxy->RequestHideInput(callingWndId, displayId, isFocusTriggered);
 }
 
 int32_t InputMethodController::DisplayOptionalInputMethod()

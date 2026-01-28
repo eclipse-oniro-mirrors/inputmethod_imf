@@ -856,9 +856,10 @@ ErrCode InputMethodSystemAbility::StopInputSession(uint32_t windowId)
     return session->OnHideCurrentInput(clientInfo->clientGroupId);
 }
 
-ErrCode InputMethodSystemAbility::RequestHideInput(uint32_t windowId, bool isFocusTriggered)
+ErrCode InputMethodSystemAbility::RequestHideInput(uint32_t windowId, uint64_t displayId, bool isFocusTriggered)
 {
-    IMSA_HILOGI("isFocusTriggered/windowId:%{public}d/%{public}d.", isFocusTriggered, windowId);
+    IMSA_HILOGI("isFocusTriggered/windowId/displayId:%{public}d/%{public}d/%{public}" PRIu64 ".", isFocusTriggered,
+        windowId, displayId);
     AccessTokenID tokenId = IPCSkeleton::GetCallingTokenID();
     auto pid = IPCSkeleton::GetCallingPid();
     auto [isFocused, focusedInfo] = identityChecker_->IsFocused(pid, tokenId, windowId);
@@ -882,7 +883,7 @@ ErrCode InputMethodSystemAbility::RequestHideInput(uint32_t windowId, bool isFoc
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_NULL_POINTER;
     }
-    return session->OnRequestHideInput(WindowAdapter::GetDisplayIdByWindowId(windowId), callerBundleName);
+    return session->OnRequestHideInput(WindowAdapter::GetDisplayIdWithCorrect(windowId, displayId), callerBundleName);
 }
 
 ErrCode InputMethodSystemAbility::SetCoreAndAgent(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent)

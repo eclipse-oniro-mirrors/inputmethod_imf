@@ -126,6 +126,36 @@ uint64_t WindowAdapter::GetDisplayIdByWindowId(int32_t callingWindowId)
 #endif
 }
 
+uint64_t WindowAdapter::GetDisplayIdWithCorrect(int32_t windowId, uint64_t displayId)
+{
+    uint64_t displayIdOut = DEFAULT_DISPLAY_ID;
+#ifdef SCENE_BOARD_ENABLE
+    if (windowId == DEFAULT_WINDOW_ID) {
+        return displayIdOut;
+    }
+    std::vector<sptr<WindowInfo>> windowInfos;
+    if (!ListWindowInfo(windowInfos)) {
+        return displayIdOut;
+    }
+    auto iter = std::find_if(windowInfos.begin(), windowInfos.end(), [&windowId](const auto &windowInfo) {
+        return windowInfo != nullptr && windowInfo->windowMetaInfo.windowId == windowId;
+    });
+    if (iter == windowInfos.end()) {
+        IMSA_HILOGE("not found windowId:%{public}d, displayId:%{public}" PRIu64 ".", windowId, displayId);
+        if (windowId == SCB_ROOT_WINDOW_ID) {
+            displayIdOut = displayId;
+        }
+        return displayIdOut;
+    }
+    displayIdOut = (*iter)->windowDisplayInfo.displayId;
+    IMSA_HILOGD("find windowId:%{public}d, displayId:%{public}" PRIu64 ".", windowId, displayIdOut);
+    return displayIdOut;
+#else
+    IMSA_HILOGI("capability not supported");
+    return displayIdOut;
+#endif
+}
+
 uint64_t WindowAdapter::GetDisplayIdByPid(int64_t callingPid)
 {
 #ifdef SCENE_BOARD_ENABLE
