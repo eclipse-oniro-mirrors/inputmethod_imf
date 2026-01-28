@@ -90,6 +90,7 @@ taihe_shared_library("inputmethod_taihe_native") {
   external_deps = [
     "ability_runtime:abilitykit_native",
     "ace_engine:ace_uicontent",
+    "ability_runtime:napi_common",
     "bundle_framework:bms_ani_common",
     "ffrt:libffrt",
     "ipc:ipc_single",
