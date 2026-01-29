@@ -1282,13 +1282,6 @@ bool ImeInfoInquirer::IsRestrictedDefaultImeByDisplay(uint64_t displayId)
     return systemConfig_.defaultImeScreenList.find(screenName) != systemConfig_.defaultImeScreenList.end();
 }
 
-bool ImeInfoInquirer::IsRestrictedMainDisplayId(uint64_t displayId)
-{
-    auto screenName = DisplayAdapter::GetDisplayName(displayId);
-    return systemConfig_.defaultMainDisplayScreenList.find(screenName) !=
-           systemConfig_.defaultMainDisplayScreenList.end();
-}
-
 bool ImeInfoInquirer::IsDynamicStartIme()
 {
     if (dynamicStartImeList_.empty()) {

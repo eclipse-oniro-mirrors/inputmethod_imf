@@ -201,12 +201,14 @@ std::shared_ptr<InputClientInfo> ClientGroup::GetCurrentClientInfoBoundRealIme()
         IMSA_HILOGD("has no currentClient.");
         return nullptr;
     }
-    auto iter = mapClients_.find(currentClient);
+    auto iter = mapClients_.find(currentClient->AsObject());
     if (iter == mapClients_.end()) {
+        IMSA_HILOGD("has no current client info.");
         return nullptr;
     }
     auto clientInfo = iter->second;
     if (clientInfo == nullptr) {
+        IMSA_HILOGD("clientInfo is nullptr.");
         return nullptr;
     }
     if (clientInfo->bindImeData != nullptr && clientInfo->bindImeData->IsRealIme()) {

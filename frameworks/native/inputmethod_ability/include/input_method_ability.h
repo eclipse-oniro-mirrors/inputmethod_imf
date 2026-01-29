@@ -85,7 +85,7 @@ public:
     int32_t ShowPanel(const std::shared_ptr<InputMethodPanel> &inputMethodPanel);
     int32_t HidePanel(const std::shared_ptr<InputMethodPanel> &inputMethodPanel);
     bool IsCurrentIme();
-    bool IsEnable();
+    bool IsEnable(uint64_t displayId);
     bool IsCallbackRegistered(const std::string &type);
     bool IsSystemApp();
     InputType GetInputType();
@@ -124,7 +124,7 @@ public:
     int32_t StartInput(const InputClientInfo &clientInfo, bool isBindFromClient);
     int32_t StopInput(sptr<IRemoteObject> channelObj, uint32_t sessionId);
     int32_t ShowKeyboard(int32_t requestKeyboardReason);
-    int32_t HideKeyboard(uint64_t displayGroupId, bool isCheckGroupId);
+    int32_t HideKeyboard();
     int32_t OnDiscardTypingText();
     int32_t OnNotifyPreemption();
 
@@ -207,7 +207,8 @@ private:
     void OnInputDataChannelDied(const sptr<IRemoteObject> &dataChannelObject);
     void UpdateColorPrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand);
     void SetSysPanelStatus(const SysPanelStatus &sysPanelStatus);
-
+    bool IsSystemPanelSupported();
+    
     ConcurrentMap<PanelType, std::shared_ptr<InputMethodPanel>> panels_ {};
     std::atomic_bool isBound_ { false };
     std::atomic_bool isProxyIme_{ false };
@@ -251,7 +252,10 @@ private:
 
     std::mutex sysPanelStatusLock_;
     SysPanelStatus sysPanelStatus_ { InputType::NONE, 0, 0, 0 } ;
-
+    
+    std::mutex isSysPanelSupportMutex_;
+    std::atomic<int32_t> isSysPanelSupport_ = 0;
+    
     bool IsDisplayChanged(uint64_t oldDisplayId, uint64_t newDisplayId);
 };
 } // namespace MiscServices

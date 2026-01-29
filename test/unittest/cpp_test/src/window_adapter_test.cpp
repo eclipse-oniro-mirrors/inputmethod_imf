@@ -21,48 +21,33 @@
 #include <gtest/gtest.h>
 
 #include <functional>
+#include <memory>
 
 #include "global.h"
 
 namespace OHOS {
 namespace MiscServices {
 using namespace testing::ext;
+using namespace OHOS::Rosen;
 class WindowAdapterTest : public testing::Test {
 public:
     static void SetUpTestCase()
     {
+        WindowDisplayChangeHandler callback = [](int32_t userId, int32_t windowId, uint64_t displayId) {};
+        WindowAdapter::GetInstance().RegisterWindowDisplayIdChangedListener(callback);
     }
     static void TearDownTestCase()
     {
     }
     void SetUp() override
     {
-        WindowDisplayChangeHandler callback = [](OHOS::Rosen::CallingWindowInfo callingWindowInfo) {
-            IMSA_HILOGD("callback result:%{public}s",
-                WindowDisplayChangeListener::CallingWindowInfoToString(callingWindowInfo).c_str());
-        };
-        WindowAdapter::GetInstance().RegisterCallingWindowInfoChangedListener(callback);
     }
     void TearDown() override
     {
     }
+    static bool hasHandled_;
 };
-
-/**
- * @tc.name: WindowAdapter_GetCallingWindowInfo
- * @tc.desc:
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(WindowAdapterTest, WindowAdapter_GetCallingWindowInfo, TestSize.Level0)
-{
-    IMSA_HILOGI("WindowAdapterTest::WindowAdapter_GetCallingWindowInfo START");
-    OHOS::Rosen::CallingWindowInfo callingWindowInfo;
-    uint32_t windId = 0;
-    int32_t userId = -1;
-    auto ret = WindowAdapter::GetInstance().GetCallingWindowInfo(windId, userId, callingWindowInfo);
-    EXPECT_FALSE(ret);
-}
+bool WindowAdapterTest::hasHandled_{ false };
 
 /**
  * @tc.name: WindowAdapter_GetFocusInfo
@@ -146,6 +131,65 @@ HWTEST_F(WindowAdapterTest, WindowAdapter_OnUnfocused, TestSize.Level0)
     WindowAdapter::GetInstance().focusWindowInfos_.push_back(focusWindowInfo);
     WindowAdapter::GetInstance().OnUnFocused(focusWindowInfo);
     EXPECT_TRUE(WindowAdapter::GetInstance().focusWindowInfos_.empty());
+}
+
+/**
+ * @tc.name: WindowAdapter_OnWindowInfoChanged
+ * @tc.desc: windowId
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(WindowAdapterTest, WindowAdapter_OnWindowInfoChanged, TestSize.Level0)
+{
+    IMSA_HILOGI("WindowAdapterTest::WindowAdapter_OnWindowInfoChanged START");
+    auto handler = [](int32_t userId, int32_t windowId, uint64_t displayId) { hasHandled_ = true; };
+    auto listener = std::make_shared<WindowAdapter::WindowDisplayChangedListenerImpl>(handler);
+    // empty
+    WindowInfoList winInfoList;
+    listener->OnWindowInfoChanged(winInfoList);
+    EXPECT_FALSE(hasHandled_);
+    // displayId not found
+    std::unordered_map<WindowInfoKey, WindowChangeInfoType> info;
+    info[WindowInfoKey::WINDOW_RECT] = 10;
+    winInfoList.push_back(info);
+    listener->OnWindowInfoChanged(winInfoList);
+    EXPECT_FALSE(hasHandled_);
+    // windowId not found
+    winInfoList.clear();
+    info.clear();
+    info[WindowInfoKey::DISPLAY_ID] = 10;
+    winInfoList.push_back(info);
+    listener->OnWindowInfoChanged(winInfoList);
+    EXPECT_FALSE(hasHandled_);
+    // displayId type error
+    winInfoList.clear();
+    info.clear();
+    int32_t displayId = 1;
+    uint32_t windowId = 1;
+    info[WindowInfoKey::DISPLAY_ID] = displayId;
+    info[WindowInfoKey::WINDOW_ID] = windowId;
+    winInfoList.push_back(info);
+    listener->OnWindowInfoChanged(winInfoList);
+    EXPECT_FALSE(hasHandled_);
+    // windowId type error
+    winInfoList.clear();
+    info.clear();
+    uint64_t displayId1 = 10;
+    int32_t windowId1 = 1;
+    info[WindowInfoKey::DISPLAY_ID] = displayId1;
+    info[WindowInfoKey::WINDOW_ID] = windowId1;
+    winInfoList.push_back(info);
+    listener->OnWindowInfoChanged(winInfoList);
+    EXPECT_FALSE(hasHandled_);
+    // ok
+    winInfoList.clear();
+    info.clear();
+    uint32_t windowId2 = 1;
+    info[WindowInfoKey::DISPLAY_ID] = displayId1;
+    info[WindowInfoKey::WINDOW_ID] = windowId2;
+    winInfoList.push_back(info);
+    listener->OnWindowInfoChanged(winInfoList);
+    EXPECT_TRUE(hasHandled_);
 }
 } // namespace MiscServices
 } // namespace OHOS

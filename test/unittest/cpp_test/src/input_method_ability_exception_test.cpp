@@ -300,9 +300,7 @@ HWTEST_F(InputMethodAbilityExceptionTest, testHideKeyboard_001, TestSize.Level1)
 {
     IMSA_HILOGI("InputMethodAbilityExceptionTest testHideKeyboard_001 START");
     // imeListener_ == nullptr
-    uint64_t displayGroupId = 0;
-    bool isCheckGroupId = false;
-    auto ret = inputMethodAbility_.HideKeyboard(displayGroupId, isCheckGroupId);
+    auto ret = inputMethodAbility_.HideKeyboard();
     EXPECT_EQ(ret, ErrorCode::ERROR_IME);
 
     // panel exist, PanelFlag == FLG_CANDIDATE_COLUMN
@@ -314,14 +312,14 @@ HWTEST_F(InputMethodAbilityExceptionTest, testHideKeyboard_001, TestSize.Level1)
     panel->panelFlag_ = FLG_CANDIDATE_COLUMN;
     panel->windowId_ = 2;
     inputMethodAbility_.panels_.Insert(SOFT_KEYBOARD, panel);
-    ret = inputMethodAbility_.HideKeyboard(displayGroupId, isCheckGroupId);
+    ret = inputMethodAbility_.HideKeyboard();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 
     // ShowPanel failed
     inputMethodAbility_.panels_.Clear();
     panel->panelFlag_ = FLG_FIXED;
     inputMethodAbility_.panels_.Insert(SOFT_KEYBOARD, panel);
-    ret = inputMethodAbility_.HideKeyboard(displayGroupId, isCheckGroupId);
+    ret = inputMethodAbility_.HideKeyboard();
     EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
 
     ResetMemberVar();

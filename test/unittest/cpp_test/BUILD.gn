@@ -253,7 +253,7 @@ ohos_unittest("InputMethodServiceTest") {
   deps = [
     "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
-    "${inputmethod_path}/services:inputmethod_service",
+    "${inputmethod_path}/services:inputmethod_service_static",
     "${inputmethod_path}/test/common:inputmethod_test_common",
     "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
     "${inputmethod_path}/test/unittest/resource/ohos_test:copy_ohos_test",
@@ -272,6 +272,8 @@ ohos_unittest("InputMethodServiceTest") {
     "ipc:ipc_single",
     "napi:ace_napi",
     "window_manager:libdm",
+    "data_share:datashare_common",
+    "data_share:datashare_consumer",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -578,6 +580,7 @@ ohos_unittest("InputMethodPrivateMemberTest") {
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_method_agent_stub",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
     "${inputmethod_path}/services:inputmethod_service_static",
+    "${inputmethod_path}/test/common:inputmethod_test_common",
     "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
     "${inputmethod_path}/test/unittest/resource/bundle_dependencies/newTestIme:newTestIme",
     "${inputmethod_path}/test/unittest/resource/ohos_test:copy_ohos_test",
@@ -1456,11 +1459,12 @@ ohos_unittest("WindowAdapterTest") {
 
   include_dirs = [
     "${inputmethod_path}/common/include",
+    "${inputmethod_path}/services/adapter/os_account_adapter/include",
     "${inputmethod_path}/services/adapter/window_adapter/include",
   ]
   sources = [
+    "${inputmethod_path}/services/adapter/os_account_adapter/src/os_account_adapter.cpp",
     "${inputmethod_path}/services/adapter/window_adapter/src/window_adapter.cpp",
-    "${inputmethod_path}/services/adapter/window_adapter/src/window_display_changed_listener.cpp",
     "src/window_adapter_test.cpp",
   ]
   configs = [ ":module_private_config" ]
@@ -1469,6 +1473,7 @@ ohos_unittest("WindowAdapterTest") {
     "googletest:gtest_main",
     "hilog:libhilog",
     "ipc:ipc_single",
+    "os_account:os_account_innerkits",
   ]
   defines = []
   if (window_manager_use_sceneboard) {

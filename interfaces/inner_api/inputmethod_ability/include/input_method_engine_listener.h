@@ -40,7 +40,7 @@ public:
     virtual void OnInputFinish()
     {
     }
-    virtual bool IsEnable()
+    virtual bool IsEnable(uint64_t displayId)
     {
         return true;
     }

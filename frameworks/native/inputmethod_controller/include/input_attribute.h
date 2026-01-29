@@ -24,6 +24,7 @@
 
 namespace OHOS {
 namespace MiscServices {
+constexpr uint32_t MAX_EXTRA_ARRAY_SIZE = 1024 * 1024; // 1M
 enum class CapitalizeMode : int32_t {
     NONE = 0,
     SENTENCES,
@@ -38,6 +39,9 @@ struct ExtraConfigInner : public Parcelable {
         uint32_t size = in.ReadUint32();
         if (size == 0) {
             return true;
+        }
+        if (size > MAX_EXTRA_ARRAY_SIZE) {
+            return false;
         }
         customSettings.clear();
 

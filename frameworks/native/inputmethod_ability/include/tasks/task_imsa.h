@@ -65,10 +65,10 @@ public:
 
 class TaskImsaHideKeyboard : public Task {
 public:
-    explicit TaskImsaHideKeyboard(uint64_t displayGroupId, bool isCheckGroupId) : Task(TASK_TYPE_IMSA_HIDE_KEYBOARD)
+    explicit TaskImsaHideKeyboard() : Task(TASK_TYPE_IMSA_HIDE_KEYBOARD)
     {
-        auto func = [displayGroupId, isCheckGroupId]() {
-            InputMethodAbility::GetInstance().HideKeyboard(displayGroupId, isCheckGroupId);
+        auto func = []() {
+            InputMethodAbility::GetInstance().HideKeyboard();
         };
         actions_.emplace_back(std::make_unique<Action>(func));
     }
@@ -110,8 +110,6 @@ public:
     ~TaskImsaOnCallingWindowIdChanged() = default;
 };
 
-InputMethodAbility::GetInstance().SetCallingWindow(editorWindowId, keyboardWindowId);
-return ERR_OK;
 class TaskImsaInitInputCtrlChannel : public Task {
 public:
     explicit TaskImsaInitInputCtrlChannel(sptr<IRemoteObject> channel) : Task(TASK_TYPE_IMSA_INIT_INPUT_CTRL_CHANNEL)

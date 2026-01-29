@@ -570,7 +570,7 @@ void InputMethodControllerImpl::ShowSoftKeyboardIdSync(int64_t displayId)
         return;
     }
     IMSA_HILOGD("target displayId: %{public}" PRIu64 "", id);
-    errCode = instance->ShowSoftKeyboard(ClientType::JS, id);
+    errCode = instance->ShowSoftKeyboard(id, ClientType::JS);
     if (errCode != ErrorCode::NO_ERROR) {
         set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
         IMSA_HILOGE("InputMethodControllerImpl::ShowSoftKeyboard failed, errCode: %{public}d!", errCode);

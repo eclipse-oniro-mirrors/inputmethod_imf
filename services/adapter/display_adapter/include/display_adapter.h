@@ -28,12 +28,10 @@ public:
     static constexpr uint64_t DEFAULT_DISPLAY_ID = 0;
     static std::string GetDisplayName(uint64_t displayId);
     static uint64_t GetDefaultDisplayId();
-    static bool IsFocusable(uint64_t displayId);
-    static bool IsImeShowable(uint64_t displayId);
-    static uint64_t GetFinalDisplayId(uint64_t displayId);
     static bool IsRestrictedMainDisplayId(uint64_t displayId);
-
+    static std::pair<bool, std::string> GetRestrictedMainDisplayInfo(uint64_t displayId);
 private:
+    static bool IsImeShowable(uint64_t displayId);
     static sptr<OHOS::Rosen::DisplayInfo> GetDisplayInfo(uint64_t displayId);
 };
 } // namespace MiscServices

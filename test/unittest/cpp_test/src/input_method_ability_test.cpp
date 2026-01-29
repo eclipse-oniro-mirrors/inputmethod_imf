@@ -548,9 +548,7 @@ HWTEST_F(InputMethodAbilityTest, testShowKeyboardWithoutImeListener, TestSize.Le
 HWTEST_F(InputMethodAbilityTest, testHideKeyboardWithoutImeListener, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbilityTest testHideKeyboardWithoutImeListener start.");
-    uint64_t displayGroupId = 0;
-    bool isCheckGroupId = false;
-    auto ret = inputMethodAbility_.HideKeyboard(displayGroupId, isCheckGroupId);
+    auto ret = inputMethodAbility_.HideKeyboard();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 }
 
@@ -1187,9 +1185,7 @@ HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatusInfo_001, TestSize.Level0)
     EXPECT_TRUE(TextListener::WaitNotifyPanelStatusInfoCallback(statusInfo));
 
     TextListener::ResetParam();
-    uint64_t displayGroupId = 0;
-    bool isCheckGroupId = false;
-    ret = inputMethodAbility_.HideKeyboard(displayGroupId, isCheckGroupId);
+    ret = inputMethodAbility_.HideKeyboard();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     EXPECT_TRUE(TextListener::WaitSendKeyboardStatusCallback(KeyboardStatus::HIDE));
     PanelStatusInfo statusInfo1;
@@ -1591,6 +1587,7 @@ HWTEST_F(InputMethodAbilityTest, testSendPrivateCommand_004, TestSize.Level0)
     InputMethodAbilityTest::GetIMCAttachIMA();
     IdentityCheckerMock::SetBundleNameValid(true);
     inputMethodAbility_.systemCmdChannelProxy_ = nullptr;
+    inputMethodAbility_.isSysPanelSupport_ = 1;
     auto ret = inputMethodAbility_.SendPrivateCommand(privateCommand);
     EXPECT_EQ(ret, ErrorCode::ERROR_SYSTEM_CMD_CHANNEL_ERROR);
     InputMethodAbilityTest::GetIMCDetachIMA();
@@ -1893,7 +1890,7 @@ HWTEST_F(InputMethodAbilityTest, BranchCoverage001, TestSize.Level0)
     auto ret2 = InputMethodAbilityTest::inputMethodAbility_.IsCurrentIme();
     EXPECT_TRUE(ret2);
 
-    ret2 = InputMethodAbilityTest::inputMethodAbility_.IsEnable();
+    ret2 = InputMethodAbilityTest::inputMethodAbility_.IsEnable(0);
     EXPECT_FALSE(ret2);
 }
 
@@ -2474,40 +2471,6 @@ HWTEST_F(InputMethodAbilityTest, testSetInputDataChannel, TestSize.Level0)
     InputMethodAbilityTest::inputMethodAbility_.SetInputDataChannel(dataChannelObject1);
     EXPECT_EQ(
         InputMethodAbilityTest::inputMethodAbility_.dataChannelObject_.GetRefPtr(), dataChannelObject1.GetRefPtr());
-}
-
-/**
- * @tc.name: testHideKeyboard_001
- * @tc.desc: InputMethodAbility Timer_001
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(InputMethodAbilityTest, testHideKeyboard_001, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodAbility testHideKeyboard_001 START");
-    uint64_t displayGroupId = 1;
-    uint64_t isCheckGroupId = true;
-    uint64_t displayGroupId1 = 3;
-    uint64_t isCheckGroupId1 = false;
-    InputAttribute attribute;
-    attribute.displayGroupId = displayGroupId;
-    inputMethodAbility_.imeListener_ = nullptr;
-    inputMethodAbility_.SetInputAttribute(attribute);
-    // check pass
-    auto ret = inputMethodAbility_.HideKeyboard(displayGroupId, isCheckGroupId);
-    EXPECT_EQ(ret, ErrorCode::ERROR_IME);
-
-    // no need check, same displayGroupId
-    ret = inputMethodAbility_.HideKeyboard(displayGroupId, isCheckGroupId1);
-    EXPECT_EQ(ret, ErrorCode::ERROR_IME);
-
-    // no need check, different displayGroupId
-    ret = inputMethodAbility_.HideKeyboard(displayGroupId1, isCheckGroupId1);
-    EXPECT_EQ(ret, ErrorCode::ERROR_IME);
-
-    // check failed
-    ret = inputMethodAbility_.HideKeyboard(displayGroupId1, isCheckGroupId);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 }
 } // namespace MiscServices
 } // namespace OHOS

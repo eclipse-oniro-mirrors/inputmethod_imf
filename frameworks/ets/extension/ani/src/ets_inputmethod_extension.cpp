@@ -28,10 +28,13 @@
 #include "ets_runtime.h"
 #include "ets_extension_context.h"
 #include "ets_inputmethod_extension_loader.h"
+#include "parameters.h"
 
 namespace OHOS {
 namespace MiscServices {
 using namespace AbilityRuntime;
+const std::string FOLD_SCREEN_TYPE = OHOS::system::GetParameter("const.window.foldscreen.type", "0,0,0,0");
+constexpr const char *EXTEND_FOLD_TYPE = "4";
 AbilityRuntime::InputMethodExtension *OHOS_ABILITY_ETSInputMethodExtension(
     const std::unique_ptr<AbilityRuntime::Runtime> &runtime)
 {
@@ -386,11 +389,12 @@ ani_ref ETSInputMethodExtension::CallObjectMethod(bool withResult, const char *n
     va_list args;
     if (withResult) {
         va_start(args, signature);
-        if ((status = env->Object_CallMethod_Ref_V(etsAbilityObj_->aniObj, method, &res, args)) != ANI_OK) {
+        status = env->Object_CallMethod_Ref_V(etsAbilityObj_->aniObj, method, &res, args);
+        va_end(args);
+        if (status != ANI_OK) {
             IMSA_HILOGE("Object_CallMethod_Ref_V status : %{public}d", status);
             return nullptr;
         }
-        va_end(args);
         return res;
     }
     va_start(args, signature);
@@ -404,28 +408,22 @@ ani_ref ETSInputMethodExtension::CallObjectMethod(bool withResult, const char *n
 void ETSInputMethodExtension::ListenWindowManager()
 {
     IMSA_HILOGD("register window manager service listener.");
-    auto etsInputMethodExtension = std::static_pointer_cast<ETSInputMethodExtension>(shared_from_this());
-    displayListener_ = sptr<EtsInputMethodExtensionDisplayListener>::MakeSptr(etsInputMethodExtension);
-    if (displayListener_ == nullptr) {
-        IMSA_HILOGE("failed to create display listener!");
+    if (FOLD_SCREEN_TYPE.empty() || FOLD_SCREEN_TYPE[0] != *EXTEND_FOLD_TYPE) {
+        IMSA_HILOGD("The current device is a non-foldable device.");
         return;
     }
-
-    Rosen::DisplayManager::GetInstance().RegisterDisplayListener(displayListener_);
-}
-
-void ETSInputMethodExtension::OnListenerCreate(Rosen::DisplayId displayId)
-{
-    IMSA_HILOGD("enter");
-}
-
-void ETSInputMethodExtension::OnListenerDestroy(Rosen::DisplayId displayId)
-{
-    IMSA_HILOGD("exit");
+    auto etsInputMethodExtension = std::static_pointer_cast<ETSInputMethodExtension>(shared_from_this());
+    displayListener_ = sptr<EtsInputMethodExtensionDisplayAttributeListener>::MakeSptr(etsInputMethodExtension);
+    std::vector<std::string> attributes = {"rotation", "width", "height"};
+    Rosen::DisplayManager::GetInstance().RegisterDisplayAttributeListener(attributes, displayListener_);
 }
 
 void ETSInputMethodExtension::ListenerCheckNeedAdjustKeyboard(Rosen::DisplayId displayId)
 {
+    if (FOLD_SCREEN_TYPE.empty() || FOLD_SCREEN_TYPE[0] != *EXTEND_FOLD_TYPE) {
+        IMSA_HILOGD("The current device is a non-foldable device.");
+        return;
+    }
     if (displayId != Rosen::DisplayManager::GetInstance().GetDefaultDisplayId()) {
         return;
     }

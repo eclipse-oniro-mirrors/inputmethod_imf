@@ -96,6 +96,7 @@ taihe_shared_library("inputmethod_engine_taihe_native") {
     "ability_runtime:abilitykit_native",
     "ability_runtime:ani_base_context",
     "ability_runtime:extensionkit_native",
+    "ability_runtime:napi_common",
     "bundle_framework:bms_ani_common",
     "c_utils:utils",
     "eventhandler:libeventhandler",

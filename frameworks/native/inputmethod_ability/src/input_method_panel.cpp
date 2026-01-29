@@ -2726,6 +2726,10 @@ void InputMethodPanel::OnVisibilityChange(bool isVisible)
         auto keyboardLayout = GetKeyboardLayoutParams();
         rect = IsDisplayPortrait() ? keyboardLayout.PortraitPanelRect_ : keyboardLayout.LandscapePanelRect_;
     }
+    KeyboardPanelInfo info;
+    info.isShowing_ = isVisible;
+    info.rect_ = rect;
+    OnPanelHeightChange(info);
     PanelStatusChangeToImc(status, rect);
 }
 } // namespace MiscServices

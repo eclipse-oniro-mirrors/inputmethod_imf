@@ -86,8 +86,8 @@ public:
     int32_t SetImmersiveEffect(const ImmersiveEffect &effect);
     ImmersiveEffect LoadImmersiveEffect();
     int32_t SetKeepScreenOn(bool isKeepScreenOn);
-    int32_t GetSystemPanelCurrentInsets(uint64_t displayId, SystemPanelInsets &systemPanelInsets);
     int32_t SetSystemPanelButtonColor(const std::string &fillColor, const std::string &backgroundColor);
+    int32_t GetSystemPanelCurrentInsets(uint64_t displayId, SystemPanelInsets &systemPanelInsets);
     int32_t SetShadow(const Shadow &shadow);
     int32_t CovertSetShadowResult(const Rosen::WMError ret, const SetShadowOperation operation);
     bool IsKeyboardBottomElevated(PanelFlag flag);

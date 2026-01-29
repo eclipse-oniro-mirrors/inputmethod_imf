@@ -294,7 +294,7 @@ int32_t CjInputMethodController::Unsubscribe(int8_t type)
 void CjInputMethodController::OnSelectByRange(int32_t start, int32_t end)
 {
     if (onSelectByRange == nullptr) {
-        IMSA_HILOGE("onSelelctByRange null.");
+        IMSA_HILOGE("onSelectByRange null.");
         return;
     }
     IMSA_HILOGD("onSelelctByRange runs.");

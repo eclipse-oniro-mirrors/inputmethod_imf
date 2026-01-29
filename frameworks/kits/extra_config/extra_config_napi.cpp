@@ -65,6 +65,11 @@ napi_status JsExtraConfig::GetValue(napi_env env, napi_value in, CustomSettings 
         uint32_t valueSize = 0;
         status = GetValue(env, value, customSettingData, valueSize);
         CHECK_RETURN(status == napi_ok, "GetValue customSettingData error", status);
+        if (totalSize > UINT32_MAX - keySize - valueSize) {
+            out.clear();
+            IMSA_HILOGE("integer overflow detected in size calculation");
+            return napi_generic_failure;
+        }
         totalSize = totalSize + keySize + valueSize;
         out.emplace(keyStr, customSettingData);
     }

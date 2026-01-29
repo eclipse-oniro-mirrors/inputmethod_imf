@@ -21,8 +21,8 @@ sequenceable OHOS.IRemoteObject;
 import InputMethodClientTypes;
 interface OHOS.MiscServices.IInputClient {
     void OnInputReady([in] IRemoteObject agent, [in] BindImeInfo imeInfo);
-    [oneway] void OnInputStop([in] boolean isStopInactiveClient, [in] IRemoteObject object);
-    [oneway] void OnInputStopAsync([in] boolean isStopInactiveClient);
+    [oneway] void OnInputStop([in] boolean isStopInactiveClient, [in] IRemoteObject object, [in] boolean isSendKeyboardStatus);
+    [oneway] void OnInputStopAsync([in] boolean isStopInactiveClient, [in] boolean isSendKeyboardStatus);
     void OnSwitchInput([in] Property property, [in] SubProperty subProperty);
     void OnPanelStatusChange([in] unsigned int status, [in] ImeWindowInfo info);
     void NotifyInputStart([in] unsigned int callingWndId, [in] int requestKeyboardReason);

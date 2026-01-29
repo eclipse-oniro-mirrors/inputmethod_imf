@@ -49,6 +49,7 @@ public:
     int32_t ReceivePrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand) override;
     int32_t SetPreviewText(const std::u16string &text, const Range &range) override;
     void FinishTextPreview() override;
+    bool IsFromTs() override;
     static void ResetParam();
     static bool WaitSendKeyboardStatusCallback(const KeyboardStatus &keyboardStatus);
     static bool WaitNotifyPanelStatusInfoCallback(const PanelStatusInfo &info);
@@ -86,6 +87,7 @@ public:
     static std::string previewText_;
     static Range previewRange_;
     static bool isFinishTextPreviewCalled_;
+    static bool isFromTs_;
 };
 } // namespace MiscServices
 } // namespace OHOS

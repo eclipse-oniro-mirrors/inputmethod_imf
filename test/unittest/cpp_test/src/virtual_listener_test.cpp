@@ -340,7 +340,7 @@ HWTEST_F(VirtualListenerTest, testInputMethodEngineListener_001, TestSize.Level1
     IMSA_HILOGI("VirtualListenerTest testInputMethodEngineListener_001 START");
     ASSERT_NE(VirtualListenerTest::engineListener_, nullptr);
     VirtualListenerTest::engineListener_->OnInputFinish();
-    bool isEnable = VirtualListenerTest::engineListener_->IsEnable();
+    bool isEnable = VirtualListenerTest::engineListener_->IsEnable(0);
     EXPECT_TRUE(isEnable);
 }
 
@@ -356,7 +356,7 @@ HWTEST_F(VirtualListenerTest, testInputMethodEngineListener_002, TestSize.Level1
     ASSERT_NE(VirtualListenerTest::engineListener_, nullptr);
     int32_t security = 1;
     VirtualListenerTest::engineListener_->OnSecurityChange(security);
-    bool isEnable = VirtualListenerTest::engineListener_->IsEnable();
+    bool isEnable = VirtualListenerTest::engineListener_->IsEnable(0);
     EXPECT_TRUE(isEnable);
 }
 

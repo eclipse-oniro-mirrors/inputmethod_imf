@@ -162,12 +162,7 @@ napi_status JsPanel::CheckSetUiContentParams(napi_env env, size_t argc, std::sha
     napi_value *argv)
 {
     napi_status status = napi_generic_failure;
-    napi_handle_scope scope = nullptr;
-    napi_open_handle_scope(env, &scope);
-    if (scope == nullptr) {
-        IMSA_HILOGE("scope is nullptr!");
-        return status;
-    }
+    JsUtil::ScopeGuard scopeGuard(env);
     PARAM_CHECK_RETURN(env, argc >= 1, "at least one parameter is required!", TYPE_NONE, status);
     // 0 means the first param path<std::string>
     PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[0], ctxt->path) == napi_ok,
@@ -184,9 +179,7 @@ napi_status JsPanel::CheckSetUiContentParams(napi_env env, size_t argc, std::sha
                                                         : std::shared_ptr<NativeReference>(
                                                                 reinterpret_cast<NativeReference *>(storage));
             ctxt->contentStorage = contentStorage;
-            napi_delete_reference(env, storage);
         }
-        napi_close_handle_scope(env, scope);
     }
     ctxt->info = { std::chrono::system_clock::now(), JsEvent::SET_UI_CONTENT };
     jsQueue_.Push(ctxt->info);

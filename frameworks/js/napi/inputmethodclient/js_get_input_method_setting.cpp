@@ -478,11 +478,13 @@ napi_value JsGetInputMethodSetting::IsPanelShown(napi_env env, napi_callback_inf
     napi_status status = JsUtils::GetValue(env, argv[0], panelInfo);
     PARAM_CHECK_RETURN(env, status == napi_ok, "panelInfo covert failed!", TYPE_NONE, JsUtil::Const::Null(env));
     uint64_t displayId = 0;
+    bool hasDisplayIdParam = false;
     if (argc > 1) {
         int64_t input = 0;
         // 1 means parameter of displayId<long>
         if (JsUtil::GetValue(env, argv[1], input) && input >= 0) {
             displayId = static_cast<uint64_t>(input);
+            hasDisplayIdParam = true;
         }
     }
 
@@ -491,7 +493,11 @@ napi_value JsGetInputMethodSetting::IsPanelShown(napi_env env, napi_callback_inf
     auto instance = InputMethodController::GetInstance();
     if (instance != nullptr) {
         IMSA_HILOGD("target displayId: %{public}" PRIu64 "", displayId);
-        errCode = instance->IsPanelShown(panelInfo, isShown, displayId);
+        if (hasDisplayIdParam) {
+            errCode = instance->IsPanelShown(displayId, panelInfo, isShown);
+        } else {
+            errCode = instance->IsPanelShown(panelInfo, isShown);
+        }
     }
     if (errCode != ErrorCode::NO_ERROR) {
         JsUtils::ThrowException(env, JsUtils::Convert(errCode), "failed to query is panel shown!", TYPE_NONE);

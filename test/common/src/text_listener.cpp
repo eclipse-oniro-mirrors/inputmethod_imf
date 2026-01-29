@@ -40,6 +40,7 @@ std::unordered_map<std::string, PrivateDataValue> TextListener::privateCommand_ 
 std::string TextListener::previewText_;
 Range TextListener::previewRange_ {};
 bool TextListener::isFinishTextPreviewCalled_ { false };
+bool TextListener::isFromTs_{ false };
 TextListener::TextListener()
 {
     std::shared_ptr<AppExecFwk::EventRunner> runner = AppExecFwk::EventRunner::Create("TextListenerNotifier");
@@ -185,6 +186,12 @@ void TextListener::FinishTextPreview()
 {
     IMSA_HILOGI("TextListener in");
     isFinishTextPreviewCalled_ = true;
+}
+
+bool TextListener::IsFromTs()
+{
+    IMSA_HILOGI("TextListener in, isFromTs_: %{public}d", isFromTs_);
+    return isFromTs_;
 }
 
 void TextListener::ResetParam()

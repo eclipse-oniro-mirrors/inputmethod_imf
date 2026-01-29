@@ -29,7 +29,6 @@
 
 using namespace OHOS::MiscServices;
 namespace OHOS {
-constexpr int32_t MAIN_USER_ID = 100;
 class KeyboardListenerImpl : public KeyboardListener {
     bool OnKeyEvent(int32_t keyCode, int32_t keyStatus, sptr<KeyEventConsumerProxy> &consumer)
     {
@@ -49,22 +48,6 @@ class KeyboardListenerImpl : public KeyboardListener {
     void OnTextChange(const std::string &text) { }
     void OnEditorAttributeChange(const InputAttribute &inputAttribute) { }
 };
-
-bool InitializeClientInfo(InputClientInfo &clientInfo)
-{
-    sptr<IInputClient> clientStub = new (std::nothrow) InputClientServiceImpl();
-    if (clientStub == nullptr) {
-        IMSA_HILOGE("failed to create client");
-        return false;
-    }
-    sptr<InputDeathRecipient> deathRecipient = new (std::nothrow) InputDeathRecipient();
-    if (deathRecipient == nullptr) {
-        IMSA_HILOGE("failed to new deathRecipient");
-        return false;
-    }
-    clientInfo = { .userID = MAIN_USER_ID, .client = clientStub, .deathRecipient = deathRecipient };
-    return true;
-}
 
 void TestInsertText(FuzzedDataProvider &provider)
 {
@@ -130,83 +113,6 @@ void TestSetCallingWindow(FuzzedDataProvider &provider)
     int32_t fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
     InputMethodAbility::GetInstance().SetCallingWindow(fuzzedInt32, fuzzedInt32);
 }
-
-void TestCallingDisplayIdChanged(FuzzedDataProvider &provider)
-{
-    uint64_t fuzzedUint64 = provider.ConsumeIntegral<uint64_t>();
-    InputMethodAbility::GetInstance().OnCallingDisplayIdChanged(fuzzedUint64);
-}
-
-void TestRegisterProxyIme(FuzzedDataProvider &provider)
-{
-    uint64_t fuzzedUint64 = provider.ConsumeIntegral<uint64_t>();
-    InputMethodAbility::GetInstance().RegisterProxyIme(fuzzedUint64);
-}
-
-void TestUnregisterProxyIme(FuzzedDataProvider &provider)
-{
-    uint64_t fuzzedUint64 = provider.ConsumeIntegral<uint64_t>();
-    InputMethodAbility::GetInstance().UnregisterProxyIme(fuzzedUint64);
-}
-
-void TestStartInput(FuzzedDataProvider &provider)
-{
-    InputClientInfo clientInfo;
-    if (!OHOS::InitializeClientInfo(clientInfo)) {
-        return;
-    }
-    bool isBindFromClient = provider.ConsumeBool();
-    InputMethodAbility::GetInstance().StartInput(clientInfo, isBindFromClient);
-}
-
-void TestIsDisplayChanged(FuzzedDataProvider &provider)
-{
-    uint64_t oldDisplayId = provider.ConsumeIntegral<uint64_t>();
-    uint64_t newDisplayId = provider.ConsumeIntegral<uint64_t>();
-    InputMethodAbility::GetInstance().IsDisplayChanged(oldDisplayId, newDisplayId);
-}
-
-void TestOnSelectionChange(FuzzedDataProvider &provider)
-{
-    std::string fuzzedString = provider.ConsumeRandomLengthString();
-    std::u16string text(fuzzedString.begin(), fuzzedString.end());
-    int32_t oldBegin = provider.ConsumeIntegral<int32_t>();
-    int32_t oldEnd = provider.ConsumeIntegral<int32_t>();
-    int32_t newBegin = provider.ConsumeIntegral<int32_t>();
-    int32_t newEnd = provider.ConsumeIntegral<int32_t>();
-    InputMethodAbility::GetInstance().OnSelectionChange(text, oldBegin, oldEnd, newBegin, newEnd);
-}
-
-void TestOperationKeyboard(FuzzedDataProvider &provider)
-{
-    int32_t cmdId = provider.ConsumeIntegral<int32_t>();
-    uint32_t sessionId = provider.ConsumeIntegral<uint32_t>();
-    InputMethodAbility::GetInstance().HideKeyboardImplWithoutLock(cmdId, sessionId);
-    InputMethodAbility::GetInstance().ShowKeyboardImplWithLock(cmdId);
-}
-
-void TestInterfaceCoverage(FuzzedDataProvider &provider)
-{
-    int32_t dataInt32 = provider.ConsumeIntegral<int32_t>();
-    std::string fuzzedString = provider.ConsumeRandomLengthString();
-    std::u16string text(fuzzedString.begin(), fuzzedString.end());
-    InputMethodAbility::GetInstance().SelectByMovement(dataInt32);
-    InputMethodAbility::GetInstance().GetEnterKeyType(dataInt32);
-    InputMethodAbility::GetInstance().GetSecurityMode(dataInt32);
-    InputMethodAbility::GetInstance().GetTextBeforeCursor(dataInt32, text);
-}
-
-void TestImeMirrorManager(FuzzedDataProvider &provider)
-{
-    ImeMirrorManager mgr;
-    mgr.SetImeMirrorEnable(provider.ConsumeBool());
-    mgr.IsImeMirrorEnable();
-    mgr.SubscribeSaStart([]() { }, provider.ConsumeIntegral<int32_t>());
-    mgr.UnSubscribeSaStart(provider.ConsumeIntegral<int32_t>());
-
-    InputMethodAbility::GetInstance().BindImeMirror();
-    InputMethodAbility::GetInstance().UnbindImeMirror();
-}
 } // namespace OHOS
 
 /* Fuzzer entry point */
@@ -228,15 +134,5 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     OHOS::TestDispatchKeyEvent(provider);
 
     OHOS::TestSetCallingWindow(provider);
-
-    OHOS::TestCallingDisplayIdChanged(provider);
-    OHOS::TestRegisterProxyIme(provider);
-    OHOS::TestUnregisterProxyIme(provider);
-    OHOS::TestStartInput(provider);
-    OHOS::TestIsDisplayChanged(provider);
-    OHOS::TestOnSelectionChange(provider);
-    OHOS::TestOperationKeyboard(provider);
-    OHOS::TestInterfaceCoverage(provider);
-    OHOS::TestImeMirrorManager(provider);
     return 0;
 }

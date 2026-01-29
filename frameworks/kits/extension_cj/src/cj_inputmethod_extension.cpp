@@ -21,7 +21,6 @@
 #include "inputmethod_extension_ability_service_impl.h"
 #include "inputmethod_trace.h"
 #include "iservice_registry.h"
-#include "parameters.h"
 #include "system_ability_definition.h"
 #include "task_manager.h"
 #include "tasks/task_ams.h"
@@ -35,8 +34,6 @@ using namespace OHOS::AppExecFwk;
 using namespace OHOS::MiscServices;
 
 constexpr int32_t SUCCESS_CODE = 0;
-const std::string FOLD_SCREEN_TYPE = OHOS::system::GetParameter("const.window.foldscreen.type", "0,0,0,0");
-constexpr const char *EXTEND_FOLD_TYPE = "4";
 
 extern "C" __attribute__((visibility("default"))) InputMethodExtension *OHOS_ABILITY_CjInputMethodExtension()
 {
@@ -83,7 +80,7 @@ void CjInputMethodExtension::ListenWindowManager()
     }
 
     auto cjInputMethodExtension = std::static_pointer_cast<CjInputMethodExtension>(shared_from_this());
-    displayListener_ = sptr<CjInputMethodExtensionDisplayListener>::MakeSptr(cjInputMethodExtension);
+    displayListener_ = sptr<CjInputMethodExtensionDisplayAttributeListener>::MakeSptr(cjInputMethodExtension);
     if (displayListener_ == nullptr) {
         IMSA_HILOGE("failed to create display listener!");
         return;
@@ -110,7 +107,12 @@ void CjInputMethodExtension::SystemAbilityStatusChangeListener::OnAddSystemAbili
 {
     IMSA_HILOGD("add systemAbilityId: %{public}d.", systemAbilityId);
     if (systemAbilityId == WINDOW_MANAGER_SERVICE_ID) {
-        Rosen::DisplayManager::GetInstance().RegisterDisplayListener(listener_);
+        if (FOLD_SCREEN_TYPE.empty() || FOLD_SCREEN_TYPE[0] != *EXTEND_FOLD_TYPE) {
+            IMSA_HILOGD("The current device is a non-foldable device.");
+            return;
+        }
+        std::vector<std::string> attributes = {"rotation", "width", "height"};
+        Rosen::DisplayManager::GetInstance().RegisterDisplayAttributeListener(attributes, listener_);
     }
 }
 
@@ -177,16 +179,6 @@ sptr<IRemoteObject> CjInputMethodExtension::OnConnect(const AAFwk::Want &want)
 void CjInputMethodExtension::OnDisconnect(const AAFwk::Want &want) { }
 
 void CjInputMethodExtension::OnCommand(const AAFwk::Want &want, bool restart, int startId) { }
-
-void CjInputMethodExtension::OnCreate(Rosen::DisplayId displayId)
-{
-    IMSA_HILOGD("enter");
-}
-
-void CjInputMethodExtension::OnDestroy(Rosen::DisplayId displayId)
-{
-    IMSA_HILOGD("exit");
-}
 
 void CjInputMethodExtension::CheckNeedAdjustKeyboard(Rosen::DisplayId displayId)
 {

@@ -57,7 +57,7 @@ private:
     std::pair<bool, FocusedInfo> IsFocusedScbNotEnable(
         int64_t callingPid, uint32_t callingTokenId, uint32_t windowId, const sptr<IRemoteObject> &abilityToken);
     bool IsFocusedUIExtension(uint32_t callingTokenId, sptr<IRemoteObject> abilityToken);
-    FocusedInfo GenerateFocusInfo(
+    std::pair<bool, FocusedInfo> GenerateFocusCheckRet(
         const Rosen::FocusChangeInfo &focusWindowInfo, const std::vector<Rosen::FocusChangeInfo> &focusWindowInfos);
 };
 } // namespace MiscServices

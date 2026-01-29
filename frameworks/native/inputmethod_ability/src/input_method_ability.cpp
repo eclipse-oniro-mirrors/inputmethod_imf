@@ -514,14 +514,9 @@ int32_t InputMethodAbility::OnDiscardTypingText()
     return imeListener_->OnDiscardTypingText();
 }
 
-int32_t InputMethodAbility::HideKeyboard(uint64_t displayGroupId, bool isCheckGroupId)
+int32_t InputMethodAbility::HideKeyboard()
 {
     std::lock_guard<std::recursive_mutex> lock(keyboardCmdLock_);
-    if (isCheckGroupId && displayGroupId != GetInputAttribute().displayGroupId) {
-        IMSA_HILOGD("not same group:%{public}" PRIu64 "/%{public}" PRIu64 ".", displayGroupId,
-            GetInputAttribute().displayGroupId);
-        return ErrorCode::NO_ERROR;
-    }
     int32_t cmdCount = ++cmdId_;
     return HideKeyboardImplWithoutLock(cmdCount, 0);
 }
@@ -1416,12 +1411,12 @@ bool InputMethodAbility::IsDefaultIme()
     return false;
 }
 
-bool InputMethodAbility::IsEnable()
+bool InputMethodAbility::IsEnable(uint64_t displayId)
 {
     if (imeListener_ == nullptr) {
         return false;
     }
-    return imeListener_->IsEnable();
+    return imeListener_->IsEnable(displayId);
 }
 
 bool InputMethodAbility::IsCallbackRegistered(const std::string &type)
@@ -1575,6 +1570,10 @@ int32_t InputMethodAbility::SendPrivateCommand(const std::unordered_map<std::str
         auto systemChannel = GetSystemCmdChannelProxy();
         if (systemChannel == nullptr) {
             UpdateColorPrivateCommand(privateCommand);
+            if (!IsSystemPanelSupported()) {
+                IMSA_HILOGW("not input method panel!");
+                return ErrorCode::NO_ERROR;
+            }
             IMSA_HILOGE("channel is nullptr!");
             return ErrorCode::ERROR_SYSTEM_CMD_CHANNEL_ERROR;
         }
@@ -1794,19 +1793,19 @@ void InputMethodAbility::ReportImeStartInput(
 
 int32_t InputMethodAbility::OnCallingDisplayIdChanged(uint64_t displayId)
 {
-    IMSA_HILOGD("InputMethodAbility calling display: %{public}" PRIu64 ".", displayId);
+    auto curDisplayId = GetInputAttribute().callingDisplayId;
+    IMSA_HILOGD("IMA display/curDisplayId: %{public}" PRIu64 "/%{public}" PRIu64 ".", displayId, curDisplayId);
     if (imeListener_ == nullptr) {
         IMSA_HILOGD("imeListener_ is nullptr!");
         return ErrorCode::NO_ERROR;
     }
-    if (displayId == GetInputAttribute().displayId) {
+    if (displayId == curDisplayId) {
         return ErrorCode::NO_ERROR;
     }
     auto panel = GetSoftKeyboardPanel();
     if (panel != nullptr) {
-        HidePanel(panel, panel->GetPanelFlag(), Trigger::IMF, 0);
+        HidePanel(panel, PanelFlag::FLG_FIXED, Trigger::IMF, 0);
     }
-    // HideKeyboard(0, false);
     {
         std::lock_guard<std::mutex> lock(inputAttrLock_);
         inputAttribute_.callingDisplayId = displayId;
@@ -1894,6 +1893,23 @@ int32_t InputMethodAbility::IsCapacitySupport(int32_t capacity, bool &isSupport)
     }
 
     return proxy->IsCapacitySupport(capacity, isSupport);
+}
+
+bool InputMethodAbility::IsSystemPanelSupported()
+{
+    if (isSysPanelSupport_ != 0) {
+        return isSysPanelSupport_ == 1;
+    }
+    std::lock_guard<std::mutex> lock(isSysPanelSupportMutex_);
+    bool isSupportTemp = false;
+    int32_t ret = IsCapacitySupport(static_cast<int32_t>(CapacityType::SYSTEM_PANEL), isSupportTemp);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("IsCapacitySupport failed, ret:%{public}d", ret);
+        return false;
+    }
+    isSysPanelSupport_ = isSupportTemp ? 1 : -1;
+    IMSA_HILOGI("isSupportTemp:%{public}d", isSupportTemp);
+    return isSupportTemp;
 }
 
 int32_t InputMethodAbility::OnNotifyPreemption()

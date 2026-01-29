@@ -51,6 +51,7 @@ enum ClientType : uint32_t {
     JS,
     CJ,
     INNER_KIT,
+    INNER_KIT_ARKUI,
     CLIENT_TYPE_END,
 };
 

@@ -81,7 +81,7 @@ void InputMethodEngineListenerImpl::ReceivePrivateCommand(
     imeListenerCv_.notify_one();
 }
 
-bool InputMethodEngineListenerImpl::IsEnable()
+bool InputMethodEngineListenerImpl::IsEnable(uint64_t displayId)
 {
     IMSA_HILOGD("test::isEnable: %{public}d", isEnable_);
     return isEnable_;

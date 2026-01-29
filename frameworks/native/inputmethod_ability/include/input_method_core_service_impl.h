@@ -35,11 +35,11 @@ public:
     ErrCode StartInput(const InputClientInfoInner &clientInfoInner, bool isBindFromClient) override;
     ErrCode StopInput(const sptr<IRemoteObject> &channel, uint32_t sessionId) override;
     ErrCode ShowKeyboard(int32_t requestKeyboardReason) override;
-    ErrCode HideKeyboard(uint64_t displayGroupId, bool isCheckGroupId) override;
+    ErrCode HideKeyboard() override;
     ErrCode InitInputControlChannel(const sptr<IInputControlChannel> &inputControlChannel) override;
     ErrCode StopInputService(bool isTerminateIme) override;
     ErrCode SetSubtype(const SubProperty &property) override;
-    ErrCode IsEnable(bool &resultValue) override;
+    ErrCode IsEnable(bool &resultValue, uint64_t displayId) override;
     ErrCode IsPanelShown(const PanelInfo &panelInfo, bool &isShown) override;
     ErrCode OnSecurityChange(int32_t security) override;
     ErrCode OnConnectSystemCmd(const sptr<IRemoteObject> &channel, sptr<IRemoteObject> &agent) override;

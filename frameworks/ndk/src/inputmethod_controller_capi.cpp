@@ -70,23 +70,26 @@ static InputMethod_ErrorCode GetInputMethodProxy(InputMethod_TextEditorProxy *te
         return IME_ERR_OK;
     }
 
-    if (g_inputMethodProxy != nullptr && textEditor != g_inputMethodProxy->textEditor) {
-        g_inputMethodProxy->listener = nullptr;
-        delete g_inputMethodProxy;
-        g_inputMethodProxy = nullptr;
-    }
     OHOS::sptr<NativeTextChangedListener> listener = new (std::nothrow) NativeTextChangedListener(textEditor);
     if (listener == nullptr) {
         IMSA_HILOGE("new NativeTextChangedListener failed");
         return IME_ERR_NULL_POINTER;
     }
 
-    g_inputMethodProxy = new (std::nothrow) InputMethod_InputMethodProxy({ textEditor, listener });
-    if (g_inputMethodProxy == nullptr) {
+    auto tmpInputMethodProxy = new (std::nothrow) InputMethod_InputMethodProxy({ textEditor, listener });
+    if (tmpInputMethodProxy == nullptr) {
         IMSA_HILOGE("new InputMethod_InputMethodProxy failed");
         listener = nullptr;
         return IME_ERR_NULL_POINTER;
     }
+
+    if (g_inputMethodProxy != nullptr) {
+        g_inputMethodProxy->listener = nullptr;
+        delete g_inputMethodProxy;
+        g_inputMethodProxy = nullptr;
+        IMSA_HILOGI("old InputMethod_InputMethodProxy is released");
+    }
+    g_inputMethodProxy = tmpInputMethodProxy;
     return IME_ERR_OK;
 }
 #define CHECK_MEMBER_NULL(textEditor, member)   \

@@ -23,23 +23,26 @@
 using namespace OHOS::MiscServices;
 namespace OHOS {
 
-void FuzzCreateAndRegisterObserver(FuzzedDataProvider &provider, SettingsDataObserver::CallbackFunc func)
+void FuzzCreateAndRegisterObserver(FuzzedDataProvider &provider)
 {
+    SettingsDataObserver::CallbackFunc func;
     std::string uriProxy = provider.ConsumeRandomLengthString();
     std::string key = provider.ConsumeRandomLengthString();
     SettingsDataUtils::GetInstance().CreateAndRegisterObserver(uriProxy, key, func);
 }
 
-void FuzzRegisterObserver(FuzzedDataProvider &provider, SettingsDataObserver::CallbackFunc &func)
+void FuzzRegisterObserver(FuzzedDataProvider &provider)
 {
+    SettingsDataObserver::CallbackFunc func;
     std::string uriProxy = provider.ConsumeRandomLengthString();
     std::string key = provider.ConsumeRandomLengthString();
     sptr<SettingsDataObserver> observer = new SettingsDataObserver(uriProxy, key, func);
     SettingsDataUtils::GetInstance().RegisterObserver(observer);
 }
 
-void FuzzUnregisterObserver(FuzzedDataProvider &provider, SettingsDataObserver::CallbackFunc &func)
+void FuzzUnregisterObserver(FuzzedDataProvider &provider)
 {
+    SettingsDataObserver::CallbackFunc func;
     std::string uriProxy = provider.ConsumeRandomLengthString();
     std::string key = provider.ConsumeRandomLengthString();
     sptr<SettingsDataObserver> observer = new SettingsDataObserver(uriProxy, key, func);
@@ -65,11 +68,10 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 {
     /* Run your code on data */
     FuzzedDataProvider provider(data, size);
-    SettingsDataObserver::CallbackFunc func;
 
-    OHOS::FuzzCreateAndRegisterObserver(provider, func);
-    OHOS::FuzzRegisterObserver(provider, func);
-    OHOS::FuzzUnregisterObserver(provider, func);
+    OHOS::FuzzCreateAndRegisterObserver(provider);
+    OHOS::FuzzRegisterObserver(provider);
+    OHOS::FuzzUnregisterObserver(provider);
     OHOS::FuzzGenerateTargetUri(provider);
     return 0;
 }
