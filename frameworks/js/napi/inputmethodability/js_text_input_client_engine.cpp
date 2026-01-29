@@ -323,8 +323,9 @@ napi_value JsTextInputClientEngine::SendPrivateCommand(napi_env env, napi_callba
     auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
         PARAM_CHECK_RETURN(env, argc > 0, "at least one parameter is required!", TYPE_NONE, napi_generic_failure);
         napi_status status = JsUtils::GetValue(env, argv[0], ctxt->privateCommand);
-        CHECK_RETURN(status == napi_ok,
-            "commandData covert failed, type must be Record<string, CommandDataType>", status);
+        PARAM_CHECK_RETURN(env, status == napi_ok,
+            "commandData covert failed, type must be Record<string, CommandDataType>",
+            TYPE_NONE, napi_generic_failure);
         PARAM_CHECK_RETURN(env, TextConfig::IsPrivateCommandValid(ctxt->privateCommand),
             "commandData size limit 32KB, count limit 5.", TYPE_NONE, napi_generic_failure);
         ctxt->info = { std::chrono::system_clock::now(), ctxt->privateCommand };

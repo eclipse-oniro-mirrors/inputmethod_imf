@@ -2185,13 +2185,14 @@ int32_t PerUserSession::RequestAllIme(
 
 int32_t PerUserSession::OnConnectSystemCmd(const sptr<IRemoteObject> &channel, sptr<IRemoteObject> &agent)
 {
-    auto data = GetRealImeData(true);
-    if (data == nullptr) {
+    auto imeData = GetRealImeData(true);
+    if (imeData == nullptr || imeData->agent == nullptr) {
         IMSA_HILOGE("ime: %{public}d is not exist!", ImeType::IME);
         return ErrorCode::ERROR_IME_NOT_STARTED;
     }
-    auto ret = RequestIme(data, RequestType::NORMAL, [&data, &channel, &agent] {
-        return data->core->OnConnectSystemCmd(channel, agent);
+    agent = imeData->agent;
+    auto ret = RequestIme(imeData, RequestType::NORMAL, [&imeData, &channel] {
+        return imeData->core->OnConnectSystemCmd(channel);
     });
     IMSA_HILOGD("on connect systemCmd, ret: %{public}d.", ret);
     if (ret != ErrorCode::NO_ERROR) {

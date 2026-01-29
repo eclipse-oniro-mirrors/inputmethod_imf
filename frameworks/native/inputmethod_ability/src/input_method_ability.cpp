@@ -51,6 +51,7 @@ constexpr uint32_t FIND_PANEL_RETRY_INTERVAL = 10;
 constexpr uint32_t MAX_RETRY_TIMES = 100;
 constexpr uint32_t START_INPUT_CALLBACK_TIMEOUT_MS = 1000;
 constexpr uint32_t INVALID_SECURITY_MODE = -1;
+constexpr uint32_t MAX_PRIVATE_COMMAND_QUEUE_SIZE = 10;
 
 InputMethodAbility::InputMethodAbility()
 {
@@ -1060,39 +1061,19 @@ sptr<SystemCmdChannelProxy> InputMethodAbility::GetSystemCmdChannelProxy()
     return systemCmdChannelProxy_;
 }
 
-int32_t InputMethodAbility::OnConnectSystemCmd(const sptr<IRemoteObject> &channel, sptr<IRemoteObject> &agent)
+int32_t InputMethodAbility::OnConnectSystemCmd(const sptr<IRemoteObject> &channel)
 {
     IMSA_HILOGD("InputMethodAbility start.");
-    sptr<InputMethodAgentServiceImpl> agentImpl = new (std::nothrow) InputMethodAgentServiceImpl();
-    if (agentImpl == nullptr) {
-        IMSA_HILOGE("failed to create agent!");
-        return ErrorCode::ERROR_CLIENT_NULL_POINTER;
-    }
     sptr<SystemCmdChannelProxy> cmdChannel = new (std::nothrow) SystemCmdChannelProxy(channel);
     if (cmdChannel == nullptr) {
         IMSA_HILOGE("failed to create channel proxy!");
         return ErrorCode::ERROR_CLIENT_NULL_POINTER;
     }
-    bool shouldSendCommand = false;
-    std::unordered_map<std::string, PrivateDataValue> colorPrivateCommand;
-    {
-        std::lock_guard<std::mutex> lock(colorPrivateCommandLock_);
-        if (colorPrivateCommand_.find("functionKeyColor") != colorPrivateCommand_.end() &&
-            colorPrivateCommand_.find("functionKeyPressColor") != colorPrivateCommand_.end()) {
-            shouldSendCommand = true;
-            colorPrivateCommand = colorPrivateCommand_;
-            colorPrivateCommand_.clear();
-        }
-    }
-    if (shouldSendCommand) {
-        cmdChannel->SendPrivateCommand(colorPrivateCommand);
-    }
     {
         std::lock_guard<std::mutex> lock(systemCmdChannelLock_);
         systemCmdChannelProxy_ = cmdChannel;
-        systemAgentStub_ = agentImpl;
     }
-    agent = agentImpl->AsObject();
+    PushPrivateCommand();
     auto panel = GetSoftKeyboardPanel();
     if (panel != nullptr) {
         auto flag = panel->GetPanelFlag();
@@ -1569,11 +1550,11 @@ int32_t InputMethodAbility::SendPrivateCommand(const std::unordered_map<std::str
     if (TextConfig::IsSystemPrivateCommand(privateCommand)) {
         auto systemChannel = GetSystemCmdChannelProxy();
         if (systemChannel == nullptr) {
-            UpdateColorPrivateCommand(privateCommand);
             if (!IsSystemPanelSupported()) {
                 IMSA_HILOGW("not input method panel!");
                 return ErrorCode::NO_ERROR;
             }
+            UpdatePrivateCommand(privateCommand);
             IMSA_HILOGE("channel is nullptr!");
             return ErrorCode::ERROR_SYSTEM_CMD_CHANNEL_ERROR;
         }
@@ -1590,15 +1571,36 @@ int32_t InputMethodAbility::SendPrivateCommand(const std::unordered_map<std::str
     }
 }
 
-void InputMethodAbility::UpdateColorPrivateCommand(
-    const std::unordered_map<std::string, PrivateDataValue> &privateCommand)
+void InputMethodAbility::PushPrivateCommand()
 {
-    std::lock_guard<std::mutex> lock(colorPrivateCommandLock_);
-    for (const auto& [key, value] : privateCommand) {
-        if (key == "functionKeyColor" || key == "functionKeyPressColor") {
-            colorPrivateCommand_[key] = value;
+    if (privateCommandData_.size() == 0) {
+        return;
+    }
+    auto systemChannel = GetSystemCmdChannelProxy();
+    if (systemChannel == nullptr) {
+        IMSA_HILOGE("channel is nullptr!");
+        return;
+    }
+
+    std::lock_guard<std::mutex> lock(privateCommandLock_);
+    for (const auto &privateCommand : privateCommandData_) {
+        Value commandValueMap(privateCommand);
+        auto ret = systemChannel->SendPrivateCommand(commandValueMap);
+        if (ret != ErrorCode::NO_ERROR) {
+            IMSA_HILOGE("send privateCommand failed!");
         }
     }
+    privateCommandData_.clear();
+}
+
+void InputMethodAbility::UpdatePrivateCommand(
+    const std::unordered_map<std::string, PrivateDataValue> &privateCommand)
+{
+    std::lock_guard<std::mutex> lock(privateCommandLock_);
+    if (privateCommandData_.size() >= MAX_PRIVATE_COMMAND_QUEUE_SIZE) {
+        privateCommandData_.erase(privateCommandData_.begin());
+    }
+    privateCommandData_.push_back(privateCommand);
 }
 
 int32_t InputMethodAbility::ReceivePrivateCommand(
