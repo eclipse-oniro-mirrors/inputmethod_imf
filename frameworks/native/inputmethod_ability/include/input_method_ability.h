@@ -107,7 +107,6 @@ public:
     int32_t FinishTextPreview(const AsyncIpcCallBack &callback = nullptr);
     int32_t NotifyPanelStatus(bool isUseParameterFlag = false, PanelFlag panelFlag = FLG_FIXED,
         bool isCheckFuncButton = false);
-    int32_t SetPanelShadow(const Shadow &shadow);
     InputAttribute GetInputAttribute();
     void OnSetInputType(InputType inputType);
     int32_t SendMessage(const ArrayBuffer &arrayBuffer);
