@@ -169,6 +169,7 @@ public:
     void OnCallingDisplayIdChanged(const int32_t windowId, const int32_t callingPid, const uint64_t displayId);
     bool SpecialScenarioCheck();
     int32_t SpecialSendPrivateData(const std::unordered_map<std::string, PrivateDataValue> &privateCommand);
+    int32_t SendVoicePrivateCommand(const bool isPersistence);
     bool IsNumkeyAutoInputApp(const std::string &bundleName);
     bool IsPreconfiguredDefaultImeSpecified(const InputClientInfo &inputClientInfo);
     bool IsImeSwitchForbidden();

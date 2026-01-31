@@ -70,8 +70,8 @@ public:
     ErrCode IsCurrentIme(bool &resultValue) override;
     ErrCode IsInputTypeSupported(int32_t type, bool &resultValue) override;
     ErrCode IsCurrentImeByPid(int32_t pid, bool &resultValue) override;
-    ErrCode StartInputType(int32_t type) override;
-    ErrCode StartInputTypeAsync(int32_t type) override;
+    ErrCode StartInputType(int32_t type, bool isPersistence) override;
+    ErrCode StartInputTypeAsync(int32_t type, bool isPersistence) override;
     ErrCode ExitCurrentInputType() override;
     ErrCode IsPanelShown(const PanelInfo &panelInfo, bool &isShown) override;
     ErrCode IsPanelShown(uint64_t displayId, const PanelInfo &panelInfo, bool &isShown) override;
@@ -130,7 +130,8 @@ private:
     bool IsStartInputTypePermitted(int32_t userId);
     int32_t OnSwitchInputMethod(int32_t userId, const SwitchInfo &switchInfo, SwitchTrigger trigger);
     int32_t StartSwitch(int32_t userId, const SwitchInfo &switchInfo, const std::shared_ptr<PerUserSession> &session);
-    int32_t OnStartInputType(int32_t userId, const SwitchInfo &switchInfo, bool isCheckPermission);
+    int32_t OnStartInputType(int32_t userId, const SwitchInfo &switchInfo,
+        bool isCheckPermission, bool isPersistence = true);
     int32_t HandlePackageEvent(const Message *msg);
     int32_t HandleUpdateLargeMemoryState(const Message *msg);
     int32_t OnPackageRemoved(int32_t userId, const std::string &packageName);
@@ -142,7 +143,7 @@ private:
     int32_t Switch(int32_t userId, const std::string &bundleName, const std::shared_ptr<ImeInfo> &info);
     int32_t SwitchExtension(int32_t userId, const std::shared_ptr<ImeInfo> &info);
     int32_t SwitchSubType(int32_t userId, const std::shared_ptr<ImeInfo> &info);
-    int32_t SwitchInputType(int32_t userId, const SwitchInfo &switchInfo);
+    int32_t SwitchInputType(int32_t userId, const SwitchInfo &switchInfo, bool isPersistence = true);
     void GetValidSubtype(const std::string &subName, const std::shared_ptr<ImeInfo> &info);
     ServiceRunningState state_;
     void InitServiceHandler();
@@ -183,7 +184,7 @@ private:
     int32_t IsDefaultImeFromTokenId(int32_t userId, uint32_t tokenId);
     void DealSwitchRequest();
     bool IsCurrentIme(int32_t userId, uint32_t tokenId);
-    int32_t StartInputType(int32_t userId, InputType type);
+    int32_t StartInputType(int32_t userId, InputType type, bool isPersistence = true);
     // if switch input type need to switch ime, then no need to hide panel first.
     void NeedHideWhenSwitchInputType(int32_t userId, InputType type, bool &needHide);
     bool GetDeviceFunctionKeyState(int32_t functionKey, bool &isEnable);

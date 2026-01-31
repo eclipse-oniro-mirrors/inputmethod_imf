@@ -1495,7 +1495,9 @@ HWTEST_F(InputMethodControllerTest, testIsInputTypeSupported, TestSize.Level0)
 HWTEST_F(InputMethodControllerTest, testStartInputType, TestSize.Level0)
 {
     IMSA_HILOGI("IMC testStartInputType Test START");
-    auto ret = inputMethodController_->StartInputType(InputType::NONE);
+    auto ret = inputMethodController_->StartInputType(InputType::NONE, false);
+    EXPECT_NE(ret, ErrorCode::NO_ERROR);
+    ret = inputMethodController_->StartInputType(InputType::NONE, true);
     EXPECT_NE(ret, ErrorCode::NO_ERROR);
 }
 
@@ -1509,7 +1511,9 @@ HWTEST_F(InputMethodControllerTest, testStartInputType, TestSize.Level0)
 HWTEST_F(InputMethodControllerTest, testStartInputTypeAsync, TestSize.Level0)
 {
     IMSA_HILOGI("IMC testStartInputTypeAsync Test START");
-    auto ret = inputMethodController_->StartInputTypeAsync(InputType::NONE);
+    auto ret = inputMethodController_->StartInputTypeAsync(InputType::NONE, false);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ret = inputMethodController_->StartInputTypeAsync(InputType::NONE, true);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 }
 

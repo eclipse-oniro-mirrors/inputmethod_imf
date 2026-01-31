@@ -3015,6 +3015,29 @@ int32_t PerUserSession::SendPrivateData(const std::unordered_map<std::string, Pr
     return ret;
 }
 
+int32_t PerUserSession::SendVoicePrivateCommand(const bool isPersistence)
+{
+    auto data = GetRealImeData(true);
+    if (data == nullptr) {
+        IMSA_HILOGE("data is nullptr");
+        return ErrorCode::ERROR_IME_NOT_STARTED;
+    }
+    ImeIdentification ime;
+    InputTypeManager::GetInstance().GetImeByInputType(InputType::VOICEKB_INPUT, ime);
+    std::unordered_map<std::string, PrivateDataValue> privateCommand
+        = { {"sys_cmd", 1}, {"subName", ime.subName} };
+    auto ret = RequestIme(data, RequestType::NORMAL, [&data, &privateCommand] {
+        Value value(privateCommand);
+        return data->core->OnSendPrivateData(value);
+    });
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("send voice private command failed, ret: %{public}d!", ret);
+        return ret;
+    }
+    IMSA_HILOGI("send voice private command success.");
+    return ret;
+}
+
 void PerUserSession::ClearRequestKeyboardReason(std::shared_ptr<InputClientInfo> &clientInfo)
 {
     if (clientInfo == nullptr) {
