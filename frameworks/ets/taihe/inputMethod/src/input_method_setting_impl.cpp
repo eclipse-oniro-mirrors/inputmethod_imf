@@ -331,15 +331,28 @@ EnabledState_t InputMethodSettingImpl::GetInputMethodStateSync()
 void InputMethodSettingImpl::EnableInputMethodSync(::taihe::string_view bundleName,
     ::taihe::string_view extensionName, ::ohos::inputMethod::EnabledState enabledState)
 {
-    int32_t errCode = ErrorCode::ERROR_EX_NULL_POINTER;
     OHOS::MiscServices::EnabledStatus status;
     auto instance = InputMethodController::GetInstance();
     if (instance == nullptr) {
         IMSA_HILOGE("GetInstance return nullptr!");
         return;
     }
-    errCode = instance->EnableIme(std::string(bundleName), std::string(extensionName),
+    std::string tmpBundleName = std::string(bundleName);
+    std::string tmpExtensionName = std::string(extensionName);
+    if (tmpBundleName.empty() || tmpExtensionName.empty()) {
+        IMSA_HILOGE("bundleName or extensionName is empty!");
+        set_business_error(JsUtils::Convert(ErrorCode::ERROR_IME_NOT_FOUND),
+            JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IME_NOT_FOUND)));
+        return;
+    }
+    auto errCode = instance->EnableIme(tmpBundleName, tmpExtensionName,
         static_cast<OHOS::MiscServices::EnabledStatus>(enabledState.get_value()));
+    if (errCode != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("EnableIme failed!");
+        set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
+        return;
+    }
+    IMSA_HILOGI("EnableIme success!");
 }
 } // namespace MiscServices
 } // namespace OHOS
