@@ -154,10 +154,6 @@ void JsInputMethodExtension::Init(const std::shared_ptr<AbilityLocalRecord> &rec
 void JsInputMethodExtension::ListenWindowManager()
 {
     IMSA_HILOGD("register window manager service listener.");
-    if (FOLD_SCREEN_TYPE.empty() || FOLD_SCREEN_TYPE[0] != *EXTEND_FOLD_TYPE) {
-        IMSA_HILOGD("The current device is a non-foldable device.");
-        return;
-    }
     auto jsInputMethodExtension = std::static_pointer_cast<JsInputMethodExtension>(shared_from_this());
     displayListener_ = sptr<JsInputMethodExtensionDisplayAttributeListener>::MakeSptr(jsInputMethodExtension);
     if (displayListener_ == nullptr) {
