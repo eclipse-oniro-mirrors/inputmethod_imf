@@ -22,13 +22,9 @@
 #include "display_manager.h"
 #include "inputmethod_extension.h"
 #include "system_ability_status_change_stub.h"
-#include "parameters.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
-
-const std::string FOLD_SCREEN_TYPE = OHOS::system::GetParameter("const.window.foldscreen.type", "0,0,0,0");
-constexpr const char *EXTEND_FOLD_TYPE = "4";
 /**
  * @brief Basic inputmethod components.
  */
@@ -189,10 +185,8 @@ private:
         ~SystemAbilityStatusChangeListener()
         {
             if (listener_ != nullptr) {
-                if (!FOLD_SCREEN_TYPE.empty() && FOLD_SCREEN_TYPE[0] == *EXTEND_FOLD_TYPE) {
-                    std::vector<std::string> attributes = {"rotation", "width", "height"};
-                    Rosen::DisplayManager::GetInstance().RegisterDisplayAttributeListener(attributes, listener_);
-                }
+                std::vector<std::string> attributes = {"rotation", "width", "height"};
+                Rosen::DisplayManager::GetInstance().RegisterDisplayAttributeListener(attributes, listener_);
             }
         }
         void OnAddSystemAbility(int32_t systemAbilityId, const std::string &deviceId) override;
