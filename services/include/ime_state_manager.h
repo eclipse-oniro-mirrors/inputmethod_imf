@@ -25,7 +25,6 @@ enum class RequestType : int32_t {
     REQUEST_SHOW,
     REQUEST_HIDE
 };
-constexpr const char *INPUT_METHOD_SERVICE_SA_NAME = "inputmethod_service";
 class ImeStateManager {
 public:
     explicit ImeStateManager(pid_t pid) : pid_(pid) { }
@@ -36,7 +35,6 @@ public:
     void AfterIpc(RequestType type, bool isSuccess);
     bool IsImeInUse();
     virtual void TemporaryActiveIme() { };
-    void ReportQos(bool isStart, pid_t pid);
 
 protected:
     std::mutex mutex_;

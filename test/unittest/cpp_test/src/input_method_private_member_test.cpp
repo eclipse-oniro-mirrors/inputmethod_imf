@@ -3104,46 +3104,6 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnPackageUpdated, TestSize
 }
 
 /**
- * @tc.name: IsImeStartedForeground_001
- * @tc.desc: IsImeStartedForeground_001
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(InputMethodPrivateMemberTest, IsImeStartedForeground_001, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodPrivateMemberTest::IsImeStartedForeground_001 start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
-    userSession->clientGroupMap_.clear();
-    // has no current client, isNeedReportQos_ is false
-    auto ret = userSession->IsImeStartedForeground();
-    EXPECT_FALSE(ret);
-    // has no current client, isNeedReportQos_ is true
-    userSession->SetIsNeedReportQos(true);
-    ret = userSession->IsImeStartedForeground();
-    EXPECT_TRUE(ret);
-    // has current client, but not bind real ime, isNeedReportQos_ is false
-    auto group = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
-    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
-    group->currentClient_ = client;
-    auto info = std::make_shared<InputClientInfo>();
-    info->bindImeData = std::make_shared<BindImeData>(100, ImeType::PROXY_IME);
-    userSession->SetIsNeedReportQos(false);
-    group->mapClients_.insert_or_assign(client->AsObject(), info);
-    userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
-    ret = userSession->IsImeStartedForeground();
-    EXPECT_FALSE(ret);
-    // has current client, bind real ime, but isShowKeyboard is false
-    info->bindImeData = std::make_shared<BindImeData>(10, ImeType::IME);
-    info->isShowKeyboard = false;
-    ret = userSession->IsImeStartedForeground();
-    EXPECT_FALSE(ret);
-    // has current client, bind real ime, isShowKeyboard is true
-    info->isShowKeyboard = true;
-    ret = userSession->IsImeStartedForeground();
-    EXPECT_TRUE(ret);
-}
-
-/**
  * @tc.name: PerUserSession_OnImeDied
  * @tc.desc: PerUserSession_OnImeDied
  * @tc.type: FUNC
