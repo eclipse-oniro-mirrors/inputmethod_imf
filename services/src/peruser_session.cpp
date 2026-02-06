@@ -2393,9 +2393,6 @@ std::shared_ptr<ImeData> PerUserSession::UpdateRealImeData(
     if (ret != ErrorCode::NO_ERROR) {
         return nullptr;
     }
-    if (realImeData_->imeStateManager != nullptr && IsImeStartedForeground()) {
-        realImeData_->imeStateManager->ReportQos(false, pid);
-    }
     return realImeData_;
 }
 
@@ -2462,27 +2459,11 @@ int32_t PerUserSession::FillImeData(
     return ErrorCode::NO_ERROR;
 }
 
-bool PerUserSession::IsImeStartedForeground()
-{
-    auto [clientGroup, clientInfo] = GetCurrentClientBoundRealIme();
-    if (clientInfo != nullptr && clientInfo->isShowKeyboard) {
-        IMSA_HILOGI("ime restart with keyboard front end");
-        return true;
-    } else if (clientInfo == nullptr && isNeedReportQos_) {
-        IMSA_HILOGI("sa start with keyboard front end");
-        return true;
-    }
-    return false;
-}
-
 int32_t PerUserSession::InitConnect(pid_t pid)
 {
     std::lock_guard<std::mutex> lock(realImeDataLock_);
     if (realImeData_ == nullptr) {
         return ErrorCode::ERROR_NULL_POINTER;
-    }
-    if (realImeData_->imeStateManager != nullptr && IsImeStartedForeground()) {
-        realImeData_->imeStateManager->ReportQos(true, pid);
     }
     realImeData_->pid = pid;
     return ErrorCode::NO_ERROR;
@@ -3290,11 +3271,6 @@ bool PerUserSession::IsEnable(const std::shared_ptr<ImeData> &data, uint64_t dis
     }
     data->core->IsEnable(ret, displayId);
     return ret;
-}
-
-void PerUserSession::SetIsNeedReportQos(bool isNeedReportQos)
-{
-    isNeedReportQos_ = isNeedReportQos;
 }
 } // namespace MiscServices
 } // namespace OHOS

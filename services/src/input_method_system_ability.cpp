@@ -738,9 +738,7 @@ int32_t InputMethodSystemAbility::StartInputInner(
     }
     auto imeToBind = session->GetReadyImeDataToBind(displayId);
     if (imeToBind == nullptr || imeToBind->IsRealIme()) {
-        session->SetIsNeedReportQos(inputClientInfo.isShowKeyboard);
         ret = CheckInputTypeOption(userId, inputClientInfo);
-        session->SetIsNeedReportQos(false);
         if (ret != ErrorCode::NO_ERROR) {
             IMSA_HILOGE("%{public}d failed to CheckInputTypeOption!", userId);
             return ret;

@@ -12,9 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <cinttypes>
-#include "res_sched_client.h"
-#include "system_ability_definition.h"
 #include "ime_state_manager.h"
 
 #include "global.h"
@@ -75,20 +72,6 @@ bool ImeStateManager::IsImeInUse()
 {
     std::lock_guard<std::mutex> lock(mutex_);
     return isImeInUse_;
-}
-
-void ImeStateManager::ReportQos(bool isStart, pid_t pid)
-{
-    auto type = ResourceSchedule::ResType::RES_TYPE_IME_QOS_CHANGE;
-    auto state = isStart ? ResourceSchedule::ResType::ImeQosState::IME_START_UP :
-                                ResourceSchedule::ResType::ImeQosState::IME_START_FINISH;
-    std::unordered_map<std::string, std::string> payload = {
-        { "saId",          std::to_string(INPUT_METHOD_SYSTEM_ABILITY_ID)                                      },
-        { "saName",        std::string(INPUT_METHOD_SERVICE_SA_NAME)                                           },
-        { "pid",           std::to_string(pid)                                                                 },
-    };
-    IMSA_HILOGI("report qos state: %{public}" PRId64 ".", state);
-    ResourceSchedule::ResSchedClient::GetInstance().ReportData(type, state, payload);
 }
 // LCOV_EXCL_STOP
 } // namespace MiscServices
