@@ -1143,7 +1143,8 @@ std::vector<std::string> ImeInfoInquirer::GetRunningIme(int32_t userId)
         return bundleNames;
     }
     for (const auto &info : infos) {
-        if (info.extensionType_ == ExtensionAbilityType::INPUTMETHOD && !info.bundleNames.empty()) {
+        if (info.extensionType_ == ExtensionAbilityType::INPUTMETHOD && !info.bundleNames.empty()
+            && info.preloadMode_ != PreloadMode::PRELOAD_MODULE) {
             bundleNames.push_back(info.bundleNames[0]);
         }
     }
