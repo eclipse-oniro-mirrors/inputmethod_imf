@@ -458,7 +458,7 @@ int32_t PerUserSession::UpdateClientAfterRequestHide(uint64_t displayGroupId, co
     if (currentClient != nullptr) {
         auto currentClientInfo = clientGroup->GetClientInfo(currentClient->AsObject());
         if (!callerBundleName.empty() && currentClientInfo != nullptr &&
-            callerBundleName != currentClientInfo->attribute.bundleName) {
+            callerBundleName != currentClientInfo->config.inputAttribute.bundleName) {
             IMSA_HILOGI("remove current client: %{public}d", currentClientInfo->pid);
             DetachOptions options = { .sessionId = 0, .isUnbindFromClient = false };
             RemoveClient(currentClient, clientGroup, options);
