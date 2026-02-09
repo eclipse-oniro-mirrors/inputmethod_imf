@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2025-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -536,7 +536,7 @@ interface Panel {
                 try {
                     this.setUiContentSync(id, path);
                     resolve(undefined);
-                } catch (err: Error) {
+                } catch (err) {
                     reject(err as BusinessError);
                 }
             });
@@ -546,7 +546,7 @@ interface Panel {
             try {
                 this.setUiContentSync(id, path);
                 callback(null, undefined);
-            } catch (err: Error) {
+            } catch (err) {
                 callback(err as BusinessError, undefined);
             }
         }
@@ -556,7 +556,7 @@ interface Panel {
                 try {
                     this.setUiContentStorageSync(id, path, storage);
                     resolve(undefined);
-                } catch (err: Error) {
+                } catch (err) {
                     reject(err as BusinessError);
                 }
             });
@@ -566,7 +566,7 @@ interface Panel {
             try {
                 this.setUiContentStorageSync(id, path, storage);
                 callback(null, undefined);
-            } catch (err: Error) {
+            } catch (err) {
                 callback(err as BusinessError, undefined);
             }
         }
