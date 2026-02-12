@@ -37,13 +37,11 @@
 #include "system_ability_definition.h"
 #include "system_param_adapter.h"
 #include "wms_connection_observer.h"
-#include "dm_common.h"
-#include "display_manager.h"
-#include "parameters.h"
 #ifdef IMF_SCREENLOCK_MGR_ENABLE
 #include "screenlock_manager.h"
 #endif
 #include "window_adapter.h"
+#include "variant_util.h"
 #include "input_method_tools.h"
 #include "ime_state_manager_factory.h"
 #include "inputmethod_trace.h"
@@ -458,7 +456,7 @@ int32_t PerUserSession::UpdateClientAfterRequestHide(uint64_t displayGroupId, co
     if (currentClient != nullptr) {
         auto currentClientInfo = clientGroup->GetClientInfo(currentClient->AsObject());
         if (!callerBundleName.empty() && currentClientInfo != nullptr &&
-            callerBundleName != currentClientInfo->attribute.bundleName) {
+            callerBundleName != currentClientInfo->config.inputAttribute.bundleName) {
             IMSA_HILOGI("remove current client: %{public}d", currentClientInfo->pid);
             DetachOptions options = { .sessionId = 0, .isUnbindFromClient = false };
             RemoveClient(currentClient, clientGroup, options);
@@ -966,9 +964,10 @@ void PerUserSession::StopClientInput(const std::shared_ptr<InputClientInfo> &cli
             return;
         }
         std::lock_guard<std::mutex> lock(isNotifyFinishedLock_);
+        sptr<IRemoteObject> sptrObj(onInputStopObject);
         isNotifyFinished_.Clear(false);
         ret =
-            clientInfo->client->OnInputStop(options.isInactiveClient, onInputStopObject, options.isSendKeyboardStatus);
+            clientInfo->client->OnInputStop(options.isInactiveClient, sptrObj, options.isSendKeyboardStatus);
         if (!isNotifyFinished_.GetValue()) {
             IMSA_HILOGE("OnInputStop is not finished!");
         }
@@ -1319,6 +1318,7 @@ int32_t PerUserSession::InitInputControlChannel()
 
 bool PerUserSession::IsLargeMemoryStateNeed()
 {
+    IMSA_HILOGI(" IsLargeMemoryStateNeed called");
     std::lock_guard<std::mutex> lock(largeMemoryStateMutex_);
     if (largeMemoryState_ == LargeMemoryState::LARGE_MEMORY_NEED) {
         IMSA_HILOGI("large memory state is True");
@@ -1729,9 +1729,9 @@ bool PerUserSession::CanStartIme()
 {
     return (IsSaReady(MEMORY_MANAGER_SA_ID) && IsWmsReady() &&
 #ifdef IMF_SCREENLOCK_MGR_ENABLE
-        IsSaReady(SCREENLOCK_SERVICE_ID) &&
+    IsSaReady(SCREENLOCK_SERVICE_ID) &&
 #endif
-        runningIme_.empty());
+    runningIme_.empty());
 }
 
 int32_t PerUserSession::ChangeToDefaultImeIfNeed(

@@ -107,10 +107,6 @@ void CjInputMethodExtension::SystemAbilityStatusChangeListener::OnAddSystemAbili
 {
     IMSA_HILOGD("add systemAbilityId: %{public}d.", systemAbilityId);
     if (systemAbilityId == WINDOW_MANAGER_SERVICE_ID) {
-        if (FOLD_SCREEN_TYPE.empty() || FOLD_SCREEN_TYPE[0] != *EXTEND_FOLD_TYPE) {
-            IMSA_HILOGD("The current device is a non-foldable device.");
-            return;
-        }
         std::vector<std::string> attributes = {"rotation", "width", "height"};
         Rosen::DisplayManager::GetInstance().RegisterDisplayAttributeListener(attributes, listener_);
     }

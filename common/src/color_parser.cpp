@@ -62,7 +62,7 @@ bool ColorParser::IsValidHexString(const std::string &colorStr)
 // check color string, format:#008EF5 or #FF008EF5. Alpha cannot be 0x00.
 bool ColorParser::IsColorFullyTransparent(uint32_t colorValue)
 {
-    return (colorValue & 0xff000000) == 0x00000000;
+    return (colorValue & 0xFF000000) == 0x00000000;
 }
 } // namespace MiscServices
 } // namespace OHOS

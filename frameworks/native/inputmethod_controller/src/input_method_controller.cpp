@@ -60,8 +60,8 @@ constexpr uint32_t MAX_ATTACH_TIMEOUT = 2500; // 2.5s
 BlockQueue<InputMethodController::CtrlEventInfo> InputMethodController::ctrlEventQueue_ { MAX_ATTACH_TIMEOUT };
 constexpr int32_t LOOP_COUNT = 5;
 constexpr int32_t LOG_MAX_TIME = 20;
-constexpr int32_t LOG_INSERT_MAX_TIME = 20;    // 20s
-constexpr int32_t LOG_INSERT_MIN_TIME = 5;     // 5s
+constexpr int32_t LOG_INSERT_MAX_TIME = 20; // 20s
+constexpr int32_t LOG_INSERT_MIN_TIME = 5; // 5s
 constexpr int32_t ATTACH_RETRY_INTERVAL = 50;  // 50ms
 constexpr int32_t ATTACH_MAX_RETRY_TIMES = 30; // 30 times
 constexpr int64_t DELAY_TIME = 100;
@@ -152,7 +152,8 @@ int32_t InputMethodController::Initialize()
     InputAttribute attribute;
     attribute.inputPattern = InputAttribute::PATTERN_TEXT;
     clientInfo_.attribute = attribute;
-    clientInfo_.client = client, clientInfo_.channel = channel->AsObject();
+    clientInfo_.client = client;
+    clientInfo_.channel = channel->AsObject();
 
     // make AppExecFwk::EventHandler handler
     handler_ = std::make_shared<AppExecFwk::EventHandler>(AppExecFwk::EventRunner::GetMainEventRunner());
@@ -161,11 +162,7 @@ int32_t InputMethodController::Initialize()
 
 sptr<IInputMethodSystemAbility> InputMethodController::TryGetSystemAbilityProxy()
 {
-#ifdef IMF_ON_DEMAND_START_STOP_SA_ENABLE
     return GetSystemAbilityProxy(false);
-#else
-    return GetSystemAbilityProxy(true);
-#endif
 }
 
 sptr<IInputMethodSystemAbility> InputMethodController::GetSystemAbilityProxy(bool ifRetry)
@@ -372,7 +369,7 @@ int32_t InputMethodController::AttachExec(sptr<OnTextChangedListener> listener, 
     if (clientInfo_.isNotifyInputStart) {
         sessionId_++;
     }
-    IMSA_HILOGI("sessionId_ %{public}u", sessionId_.load());
+    IMSA_HILOGD("sessionId_ %{public}u", sessionId_.load());
     if (clientInfo_.isNotifyInputStart && lastListener != nullptr) {
         lastListener->OnDetachV2();
     }
@@ -738,7 +735,7 @@ int32_t InputMethodController::ShowInput(sptr<IInputClient> &client, ClientType 
     }
     return proxy->ShowInput(client, windowId, type, requestKeyboardReason);
 }
-// LCOV_EXCL_STOP
+
 int32_t InputMethodController::HideInput(sptr<IInputClient> &client)
 {
     IMSA_HILOGD("InputMethodController::HideInput start.");
@@ -754,7 +751,7 @@ int32_t InputMethodController::HideInput(sptr<IInputClient> &client)
     }
     return proxy->HideInput(client, windowId);
 }
-
+// LCOV_EXCL_STOP
 void InputMethodController::OnRemoteSaDied(const wptr<IRemoteObject> &remote)
 {
     IMSA_HILOGI("input method service death.");
@@ -1162,7 +1159,7 @@ int32_t InputMethodController::SetCallingWindow(uint32_t windowId)
     agent->SetCallingWindow(windowId);
     return ErrorCode::NO_ERROR;
 }
-
+// LCOV_EXCL_START
 int32_t InputMethodController::SetCallingWindowByIMSA(uint32_t windowId)
 {
     auto proxy = GetSystemAbilityProxy();
@@ -1205,7 +1202,7 @@ int32_t InputMethodController::ShowSoftKeyboardInner(uint64_t displayId, ClientT
     InputMethodSysEvent::GetInstance().OperateSoftkeyboardBehaviour(OperateIMEInfoCode::IME_SHOW_NORMAL);
     return proxy->ShowCurrentInput(displayId, type);
 }
-
+// LCOV_EXCL_STOP
 int32_t InputMethodController::HideSoftKeyboard()
 {
     auto proxy = GetSystemAbilityProxy();
@@ -1308,13 +1305,13 @@ int32_t InputMethodController::SetSimpleKeyboardEnabled(bool enable)
 
 void InputMethodController::OnInputReady(sptr<IRemoteObject> agentObject, const BindImeInfo &imeInfo)
 {
-    IMSA_HILOGD("InputMethodController start.");
+    IMSA_HILOGI("InputMethodController start.");
     if (imeInfo.bundleName != IME_MIRROR_NAME) {
         SetBindImeInfo(std::make_pair(imeInfo.pid, imeInfo.bundleName));
         isBound_.store(true);
         isEditable_.store(true);
     } else {
-        IMSA_HILOGD("[ImeMirrorTag] proxyIme_IME_MIRROR no need to set bindImeInfo");
+        IMSA_HILOGI("[ImeMirrorTag] proxyIme_IME_MIRROR no need to set bindImeInfo");
     }
 
     if (agentObject == nullptr) {
@@ -1766,7 +1763,7 @@ void InputMethodController::PrintLogIfAceTimeout(int64_t start)
         IMSA_HILOGW("timeout: [%{public}" PRId64 ", %{public}" PRId64 "].", start, end);
     }
 }
-
+// LCOV_EXCL_START
 void InputMethodController::PrintTextChangeLog()
 {
     std::lock_guard<std::mutex> lock(printTextChangeMutex_);
@@ -1780,7 +1777,7 @@ void InputMethodController::PrintTextChangeLog()
         textChangeCountInPeriod_ = 0;
     }
 }
-
+// LCOV_EXCL_STOP
 int32_t InputMethodController::ReceivePrivateCommand(
     const std::unordered_map<std::string, PrivateDataValue> &privateCommand)
 {
@@ -2075,7 +2072,7 @@ void InputMethodController::ClearAgentInfo()
     IMSA_HILOGD("Clear all agent info");
     agentInfoList_.clear();
 }
-
+// LCOV_EXCL_START
 int32_t InputMethodController::SendRequestToAllAgents(std::function<int32_t(std::shared_ptr<IInputMethodAgent>)> task)
 {
     std::lock_guard guard(agentLock_);
@@ -2140,7 +2137,7 @@ void InputMethodController::NotifyAttachFailure(int32_t errCode)
     }
     listener->OnAttachmentDidFail(reason);
 }
-
+// LCOV_EXCL_STOP
 void InputMethodController::SetImcInnerListener(const std::shared_ptr<ImcInnerListener> &imcInnerListener)
 {
     std::lock_guard<std::mutex> lock(imcInnerListenerLock_);
@@ -2149,13 +2146,13 @@ void InputMethodController::SetImcInnerListener(const std::shared_ptr<ImcInnerLi
     }
     imcInnerListener_ = imcInnerListener;
 }
-
+// LCOV_EXCL_START
 std::shared_ptr<ImcInnerListener> InputMethodController::GetImcInnerListener()
 {
     std::lock_guard<std::mutex> lock(imcInnerListenerLock_);
     return imcInnerListener_;
 }
-// LCOV_EXCL_START
+
 void OnTextChangedListener::InsertTextV2(const std::u16string &text)
 {
     auto eventHandler = GetEventHandler();

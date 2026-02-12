@@ -312,20 +312,28 @@ void InputMethodSettingImpl::OnPanelStatusChange(std::string const &type, const 
 
 EnabledState_t InputMethodSettingImpl::GetInputMethodStateSync()
 {
-    int32_t errCode = ErrorCode::ERROR_EX_NULL_POINTER;
-    OHOS::MiscServices::EnabledStatus status = OHOS::MiscServices::EnabledStatus::DISABLED;
+    OHOS::MiscServices::EnabledStatus status;
     auto instance = InputMethodController::GetInstance();
-    if (instance != nullptr) {
-        IMSA_HILOGI("InputMethodController instance is not nullptr!");
-        errCode = instance->GetInputMethodState(status);
+    if (instance == nullptr) {
+        IMSA_HILOGE("GetInstance return nullptr!");
+        return;
     }
+    std::string tmpBundleName = std::string(bundleName);
+    std::string tmpExtensionName = std::string(extensionName);
+    if (tmpBundleName.empty() || tmpExtensionName.empty()) {
+        IMSA_HILOGE("bundleName or extensionName is empty!");
+        set_business_error(JsUtils::Convert(ErrorCode::ERROR_IME_NOT_FOUND),
+            JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IME_NOT_FOUND)));
+        return;
+    }
+    auto errCode = instance->EnableIme(tmpBundleName, tmpExtensionName,
+        static_cast<OHOS::MiscServices::EnabledStatus>(enabledState.get_value()));
     if (errCode != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("GetInputMethodState failed!");
+        IMSA_HILOGE("EnableIme failed!");
         set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
-        return EnumConvert::ConvertEnabledStatus(status);
+        return;
     }
-    IMSA_HILOGI("GetInputMethodState success!");
-    return EnumConvert::ConvertEnabledStatus(status);
+    IMSA_HILOGI("EnableIme success!");
 }
 
 void InputMethodSettingImpl::EnableInputMethodSync(::taihe::string_view bundleName,

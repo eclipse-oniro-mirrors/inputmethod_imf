@@ -192,11 +192,11 @@ private:
         uint32_t num{ 0 };
         time_t last{};
     };
+    using CoreMethod = std::function<int32_t(const sptr<IInputMethodCore> &)>;
     enum TimeLimitType : uint32_t {
         IME_LIMIT,
         PROXY_IME_LIMIT,
     };
-    using CoreMethod = std::function<int32_t(const sptr<IInputMethodCore> &)>;
 
     int32_t userId_; // the id of the user to whom the object is linking
 #ifdef IMF_ON_DEMAND_START_STOP_SA_ENABLE

@@ -734,7 +734,7 @@ bool ImeEnabledInfoManager::IsDefaultImeSet(int32_t userId)
     }
     return false;
 }
-// LCOV_EXCL_STOP
+
 std::pair<std::string, std::string> ImeEnabledInfoManager::SplitImeId(const std::string &imeId)
 {
     std::string bundleName;
@@ -746,7 +746,7 @@ std::pair<std::string, std::string> ImeEnabledInfoManager::SplitImeId(const std:
     }
     return std::make_pair(bundleName, extName);
 }
-// LCOV_EXCL_START
+
 void ImeEnabledInfoManager::ModCurrentIme(std::vector<ImeEnabledInfo> &enabledInfos)
 {
     std::string oldBundleName;

@@ -545,11 +545,13 @@ int32_t ImeInfoInquirer::ListInputMethodSubtype(const int32_t userId, const Exte
     }
 
     std::string resPath = extInfo.hapPath.empty() ? extInfo.resourcePath : extInfo.hapPath;
+    std::string bundleName = extInfo.bundleName;
     auto resMgr = GetResMgr(resPath);
     IMSA_HILOGD("subtypes size: %{public}zu.", subtypes.size());
     for (const auto &subtype : subtypes) {
         // subtype which provides a particular input type should not appear in the subtype list
-        if (InputTypeManager::GetInstance().IsInputType({ extInfo.bundleName, subtype.id })) {
+        std::string subtypeTmp = subtype.id;
+        if (InputTypeManager::GetInstance().IsInputType({ extInfo.bundleName, subtypeTmp })) {
             continue;
         }
         SubProperty subProp;
@@ -597,7 +599,9 @@ int32_t ImeInfoInquirer::ParseSubtype(const OHOS::AppExecFwk::ExtensionAbilityIn
     }
     OHOS::AppExecFwk::BundleMgrClient client;
     std::vector<std::string> profiles;
-    if (!client.GetResConfigFile(extInfo, iter->name, profiles)) {
+    std::string name = iter->name;
+    const OHOS::AppExecFwk::ExtensionAbilityInfo extInfoCopy = extInfo;
+    if (!client.GetResConfigFile(extInfoCopy, name, profiles)) {
         IMSA_HILOGE("failed to GetProfileFromExtension!");
         return ErrorCode::ERROR_PACKAGE_MANAGER;
     }
@@ -857,7 +861,7 @@ std::shared_ptr<ImeInfo> ImeInfoInquirer::GetDefaultImeInfo(int32_t userId)
 std::string ImeInfoInquirer::GetSystemSpecialIme()
 {
     if (!systemConfig_.systemSpecialInputMethod.empty()) {
-        IMSA_HILOGD("systemSpecialInputMethod: %{public}s.", systemConfig_.systemSpecialInputMethod.c_str());
+        IMSA_HILOGI("systemSpecialInputMethod: %{public}s.", systemConfig_.systemSpecialInputMethod.c_str());
         return systemConfig_.systemSpecialInputMethod;
     }
     return "";
@@ -983,7 +987,8 @@ std::shared_ptr<ResourceManager> ImeInfoInquirer::GetResMgr(const std::string &r
         IMSA_HILOGE("resMgr is nullptr!");
         return nullptr;
     }
-    resMgr->AddResource(resourcePath.c_str());
+    std::string resourcePathCopy = resourcePath;
+    resMgr->AddResource(resourcePathCopy.c_str());
     std::unique_ptr<ResConfig> resConfig(CreateResConfig());
     if (resConfig == nullptr) {
         IMSA_HILOGE("resConfig is nullptr!");
@@ -1143,7 +1148,8 @@ std::vector<std::string> ImeInfoInquirer::GetRunningIme(int32_t userId)
         return bundleNames;
     }
     for (const auto &info : infos) {
-        if (info.extensionType_ == ExtensionAbilityType::INPUTMETHOD && !info.bundleNames.empty()) {
+        if (info.extensionType_ == ExtensionAbilityType::INPUTMETHOD && !info.bundleNames.empty()
+            && info.preloadMode_ != PreloadMode::PRELOAD_MODULE) {
             bundleNames.push_back(info.bundleNames[0]);
         }
     }

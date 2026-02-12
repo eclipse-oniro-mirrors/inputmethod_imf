@@ -267,7 +267,7 @@ bool WindowAdapter::IsDisplayGroupIdExist(uint64_t displayGroupId)
         [displayGroupId](const std::pair<uint64_t, uint64_t> &pair) { return pair.second == displayGroupId; });
     return iter != displayGroupIds_.end();
 }
-
+// LCOV_EXCL_START
 bool WindowAdapter::IsDisplayIdExist(uint64_t displayId)
 {
     if (displayId == DEFAULT_DISPLAY_ID) {
@@ -278,7 +278,6 @@ bool WindowAdapter::IsDisplayIdExist(uint64_t displayId)
     return displayGroupIds_.find(displayId) != displayGroupIds_.end();
 }
 
-// LCOV_EXCL_START
 bool WindowAdapter::IsDefaultDisplayGroup(uint64_t displayId)
 {
     return GetDisplayGroupId(displayId) == DEFAULT_DISPLAY_GROUP_ID;
@@ -366,7 +365,7 @@ void WindowAdapter::OnUnFocused(const FocusChangeInfo &focusWindowInfo)
     }
     focusWindowInfos_.erase(iter);
 }
-// LCOV_EXCL_STOP
+
 int32_t WindowAdapter::RegisterAllGroupInfoChangedListener()
 {
 #ifdef SCENE_BOARD_ENABLE

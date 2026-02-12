@@ -46,7 +46,6 @@ ohos_shared_library("panel") {
   ]
 
   external_deps = [
-    "ability_runtime:runtime", 
     "c_utils:utils",
     "hilog:libhilog",
     "napi:ace_napi",
