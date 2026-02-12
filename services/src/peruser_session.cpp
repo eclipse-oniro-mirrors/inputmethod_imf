@@ -1796,7 +1796,7 @@ AAFwk::Want PerUserSession::GetWant(const std::shared_ptr<ImeNativeCfg> &ime)
     return want;
 }
 
-int32_t PerUserSession::StartInputService(const std::shared_ptr<ImeNativeCfg> &ime)
+int32_t PerUserSession::StartInputService(const std::shared_ptr<ImeNativeCfg> &ime, bool needWait)
 {
     InputMethodSyncTrace tracer("StartInputService trace.");
     if (ime == nullptr) {
@@ -1828,6 +1828,9 @@ int32_t PerUserSession::StartInputService(const std::shared_ptr<ImeNativeCfg> &i
             ErrorCode::ERROR_IMSA_IME_CONNECT_FAILED, imeToStart->imeId, "failed to start ability.");
         SetImeConnection(nullptr);
         return ErrorCode::ERROR_IMSA_IME_CONNECT_FAILED;
+    }
+    if (!needWait) {
+        return ErrorCode::ERROR_IMSA_IME_START_TIMEOUT;
     }
     if (!isImeStarted_.GetValue()) {
         IMSA_HILOGE("start %{public}s timeout!", imeToStart->imeId.c_str());
@@ -2525,14 +2528,20 @@ int32_t PerUserSession::StartCurrentIme(const std::shared_ptr<ImeNativeCfg> &ime
         return ErrorCode::NO_ERROR;
     }
     if (action == ImeAction::HANDLE_STARTING_IME) {
+        if (!ImeInfoInquirer::GetInstance().IsRunningIme(userId_, imeData->ime.first)) {
+            IMSA_HILOGW("%{public}d has no running ime!", userId_);
+            RemoveRealImeData();
+            return StartInputService(ime);
+        }
         int64_t time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
         if (time - imeData->startTime > ImeData::START_TIME_OUT) {
             IMSA_HILOGE("[%{public}s, %{public}s] start abnormal, more than eight second!", imeData->ime.first.c_str(),
                 imeData->ime.second.c_str());
             return HandleStartImeTimeout(ime);
         }
-        IMSA_HILOGW("%{public}s/%{public}s start retry!", imeData->ime.first.c_str(), imeData->ime.second.c_str());
-        return StartInputService(ime);
+        IMSA_HILOGW("%{public}s/%{public}s start retry without wait!",
+            imeData->ime.first.c_str(), imeData->ime.second.c_str());
+        return StartInputService(ime, false);
     }
     IMSA_HILOGW("%{public}s/%{public}s start in exiting, force stop firstly!", imeData->ime.first.c_str(),
         imeData->ime.second.c_str());
@@ -2665,10 +2674,25 @@ int32_t PerUserSession::HandleFirstStart(const std::shared_ptr<ImeNativeCfg> &im
     if (isStopCurrentIme) {
         return ErrorCode::NO_ERROR;
     }
-    if (BlockRetry(CHECK_IME_RUNNING_RETRY_INTERVAL, CHECK_IME_RUNNING_RETRY_TIMES,
-                   [this]() -> bool { return !ImeInfoInquirer::GetInstance().IsRunningIme(userId_, runningIme_); })) {
+    if (firstStartNeedRetry_.load()) {
+        if (BlockRetry(CHECK_IME_RUNNING_RETRY_INTERVAL, CHECK_IME_RUNNING_RETRY_TIMES,
+            [userId = userId_, runningIme = runningIme_]() -> bool {
+                return !ImeInfoInquirer::GetInstance().IsRunningIme(userId, runningIme);
+            })) {
+            IMSA_HILOGI("[%{public}d, %{public}s] stop completely in first.", userId_, runningIme_.c_str());
+            runningIme_.clear();
+            return StartInputService(ime);
+        } else {
+            firstStartNeedRetry_.store(false);
+            IMSA_HILOGI("[%{public}d, %{public}s] stop timeout in first.", userId_, runningIme_.c_str());
+            return ErrorCode::ERROR_IMSA_REBOOT_OLD_IME_NOT_STOP;
+        }
+    }
+
+    if (!ImeInfoInquirer::GetInstance().IsRunningIme(userId_, runningIme_)) {
         IMSA_HILOGI("[%{public}d, %{public}s] stop completely", userId_, runningIme_.c_str());
         runningIme_.clear();
+        firstStartNeedRetry_.store(true);
         return StartInputService(ime);
     }
     IMSA_HILOGW("[%{public}d, %{public}s] stop timeout", userId_, runningIme_.c_str());

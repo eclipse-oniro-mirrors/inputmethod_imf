@@ -4388,5 +4388,115 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_IsPanelShown_001, TestSize
     ret = userSession->IsPanelShown(ImfCommonConst::DEFAULT_DISPLAY_ID, panelInfo, isShown);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 }
+
+
+/**
+ * @tc.name: PerUserSession_StartInputService_IsRestartAfterTimeout_001
+ * @tc.desc: Test StartInputService with isRestartAfterTimeout=true returns ERROR_IME_NOT_STARTED
+ * @tc.type: FUNC
+ * @tc.require: issuesI2485
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_StartInputService_IsRestartAfterTimeout_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_StartInputService_IsRestartAfterTimeout_001 start.");
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto ime = std::make_shared<ImeNativeCfg>();
+    std::shared_ptr<Property> property = InputMethodController::GetInstance()->GetCurrentInputMethod();
+    ASSERT_TRUE(property != nullptr);
+    ime->bundleName = property->name;
+    ime->extName = property->id;
+    ime->imeId = ime->bundleName + "/" + ime->extName;
+    auto ret = userSession->StartInputService(ime, false);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_IME_START_TIMEOUT);
+}
+
+/**
+ * @tc.name: PerUserSession_StartInputService_IsRestartAfterTimeout_002
+ * @tc.desc: Test StartInputService with nullptr and various isRestartAfterTimeout values
+ * @tc.type: FUNC
+ * @tc.require: issuesI2485
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_StartInputService_IsRestartAfterTimeout_002, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_StartInputService_IsRestartAfterTimeout_002 start.");
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+
+    auto ret = userSession->StartInputService(nullptr, true);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_IME_TO_START_NULLPTR);
+
+    ret = userSession->StartInputService(nullptr, false);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_IME_TO_START_NULLPTR);
+
+    // Test default parameter
+    ret = userSession->StartInputService(nullptr);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_IME_TO_START_NULLPTR);
+}
+
+/**
+ * @tc.name: PerUserSession_FirstStartNeedRetry_001
+ * @tc.desc: Test firstStartNeedRetry_ member variable initial state
+ * @tc.type: FUNC
+ * @tc.require: issuesI2485
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_FirstStartNeedRetry_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_FirstStartNeedRetry_001 start.");
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+
+    EXPECT_TRUE(userSession->firstStartNeedRetry_.load());
+
+    userSession->firstStartNeedRetry_.store(false);
+    EXPECT_FALSE(userSession->firstStartNeedRetry_.load());
+
+    userSession->firstStartNeedRetry_.store(true);
+    EXPECT_TRUE(userSession->firstStartNeedRetry_.load());
+}
+
+/**
+ * @tc.name: PerUserSession_HandleFirstStart_WithRetryNeeded_001
+ * @tc.desc: Test HandleFirstStart with firstStartNeedRetry_=true and empty runningIme_
+ * @tc.type: FUNC
+ * @tc.require: issuesI2485
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_HandleFirstStart_WithRetryNeeded_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_HandleFirstStart_WithRetryNeeded_001 start.");
+    auto userSession = std::make_shared<PerUserSession>(INVALID_USER_ID);
+    auto ime = std::make_shared<ImeNativeCfg>();
+    ime->bundleName = "com.example.test";
+    ime->extName = "InputMethodExtAbility";
+    ime->imeId = "com.example.test/InputMethodExtAbility";
+
+    userSession->runningIme_.clear();
+    userSession->firstStartNeedRetry_.store(true);
+    auto ret = userSession->HandleFirstStart(ime, false);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_IME_CONNECT_FAILED);
+
+    userSession->firstStartNeedRetry_.store(false);
+    ret = userSession->HandleFirstStart(ime, false);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_IME_CONNECT_FAILED);
+    IMSA_HILOGI("HandleFirstStart with empty runningIme returned: %{public}d", ret);
+}
+
+/**
+ * @tc.name: PerUserSession_HandleFirstStart_StopCurrentImeTrue_001
+ * @tc.desc: Test HandleFirstStart with isStopCurrentIme=true
+ * @tc.type: FUNC
+ * @tc.require: issuesI2485
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_HandleFirstStart_StopCurrentImeTrue_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_HandleFirstStart_StopCurrentImeTrue_001 start.");
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto ime = std::make_shared<ImeNativeCfg>();
+    ime->bundleName = "com.example.test";
+    ime->extName = "InputMethodExtAbility";
+
+    userSession->runningIme_ = "com.example.old/oldExt";
+    userSession->firstStartNeedRetry_.store(true);
+
+    auto ret = userSession->HandleFirstStart(ime, true);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
 } // namespace MiscServices
 } // namespace OHOS
