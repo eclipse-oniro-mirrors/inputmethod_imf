@@ -64,6 +64,7 @@ void TestOnSwitchInput(FuzzedDataProvider &provider)
     sptr<InputClientStub> mClient = new InputClientServiceImpl();
     std::string fuzzedString = provider.ConsumeRandomLengthString();
     uint32_t fuzzedUint32 = provider.ConsumeIntegral<uint32_t>();
+    int32_t userId = provider.ConsumeIntegral<int32_t>();
     Property property;
     property.name = fuzzedString;
     property.id = fuzzedString;
@@ -71,7 +72,7 @@ void TestOnSwitchInput(FuzzedDataProvider &provider)
     property.iconId = fuzzedUint32;
     SubProperty subProperty = {};
 
-    mClient->OnSwitchInput(property, subProperty);
+    mClient->OnSwitchInput(property, subProperty, userId);
 }
 } // namespace OHOS
 

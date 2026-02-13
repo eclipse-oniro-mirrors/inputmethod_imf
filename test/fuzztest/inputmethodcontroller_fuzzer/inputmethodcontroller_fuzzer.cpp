@@ -38,10 +38,11 @@ void TestListInputMethod(sptr<InputMethodController> imc, FuzzedDataProvider &pr
 {
     auto fuzzedBool1 = provider.ConsumeBool();
     auto fuzzedBool2 = provider.ConsumeBool();
+    auto fuzzedUserId = provider.ConsumeIntegral<int32_t>();
     std::vector<Property> properties = {};
-    imc->ListInputMethod(properties);
-    imc->ListInputMethod(fuzzedBool1, properties);
-    imc->ListInputMethod(fuzzedBool2, properties);
+    imc->ListInputMethod(properties, fuzzedUserId);
+    imc->ListInputMethod(fuzzedBool1, properties, fuzzedUserId);
+    imc->ListInputMethod(fuzzedBool2, properties, fuzzedUserId);
 }
 
 void TestListInputMethodSubtype(sptr<InputMethodController> imc, FuzzedDataProvider &provider)
@@ -54,7 +55,8 @@ void TestListInputMethodSubtype(sptr<InputMethodController> imc, FuzzedDataProvi
     property.label = fuzzedString;
     property.icon = fuzzedString;
     property.iconId = provider.ConsumeIntegral<uint32_t>();
-    imc->ListInputMethodSubtype(property, subProperties);
+    auto fuzzedUserId = provider.ConsumeIntegral<int32_t>();
+    imc->ListInputMethodSubtype(property, subProperties, fuzzedUserId);
 }
 
 void TestDispatchKeyEvent(sptr<InputMethodController> imc, FuzzedDataProvider &provider)
@@ -126,7 +128,8 @@ void TestSwitchInputMethod(sptr<InputMethodController> imc, FuzzedDataProvider &
     int32_t value = provider.ConsumeIntegralInRange<int32_t>(0, 3);
     auto fuzzedTrigger = static_cast<SwitchTrigger>(value);
     std::string fuzzedString = provider.ConsumeRandomLengthString();
-    imc->SwitchInputMethod(fuzzedTrigger, fuzzedString, fuzzedString);
+    auto fuzzedUserId = provider.ConsumeIntegral<int32_t>();
+    imc->SwitchInputMethod(fuzzedTrigger, fuzzedString, fuzzedString, fuzzedUserId);
 }
 
 void TestSetCallingWindow(sptr<InputMethodController> imc, FuzzedDataProvider &provider)
@@ -191,9 +194,10 @@ void FUZZGetInputStartInfo(sptr<InputMethodController> imc, FuzzedDataProvider &
     auto callingWndId = provider.ConsumeIntegral<uint32_t>();
     auto int32Value = provider.ConsumeIntegral<int32_t>();
     std::string fuzzedString = provider.ConsumeRandomLengthString();
+    auto fuzzedUserId = provider.ConsumeIntegral<int32_t>();
     imc->GetInputStartInfo(dataBool, callingWndId, int32Value);
     imc->EnableIme(fuzzedString);
-    imc->IsCurrentImeByPid(int32Value);
+    imc->IsCurrentImeByPid(int32Value, fuzzedUserId);
     imc->UpdateTextPreviewState(dataBool);
 }
 
@@ -237,8 +241,9 @@ void FUZZSetControllerListener(sptr<InputMethodController> imc, FuzzedDataProvid
     privateCommand.emplace("value1", privateDataValue1);
     privateCommand.emplace("value2", privateDataValue2);
     privateCommand.emplace("value3", privateDataValue3);
+    auto fuzzedUserId = provider.ConsumeIntegral<int32_t>();
     imc->SetControllerListener(nullptr);
-    imc->GetInputMethodConfig(inputMethodConfig);
+    imc->GetInputMethodConfig(inputMethodConfig, fuzzedUserId);
     imc->OnRemoteSaDied(agentObject);
     imc->SendPrivateCommand(privateCommand);
 }

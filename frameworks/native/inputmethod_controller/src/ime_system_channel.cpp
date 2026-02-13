@@ -240,10 +240,10 @@ int32_t ImeSystemCmdChannel::NotifyPanelStatus(const SysPanelStatus &sysPanelSta
     return ErrorCode::NO_ERROR;
 }
 // LCOV_EXCL_START
-std::string ImeSystemCmdChannel::GetSmartMenuCfg()
+std::string ImeSystemCmdChannel::GetSmartMenuCfg(int32_t userId)
 {
     std::shared_ptr<Property> defaultIme = nullptr;
-    int32_t ret = GetDefaultImeCfg(defaultIme);
+    int32_t ret = GetDefaultImeCfg(defaultIme, userId);
     if (ret != ErrorCode::NO_ERROR || defaultIme == nullptr) {
         IMSA_HILOGE("failed to GetDefaultInputMethod!");
         return "";
@@ -278,7 +278,7 @@ void ImeSystemCmdChannel::GetExtensionInfo(
     }
 }
 
-int32_t ImeSystemCmdChannel::GetDefaultImeCfg(std::shared_ptr<Property> &property)
+int32_t ImeSystemCmdChannel::GetDefaultImeCfg(std::shared_ptr<Property> &property, int32_t userId)
 {
     IMSA_HILOGD("InputMethodAbility::GetDefaultImeCfg start.");
     auto proxy = GetSystemAbilityProxy();
@@ -287,7 +287,7 @@ int32_t ImeSystemCmdChannel::GetDefaultImeCfg(std::shared_ptr<Property> &propert
         return ErrorCode::ERROR_NULL_POINTER;
     }
     Property prop;
-    auto ret = proxy->GetDefaultInputMethod(prop, true);
+    auto ret = proxy->GetDefaultInputMethod(prop, true, userId);
     if (ret != ErrorCode::NO_ERROR) {
         return ret;
     }

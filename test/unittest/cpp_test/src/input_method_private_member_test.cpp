@@ -1352,7 +1352,7 @@ HWTEST_F(InputMethodPrivateMemberTest, BranchCoverage001, TestSize.Level0)
     const std::string bundleName;
     const std::string subName;
     SwitchTrigger trigger = SwitchTrigger::IMSA;
-    ret2 = service_->SwitchInputMethod(bundleName, subName, static_cast<uint32_t>(trigger));
+    ret2 = service_->SwitchInputMethod(bundleName, subName, static_cast<uint32_t>(trigger), -1);
     EXPECT_EQ(ret2, ErrorCode::ERROR_BAD_PARAMETERS);
 
     const std::shared_ptr<ImeInfo> info = nullptr;
@@ -4302,12 +4302,13 @@ HWTEST_F(InputMethodPrivateMemberTest, IMSA_HideCurrentInput, TestSize.Level0)
     IMSA_HILOGI("InputMethodPrivateMemberTest::IMSA_HideCurrentInput start.");
     uint64_t displayId = 100;
     InputMethodSystemAbility imsa;
+    UserSessionManager::GetInstance.userSessions_.clear();
     // session not found
     auto ret = imsa.HideCurrentInput(displayId);
     EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND);
 
     // identityChecker_ is nullptr
-    imsa.userId_ = 10;
+    imsa.userId_ = TddUtil::GetCurrentUserId();
     auto userSession = std::make_shared<PerUserSession>(imsa.userId_);
     UserSessionManager::GetInstance().userSessions_.insert_or_assign(imsa.userId_, userSession);
     WindowAdapter::GetInstance().displayGroupIds_.clear();
@@ -4329,12 +4330,13 @@ HWTEST_F(InputMethodPrivateMemberTest, IMSA_ShowCurrentInputInner, TestSize.Leve
     IMSA_HILOGI("InputMethodPrivateMemberTest::IMSA_ShowCurrentInputInner start.");
     uint64_t displayId = 100;
     InputMethodSystemAbility imsa;
+    serSessionManager::GetInstance.userSessions_.clear();
     // session not found
     auto ret = imsa.ShowCurrentInputInner(displayId);
     EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND);
 
     // identityChecker_ is nullptr
-    imsa.userId_ = 10;
+    imsa.userId_ = TddUtil::GetCurrentUserId();
     auto userSession = std::make_shared<PerUserSession>(imsa.userId_);
     UserSessionManager::GetInstance().userSessions_.insert_or_assign(imsa.userId_, userSession);
     WindowAdapter::GetInstance().displayGroupIds_.clear();

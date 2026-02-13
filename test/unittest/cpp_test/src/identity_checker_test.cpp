@@ -671,7 +671,7 @@ HWTEST_F(IdentityCheckerTest, testSwitchInputMethod_001, TestSize.Level1)
     ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(MAIN_USER_ID, cfg);
     service_->identityChecker_ = identityCheckerImpl_;
     int32_t ret = IdentityCheckerTest::service_->SwitchInputMethod(
-        CURRENT_BUNDLENAME, CURRENT_SUBNAME, static_cast<uint32_t>(SwitchTrigger::CURRENT_IME));
+        CURRENT_BUNDLENAME, CURRENT_SUBNAME, static_cast<uint32_t>(SwitchTrigger::CURRENT_IME), -1);
     EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
 }
 
@@ -693,7 +693,7 @@ HWTEST_F(IdentityCheckerTest, testSwitchInputMethod_003, TestSize.Level1)
     IdentityCheckerTest::IdentityCheckerMock::hasPermission_ = true;
     IdentityCheckerTest::IdentityCheckerMock::isBundleNameValid_ = false;
     int32_t ret = IdentityCheckerTest::service_->SwitchInputMethod(
-        CURRENT_BUNDLENAME, CURRENT_SUBNAME, static_cast<uint32_t>(SwitchTrigger::CURRENT_IME));
+        CURRENT_BUNDLENAME, CURRENT_SUBNAME, static_cast<uint32_t>(SwitchTrigger::CURRENT_IME), -1);
     EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_GET_IME_INFO_FAILED);
 }
 
@@ -716,7 +716,7 @@ HWTEST_F(IdentityCheckerTest, testSwitchInputMethod_004, TestSize.Level1)
     IdentityCheckerTest::IdentityCheckerMock::isFromShell_ = true;
     IdentityCheckerTest::IdentityCheckerMock::isBundleNameValid_ = false;
     int32_t ret = IdentityCheckerTest::service_->SwitchInputMethod(
-        CURRENT_BUNDLENAME, CURRENT_SUBNAME, static_cast<uint32_t>(SwitchTrigger::NATIVE_SA));
+        CURRENT_BUNDLENAME, CURRENT_SUBNAME, static_cast<uint32_t>(SwitchTrigger::NATIVE_SA), -1);
     EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_GET_IME_INFO_FAILED);
 }
 

@@ -72,9 +72,9 @@ ErrCode InputClientServiceImpl::OnImeMirrorStop(const sptr<IRemoteObject> &objec
     return ERR_OK;
 }
 // LCOV_EXCL_STOP
-ErrCode InputClientServiceImpl::OnSwitchInput(const Property &property, const SubProperty &subProperty)
+ErrCode InputClientServiceImpl::OnSwitchInput(const Property &property, const SubProperty &subProperty, int32_t userId)
 {
-    return ImeEventMonitorManagerImpl::GetInstance().OnImeChange(property, subProperty);
+    return ImeEventMonitorManagerImpl::GetInstance().OnImeChange(property, subProperty, userId);
 }
 
 ErrCode InputClientServiceImpl::OnPanelStatusChange(const uint32_t status, const ImeWindowInfo& info)

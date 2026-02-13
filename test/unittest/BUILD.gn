@@ -62,6 +62,7 @@ group("unittest") {
       "resource/bundle_dependencies/extImfBundle:extImf",
       "resource/bundle_dependencies/newTestIme:newTestIme",
       "resource/ohos_test:copy_ohos_test",
+      "cpp_test:ImeMultiUserTest",
     ]
   }
 }

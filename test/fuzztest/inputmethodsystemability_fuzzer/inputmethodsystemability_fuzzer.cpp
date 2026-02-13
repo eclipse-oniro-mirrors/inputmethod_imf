@@ -73,9 +73,10 @@ void SystemAbility(FuzzedDataProvider &provider)
     const std::string bundleName = provider.ConsumeRandomLengthString();
     const std::string subName = provider.ConsumeRandomLengthString();
     uint32_t trigger = provider.ConsumeIntegral<uint32_t>();
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->SwitchInputMethod(bundleName, subName, trigger);
+    auto fuzzedUserId = provider.ConsumeIntegral<int32_t>();
+    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->SwitchInputMethod(bundleName, subName,
+        trigger, fuzzedUserId);
 }
-
 void FuzzInputType(FuzzedDataProvider &provider)
 {
     const int32_t type = provider.ConsumeIntegral<int32_t>();

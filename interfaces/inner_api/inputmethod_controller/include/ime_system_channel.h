@@ -85,12 +85,13 @@ public:
      * @return string.
      * @since 12
      */
-    IMF_API std::string GetSmartMenuCfg();
+    IMF_API std::string GetSmartMenuCfg(int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
     int32_t ReceivePrivateCommand(
         const std::unordered_map<std::string, PrivateDataValue> &privateCommand) override;
     int32_t NotifyPanelStatus(const SysPanelStatus &sysPanelStatus);
     void OnConnectCmdReady(const sptr<IRemoteObject> &agentObject);
-    IMF_API int32_t GetDefaultImeCfg(std::shared_ptr<Property> &property);
+    IMF_API int32_t GetDefaultImeCfg(
+        std::shared_ptr<Property> &property, int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
 
 private:
     ImeSystemCmdChannel();

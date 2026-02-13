@@ -34,6 +34,12 @@ void InputMethodEventListener::OnImeChange(const Property &property, const SubPr
     InputMethodSettingImpl::GetInstance().OnImeChangeCallback(property, subProperty);
 }
 
+void InputMethodEventListener::OnImeChangeByUserId(const Property &property,
+    const SubProperty &subProperty, std::int32_t userId)
+{
+    InputMethodSettingImpl::GetInstance().OnImeChangeCallbackByUserId(property, subProperty, userId);
+}
+
 void InputMethodEventListener::OnImeShow(const ImeWindowInfo &info)
 {
     InputMethodSettingImpl::GetInstance().OnImeShowCallback(info);

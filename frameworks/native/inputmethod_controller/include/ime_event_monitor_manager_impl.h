@@ -30,7 +30,7 @@ public:
     IMF_API static ImeEventMonitorManagerImpl &GetInstance();
     IMF_API int32_t RegisterImeEventListener(uint32_t eventFlag, const std::shared_ptr<ImeEventListener> &listener);
     IMF_API int32_t UnRegisterImeEventListener(uint32_t eventFlag, const std::shared_ptr<ImeEventListener> &listener);
-    int32_t OnImeChange(const Property &property, const SubProperty &subProperty);
+    int32_t OnImeChange(const Property &property, const SubProperty &subProperty, int32_t userId);
     int32_t OnPanelStatusChange(const InputWindowStatus &status, const ImeWindowInfo &info);
     int32_t OnInputStart(uint32_t callingWndId, int32_t requestKeyboardReason);
     int32_t OnInputStop();

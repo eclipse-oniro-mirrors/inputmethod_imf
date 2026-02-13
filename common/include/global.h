@@ -80,6 +80,9 @@ enum {
     ERROR_JS_CB_NOT_REGISTER,       // only for hiSysEvent
     ERROR_DEAL_TIMEOUT,              // only for hiSysEvent
     ERROR_IPC_REMOTE_NULLPTR,
+    ERROR_USER_NOT_EXIST,
+    ERROR_USER_NOT_IN_FOREGROUND,
+    ERROR_INVALID_USER_OPERATION,
 
     ERROR_IMA_BEGIN,
     ERROR_IME,
@@ -152,6 +155,7 @@ constexpr int64_t INVALID_UID = -1;
 constexpr uint32_t INVALID_WINDOW_ID = 0;
 constexpr uint32_t COL_PROXY_IME = 5521;
 constexpr uint32_t AI_PROXY_IME = 7101;
+constexpr int32_t DEFAULT_USER_ID = -1;
 }; // namespace ImfCommonConst
 
 static constexpr HiviewDFX::HiLogLabel g_SMALL_SERVICES_LABEL = { LOG_CORE, 0xD001C10, "ImsaKit" };

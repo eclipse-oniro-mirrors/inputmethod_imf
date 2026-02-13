@@ -757,6 +757,50 @@ void JsGetInputMethodSetting::OnImeChange(const Property &property, const SubPro
     eventHandler->PostTask(task, type, 0, AppExecFwk::EventQueue::Priority::VIP);
 }
 
+void JsGetInputMethodSetting::OnImeChangeByUserId(const Property &property, const SubProperty &subProperty,
+    int32_t userId)
+{
+    std::string type = "imeChangeByUserId";
+    auto entry = GetEntry(type, [&property, &subProperty, userId](UvEntry &entry) {
+        entry.property = property;
+        entry.subProperty = subProperty;
+        entry.userId = userId;
+    });
+    if (entry == nullptr) {
+        IMSA_HILOGD("failed to get uv entry.");
+        return;
+    }
+    auto eventHandler = GetEventHandler();
+    if (eventHandler == nullptr) {
+        IMSA_HILOGE("eventHandler is nullptr!");
+        return;
+    }
+    IMSA_HILOGI("start");
+    auto task = [entry]() {
+        auto getImeChangeProperty = [entry](napi_env env, napi_value *args, uint8_t argc) -> bool {
+            if (argc < 3) {
+                return false;
+            }
+            napi_value subProperty = JsInputMethod::GetJsInputMethodSubProperty(env, entry->subProperty);
+            napi_value property = JsInputMethod::GetJsInputMethodProperty(env, entry->property);
+            napi_value userId = JsUtil::GetValue(env, entry->userId);
+            if (subProperty == nullptr || property == nullptr) {
+                IMSA_HILOGE("get KBCins or TICins failed!");
+                return false;
+            }
+            // 0 means the first param of callback.
+            args[0] = property;
+            // 1 means the second param of callback.
+            args[1] = subProperty;
+            args[2] = userId;
+            return true;
+        };
+        // 2 means callback has two params.
+        JsCallbackHandler::Traverse(entry->vecCopy, { 2, getImeChangeProperty });
+    };
+    eventHandler->PostTask(task, type, 0, AppExecFwk::EventQueue::Priority::VIP);
+}
+
 PanelFlag JsGetInputMethodSetting::GetSoftKbShowingFlag()
 {
     return softKbShowingFlag_;
