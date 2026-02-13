@@ -342,7 +342,7 @@ void InputMethodSettingImpl::EnableInputMethodSync(::taihe::string_view bundleNa
     if (tmpBundleName.empty() || tmpExtensionName.empty()) {
         IMSA_HILOGE("bundleName or extensionName is empty!");
         set_business_error(JsUtils::Convert(ErrorCode::ERROR_IME_NOT_FOUND),
-        JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IME_NOT_FOUND)));
+            JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IME_NOT_FOUND)));
         return;
     }
     auto errCode = instance->EnableIme(tmpBundleName, tmpExtensionName,
