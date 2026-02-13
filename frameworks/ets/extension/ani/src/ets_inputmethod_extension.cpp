@@ -33,7 +33,7 @@
 namespace OHOS {
 namespace MiscServices {
 using namespace AbilityRuntime;
-const std::string FOLD_SCREEN_TYPE = OHOS::system::GetParameter("const.window.foldscreen.type", "0,0,0,0");	 
+const std::string FOLD_SCREEN_TYPE = OHOS::system::GetParameter("const.window.foldscreen.type", "0,0,0,0");
 constexpr const char *EXTEND_FOLD_TYPE = "4";
 AbilityRuntime::InputMethodExtension *OHOS_ABILITY_ETSInputMethodExtension(
     const std::unique_ptr<AbilityRuntime::Runtime> &runtime)
