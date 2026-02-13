@@ -25,6 +25,7 @@
 #include "task_manager.h"
 #include "tasks/task_ams.h"
 #include "tasks/task_imsa.h"
+#include "parameters.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -34,6 +35,8 @@ using namespace OHOS::AppExecFwk;
 using namespace OHOS::MiscServices;
 
 constexpr int32_t SUCCESS_CODE = 0;
+const std::string FOLD_SCREEN_TYPE = OHOS::system::GetParameter("const.window.foldscreen.type", "0,0,0,0");
+constexpr const char *EXTEND_FOLD_TYPE = "4";
 
 extern "C" __attribute__((visibility("default"))) InputMethodExtension *OHOS_ABILITY_CjInputMethodExtension()
 {
