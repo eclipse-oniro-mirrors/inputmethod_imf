@@ -417,6 +417,10 @@ void ETSInputMethodExtension::ListenWindowManager()
 
 void ETSInputMethodExtension::ListenerCheckNeedAdjustKeyboard(Rosen::DisplayId displayId)
 {
+    if (FOLD_SCREEN_TYPE.empty() || FOLD_SCREEN_TYPE[0] != *EXTEND_FOLD_TYPE) {
+        IMSA_HILOGD("The current device is a non-foldable device.");
+        return;
+    }
     if (displayId != Rosen::DisplayManager::GetInstance().GetDefaultDisplayId()) {
         return;
     }
