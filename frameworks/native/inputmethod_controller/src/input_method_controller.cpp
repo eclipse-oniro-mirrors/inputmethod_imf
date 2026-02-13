@@ -152,7 +152,8 @@ int32_t InputMethodController::Initialize()
     InputAttribute attribute;
     attribute.inputPattern = InputAttribute::PATTERN_TEXT;
     clientInfo_.attribute = attribute;
-    clientInfo_.client = client, clientInfo_.channel = channel->AsObject();
+    clientInfo_.client = client;
+    clientInfo_.channel = channel->AsObject();
 
     // make AppExecFwk::EventHandler handler
     handler_ = std::make_shared<AppExecFwk::EventHandler>(AppExecFwk::EventRunner::GetMainEventRunner());
