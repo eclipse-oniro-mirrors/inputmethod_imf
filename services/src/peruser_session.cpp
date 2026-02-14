@@ -1796,7 +1796,7 @@ AAFwk::Want PerUserSession::GetWant(const std::shared_ptr<ImeNativeCfg> &ime)
     return want;
 }
 
-int32_t PerUserSession::StartInputService(const std::shared_ptr<ImeNativeCfg> &ime, bool needWait)
+int32_t PerUserSession::StartInputService(const std::shared_ptr<ImeNativeCfg> &ime, bool skipWaitAfterTimeout)
 {
     InputMethodSyncTrace tracer("StartInputService trace.");
     if (ime == nullptr) {
@@ -1829,7 +1829,7 @@ int32_t PerUserSession::StartInputService(const std::shared_ptr<ImeNativeCfg> &i
         SetImeConnection(nullptr);
         return ErrorCode::ERROR_IMSA_IME_CONNECT_FAILED;
     }
-    if (!needWait) {
+    if (!skipWaitAfterTimeout) {
         return ErrorCode::ERROR_IMSA_IME_START_TIMEOUT;
     }
     if (!isImeStarted_.GetValue()) {
