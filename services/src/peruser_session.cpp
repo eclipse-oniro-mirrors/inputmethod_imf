@@ -37,13 +37,11 @@
 #include "system_ability_definition.h"
 #include "system_param_adapter.h"
 #include "wms_connection_observer.h"
-#include "dm_common.h"
-#include "display_manager.h"
-#include "parameters.h"
 #ifdef IMF_SCREENLOCK_MGR_ENABLE
 #include "screenlock_manager.h"
 #endif
 #include "window_adapter.h"
+#include "variant_util.h"
 #include "input_method_tools.h"
 #include "ime_state_manager_factory.h"
 #include "inputmethod_trace.h"
@@ -458,7 +456,7 @@ int32_t PerUserSession::UpdateClientAfterRequestHide(uint64_t displayGroupId, co
     if (currentClient != nullptr) {
         auto currentClientInfo = clientGroup->GetClientInfo(currentClient->AsObject());
         if (!callerBundleName.empty() && currentClientInfo != nullptr &&
-            callerBundleName != currentClientInfo->attribute.bundleName) {
+            callerBundleName != currentClientInfo->config.inputAttribute.bundleName) {
             IMSA_HILOGI("remove current client: %{public}d", currentClientInfo->pid);
             DetachOptions options = { .sessionId = 0, .isUnbindFromClient = false };
             RemoveClient(currentClient, clientGroup, options);
@@ -966,9 +964,10 @@ void PerUserSession::StopClientInput(const std::shared_ptr<InputClientInfo> &cli
             return;
         }
         std::lock_guard<std::mutex> lock(isNotifyFinishedLock_);
+        sptr<IRemoteObject> sptrObj(onInputStopObject);
         isNotifyFinished_.Clear(false);
         ret =
-            clientInfo->client->OnInputStop(options.isInactiveClient, onInputStopObject, options.isSendKeyboardStatus);
+            clientInfo->client->OnInputStop(options.isInactiveClient, sptrObj, options.isSendKeyboardStatus);
         if (!isNotifyFinished_.GetValue()) {
             IMSA_HILOGE("OnInputStop is not finished!");
         }
@@ -1319,6 +1318,7 @@ int32_t PerUserSession::InitInputControlChannel()
 
 bool PerUserSession::IsLargeMemoryStateNeed()
 {
+    IMSA_HILOGI(" IsLargeMemoryStateNeed called");
     std::lock_guard<std::mutex> lock(largeMemoryStateMutex_);
     if (largeMemoryState_ == LargeMemoryState::LARGE_MEMORY_NEED) {
         IMSA_HILOGI("large memory state is True");
@@ -1729,9 +1729,9 @@ bool PerUserSession::CanStartIme()
 {
     return (IsSaReady(MEMORY_MANAGER_SA_ID) && IsWmsReady() &&
 #ifdef IMF_SCREENLOCK_MGR_ENABLE
-        IsSaReady(SCREENLOCK_SERVICE_ID) &&
+    IsSaReady(SCREENLOCK_SERVICE_ID) &&
 #endif
-        runningIme_.empty());
+    runningIme_.empty());
 }
 
 int32_t PerUserSession::ChangeToDefaultImeIfNeed(
@@ -2393,9 +2393,6 @@ std::shared_ptr<ImeData> PerUserSession::UpdateRealImeData(
     if (ret != ErrorCode::NO_ERROR) {
         return nullptr;
     }
-    if (realImeData_->imeStateManager != nullptr && IsImeStartedForeground()) {
-        realImeData_->imeStateManager->ReportQos(false, pid);
-    }
     return realImeData_;
 }
 
@@ -2462,27 +2459,11 @@ int32_t PerUserSession::FillImeData(
     return ErrorCode::NO_ERROR;
 }
 
-bool PerUserSession::IsImeStartedForeground()
-{
-    auto [clientGroup, clientInfo] = GetCurrentClientBoundRealIme();
-    if (clientInfo != nullptr && clientInfo->isShowKeyboard) {
-        IMSA_HILOGI("ime restart with keyboard front end");
-        return true;
-    } else if (clientInfo == nullptr && isNeedReportQos_) {
-        IMSA_HILOGI("sa start with keyboard front end");
-        return true;
-    }
-    return false;
-}
-
 int32_t PerUserSession::InitConnect(pid_t pid)
 {
     std::lock_guard<std::mutex> lock(realImeDataLock_);
     if (realImeData_ == nullptr) {
         return ErrorCode::ERROR_NULL_POINTER;
-    }
-    if (realImeData_->imeStateManager != nullptr && IsImeStartedForeground()) {
-        realImeData_->imeStateManager->ReportQos(true, pid);
     }
     realImeData_->pid = pid;
     return ErrorCode::NO_ERROR;
@@ -3290,11 +3271,6 @@ bool PerUserSession::IsEnable(const std::shared_ptr<ImeData> &data, uint64_t dis
     }
     data->core->IsEnable(ret, displayId);
     return ret;
-}
-
-void PerUserSession::SetIsNeedReportQos(bool isNeedReportQos)
-{
-    isNeedReportQos_ = isNeedReportQos;
 }
 } // namespace MiscServices
 } // namespace OHOS

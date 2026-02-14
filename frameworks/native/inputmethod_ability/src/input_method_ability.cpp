@@ -319,10 +319,7 @@ int32_t InputMethodAbility::StartInputInner(const InputClientInfo &clientInfo, b
     };
     uint64_t seqId = Task::GetNextSeqId();
     if (imeListener_ == nullptr ||
-        !imeListener_->PostTaskToEventHandler(
-            [seqId] {
-                TaskManager::GetInstance().Complete(seqId);
-            },
+        !imeListener_->PostTaskToEventHandler([seqId] {TaskManager::GetInstance().Complete(seqId); },
             "task_manager_complete")) {
         showPanel();
         return ErrorCode::NO_ERROR;
@@ -337,7 +334,6 @@ bool InputMethodAbility::IsDisplayChanged(uint64_t oldDisplayId, uint64_t newDis
         IMSA_HILOGD("screen not changed!");
         return false;
     }
-    IMSA_HILOGD("screen changed!");
     return true;
 }
 
@@ -636,6 +632,7 @@ int32_t InputMethodAbility::InvokeStartInputCallback(const TextTotalConfig &text
         imeListener_->OnInputStart();
     }
     if (TextConfig::IsPrivateCommandValid(textConfig.privateCommand) && IsDefaultIme()) {
+        IMSA_HILOGD("notify privateCommand.");
         imeListener_->ReceivePrivateCommand(textConfig.privateCommand);
     }
     if (kdListener_ != nullptr) {
@@ -871,7 +868,7 @@ int32_t InputMethodAbility::GetTextIndexAtCursor(int32_t &index, const AsyncIpcC
 
 int32_t InputMethodAbility::GetTextConfig(TextTotalConfig &textConfig)
 {
-    IMSA_HILOGI("InputMethodAbility start.");
+    IMSA_HILOGD("InputMethodAbility start.");
     auto channel = GetInputDataChannelProxy();
     if (channel == nullptr) {
         IMSA_HILOGE("channel is nullptr!");
@@ -1515,7 +1512,7 @@ void InputMethodAbility::OnClientInactive(const sptr<IRemoteObject> &channel)
         }
         return false;
     });
-    // cannot clear inputAttribute，otherwise it will affect hicar
+    // cannot clear inputAttribute, otherwise it will affect hicar
     ClearDataChannel(channel);
     ClearAttachOptions();
     ClearBindClientInfo();
@@ -1753,8 +1750,8 @@ int32_t InputMethodAbility::StartInput(const InputClientInfo &clientInfo, bool i
     if (ret == ErrorCode::NO_ERROR) {
         return ret;
     }
-    ReportImeStartInput(
-        static_cast<int32_t>(IInputMethodCoreIpcCode::COMMAND_START_INPUT), ret, clientInfo.isShowKeyboard);
+    ReportImeStartInput(static_cast<int32_t>(IInputMethodCoreIpcCode::COMMAND_START_INPUT),
+        ret, clientInfo.isShowKeyboard);
     return ret;
 }
 
@@ -1773,7 +1770,7 @@ HiSysEventClientInfo InputMethodAbility::GetBindClientInfo()
 void InputMethodAbility::ClearBindClientInfo()
 {
     std::lock_guard<std::mutex> lock(bindClientInfoLock_);
-    bindClientInfo_ = { };
+    bindClientInfo_ = {};
 }
 
 void InputMethodAbility::ReportImeStartInput(

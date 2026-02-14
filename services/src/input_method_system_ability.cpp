@@ -109,7 +109,7 @@ InputMethodSystemAbility::~InputMethodSystemAbility()
     }
     auto handler = MessageHandler::Instance();
     if (handler == nullptr) {
-        IMSA_HILOGE("handler is nullptr");
+        IMSA_HILOGE("handler is nullptr.");
         delete msg;
         msg = nullptr;
         return;
@@ -448,7 +448,7 @@ void InputMethodSystemAbility::OnStop()
     SettingsDataUtils::GetInstance().Release();
     ImfModuleMgr::GetInstance().Destroy(ImfModuleMgr::IMF_EXT_MODULE_PATH);
 }
-// LCOV_EXCL_STOP
+
 void InputMethodSystemAbility::InitServiceHandler()
 {
     IMSA_HILOGI("InitServiceHandler start.");
@@ -462,7 +462,7 @@ void InputMethodSystemAbility::InitServiceHandler()
     ImeEnabledInfoManager::GetInstance().SetEventHandler(serviceHandler_);
     IMSA_HILOGI("InitServiceHandler succeeded.");
 }
-
+// LCOV_EXCL_STOP
 /**
  * Initialization of Input method management service
  * \n It's called after the service starts, before any transaction.
@@ -563,7 +563,7 @@ int32_t InputMethodSystemAbility::SwitchByCondition(const Condition &condition,
     session->GetSwitchQueue().Push(switchInfo);
     return OnSwitchInputMethod(userId_, switchInfo, SwitchTrigger::IMSA);
 }
-// LCOV_EXCL_STOP
+
 void InputMethodSystemAbility::SubscribeCommonEvent()
 {
     sptr<ImCommonEventManager> imCommonEventManager = ImCommonEventManager::GetInstance();
@@ -577,7 +577,7 @@ void InputMethodSystemAbility::SubscribeCommonEvent()
     auto callback = [this]() { SubscribeCommonEvent(); };
     serviceHandler_->PostTask(callback, INIT_INTERVAL);
 }
-// LCOV_EXCL_START
+
 int32_t InputMethodSystemAbility::PrepareInput(
     int32_t userId, InputClientInfo &clientInfo, const FocusedInfo &focusedInfo)
 {
@@ -738,9 +738,7 @@ int32_t InputMethodSystemAbility::StartInputInner(
     }
     auto imeToBind = session->GetReadyImeDataToBind(displayId);
     if (imeToBind == nullptr || imeToBind->IsRealIme()) {
-        session->SetIsNeedReportQos(inputClientInfo.isShowKeyboard);
         ret = CheckInputTypeOption(userId, inputClientInfo);
-        session->SetIsNeedReportQos(false);
         if (ret != ErrorCode::NO_ERROR) {
             IMSA_HILOGE("%{public}d failed to CheckInputTypeOption!", userId);
             return ret;
@@ -910,6 +908,10 @@ ErrCode InputMethodSystemAbility::RegisterProxyIme(
     if (uid == ImfCommonConst::AI_PROXY_IME && !ImeInfoInquirer::GetInstance().IsEnableAppAgent()) {
         IMSA_HILOGE("current device does not support app agent");
         return ErrorCode::ERROR_DEVICE_UNSUPPORTED;
+    }
+    if (identityChecker_ == nullptr) {
+        IMSA_HILOGE("identityChecker_ is nullptr!");
+        return ErrorCode::ERROR_NULL_POINTER;
     }
     if (!identityChecker_->IsValidVirtualIme(uid)) {
         IMSA_HILOGE("not proxy sa");
@@ -1186,7 +1188,7 @@ ErrCode InputMethodSystemAbility::GetInputStartInfo(bool& isInputStart,
     }
     return session->GetInputStartInfo(GetCallingDisplayId(), isInputStart, callingWndId, requestKeyboardReason);
 }
-// LCOV_EXCL_STOP
+
 ErrCode InputMethodSystemAbility::IsCurrentIme(bool& resultValue)
 {
     auto userId = GetCallingUserId();
@@ -1194,7 +1196,7 @@ ErrCode InputMethodSystemAbility::IsCurrentIme(bool& resultValue)
     resultValue = IsCurrentIme(userId, tokenId);
     return ERR_OK;
 }
-
+// LCOV_EXCL_STOP
 ErrCode InputMethodSystemAbility::IsInputTypeSupported(int32_t type, bool &resultValue)
 {
     resultValue = InputTypeManager::GetInstance().IsSupported(static_cast<InputType>(type));
@@ -2002,7 +2004,7 @@ int32_t InputMethodSystemAbility::OnPackageUpdated(int32_t userId, const std::st
     }
     session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
-        IMSA_HILOGE("%{public}d session is nullptr!", userId_.load());
+        IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_NULL_POINTER;
     }
     session->OnPackageUpdated(packageName);
@@ -2077,16 +2079,39 @@ void InputMethodSystemAbility::OnScreenLock(const Message *msg)
 int32_t InputMethodSystemAbility::OnDisplayOptionalInputMethod()
 {
     IMSA_HILOGD("InputMethodSystemAbility::OnDisplayOptionalInputMethod start.");
+    auto abilityManager = GetAbilityManagerService();
+    if (abilityManager == nullptr) {
+        IMSA_HILOGE("InputMethodSystemAbility::get ability manager service failed");
+        return ErrorCode::ERROR_EX_SERVICE_SPECIFIC;
+    }
     AAFwk::Want want;
     want.SetAction(SELECT_DIALOG_ACTION);
     want.SetElementName(SELECT_DIALOG_HAP, SELECT_DIALOG_ABILITY);
-    int32_t ret = AAFwk::AbilityManagerClient::GetInstance()->StartAbility(want);
+    int32_t ret = abilityManager->StartAbility(want);
     if (ret != ErrorCode::NO_ERROR && ret != START_SERVICE_ABILITY_ACTIVATING) {
         IMSA_HILOGE("start InputMethod ability failed, err: %{public}d", ret);
         return ErrorCode::ERROR_EX_SERVICE_SPECIFIC;
     }
     IMSA_HILOGI("start InputMethod ability success.");
     return ErrorCode::NO_ERROR;
+}
+
+sptr<AAFwk::IAbilityManager> InputMethodSystemAbility::GetAbilityManagerService()
+{
+    IMSA_HILOGD("InputMethodSystemAbility::GetAbilityManagerService start.");
+    auto systemAbilityManager = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    if (systemAbilityManager == nullptr) {
+        IMSA_HILOGE("SystemAbilityManager is nullptr");
+        return nullptr;
+    }
+
+    auto abilityMsObj = systemAbilityManager->GetSystemAbility(ABILITY_MGR_SERVICE_ID);
+    if (abilityMsObj == nullptr) {
+        IMSA_HILOGE("Failed to get ability manager service");
+        return nullptr;
+    }
+
+    return iface_cast<AAFwk::IAbilityManager>(abilityMsObj);
 }
 // LCOV_EXCL_START
 int32_t InputMethodSystemAbility::SwitchByCombinationKey(uint32_t state)
@@ -2250,7 +2275,7 @@ bool InputMethodSystemAbility::InitHaMonitor()
     return commonEventMgr->SubscribeHaService([]() { ImfHookMgr::GetInstance().OnHaServiceStart(); }, info.id);
 }
 
-// LCOV_EXCL_STOP
+
 void InputMethodSystemAbility::HandleDataShareReady()
 {
     IMSA_HILOGI("run in.");
@@ -2265,7 +2290,7 @@ void InputMethodSystemAbility::HandleDataShareReady()
     FullImeInfoManager::GetInstance().Init();
     NumkeyAppsManager::GetInstance().Init(userId_);
 }
-// LCOV_EXCL_START
+
 int32_t InputMethodSystemAbility::InitAccountMonitor()
 {
     IMSA_HILOGI("InputMethodSystemAbility::InitAccountMonitor start.");
@@ -2276,7 +2301,7 @@ int32_t InputMethodSystemAbility::InitAccountMonitor()
     }
     return imCommonEventManager->SubscribeAccountManagerService([this]() { HandleOsAccountStarted(); });
 }
-// LCOV_EXCL_STOP
+
 int32_t InputMethodSystemAbility::InitKeyEventMonitor()
 {
     IMSA_HILOGI("InputMethodSystemAbility::InitKeyEventMonitor start.");
@@ -2317,7 +2342,7 @@ bool InputMethodSystemAbility::InitWmsMonitor()
     }
     return imCommonEventManager->SubscribeWindowManagerService([this]() { HandleWmsStarted(); });
 }
-// LCOV_EXCL_START
+
 bool InputMethodSystemAbility::InitMemMgrMonitor()
 {
     auto imCommonEventManager = ImCommonEventManager::GetInstance();
@@ -2571,7 +2596,7 @@ int32_t InputMethodSystemAbility::ConnectSystemCmd(const sptr<IRemoteObject> &ch
     }
     return session->OnConnectSystemCmd(channel, agent);
 }
-// LCOV_EXCL_STOP
+
 void InputMethodSystemAbility::HandleWmsConnected(int32_t userId, int32_t screenId)
 {
     if (userId == userId_) {
@@ -2582,7 +2607,7 @@ void InputMethodSystemAbility::HandleWmsConnected(int32_t userId, int32_t screen
     // user switched
     HandleUserSwitched(userId);
 }
-
+// LCOV_EXCL_STOP
 void InputMethodSystemAbility::HandleScbStarted(int32_t userId, int32_t screenId)
 {
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);

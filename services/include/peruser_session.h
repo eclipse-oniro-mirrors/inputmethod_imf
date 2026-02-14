@@ -183,7 +183,6 @@ public:
     int32_t TryStartIme();
     int32_t TryDisconnectIme();
     bool IsDeviceLockAndScreenLocked();
-    void SetIsNeedReportQos(bool isNeedReportQos);
     std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> GetClientBySelfPid(pid_t clientPid);
     std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> GetClientBySelfPidOrHostPid(
         pid_t clientPid);
@@ -193,11 +192,11 @@ private:
         uint32_t num{ 0 };
         time_t last{};
     };
+    using CoreMethod = std::function<int32_t(const sptr<IInputMethodCore> &)>;
     enum TimeLimitType : uint32_t {
         IME_LIMIT,
         PROXY_IME_LIMIT,
     };
-    using CoreMethod = std::function<int32_t(const sptr<IInputMethodCore> &)>;
 
     int32_t userId_; // the id of the user to whom the object is linking
 #ifdef IMF_ON_DEMAND_START_STOP_SA_ENABLE
@@ -315,7 +314,6 @@ private:
     int32_t IsRequestOverLimit(TimeLimitType timeLimit, int32_t resetTimeOut, uint32_t restartNum);
     int32_t PrepareImeInfos(const std::shared_ptr<ImeData> &imeData, std::vector<sptr<IRemoteObject>> &agents,
         std::vector<BindImeInfo> &imeInfos, uint64_t groupId);
-    bool IsImeStartedForeground();
     int32_t PostCurrentImeInfoReportHook(const std::string &bundleName);
     std::shared_ptr<ImeData> GetProxyImeData(uint64_t displayId);
     std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> GetCurrentClientBoundRealIme();
@@ -386,7 +384,6 @@ private:
     sptr<AAFwk::IAbilityConnection> connection_ = nullptr;
     std::atomic<bool> isBlockStartedByLowMem_ = false;
     bool isFirstPreemption_ = false;
-    std::atomic<bool> isNeedReportQos_ = false;
     std::mutex proxyImeDataLock_;
     std::map<uint64_t, std::vector<std::shared_ptr<ImeData>>> proxyImeData_;
     std::mutex mirrorImeDataLock_;

@@ -408,12 +408,12 @@ ani_ref ETSInputMethodExtension::CallObjectMethod(bool withResult, const char *n
 void ETSInputMethodExtension::ListenWindowManager()
 {
     IMSA_HILOGD("register window manager service listener.");
-    if (FOLD_SCREEN_TYPE.empty() || FOLD_SCREEN_TYPE[0] != *EXTEND_FOLD_TYPE) {
-        IMSA_HILOGD("The current device is a non-foldable device.");
-        return;
-    }
     auto etsInputMethodExtension = std::static_pointer_cast<ETSInputMethodExtension>(shared_from_this());
     displayListener_ = sptr<EtsInputMethodExtensionDisplayAttributeListener>::MakeSptr(etsInputMethodExtension);
+    if (displayListener_ == nullptr) {
+        IMSA_HILOGD("failed to create display listener.");
+        return;
+    }
     std::vector<std::string> attributes = {"rotation", "width", "height"};
     Rosen::DisplayManager::GetInstance().RegisterDisplayAttributeListener(attributes, displayListener_);
 }

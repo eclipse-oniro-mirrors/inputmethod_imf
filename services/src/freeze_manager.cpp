@@ -22,6 +22,7 @@
 #include "system_ability_definition.h"
 namespace OHOS {
 namespace MiscServices {
+constexpr const char *INPUT_METHOD_SERVICE_SA_NAME = "inputmethod_service";
 constexpr const char *STOP_TASK_NAME = "ReportStop";
 constexpr int32_t DELAY_TIME = 3000; // 3s
 void FreezeManager::ControlIme(bool shouldApply)

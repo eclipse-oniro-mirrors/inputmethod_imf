@@ -42,7 +42,7 @@ struct InputWindowInfo : public Parcelable {
     {
         std::string info;
         info.append(name + ", ");
-        info.append("[displayId/left/top/width/height]: " + std::to_string(displayId) + std::to_string(left) + "/" +
+        info.append("[left/top/width/height]: " + std::to_string(left) + "/" +
                     std::to_string(top) + "/" + std::to_string(width) + "/" + std::to_string(height));
         return info;
     }
