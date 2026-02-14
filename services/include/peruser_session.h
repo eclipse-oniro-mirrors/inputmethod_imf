@@ -283,7 +283,7 @@ private:
     AAFwk::Want GetWant(const std::shared_ptr<ImeNativeCfg> &ime);
     int32_t StartCurrentIme(const std::shared_ptr<ImeNativeCfg> &ime);
     int32_t StartNewIme(const std::shared_ptr<ImeNativeCfg> &ime);
-    int32_t StartInputService(const std::shared_ptr<ImeNativeCfg> &ime, bool needWait = true);
+    int32_t StartInputService(const std::shared_ptr<ImeNativeCfg> &ime, bool skipWaitAfterTimeout = true);
     int32_t ForceStopCurrentIme(bool isNeedWait = true);
     int32_t StopReadyCurrentIme();
     int32_t HandleFirstStart(const std::shared_ptr<ImeNativeCfg> &ime, bool isStopCurrentIme);
