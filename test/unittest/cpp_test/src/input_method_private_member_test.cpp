@@ -4302,7 +4302,7 @@ HWTEST_F(InputMethodPrivateMemberTest, IMSA_HideCurrentInput, TestSize.Level0)
     IMSA_HILOGI("InputMethodPrivateMemberTest::IMSA_HideCurrentInput start.");
     uint64_t displayId = 100;
     InputMethodSystemAbility imsa;
-    UserSessionManager::GetInstance.userSessions_.clear();
+    UserSessionManager::GetInstance().userSessions_.clear();
     // session not found
     auto ret = imsa.HideCurrentInput(displayId);
     EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND);
@@ -4330,7 +4330,7 @@ HWTEST_F(InputMethodPrivateMemberTest, IMSA_ShowCurrentInputInner, TestSize.Leve
     IMSA_HILOGI("InputMethodPrivateMemberTest::IMSA_ShowCurrentInputInner start.");
     uint64_t displayId = 100;
     InputMethodSystemAbility imsa;
-    serSessionManager::GetInstance.userSessions_.clear();
+    UserSessionManager::GetInstance().userSessions_.clear();
     // session not found
     auto ret = imsa.ShowCurrentInputInner(displayId);
     EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND);
