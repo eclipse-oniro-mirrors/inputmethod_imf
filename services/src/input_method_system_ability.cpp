@@ -249,7 +249,8 @@ bool InputMethodSystemAbility::IsValidBundleName(const std::string &bundleName)
         return false;
     }
     std::vector<Property> props;
-    auto ret = ListInputMethod(InputMethodStatus::ALL, props, -1);
+    auto ret = ListInputMethod(InputMethodStatus::ALL, props, DEFAUL
+        T_USER_ID);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("ListInputMethod failed, ret=%{public}d", ret);
         return false;
@@ -1379,6 +1380,10 @@ ErrCode InputMethodSystemAbility::SwitchInputMethod(const std::string &bundleNam
         return ErrorCode::ERROR_ENABLE_IME;
     }
     auto currentImeCfg = ImeCfgManager::GetInstance().GetCurrentImeCfg(outputUserId);
+    if (currentImeCfg == nullptr) {
+        IMSA_HILOGE("Failed to get current ime config");
+        return ErrorCode::ERROR_IMSA_GET_IME_INFO_FAILED;
+    }
     if (switchInfo.subName.empty() && switchInfo.bundleName == currentImeCfg->bundleName) {
         switchInfo.subName = currentImeCfg->subName;
     }

@@ -618,11 +618,13 @@ int32_t InputMethodController::GetDefaultInputMethod(std::shared_ptr<Property> &
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
         IMSA_HILOGE("proxy is nullptr!");
+        proxy = nullptr;
         return ErrorCode::ERROR_SERVICE_START_FAILED;
     }
     Property prop;
     auto ret = proxy->GetDefaultInputMethod(prop, false, userId);
     if (ret != ErrorCode::NO_ERROR) {
+        proxy = nullptr;
         return ret;
     }
     property = std::make_shared<Property>(prop);

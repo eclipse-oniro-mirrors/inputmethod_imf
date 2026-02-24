@@ -556,8 +556,41 @@ HWTEST_F(ImeMultiUserTest, testMultiUserRequestHideInput_001, TestSize.Level1)
     int32_t userId = TddUtil::GetCurrentUserId();
     int32_t ret = imc_->RequestHideInput(0, false, 0, userId);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    ret = imc_->RequestHideInput(0, false, 0, -2);
-    EXPECT_NE(ret, ErrorCode::NO_ERROR);
+    TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ohos.inputMethod.test",
+        { "ohos.permission.CONNECT_IME_ABILITY", "ohos.permission.INJECT_INPUT_EVENT" }));
+}
+
+/**
+ * @tc.name: testMultiUserRequestHideInput_003
+ * @tc.desc: Test RequestHideInput with non-root permission and non-existent userId
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.author: huangyaohua
+ */
+HWTEST_F(ImeMultiUserTest, testMultiUserRequestHideInput_003, TestSize.Level1)
+{
+    IMSA_HILOGI("multiuser testRequestHideInput 003 Test START");
+
+    TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ohos.inputMethod.test",
+        { "ohos.permission.CONNECT_IME_ABILITY", "ohos.permission.INJECT_INPUT_EVENT" }));
+    UidScope uidScope(20000000);
+
+    int32_t userId = 999999;
+    int32_t ret = imc_->RequestHideInput(0, false, 0, userId);
+    EXPECT_EQ(ret, ErrorCode::ERROR_USER_NOT_EXIST);
+}
+
+/**
+ * @tc.name: testMultiUserRequestHideInput_002
+ * @tc.desc: Test RequestHideInput for U100 user with SYSTEM_APP trigger
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.author: huangyaohua
+ */
+HWTEST_F(ImeMultiUserTest, testMultiUserRequestHideInput_002, TestSize.Level1)
+{
+    IMSA_HILOGI("multiuser testRequestHideInput 002 Test START");
+
     TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ohos.inputMethod.test",
         { "ohos.permission.CONNECT_IME_ABILITY", "ohos.permission.INJECT_INPUT_EVENT" }));
 }
@@ -724,9 +757,9 @@ HWTEST_F(ImeMultiUserTest, testMultiUserSwitchInputMethod_InvalidUserId, TestSiz
 
     TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ohos.inputMethod.test",
         { "ohos.permission.CONNECT_IME_ABILITY", "ohos.permission.INJECT_INPUT_EVENT" }));
-    UidScope uidScope(0);
+    UidScope uidScope(20000000);
 
-    int32_t userId = -2;
+    int32_t userId = 999999;
     int32_t ret = imc_->SwitchInputMethod(SwitchTrigger::SYSTEM_APP, bundleName, extName[0], userId);
     EXPECT_NE(ret, ErrorCode::NO_ERROR);
 }
@@ -744,9 +777,9 @@ HWTEST_F(ImeMultiUserTest, testMultiUserGetCurrentInputMethod_InvalidUserId, Tes
 
     TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ohos.inputMethod.test",
         { "ohos.permission.CONNECT_IME_ABILITY", "ohos.permission.INJECT_INPUT_EVENT" }));
-    UidScope uidScope(0);
+    UidScope uidScope(20000000);
 
-    int32_t userId = -2;
+    int32_t userId = 999999;
     std::shared_ptr<Property> property = imc_->GetCurrentInputMethod(userId);
     EXPECT_TRUE(property == nullptr);
 }
@@ -764,9 +797,9 @@ HWTEST_F(ImeMultiUserTest, testMultiUserGetCurrentInputMethodSubtype_InvalidUser
 
     TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ohos.inputMethod.test",
         { "ohos.permission.CONNECT_IME_ABILITY", "ohos.permission.INJECT_INPUT_EVENT" }));
-    UidScope uidScope(0);
+    UidScope uidScope(20000000);
 
-    int32_t userId = -2;
+    int32_t userId = 999999;
     std::shared_ptr<SubProperty> subProperty = imc_->GetCurrentInputMethodSubtype(userId);
     EXPECT_TRUE(subProperty == nullptr);
 }
@@ -784,9 +817,9 @@ HWTEST_F(ImeMultiUserTest, testMultiUserGetDefaultInputMethod_InvalidUserId, Tes
 
     TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ohos.inputMethod.test",
         { "ohos.permission.CONNECT_IME_ABILITY", "ohos.permission.INJECT_INPUT_EVENT" }));
-    UidScope uidScope(0);
+    UidScope uidScope(20000000);
 
-    int32_t userId = -2;
+    int32_t userId = 999999;
     std::shared_ptr<Property> property = nullptr;
     int32_t ret = imc_->GetDefaultInputMethod(property, userId);
     EXPECT_NE(ret, ErrorCode::NO_ERROR);
@@ -805,9 +838,9 @@ HWTEST_F(ImeMultiUserTest, testMultiUserGetInputMethodConfig_InvalidUserId, Test
 
     TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ohos.inputMethod.test",
         { "ohos.permission.CONNECT_IME_ABILITY", "ohos.permission.INJECT_INPUT_EVENT" }));
-    UidScope uidScope(0);
+    UidScope uidScope(20000000);
 
-    int32_t userId = -2;
+    int32_t userId = 999999;
     AppExecFwk::ElementName inputMethodConfig;
     int32_t ret = imc_->GetInputMethodConfig(inputMethodConfig, userId);
     EXPECT_NE(ret, ErrorCode::NO_ERROR);
@@ -826,9 +859,9 @@ HWTEST_F(ImeMultiUserTest, testMultiUserListInputMethod_InvalidUserId, TestSize.
 
     TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ohos.inputMethod.test",
         { "ohos.permission.CONNECT_IME_ABILITY", "ohos.permission.INJECT_INPUT_EVENT" }));
-    UidScope uidScope(0);
+    UidScope uidScope(20000000);
 
-    int32_t userId = -2;
+    int32_t userId = 999999;
     std::vector<Property> props;
     int32_t ret = imc_->ListInputMethod(props, userId);
     EXPECT_NE(ret, ErrorCode::NO_ERROR);
@@ -847,13 +880,12 @@ HWTEST_F(ImeMultiUserTest, testMultiUserListCurrentInputMethodSubtype_InvalidUse
 
     TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ohos.inputMethod.test",
         { "ohos.permission.CONNECT_IME_ABILITY", "ohos.permission.INJECT_INPUT_EVENT" }));
-    UidScope uidScope(0);
+    UidScope uidScope(20000000);
 
-    int32_t userId = -2;
+    int32_t userId = 999999;
     std::vector<SubProperty> subProps;
     int32_t ret = imc_->ListCurrentInputMethodSubtype(subProps, userId);
     EXPECT_NE(ret, ErrorCode::NO_ERROR);
 }
-
 } // namespace MiscServices
 } // namespace OHOS
