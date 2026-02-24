@@ -569,7 +569,7 @@ HWTEST_F(ImeMultiUserTest, testMultiUserSwitchInputMethod_006, TestSize.Level1)
  * @tc.require:
  * @tc.author: huangyaohua
  */
-HWTEST_F(ImeMultiUserTest, testMultiUserSwitchInputMethod_007, Test) {
+HWTEST_F(ImeMultiUserTest, testMultiUserSwitchInputMethod_007, TestSize.Level1) {
     IMSA_HILOGI("multiuser testSwitchInputMethod 007 Test START");
 
     TddUtil::RestoreSelfTokenID();
