@@ -2793,7 +2793,7 @@ int32_t InputMethodSystemAbility::StartInputType(int32_t userId, InputType type,
     }
     SwitchInfo switchInfo = { std::chrono::system_clock::now(), ime.bundleName, ime.subName };
     session->GetSwitchQueue().Push(switchInfo);
-    IMSA_HILOGI("start input type: %{public}d, isPersistence: %{pubilc}d.", type, isPersistence);
+    IMSA_HILOGI("start input type: %{public}d, isPersistence: %{public}d.", type, isPersistence);
     return (type == InputType::SECURITY_INPUT) ? OnStartInputType(userId, switchInfo, false) :
         OnStartInputType(userId, switchInfo, true, isPersistence);
 }
