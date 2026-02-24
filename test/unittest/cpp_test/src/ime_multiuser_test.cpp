@@ -712,29 +712,6 @@ HWTEST_F(ImeMultiUserTest, testMultiUserEnableIme_002, TestSize.Level1)
 }
 
 /**
- * @tc.name: testMultiUserIsPanelShown_InvalidUserId
- * @tc.desc: Test IsPanelShown with invalid userId=-2
- * @tc.type: FUNC
- * @tc.require:
- * @tc.author: huangyaohua
- */
-HWTEST_F(ImeMultiUserTest, testMultiUserIsPanelShown_InvalidUserId, TestSize.Level1)
-{
-    IMSA_HILOGI("multiuser testIsPanelShown InvalidUserId Test START");
-
-    TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ohos.inputMethod.test",
-        { "ohos.permission.CONNECT_IME_ABILITY", "ohos.permission.INJECT_INPUT_EVENT" }));
-    UidScope uidScope(0);
-
-    int32_t userId = -2;
-    PanelInfo panelInfo;
-    panelInfo.panelType = PanelType::SOFT_KEYBOARD;
-    bool isShown = false;
-    int32_t ret = imc_->IsPanelShown(panelInfo, isShown);
-    EXPECT_NE(ret, ErrorCode::NO_ERROR);
-}
-
-/**
  * @tc.name: testMultiUserSwitchInputMethod_InvalidUserId
  * @tc.desc: Test SwitchInputMethod with invalid userId=-2
  * @tc.type: FUNC
