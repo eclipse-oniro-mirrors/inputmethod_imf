@@ -781,7 +781,7 @@ HWTEST_F(ImeMultiUserTest, testMultiUserGetCurrentInputMethod_InvalidUserId, Tes
 
     int32_t userId = 999999;
     std::shared_ptr<Property> property = imc_->GetCurrentInputMethod(userId);
-    EXPECT_TRUE(property == nullptr);
+    EXPECT_TRUE(property != nullptr && property->name.empty());
 }
 
 /**
@@ -801,7 +801,7 @@ HWTEST_F(ImeMultiUserTest, testMultiUserGetCurrentInputMethodSubtype_InvalidUser
 
     int32_t userId = 999999;
     std::shared_ptr<SubProperty> subProperty = imc_->GetCurrentInputMethodSubtype(userId);
-    EXPECT_TRUE(subProperty == nullptr);
+    EXPECT_TRUE(subProperty != nullptr && subProperty->id.empty());
 }
 
 /**
