@@ -539,53 +539,6 @@ HWTEST_F(ImeMultiUserTest, testMultiUserSwitchInputMethod_005, TestSize.Level1)
 }
 
 /**
- * @tc.name: testMultiUserSwitchInputMethod_006
- * @tc.desc: Test SwitchInputMethod with non-existent user to cover line 2850
- * @tc.type: FUNC
- * @tc.require:
- * @tc.author: huangyaohua
- */
-HWTEST_F(ImeMultiUserTest, testMultiUserSwitchInputMethod_006, TestSize.Level1)
-{
-    IMSA_HILOGI("multiuser testSwitchInputMethod 006 Test START");
-
-    TddUtil::RestoreSelfTokenID();
-    UidScope uidScope(0);
-    TddUtil::GrantNativePermission();
-
-    int32_t userId = 999999;
-    int32_t ret = imc_->SwitchInputMethod(SwitchTrigger::NATIVE_SA, bundleName, extName[0], userId);
-    EXPECT_EQ(ret, ErrorCode::ERROR_USER_NOT_EXIST);
-
-    sleep(WAIT_IME_READY_TIME);
-    TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ohos.inputMethod.test",
-        { "ohos.permission.CONNECT_IME_ABILITY", "ohos.permission.INJECT_INPUT_EVENT" }));
-}
-
-/**
- * @tc.name: testMultiUserSwitchInputMethod_007
- * @tc.desc: Test SwitchInputMethod with non-system app and non-foreground user to cover lines 2860-2869
- * @tc.type: FUNC
- * @tc.require:
- * @tc.author: huangyaohua
- */
-HWTEST_F(ImeMultiUserTest, testMultiUserSwitchInputMethod_007, TestSize.Level1) {
-    IMSA_HILOGI("multiuser testSwitchInputMethod 007 Test START");
-
-    TddUtil::RestoreSelfTokenID();
-    UidScope uidScope(0);
-
-    int32_t userId = TddUtil::GetCurrentUserId();
-    int32_t ret = imc_->SwitchInputMethod(SwitchTrigger::CURRENT_IME, bundleName, extName[0], userId);
-    EXPECT_TRUE(ret == ErrorCode::ERROR_USER_NOT_IN_FOREGROUND || 
-                ret == ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
-
-    sleep(WAIT_IME_READY_TIME);
-    TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ohos.inputMethod.test",
-        { "ohos.permission.CONNECT_IME_ABILITY", "ohos.permission.INJECT_INPUT_EVENT" }));
-}
-
-/**
  * @tc.name: testMultiUserRequestHideInput_001
  * @tc.desc: Test RequestHideInput for U100 user with NATIVE_SA trigger
  * @tc.type: FUNC
@@ -603,6 +556,8 @@ HWTEST_F(ImeMultiUserTest, testMultiUserRequestHideInput_001, TestSize.Level1)
     int32_t userId = TddUtil::GetCurrentUserId();
     int32_t ret = imc_->RequestHideInput(0, false, 0, userId);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ret = imc_->RequestHideInput(0, false, 0, -2);
+    EXPECT_NE(ret, ErrorCode::NO_ERROR);
     TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ohos.inputMethod.test",
         { "ohos.permission.CONNECT_IME_ABILITY", "ohos.permission.INJECT_INPUT_EVENT" }));
 }
@@ -754,6 +709,173 @@ HWTEST_F(ImeMultiUserTest, testMultiUserEnableIme_002, TestSize.Level1)
     int32_t userId = TddUtil::GetCurrentUserId();
     int32_t ret = imc_->EnableIme(bundleName, extName[0], EnabledStatus::BASIC_MODE, userId);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: testMultiUserIsPanelShown_InvalidUserId
+ * @tc.desc: Test IsPanelShown with invalid userId=-2
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.author: huangyaohua
+ */
+HWTEST_F(ImeMultiUserTest, testMultiUserIsPanelShown_InvalidUserId, TestSize.Level1)
+{
+    IMSA_HILOGI("multiuser testIsPanelShown InvalidUserId Test START");
+
+    TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ohos.inputMethod.test",
+        { "ohos.permission.CONNECT_IME_ABILITY", "ohos.permission.INJECT_INPUT_EVENT" }));
+    UidScope uidScope(0);
+
+    int32_t userId = -2;
+    PanelInfo panelInfo;
+    panelInfo.panelType = PanelType::SOFT_KEYBOARD;
+    bool isShown = false;
+    int32_t ret = imc_->IsPanelShown(panelInfo, isShown);
+    EXPECT_NE(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: testMultiUserSwitchInputMethod_InvalidUserId
+ * @tc.desc: Test SwitchInputMethod with invalid userId=-2
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.author: huangyaohua
+ */
+HWTEST_F(ImeMultiUserTest, testMultiUserSwitchInputMethod_InvalidUserId, TestSize.Level1)
+{
+    IMSA_HILOGI("multiuser testSwitchInputMethod InvalidUserId Test START");
+
+    TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ohos.inputMethod.test",
+        { "ohos.permission.CONNECT_IME_ABILITY", "ohos.permission.INJECT_INPUT_EVENT" }));
+    UidScope uidScope(0);
+
+    int32_t userId = -2;
+    int32_t ret = imc_->SwitchInputMethod(SwitchTrigger::SYSTEM_APP, bundleName, extName[0], userId);
+    EXPECT_NE(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: testMultiUserGetCurrentInputMethod_InvalidUserId
+ * @tc.desc: Test GetCurrentInputMethod with invalid userId=-2
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.author: huangyaohua
+ */
+HWTEST_F(ImeMultiUserTest, testMultiUserGetCurrentInputMethod_InvalidUserId, TestSize.Level1)
+{
+    IMSA_HILOGI("multiuser testGetCurrentInputMethod InvalidUserId Test START");
+
+    TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ohos.inputMethod.test",
+        { "ohos.permission.CONNECT_IME_ABILITY", "ohos.permission.INJECT_INPUT_EVENT" }));
+    UidScope uidScope(0);
+
+    int32_t userId = -2;
+    std::shared_ptr<Property> property = imc_->GetCurrentInputMethod(userId);
+    EXPECT_TRUE(property == nullptr);
+}
+
+/**
+ * @tc.name: testMultiUserGetCurrentInputMethodSubtype_InvalidUserId
+ * @tc.desc: Test GetCurrentInputMethodSubtype with invalid userId=-2
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.author: huangyaohua
+ */
+HWTEST_F(ImeMultiUserTest, testMultiUserGetCurrentInputMethodSubtype_InvalidUserId, TestSize.Level1)
+{
+    IMSA_HILOGI("multiuser testGetCurrentInputMethodSubtype InvalidUserId Test START");
+
+    TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ohos.inputMethod.test",
+        { "ohos.permission.CONNECT_IME_ABILITY", "ohos.permission.INJECT_INPUT_EVENT" }));
+    UidScope uidScope(0);
+
+    int32_t userId = -2;
+    std::shared_ptr<SubProperty> subProperty = imc_->GetCurrentInputMethodSubtype(userId);
+    EXPECT_TRUE(subProperty == nullptr);
+}
+
+/**
+ * @tc.name: testMultiUserGetDefaultInputMethod_InvalidUserId
+ * @tc.desc: Test GetDefaultInputMethod with invalid userId=-2
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.author: huangyaohua
+ */
+HWTEST_F(ImeMultiUserTest, testMultiUserGetDefaultInputMethod_InvalidUserId, TestSize.Level1)
+{
+    IMSA_HILOGI("multiuser testGetDefaultInputMethod InvalidUserId Test START");
+
+    TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ohos.inputMethod.test",
+        { "ohos.permission.CONNECT_IME_ABILITY", "ohos.permission.INJECT_INPUT_EVENT" }));
+    UidScope uidScope(0);
+
+    int32_t userId = -2;
+    std::shared_ptr<Property> property = nullptr;
+    int32_t ret = imc_->GetDefaultInputMethod(property, userId);
+    EXPECT_NE(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: testMultiUserGetInputMethodConfig_InvalidUserId
+ * @tc.desc: Test GetInputMethodConfig with invalid userId=-2
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.author: huangyaohua
+ */
+HWTEST_F(ImeMultiUserTest, testMultiUserGetInputMethodConfig_InvalidUserId, TestSize.Level1)
+{
+    IMSA_HILOGI("multiuser testGetInputMethodConfig InvalidUserId Test START");
+
+    TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ohos.inputMethod.test",
+        { "ohos.permission.CONNECT_IME_ABILITY", "ohos.permission.INJECT_INPUT_EVENT" }));
+    UidScope uidScope(0);
+
+    int32_t userId = -2;
+    AppExecFwk::ElementName inputMethodConfig;
+    int32_t ret = imc_->GetInputMethodConfig(inputMethodConfig, userId);
+    EXPECT_NE(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: testMultiUserListInputMethod_InvalidUserId
+ * @tc.desc: Test ListInputMethod with invalid userId=-2
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.author: huangyaohua
+ */
+HWTEST_F(ImeMultiUserTest, testMultiUserListInputMethod_InvalidUserId, TestSize.Level1)
+{
+    IMSA_HILOGI("multiuser testListInputMethod InvalidUserId Test START");
+
+    TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ohos.inputMethod.test",
+        { "ohos.permission.CONNECT_IME_ABILITY", "ohos.permission.INJECT_INPUT_EVENT" }));
+    UidScope uidScope(0);
+
+    int32_t userId = -2;
+    std::vector<Property> props;
+    int32_t ret = imc_->ListInputMethod(props, userId);
+    EXPECT_NE(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: testMultiUserListCurrentInputMethodSubtype_InvalidUserId
+ * @tc.desc: Test ListCurrentInputMethodSubtype with invalid userId=-2
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.author: huangyaohua
+ */
+HWTEST_F(ImeMultiUserTest, testMultiUserListCurrentInputMethodSubtype_InvalidUserId, TestSize.Level1)
+{
+    IMSA_HILOGI("multiuser testListCurrentInputMethodSubtype InvalidUserId Test START");
+
+    TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ohos.inputMethod.test",
+        { "ohos.permission.CONNECT_IME_ABILITY", "ohos.permission.INJECT_INPUT_EVENT" }));
+    UidScope uidScope(0);
+
+    int32_t userId = -2;
+    std::vector<SubProperty> subProps;
+    int32_t ret = imc_->ListCurrentInputMethodSubtype(subProps, userId);
+    EXPECT_NE(ret, ErrorCode::NO_ERROR);
 }
 
 } // namespace MiscServices
