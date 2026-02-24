@@ -796,8 +796,7 @@ void JsGetInputMethodSetting::OnImeChangeByUserId(const Property &property, cons
             return true;
         };
         // 2 means callback has two params.
-        JsCallbackHandler::Traverse(entry->vecCopy, { 3
-              , getImeChangeProperty });
+        JsCallbackHandler::Traverse(entry->vecCopy, { 3, getImeChangeProperty });
     };
     eventHandler->PostTask(task, type, 0, AppExecFwk::EventQueue::Priority::VIP);
 }
