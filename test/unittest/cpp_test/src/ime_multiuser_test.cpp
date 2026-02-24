@@ -539,6 +539,53 @@ HWTEST_F(ImeMultiUserTest, testMultiUserSwitchInputMethod_005, TestSize.Level1)
 }
 
 /**
+ * @tc.name: testMultiUserSwitchInputMethod_006
+ * @tc.desc: Test SwitchInputMethod with non-existent user to cover line 2850
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.author: huangyaohua
+ */
+HWTEST_F(ImeMultiUserTest, testMultiUserSwitchInputMethod_006, TestSize.Level1)
+{
+    IMSA_HILOGI("multiuser testSwitchInputMethod 006 Test START");
+
+    TddUtil::RestoreSelfTokenID();
+    UidScope uidScope(0);
+    TddUtil::GrantNativePermission();
+
+    int32_t userId = 999999;
+    int32_t ret = imc_->SwitchInputMethod(SwitchTrigger::NATIVE_SA, bundleName, extName[0], userId);
+    EXPECT_EQ(ret, ErrorCode::ERROR_USER_NOT_EXIST);
+
+    sleep(WAIT_IME_READY_TIME);
+    TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ohos.inputMethod.test",
+        { "ohos.permission.CONNECT_IME_ABILITY", "ohos.permission.INJECT_INPUT_EVENT" }));
+}
+
+/**
+ * @tc.name: testMultiUserSwitchInputMethod_007
+ * @tc.desc: Test SwitchInputMethod with non-system app and non-foreground user to cover lines 2860-2869
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.author: huangyaohua
+ */
+HWTEST_F(ImeMultiUserTest, testMultiUserSwitchInputMethod_007, Test) {
+    IMSA_HILOGI("multiuser testSwitchInputMethod 007 Test START");
+
+    TddUtil::RestoreSelfTokenID();
+    UidScope uidScope(0);
+
+    int32_t userId = TddUtil::GetCurrentUserId();
+    int32_t ret = imc_->SwitchInputMethod(SwitchTrigger::CURRENT_IME, bundleName, extName[0], userId);
+    EXPECT_TRUE(ret == ErrorCode::ERROR_USER_NOT_IN_FOREGROUND || 
+                ret == ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+
+    sleep(WAIT_IME_READY_TIME);
+    TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ohos.inputMethod.test",
+        { "ohos.permission.CONNECT_IME_ABILITY", "ohos.permission.INJECT_INPUT_EVENT" }));
+}
+
+/**
  * @tc.name: testMultiUserRequestHideInput_001
  * @tc.desc: Test RequestHideInput for U100 user with NATIVE_SA trigger
  * @tc.type: FUNC
