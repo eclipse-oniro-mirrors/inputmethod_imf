@@ -593,21 +593,6 @@ HWTEST_F(ImeMultiUserTest, testMultiUserRequestHideInput_002, TestSize.Level1)
 
     TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ohos.inputMethod.test",
         { "ohos.permission.CONNECT_IME_ABILITY", "ohos.permission.INJECT_INPUT_EVENT" }));
-}
-
-/**
- * @tc.name: testMultiUserRequestHideInput_002
- * @tc.desc: Test RequestHideInput for U100 user with SYSTEM_APP trigger
- * @tc.type: FUNC
- * @tc.require:
- * @tc.author: huangyaohua
- */
-HWTEST_F(ImeMultiUserTest, testMultiUserRequestHideInput_002, TestSize.Level1)
-{
-    IMSA_HILOGI("multiuser testRequestHideInput 002 Test START");
-
-    TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ohos.inputMethod.test",
-        { "ohos.permission.CONNECT_IME_ABILITY", "ohos.permission.INJECT_INPUT_EVENT" }));
     UidScope uidScope(0);
 
     int32_t userId = TddUtil::GetCurrentUserId();
