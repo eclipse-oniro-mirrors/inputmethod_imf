@@ -1312,7 +1312,7 @@ int32_t InputMethodSystemAbility::IsPanelShown(uint64_t displayId, const PanelIn
     auto errorCode = AccountSA::OsAccountManager::GetForegroundOsAccountDisplayId(outputUserId, displayId);
     if (errorCode != 0) {
         IMSA_HILOGE("GetForegroundOsAccountDisplayId failed, errorCode:%{public}d", errorCode);
-        return errorCode;
+        return ErrorCode::ERROR_USER_NOT_IN_FOREGROUND;
     }
     auto session = UserSessionManager::GetInstance().GetUserSession(outputUserId);
     if (session == nullptr) {
@@ -2838,13 +2838,13 @@ int32_t InputMethodSystemAbility::GetCallingUserId()
 
 int32_t InputMethodSystemAbility::GetCallingUserId(int32_t &outputUserId, int32_t inputUserId)
 {
-    IMSA_HILOGE("GetCallingUserId, inputUserId:%{public}d", inputUserId);
+    IMSA_HILOGD("GetCallingUserId, inputUserId:%{public}d", inputUserId);
     int32_t userId = inputUserId;
     bool isExist = false;
     if (userId != -1) {
         auto errCode = AccountSA::OsAccountManager::IsOsAccountExists(userId, isExist);
         if (errCode != 0) {
-            IMSA_HILOGE("IsOsAccountExists failed, errCode:%{public}d", errCode);
+            IMSA_HILOGD("IsOsAccountExists failed, errCode:%{public}d", errCode);
             return ErrorCode::ERROR_USER_NOT_EXIST;
         }
         if (!isExist) {
@@ -2858,24 +2858,24 @@ int32_t InputMethodSystemAbility::GetCallingUserId(int32_t &outputUserId, int32_
             outputUserId = OsAccountAdapter::GetForegroundOsAccountLocalId();
         } else {
             if (!OsAccountAdapter::IsOsAccountForeground(userId)) {
-                IMSA_HILOGE("!OsAccountAdapter::IsOsAccountForeground(userId) failed, userId:%{public}d", userId);
+                IMSA_HILOGD("!OsAccountAdapter::IsOsAccountForeground(userId) failed, userId:%{public}d", userId);
                 return ErrorCode::ERROR_USER_NOT_IN_FOREGROUND;
             }
             if (!identityChecker_->IsSystemApp(IPCSkeleton::GetCallingFullTokenID()) &&
                 !identityChecker_->IsNativeSa(IPCSkeleton::GetCallingTokenID())) {
-                IMSA_HILOGE("no systerm and no sa, outputUserId:%{public}d", outputUserId);
+                IMSA_HILOGD("no systerm and no sa, outputUserId:%{public}d", outputUserId);
                 return ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION;
             }
             outputUserId = userId;
         }
     } else {
         if (userId != -1) {
-            IMSA_HILOGE("userId != -1, userId:%{public}d", userId);
+            IMSA_HILOGD("userId != -1, userId:%{public}d", userId);
             return ErrorCode::ERROR_INVALID_USER_OPERATION;
         }
         outputUserId = callerUserId;
     }
-    IMSA_HILOGE("success, outputUserId:%{public}d", outputUserId);
+    IMSA_HILOGD("success, outputUserId:%{public}d", outputUserId);
     return ErrorCode::NO_ERROR;
 }
 
