@@ -255,7 +255,6 @@ bool InputMethodSystemAbility::IsValidBundleName(const std::string &bundleName)
         return false;
     }
 
-
     return std::any_of(props.begin(), props.end(), [&bundleName](const auto &prop) {
         return prop.name == bundleName;
     });
