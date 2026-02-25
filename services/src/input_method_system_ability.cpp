@@ -249,12 +249,12 @@ bool InputMethodSystemAbility::IsValidBundleName(const std::string &bundleName)
         return false;
     }
     std::vector<Property> props;
-    auto ret = ListInputMethod(InputMethodStatus::ALL, props, DEFAUL
-        T_USER_ID);
+    auto ret = ListInputMethod(InputMethodStatus::ALL, props, ImfCommonConst::DEFAULT_USER_ID);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("ListInputMethod failed, ret=%{public}d", ret);
         return false;
     }
+
 
     return std::any_of(props.begin(), props.end(), [&bundleName](const auto &prop) {
         return prop.name == bundleName;
