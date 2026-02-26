@@ -37,6 +37,7 @@ struct InputWindowInfo : public Parcelable {
     uint32_t width { 0 };  // the width of inputWindow
     uint32_t height{ 0 };  // the height of inputWindow
     uint64_t displayId{ ImfCommonConst::DEFAULT_DISPLAY_ID };
+    int32_t userId{ ImfCommonConst::DEFAULT_USER_ID };
 
     std::string ToString() const
     {
@@ -55,6 +56,7 @@ struct InputWindowInfo : public Parcelable {
         width = in.ReadUint32();
         height = in.ReadUint32();
         displayId = in.ReadUint64();
+        userId = in.ReadInt32();
         return true;
     }
 
@@ -75,7 +77,10 @@ struct InputWindowInfo : public Parcelable {
         if (!out.WriteUint32(height)) {
             return false;
         }
-        return out.WriteUint64(displayId);
+        if (!out.WriteUint64(displayId)) {
+            return false;
+        }
+        return out.WriteInt32(userId);
     }
 
     static InputWindowInfo *Unmarshalling(Parcel &in)

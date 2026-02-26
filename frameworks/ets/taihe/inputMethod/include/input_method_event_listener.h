@@ -29,6 +29,7 @@ public:
     ~InputMethodEventListener() = default;
     static std::shared_ptr<InputMethodEventListener> GetInstance();
     void OnImeChange(const Property &property, const SubProperty &subProperty);
+    void OnImeChangeByUserId(const Property &property, const SubProperty &subProperty, int32_t userId);
     void OnImeShow(const ImeWindowInfo &info);
     void OnImeHide(const ImeWindowInfo &info);
 

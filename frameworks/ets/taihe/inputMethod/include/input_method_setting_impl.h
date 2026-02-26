@@ -35,6 +35,7 @@ public:
     bool IsPanelShownId(PanelInfo_t const& panelInfo, int64_t displayId);
     taihe::array<InputMethodProperty_t> GetAllInputMethodsAsync();
     void OnImeChangeCallback(const Property &property, const SubProperty &subProperty);
+    void OnImeChangeCallbackByUserId(const Property &property, const SubProperty &subProperty, int32_t userId);
     void OnImeShowCallback(const ImeWindowInfo &info);
     void OnImeHideCallback(const ImeWindowInfo &info);
     void RegisterImeEvent(std::string const &eventName, int32_t eventMask, callbackType &&f, uintptr_t opq);

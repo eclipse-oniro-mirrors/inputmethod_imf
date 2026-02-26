@@ -252,6 +252,18 @@ void InputMethodSettingImpl::OnImeChangeCallback(const Property &property, const
         func(PropertyConverter::ConvertProperty(property), PropertyConverter::ConvertSubProperty(subProperty));
     }
 }
+
+void InputMethodSettingImpl::OnImeChangeCallbackByUserId(const Property &property, const SubProperty &subProperty,
+    int32_t userId)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto &cbVec = jsCbMap_["imeChangeByUserId"];
+    for (auto &cb : cbVec) {
+        auto &func = std::get<taihe::callback<void(InputMethodProperty_t const &, InputMethodSubtype_t const &,
+        int32_t)>>(cb->callback);
+        func(PropertyConverter::ConvertProperty(property), PropertyConverter::ConvertSubProperty(subProperty), userId);
+    }
+}
 void InputMethodSettingImpl::OnImeShowCallback(const ImeWindowInfo &info)
 {
     if (info.panelInfo.panelType != PanelType::SOFT_KEYBOARD ||

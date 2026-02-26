@@ -119,11 +119,13 @@ int32_t ImeEventMonitorManagerImpl::UnRegisterImeEventListener(
     return isAbsentParam ? ErrorCode::ERROR_BAD_PARAMETERS : ErrorCode::NO_ERROR;
 }
 
-int32_t ImeEventMonitorManagerImpl::OnImeChange(const Property &property, const SubProperty &subProperty)
+int32_t ImeEventMonitorManagerImpl::OnImeChange(const Property &property, const SubProperty &subProperty,
+    int32_t userId)
 {
     auto listeners = GetListeners(EVENT_IME_CHANGE_MASK);
     for (const auto &listener : listeners) {
         listener->OnImeChange(property, subProperty);
+        listener->OnImeChangeByUserId(property, subProperty, userId);
     }
     return ErrorCode::NO_ERROR;
 }

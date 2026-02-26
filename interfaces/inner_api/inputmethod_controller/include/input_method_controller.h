@@ -353,7 +353,8 @@ public:
      * @return Returns 0 for success, others for failure.
      * @since 6
      */
-    IMF_API int32_t ListInputMethod(std::vector<Property> &props);
+    IMF_API int32_t ListInputMethod(std::vector<Property> &props,
+        int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
 
     /**
      * @brief List input methods.
@@ -365,7 +366,8 @@ public:
      * @return Returns 0 for success, others for failure.
      * @since 6
      */
-    IMF_API int32_t ListInputMethod(bool enable, std::vector<Property> &props);
+    IMF_API int32_t ListInputMethod(bool enable, std::vector<Property> &props,
+        int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
 
     /**
      * @brief List input method subtypes.
@@ -377,7 +379,8 @@ public:
      * @return Returns 0 for success, others for failure.
      * @since 6
      */
-    IMF_API int32_t ListInputMethodSubtype(const Property &property, std::vector<SubProperty> &subProperties);
+    IMF_API int32_t ListInputMethodSubtype(const Property &property, std::vector<SubProperty> &subProperties,
+        int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
 
     /**
      * @brief List current input method subtypes.
@@ -388,7 +391,8 @@ public:
      * @return Returns 0 for success, others for failure.
      * @since 6
      */
-    IMF_API int32_t ListCurrentInputMethodSubtype(std::vector<SubProperty> &subProperties);
+    IMF_API int32_t ListCurrentInputMethodSubtype(std::vector<SubProperty> &subProperties,
+        int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
 
     /**
      * @brief Get enter key type.
@@ -431,7 +435,7 @@ public:
      * @return The property of current input method.
      * @since 6
      */
-    IMF_API std::shared_ptr<Property> GetCurrentInputMethod();
+    IMF_API std::shared_ptr<Property> GetCurrentInputMethod(int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
 
     /**
      * @brief Get current input method subtypes.
@@ -441,7 +445,7 @@ public:
      * @return The subtypes of current input method.
      * @since 6
      */
-    IMF_API std::shared_ptr<SubProperty> GetCurrentInputMethodSubtype();
+    IMF_API std::shared_ptr<SubProperty> GetCurrentInputMethodSubtype(int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
 
     /**
      * @brief Get default input method property.
@@ -451,7 +455,8 @@ public:
      * @return The property of default input method.
      * @since 10
      */
-    IMF_API int32_t GetDefaultInputMethod(std::shared_ptr<Property> &prop);
+    IMF_API int32_t GetDefaultInputMethod(std::shared_ptr<Property> &prop,
+        int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
 
     /**
      * @brief get input method config ability.
@@ -461,7 +466,8 @@ public:
      * @return The info of input settings.
      * @since 10
      */
-    IMF_API int32_t GetInputMethodConfig(AppExecFwk::ElementName &inputMethodConfig);
+    IMF_API int32_t GetInputMethodConfig(AppExecFwk::ElementName &inputMethodConfig,
+        int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
 
     /**
      * @brief Is keyboard calling process.
@@ -495,7 +501,8 @@ public:
      * @return Returns 0 for success, others for failure.
      * @since 11
      */
-    IMF_API int32_t SwitchInputMethod(SwitchTrigger trigger, const std::string &name, const std::string &subName = "");
+    IMF_API int32_t SwitchInputMethod(SwitchTrigger trigger, const std::string &name, const std::string &subName = "",
+        int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
 
     /**
      * @brief Set simple keyboard mode.
@@ -609,7 +616,8 @@ public:
      * @return Returns 0 for success, others for failure.
      * @since 11
      */
-    IMF_API int32_t RequestHideInput(uint32_t callingWndId = 0, bool isFocusTriggered = false, uint64_t displayId = 0);
+    IMF_API int32_t RequestHideInput(uint32_t callingWndId = 0, bool isFocusTriggered = false, uint64_t displayId = 0,
+        int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
 
     /**
      * @brief Show input method setting extension dialog.
@@ -943,7 +951,7 @@ public:
      * @return Returns true for current ime process id, false for not current ime process id.
      * @since 12
      */
-    IMF_API bool IsCurrentImeByPid(int32_t pid);
+    IMF_API bool IsCurrentImeByPid(int32_t pid, int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
 
     /**
      * @brief Reset controller.
@@ -963,7 +971,7 @@ public:
      *
      * @since 13
      */
-    IMF_API bool IsDefaultImeSet();
+    IMF_API bool IsDefaultImeSet(int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
 
     /**
      * @brief Enable the ime called bundleName.
@@ -974,7 +982,7 @@ public:
      * @since 13
      */
     IMF_API int32_t EnableIme(const std::string &bundleName, const std::string &extensionName = "",
-        EnabledStatus status = EnabledStatus::BASIC_MODE);
+        EnabledStatus status = EnabledStatus::BASIC_MODE, int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
 
     /**
      * @brief Send ArrayBuffer message to ime.
@@ -1065,7 +1073,8 @@ private:
         sptr<IInputClient> &client, ClientType type = ClientType::INNER_KIT, int32_t requestKeyboardReason = 0);
     int32_t HideInput(sptr<IInputClient> &client);
     int32_t ReleaseInput(sptr<IInputClient> &client);
-    int32_t ListInputMethodCommon(InputMethodStatus status, std::vector<Property> &props);
+    int32_t ListInputMethodCommon(InputMethodStatus status, std::vector<Property> &props,
+        int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
     int32_t AttachExec(sptr<OnTextChangedListener> listener, const AttachOptions &attachOptions,
         const TextConfig &textConfig, ClientType type);
     void ClearEditorCache(bool isNewEditor, sptr<OnTextChangedListener> lastListener);

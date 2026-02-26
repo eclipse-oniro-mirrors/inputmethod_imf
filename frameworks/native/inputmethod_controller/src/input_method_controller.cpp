@@ -546,7 +546,8 @@ void InputMethodController::Reset()
     RemoveDeathRecipient();
 }
 
-int32_t InputMethodController::RequestHideInput(uint32_t callingWndId, bool isFocusTriggered, uint64_t displayId)
+int32_t InputMethodController::RequestHideInput(uint32_t callingWndId, bool isFocusTriggered, uint64_t displayId,
+    int32_t userId)
 {
     IMSA_HILOGD("callingWndId/displayId/isFocusTriggered:%{public}u/%{public}" PRIu64 "/%{public}d.", callingWndId,
         displayId, isFocusTriggered);
@@ -556,7 +557,7 @@ int32_t InputMethodController::RequestHideInput(uint32_t callingWndId, bool isFo
         return ErrorCode::ERROR_EX_NULL_POINTER;
     }
     IMSA_HILOGD("InputMethodController start.");
-    return proxy->RequestHideInput(callingWndId, displayId, isFocusTriggered);
+    return proxy->RequestHideInput(callingWndId, displayId, isFocusTriggered, userId);
 }
 
 int32_t InputMethodController::DisplayOptionalInputMethod()
@@ -586,7 +587,8 @@ int32_t InputMethodController::GetInputStartInfo(
     return proxy->GetInputStartInfo(isInputStart, callingWndId, requestKeyboardReason);
 }
 
-int32_t InputMethodController::ListInputMethodCommon(InputMethodStatus status, std::vector<Property> &props)
+int32_t InputMethodController::ListInputMethodCommon(InputMethodStatus status, std::vector<Property> &props,
+    int32_t userId)
 {
     IMSA_HILOGD("InputMethodController::ListInputMethodCommon start.");
     auto proxy = GetSystemAbilityProxy();
@@ -594,40 +596,42 @@ int32_t InputMethodController::ListInputMethodCommon(InputMethodStatus status, s
         IMSA_HILOGE("proxy is nullptr!");
         return ErrorCode::ERROR_EX_NULL_POINTER;
     }
-    return proxy->ListInputMethod(status, props);
+    return proxy->ListInputMethod(status, props, userId);
 }
 
-int32_t InputMethodController::ListInputMethod(std::vector<Property> &props)
+int32_t InputMethodController::ListInputMethod(std::vector<Property> &props, int32_t userId)
 {
     IMSA_HILOGD("InputMethodController::listInputMethod start.");
-    return ListInputMethodCommon(ALL, props);
+    return ListInputMethodCommon(ALL, props, userId);
 }
 
-int32_t InputMethodController::ListInputMethod(bool enable, std::vector<Property> &props)
+int32_t InputMethodController::ListInputMethod(bool enable, std::vector<Property> &props, int32_t userId)
 {
     IMSA_HILOGI("enable: %{public}s.", enable ? "ENABLE" : "DISABLE");
-    return ListInputMethodCommon(enable ? ENABLE : DISABLE, props);
+    return ListInputMethodCommon(enable ? ENABLE : DISABLE, props, userId);
 }
 
-int32_t InputMethodController::GetDefaultInputMethod(std::shared_ptr<Property> &property)
+int32_t InputMethodController::GetDefaultInputMethod(std::shared_ptr<Property> &property, int32_t userId)
 {
     InputMethodSyncTrace tracer("IMC_GetDefaultInputMethod");
     IMSA_HILOGD("InputMethodController::GetDefaultInputMethod start.");
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
         IMSA_HILOGE("proxy is nullptr!");
+        proxy = nullptr;
         return ErrorCode::ERROR_SERVICE_START_FAILED;
     }
     Property prop;
-    auto ret = proxy->GetDefaultInputMethod(prop, false);
+    auto ret = proxy->GetDefaultInputMethod(prop, false, userId);
     if (ret != ErrorCode::NO_ERROR) {
+        proxy = nullptr;
         return ret;
     }
     property = std::make_shared<Property>(prop);
     return ret;
 }
 
-int32_t InputMethodController::GetInputMethodConfig(OHOS::AppExecFwk::ElementName &inputMethodConfig)
+int32_t InputMethodController::GetInputMethodConfig(OHOS::AppExecFwk::ElementName &inputMethodConfig, int32_t userId)
 {
     InputMethodSyncTrace tracer("IMC_GetInputMethodConfig");
     IMSA_HILOGD("InputMethodController::inputMethodConfig start.");
@@ -636,10 +640,10 @@ int32_t InputMethodController::GetInputMethodConfig(OHOS::AppExecFwk::ElementNam
         IMSA_HILOGE("proxy is nullptr!");
         return ErrorCode::ERROR_SERVICE_START_FAILED;
     }
-    return proxy->GetInputMethodConfig(inputMethodConfig);
+    return proxy->GetInputMethodConfig(inputMethodConfig, userId);
 }
 
-std::shared_ptr<Property> InputMethodController::GetCurrentInputMethod()
+std::shared_ptr<Property> InputMethodController::GetCurrentInputMethod(int32_t userId)
 {
     InputMethodSyncTrace tracer("IMC_GetCurrentInputMethod");
     IMSA_HILOGD("InputMethodController::GetCurrentInputMethod start.");
@@ -649,12 +653,12 @@ std::shared_ptr<Property> InputMethodController::GetCurrentInputMethod()
         return nullptr;
     }
     Property propertyData;
-    proxy->GetCurrentInputMethod(propertyData);
+    proxy->GetCurrentInputMethod(userId, propertyData);
     auto property = std::make_shared<Property>(propertyData);
     return property;
 }
 
-std::shared_ptr<SubProperty> InputMethodController::GetCurrentInputMethodSubtype()
+std::shared_ptr<SubProperty> InputMethodController::GetCurrentInputMethodSubtype(int32_t userId)
 {
     InputMethodSyncTrace tracer("IMC_GetCurrentInputMethodSubtype");
     IMSA_HILOGD("InputMethodController::GetCurrentInputMethodSubtype start.");
@@ -664,12 +668,12 @@ std::shared_ptr<SubProperty> InputMethodController::GetCurrentInputMethodSubtype
         return nullptr;
     }
     SubProperty subPropertyData;
-    proxy->GetCurrentInputMethodSubtype(subPropertyData);
+    proxy->GetCurrentInputMethodSubtype(subPropertyData, userId);
     auto subProperty = std::make_shared<SubProperty>(subPropertyData);
     return subProperty;
 }
 
-bool InputMethodController::IsDefaultImeSet()
+bool InputMethodController::IsDefaultImeSet(int32_t userId)
 {
     IMSA_HILOGI("enter.");
     auto proxy = GetSystemAbilityProxy();
@@ -678,12 +682,12 @@ bool InputMethodController::IsDefaultImeSet()
         return false;
     }
     bool ret = false;
-    proxy->IsDefaultImeSet(ret);
+    proxy->IsDefaultImeSet(ret, userId);
     return ret;
 }
 
 int32_t InputMethodController::EnableIme(
-    const std::string &bundleName, const std::string &extensionName, EnabledStatus status)
+    const std::string &bundleName, const std::string &extensionName, EnabledStatus status, int32_t userId)
 {
     IMSA_HILOGI("enter.");
     auto proxy = GetSystemAbilityProxy();
@@ -691,7 +695,7 @@ int32_t InputMethodController::EnableIme(
         IMSA_HILOGE("proxy is nullptr!");
         return false;
     }
-    return proxy->EnableIme(bundleName, extensionName, static_cast<int32_t>(status));
+    return proxy->EnableIme(bundleName, extensionName, static_cast<int32_t>(status), userId);
 }
 
 int32_t InputMethodController::StartInput(
@@ -1263,7 +1267,8 @@ int32_t InputMethodController::ShowOptionalInputMethod()
     return proxy->DisplayOptionalInputMethod();
 }
 
-int32_t InputMethodController::ListInputMethodSubtype(const Property &property, std::vector<SubProperty> &subProps)
+int32_t InputMethodController::ListInputMethodSubtype(const Property &property, std::vector<SubProperty> &subProps,
+    int32_t userId)
 {
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
@@ -1271,10 +1276,10 @@ int32_t InputMethodController::ListInputMethodSubtype(const Property &property, 
         return ErrorCode::ERROR_EX_NULL_POINTER;
     }
     IMSA_HILOGD("ime bundleName: %{public}s.", property.name.c_str());
-    return proxy->ListInputMethodSubtype(property.name, subProps);
+    return proxy->ListInputMethodSubtype(property.name, subProps, userId);
 }
 
-int32_t InputMethodController::ListCurrentInputMethodSubtype(std::vector<SubProperty> &subProps)
+int32_t InputMethodController::ListCurrentInputMethodSubtype(std::vector<SubProperty> &subProps, int32_t userId)
 {
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
@@ -1282,11 +1287,11 @@ int32_t InputMethodController::ListCurrentInputMethodSubtype(std::vector<SubProp
         return ErrorCode::ERROR_EX_NULL_POINTER;
     }
     IMSA_HILOGD("start.");
-    return proxy->ListCurrentInputMethodSubtype(subProps);
+    return proxy->ListCurrentInputMethodSubtype(subProps, userId);
 }
 
 int32_t InputMethodController::SwitchInputMethod(
-    SwitchTrigger trigger, const std::string &name, const std::string &subName)
+    SwitchTrigger trigger, const std::string &name, const std::string &subName, int32_t userId)
 {
     InputMethodSyncTrace tracer("IMC_SwitchInputMethod");
     auto proxy = GetSystemAbilityProxy();
@@ -1296,7 +1301,7 @@ int32_t InputMethodController::SwitchInputMethod(
     }
     IMSA_HILOGI("name: %{public}s, subName: %{public}s, trigger: %{public}d.", name.c_str(), subName.c_str(),
         static_cast<uint32_t>(trigger));
-    return proxy->SwitchInputMethod(name, subName, static_cast<uint32_t>(trigger));
+    return proxy->SwitchInputMethod(name, subName, static_cast<uint32_t>(trigger), userId);
 }
 
 int32_t InputMethodController::SetSimpleKeyboardEnabled(bool enable)
@@ -1667,7 +1672,7 @@ bool InputMethodController::IsInputTypeSupported(InputType type)
     return ret;
 }
 
-bool InputMethodController::IsCurrentImeByPid(int32_t pid)
+bool InputMethodController::IsCurrentImeByPid(int32_t pid, int32_t userId)
 {
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
@@ -1675,7 +1680,7 @@ bool InputMethodController::IsCurrentImeByPid(int32_t pid)
         return false;
     }
     bool ret = false;
-    proxy->IsCurrentImeByPid(pid, ret);
+    proxy->IsCurrentImeByPid(pid, ret, userId);
     return ret;
 }
 

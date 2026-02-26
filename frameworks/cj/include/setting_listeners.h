@@ -30,6 +30,7 @@ namespace OHOS::MiscServices {
         int32_t Subscribe(uint32_t type, void (*func)(CInputMethodProperty, CInputMethodSubtype));
         int32_t UnSubscribe(uint32_t type);
         void OnImeChange(const Property &property, const SubProperty &subProperty) override;
+        void OnImeChangeByUserId(const Property &property, const SubProperty &subProperty, int32_t userId) override;
 
     private:
         static std::mutex msMutex_;

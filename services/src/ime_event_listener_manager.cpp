@@ -200,7 +200,9 @@ int32_t ImeEventListenerManager::NotifyPanelStatusChange(
             IMSA_HILOGD("has not imeHide callback");
             continue;
         }
-        int32_t ret = listenerInfo.client->OnPanelStatusChange(static_cast<uint32_t>(status), info);
+        ImeWindowInfo updatedInfo = info;
+        updatedInfo.windowInfo.userId = userId;
+        int32_t ret = listenerInfo.client->OnPanelStatusChange(static_cast<uint32_t>(status), updatedInfo);
         if (ret != ErrorCode::NO_ERROR) {
             IMSA_HILOGE("failed to NotifyPanelStatusChange, ret: %{public}d", ret);
             continue;
@@ -220,7 +222,7 @@ int32_t ImeEventListenerManager::NotifyImeChange(
             continue;
         }
         IMSA_HILOGI("pid/eventFlag: %{public}" PRId64 "/%{public}u", listenerInfo.pid, listenerInfo.eventFlag);
-        int32_t ret = listenerInfo.client->OnSwitchInput(property, subProperty);
+        int32_t ret = listenerInfo.client->OnSwitchInput(property, subProperty, userId);
         if (ret != ErrorCode::NO_ERROR) {
             IMSA_HILOGE("notify failed, ret: %{public}d, pid: %{public}" PRId64 "!", ret, listenerInfo.pid);
             continue;

@@ -58,6 +58,7 @@ using callbackType = std::variant<taihe::callback<int32_t()>, taihe::callback<ta
     taihe::callback<void(FunctionKey_t const &)>, taihe::callback<void(EnterKeyType_t const)>,
     taihe::callback<void(ExtendAction_t const)>, taihe::callback<void(taihe::array_view<InputWindowInfo_t>)>,
     taihe::callback<void(InputMethodProperty_t const &, InputMethodSubtype_t const &)>,
+    taihe::callback<void(InputMethodProperty_t const &, InputMethodSubtype_t const &, int32_t)>,
     taihe::callback<void(::taihe::string_view text, ::ohos::inputMethod::Range const& range)>,
     taihe::callback<void(UndefinedType_t const&)>, taihe::callback<void(AttachFailureReason_t)>>;
 

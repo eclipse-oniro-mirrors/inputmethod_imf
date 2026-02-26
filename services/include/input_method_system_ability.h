@@ -49,15 +49,17 @@ public:
     ErrCode HideInput(const sptr<IInputClient> &client, uint32_t windowId) override;
     ErrCode StopInputSession(uint32_t windowId) override;
     ErrCode ReleaseInput(const sptr<IInputClient> &client, uint32_t sessionId) override;
-    ErrCode RequestHideInput(uint32_t windowId, uint64_t displayId, bool isFocusTriggered) override;
-    ErrCode GetDefaultInputMethod(Property &prop, bool isBrief) override;
-    ErrCode GetInputMethodConfig(ElementName &inputMethodConfig) override;
-    ErrCode GetCurrentInputMethod(Property &resultValue) override;
-    ErrCode GetCurrentInputMethodSubtype(SubProperty &resultValue) override;
-    ErrCode ListInputMethod(uint32_t status, std::vector<Property> &props) override;
-    ErrCode ListCurrentInputMethodSubtype(std::vector<SubProperty> &subProps) override;
-    ErrCode ListInputMethodSubtype(const std::string &bundleName, std::vector<SubProperty> &subProps) override;
-    ErrCode SwitchInputMethod(const std::string &bundleName, const std::string &subName, uint32_t trigger) override;
+    ErrCode RequestHideInput(uint32_t windowId, uint64_t displayId, bool isFocusTriggered, int32_t userId) override;
+    ErrCode GetDefaultInputMethod(Property &prop, bool isBrief, int32_t userId) override;
+    ErrCode GetInputMethodConfig(ElementName &inputMethodConfig, int32_t userId) override;
+    ErrCode GetCurrentInputMethod(int32_t userId, Property &resultValue) override;
+    ErrCode GetCurrentInputMethodSubtype(SubProperty &resultValue, int32_t userId) override;
+    ErrCode ListInputMethod(uint32_t status, std::vector<Property> &props, int32_t userId) override;
+    ErrCode ListCurrentInputMethodSubtype(std::vector<SubProperty> &subProps, int32_t userId) override;
+    ErrCode ListInputMethodSubtype(const std::string &bundleName, std::vector<SubProperty> &subProps,
+        int32_t userId) override;
+    ErrCode SwitchInputMethod(const std::string &bundleName, const std::string &subName, uint32_t trigger,
+        int32_t userId) override;
     ErrCode DisplayOptionalInputMethod() override;
     ErrCode SetCoreAndAgent(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent) override;
     ErrCode InitConnect() override;
@@ -69,7 +71,7 @@ public:
 
     ErrCode IsCurrentIme(bool &resultValue) override;
     ErrCode IsInputTypeSupported(int32_t type, bool &resultValue) override;
-    ErrCode IsCurrentImeByPid(int32_t pid, bool &resultValue) override;
+    ErrCode IsCurrentImeByPid(int32_t pid, bool &resultValue, int32_t userId) override;
     ErrCode StartInputType(int32_t type, bool isPersistence) override;
     ErrCode StartInputTypeAsync(int32_t type, bool isPersistence) override;
     ErrCode ExitCurrentInputType() override;
@@ -83,8 +85,9 @@ public:
     int Dump(int fd, const std::vector<std::u16string> &args) override;
     void DumpAllMethod(int fd);
     ErrCode IsDefaultIme() override;
-    ErrCode IsDefaultImeSet(bool &resultValue) override;
-    ErrCode EnableIme(const std::string &bundleName, const std::string &extensionName, int32_t status) override;
+    ErrCode IsDefaultImeSet(bool &resultValue, int32_t userId) override;
+    ErrCode EnableIme(const std::string &bundleName, const std::string &extensionName, int32_t status,
+        int32_t userId) override;
     ErrCode GetInputMethodState(int32_t &status) override;
     ErrCode IsSystemApp(bool &resultValue) override;
     int32_t RegisterProxyIme(
@@ -96,6 +99,7 @@ public:
     ErrCode BindImeMirror(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent) override;
     ErrCode UnbindImeMirror() override;
     int32_t GetCallingUserId();
+    int32_t GetCallingUserId(int32_t &outputUserId, int32_t inputUserId = -1);
 
 protected:
     void OnStart() override;

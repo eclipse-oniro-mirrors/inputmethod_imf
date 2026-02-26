@@ -29,6 +29,7 @@ class ImeEventListener {
 public:
     virtual ~ImeEventListener() = default;
     virtual void OnImeChange(const Property &property, const SubProperty &subProperty){};
+    virtual void OnImeChangeByUserId(const Property &property, const SubProperty &subProperty, int32_t userId){};
     virtual void OnImeShow(const ImeWindowInfo &info){};
     virtual void OnImeHide(const ImeWindowInfo &info){};
     virtual void OnInputStart(uint32_t callingWndId, int32_t requestKeyboardReason) {};

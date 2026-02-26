@@ -27,6 +27,7 @@ public:
     ImeSettingListenerTestImpl() {};
     ~ImeSettingListenerTestImpl() {};
     void OnImeChange(const Property &property, const SubProperty &subProperty) override;
+    void OnImeChangeByUserId(const Property &property, const SubProperty &subProperty, std::int32_t userId) override;
     void OnImeShow(const ImeWindowInfo &info) override;
     void OnImeHide(const ImeWindowInfo &info) override;
     static void ResetParam();
