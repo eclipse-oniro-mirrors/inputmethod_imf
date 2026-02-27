@@ -24,8 +24,9 @@ namespace OHOS {
 namespace MiscServices {
 class ImeLifecycleManager final : public ImeStateManager, public std::enable_shared_from_this<ImeLifecycleManager> {
 public:
-    explicit ImeLifecycleManager(pid_t pid, std::function<void()> stopImeFunc, int32_t stopDelayTime = STOP_DELAY_TIME)
-        : ImeStateManager(pid), stopImeFunc_(stopImeFunc), stopDelayTime_(stopDelayTime)
+    explicit ImeLifecycleManager(
+        pid_t pid, pid_t uid, std::function<void()> stopImeFunc, int32_t stopDelayTime = STOP_DELAY_TIME)
+        : ImeStateManager(pid, uid), stopImeFunc_(stopImeFunc), stopDelayTime_(stopDelayTime)
     {
         IMSA_HILOGD("Constructor");
     };

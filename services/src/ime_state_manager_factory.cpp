@@ -37,13 +37,13 @@ ImeStateManagerFactory &ImeStateManagerFactory::GetInstance()
     return instance;
 }
 // LCOV_EXCL_START
-std::shared_ptr<ImeStateManager> ImeStateManagerFactory::CreateImeStateManager(pid_t pid,
+std::shared_ptr<ImeStateManager> ImeStateManagerFactory::CreateImeStateManager(pid_t pid, pid_t uid,
     std::function<void()> stopImeFunc)
 {
     if (ifDynamicStartIme_) {
-        return std::make_shared<ImeLifecycleManager>(pid, stopImeFunc);
+        return std::make_shared<ImeLifecycleManager>(pid, uid, stopImeFunc);
     }
-    return std::make_shared<FreezeManager>(pid);
+    return std::make_shared<FreezeManager>(pid, uid);
 }
 // LCOV_EXCL_STOP
 } // namespace MiscServices
