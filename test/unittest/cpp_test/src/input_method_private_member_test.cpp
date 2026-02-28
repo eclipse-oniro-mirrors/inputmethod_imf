@@ -1332,7 +1332,8 @@ HWTEST_F(InputMethodPrivateMemberTest, BranchCoverage001, TestSize.Level0)
     sptr<IInputMethodCore> core = nullptr;
     sptr<IRemoteObject> agent = nullptr;
     pid_t pid{ -1 };
-    auto imeData = userSession->UpdateRealImeData(core, agent, pid);
+    pid_t uid{ 100 };
+    auto imeData = userSession->UpdateRealImeData(core, agent, pid, uid);
     EXPECT_EQ(imeData, nullptr);
 
     InputClientInfo clientInfo;
@@ -2642,26 +2643,28 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_AddProxyImeData_001, TestS
     userSession->proxyImeData_.clear();
     uint64_t displayId = 0;
     pid_t pid1 = 100;
+    pid_t uid1 = 100;
     sptr<InputMethodCoreStub> coreStub1 = new (std::nothrow) InputMethodCoreServiceImpl();
     sptr<InputMethodAgentStub> agentStub1 = new (std::nothrow) InputMethodAgentServiceImpl();
     ASSERT_NE(agentStub1, nullptr);
-    auto addImeData = userSession->AddProxyImeData(displayId, coreStub1, agentStub1->AsObject(), pid1);
+    auto addImeData = userSession->AddProxyImeData(displayId, coreStub1, agentStub1->AsObject(), pid1, uid1);
     EXPECT_NE(addImeData, nullptr);
     auto it = userSession->proxyImeData_.find(displayId);
     ASSERT_NE(it, userSession->proxyImeData_.end());
     EXPECT_EQ(it->second.size(), 1);
 
     pid_t pid2 = 101;
+    pid_t uid2 = 101;
     sptr<InputMethodCoreStub> coreStub2 = new (std::nothrow) InputMethodCoreServiceImpl();
     sptr<InputMethodAgentStub> agentStub2 = new (std::nothrow) InputMethodAgentServiceImpl();
     ASSERT_NE(agentStub2, nullptr);
-    addImeData = userSession->AddProxyImeData(displayId, coreStub2, agentStub2->AsObject(), pid2);
+    addImeData = userSession->AddProxyImeData(displayId, coreStub2, agentStub2->AsObject(), pid2, uid2);
     EXPECT_NE(addImeData, nullptr);
     it = userSession->proxyImeData_.find(displayId);
     ASSERT_NE(it, userSession->proxyImeData_.end());
     EXPECT_EQ(it->second.size(), 2);
 
-    addImeData = userSession->AddProxyImeData(displayId, coreStub1, agentStub1->AsObject(), pid1);
+    addImeData = userSession->AddProxyImeData(displayId, coreStub1, agentStub1->AsObject(), pid1, uid1);
     EXPECT_NE(addImeData, nullptr);
     it = userSession->proxyImeData_.find(displayId);
     ASSERT_NE(it, userSession->proxyImeData_.end());
@@ -2682,11 +2685,12 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_AddProxyImeData_002, TestS
     uint64_t displayId = 0;
     userSession->proxyImeData_.clear();
     pid_t pid1 = 100;
+    pid_t uid1 = 100;
     sptr<InputMethodCoreStub> coreStub1 = new (std::nothrow) InputMethodCoreServiceImpl();
     sptr<InputMethodAgentStub> agentStub1 = new (std::nothrow) InputMethodAgentServiceImpl();
     ASSERT_NE(agentStub1, nullptr);
     userSession->isFirstPreemption_ = true;
-    auto addImeData = userSession->AddProxyImeData(displayId, coreStub1, agentStub1->AsObject(), pid1);
+    auto addImeData = userSession->AddProxyImeData(displayId, coreStub1, agentStub1->AsObject(), pid1, uid1);
     EXPECT_NE(addImeData, nullptr);
     auto it = userSession->proxyImeData_.find(displayId);
     ASSERT_NE(it, userSession->proxyImeData_.end());
@@ -2694,18 +2698,19 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_AddProxyImeData_002, TestS
 
     userSession->isFirstPreemption_ = false;
     pid_t pid2 = 101;
+    pid_t uid2 = 101;
     sptr<InputMethodCoreStub> coreStub2 = new (std::nothrow) InputMethodCoreServiceImpl();
     sptr<InputMethodAgentStub> agentStub2 = new (std::nothrow) InputMethodAgentServiceImpl();
     auto imeData = std::make_shared<ImeData>(coreStub2, agentStub2, nullptr, pid2);
     ASSERT_NE(agentStub2, nullptr);
-    addImeData = userSession->AddProxyImeData(displayId, coreStub2, agentStub2->AsObject(), pid2);
+    addImeData = userSession->AddProxyImeData(displayId, coreStub2, agentStub2->AsObject(), pid2, uid2);
     EXPECT_NE(addImeData, nullptr);
     it = userSession->proxyImeData_.find(displayId);
     ASSERT_NE(it, userSession->proxyImeData_.end());
     EXPECT_EQ(it->second.size(), 2);
 
     userSession->isFirstPreemption_ = false;
-    addImeData = userSession->AddProxyImeData(displayId, coreStub1, agentStub1->AsObject(), pid1);
+    addImeData = userSession->AddProxyImeData(displayId, coreStub1, agentStub1->AsObject(), pid1, uid1);
     EXPECT_NE(addImeData, nullptr);
     it = userSession->proxyImeData_.find(displayId);
     ASSERT_NE(it, userSession->proxyImeData_.end());
@@ -2717,7 +2722,8 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_AddProxyImeData_002, TestS
     ASSERT_NE(agentStub4, nullptr);
     userSession->isFirstPreemption_ = true;
     pid_t pid4 = 104;
-    addImeData = userSession->AddProxyImeData(displayId, coreStub4, agentStub4->AsObject(), pid4);
+    pid_t uid4 = 104;
+    addImeData = userSession->AddProxyImeData(displayId, coreStub4, agentStub4->AsObject(), pid4, uid4);
     EXPECT_NE(addImeData, nullptr);
     it = userSession->proxyImeData_.find(displayId);
     ASSERT_NE(it, userSession->proxyImeData_.end());
@@ -2793,13 +2799,14 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnRegisterProxyIme, TestSi
     // displayId not default, not has old proxy ime
     uint64_t displayId = 100;
     int32_t pid = 10;
+    int32_t uid = 100;
     // proxyIme add failed
-    auto ret = userSession->OnRegisterProxyIme(displayId, nullptr, nullptr, pid);
+    auto ret = userSession->OnRegisterProxyIme(displayId, nullptr, nullptr, pid, uid);
     EXPECT_EQ(ret, ErrorCode::ERROR_BAD_PARAMETERS);
     // proxyIme add success, not has clientInfo
     auto core = new (std::nothrow) InputMethodCoreServiceImpl();
     auto agent = new (std::nothrow) InputMethodAgentServiceImpl();
-    ret = userSession->OnRegisterProxyIme(displayId, core, agent->AsObject(), pid);
+    ret = userSession->OnRegisterProxyIme(displayId, core, agent->AsObject(), pid, uid);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     auto imeVec = userSession->proxyImeData_[displayId];
     EXPECT_EQ(imeVec.size(), 1);

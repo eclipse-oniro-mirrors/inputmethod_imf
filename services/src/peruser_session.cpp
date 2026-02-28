@@ -1015,7 +1015,7 @@ void PerUserSession::OnSecurityChange(int32_t security)
 int32_t PerUserSession::OnSetCoreAndAgent(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent)
 {
     IMSA_HILOGI("start.");
-    auto imeData = UpdateRealImeData(core, agent, IPCSkeleton::GetCallingPid());
+    auto imeData = UpdateRealImeData(core, agent, IPCSkeleton::GetCallingPid(), IPCSkeleton::GetCallingUid());
     if (imeData == nullptr) {
         return ErrorCode::ERROR_BAD_PARAMETERS;
     }
@@ -1141,7 +1141,7 @@ std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> PerUse
 }
 
 int32_t PerUserSession::OnRegisterProxyIme(
-    uint64_t displayId, const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent, int32_t pid)
+    uint64_t displayId, const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent, int32_t pid, int32_t uid)
 {
     IMSA_HILOGD("start.");
     if (displayId == ImfCommonConst::DEFAULT_DISPLAY_ID) {
@@ -1157,7 +1157,7 @@ int32_t PerUserSession::OnRegisterProxyIme(
         lastImeData->core->AsObject() != core->AsObject()) {
         lastImeData->core->NotifyPreemption();
     }
-    auto newImeData = AddProxyImeData(displayId, core, agent, pid);
+    auto newImeData = AddProxyImeData(displayId, core, agent, pid, uid);
     if (newImeData == nullptr) {
         return ErrorCode::ERROR_BAD_PARAMETERS;
     }
@@ -1233,11 +1233,11 @@ int32_t PerUserSession::RemoveProxyImeData(uint64_t displayId, pid_t pid)
 }
 
 std::shared_ptr<ImeData> PerUserSession::AddMirrorImeData(
-    const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent, pid_t pid)
+    const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent, pid_t pid, pid_t uid)
 {
     std::lock_guard<std::mutex> lock(mirrorImeDataLock_);
     auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, -1);
-    auto ret = FillImeData(core, agent, pid, ImeType::IME_MIRROR, imeData);
+    auto ret = FillImeData(core, agent, pid, ImeType::IME_MIRROR, imeData, uid);
     if (ret != ErrorCode::NO_ERROR) {
         return nullptr;
     }
@@ -1249,6 +1249,7 @@ int32_t PerUserSession::OnBindImeMirror(const sptr<IInputMethodCore> &core, cons
 {
     IMSA_HILOGI("[ImeMirrorTag]star");
     auto pid = IPCSkeleton::GetCallingPid();
+    auto uid = IPCSkeleton::GetCallingUid();
     auto clientInfo = GetCurrentClientInfo();
     auto oldImeData = GetMirrorImeData();
     if (oldImeData != nullptr && oldImeData->pid != pid) {
@@ -1266,7 +1267,7 @@ int32_t PerUserSession::OnBindImeMirror(const sptr<IInputMethodCore> &core, cons
         }
         return ErrorCode::NO_ERROR;
     }
-    auto imeData = AddMirrorImeData(core, agent, pid);
+    auto imeData = AddMirrorImeData(core, agent, pid, uid);
     if (imeData == nullptr) {
         return ErrorCode::ERROR_BAD_PARAMETERS;
     }
@@ -1400,7 +1401,7 @@ void PerUserSession::NotifyImeChangeToClients(const Property &property, const Su
 }
 
 std::shared_ptr<ImeData> PerUserSession::AddProxyImeData(
-    uint64_t displayId, sptr<IInputMethodCore> core, sptr<IRemoteObject> agent, pid_t pid)
+    uint64_t displayId, sptr<IInputMethodCore> core, sptr<IRemoteObject> agent, pid_t pid, pid_t uid)
 {
     if (core == nullptr || agent == nullptr) {
         IMSA_HILOGE("core or agent is nullptr!");
@@ -1418,7 +1419,7 @@ std::shared_ptr<ImeData> PerUserSession::AddProxyImeData(
         return imeData;
     }
     auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, -1);
-    auto ret = FillImeData(core, agent, pid, ImeType::PROXY_IME, imeData);
+    auto ret = FillImeData(core, agent, pid, ImeType::PROXY_IME, imeData, uid);
     if (ret != ErrorCode::NO_ERROR) {
         return nullptr;
     }
@@ -2373,8 +2374,8 @@ int32_t PerUserSession::InitRealImeData(
     realImeData_->type = ImeType::IME;
     realImeData_->startTime = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
     realImeData_->ime = ime;
-    realImeData_->imeStateManager =
-        ImeStateManagerFactory::GetInstance().CreateImeStateManager(-1, [this] { StopCurrentIme(); });
+    realImeData_->imeStateManager = ImeStateManagerFactory::GetInstance().CreateImeStateManager(-1, -1,
+        [this] { StopCurrentIme(); });
     if (imeNativeCfg != nullptr && !imeNativeCfg->imeExtendInfo.privateCommand.empty()) {
         realImeData_->imeExtendInfo.privateCommand = imeNativeCfg->imeExtendInfo.privateCommand;
     }
@@ -2382,7 +2383,7 @@ int32_t PerUserSession::InitRealImeData(
 }
 
 std::shared_ptr<ImeData> PerUserSession::UpdateRealImeData(
-    sptr<IInputMethodCore> core, sptr<IRemoteObject> agent, pid_t pid)
+    sptr<IInputMethodCore> core, sptr<IRemoteObject> agent, pid_t pid, pid_t uid)
 {
     if (core == nullptr || agent == nullptr) {
         IMSA_HILOGE("core or agent is nullptr!");
@@ -2392,7 +2393,7 @@ std::shared_ptr<ImeData> PerUserSession::UpdateRealImeData(
     if (realImeData_ == nullptr) {
         return nullptr;
     }
-    auto ret = FillImeData(core, agent, pid, ImeType::IME, realImeData_);
+    auto ret = FillImeData(core, agent, pid, ImeType::IME, realImeData_, uid);
     if (ret != ErrorCode::NO_ERROR) {
         return nullptr;
     }
@@ -2423,8 +2424,8 @@ std::shared_ptr<ImeData> PerUserSession::GetMirrorImeData()
     return mirrorImeData_;
 }
 
-int32_t PerUserSession::FillImeData(
-    sptr<IInputMethodCore> core, sptr<IRemoteObject> agent, pid_t pid, ImeType type, std::shared_ptr<ImeData> &imeData)
+int32_t PerUserSession::FillImeData(sptr<IInputMethodCore> core, sptr<IRemoteObject> agent, pid_t pid,
+    ImeType type, std::shared_ptr<ImeData> &imeData, pid_t uid)
 {
     if (core == nullptr || agent == nullptr || imeData == nullptr) {
         IMSA_HILOGE("core or agent is nullptr!");
@@ -2437,9 +2438,9 @@ int32_t PerUserSession::FillImeData(
     imeData->core = core;
     imeData->agent = agent;
     imeData->pid = pid;
-    imeData->uid = IPCSkeleton::GetCallingUid();
-    imeData->imeStateManager =
-        ImeStateManagerFactory::GetInstance().CreateImeStateManager(pid, [this] { StopCurrentIme(); });
+    imeData->uid = uid;
+    imeData->imeStateManager = ImeStateManagerFactory::GetInstance().CreateImeStateManager(pid,
+        uid, [this] { StopCurrentIme(); });
     sptr<InputDeathRecipient> deathRecipient = new (std::nothrow) InputDeathRecipient();
     if (deathRecipient == nullptr) {
         IMSA_HILOGE("failed to new deathRecipient!");

@@ -926,7 +926,7 @@ ErrCode InputMethodSystemAbility::RegisterProxyIme(
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_NULL_POINTER;
     }
-    return session->OnRegisterProxyIme(displayId, core, agent, IPCSkeleton::GetCallingPid());
+    return session->OnRegisterProxyIme(displayId, core, agent, IPCSkeleton::GetCallingPid(), uid);
 }
 
 ErrCode InputMethodSystemAbility::UnregisterProxyIme(uint64_t displayId)
