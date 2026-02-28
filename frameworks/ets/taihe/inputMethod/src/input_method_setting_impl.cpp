@@ -89,6 +89,36 @@ array<InputMethodSubtype_t> InputMethodSettingImpl::ListInputMethodSubtypeSync(
     return array<InputMethodSubtype_t>(vecSubtype);
 }
 
+array<InputMethodSubtype_t> InputMethodSettingImpl::GetInputMethodSubtype(
+    int32_t userId, ::taihe::string_view bundleName)
+{
+    if (userId < 0) {
+        int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+        set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
+        return array<InputMethodSubtype_t>(nullptr, 0);
+    }
+    Property property;
+    property.name = std::string(bundleName);
+    if (property.name.empty()) {
+        set_business_error(IMFErrorCode::EXCEPTION_PARAMCHECK, "name must be string and cannot empty");
+        IMSA_HILOGE("Property name and id must be string and cannot empty");
+        return array<InputMethodSubtype_t>(nullptr, 0);
+    }
+    std::vector<SubProperty> subProperties;
+    int32_t errCode =
+        InputMethodController::GetInstance()->ListInputMethodSubtype(property, subProperties, userId);
+    if (errCode != ErrorCode::NO_ERROR) {
+        set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
+        IMSA_HILOGE("failed to get input method subtype, errCode:%{public}d!", errCode);
+        return array<InputMethodSubtype_t>(nullptr, 0);
+    }
+    std::vector<InputMethodSubtype_t> vecSubtype;
+    for (const auto &property : subProperties) {
+        vecSubtype.push_back(PropertyConverter::ConvertSubProperty(property));
+    }
+    return array<InputMethodSubtype_t>(vecSubtype);
+}
+
 bool InputMethodSettingImpl::IsPanelShown(PanelInfo_t const &panelInfo)
 {
     PanelInfo info;
@@ -132,6 +162,27 @@ array<InputMethodProperty_t> InputMethodSettingImpl::GetAllInputMethodsAsync()
 {
     std::vector<Property> properties;
     int32_t errCode = InputMethodController::GetInstance()->ListInputMethod(properties);
+    if (errCode != ErrorCode::NO_ERROR) {
+        set_business_error(JsUtils::Convert(errCode), "failed to get input method!");
+        IMSA_HILOGE("failed to get input method, errCode:%{public}d!", errCode);
+        return array<InputMethodProperty_t>(nullptr, 0);
+    }
+    std::vector<InputMethodProperty_t> vecProperty;
+    for (const auto &property : properties) {
+        vecProperty.push_back(PropertyConverter::ConvertProperty(property));
+    }
+    return array<InputMethodProperty_t>(vecProperty);
+}
+
+array<InputMethodProperty_t> InputMethodSettingImpl::GetAllInputMethodsAsync(int32_t userId)
+{
+    if (userId < 0) {
+        int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+        set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
+        return array<InputMethodProperty_t>(nullptr, 0);
+    }
+    std::vector<Property> properties;
+    int32_t errCode = InputMethodController::GetInstance()->ListInputMethod(properties, userId);
     if (errCode != ErrorCode::NO_ERROR) {
         set_business_error(JsUtils::Convert(errCode), "failed to get input method!");
         IMSA_HILOGE("failed to get input method, errCode:%{public}d!", errCode);
@@ -253,14 +304,20 @@ void InputMethodSettingImpl::OnImeChangeCallback(const Property &property, const
     }
 }
 
-void InputMethodSettingImpl::OnImeChangeCallbackByUserId(const Property &property, const SubProperty &subProperty,
-    int32_t userId)
+void InputMethodSettingImpl::OnImeChangeCallbackByUserId(
+    const Property &property, const SubProperty &subProperty, int32_t userId)
 {
+    if (userId < 0){
+        int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+        set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
+        return;
+    }
     std::lock_guard<std::mutex> lock(mutex_);
     auto &cbVec = jsCbMap_["imeChangeByUserId"];
     for (auto &cb : cbVec) {
-        auto &func = std::get<taihe::callback<void(InputMethodProperty_t const &, InputMethodSubtype_t const &,
-        int32_t)>>(cb->callback);
+        auto &func =
+            std::get<taihe::callback<void(InputMethodProperty_t const &, InputMethodSubtype_t const &,
+            int32_t)>>(cb->callback);
         func(PropertyConverter::ConvertProperty(property), PropertyConverter::ConvertSubProperty(subProperty), userId);
     }
 }
@@ -273,8 +330,11 @@ void InputMethodSettingImpl::OnImeShowCallback(const ImeWindowInfo &info)
     auto showingFlag = GetSoftKbShowingFlag();
     // FLG_FIXED->FLG_FLOATING in show
     if (info.panelInfo.panelFlag == FLG_FLOATING && showingFlag == FLG_FIXED) {
-        InputWindowInfo windowInfo;
-        windowInfo.name = info.windowInfo.name;
+        InputWindowInfo windowInfo = info.windowInfo;
+        windowInfo.left = 0;
+        windowInfo.top = 0;
+        windowInfo.width = 0;
+        windowInfo.height = 0;
         OnPanelStatusChange("imeHide", windowInfo);
     }
     // FLG_FLOATING->FLG_FIXED in show/show FLG_FIXED/ rotating(resize) in FLG_FIXED show
@@ -314,7 +374,8 @@ void InputMethodSettingImpl::OnPanelStatusChange(std::string const &type, const 
             .top = info.top,
             .width = static_cast<long>(info.width),
             .height = static_cast<long>(info.height),
-            .displayId = taihe::optional<int64_t>(std::in_place_t{}, static_cast<int64_t>(info.displayId))
+            .displayId = taihe::optional<int64_t>(std::in_place_t{}, static_cast<int64_t>(info.displayId)),
+            .userId = taihe::optional<int32_t>(std::in_place_t{}, static_cast<int32_t>(info.userId)),
         };
         taihe::array<InputWindowInfo_t> arrInfo{ inputWindowInfo };
         auto &func = std::get<taihe::callback<void(taihe::array_view<InputWindowInfo_t>)>>(cb->callback);
@@ -365,6 +426,25 @@ void InputMethodSettingImpl::EnableInputMethodSync(::taihe::string_view bundleNa
         return;
     }
     IMSA_HILOGI("EnableIme success!");
+}
+
+void InputMethodSettingImpl::EnableInputMethodSyncByUserId(::taihe::string_view bundleName,
+    ::taihe::string_view extensionName, ::ohos::inputMethod::EnabledState enabledState, int32_t userId)
+{
+    if (userId < 0) {
+        int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+        set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
+        return;
+    }
+    int32_t errCode = ErrorCode::ERROR_EX_NULL_POINTER;
+    OHOS::MiscServices::EnabledStatus status;
+    auto instance = InputMethodController::GetInstance();
+    if (instance == nullptr) {
+        IMSA_HILOGE("GetInstance return nullptr!");
+        return;
+    }
+    errCode = instance->EnableIme(std::string(bundleName), std::string(extensionName),
+        static_cast<OHOS::MiscServices::EnabledStatus>(enabledState.get_value()), userId);
 }
 } // namespace MiscServices
 } // namespace OHOS

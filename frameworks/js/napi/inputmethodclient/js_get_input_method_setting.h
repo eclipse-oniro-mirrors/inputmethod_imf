@@ -32,6 +32,7 @@ struct ListInputContext : public AsyncCall::Context {
     std::vector<SubProperty> subProperties;
     Property property;
     napi_status status = napi_generic_failure;
+    int32_t userId;
     ListInputContext() : Context(nullptr, nullptr){};
     ListInputContext(InputAction input, OutputAction output) : Context(std::move(input), std::move(output)){};
 
@@ -97,6 +98,7 @@ struct GetInputMethodControllerContext : public AsyncCall::Context {
 struct EnableInputContext : public AsyncCall::Context {
     std::string bundleName;
     std::string extName;
+    int32_t userId;
     EnabledStatus enabledStatus{ EnabledStatus::DISABLED };
     napi_status status = napi_generic_failure;
     EnableInputContext() : Context(nullptr, nullptr){};
@@ -142,6 +144,7 @@ public:
     static napi_value GetInputMethodSetting(napi_env env, napi_callback_info info);
     static napi_value ListInputMethod(napi_env env, napi_callback_info info);
     static napi_value ListInputMethodSubtype(napi_env env, napi_callback_info info);
+    static napi_value GetInputMethodSubtype(napi_env env, napi_callback_info info);
     static napi_value ListCurrentInputMethodSubtype(napi_env env, napi_callback_info info);
     static napi_value GetInputMethods(napi_env env, napi_callback_info info);
     static napi_value GetInputMethodsSync(napi_env env, napi_callback_info info);
@@ -154,6 +157,8 @@ public:
     static napi_value GetInputMethodState(napi_env env, napi_callback_info info);
     static napi_value Subscribe(napi_env env, napi_callback_info info);
     static napi_value UnSubscribe(napi_env env, napi_callback_info info);
+    static napi_value SubscribeImechange(napi_env env, napi_callback_info info);
+    static napi_value UnSubscribeImechange(napi_env env, napi_callback_info info);
     static std::shared_ptr<JsGetInputMethodSetting> GetInputMethodSettingInstance();
     void OnImeChange(const Property &property, const SubProperty &subProperty) override;
     void OnImeChangeByUserId(const Property &property, const SubProperty &subProperty, std::int32_t userId) override;
@@ -195,6 +200,7 @@ private:
     PanelFlag softKbShowingFlag_{ FLG_CANDIDATE_COLUMN };
     PanelFlag GetSoftKbShowingFlag();
     void SetSoftKbShowingFlag(PanelFlag flag);
+    void GetIsUpdateFlag(const std::string &type, bool &isUpdateFlag);
 };
 } // namespace MiscServices
 } // namespace OHOS

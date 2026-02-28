@@ -36,8 +36,10 @@ constexpr size_t ARGC_TWO = 2;
 constexpr size_t ARGC_MAX = 6;
 thread_local napi_ref JsGetInputMethodSetting::IMSRef_ = nullptr;
 const std::string JsGetInputMethodSetting::IMS_CLASS_NAME = "InputMethodSetting";
-const std::unordered_map<std::string, uint32_t> EVENT_TYPE{ { "imeChange", EVENT_IME_CHANGE_MASK },
-    { "imeShow", EVENT_IME_SHOW_MASK }, { "imeHide", EVENT_IME_HIDE_MASK } };
+const std::unordered_map<std::string, uint32_t> EVENT_TYPE{{"imeChange", EVENT_IME_CHANGE_MASK},
+    {"imeShow", EVENT_IME_SHOW_MASK},
+    {"imeHide", EVENT_IME_HIDE_MASK},
+    {"imeChangeByUserId", EVENT_IME_CHANGE_MASK}};
 std::mutex JsGetInputMethodSetting::msMutex_;
 std::shared_ptr<JsGetInputMethodSetting> JsGetInputMethodSetting::inputMethod_{ nullptr };
 std::mutex JsGetInputMethodSetting::eventHandlerMutex_;
@@ -58,6 +60,7 @@ napi_value JsGetInputMethodSetting::Init(napi_env env, napi_value exports)
     napi_property_descriptor properties[] = {
         DECLARE_NAPI_FUNCTION("listInputMethod", ListInputMethod),
         DECLARE_NAPI_FUNCTION("listInputMethodSubtype", ListInputMethodSubtype),
+        DECLARE_NAPI_FUNCTION("getInputMethodSubtype", GetInputMethodSubtype),
         DECLARE_NAPI_FUNCTION("listCurrentInputMethodSubtype", ListCurrentInputMethodSubtype),
         DECLARE_NAPI_FUNCTION("getInputMethods", GetInputMethods),
         DECLARE_NAPI_FUNCTION("getInputMethodsSync", GetInputMethodsSync),
@@ -70,6 +73,8 @@ napi_value JsGetInputMethodSetting::Init(napi_env env, napi_value exports)
         DECLARE_NAPI_FUNCTION("getInputMethodState", GetInputMethodState),
         DECLARE_NAPI_FUNCTION("on", Subscribe),
         DECLARE_NAPI_FUNCTION("off", UnSubscribe),
+        DECLARE_NAPI_FUNCTION("onImeChangeByUserId", SubscribeImechange),
+        DECLARE_NAPI_FUNCTION("offImeChangeByUserId", UnSubscribeImechange),
     };
     napi_value cons = nullptr;
     IMF_CALL(napi_define_class(env, IMS_CLASS_NAME.c_str(), IMS_CLASS_NAME.size(), JsConstructor, nullptr,
@@ -319,11 +324,25 @@ napi_value JsGetInputMethodSetting::GetAllInputMethods(napi_env env, napi_callba
 napi_value JsGetInputMethodSetting::GetAllInputMethodsSync(napi_env env, napi_callback_info info)
 {
     IMSA_HILOGD("run in");
+    size_t argc = ARGC_ONE;
+    napi_value argv[1] = { nullptr };
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+
+    int32_t userId = ImfCommonConst::DEFAULT_USER_ID;
+    PARAM_CHECK_RETURN(env, argc < ARGC_TWO, "too many parameters!", TYPE_NONE, JsUtil::Const::Null(env));
+    if (argc > 0) {
+        PARAM_CHECK_RETURN(env,
+            JsUtils::GetValue(env, argv[0], userId) == napi_ok,
+            "enable type must be int32_t!",
+            TYPE_NONE,
+            JsUtil::Const::Null(env));
+        PARAM_CHECK_RETURN(env, userId >= 0, "userId invaild!", TYPE_NONE, JsUtil::Const::Null(env));
+    }
     std::vector<Property> properties;
     int32_t ret = ErrorCode::ERROR_EX_NULL_POINTER;
     auto instance = InputMethodController::GetInstance();
     if (instance != nullptr) {
-        ret = instance->ListInputMethod(properties);
+        ret = instance->ListInputMethod(properties, userId);
     }
     if (ret != ErrorCode::NO_ERROR) {
         JsUtils::ThrowException(env, JsUtils::Convert(ret), "failed to get input methods", TYPE_NONE);
@@ -429,6 +448,36 @@ napi_value JsGetInputMethodSetting::ListInputMethodSubtype(napi_env env, napi_ca
     return asyncCall.Call(env, exec, "listInputMethodSubtype");
 }
 
+napi_value JsGetInputMethodSetting::GetInputMethodSubtype(napi_env env, napi_callback_info info)
+{
+    size_t argc = ARGC_TWO;
+    napi_value argv[ARGC_TWO] = { nullptr };
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    PARAM_CHECK_RETURN(env, argc == ARGC_TWO, "number of parameters does not match!", TYPE_NONE, JsUtil::Const::Null(env));
+    int32_t userId = ImfCommonConst::DEFAULT_USER_ID;
+    PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[0], userId) == napi_ok, "enable type must be int32_t!",
+        TYPE_NONE, JsUtil::Const::Null(env));
+    PARAM_CHECK_RETURN(env, userId >= 0, "userId must > 0!", TYPE_NONE, JsUtil::Const::Null(env));
+ 
+    std::string bundleName = "";
+    PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[1], bundleName) == napi_ok, "enable type must be std::string!",
+        TYPE_NONE, JsUtil::Const::Null(env));
+
+    Property property;
+    property.name = bundleName;
+    std::vector<SubProperty> subProperties;
+
+    int32_t errCode = ErrorCode::ERROR_EX_NULL_POINTER;
+    auto instance = InputMethodController::GetInstance();
+    if (instance != nullptr) {
+        errCode = instance->ListInputMethodSubtype(property, subProperties, userId);
+    }
+    if (errCode == ErrorCode::NO_ERROR) {
+        IMSA_HILOGI("exec ListInputMethodSubtype success");
+    }
+    return JsInputMethod::GetJSInputMethodSubProperties(env, subProperties);
+}
+
 napi_value JsGetInputMethodSetting::ListCurrentInputMethodSubtype(napi_env env, napi_callback_info info)
 {
     IMSA_HILOGD("run in ListCurrentInputMethodSubtype");
@@ -511,7 +560,7 @@ napi_value JsGetInputMethodSetting::EnableInputMethod(napi_env env, napi_callbac
     IMSA_HILOGD("run in");
     auto ctxt = std::make_shared<EnableInputContext>();
     auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
-        PARAM_CHECK_RETURN(env, argc > 2, "at least three parameters is required!", TYPE_NONE, napi_invalid_arg);
+        PARAM_CHECK_RETURN(env, argc >= 3, "at least three parameters is required!", TYPE_NONE, napi_invalid_arg);
         PARAM_CHECK_RETURN(env,
             JsUtil::GetType(env, argv[0]) == napi_string && JsUtil::GetValue(env, argv[0], ctxt->bundleName),
             "bundleName type must be string!", TYPE_NONE, napi_invalid_arg);
@@ -525,6 +574,15 @@ napi_value JsGetInputMethodSetting::EnableInputMethod(napi_env env, napi_callbac
                     status <= static_cast<int32_t>(EnabledStatus::FULL_EXPERIENCE_MODE)),
             "enabledState type must be EnabledState!", TYPE_NONE, napi_invalid_arg);
         ctxt->enabledStatus = static_cast<EnabledStatus>(status);
+        if (argc > 3) {
+            PARAM_CHECK_RETURN(env,
+                JsUtil::GetType(env, argv[3]) == napi_number && JsUtil::GetValue(env, argv[3], ctxt->userId),
+                "userId type must be int32_t!",
+                TYPE_NONE,
+                napi_invalid_arg);
+        } else {
+            ctxt->userId = -1;
+        }
         return napi_ok;
     };
     auto output = [ctxt](napi_env env, napi_value *result) -> napi_status { return napi_ok; };
@@ -533,8 +591,8 @@ napi_value JsGetInputMethodSetting::EnableInputMethod(napi_env env, napi_callbac
             ctxt->SetErrorCode(ErrorCode::ERROR_IME_NOT_FOUND);
             return;
         }
-        int32_t errCode =
-            InputMethodController::GetInstance()->EnableIme(ctxt->bundleName, ctxt->extName, ctxt->enabledStatus);
+        int32_t errCode = InputMethodController::GetInstance()->EnableIme(
+            ctxt->bundleName, ctxt->extName, ctxt->enabledStatus, ctxt->userId);
         if (errCode == ErrorCode::NO_ERROR) {
             ctxt->status = napi_ok;
             ctxt->SetState(ctxt->status);
@@ -543,8 +601,8 @@ napi_value JsGetInputMethodSetting::EnableInputMethod(napi_env env, napi_callbac
         ctxt->SetErrorCode(errCode);
     };
     ctxt->SetAction(std::move(input), std::move(output));
-    // 3 means JsAPI:enableInputMethod has 3 params at most.
-    AsyncCall asyncCall(env, info, ctxt, 3);
+    // 4 means JsAPI:enableInputMethod has 4 params at most.
+    AsyncCall asyncCall(env, info, ctxt, 4);
     return asyncCall.Call(env, exec, "EnableInputMethod");
 }
 
@@ -643,6 +701,45 @@ napi_value JsGetInputMethodSetting::Subscribe(napi_env env, napi_callback_info i
     return result;
 }
 
+napi_value JsGetInputMethodSetting::SubscribeImechange(napi_env env, napi_callback_info info)
+{
+    std::string type = "imeChangeByUserId";
+    size_t argc = ARGC_ONE;
+    napi_value argv[ARGC_ONE] = { nullptr };
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+
+    // 1 means least param num.
+    if (argc < 1 || JsUtil::GetType(env, argv[0]) != napi_function) {
+        IMSA_HILOGE("subscribe failed param is not napi_function");
+        return nullptr;
+    }
+
+    auto engine = reinterpret_cast<JsGetInputMethodSetting *>(JsUtils::GetNativeSelf(env, info));
+    if (engine == nullptr) {
+        return nullptr;
+    }
+    auto iter = EVENT_TYPE.find(type);
+    if (iter == EVENT_TYPE.end()) {
+        return nullptr;
+    }
+    std::shared_ptr<JSCallbackObject> callback =
+        std::make_shared<JSCallbackObject>(env, argv[0], std::this_thread::get_id(),
+            AppExecFwk::EventHandler::Current());
+    auto ret = ImeEventMonitorManagerImpl::GetInstance().RegisterImeEventListener(iter->second, inputMethod_);
+    if (ret == ErrorCode::NO_ERROR) {
+        engine->RegisterListener(argv[0], type, callback);
+    } else {
+        auto errCode = JsUtils::Convert(ret);
+        if (errCode == EXCEPTION_SYSTEM_PERMISSION) {
+            IMSA_HILOGE("failed to UpdateListenEventFlag , ret: %{public}d, type: %{public}s!", ret, type.c_str());
+            JsUtils::ThrowException(env, errCode, "", TYPE_NONE);
+        }
+    }
+    napi_value result = nullptr;
+    napi_get_null(env, &result);
+    return result;
+}
+
 void JsGetInputMethodSetting::UnRegisterListener(napi_value callback, std::string type, bool &isUpdateFlag)
 {
     IMSA_HILOGI("unregister listener: %{public}s!", type.c_str());
@@ -655,7 +752,7 @@ void JsGetInputMethodSetting::UnRegisterListener(napi_value callback, std::strin
     if (callback == nullptr) {
         jsCbMap_.erase(type);
         IMSA_HILOGI("stop all type: %{public}s listening.", type.c_str());
-        isUpdateFlag = true;
+        GetIsUpdateFlag(type, isUpdateFlag);
         return;
     }
 
@@ -669,7 +766,7 @@ void JsGetInputMethodSetting::UnRegisterListener(napi_value callback, std::strin
     if (jsCbMap_[type].empty()) {
         IMSA_HILOGI("stop last type: %{public}s listening.", type.c_str());
         jsCbMap_.erase(type);
-        isUpdateFlag = true;
+        GetIsUpdateFlag(type, isUpdateFlag);
     }
 }
 
@@ -704,6 +801,41 @@ napi_value JsGetInputMethodSetting::UnSubscribe(napi_env env, napi_callback_info
     }
     bool isUpdateFlag = false;
     engine->UnRegisterListener(argv[ARGC_ONE], type, isUpdateFlag);
+    auto iter = EVENT_TYPE.find(type);
+    if (iter == EVENT_TYPE.end()) {
+        return nullptr;
+    }
+    if (isUpdateFlag) {
+        auto ret = ImeEventMonitorManagerImpl::GetInstance().UnRegisterImeEventListener(iter->second, inputMethod_);
+        IMSA_HILOGI("UpdateListenEventFlag, ret: %{public}d, type: %{public}s.", ret, type.c_str());
+    }
+    napi_value result = nullptr;
+    napi_get_null(env, &result);
+    return result;
+}
+
+napi_value JsGetInputMethodSetting::UnSubscribeImechange(napi_env env, napi_callback_info info)
+{
+    std::string type = "imeChangeByUserId";
+    size_t argc = ARGC_ONE;
+    napi_value argv[ARGC_ONE] = { nullptr };
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+
+    // if the first param is not napi_function/napi_null/napi_undefined, return
+    if (argc > 0) {
+        auto paramType = JsUtil::GetType(env, argv[0]);
+        if (paramType != napi_function && paramType != napi_null && paramType != napi_undefined) {
+            return nullptr;
+        }
+        // if the first param is napi_function, delete it, else delete all
+        argv[0] = paramType == napi_function ? argv[0] : nullptr;
+    }
+    auto engine = reinterpret_cast<JsGetInputMethodSetting *>(JsUtils::GetNativeSelf(env, info));
+    if (engine == nullptr) {
+        return nullptr;
+    }
+    bool isUpdateFlag = false;
+    engine->UnRegisterListener(argv[0], type, isUpdateFlag);
     auto iter = EVENT_TYPE.find(type);
     if (iter == EVENT_TYPE.end()) {
         return nullptr;
@@ -760,6 +892,10 @@ void JsGetInputMethodSetting::OnImeChange(const Property &property, const SubPro
 void JsGetInputMethodSetting::OnImeChangeByUserId(const Property &property, const SubProperty &subProperty,
     int32_t userId)
 {
+    if (userId < 0) {
+        IMSA_HILOGD("userId invaild!");
+        return;
+    }
     std::string type = "imeChangeByUserId";
     auto entry = GetEntry(type, [&property, &subProperty, userId](UvEntry &entry) {
         entry.property = property;
@@ -795,7 +931,7 @@ void JsGetInputMethodSetting::OnImeChangeByUserId(const Property &property, cons
             args[2] = userId;
             return true;
         };
-        // 3 means callback has two params.
+        // 2 means callback has two params.
         JsCallbackHandler::Traverse(entry->vecCopy, { 3, getImeChangeProperty });
     };
     eventHandler->PostTask(task, type, 0, AppExecFwk::EventQueue::Priority::VIP);
@@ -819,8 +955,7 @@ void JsGetInputMethodSetting::OnImeShow(const ImeWindowInfo &info)
     auto showingFlag = GetSoftKbShowingFlag();
     // FLG_FIXED->FLG_FLOATING in show
     if (info.panelInfo.panelFlag == FLG_FLOATING && showingFlag == FLG_FIXED) {
-        InputWindowInfo windowInfo;
-        windowInfo.name = info.windowInfo.name;
+        InputWindowInfo windowInfo = info.windowInfo;
         windowInfo.left = 0;
         windowInfo.top = 0;
         windowInfo.width = 0;
@@ -902,6 +1037,20 @@ std::shared_ptr<JsGetInputMethodSetting::UvEntry> JsGetInputMethodSetting::GetEn
         entrySetter(*entry);
     }
     return entry;
+}
+
+void JsGetInputMethodSetting::GetIsUpdateFlag(const std::string &type, bool &isUpdateFlag)
+{
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    isUpdateFlag = true;
+    auto targetType = EVENT_TYPE.find(type);
+    for (auto eventType : EVENT_TYPE) {
+        if (eventType.first != targetType->first && eventType.second == targetType->second &&
+            jsCbMap_.find(eventType.first) != jsCbMap_.end()) {
+            isUpdateFlag = false;
+            break;
+        }
+    }
 }
 } // namespace MiscServices
 } // namespace OHOS

@@ -59,11 +59,48 @@ InputMethodProperty GetDefaultInputMethod()
     return inputMethodProperty;
 }
 
+InputMethodProperty GetDefaultInputMethodByUserId(int32_t userId)
+{
+    InputMethodProperty inputMethodProperty{};
+    if (userId < 0){
+        int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+        set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
+        return inputMethodProperty;
+    }
+    std::shared_ptr<Property> property;
+    int32_t ret = OHOS::MiscServices::InputMethodController::GetInstance()->GetDefaultInputMethod(property, userId);
+    if (ret != ErrorCode::NO_ERROR) {
+        taihe::set_business_error(JsUtils::Convert(ret), "failed to get default input method!");
+        IMSA_HILOGE("failed to get default input method!");
+        return inputMethodProperty;
+    }
+    inputMethodProperty = PropertyConverter::ConvertProperty(property);
+    return inputMethodProperty;
+}
+
 InputMethodProperty GetCurrentInputMethod()
 {
     InputMethodProperty inputMethodProperty{};
     std::shared_ptr<Property> property =
         OHOS::MiscServices::InputMethodController::GetInstance()->GetCurrentInputMethod();
+    if (property == nullptr) {
+        IMSA_HILOGE("current input method is nullptr!");
+        return inputMethodProperty;
+    }
+    inputMethodProperty = PropertyConverter::ConvertProperty(property);
+    return inputMethodProperty;
+}
+
+InputMethodProperty GetCurrentInputMethodByUserId(int32_t userId)
+{
+    InputMethodProperty inputMethodProperty{};
+    if (userId < 0) {
+        int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+        set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
+        return inputMethodProperty;
+    }
+    std::shared_ptr<Property> property =
+        OHOS::MiscServices::InputMethodController::GetInstance()->GetCurrentInputMethod(userId);
     if (property == nullptr) {
         IMSA_HILOGE("current input method is nullptr!");
         return inputMethodProperty;
@@ -85,10 +122,46 @@ InputMethodSubtype GetCurrentInputMethodSubtype()
     return inputMethodSubtype;
 }
 
+InputMethodSubtype GetCurrentInputMethodSubtypeByUserId(int32_t userId)
+{
+    InputMethodSubtype inputMethodSubtype{};
+    if (userId < 0) {
+        int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+        set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
+        return inputMethodSubtype;
+    }
+    std::shared_ptr<SubProperty> subProperty =
+        OHOS::MiscServices::InputMethodController::GetInstance()->GetCurrentInputMethodSubtype(userId);
+    if (subProperty == nullptr) {
+        IMSA_HILOGE("current input method subtype is nullptr!");
+        return inputMethodSubtype;
+    }
+    inputMethodSubtype = PropertyConverter::ConvertSubProperty(subProperty);
+    return inputMethodSubtype;
+}
+
 uintptr_t GetSystemInputMethodConfigAbility()
 {
     OHOS::AppExecFwk::ElementName elementName;
     int32_t ret = OHOS::MiscServices::InputMethodController::GetInstance()->GetInputMethodConfig(elementName);
+    if (ret != ErrorCode::NO_ERROR) {
+        taihe::set_business_error(JsUtils::Convert(ret), "failed to get input method config ability!");
+        IMSA_HILOGE("failed to get input method config ability!");
+        return reinterpret_cast<uintptr_t>(nullptr);
+    }
+    ani_object obj = OHOS::AppExecFwk::CommonFunAni::ConvertElementName(taihe::get_env(), elementName);
+    return reinterpret_cast<uintptr_t>(obj);
+}
+
+uintptr_t GetSystemInputMethodConfigAbilityByUserId(int32_t userId)
+{
+    if (userId < 0) {
+        int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+        set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
+        return reinterpret_cast<uintptr_t>(nullptr);
+    }
+    OHOS::AppExecFwk::ElementName elementName;
+    int32_t ret = OHOS::MiscServices::InputMethodController::GetInstance()->GetInputMethodConfig(elementName, userId);
     if (ret != ErrorCode::NO_ERROR) {
         taihe::set_business_error(JsUtils::Convert(ret), "failed to get input method config ability!");
         IMSA_HILOGE("failed to get input method config ability!");
@@ -159,6 +232,29 @@ bool SwitchCurrentInputMethodSubtypeSync(InputMethodSubtype const &target)
     return true;
 }
 
+void SwitchInputMethodByUserId(int32_t userId, string_view bundleName, optional_view<string> subtypeId)
+{
+    if (userId < 0) {
+        int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+        set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
+        return;
+    }
+    std::string id;
+    if (subtypeId.has_value()) {
+        id = subtypeId.value();
+    }
+    int32_t errCode = OHOS::MiscServices::InputMethodController::GetInstance()->SwitchInputMethod(
+        SwitchTrigger::SYSTEM_APP, std::string(bundleName), id, userId);
+    if (errCode != ErrorCode::NO_ERROR) {
+        int32_t code = JsUtils::Convert(errCode);
+        std::string message = JsUtils::ToMessage(code);
+        taihe::set_business_error(code, message);
+        IMSA_HILOGE("failed to switch input method, code:%{public}d message: %{public}s", code, message.c_str());
+        return;
+    }
+    IMSA_HILOGI("SwitchInputMethodByUserId success.");
+}
+
 void SetSimpleKeyboardEnabled(bool enable)
 {
     auto controller =  OHOS::MiscServices::InputMethodController::GetInstance();
@@ -207,12 +303,17 @@ void OffAttachmentDidFail(taihe::optional_view<taihe::callback<void(AttachFailur
 TH_EXPORT_CPP_API_GetSetting(GetSetting);
 TH_EXPORT_CPP_API_GetController(GetController);
 TH_EXPORT_CPP_API_GetDefaultInputMethod(GetDefaultInputMethod);
+TH_EXPORT_CPP_API_GetDefaultInputMethodByUserId(GetDefaultInputMethodByUserId);
 TH_EXPORT_CPP_API_GetCurrentInputMethod(GetCurrentInputMethod);
+TH_EXPORT_CPP_API_GetCurrentInputMethodByUserId(GetCurrentInputMethodByUserId);
 TH_EXPORT_CPP_API_GetCurrentInputMethodSubtype(GetCurrentInputMethodSubtype);
+TH_EXPORT_CPP_API_GetCurrentInputMethodSubtypeByUserId(GetCurrentInputMethodSubtypeByUserId);
 TH_EXPORT_CPP_API_GetSystemInputMethodConfigAbility(GetSystemInputMethodConfigAbility);
+TH_EXPORT_CPP_API_GetSystemInputMethodConfigAbilityByUserId(GetSystemInputMethodConfigAbilityByUserId);
 TH_EXPORT_CPP_API_SwitchInputMethodWithTarget(SwitchInputMethodWithTarget);
 TH_EXPORT_CPP_API_SwitchInputMethodSync(SwitchInputMethodSync);
 TH_EXPORT_CPP_API_SwitchCurrentInputMethodSubtypeSync(SwitchCurrentInputMethodSubtypeSync);
+TH_EXPORT_CPP_API_SwitchInputMethodByUserId(SwitchInputMethodByUserId);
 TH_EXPORT_CPP_API_SetSimpleKeyboardEnabled(SetSimpleKeyboardEnabled);
 TH_EXPORT_CPP_API_SwitchCurrentInputMethodAndSubtypeSync(SwitchCurrentInputMethodAndSubtypeSync);
 TH_EXPORT_CPP_API_OnAttachmentDidFail(OnAttachmentDidFail);
