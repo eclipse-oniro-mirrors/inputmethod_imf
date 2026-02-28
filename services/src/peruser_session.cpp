@@ -2528,11 +2528,6 @@ int32_t PerUserSession::StartCurrentIme(const std::shared_ptr<ImeNativeCfg> &ime
         return ErrorCode::NO_ERROR;
     }
     if (action == ImeAction::HANDLE_STARTING_IME) {
-        if (!ImeInfoInquirer::GetInstance().IsRunningIme(userId_, imeData->ime.first)) {
-            IMSA_HILOGW("%{public}d has no running ime!", userId_);
-            RemoveRealImeData();
-            return StartInputService(ime);
-        }
         int64_t time = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
         if (time - imeData->startTime > ImeData::START_TIME_OUT) {
             IMSA_HILOGE("[%{public}s, %{public}s] start abnormal, more than eight second!", imeData->ime.first.c_str(),
