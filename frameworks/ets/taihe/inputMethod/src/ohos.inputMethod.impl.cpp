@@ -62,7 +62,7 @@ InputMethodProperty GetDefaultInputMethod()
 InputMethodProperty GetDefaultInputMethodByUserId(int32_t userId)
 {
     InputMethodProperty inputMethodProperty{};
-    if (userId < 0){
+    if (userId < 0) {
         int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
         set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
         return inputMethodProperty;
