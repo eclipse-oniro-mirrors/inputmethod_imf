@@ -246,6 +246,18 @@ void InputMethodAbility::Initialize()
     coreStub_ = coreStub;
 }
 
+void InputMethodAbility::SetConfigurationUpdate(std::function<void(Rosen::DisplayId displayId)> configurationUpdate)
+{
+    configurationUpdate_ = configurationUpdate;
+}
+
+void InputMethodAbility::ConfigurationUpdate(Rosen::DisplayId displayId)
+{
+    if (configurationUpdate_ != nullptr) {
+        configurationUpdate_(displayId);
+    }
+}
+
 void InputMethodAbility::SetImeListener(std::shared_ptr<InputMethodEngineListener> imeListener)
 {
     IMSA_HILOGD("InputMethodAbility start.");
@@ -291,6 +303,7 @@ int32_t InputMethodAbility::StartInputInner(const InputClientInfo &clientInfo, b
     IMSA_HILOGI("IMA showKeyboard:%{public}d,bindFromClient:%{public}d.", clientInfo.isShowKeyboard, isBindFromClient);
     SetInputDataChannel(clientInfo.channel);
     auto attribute = GetInputAttribute();
+    ConfigurationUpdate(attribute.callingDisplayId);
     if ((clientInfo.needHide && !isProxyIme_.load()) ||
         IsDisplayChanged(attribute.callingDisplayId, clientInfo.config.inputAttribute.callingDisplayId)) {
         IMSA_HILOGD("pwd or normal input pattern changed, need hide panel first.");
@@ -1821,6 +1834,7 @@ int32_t InputMethodAbility::OnCallingDisplayIdChanged(uint64_t displayId)
             inputAttribute_.callingScreenId = 0;
         }
     }
+    ConfigurationUpdate(displayId);
     imeListener_->OnCallingDisplayIdChanged(displayId);
     return ErrorCode::NO_ERROR;
 }

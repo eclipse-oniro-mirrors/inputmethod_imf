@@ -20,6 +20,7 @@
 #include "configuration.h"
 #include "display_manager.h"
 #include "inputmethod_extension.h"
+#include "inputmethod_display_listener.h"
 #include "ets_runtime.h"
 #include "ability_handler.h"
 #include "ets_native_reference.h"
@@ -42,9 +43,6 @@ public:
     virtual sptr<IRemoteObject> OnConnect(const AAFwk::Want &want) override;
     virtual void OnDisconnect(const AAFwk::Want &want) override;
     virtual void OnCommand(const AAFwk::Want &want, bool restart, int startId) override;
-    virtual void OnConfigurationUpdated(const AppExecFwk::Configuration &config) override;
-
-    void ConfigurationUpdated();
 
 public:
     explicit ETSInputMethodExtension(AbilityRuntime::ETSRuntime &etsRuntime);
@@ -55,61 +53,14 @@ private:
         const std::string &moduleName, const std::string &srcPath);
     void UpdateInputMethodExtensionObj(std::shared_ptr<AbilityRuntime::AbilityInfo> &abilityInfo,
         const std::string &moduleName, const std::string &srcPath);
-    void InitDisplayCache();
     void ListenWindowManager();
     void GetSrcPath(std::string &srcPath);
     ani_ref CallObjectMethod(bool withResult, const char *name, const char *signature, ...);
 private:
-struct CacheDisplay {
-    int32_t displayWidth = 0;
-    int32_t displayHeight = 0;
-    Rosen::Rotation displayRotation = Rosen::Rotation::ROTATION_0;
-    Rosen::FoldStatus displayFoldStatus = Rosen::FoldStatus::UNKNOWN;
-    bool IsEmpty()
-    {
-        return displayWidth == 0 && displayHeight == 0 && displayRotation == Rosen::Rotation::ROTATION_0 &&
-            displayFoldStatus == Rosen::FoldStatus::UNKNOWN;
-    };
-    void SetCacheDisplay(int32_t width, int32_t height, Rosen::Rotation rotation, Rosen::FoldStatus foldStatus)
-    {
-        displayWidth = width;
-        displayHeight = height;
-        displayRotation = rotation;
-        displayFoldStatus = foldStatus;
-    };
-};
     AbilityRuntime::ETSRuntime &etsRuntime_;
     std::shared_ptr<AppExecFwk::ETSNativeReference> etsAbilityObj_;
     std::shared_ptr<AppExecFwk::AbilityHandler> handler_ = nullptr;
-    CacheDisplay cacheDisplay_;
-
-protected:
-    class EtsInputMethodExtensionDisplayAttributeListener : public Rosen::DisplayManager::IDisplayAttributeListener {
-    public:
-        explicit EtsInputMethodExtensionDisplayAttributeListener(
-            const std::weak_ptr<ETSInputMethodExtension> &extension)
-        {
-            etsInputMethodExtension_ = extension;
-        }
-
-        void OnAttributeChange(Rosen::DisplayId displayId, const std::vector<std::string>& attributes) override
-        {
-            auto inputMethodSptr = etsInputMethodExtension_.lock();
-            if (inputMethodSptr != nullptr) {
-                inputMethodSptr->ListenerCheckNeedAdjustKeyboard(displayId);
-                inputMethodSptr->OnListenerChange(displayId);
-            }
-        }
-
-    private:
-        std::weak_ptr<ETSInputMethodExtension> etsInputMethodExtension_;
-    };
-
-    void OnListenerChange(Rosen::DisplayId displayId);
-    void ListenerCheckNeedAdjustKeyboard(Rosen::DisplayId displayId);
-
-private:
-    sptr<EtsInputMethodExtensionDisplayAttributeListener> displayListener_ = nullptr;
+    sptr<InputMethodDisplayAttributeListener> displayListener_ = nullptr;
 };
 }
 }

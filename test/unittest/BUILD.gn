@@ -56,6 +56,7 @@ group("unittest") {
       "cpp_test:TextListenerInnerApiTest",
       "cpp_test:VirtualListenerTest",
       "cpp_test:WindowAdapterTest",
+      "cpp_test:InputMethodDisplayAttributeListenerTest",
       "cpp_test/common:inputmethod_tdd_util",
       "napi_test/src:GetInputMethodJsTest",
       "resource/bundle_dependencies/editorBox:editorBox",

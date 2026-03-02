@@ -35,8 +35,6 @@ using namespace OHOS::AppExecFwk;
 using namespace OHOS::MiscServices;
 
 constexpr int32_t SUCCESS_CODE = 0;
-const std::string FOLD_SCREEN_TYPE = OHOS::system::GetParameter("const.window.foldscreen.type", "0,0,0,0");
-constexpr const char *EXTEND_FOLD_TYPE = "4";
 
 extern "C" __attribute__((visibility("default"))) InputMethodExtension *OHOS_ABILITY_CjInputMethodExtension()
 {
@@ -68,7 +66,6 @@ void CjInputMethodExtension::Init(const std::shared_ptr<AbilityLocalRecord> &rec
         return;
     }
     handler_ = handler;
-    InitDisplayCache();
     ListenWindowManager();
     IMSA_HILOGI("initalize success");
 }
@@ -76,43 +73,13 @@ void CjInputMethodExtension::Init(const std::shared_ptr<AbilityLocalRecord> &rec
 void CjInputMethodExtension::ListenWindowManager()
 {
     IMSA_HILOGD("register window manager service listener.");
-    auto abilityManager = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
-    if (abilityManager == nullptr) {
-        IMSA_HILOGE("failed to get SaMgr!");
-        return;
-    }
-
-    auto cjInputMethodExtension = std::static_pointer_cast<CjInputMethodExtension>(shared_from_this());
-    displayListener_ = sptr<CjInputMethodExtensionDisplayAttributeListener>::MakeSptr(cjInputMethodExtension);
+    displayListener_ = sptr<InputMethodDisplayAttributeListener>::MakeSptr(GetContext());
     if (displayListener_ == nullptr) {
         IMSA_HILOGE("failed to create display listener!");
         return;
     }
-
-    auto listener = sptr<SystemAbilityStatusChangeListener>::MakeSptr(displayListener_);
-    if (listener == nullptr) {
-        IMSA_HILOGE("failed to create status change listener!");
-        return;
-    }
-
-    auto ret = abilityManager->SubscribeSystemAbility(WINDOW_MANAGER_SERVICE_ID, listener);
-    if (ret != 0) {
-        IMSA_HILOGE("failed to subscribe system ability, ret: %{public}d!", ret);
-    }
-}
-
-void CjInputMethodExtension::OnConfigurationUpdated(const AppExecFwk::Configuration &config) { }
-
-void CjInputMethodExtension::ConfigurationUpdated() { }
-
-void CjInputMethodExtension::SystemAbilityStatusChangeListener::OnAddSystemAbility(
-    int32_t systemAbilityId, const std::string &deviceId)
-{
-    IMSA_HILOGD("add systemAbilityId: %{public}d.", systemAbilityId);
-    if (systemAbilityId == WINDOW_MANAGER_SERVICE_ID) {
-        std::vector<std::string> attributes = {"rotation", "width", "height"};
-        Rosen::DisplayManager::GetInstance().RegisterDisplayAttributeListener(attributes, listener_);
-    }
+    std::vector<std::string> attributes = {"rotation", "width", "height"};
+    Rosen::DisplayManager::GetInstance().RegisterDisplayAttributeListener(attributes, displayListener_);
 }
 
 void CjInputMethodExtension::OnStart(const AAFwk::Want &want)
@@ -132,18 +99,6 @@ void CjInputMethodExtension::OnStart(const AAFwk::Want &want)
     IMSA_HILOGI("ime bind imf");
     FinishAsync("OnStart", static_cast<int32_t>(TraceTaskId::ONSTART_EXTENSION));
     TaskManager::GetInstance().Complete(task->GetSeqId());
-}
-
-void CjInputMethodExtension::InitDisplayCache()
-{
-    auto foldStatus = Rosen::DisplayManager::GetInstance().GetFoldStatus();
-    auto displayPtr = Rosen::DisplayManager::GetInstance().GetDefaultDisplaySync();
-    if (displayPtr == nullptr) {
-        IMSA_HILOGE("displayPtr is null");
-        return;
-    }
-    cacheDisplay_.SetCacheDisplay(
-        displayPtr->GetWidth(), displayPtr->GetHeight(), displayPtr->GetRotation(), foldStatus);
 }
 
 void CjInputMethodExtension::OnStop()
@@ -178,76 +133,5 @@ sptr<IRemoteObject> CjInputMethodExtension::OnConnect(const AAFwk::Want &want)
 void CjInputMethodExtension::OnDisconnect(const AAFwk::Want &want) { }
 
 void CjInputMethodExtension::OnCommand(const AAFwk::Want &want, bool restart, int startId) { }
-
-void CjInputMethodExtension::CheckNeedAdjustKeyboard(Rosen::DisplayId displayId)
-{
-    if (FOLD_SCREEN_TYPE.empty() || FOLD_SCREEN_TYPE[0] != *EXTEND_FOLD_TYPE) {
-        IMSA_HILOGD("The current device is a non-foldable device.");
-        return;
-    }
-    auto displayPtr = Rosen::DisplayManager::GetInstance().GetDefaultDisplaySync();
-    if (displayPtr == nullptr) {
-        return;
-    }
-    auto defaultDisplayId = displayPtr->GetId();
-    if (displayId != defaultDisplayId) {
-        return;
-    }
-    auto foldStatus = Rosen::DisplayManager::GetInstance().GetFoldStatus();
-    auto displayInfo = displayPtr->GetDisplayInfo();
-    if (displayInfo == nullptr) {
-        IMSA_HILOGE("displayInfo is nullptr");
-        return;
-    }
-    auto width = displayInfo->GetWidth();
-    auto height = displayInfo->GetHeight();
-    auto rotation = displayInfo->GetRotation();
-    IMSA_HILOGD("display width: %{public}d, height: %{public}d, rotation: %{public}d, foldStatus: %{public}d",
-        width, height, rotation, foldStatus);
-    if (!cacheDisplay_.IsEmpty()) {
-        if ((cacheDisplay_.displayWidth != width ||
-                cacheDisplay_.displayHeight != height) &&
-            cacheDisplay_.displayFoldStatus == foldStatus &&
-            cacheDisplay_.displayRotation == rotation) {
-            InputMethodAbility::GetInstance().AdjustKeyboard();
-        }
-    }
-    cacheDisplay_.SetCacheDisplay(width, height, rotation, foldStatus);
-}
-
-void CjInputMethodExtension::OnChange(Rosen::DisplayId displayId)
-{
-    IMSA_HILOGD("displayId: %{public}" PRIu64 "", displayId);
-    auto context = GetContext();
-    if (context == nullptr) {
-        IMSA_HILOGE("context is invalid!");
-        return;
-    }
-
-    auto contextConfig = context->GetConfiguration();
-    if (contextConfig == nullptr) {
-        IMSA_HILOGE("configuration is invalid!");
-        return;
-    }
-
-    bool isConfigChanged = false;
-    auto configUtils = std::make_shared<ConfigurationUtils>();
-    configUtils->UpdateDisplayConfig(displayId, contextConfig, context->GetResourceManager(), isConfigChanged);
-    IMSA_HILOGD("OnChange, isConfigChanged: %{public}d, Config after update: %{public}s.", isConfigChanged,
-        contextConfig->GetName().c_str());
-
-    if (!isConfigChanged) {
-        return;
-    }
-    auto inputMethodExtension = std::static_pointer_cast<CjInputMethodExtension>(shared_from_this());
-    auto task = [inputMethodExtension]() {
-        if (inputMethodExtension) {
-            inputMethodExtension->ConfigurationUpdated();
-        }
-    };
-    if (handler_ != nullptr) {
-        handler_->PostTask(task, "CjInputMethodExtension:OnChange", 0, AppExecFwk::EventQueue::Priority::VIP);
-    }
-}
 } // namespace AbilityRuntime
 } // namespace OHOS

@@ -48,6 +48,7 @@ ohos_shared_library("inputmethod_extension") {
     "-Os",
   ]
   include_dirs = [
+    "${inputmethod_path}/frameworks/common/include",
     "${inputmethod_path}/frameworks/ets/extension/ani/include",
     "${inputmethod_path}/frameworks/js/napi/common",
     "${inputmethod_path}/frameworks/js/napi/inputmethodclient",
@@ -59,6 +60,7 @@ ohos_shared_library("inputmethod_extension") {
   ]
 
   sources = [
+    "${inputmethod_path}/frameworks/common/src/inputmethod_display_listener.cpp",
     "${inputmethod_path}/frameworks/ets/extension/ani/src/ets_inputmethod_extension.cpp", 
     "${inputmethod_path}/frameworks/ets/extension/ani/src/ets_inputmethod_extension_context.cpp",
     "${inputmethod_path}/frameworks/ets/extension/ani/src/ets_inputmethod_extension_loader.cpp",
