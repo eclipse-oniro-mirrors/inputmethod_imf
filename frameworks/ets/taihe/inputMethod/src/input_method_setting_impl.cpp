@@ -24,6 +24,7 @@
 
 namespace OHOS {
 namespace MiscServices {
+constexpr std::int32_t JUDGE_USER_ID = 0;
 using namespace taihe;
 
 InputMethodSettingImpl &InputMethodSettingImpl::GetInstance()
@@ -92,7 +93,7 @@ array<InputMethodSubtype_t> InputMethodSettingImpl::ListInputMethodSubtypeSync(
 array<InputMethodSubtype_t> InputMethodSettingImpl::GetInputMethodSubtype(
     int32_t userId, ::taihe::string_view bundleName)
 {
-    if (userId < 0) {
+    if (userId < JUDGE_USER_ID) {
         int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
         set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
         return array<InputMethodSubtype_t>(nullptr, 0);
@@ -176,7 +177,7 @@ array<InputMethodProperty_t> InputMethodSettingImpl::GetAllInputMethodsAsync()
 
 array<InputMethodProperty_t> InputMethodSettingImpl::GetAllInputMethodsAsync(int32_t userId)
 {
-    if (userId < 0) {
+    if (userId < JUDGE_USER_ID) {
         int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
         set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
         return array<InputMethodProperty_t>(nullptr, 0);
@@ -307,7 +308,7 @@ void InputMethodSettingImpl::OnImeChangeCallback(const Property &property, const
 void InputMethodSettingImpl::OnImeChangeCallbackByUserId(
     const Property &property, const SubProperty &subProperty, int32_t userId)
 {
-    if (userId < 0){
+    if (JUDGE_USER_ID){
         int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
         set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
         return;
@@ -431,7 +432,7 @@ void InputMethodSettingImpl::EnableInputMethodSync(::taihe::string_view bundleNa
 void InputMethodSettingImpl::EnableInputMethodSyncByUserId(::taihe::string_view bundleName,
     ::taihe::string_view extensionName, ::ohos::inputMethod::EnabledState enabledState, int32_t userId)
 {
-    if (userId < 0) {
+    if (JUDGE_USER_ID) {
         int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
         set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
         return;
@@ -445,6 +446,12 @@ void InputMethodSettingImpl::EnableInputMethodSyncByUserId(::taihe::string_view 
     }
     errCode = instance->EnableIme(std::string(bundleName), std::string(extensionName),
         static_cast<OHOS::MiscServices::EnabledStatus>(enabledState.get_value()), userId);
+    if (errCode != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("EnableImeByUserId failed!");
+        set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
+        return;
+    }
+    IMSA_HILOGI("EnableImeByUserId success!");
 }
 } // namespace MiscServices
 } // namespace OHOS
