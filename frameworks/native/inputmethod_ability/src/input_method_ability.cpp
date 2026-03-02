@@ -1805,7 +1805,7 @@ int32_t InputMethodAbility::OnCallingDisplayIdChanged(uint64_t displayId)
         return ErrorCode::NO_ERROR;
     }
     auto panel = GetSoftKeyboardPanel();
-    if (panel != nullptr) {
+    if (panel != nullptr && panel->GetPanelFlag() == PanelFlag::FLG_FIXED) {
         HidePanel(panel, PanelFlag::FLG_FIXED, Trigger::IMF, 0);
     }
     {
