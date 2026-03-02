@@ -1795,21 +1795,19 @@ void InputMethodAbility::ReportImeStartInput(
 
 int32_t InputMethodAbility::OnCallingDisplayIdChanged(uint64_t displayId)
 {
-    IMSA_HILOGD("InputMethodAbility calling display: %{public}" PRIu64 ".", displayId);
+    auto curDisplayId = GetInputAttribute().callingDisplayId;
+    IMSA_HILOGD("IMA display/curDisplayId: %{public}" PRIu64 "/%{public}" PRIu64 ".", displayId, curDisplayId);
     if (imeListener_ == nullptr) {
         IMSA_HILOGD("imeListener_ is nullptr!");
         return ErrorCode::NO_ERROR;
     }
-    auto windowId = GetInputAttribute().windowId;
-    auto task = [this, windowId]() {
-        panels_.ForEach([windowId](const PanelType &panelType, const std::shared_ptr<InputMethodPanel> &panel) {
-            if (panel != nullptr) {
-                panel->SetCallingWindow(windowId);
-            }
-            return false;
-        });
-    };
-    imeListener_->PostTaskToEventHandler(task, "SetCallingWindow");
+    if (displayId == curDisplayId) {
+        return ErrorCode::NO_ERROR;
+    }
+    auto panel = GetSoftKeyboardPanel();
+    if (panel != nullptr) {
+        HidePanel(panel, PanelFlag::FLG_FIXED, Trigger::IMF, 0);
+    }
     {
         std::lock_guard<std::mutex> lock(inputAttrLock_);
         inputAttribute_.callingDisplayId = displayId;

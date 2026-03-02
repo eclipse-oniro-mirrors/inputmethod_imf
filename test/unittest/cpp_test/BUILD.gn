@@ -1520,11 +1520,12 @@ ohos_unittest("WindowAdapterTest") {
 
   include_dirs = [
     "${inputmethod_path}/common/include",
+    "${inputmethod_path}/services/adapter/os_account_adapter/include",
     "${inputmethod_path}/services/adapter/window_adapter/include",
   ]
   sources = [
+    "${inputmethod_path}/services/adapter/os_account_adapter/src/os_account_adapter.cpp",
     "${inputmethod_path}/services/adapter/window_adapter/src/window_adapter.cpp",
-    "${inputmethod_path}/services/adapter/window_adapter/src/window_display_changed_listener.cpp",
     "src/window_adapter_test.cpp",
   ]
   configs = [ ":module_private_config" ]
@@ -1533,6 +1534,7 @@ ohos_unittest("WindowAdapterTest") {
     "googletest:gtest_main",
     "hilog:libhilog",
     "ipc:ipc_single",
+    "os_account:os_account_innerkits",
   ]
   defines = []
   if (window_manager_use_sceneboard) {

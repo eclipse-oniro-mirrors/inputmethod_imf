@@ -18,8 +18,6 @@
 #include <cstdint>
 #include <variant>
 #include "global.h"
-#include "input_client_info.h"
-#include "input_method_utils.h"
 namespace OHOS {
 namespace MiscServices {
 class VariantUtil {

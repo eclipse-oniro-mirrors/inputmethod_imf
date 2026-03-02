@@ -166,7 +166,7 @@ public:
         uint64_t displayId, bool &isInputStart, uint32_t &callingWndId, int32_t &requestKeyboardReason);
     bool IsSaReady(int32_t saId);
     void TryUnloadSystemAbility();
-    void OnCallingDisplayIdChanged(const int32_t windowId, const int32_t callingPid, const uint64_t displayId);
+    void OnWindowDisplayIdChanged(int32_t windowId, uint64_t displayId);
     bool SpecialScenarioCheck();
     int32_t SpecialSendPrivateData(const std::unordered_map<std::string, PrivateDataValue> &privateCommand);
     int32_t SendVoicePrivateCommand(const bool isPersistence);

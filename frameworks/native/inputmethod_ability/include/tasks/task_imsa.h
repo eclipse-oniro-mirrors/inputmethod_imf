@@ -87,6 +87,29 @@ public:
     ~TaskImsaOnClientInactive() = default;
 };
 
+class TaskImsaOnCallingDisplayIdChanged : public Task {
+public:
+    explicit TaskImsaOnCallingDisplayIdChanged(uint64_t displayId) : Task(TASK_TYPE_IMSA_DISPLAYID_CHANGED)
+    {
+        auto func = [displayId]() { InputMethodAbility::GetInstance().OnCallingDisplayIdChanged(displayId); };
+        actions_.emplace_back(std::make_unique<Action>(func));
+    }
+    ~TaskImsaOnCallingDisplayIdChanged() = default;
+};
+
+class TaskImsaOnCallingWindowIdChanged : public Task {
+public:
+    explicit TaskImsaOnCallingWindowIdChanged(uint32_t editorWindowId, uint32_t keyboardWindowId)
+        : Task(TASK_TYPE_IMSA_WINDOWID_CHANGED)
+    {
+        auto func = [editorWindowId, keyboardWindowId]() {
+            InputMethodAbility::GetInstance().SetCallingWindow(editorWindowId, keyboardWindowId);
+        };
+        actions_.emplace_back(std::make_unique<Action>(func));
+    }
+    ~TaskImsaOnCallingWindowIdChanged() = default;
+};
+
 class TaskImsaInitInputCtrlChannel : public Task {
 public:
     explicit TaskImsaInitInputCtrlChannel(sptr<IRemoteObject> channel) : Task(TASK_TYPE_IMSA_INIT_INPUT_CTRL_CHANNEL)

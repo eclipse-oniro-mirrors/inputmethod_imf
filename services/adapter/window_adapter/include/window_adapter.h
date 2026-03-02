@@ -20,10 +20,17 @@
 #include <mutex>
 #include <set>
 #include <tuple>
+
 #include "window.h"
-#include "window_display_changed_listener.h"
+#ifdef SCENE_BOARD_ENABLE
+#include "window_manager_lite.h"
+#else
+#include "window_manager.h"
+#endif
+
 namespace OHOS {
 namespace MiscServices {
+using WindowDisplayChangeHandler = std::function<void(int32_t, int32_t, uint64_t)>;
 class WindowAdapter final {
 public:
     static constexpr uint64_t DEFAULT_DISPLAY_ID = 0;
@@ -39,7 +46,6 @@ public:
     static uint64_t GetDisplayIdWithCorrect(int32_t windowId, uint64_t displayId);
     static uint64_t GetDisplayIdByToken(sptr<IRemoteObject> abilityToken);
     static bool ListWindowInfo(std::vector<sptr<OHOS::Rosen::WindowInfo>> &windowInfos);
-    void RegisterCallingWindowInfoChangedListener(const WindowDisplayChangeHandler &handle);
     static int32_t GetAllFocusWindowInfos(std::vector<Rosen::FocusChangeInfo> &focusWindowInfos);
     uint64_t GetDisplayGroupId(uint64_t displayId);
     bool IsDefaultDisplayGroup(uint64_t displayId);
@@ -51,6 +57,17 @@ public:
     void OnFocused(const Rosen::FocusChangeInfo &focusWindowInfo);
     void OnUnFocused(const Rosen::FocusChangeInfo &focusWindowInfo);
     int32_t RegisterAllGroupInfoChangedListener();
+    int32_t RegisterWindowDisplayIdChangedListener(const WindowDisplayChangeHandler &handler);
+
+    class WindowDisplayChangedListenerImpl : public OHOS::Rosen::IWindowInfoChangedListener {
+    public:
+        explicit WindowDisplayChangedListenerImpl(const WindowDisplayChangeHandler &handler) : handler_(handler){};
+        ~WindowDisplayChangedListenerImpl() = default;
+        void OnWindowInfoChanged(const OHOS::Rosen::WindowInfoList &windowInfoList) override;
+
+    private:
+        WindowDisplayChangeHandler handler_;
+    };
 
     class AllGroupInfoChangedListenerImpl : public OHOS::Rosen::IAllGroupInfoChangedListener {
     public:

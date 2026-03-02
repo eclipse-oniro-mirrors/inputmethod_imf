@@ -122,12 +122,15 @@ ErrCode InputMethodCoreServiceImpl::OnClientInactive(const sptr<IRemoteObject> &
 // LCOV_EXCL_STOP
 ErrCode InputMethodCoreServiceImpl::OnCallingDisplayIdChanged(uint64_t displayId)
 {
-    return InputMethodAbility::GetInstance().OnCallingDisplayIdChanged(displayId);
+    auto task = std::make_shared<TaskImsaOnCallingDisplayIdChanged>(displayId);
+    TaskManager::GetInstance().PostTask(task);
+    return ERR_OK;
 }
 
 ErrCode InputMethodCoreServiceImpl::OnCallingWindowIdChanged(uint32_t editorWindowId, uint32_t keyboardWindowId)
 {
-    InputMethodAbility::GetInstance().SetCallingWindow(editorWindowId, keyboardWindowId);
+    auto task = std::make_shared<TaskImsaOnCallingWindowIdChanged>(editorWindowId, keyboardWindowId);
+    TaskManager::GetInstance().PostTask(task);
     return ERR_OK;
 }
 

@@ -3586,21 +3586,21 @@ HWTEST_F(InputMethodPrivateMemberTest, ClientGroup_GetCurrentClientInfoBoundReal
 }
 
 /**
- * @tc.name: PerUserSession_OnCallingDisplayIdChanged
- * @tc.desc: PerUserSession_OnCallingDisplayIdChanged
+ * @tc.name: PerUserSession_OnWindowDisplayIdChanged
+ * @tc.desc: PerUserSession_OnWindowDisplayIdChanged
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnCallingDisplayIdChanged, TestSize.Level0)
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnWindowDisplayIdChanged, TestSize.Level0)
 {
-    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_OnCallingDisplayIdChanged start.");
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_OnWindowDisplayIdChanged start.");
     int32_t windowId = 10;
     int32_t callingPid = 100;
     uint64_t defaultDisplayId = ImfCommonConst::DEFAULT_DISPLAY_ID;
     auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
     userSession->clientGroupMap_.clear();
     // clientGroup is nullptr
-    userSession->OnCallingDisplayIdChanged(windowId, callingPid, defaultDisplayId);
+    userSession->OnWindowDisplayIdChanged(windowId, defaultDisplayId);
     // same client group,
     auto group = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
     sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
@@ -3610,7 +3610,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnCallingDisplayIdChanged,
     info->bindImeData = std::make_shared<BindImeData>(100, ImeType::IME);
     group->mapClients_.insert_or_assign(client->AsObject(), info);
     userSession->clientGroupMap_.insert_or_assign(ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID, group);
-    userSession->OnCallingDisplayIdChanged(windowId, callingPid, defaultDisplayId);
+    userSession->OnWindowDisplayIdChanged(windowId, defaultDisplayId);
 
     auto ret = userSession->NotifyCallingDisplayChanged(defaultDisplayId, nullptr);
     EXPECT_EQ(ret, ErrorCode::ERROR_IME_NOT_STARTED);

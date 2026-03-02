@@ -2878,11 +2878,9 @@ std::shared_ptr<ClientGroup> PerUserSession::GetClientGroup(sptr<IRemoteObject> 
     return iter->second;
 }
 
-void PerUserSession::OnCallingDisplayIdChanged(
-    const int32_t windowId, const int32_t callingPid, const uint64_t displayId)
+void PerUserSession::OnWindowDisplayIdChanged(int32_t windowId, uint64_t displayId)
 {
-    IMSA_HILOGD("enter!windowId:%{public}d,callingPid:%{public}d,displayId:%{public}" PRIu64 "", windowId, callingPid,
-        displayId);
+    IMSA_HILOGI("windowId:%{public}d,displayId:%{public}" PRIu64 "", windowId, displayId);
     auto [clientGroup, clientInfo] = GetClientBoundImeByWindowId(windowId);
     if (clientGroup == nullptr || clientInfo == nullptr) {
         IMSA_HILOGD("not window keyboard in changed:%{public}d.", windowId);
