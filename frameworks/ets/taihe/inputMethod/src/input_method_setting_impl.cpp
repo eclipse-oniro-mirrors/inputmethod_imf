@@ -431,7 +431,7 @@ void InputMethodSettingImpl::EnableInputMethodSync(::taihe::string_view bundleNa
 void InputMethodSettingImpl::EnableInputMethodSyncByUserId(::taihe::string_view bundleName,
     ::taihe::string_view extensionName, ::ohos::inputMethod::EnabledState enabledState, int32_t userId)
 {
-    if (userId < JUDGE_USER_ID) {
+    if (userId < 0) {
         int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
         set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
         return;
