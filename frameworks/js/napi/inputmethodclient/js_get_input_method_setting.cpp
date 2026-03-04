@@ -1047,7 +1047,7 @@ void JsGetInputMethodSetting::GetIsUpdateFlag(const std::string &type, bool &isU
     isUpdateFlag = true;
     auto targetType = EVENT_TYPE.find(type);
     if (targetType == EVENT_TYPE.end()) {
-       return;
+        return;
    }
     for (auto eventType : EVENT_TYPE) {
         if (eventType.first != targetType->first && eventType.second == targetType->second &&
