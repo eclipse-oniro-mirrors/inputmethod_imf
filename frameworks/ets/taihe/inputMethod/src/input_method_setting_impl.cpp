@@ -24,7 +24,6 @@
 
 namespace OHOS {
 namespace MiscServices {
-constexpr std::int32_t JUDGE_USER_ID = 0;
 using namespace taihe;
 
 InputMethodSettingImpl &InputMethodSettingImpl::GetInstance()
@@ -93,7 +92,7 @@ array<InputMethodSubtype_t> InputMethodSettingImpl::ListInputMethodSubtypeSync(
 array<InputMethodSubtype_t> InputMethodSettingImpl::GetInputMethodSubtype(
     int32_t userId, ::taihe::string_view bundleName)
 {
-    if (userId < JUDGE_USER_ID) {
+    if (userId < 0) {
         int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
         set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
         return array<InputMethodSubtype_t>(nullptr, 0);
@@ -177,7 +176,7 @@ array<InputMethodProperty_t> InputMethodSettingImpl::GetAllInputMethodsAsync()
 
 array<InputMethodProperty_t> InputMethodSettingImpl::GetAllInputMethodsAsync(int32_t userId)
 {
-    if (userId < JUDGE_USER_ID) {
+    if (userId < 0) {
         int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
         set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
         return array<InputMethodProperty_t>(nullptr, 0);
@@ -308,7 +307,7 @@ void InputMethodSettingImpl::OnImeChangeCallback(const Property &property, const
 void InputMethodSettingImpl::OnImeChangeCallbackByUserId(
     const Property &property, const SubProperty &subProperty, int32_t userId)
 {
-    if (userId < JUDGE_USER_ID) {
+    if (userId < 0) {
         int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
         set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
         return;
