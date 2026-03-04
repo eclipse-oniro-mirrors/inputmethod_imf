@@ -464,6 +464,10 @@ napi_value JsUtils::GetValue(napi_env env, const InputWindowInfo &in)
     napi_create_uint32(env, static_cast<uint32_t>(in.displayId), &displayId);
     napi_set_named_property(env, info, "displayId", displayId);
 
+    napi_value userId = nullptr;
+    napi_create_uint32(env, in.userId, &userId);
+    napi_set_named_property(env, info, "userId", userId);
+
     return info;
 }
 
