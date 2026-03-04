@@ -133,6 +133,7 @@ HWTEST_F(WindowAdapterTest, WindowAdapter_OnUnfocused, TestSize.Level0)
     EXPECT_TRUE(WindowAdapter::GetInstance().focusWindowInfos_.empty());
 }
 
+#ifdef SCENE_BOARD_ENABLE
 /**
  * @tc.name: WindowAdapter_OnWindowInfoChanged
  * @tc.desc: windowId
@@ -191,5 +192,6 @@ HWTEST_F(WindowAdapterTest, WindowAdapter_OnWindowInfoChanged, TestSize.Level0)
     listener->OnWindowInfoChanged(winInfoList);
     EXPECT_TRUE(hasHandled_);
 }
+#endif
 } // namespace MiscServices
 } // namespace OHOS
