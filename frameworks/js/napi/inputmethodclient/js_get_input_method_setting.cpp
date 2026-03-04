@@ -1046,6 +1046,9 @@ void JsGetInputMethodSetting::GetIsUpdateFlag(const std::string &type, bool &isU
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     isUpdateFlag = true;
     auto targetType = EVENT_TYPE.find(type);
+    if (targetType == EVENT_TYPE.end()) {
+       return;
+   }
     for (auto eventType : EVENT_TYPE) {
         if (eventType.first != targetType->first && eventType.second == targetType->second &&
             jsCbMap_.find(eventType.first) != jsCbMap_.end()) {
