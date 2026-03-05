@@ -1096,6 +1096,7 @@ int32_t ImeInfoInquirer::GetFullImeInfo(int32_t userId,
         imeInfo.versionCode = bundleInfo.versionCode;
         imeInfo.versionName = bundleInfo.versionName;
     }
+    imeInfo.ShrinkStrings();
     return ErrorCode::NO_ERROR;
 }
 
