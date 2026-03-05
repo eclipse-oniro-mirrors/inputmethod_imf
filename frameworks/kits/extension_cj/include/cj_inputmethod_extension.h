@@ -20,6 +20,7 @@
 #include "cj_inputmethod_extension_object.h"
 #include "configuration.h"
 #include "display_manager.h"
+#include "inputmethod_display_listener.h"
 #include "inputmethod_extension.h"
 #include "system_ability_status_change_stub.h"
 
@@ -29,25 +30,6 @@ namespace AbilityRuntime {
  * @brief Basic inputmethod components.
  */
 class CjInputMethodExtension : public InputMethodExtension {
-    struct CacheDisplay {
-        int32_t displayWidth = 0;
-        int32_t displayHeight = 0;
-        Rosen::Rotation displayRotation = Rosen::Rotation::ROTATION_0;
-        Rosen::FoldStatus displayFoldStatus = Rosen::FoldStatus::UNKNOWN;
-        bool IsEmpty()
-        {
-            return displayWidth == 0 && displayHeight == 0 && displayRotation == Rosen::Rotation::ROTATION_0 &&
-                displayFoldStatus == Rosen::FoldStatus::UNKNOWN;
-        };
-        void SetCacheDisplay(int32_t width, int32_t height, Rosen::Rotation rotation, Rosen::FoldStatus foldStatus)
-        {
-            displayWidth = width;
-            displayHeight = height;
-            displayRotation = rotation;
-            displayFoldStatus = foldStatus;
-        };
-    };
-
 public:
     CjInputMethodExtension();
     ~CjInputMethodExtension() override;
@@ -125,19 +107,6 @@ public:
      */
     void OnStop() override;
 
-    /**
-     * @brief Called when the system configuration is updated.
-     *
-     * @param configuration Indicates the updated configuration information.
-     */
-    void OnConfigurationUpdated(const AppExecFwk::Configuration &config) override;
-
-    /**
-     * @brief Called when configuration changed, including system configuration and window configuration.
-     *
-     */
-    void ConfigurationUpdated();
-
     void SetCjContext(sptr<CjInputMethodExtensionContext> cjContext)
     {
         cjContext_ = cjContext;
@@ -146,57 +115,10 @@ public:
 private:
     void ListenWindowManager();
 
-    void InitDisplayCache();
-
     CjInputMethodExtensionObject cjObj_;
     sptr<CjInputMethodExtensionContext> cjContext_ = nullptr;
     std::shared_ptr<AbilityHandler> handler_ = nullptr;
-    CacheDisplay cacheDisplay_;
-
-protected:
-    class CjInputMethodExtensionDisplayAttributeListener : public Rosen::DisplayManager::IDisplayAttributeListener {
-    public:
-        explicit CjInputMethodExtensionDisplayAttributeListener(const std::weak_ptr<CjInputMethodExtension> &extension)
-        {
-            cjInputMethodExtension_ = extension;
-        }
-
-        void OnAttributeChange(Rosen::DisplayId displayId, const std::vector<std::string>& attributes) override
-        {
-            auto inputMethodSptr = cjInputMethodExtension_.lock();
-            if (inputMethodSptr != nullptr) {
-                inputMethodSptr->CheckNeedAdjustKeyboard(displayId);
-                inputMethodSptr->OnChange(displayId);
-            }
-        }
-
-    private:
-        std::weak_ptr<CjInputMethodExtension> cjInputMethodExtension_;
-    };
-
-    void OnChange(Rosen::DisplayId displayId);
-    void CheckNeedAdjustKeyboard(Rosen::DisplayId displayId);
-
-private:
-    class SystemAbilityStatusChangeListener : public OHOS::SystemAbilityStatusChangeStub {
-    public:
-        SystemAbilityStatusChangeListener(sptr<CjInputMethodExtensionDisplayAttributeListener> displayListener)
-            : listener_(displayListener) { };
-        ~SystemAbilityStatusChangeListener()
-        {
-            if (listener_ != nullptr) {
-                std::vector<std::string> attributes = {"rotation", "width", "height"};
-                Rosen::DisplayManager::GetInstance().RegisterDisplayAttributeListener(attributes, listener_);
-            }
-        }
-        void OnAddSystemAbility(int32_t systemAbilityId, const std::string &deviceId) override;
-        void OnRemoveSystemAbility(int32_t systemAbilityId, const std::string &deviceId) override { }
-
-    private:
-        sptr<CjInputMethodExtensionDisplayAttributeListener> listener_ = nullptr;
-    };
-
-    sptr<CjInputMethodExtensionDisplayAttributeListener> displayListener_ = nullptr;
+    sptr<MiscServices::InputMethodDisplayAttributeListener> displayListener_ = nullptr;
 };
 } // namespace AbilityRuntime
 } // namespace OHOS

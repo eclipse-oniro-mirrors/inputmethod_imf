@@ -33,8 +33,6 @@
 namespace OHOS {
 namespace MiscServices {
 using namespace AbilityRuntime;
-const std::string FOLD_SCREEN_TYPE = OHOS::system::GetParameter("const.window.foldscreen.type", "0,0,0,0");
-constexpr const char *EXTEND_FOLD_TYPE = "4";
 AbilityRuntime::InputMethodExtension *OHOS_ABILITY_ETSInputMethodExtension(
     const std::unique_ptr<AbilityRuntime::Runtime> &runtime)
 {
@@ -104,21 +102,8 @@ void ETSInputMethodExtension::Init(const std::shared_ptr<AbilityLocalRecord> &re
 
     BindContext(abilityInfo, record->GetWant(), moduleName, srcPath);
     handler_ = handler;
-    InitDisplayCache();
     ListenWindowManager();
     IMSA_HILOGI("Init End");
-}
-
-void ETSInputMethodExtension::InitDisplayCache()
-{
-    auto foldStatus = Rosen::DisplayManager::GetInstance().GetFoldStatus();
-    auto displayPtr = Rosen::DisplayManager::GetInstance().GetDefaultDisplaySync();
-    if (displayPtr == nullptr) {
-        IMSA_HILOGE("displayPtr is null");
-        return;
-    }
-    cacheDisplay_.SetCacheDisplay(
-        displayPtr->GetWidth(), displayPtr->GetHeight(), displayPtr->GetRotation(), foldStatus);
 }
 
 void ETSInputMethodExtension::GetSrcPath(std::string &srcPath)
@@ -318,52 +303,6 @@ void ETSInputMethodExtension::OnCommand(const AAFwk::Want &want, bool restart, i
     CallObjectMethod(false, "onRequest", "C{@ohos.app.ability.Want.Want}i:", wantRef, iStartId);
 }
 
-void ETSInputMethodExtension::OnConfigurationUpdated(const AppExecFwk::Configuration &config)
-{
-    AbilityRuntime::InputMethodExtension::OnConfigurationUpdated(config);
-    IMSA_HILOGD("called.");
-    auto context = GetContext();
-    if (context == nullptr) {
-        IMSA_HILOGE("context is invalid!");
-        return;
-    }
-
-    auto contextConfig = context->GetConfiguration();
-    if (contextConfig != nullptr) {
-        std::vector<std::string> changeKeyValue;
-        contextConfig->CompareDifferent(changeKeyValue, config);
-        if (!changeKeyValue.empty()) {
-            contextConfig->Merge(changeKeyValue, config);
-        }
-        IMSA_HILOGD("config dump merge: %{public}s.", contextConfig->GetName().c_str());
-    }
-    ConfigurationUpdated();
-}
-
-void ETSInputMethodExtension::ConfigurationUpdated()
-{
-    IMSA_HILOGD("called.");
-    auto env = etsRuntime_.GetAniEnv();
-    if (env == nullptr) {
-        IMSA_HILOGE("env null");
-        return;
-    }
-
-    // Notify extension context
-    auto context = GetContext();
-    if (context == nullptr) {
-        IMSA_HILOGE("context is nullptr!");
-        return;
-    }
-    auto fullConfig = context->GetConfiguration();
-    if (fullConfig == nullptr) {
-        IMSA_HILOGE("configuration is nullptr!");
-        return;
-    }
-
-    AbilityRuntime::EtsExtensionContext::ConfigurationUpdated(env, etsAbilityObj_, fullConfig);
-}
-
 ani_ref ETSInputMethodExtension::CallObjectMethod(bool withResult, const char *name, const char *signature, ...)
 {
     IMSA_HILOGI("CallObjectMethod %{public}s", name);
@@ -408,80 +347,13 @@ ani_ref ETSInputMethodExtension::CallObjectMethod(bool withResult, const char *n
 void ETSInputMethodExtension::ListenWindowManager()
 {
     IMSA_HILOGD("register window manager service listener.");
-    auto etsInputMethodExtension = std::static_pointer_cast<ETSInputMethodExtension>(shared_from_this());
-    displayListener_ = sptr<EtsInputMethodExtensionDisplayAttributeListener>::MakeSptr(etsInputMethodExtension);
+    displayListener_ = sptr<InputMethodDisplayAttributeListener>::MakeSptr(GetContext());
     if (displayListener_ == nullptr) {
         IMSA_HILOGD("failed to create display listener.");
         return;
     }
     std::vector<std::string> attributes = {"rotation", "width", "height"};
     Rosen::DisplayManager::GetInstance().RegisterDisplayAttributeListener(attributes, displayListener_);
-}
-
-void ETSInputMethodExtension::ListenerCheckNeedAdjustKeyboard(Rosen::DisplayId displayId)
-{
-    if (FOLD_SCREEN_TYPE.empty() || FOLD_SCREEN_TYPE[0] != *EXTEND_FOLD_TYPE) {
-        IMSA_HILOGD("The current device is a non-foldable device.");
-        return;
-    }
-    if (displayId != Rosen::DisplayManager::GetInstance().GetDefaultDisplayId()) {
-        return;
-    }
-    auto foldStatus = Rosen::DisplayManager::GetInstance().GetFoldStatus();
-    auto displayPtr = Rosen::DisplayManager::GetInstance().GetDefaultDisplaySync();
-    if (displayPtr == nullptr) {
-        return;
-    }
-    IMSA_HILOGD("display width: %{public}d, height: %{public}d, rotation: %{public}d, foldStatus: %{public}d",
-        displayPtr->GetWidth(),
-        displayPtr->GetHeight(),
-        displayPtr->GetRotation(),
-        foldStatus);
-    if (!cacheDisplay_.IsEmpty()) {
-        if ((cacheDisplay_.displayWidth != displayPtr->GetWidth() ||
-            cacheDisplay_.displayHeight != displayPtr->GetHeight()) &&
-            cacheDisplay_.displayFoldStatus == foldStatus &&
-            cacheDisplay_.displayRotation == displayPtr->GetRotation()) {
-            InputMethodAbility::GetInstance().AdjustKeyboard();
-        }
-    }
-    cacheDisplay_.SetCacheDisplay(
-        displayPtr->GetWidth(), displayPtr->GetHeight(), displayPtr->GetRotation(), foldStatus);
-}
-
-void ETSInputMethodExtension::OnListenerChange(Rosen::DisplayId displayId)
-{
-    IMSA_HILOGD("displayId: %{public}" PRIu64 "", displayId);
-    auto context = GetContext();
-    if (context == nullptr) {
-        IMSA_HILOGE("context is invalid!");
-        return;
-    }
-
-    auto contextConfig = context->GetConfiguration();
-    if (contextConfig == nullptr) {
-        IMSA_HILOGE("configuration is invalid!");
-        return;
-    }
-
-    bool isConfigChanged = false;
-    auto configUtils = std::make_shared<ConfigurationUtils>();
-    configUtils->UpdateDisplayConfig(displayId, contextConfig, context->GetResourceManager(), isConfigChanged);
-    IMSA_HILOGD("OnListenerCreate, isConfigChanged: %{public}d, Config after update: %{public}s.", isConfigChanged,
-        contextConfig->GetName().c_str());
-
-    if (isConfigChanged) {
-        auto inputMethodExtension = std::static_pointer_cast<ETSInputMethodExtension>(shared_from_this());
-        auto task = [inputMethodExtension]() {
-            if (inputMethodExtension) {
-                inputMethodExtension->ConfigurationUpdated();
-            }
-        };
-        if (handler_ != nullptr) {
-            handler_->PostTask(task, "ETSInputMethodExtension:OnListenerCreate",
-                0, AppExecFwk::EventQueue::Priority::VIP);
-        }
-    }
 }
 } // namespace AbilityRuntime
 } // namespace OHOS
