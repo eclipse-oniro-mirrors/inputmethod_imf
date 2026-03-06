@@ -82,7 +82,7 @@ HWTEST_F(InputMethodDisplayAttributeListenerTest, testInitDisplayListener, TestS
  */
 HWTEST_F(InputMethodDisplayAttributeListenerTest, testOnChange, TestSize.Level0)
 {
-    IMSA_HILOGI("InputMethodDisplayAttributeListenerTest::testInitDisplayListener");
+    IMSA_HILOGI("InputMethodDisplayAttributeListenerTest::testOnChange START");
     bool isConfigurationUpdate = false;
     displayListener_->configurationUpdate_ = [&](Rosen::DisplayId displayId) {
         IMSA_HILOGI("InputMethodAbilityTest configrationUpdate");
@@ -120,7 +120,7 @@ HWTEST_F(InputMethodDisplayAttributeListenerTest, testOnChange, TestSize.Level0)
  */
 HWTEST_F(InputMethodDisplayAttributeListenerTest, testCheckNeedAdjustKeyboard, TestSize.Level0)
 {
-    IMSA_HILOGI("InputMethodDisplayAttributeListenerTest::testInitDisplayListener");
+    IMSA_HILOGI("InputMethodDisplayAttributeListenerTest::testCheckNeedAdjustKeyboard START");
     displayListener_->displayAttribute_.SetCacheDisplay(
         10, 10, Rosen::Rotation::ROTATION_0, Rosen::FoldStatus::UNKNOWN);
     displayListener_->CheckNeedAdjustKeyboard(0);
@@ -141,7 +141,7 @@ HWTEST_F(InputMethodDisplayAttributeListenerTest, testCheckNeedAdjustKeyboard, T
  */
 HWTEST_F(InputMethodDisplayAttributeListenerTest, testSetConfigurationUpdate, TestSize.Level0)
 {
-    IMSA_HILOGI("InputMethodDisplayAttributeListenerTest testClearBindInfo START");
+    IMSA_HILOGI("InputMethodDisplayAttributeListenerTest testSetConfigurationUpdate START");
     bool isConfigurationUpdate = false;
     std::function<void(Rosen::DisplayId displayId)> configurationUpdate = [&](Rosen::DisplayId displayId) {
         IMSA_HILOGI("InputMethodDisplayAttributeListenerTest configrationUpdate");
