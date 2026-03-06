@@ -374,7 +374,7 @@ int32_t ImeInfoInquirer::GetSwitchInfoBySwitchCount(SwitchInfo &switchInfo, int3
         IMSA_HILOGE("userId: %{public}d ListEnabledInputMethod failed! ret: %{public}d.", userId, ret);
         return ret;
     }
-    auto currentImeBundle = ImeCfgManager::GetInstance().GetCurrentImeCfg(userId)->bundleName;
+    auto currentImeBundle = ImeEnabledInfoManager::GetInstance().GetUserCfgIme(userId).bundleName;
     auto iter = std::find_if(props.begin(), props.end(),
         [&currentImeBundle](const Property &property) { return property.name == currentImeBundle; });
     if (iter == props.end()) {

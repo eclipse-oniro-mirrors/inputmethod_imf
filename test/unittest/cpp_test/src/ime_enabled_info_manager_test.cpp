@@ -1304,7 +1304,7 @@ HWTEST_F(ImeEnabledInfoManagerTest, testSetCurrentIme_002, TestSize.Level0)
                 ImeEnabledInfoManagerTest::CUR_SUBNAME1 } } });
     EXPECT_FALSE(ImeEnabledInfoManagerTest::WaitDataShareCallback(
         ImeEnabledInfoManagerTest::GenerateAllEnabledCfg(easyEnabledInfos1)));
-    EXPECT_TRUE(ImeEnabledInfoManagerTest::enabledCfg_.empty());
+    EXPECT_FALSE(ImeEnabledInfoManagerTest::enabledCfg_.empty());
 }
 
 /**
@@ -1462,6 +1462,30 @@ HWTEST_F(ImeEnabledInfoManagerTest, testGetCurrentImeCfg_002, TestSize.Level0)
     EXPECT_EQ(currentIme->extName, ImeEnabledInfoManagerTest::EXT_NAME2);
     EXPECT_EQ(currentIme->subName, ImeEnabledInfoManagerTest::CUR_SUBNAME2);
     EXPECT_EQ(currentIme->imeId,
+        std::string(ImeEnabledInfoManagerTest::BUNDLE_NAME2) + "/" + ImeEnabledInfoManagerTest::EXT_NAME2);
+}
+
+/**
+ * @tc.name: testGetUserCfgIme_001
+ * @tc.desc: test:has tmp ime, current ime is tmp ime
+ * @tc.require:
+ * @tc.author: shiyu
+ */
+HWTEST_F(ImeEnabledInfoManagerTest, testGetUserCfgIme_001, TestSize.Level0)
+{
+    IMSA_HILOGI("ImeEnabledInfoManagerTest testGetUserCfgIme_001 START");
+    std::map<int32_t, std::vector<ImeEasyInfo>> easyEnabledInfos;
+    easyEnabledInfos.insert({ ImeEnabledInfoManagerTest::currentUserId_,
+        { { ImeEnabledInfoManagerTest::SYS_IME_KEY, EnabledStatus::BASIC_MODE },
+                          { ImeEnabledInfoManagerTest::IME_KEY2, EnabledStatus::BASIC_MODE, true, true, false,
+                ImeEnabledInfoManagerTest::CUR_SUBNAME2 } } });
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_ =
+        ImeEnabledInfoManagerTest::GenerateAllEnabledCfg(easyEnabledInfos);
+    auto currentIme = ImeEnabledInfoManager::GetInstance().GetUserCfgIme(ImeEnabledInfoManagerTest::currentUserId_);
+    EXPECT_EQ(currentIme.bundleName, ImeEnabledInfoManagerTest::BUNDLE_NAME2);
+    EXPECT_EQ(currentIme.extName, ImeEnabledInfoManagerTest::EXT_NAME2);
+    EXPECT_EQ(currentIme.subName, ImeEnabledInfoManagerTest::CUR_SUBNAME2);
+    EXPECT_EQ(currentIme.imeId,
         std::string(ImeEnabledInfoManagerTest::BUNDLE_NAME2) + "/" + ImeEnabledInfoManagerTest::EXT_NAME2);
 }
 
