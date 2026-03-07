@@ -67,18 +67,5 @@ std::shared_ptr<InputMethodExtensionContext> InputMethodExtension::CreateAndInit
     }
     return context;
 }
-
-void InputMethodExtension::OnConfigurationUpdated(const AppExecFwk::Configuration &config)
-{
-    Extension::OnConfigurationUpdated(config);
-    auto context = GetContext();
-    if (context == nullptr) {
-        IMSA_HILOGE("context is nullptr!");
-        return;
-    }
-
-    auto configUtils = std::make_shared<ConfigurationUtils>();
-    configUtils->UpdateGlobalConfig(config, context->GetResourceManager());
-}
 } // namespace AbilityRuntime
 } // namespace OHOS

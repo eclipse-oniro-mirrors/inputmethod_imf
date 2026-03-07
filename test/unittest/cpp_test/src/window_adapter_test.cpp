@@ -132,6 +132,7 @@ HWTEST_F(WindowAdapterTest, WindowAdapter_OnUnfocused, TestSize.Level0)
     WindowAdapter::GetInstance().OnUnFocused(focusWindowInfo);
     EXPECT_TRUE(WindowAdapter::GetInstance().focusWindowInfos_.empty());
 }
+
 #ifdef SCENE_BOARD_ENABLE
 /**
  * @tc.name: WindowAdapter_OnWindowInfoChanged

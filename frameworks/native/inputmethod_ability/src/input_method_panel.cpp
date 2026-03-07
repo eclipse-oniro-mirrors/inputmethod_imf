@@ -1285,7 +1285,7 @@ int32_t InputMethodPanel::ShowPanel(uint32_t windowId)
     bool needAdjust = false;
     {
         std::lock_guard<std::mutex> lock(parseParamsMutex_);
-        needAdjust = GetCurDisplayId() == 0 && IsKeyboardRectAtBottom() && IsNeedConfig();
+        needAdjust = GetCurDisplayId() == 0 && IsKeyboardRectAtBottom() && IsNeedConfig() && IsValidParamWithConfig();
     }
     if (panelType_ == PanelType::SOFT_KEYBOARD && panelFlag_ != FLG_CANDIDATE_COLUMN) {
         if (needAdjust || !hasSetSize_.load()) {
@@ -2731,6 +2731,20 @@ void InputMethodPanel::OnVisibilityChange(bool isVisible)
     info.rect_ = rect;
     OnPanelHeightChange(info);
     PanelStatusChangeToImc(status, rect);
+}
+
+bool InputMethodPanel::IsValidParamWithConfig()
+{
+    bool isPortrait = IsDisplayPortrait();
+    auto keys = GetScreenStatus(panelFlag_);
+    auto styleKey = isPortrait ? std::get<1>(keys) : std::get<0>(keys);
+    for (const auto &info : panelAdjust_) {
+        if (IsVectorsEqual(info.first, styleKey)) {
+            return !(info.second.top == 0 && info.second.left == 0 && info.second.right == 0
+                && info.second.bottom == 0);
+        }
+    }
+    return true;
 }
 } // namespace MiscServices
 } // namespace OHOS

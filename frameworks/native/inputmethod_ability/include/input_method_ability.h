@@ -118,6 +118,7 @@ public:
     AttachOptions GetAttachOptions();
     int32_t HandleKeyEventResult(uint64_t cbId, bool consumeResult, const sptr<IRemoteObject> &channelObject);
     void RemoveDeathRecipient();
+    void SetConfigurationUpdate(std::function<void(Rosen::DisplayId displayId)> configurationUpdate);
 
 public:
     /* called from TaskManager worker thread */
@@ -209,6 +210,7 @@ private:
     void PushPrivateCommand();
     void SetSysPanelStatus(const SysPanelStatus &sysPanelStatus);
     bool IsSystemPanelSupported();
+    void ConfigurationUpdate(Rosen::DisplayId displayId);
     
     ConcurrentMap<PanelType, std::shared_ptr<InputMethodPanel>> panels_ {};
     std::atomic_bool isBound_ { false };
@@ -257,6 +259,7 @@ private:
     std::atomic<int32_t> isSysPanelSupport_ = 0;
     
     bool IsDisplayChanged(uint64_t oldDisplayId, uint64_t newDisplayId);
+    std::function<void(Rosen::DisplayId displayId)> configurationUpdate_;
 };
 } // namespace MiscServices
 } // namespace OHOS

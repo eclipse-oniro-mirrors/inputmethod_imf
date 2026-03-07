@@ -2023,6 +2023,7 @@ HWTEST_F(InputMethodAbilityTest, testOnCallingDisplayIdChanged, TestSize.Level0)
 HWTEST_F(InputMethodAbilityTest, testOnCallingDisplayIdChanged_002, TestSize.Level0)
 {
     IMSA_HILOGI("testOnCallingDisplayIdChanged_002 start.");
+    uint32_t windowId = 10;
     inputMethodAbility_.inputAttribute_.callingDisplayId = 0;
     // DisplayId same
     inputMethodAbility_.OnCallingDisplayIdChanged(0);
@@ -2037,6 +2038,7 @@ HWTEST_F(InputMethodAbilityTest, testOnCallingDisplayIdChanged_002, TestSize.Lev
     auto panel = std::make_shared<InputMethodPanel>();
     panel->panelType_ = PanelType::SOFT_KEYBOARD;
     panel->panelFlag_ = PanelFlag::FLG_FLOATING;
+    panel->windowId_ = windowId;
     inputMethodAbility_.panels_.Insert(PanelType::SOFT_KEYBOARD, panel);
     inputMethodAbility_.OnCallingDisplayIdChanged(displayId1);
     EXPECT_EQ(inputMethodAbility_.inputAttribute_.callingDisplayId, displayId1);
@@ -2046,6 +2048,7 @@ HWTEST_F(InputMethodAbilityTest, testOnCallingDisplayIdChanged_002, TestSize.Lev
     auto panel1 = std::make_shared<InputMethodPanel>();
     panel1->panelType_ = PanelType::SOFT_KEYBOARD;
     panel1->panelFlag_ = PanelFlag::FLG_FIXED;
+    panel1->windowId_ = windowId;
     inputMethodAbility_.panels_.Insert(PanelType::SOFT_KEYBOARD, panel1);
     inputMethodAbility_.OnCallingDisplayIdChanged(displayId2);
     EXPECT_EQ(inputMethodAbility_.inputAttribute_.callingDisplayId, displayId2);

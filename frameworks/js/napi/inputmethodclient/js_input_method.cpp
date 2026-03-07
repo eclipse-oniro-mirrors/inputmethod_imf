@@ -30,6 +30,8 @@ namespace OHOS {
 namespace MiscServices {
 std::mutex JsInputMethod::jsCbsLock_;
 std::unordered_map<std::string, std::vector<std::shared_ptr<JSCallbackObject>>> JsInputMethod::jsCbs_;
+constexpr size_t ARGC_ONE = 1;
+constexpr size_t ARGC_TWO = 2;
 napi_value JsInputMethod::Init(napi_env env, napi_value exports)
 {
     napi_property_descriptor descriptor[] = {
@@ -39,6 +41,7 @@ napi_value JsInputMethod::Init(napi_env env, napi_value exports)
         DECLARE_NAPI_FUNCTION("getDefaultInputMethod", GetDefaultInputMethod),
         DECLARE_NAPI_FUNCTION("getSystemInputMethodConfigAbility", GetSystemInputMethodConfigAbility),
         DECLARE_NAPI_FUNCTION("switchCurrentInputMethodSubtype", SwitchCurrentInputMethodSubtype),
+        DECLARE_NAPI_FUNCTION("switchInputMethodByUserId", SwitchInputMethodByUserId),
         DECLARE_NAPI_FUNCTION("switchCurrentInputMethodAndSubtype", SwitchCurrentInputMethodAndSubtype),
         DECLARE_NAPI_FUNCTION("setSimpleKeyboardEnabled", SetSimpleKeyboardEnabled),
         DECLARE_NAPI_FUNCTION("onAttachmentDidFail", OnAttachmentDidFail),
@@ -299,12 +302,21 @@ napi_value JsInputMethod::SwitchInputMethod(napi_env env, napi_callback_info inf
 
 napi_value JsInputMethod::GetCurrentInputMethod(napi_env env, napi_callback_info info)
 {
+    size_t argc = ARGC_ONE;
+    napi_value argv[1] = { nullptr };
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    int32_t userId = -1;
+    if (argc > 0) {
+        PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[0], userId) == napi_ok, "enable type must be int32_t!",
+            TYPE_NONE, JsUtil::Const::Null(env));
+        PARAM_CHECK_RETURN(env, userId >= 0, "userId invalid!", TYPE_NONE, JsUtil::Const::Null(env));
+    }
     auto instance = InputMethodController::GetInstance();
     if (instance == nullptr) {
         IMSA_HILOGE("input method controller is nullptr!");
         return JsUtil::Const::Null(env);
     }
-    std::shared_ptr<Property> property = instance->GetCurrentInputMethod();
+    std::shared_ptr<Property> property = instance->GetCurrentInputMethod(userId);
     if (property == nullptr) {
         IMSA_HILOGE("current input method is nullptr!");
         return JsUtil::Const::Null(env);
@@ -314,12 +326,24 @@ napi_value JsInputMethod::GetCurrentInputMethod(napi_env env, napi_callback_info
 
 napi_value JsInputMethod::GetCurrentInputMethodSubtype(napi_env env, napi_callback_info info)
 {
+    size_t argc = ARGC_ONE;
+    napi_value argv[1] = { nullptr };
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+
+    int32_t userId = -1;
+    PARAM_CHECK_RETURN(env, argc < ARGC_TWO, "too many parameters!", TYPE_NONE, JsUtil::Const::Null(env));
+    if (argc > 0) {
+        PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[0], userId) == napi_ok, "userId type must be int32_t!",
+            TYPE_NONE, JsUtil::Const::Null(env));
+        PARAM_CHECK_RETURN(env, userId >= 0, "userId invalid!", TYPE_NONE, JsUtil::Const::Null(env));
+    }
+
     auto instance = InputMethodController::GetInstance();
     if (instance == nullptr) {
         IMSA_HILOGE("input method controller is nullptr!");
         return JsUtil::Const::Null(env);
     }
-    std::shared_ptr<SubProperty> subProperty = instance->GetCurrentInputMethodSubtype();
+    std::shared_ptr<SubProperty> subProperty = instance->GetCurrentInputMethodSubtype(userId);
     if (subProperty == nullptr) {
         IMSA_HILOGE("current input method subtype is nullptr!");
         return JsUtil::Const::Null(env);
@@ -329,13 +353,24 @@ napi_value JsInputMethod::GetCurrentInputMethodSubtype(napi_env env, napi_callba
 
 napi_value JsInputMethod::GetDefaultInputMethod(napi_env env, napi_callback_info info)
 {
+    size_t argc = ARGC_ONE;
+    napi_value argv[1] = { nullptr };
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    int32_t userId = -1;
+    PARAM_CHECK_RETURN(env, argc < ARGC_TWO, "too many parameters!", TYPE_NONE, JsUtil::Const::Null(env));
+    if (argc > 0) {
+        PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[0], userId) == napi_ok, "enable type must be int32_t!",
+            TYPE_NONE, JsUtil::Const::Null(env));
+        PARAM_CHECK_RETURN(env, userId >= 0, "userId invalid!", TYPE_NONE, JsUtil::Const::Null(env));
+    }
+
     auto instance = InputMethodController::GetInstance();
     if (instance == nullptr) {
         IMSA_HILOGE("input method controller is nullptr!");
         return JsUtil::Const::Null(env);
     }
     std::shared_ptr<Property> property;
-    int32_t ret = instance->GetDefaultInputMethod(property);
+    int32_t ret = instance->GetDefaultInputMethod(property, userId);
     if (property == nullptr) {
         IMSA_HILOGE("default input method is nullptr!");
         return JsUtil::Const::Null(env);
@@ -349,13 +384,24 @@ napi_value JsInputMethod::GetDefaultInputMethod(napi_env env, napi_callback_info
 
 napi_value JsInputMethod::GetSystemInputMethodConfigAbility(napi_env env, napi_callback_info info)
 {
+    size_t argc = ARGC_ONE;
+    napi_value argv[1] = { nullptr };
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    int32_t userId = -1;
+    PARAM_CHECK_RETURN(env, argc < ARGC_TWO, "too many parameters!", TYPE_NONE, JsUtil::Const::Null(env));
+    if (argc > 0) {
+        PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[0], userId) == napi_ok, "enable type must be int32_t!",
+            TYPE_NONE, JsUtil::Const::Null(env));
+        PARAM_CHECK_RETURN(env, userId >= 0, "userId invalid!", TYPE_NONE, JsUtil::Const::Null(env));
+    }
+
     auto instance = InputMethodController::GetInstance();
     if (instance == nullptr) {
         IMSA_HILOGE("input method controller is nullptr!");
         return JsUtil::Const::Null(env);
     }
     OHOS::AppExecFwk::ElementName inputMethodConfig;
-    int32_t ret = instance->GetInputMethodConfig(inputMethodConfig);
+    int32_t ret = instance->GetInputMethodConfig(inputMethodConfig, userId);
     if (ret != ErrorCode::NO_ERROR) {
         JsUtils::ThrowException(env, JsUtils::Convert(ret), "failed to get input method config", TYPE_NONE);
         return JsUtil::Const::Null(env);
@@ -657,6 +703,56 @@ void JsInputMethod::SetImcInnerListener()
     }
     static auto listener = std::make_shared<JsInputMethod>();
     instance->SetImcInnerListener(listener);
+}
+
+napi_value JsInputMethod::SwitchInputMethodByUserId(napi_env env, napi_callback_info info)
+{
+    InputMethodSyncTrace tracer("JsInputMethod_SwitchInputMethodbyuserid");
+    auto ctxt = std::make_shared<SwitchInputMethodContext>();
+    auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
+        napi_status status = napi_generic_failure;
+        PARAM_CHECK_RETURN(env, argc >= 2, "at least two parameter is required!", TYPE_NONE, napi_invalid_arg);
+        PARAM_CHECK_RETURN(env, JsUtil::GetType(env, argv[0]) == napi_number, "userId must be number!",
+            TYPE_NUMBER, napi_invalid_arg);
+        status = JsUtils::GetValue(env, argv[0], ctxt->userId);
+        PARAM_CHECK_RETURN(env, ctxt->userId >= 0, "invalid userId", TYPE_NONE, napi_invalid_arg);
+        napi_valuetype valueType = JsUtil::GetType(env, argv[1]);
+        PARAM_CHECK_RETURN(env, valueType == napi_string,
+            "bundleName type must be string!", TYPE_NONE, napi_invalid_arg);
+        status = JsUtils::GetValue(env, argv[1], ctxt->packageName);
+        ctxt->trigger = SwitchTrigger::SYSTEM_APP;
+        napi_valuetype type = napi_undefined;
+        if (argc > 2) {
+            napi_typeof(env, argv[2], &type);
+            if (type == napi_string) {
+                JsUtil::GetValue(env, argv[2], ctxt->id);
+            }
+        }
+        return status;
+    };
+    auto output = [ctxt](napi_env env, napi_value *result) -> napi_status {
+        napi_status status = napi_get_boolean(env, ctxt->isSwitchInput, result);
+        return status;
+    };
+    auto exec = [ctxt](AsyncCall::Context *ctx) {
+        int32_t errCode = ErrorCode::ERROR_EX_NULL_POINTER;
+        auto instance = InputMethodController::GetInstance();
+        if (instance != nullptr) {
+            errCode = instance->SwitchInputMethod(ctxt->trigger, ctxt->packageName, ctxt->id, ctxt->userId);
+        }
+        if (errCode == ErrorCode::NO_ERROR) {
+            ctxt->status = napi_ok;
+            ctxt->SetState(ctxt->status);
+            ctxt->isSwitchInput = true;
+        } else {
+            IMSA_HILOGE("exec SwitchInputMethod failed ret: %{public}d!", errCode);
+            ctxt->SetErrorCode(errCode);
+        }
+    };
+    ctxt->SetAction(std::move(input), std::move(output));
+    // 3 means JsAPI:SwitchInputMethodbyuserid has 3 params at most.
+    AsyncCall asyncCall(env, info, ctxt, 3);
+    return asyncCall.Call(env, exec, "SwitchInputMethodbyuserid");
 }
 } // namespace MiscServices
 } // namespace OHOS

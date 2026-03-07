@@ -611,12 +611,6 @@ int32_t ImeEnabledInfoManager::SetCurrentIme(
             return ErrorCode::ERROR_ENABLE_IME;
         }
     }
-    auto iter = std::find_if(enabledCfg.enabledInfos.begin(), enabledCfg.enabledInfos.end(),
-        [](const auto &info) { return info.extraInfo.isTmpIme; });
-    if (iter != enabledCfg.enabledInfos.end()) {
-        IMSA_HILOGI("%{public}d has tmp ime:%{public}s, not mod.", userId, iter->bundleName.c_str());
-        return ErrorCode::NO_ERROR;
-    }
     for (auto &info : enabledCfg.enabledInfos) {
         info.extraInfo.currentSubName = "";
         info.extraInfo.isDefaultImeSet = false;
@@ -716,6 +710,30 @@ std::shared_ptr<ImeNativeCfg> ImeEnabledInfoManager::GetCurrentImeCfg(int32_t us
     }
     IMSA_HILOGI("%{public}d not set default ime.", userId);
     return std::make_shared<ImeNativeCfg>();
+}
+
+ImeNativeCfg ImeEnabledInfoManager::GetUserCfgIme(int32_t userId)
+{
+    ImeNativeCfg nativeInfo;
+    std::lock_guard<std::mutex> lock(operateLock_);
+    ImeEnabledCfg enabledCfg;
+    auto ret = GetEnabledCacheWithCorrect(userId, enabledCfg);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("%{public}d get enable info failed:%{public}d.", userId, ret);
+        return nativeInfo;
+    }
+    auto iter = std::find_if(enabledCfg.enabledInfos.begin(), enabledCfg.enabledInfos.end(),
+        [](const auto &info) { return info.extraInfo.isDefaultIme; });
+    if (iter != enabledCfg.enabledInfos.end()) {
+        IMSA_HILOGD("%{public}d has default ime:%{public}s.", userId, iter->bundleName.c_str());
+        nativeInfo.imeId = iter->bundleName + "/" + iter->extensionName;
+        nativeInfo.bundleName = iter->bundleName;
+        nativeInfo.extName = iter->extensionName;
+        nativeInfo.subName = iter->extraInfo.currentSubName;
+        return nativeInfo;
+    }
+    IMSA_HILOGW("%{public}d not set default ime.", userId);
+    return nativeInfo;
 }
 
 bool ImeEnabledInfoManager::IsDefaultImeSet(int32_t userId)

@@ -243,6 +243,7 @@ private:
     bool IsNeedNotify(PanelFlag panelFlag);
     void WaitSetUIContent();
     int32_t ShowKeyboardToWms(uint32_t windowId);
+    bool IsValidParamWithConfig();
 
     sptr<OHOS::Rosen::Window> window_ = nullptr;
     sptr<OHOS::Rosen::WindowOption> winOption_ = nullptr;

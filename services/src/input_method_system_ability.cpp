@@ -1480,8 +1480,8 @@ bool InputMethodSystemAbility::IsTmpIme(int32_t userId, uint32_t tokenId)
         IMSA_HILOGE("user:%{public}d session is nullptr!", userId);
         return false;
     }
-    auto currentImeCfg = ImeCfgManager::GetInstance().GetCurrentImeCfg(userId);
-    if (currentImeCfg == nullptr) {
+    auto currentImeCfg = ImeEnabledInfoManager::GetInstance().GetUserCfgIme(userId);
+    if (currentImeCfg.bundleName.empty()) {
         IMSA_HILOGE("user:%{public}d has no default ime.", userId);
         return false;
     }
@@ -1495,8 +1495,8 @@ bool InputMethodSystemAbility::IsTmpIme(int32_t userId, uint32_t tokenId)
         bundleName = identityChecker_->GetBundleNameByToken(tokenId);
         IMSA_HILOGW("%{public}d/%{public}d/%{public}s not find in cache.", userId, tokenId, bundleName.c_str());
     }
-    return !currentImeCfg->bundleName.empty() && !bundleName.empty() &&
-           imeData->ime.first != currentImeCfg->bundleName && imeData->ime.first == bundleName;
+    return !currentImeCfg.bundleName.empty() && !bundleName.empty() &&
+        imeData->ime.first != currentImeCfg.bundleName && imeData->ime.first == bundleName;
 }
 
 bool InputMethodSystemAbility::IsTmpImeSwitchSubtype(int32_t userId, uint32_t tokenId, const SwitchInfo &switchInfo)

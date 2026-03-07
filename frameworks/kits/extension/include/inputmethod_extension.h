@@ -63,13 +63,6 @@ public:
    * @return The InputMethodExtension instance.
    */
     static InputMethodExtension *Create(const std::unique_ptr<Runtime> &runtime);
-
-    /**
-     * @brief Called when the system configuration is updated.
-     *
-     * @param configuration Indicates the updated configuration information.
-     */
-    void OnConfigurationUpdated(const AppExecFwk::Configuration &config) override;
 };
 } // namespace AbilityRuntime
 } // namespace OHOS

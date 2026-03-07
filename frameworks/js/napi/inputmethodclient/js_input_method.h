@@ -33,6 +33,7 @@ struct SwitchInputMethodContext : public AsyncCall::Context {
     std::string methodId;    // in InputMethodProperty
     std::string name;        // in InputMethodSubtype
     std::string id;          // in InputMethodSubtype
+    int32_t userId = -1;
     SwitchTrigger trigger = SwitchTrigger::CURRENT_IME;
     napi_status status = napi_generic_failure;
     SwitchInputMethodContext() : Context(nullptr, nullptr){};
@@ -61,6 +62,7 @@ public:
     static napi_value SwitchInputMethod(napi_env env, napi_callback_info info);
     static napi_value SwitchCurrentInputMethodSubtype(napi_env env, napi_callback_info info);
     static napi_value SwitchCurrentInputMethodAndSubtype(napi_env env, napi_callback_info info);
+    static napi_value SwitchInputMethodByUserId(napi_env env, napi_callback_info info);
     static napi_value GetCurrentInputMethodSubtype(napi_env env, napi_callback_info info);
     static napi_value GetCurrentInputMethod(napi_env env, napi_callback_info info);
     static napi_value GetDefaultInputMethod(napi_env env, napi_callback_info info);
