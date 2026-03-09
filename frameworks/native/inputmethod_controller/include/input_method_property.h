@@ -18,6 +18,8 @@
 #include <mutex>
 #include <thread>
 #include <vector>
+#include <cstdint>
+#include <string>
 #include "input_method_status.h"
 #include "parcel.h"
 
@@ -156,6 +158,25 @@ struct FullImeInfo {
     Property prop;
     std::vector<SubProperty> subProps;
     std::string versionName;
+    void ShrinkStrings()
+    {
+        appId.shrink_to_fit();
+        versionName.shrink_to_fit();
+        prop.label.shrink_to_fit();
+        prop.icon.shrink_to_fit();
+        prop.name.shrink_to_fit();
+        prop.id.shrink_to_fit();
+        for (auto &subProp : subProps) {
+            subProp.label.shrink_to_fit();
+            subProp.icon.shrink_to_fit();
+            subProp.locale.shrink_to_fit();
+            subProp.language.shrink_to_fit();
+            subProp.mode.shrink_to_fit();
+            subProp.name.shrink_to_fit();
+            subProp.id.shrink_to_fit();
+        }
+        subProps.shrink_to_fit();
+    }
 };
 
 struct ImeInfo : public FullImeInfo {
