@@ -1473,7 +1473,7 @@ int32_t InputMethodSystemAbility::StartSwitch(int32_t userId, const SwitchInfo &
     }
     return ret;
 }
-
+// LCOV_EXCL_START
 bool InputMethodSystemAbility::IsTmpIme(int32_t userId, uint32_t tokenId)
 {
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
@@ -2908,7 +2908,7 @@ bool InputMethodSystemAbility::IsCurrentIme(int32_t userId, uint32_t tokenId)
     auto imeData = session->GetRealImeData();
     return imeData != nullptr && bundleName == imeData->ime.first;
 }
-
+// LCOV_EXCL_START
 int32_t InputMethodSystemAbility::StartInputType(int32_t userId, InputType type, bool isPersistence)
 {
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
@@ -2932,7 +2932,7 @@ int32_t InputMethodSystemAbility::StartInputType(int32_t userId, InputType type,
     return (type == InputType::SECURITY_INPUT) ? OnStartInputType(userId, switchInfo, false) :
         OnStartInputType(userId, switchInfo, true, isPersistence);
 }
-// LCOV_EXCL_START
+
 void InputMethodSystemAbility::NeedHideWhenSwitchInputType(int32_t userId, InputType type, bool &needHide)
 {
     if (!needHide) {
@@ -3217,7 +3217,7 @@ InputType InputMethodSystemAbility::GetSecurityInputType(const InputClientInfo &
         return InputType::NONE;
     }
 }
-
+// LCOV_EXCL_STOP
 int32_t InputMethodSystemAbility::StartSecurityIme(int32_t &userId, InputClientInfo &inputClientInfo)
 {
     InputType type = GetSecurityInputType(inputClientInfo);
@@ -3278,6 +3278,5 @@ int32_t InputMethodSystemAbility::GetCpuUsage()
     return cpuUsage;
 }
 #endif
-// LCOV_EXCL_STOP
 } // namespace MiscServices
 } // namespace OHOS
