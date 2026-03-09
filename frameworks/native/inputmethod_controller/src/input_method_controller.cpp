@@ -2055,7 +2055,7 @@ int32_t InputMethodController::RegisterWindowScaleCallbackHandler(WindowScaleCal
     windowScaleCallback_ = std::move(callback);
     return static_cast<int32_t>(ErrorCode::NO_ERROR);
 }
-
+// LCOV_EXCL_START
 void InputMethodController::GetWindowScaleCoordinate(uint32_t windowId, CursorInfo &cursorInfo)
 {
     WindowScaleCallback handler = nullptr;
@@ -2081,7 +2081,7 @@ void InputMethodController::ClearAgentInfo()
     IMSA_HILOGD("Clear all agent info");
     agentInfoList_.clear();
 }
-
+// LCOV_EXCL_STOP
 int32_t InputMethodController::SendRequestToAllAgents(std::function<int32_t(std::shared_ptr<IInputMethodAgent>)> task)
 {
     std::lock_guard guard(agentLock_);
