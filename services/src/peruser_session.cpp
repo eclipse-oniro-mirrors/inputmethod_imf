@@ -949,6 +949,11 @@ void PerUserSession::UnBindClientWithIme(
     StopImeInput(GetImeData(currentClientInfo->bindImeData), currentClientInfo, options.sessionId);
 }
 
+void PerUserSession::SetSwitchInputType(bool isSwitchInputType)
+{
+    isSwitchInputType_.store(isSwitchInputType);
+}
+ 	 
 void PerUserSession::StopClientInput(const std::shared_ptr<InputClientInfo> &clientInfo, DetachOptions options)
 {
     if (clientInfo == nullptr || clientInfo->client == nullptr) {
@@ -966,6 +971,10 @@ void PerUserSession::StopClientInput(const std::shared_ptr<InputClientInfo> &cli
         std::lock_guard<std::mutex> lock(isNotifyFinishedLock_);
         sptr<IRemoteObject> sptrObj(onInputStopObject);
         isNotifyFinished_.Clear(false);
+        if (isSwitchInputType_.load()) {
+            options.isSendKeyboardStatus = false;
+            isSwitchInputType_.store(false);
+        }
         ret =
             clientInfo->client->OnInputStop(options.isInactiveClient, sptrObj, options.isSendKeyboardStatus);
         if (!isNotifyFinished_.GetValue()) {

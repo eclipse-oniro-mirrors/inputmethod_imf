@@ -186,6 +186,7 @@ public:
     std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> GetClientBySelfPid(pid_t clientPid);
     std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> GetClientBySelfPidOrHostPid(
         pid_t clientPid);
+    void SetSwitchInputType(bool isSwitchInputType);
 
 private:
     struct ResetManager {
@@ -390,6 +391,7 @@ private:
     std::shared_ptr<ImeData> mirrorImeData_;
     std::mutex realImeDataLock_;
     std::shared_ptr<ImeData> realImeData_{ nullptr };
+    std::atomic<bool> isSwitchInputType_{ false };
 };
 } // namespace MiscServices
 } // namespace OHOS
