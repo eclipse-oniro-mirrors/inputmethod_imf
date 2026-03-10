@@ -1475,6 +1475,44 @@ ohos_unittest("OnDemandStartStopSaTest") {
   ]
 }
 
+ohos_unittest("ResSchedAdapterTest") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+  module_out_path = module_output_path
+
+  include_dirs = [
+    "${inputmethod_path}/common/include",
+    "${inputmethod_path}/services/adapter/res_sched_adapter/include",
+  ]
+  sources = [
+    "${inputmethod_path}/services/adapter/res_sched_adapter/src/res_sched_adapter.cpp",
+    "src/res_sched_adapter_test.cpp",
+  ]
+  configs = [ ":module_private_config" ]
+  deps = [
+    "${inputmethod_path}/test/common:inputmethod_test_common",
+    "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
+  ]
+  external_deps = [
+    "ability_base:configuration",
+    "ability_runtime:ability_context_native",
+    "ability_runtime:ability_manager",
+    "ability_runtime:abilitykit_utils",
+    "ability_runtime:runtime",
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+    "safwk:system_ability_fwk",
+    "resource_management:global_resmgr",
+    "resource_schedule_service:ressched_client",
+  ]
+}
+
 ohos_unittest("ImfHisysEventReporterTest") {
   branch_protector_ret = "pac_ret"
   sanitize = {
