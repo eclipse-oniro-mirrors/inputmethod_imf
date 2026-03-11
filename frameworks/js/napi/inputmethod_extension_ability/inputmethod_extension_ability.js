@@ -15,14 +15,26 @@
 
 class InputMethodExtensionAbility {
   onCreate(want) {
+    if (want === undefined || want === null) {
+      console.log('onCreate, want is undefined or null.');
+      return;
+    }
     console.log('onCreate, want:' + want.abilityName);
   }
 
   onRequest(want, startId) {
+    if (want === undefined || want === null) {
+      console.log('onRequest, want is undefined or null.');
+      return;
+    }
     console.log('onRequest, want:' + want.abilityName + ', startId:' + startId);
   }
 
   onConnect(want) {
+    if (want === undefined || want === null) {
+      console.log('onConnect, want is undefined or null.');
+      return;
+    }
     console.log('onConnect, want:' + want.abilityName);
   }
 
