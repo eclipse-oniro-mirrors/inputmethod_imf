@@ -29,10 +29,18 @@ export default class InputMethodExtensionAbility {
   }
 
   onRequest(want: Want, startId: int): void {
+    if (want === undefined || want === null) {
+      console.log('onRequest, want is undefined or null.');
+      return;
+    }
     console.log('onRequest, want:' + want.abilityName + ', startId:' + startId);
   }
 
   onConnect(want: Want): void {
+    if (want === undefined || want === null) {
+      console.log('onConnect, want is undefined or null.');
+      return;
+    }
     console.log('onConnect, want:' + want.abilityName);
   }
 
