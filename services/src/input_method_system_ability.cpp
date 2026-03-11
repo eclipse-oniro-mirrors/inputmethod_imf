@@ -778,6 +778,7 @@ int32_t InputMethodSystemAbility::CheckInputTypeOption(int32_t userId, InputClie
     if (inputClientInfo.isNotifyInputStart && InputTypeManager::GetInstance().IsStarted()) {
         IMSA_HILOGD("NormalFlag, diff textField, input type started, restore.");
         session->RestoreCurrentImeSubType();
+        session->SetSwitchInputType(true);
     }
 #ifdef IMF_SCREENLOCK_MGR_ENABLE
     if (session->IsDeviceLockAndScreenLocked()) {
@@ -1644,7 +1645,7 @@ int32_t InputMethodSystemAbility::SwitchInputType(int32_t userId, const SwitchIn
         IMSA_HILOGE("targetIme is nullptr!");
         return ErrorCode::ERROR_IMSA_GET_IME_INFO_FAILED;
     }
-
+    session->SetSwitchInputType(true);
     auto ret = session->StartIme(targetIme);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("start input method failed!");
