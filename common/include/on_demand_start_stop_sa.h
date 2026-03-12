@@ -48,7 +48,9 @@ private:
     std::condition_variable loadSaCv_;
     std::mutex loadSaMtx_;
     static constexpr int32_t LOAD_SA_MAX_WAIT_TIME = 5; // 5s
+    static constexpr int32_t RETRY_MAX_WAIT_TIME = 6; // 6s
     static std::atomic<uint32_t> processingIpcCount_;
+    std::chrono::system_clock::time_point lastLoadTime_{};
 };
 } // namespace MiscServices
 } // namespace OHOS

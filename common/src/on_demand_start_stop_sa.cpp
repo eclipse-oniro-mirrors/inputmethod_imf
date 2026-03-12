@@ -25,7 +25,11 @@ namespace MiscServices {
 std::atomic<uint32_t> OnDemandStartStopSa::processingIpcCount_ { 0 };
 sptr<IRemoteObject> OnDemandStartStopSa::LoadInputMethodSystemAbility()
 {
-    std::unique_lock<std::mutex> lock(loadSaMtx_);
+    std::unique_lock<std::mutex> lock(loadSaMtx_, std::try_to_lock);
+    if (!lock.owns_lock()) {
+        IMSA_HILOGE("lock is used!");
+        return nullptr;
+    }
     auto systemAbilityManager = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
     if (systemAbilityManager == nullptr) {
         IMSA_HILOGE("get system ability manager fail!");
@@ -35,6 +39,13 @@ sptr<IRemoteObject> OnDemandStartStopSa::LoadInputMethodSystemAbility()
     auto remoteObject = systemAbilityManager->CheckSystemAbility(INPUT_METHOD_SYSTEM_ABILITY_ID);
     if (remoteObject != nullptr) {
         return remoteObject;
+    }
+
+    auto currentTime = std::chrono::system_clock::now();
+    if (lastLoadTime_.time_since_epoch().count() != 0 &&
+        currentTime - lastLoadTime_ < std::chrono::seconds(RETRY_MAX_WAIT_TIME)) {
+        IMSA_HILOGE("The method can be called only once within 6 seconds.");
+        return nullptr;
     }
 
     auto sharedThis = shared_from_this();
@@ -53,7 +64,7 @@ sptr<IRemoteObject> OnDemandStartStopSa::LoadInputMethodSystemAbility()
     loadSaCv_.wait_for(lock, std::chrono::seconds(LOAD_SA_MAX_WAIT_TIME), [&sharedThis]() {
         return sharedThis->remoteObj_ != nullptr;
     });
-
+    lastLoadTime_ = currentTime;
     return remoteObj_;
 }
 
