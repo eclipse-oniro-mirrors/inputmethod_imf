@@ -468,7 +468,6 @@ napi_value JsGetInputMethodSetting::GetInputMethodSubtype(napi_env env, napi_cal
             JsUtil::Const::Null(env));
     }
 
-
     Property property;
     property.name = bundleName;
     std::vector<SubProperty> subProperties;
