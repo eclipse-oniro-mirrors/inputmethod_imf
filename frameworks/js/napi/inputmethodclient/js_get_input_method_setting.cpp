@@ -60,7 +60,7 @@ napi_value JsGetInputMethodSetting::Init(napi_env env, napi_value exports)
     napi_property_descriptor properties[] = {
         DECLARE_NAPI_FUNCTION("listInputMethod", ListInputMethod),
         DECLARE_NAPI_FUNCTION("listInputMethodSubtype", ListInputMethodSubtype),
-        DECLARE_NAPI_FUNCTION("getInputMethodSubtype", GetInputMethodSubtype),
+        DECLARE_NAPI_FUNCTION("getInputMethodSubtypes", GetInputMethodSubtype),
         DECLARE_NAPI_FUNCTION("listCurrentInputMethodSubtype", ListCurrentInputMethodSubtype),
         DECLARE_NAPI_FUNCTION("getInputMethods", GetInputMethods),
         DECLARE_NAPI_FUNCTION("getInputMethodsSync", GetInputMethodsSync),
@@ -453,14 +453,14 @@ napi_value JsGetInputMethodSetting::GetInputMethodSubtype(napi_env env, napi_cal
     size_t argc = ARGC_TWO;
     napi_value argv[ARGC_TWO] = { nullptr };
     IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
-    PARAM_CHECK_RETURN(env, argc == ARGC_TWO, "number of parameters does not match!", TYPE_NONE, JsUtil::Const::Null(env));
+    PARAM_CHECK_RETURN(env, argc >= ARGC_TWO, "number of parameters does not match!", TYPE_NONE, JsUtil::Const::Null(env));
     int32_t userId = ImfCommonConst::DEFAULT_USER_ID;
-    PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[0], userId) == napi_ok, "enable type must be int32_t!",
+    PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[1], userId) == napi_ok, "enable type must be int32_t!",
         TYPE_NONE, JsUtil::Const::Null(env));
     PARAM_CHECK_RETURN(env, userId >= 0, "userId must > 0!", TYPE_NONE, JsUtil::Const::Null(env));
  
     std::string bundleName = "";
-    PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[1], bundleName) == napi_ok, "enable type must be std::string!",
+    PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[0], bundleName) == napi_ok, "enable type must be std::string!",
         TYPE_NONE, JsUtil::Const::Null(env));
 
     Property property;
