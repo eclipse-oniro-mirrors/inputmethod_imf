@@ -462,7 +462,7 @@ napi_value JsGetInputMethodSetting::GetInputMethodSubtype(napi_env env, napi_cal
         JsUtil::Const::Null(env));
 
     std::string bundleName;
-    PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[1], bundleName) == napi_ok, "enable type must be std::string!",
+    PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[0], bundleName) == napi_ok, "enable type must be std::string!",
         TYPE_NONE, JsUtil::Const::Null(env));
 
     Property property;
