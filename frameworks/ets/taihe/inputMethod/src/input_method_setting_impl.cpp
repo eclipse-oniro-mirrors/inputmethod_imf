@@ -307,7 +307,7 @@ void InputMethodSettingImpl::OnImeChangeCallback(const Property &property, const
 void InputMethodSettingImpl::OnImeChangeCallbackByUserId(
     const Property &property, const SubProperty &subProperty, int32_t userId)
 {
-    if (userId < 0){
+    if (userId < 0) {
         int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
         set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
         return;
@@ -445,6 +445,12 @@ void InputMethodSettingImpl::EnableInputMethodSyncByUserId(::taihe::string_view 
     }
     errCode = instance->EnableIme(std::string(bundleName), std::string(extensionName),
         static_cast<OHOS::MiscServices::EnabledStatus>(enabledState.get_value()), userId);
+    if (errCode != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("EnableImeByUserId failed!");
+        set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
+        return;
+    }
+    IMSA_HILOGI("EnableImeByUserId success!");
 }
 } // namespace MiscServices
 } // namespace OHOS

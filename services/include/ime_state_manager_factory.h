@@ -27,7 +27,7 @@ public:
     ImeStateManagerFactory& operator=(const ImeStateManagerFactory&) = delete;
     void SetDynamicStartIme(bool ifDynamicStartIme);
     bool GetDynamicStartIme();
-    std::shared_ptr<ImeStateManager> CreateImeStateManager(pid_t pid, std::function<void()> stopImeFunc);
+    std::shared_ptr<ImeStateManager> CreateImeStateManager(pid_t pid, pid_t uid, std::function<void()> stopImeFunc);
 
 private:
     ImeStateManagerFactory() = default;

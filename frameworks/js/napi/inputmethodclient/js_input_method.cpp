@@ -30,6 +30,8 @@ namespace OHOS {
 namespace MiscServices {
 std::mutex JsInputMethod::jsCbsLock_;
 std::unordered_map<std::string, std::vector<std::shared_ptr<JSCallbackObject>>> JsInputMethod::jsCbs_;
+constexpr size_t ARGC_ONE = 1;
+constexpr size_t ARGC_TWO = 2;
 napi_value JsInputMethod::Init(napi_env env, napi_value exports)
 {
     napi_property_descriptor descriptor[] = {
@@ -304,7 +306,6 @@ napi_value JsInputMethod::GetCurrentInputMethod(napi_env env, napi_callback_info
     napi_value argv[1] = { nullptr };
     IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
     int32_t userId = -1;
-    PARAM_CHECK_RETURN(env, argc < ARGC_TWO, "too many parameters!", TYPE_NONE, JsUtil::Const::Null(env));
     if (argc > 0) {
         PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[0], userId) == napi_ok, "enable type must be int32_t!",
             TYPE_NONE, JsUtil::Const::Null(env));

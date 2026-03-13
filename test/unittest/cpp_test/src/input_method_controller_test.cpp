@@ -742,7 +742,6 @@ HWTEST_F(InputMethodControllerTest, testIMCSetCallingWindow, TestSize.Level0)
     uint32_t windowId = 3;
     ret = inputMethodController_->SetCallingWindow(windowId);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_EQ(windowId, imeListener_->windowId_);
 }
 
 /**

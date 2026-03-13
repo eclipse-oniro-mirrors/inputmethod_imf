@@ -68,7 +68,7 @@ HWTEST_F(ImeStateManagerFactoryTest, CreateImeLifecycleManagerWhenDynamic, TestS
     IMSA_HILOGI("CreateImeLifecycleManagerWhenDynamic START");
     auto &factory = ImeStateManagerFactory::GetInstance();
     factory.SetDynamicStartIme(true);
-    auto manager = factory.CreateImeStateManager(0, [] {
+    auto manager = factory.CreateImeStateManager(0, 100, [] {
         return;
     });
 
@@ -86,7 +86,7 @@ HWTEST_F(ImeStateManagerFactoryTest, CreateFreezeManagerWhenNotDynamic, TestSize
     auto &factory = ImeStateManagerFactory::GetInstance();
     factory.SetDynamicStartIme(false); // Explicit set for clarity
     // stopFunc should be ignored in this mode
-    auto manager = factory.CreateImeStateManager(0, [] {
+    auto manager = factory.CreateImeStateManager(0, 100, [] {
         FAIL() << "Should not be called";
     });
 

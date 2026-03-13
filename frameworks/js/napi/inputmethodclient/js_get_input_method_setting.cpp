@@ -453,14 +453,16 @@ napi_value JsGetInputMethodSetting::GetInputMethodSubtype(napi_env env, napi_cal
     size_t argc = ARGC_TWO;
     napi_value argv[ARGC_TWO] = { nullptr };
     IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
-    PARAM_CHECK_RETURN(env, argc >= ARGC_TWO, "number of parameters does not match!", TYPE_NONE, JsUtil::Const::Null(env));
+    PARAM_CHECK_RETURN(env, argc >= ARGC_TWO, "number of parameters does not match!",
+        TYPE_NONE, JsUtil::Const::Null(env));
     int32_t userId = ImfCommonConst::DEFAULT_USER_ID;
     PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[1], userId) == napi_ok, "enable type must be int32_t!",
         TYPE_NONE, JsUtil::Const::Null(env));
-    PARAM_CHECK_RETURN(env, userId >= 0, "userId must > 0!", TYPE_NONE, JsUtil::Const::Null(env));
- 
-    std::string bundleName = "";
-    PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[0], bundleName) == napi_ok, "enable type must be std::string!",
+    PARAM_CHECK_RETURN(env, userId >= 0, "userId must be greater than or equal to 0!", TYPE_NONE,
+        JsUtil::Const::Null(env));
+
+    std::string bundleName;
+    PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[1], bundleName) == napi_ok, "enable type must be std::string!",
         TYPE_NONE, JsUtil::Const::Null(env));
 
     Property property;
@@ -1044,6 +1046,9 @@ void JsGetInputMethodSetting::GetIsUpdateFlag(const std::string &type, bool &isU
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     isUpdateFlag = true;
     auto targetType = EVENT_TYPE.find(type);
+    if (targetType == EVENT_TYPE.end()) {
+        return;
+    }
     for (auto eventType : EVENT_TYPE) {
         if (eventType.first != targetType->first && eventType.second == targetType->second &&
             jsCbMap_.find(eventType.first) != jsCbMap_.end()) {

@@ -29,24 +29,24 @@ void FreezeManager::ControlIme(bool shouldApply)
 {
     if (eventHandler_ == nullptr) {
         IMSA_HILOGW("eventHandler_ is nullptr.");
-        ReportRss(shouldApply, pid_);
+        ReportRss(shouldApply, pid_, uid_);
         return;
     }
     if (shouldApply) {
         // Delay the FREEZE report by 3s.
         eventHandler_->PostTask(
-            [shouldApply, pid = pid_]() {
-                ReportRss(shouldApply, pid);
+            [shouldApply, pid = pid_, uid = uid_]() {
+                ReportRss(shouldApply, pid, uid);
             },
             STOP_TASK_NAME, DELAY_TIME);
     } else {
         // Cancel the unexecuted FREEZE task.
         eventHandler_->RemoveTask(STOP_TASK_NAME);
-        ReportRss(shouldApply, pid_);
+        ReportRss(shouldApply, pid_, uid_);
     }
 }
 
-void FreezeManager::ReportRss(bool shouldFreeze, pid_t pid)
+void FreezeManager::ReportRss(bool shouldFreeze, pid_t pid, pid_t uid)
 {
     auto type = ResourceSchedule::ResType::RES_TYPE_SA_CONTROL_APP_EVENT;
     auto status = shouldFreeze ? ResourceSchedule::ResType::SaControlAppStatus::SA_STOP_APP :
@@ -56,6 +56,7 @@ void FreezeManager::ReportRss(bool shouldFreeze, pid_t pid)
         { "saName",        std::string(INPUT_METHOD_SERVICE_SA_NAME)                                           },
         { "extensionType", std::to_string(static_cast<int32_t>(AppExecFwk::ExtensionAbilityType::INPUTMETHOD)) },
         { "pid",           std::to_string(pid)                                                                 },
+        { "uid",           std::to_string(uid)                                                                 }
     };
     IMSA_HILOGD("report RSS should freeze: %{public}d.", shouldFreeze);
     ResourceSchedule::ResSchedClient::GetInstance().ReportData(type, status, payload);
@@ -70,8 +71,8 @@ void FreezeManager::TemporaryActiveIme()
     }
 
     IMSA_HILOGI("temporary active IME");
-    ReportRss(false, pid_);
-    ReportRss(true, pid_);
+    ReportRss(false, pid_, uid_);
+    ReportRss(true, pid_, uid_);
 }
 // LCOV_EXCL_STOP
 } // namespace MiscServices

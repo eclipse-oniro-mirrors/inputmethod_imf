@@ -28,13 +28,13 @@ void ImeLifecycleManager::ControlIme(bool shouldApply)
     }
 
     if (!shouldApply) {
-        FreezeManager::ReportRss(false, pid_);
+        FreezeManager::ReportRss(false, pid_, uid_);
         // Cancel the unexecuted stop task.
         eventHandler_->RemoveTask(STOP_IME_TASK_NAME);
         return;
     }
 
-    FreezeManager::ReportRss(true, pid_);
+    FreezeManager::ReportRss(true, pid_, uid_);
     // Delay the stop report by 20s.
     std::weak_ptr<ImeLifecycleManager> weakThis = shared_from_this();
     eventHandler_->PostTask(

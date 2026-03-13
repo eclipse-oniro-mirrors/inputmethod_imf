@@ -246,6 +246,18 @@ void InputMethodAbility::Initialize()
     coreStub_ = coreStub;
 }
 
+void InputMethodAbility::SetConfigurationUpdate(std::function<void(Rosen::DisplayId displayId)> configurationUpdate)
+{
+    configurationUpdate_ = configurationUpdate;
+}
+
+void InputMethodAbility::ConfigurationUpdate(Rosen::DisplayId displayId)
+{
+    if (configurationUpdate_ != nullptr) {
+        configurationUpdate_(displayId);
+    }
+}
+
 void InputMethodAbility::SetImeListener(std::shared_ptr<InputMethodEngineListener> imeListener)
 {
     IMSA_HILOGD("InputMethodAbility start.");
@@ -291,6 +303,7 @@ int32_t InputMethodAbility::StartInputInner(const InputClientInfo &clientInfo, b
     IMSA_HILOGI("IMA showKeyboard:%{public}d,bindFromClient:%{public}d.", clientInfo.isShowKeyboard, isBindFromClient);
     SetInputDataChannel(clientInfo.channel);
     auto attribute = GetInputAttribute();
+    ConfigurationUpdate(attribute.callingDisplayId);
     if ((clientInfo.needHide && !isProxyIme_.load()) ||
         IsDisplayChanged(attribute.callingDisplayId, clientInfo.config.inputAttribute.callingDisplayId)) {
         IMSA_HILOGD("pwd or normal input pattern changed, need hide panel first.");
@@ -1795,21 +1808,19 @@ void InputMethodAbility::ReportImeStartInput(
 
 int32_t InputMethodAbility::OnCallingDisplayIdChanged(uint64_t displayId)
 {
-    IMSA_HILOGD("InputMethodAbility calling display: %{public}" PRIu64 ".", displayId);
+    auto curDisplayId = GetInputAttribute().callingDisplayId;
+    IMSA_HILOGD("IMA display/curDisplayId: %{public}" PRIu64 "/%{public}" PRIu64 ".", displayId, curDisplayId);
     if (imeListener_ == nullptr) {
         IMSA_HILOGD("imeListener_ is nullptr!");
         return ErrorCode::NO_ERROR;
     }
-    auto windowId = GetInputAttribute().windowId;
-    auto task = [this, windowId]() {
-        panels_.ForEach([windowId](const PanelType &panelType, const std::shared_ptr<InputMethodPanel> &panel) {
-            if (panel != nullptr) {
-                panel->SetCallingWindow(windowId);
-            }
-            return false;
-        });
-    };
-    imeListener_->PostTaskToEventHandler(task, "SetCallingWindow");
+    if (displayId == curDisplayId) {
+        return ErrorCode::NO_ERROR;
+    }
+    auto panel = GetSoftKeyboardPanel();
+    if (panel != nullptr && panel->GetPanelFlag() == PanelFlag::FLG_FIXED) {
+        HidePanel(panel, PanelFlag::FLG_FIXED, Trigger::IMF, 0);
+    }
     {
         std::lock_guard<std::mutex> lock(inputAttrLock_);
         inputAttribute_.callingDisplayId = displayId;
@@ -1821,6 +1832,7 @@ int32_t InputMethodAbility::OnCallingDisplayIdChanged(uint64_t displayId)
             inputAttribute_.callingScreenId = 0;
         }
     }
+    ConfigurationUpdate(displayId);
     imeListener_->OnCallingDisplayIdChanged(displayId);
     return ErrorCode::NO_ERROR;
 }

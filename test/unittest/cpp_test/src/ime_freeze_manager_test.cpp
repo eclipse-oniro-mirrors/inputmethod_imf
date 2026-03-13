@@ -33,7 +33,7 @@ class ImeFreezeManagerTest : public testing::Test {
 public:
     static void SetUpTestCase(void)
     {
-        freezeManager_ = std::make_shared<FreezeManager>(-1);
+        freezeManager_ = std::make_shared<FreezeManager>(-1, -1);
         auto runner = AppExecFwk::EventRunner::Create("test_freezeManager");
         eventHandler_ = std::make_shared<AppExecFwk::EventHandler>(runner);
         freezeManager_->SetEventHandler(eventHandler_);

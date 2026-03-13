@@ -18,6 +18,7 @@
 
 #include "configuration.h"
 #include "display_manager.h"
+#include "inputmethod_display_listener.h"
 #include "inputmethod_extension.h"
 #include "js_runtime.h"
 
@@ -27,25 +28,6 @@ namespace AbilityRuntime {
  * @brief Basic inputmethod components.
  */
 class JsInputMethodExtension : public InputMethodExtension {
-struct CacheDisplay {
-    int32_t displayWidth = 0;
-    int32_t displayHeight = 0;
-    Rosen::Rotation displayRotation = Rosen::Rotation::ROTATION_0;
-    Rosen::FoldStatus displayFoldStatus = Rosen::FoldStatus::UNKNOWN;
-    bool IsEmpty()
-    {
-        return displayWidth == 0 && displayHeight == 0 && displayRotation == Rosen::Rotation::ROTATION_0 &&
-            displayFoldStatus == Rosen::FoldStatus::UNKNOWN;
-    };
-    void SetCacheDisplay(int32_t width, int32_t height, Rosen::Rotation rotation, Rosen::FoldStatus foldStatus)
-    {
-        displayWidth = width;
-        displayHeight = height;
-        displayRotation = rotation;
-        displayFoldStatus = foldStatus;
-    };
-};
-
 public:
     JsInputMethodExtension(JsRuntime &jsRuntime);
     virtual ~JsInputMethodExtension() override;
@@ -123,19 +105,6 @@ public:
      */
     virtual void OnStop() override;
 
-    /**
-     * @brief Called when the system configuration is updated.
-     *
-     * @param configuration Indicates the updated configuration information.
-     */
-    virtual void OnConfigurationUpdated(const AppExecFwk::Configuration &config) override;
-
-    /**
-     * @brief Called when configuration changed, including system configuration and window configuration.
-     *
-     */
-    void ConfigurationUpdated();
-
 private:
     napi_value CallObjectMethod(const char *name, const napi_value *argv = nullptr, size_t argc = 0);
 
@@ -145,40 +114,11 @@ private:
 
     void ListenWindowManager();
 
-    void InitDisplayCache();
-
     JsRuntime &jsRuntime_;
     std::unique_ptr<NativeReference> jsObj_;
     std::shared_ptr<NativeReference> shellContextRef_ = nullptr;
     std::shared_ptr<AbilityHandler> handler_ = nullptr;
-    CacheDisplay cacheDisplay_;
-
-protected:
-    class JsInputMethodExtensionDisplayAttributeListener : public Rosen::DisplayManager::IDisplayAttributeListener {
-    public:
-        explicit JsInputMethodExtensionDisplayAttributeListener(const std::weak_ptr<JsInputMethodExtension> &extension)
-        {
-            jsInputMethodExtension_ = extension;
-        }
-
-        void OnAttributeChange(Rosen::DisplayId displayId, const std::vector<std::string>& attributes) override
-        {
-            auto inputMethodSptr = jsInputMethodExtension_.lock();
-            if (inputMethodSptr != nullptr) {
-                inputMethodSptr->CheckNeedAdjustKeyboard(displayId);
-                inputMethodSptr->OnChange(displayId);
-            }
-        }
-
-    private:
-        std::weak_ptr<JsInputMethodExtension> jsInputMethodExtension_;
-    };
-
-    void OnChange(Rosen::DisplayId displayId);
-    void CheckNeedAdjustKeyboard(Rosen::DisplayId displayId);
-
-private:
-    sptr<JsInputMethodExtensionDisplayAttributeListener> displayListener_ = nullptr;
+    sptr<MiscServices::InputMethodDisplayAttributeListener> displayListener_ = nullptr;
 };
 } // namespace AbilityRuntime
 } // namespace OHOS

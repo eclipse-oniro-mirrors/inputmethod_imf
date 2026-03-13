@@ -21,6 +21,9 @@
 #include <thread>
 
 #include "global.h"
+#include "ipc_skeleton.h"
+#include "os_account_adapter.h"
+#include "variant_util.h"
 #include "window.h"
 #include "wm_common.h"
 
@@ -46,19 +49,6 @@ void WindowAdapter::GetFocusInfo(OHOS::Rosen::FocusChangeInfo &focusInfo, uint64
     WindowManagerLite::GetInstance().GetFocusWindowInfo(focusInfo, displayId);
 #else
     WindowManager::GetInstance().GetFocusWindowInfo(focusInfo, displayId);
-#endif
-}
-
-void WindowAdapter::RegisterCallingWindowInfoChangedListener(const WindowDisplayChangeHandler &handle)
-{
-#ifdef SCENE_BOARD_ENABLE
-    sptr<WindowDisplayChangeListener> listener = new (std::nothrow) WindowDisplayChangeListener(handle);
-    if (listener == nullptr) {
-        IMSA_HILOGE("failed to create listener");
-        return;
-    }
-    auto wmErr = WindowManagerLite::GetInstance().RegisterCallingWindowDisplayChangedListener(listener);
-    IMSA_HILOGI("register focus changed listener ret: %{public}d", wmErr);
 #endif
 }
 // LCOV_EXCL_STOP
@@ -370,7 +360,7 @@ void WindowAdapter::OnUnFocused(const FocusChangeInfo &focusWindowInfo)
 int32_t WindowAdapter::RegisterAllGroupInfoChangedListener()
 {
 #ifdef SCENE_BOARD_ENABLE
-    sptr<AllGroupInfoChangedListenerImpl> listener = new (std::nothrow) AllGroupInfoChangedListenerImpl();
+    sptr<IAllGroupInfoChangedListener> listener = new (std::nothrow) AllGroupInfoChangedListenerImpl();
     if (listener == nullptr) {
         IMSA_HILOGE("failed to create listener");
         return ErrorCode::ERROR_IMSA_MALLOC_FAILED;
@@ -383,6 +373,65 @@ int32_t WindowAdapter::RegisterAllGroupInfoChangedListener()
     return ErrorCode::NO_ERROR;
 #else
     return ErrorCode::NO_ERROR;
+#endif
+}
+
+int32_t WindowAdapter::RegisterWindowDisplayIdChangedListener(const WindowDisplayChangeHandler &handler)
+{
+#ifdef SCENE_BOARD_ENABLE
+    sptr<IWindowInfoChangedListener> listener = new (std::nothrow) WindowDisplayChangedListenerImpl(handler);
+    if (listener == nullptr) {
+        IMSA_HILOGE("failed to create listener");
+        return ErrorCode::ERROR_IMSA_MALLOC_FAILED;
+    }
+    std::unordered_set<WindowInfoKey> observedInfo;
+    observedInfo.insert(WindowInfoKey::DISPLAY_ID);
+    listener->AddInterestInfo(WindowInfoKey::WINDOW_ID);
+    auto wmErr = WindowManagerLite::GetInstance().RegisterWindowInfoChangeCallback(observedInfo, listener);
+    IMSA_HILOGI("register WindowInfoChangeListener ret: %{public}d", wmErr);
+    if (wmErr != WMError::WM_OK) {
+        return ErrorCode::ERROR_WINDOW_MANAGER;
+    }
+    return ErrorCode::NO_ERROR;
+#else
+    return ErrorCode::NO_ERROR;
+#endif
+}
+
+void WindowAdapter::WindowDisplayChangedListenerImpl::OnWindowInfoChanged(const WindowInfoList &windowInfoList)
+{
+#ifdef SCENE_BOARD_ENABLE
+    if (windowInfoList.empty()) {
+        IMSA_HILOGE("windowInfoList is empty");
+        return;
+    }
+    auto userId = OsAccountAdapter::GetOsAccountLocalIdFromUid(IPCSkeleton::GetCallingUid());
+    IMSA_HILOGI("user:%{public}d windowInfoList size is:%{public}zu.", userId, windowInfoList.size());
+    uint64_t displayId = 0;
+    uint32_t windowId = 0;
+    for (const auto &infoMap : windowInfoList) {
+        auto displayIdIter = infoMap.find(WindowInfoKey::DISPLAY_ID);
+        if (displayIdIter == infoMap.end()) {
+            IMSA_HILOGE("displayId not find.");
+            continue;
+        }
+        auto windowIdIter = infoMap.find(WindowInfoKey::WINDOW_ID);
+        if (windowIdIter == infoMap.end()) {
+            IMSA_HILOGE("windowId not find.");
+            continue;
+        }
+        if (!VariantUtil::GetValue(displayIdIter->second, displayId)) {
+            IMSA_HILOGE("displayId type is error.");
+            continue;
+        }
+        if (!VariantUtil::GetValue(windowIdIter->second, windowId)) {
+            IMSA_HILOGE("windowId type is error.");
+            continue;
+        }
+        if (handler_ != nullptr) {
+            handler_(userId, windowId, displayId);
+        }
+    }
 #endif
 }
 } // namespace MiscServices

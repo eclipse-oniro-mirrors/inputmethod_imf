@@ -42,8 +42,6 @@ namespace AbilityRuntime {
 namespace {
 constexpr size_t ARGC_ONE = 1;
 constexpr size_t ARGC_TWO = 2;
-const std::string FOLD_SCREEN_TYPE = OHOS::system::GetParameter("const.window.foldscreen.type", "0,0,0,0");
-constexpr const char *EXTEND_FOLD_TYPE = "4";
 } // namespace
 JsInputMethodExtension *JsInputMethodExtension::jsInputMethodExtension = nullptr;
 using namespace OHOS::AppExecFwk;
@@ -146,7 +144,6 @@ void JsInputMethodExtension::Init(const std::shared_ptr<AbilityLocalRecord> &rec
     }
     BindContext(env, obj);
     handler_ = handler;
-    InitDisplayCache();
     ListenWindowManager();
     IMSA_HILOGI("JsInputMethodExtension end.");
 }
@@ -154,57 +151,13 @@ void JsInputMethodExtension::Init(const std::shared_ptr<AbilityLocalRecord> &rec
 void JsInputMethodExtension::ListenWindowManager()
 {
     IMSA_HILOGD("register window manager service listener.");
-    auto jsInputMethodExtension = std::static_pointer_cast<JsInputMethodExtension>(shared_from_this());
-    displayListener_ = sptr<JsInputMethodExtensionDisplayAttributeListener>::MakeSptr(jsInputMethodExtension);
+    displayListener_ = sptr<InputMethodDisplayAttributeListener>::MakeSptr(GetContext());
     if (displayListener_ == nullptr) {
         IMSA_HILOGE("failed to create display listener!");
         return;
     }
     std::vector<std::string> attributes = {"rotation", "width", "height"};
     Rosen::DisplayManager::GetInstance().RegisterDisplayAttributeListener(attributes, displayListener_);
-}
-
-void JsInputMethodExtension::OnConfigurationUpdated(const AppExecFwk::Configuration &config)
-{
-    InputMethodExtension::OnConfigurationUpdated(config);
-    IMSA_HILOGD("called.");
-    auto context = GetContext();
-    if (context == nullptr) {
-        IMSA_HILOGE("context is invalid!");
-        return;
-    }
-
-    auto contextConfig = context->GetConfiguration();
-    if (contextConfig != nullptr) {
-        std::vector<std::string> changeKeyValue;
-        contextConfig->CompareDifferent(changeKeyValue, config);
-        if (!changeKeyValue.empty()) {
-            contextConfig->Merge(changeKeyValue, config);
-        }
-        IMSA_HILOGD("config dump merge: %{public}s.", contextConfig->GetName().c_str());
-    }
-    ConfigurationUpdated();
-}
-
-void JsInputMethodExtension::ConfigurationUpdated()
-{
-    IMSA_HILOGD("called.");
-    HandleScope handleScope(jsRuntime_);
-    napi_env env = jsRuntime_.GetNapiEnv();
-
-    // Notify extension context
-    auto context = GetContext();
-    if (context == nullptr) {
-        IMSA_HILOGE("context is nullptr!");
-        return;
-    }
-    auto fullConfig = context->GetConfiguration();
-    if (fullConfig == nullptr) {
-        IMSA_HILOGE("configuration is nullptr!");
-        return;
-    }
-
-    JsExtensionContext::ConfigurationUpdated(env, shellContextRef_, fullConfig);
 }
 
 void JsInputMethodExtension::BindContext(napi_env env, napi_value obj)
@@ -272,18 +225,6 @@ void JsInputMethodExtension::OnStart(const AAFwk::Want &want)
     IMSA_HILOGI("ime bind imf");
     FinishAsync("OnStart", static_cast<int32_t>(TraceTaskId::ONSTART_EXTENSION));
     TaskManager::GetInstance().Complete(task->GetSeqId());
-}
-
-void JsInputMethodExtension::InitDisplayCache()
-{
-    auto foldStatus = Rosen::DisplayManager::GetInstance().GetFoldStatus();
-    auto displayPtr = Rosen::DisplayManager::GetInstance().GetDefaultDisplaySync();
-    if (displayPtr == nullptr) {
-        IMSA_HILOGE("displayPtr is null");
-        return;
-    }
-    cacheDisplay_.SetCacheDisplay(
-        displayPtr->GetWidth(), displayPtr->GetHeight(), displayPtr->GetRotation(), foldStatus);
 }
 
 void JsInputMethodExtension::OnStop()
@@ -417,76 +358,6 @@ void JsInputMethodExtension::GetSrcPath(std::string &srcPath)
         srcPath.append(Extension::abilityInfo_->srcEntrance);
         srcPath.erase(srcPath.rfind('.'));
         srcPath.append(".abc");
-    }
-}
-
-void JsInputMethodExtension::CheckNeedAdjustKeyboard(Rosen::DisplayId displayId)
-{
-    if (FOLD_SCREEN_TYPE.empty() || FOLD_SCREEN_TYPE[0] != *EXTEND_FOLD_TYPE) {
-        IMSA_HILOGD("The current device is a non-foldable device.");
-        return;
-    }
-    auto displayPtr = Rosen::DisplayManager::GetInstance().GetDefaultDisplaySync();
-    if (displayPtr == nullptr) {
-        return;
-    }
-    auto defaultDisplayId = displayPtr->GetId();
-    if (displayId != defaultDisplayId) {
-        return;
-    }
-    auto foldStatus = Rosen::DisplayManager::GetInstance().GetFoldStatus();
-    auto displayInfo = displayPtr->GetDisplayInfo();
-    if (displayInfo == nullptr) {
-        IMSA_HILOGE("displayInfo is nullptr");
-        return;
-    }
-    auto width = displayInfo->GetWidth();
-    auto height = displayInfo->GetHeight();
-    auto rotation = displayInfo->GetRotation();
-    if (!cacheDisplay_.IsEmpty()) {
-        if ((cacheDisplay_.displayWidth != width ||
-            cacheDisplay_.displayHeight != height) &&
-            cacheDisplay_.displayFoldStatus == foldStatus &&
-            cacheDisplay_.displayRotation == rotation) {
-            IMSA_HILOGI("display width: %{public}d, height: %{public}d, rotation: %{public}d, foldStatus: %{public}d",
-                width, height, rotation, foldStatus);
-            InputMethodAbility::GetInstance().AdjustKeyboard();
-        }
-    }
-    cacheDisplay_.SetCacheDisplay(width, height, rotation, foldStatus);
-}
-
-void JsInputMethodExtension::OnChange(Rosen::DisplayId displayId)
-{
-    IMSA_HILOGD("displayId: %{public}" PRIu64 "", displayId);
-    auto context = GetContext();
-    if (context == nullptr) {
-        IMSA_HILOGE("context is invalid!");
-        return;
-    }
-
-    auto contextConfig = context->GetConfiguration();
-    if (contextConfig == nullptr) {
-        IMSA_HILOGE("configuration is invalid!");
-        return;
-    }
-
-    bool isConfigChanged = false;
-    auto configUtils = std::make_shared<ConfigurationUtils>();
-    configUtils->UpdateDisplayConfig(displayId, contextConfig, context->GetResourceManager(), isConfigChanged);
-    IMSA_HILOGD("OnChange, isConfigChanged: %{public}d, Config after update: %{public}s.", isConfigChanged,
-        contextConfig->GetName().c_str());
-
-    if (isConfigChanged) {
-        auto inputMethodExtension = std::static_pointer_cast<JsInputMethodExtension>(shared_from_this());
-        auto task = [inputMethodExtension]() {
-            if (inputMethodExtension) {
-                inputMethodExtension->ConfigurationUpdated();
-            }
-        };
-        if (handler_ != nullptr) {
-            handler_->PostTask(task, "JsInputMethodExtension:OnChange", 0, AppExecFwk::EventQueue::Priority::VIP);
-        }
     }
 }
 } // namespace AbilityRuntime

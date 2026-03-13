@@ -779,6 +779,7 @@ int32_t InputMethodSystemAbility::CheckInputTypeOption(int32_t userId, InputClie
     if (inputClientInfo.isNotifyInputStart && InputTypeManager::GetInstance().IsStarted()) {
         IMSA_HILOGD("NormalFlag, diff textField, input type started, restore.");
         session->RestoreCurrentImeSubType();
+        session->SetSwitchInputType(true);
     }
 #ifdef IMF_SCREENLOCK_MGR_ENABLE
     if (session->IsDeviceLockAndScreenLocked()) {
@@ -926,7 +927,7 @@ ErrCode InputMethodSystemAbility::RegisterProxyIme(
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_NULL_POINTER;
     }
-    return session->OnRegisterProxyIme(displayId, core, agent, IPCSkeleton::GetCallingPid());
+    return session->OnRegisterProxyIme(displayId, core, agent, IPCSkeleton::GetCallingPid(), uid);
 }
 
 ErrCode InputMethodSystemAbility::UnregisterProxyIme(uint64_t displayId)
@@ -1472,7 +1473,7 @@ int32_t InputMethodSystemAbility::StartSwitch(int32_t userId, const SwitchInfo &
     }
     return ret;
 }
-
+// LCOV_EXCL_START
 bool InputMethodSystemAbility::IsTmpIme(int32_t userId, uint32_t tokenId)
 {
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
@@ -1480,8 +1481,8 @@ bool InputMethodSystemAbility::IsTmpIme(int32_t userId, uint32_t tokenId)
         IMSA_HILOGE("user:%{public}d session is nullptr!", userId);
         return false;
     }
-    auto currentImeCfg = ImeCfgManager::GetInstance().GetCurrentImeCfg(userId);
-    if (currentImeCfg == nullptr) {
+    auto currentImeCfg = ImeEnabledInfoManager::GetInstance().GetUserCfgIme(userId);
+    if (currentImeCfg.bundleName.empty()) {
         IMSA_HILOGE("user:%{public}d has no default ime.", userId);
         return false;
     }
@@ -1495,8 +1496,8 @@ bool InputMethodSystemAbility::IsTmpIme(int32_t userId, uint32_t tokenId)
         bundleName = identityChecker_->GetBundleNameByToken(tokenId);
         IMSA_HILOGW("%{public}d/%{public}d/%{public}s not find in cache.", userId, tokenId, bundleName.c_str());
     }
-    return !currentImeCfg->bundleName.empty() && !bundleName.empty() &&
-           imeData->ime.first != currentImeCfg->bundleName && imeData->ime.first == bundleName;
+    return !currentImeCfg.bundleName.empty() && !bundleName.empty() &&
+        imeData->ime.first != currentImeCfg.bundleName && imeData->ime.first == bundleName;
 }
 
 bool InputMethodSystemAbility::IsTmpImeSwitchSubtype(int32_t userId, uint32_t tokenId, const SwitchInfo &switchInfo)
@@ -1672,7 +1673,7 @@ int32_t InputMethodSystemAbility::SwitchInputType(int32_t userId, const SwitchIn
         IMSA_HILOGE("targetIme is nullptr!");
         return ErrorCode::ERROR_IMSA_GET_IME_INFO_FAILED;
     }
-
+    session->SetSwitchInputType(true);
     auto ret = session->StartIme(targetIme);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("start input method failed!");
@@ -2463,21 +2464,18 @@ int32_t InputMethodSystemAbility::InitFocusChangedMonitor()
         });
 }
 
-void InputMethodSystemAbility::InitWindowDisplayChangedMonitor()
+int32_t InputMethodSystemAbility::InitWindowDisplayChangedMonitor()
 {
     IMSA_HILOGD("enter.");
-    auto callBack = [this](OHOS::Rosen::CallingWindowInfo callingWindowInfo) {
-        IMSA_HILOGD("WindowDisplayChanged callbak.");
-        int32_t userId = callingWindowInfo.userId_;
+    auto callBack = [this](int32_t userId, int32_t windowId, uint64_t displayId) {
         auto session = UserSessionManager::GetInstance().GetUserSession(userId);
         if (session == nullptr) {
-            IMSA_HILOGE("[%{public}d] session is nullptr!", userId);
+            IMSA_HILOGE("user %{public}d session is nullptr!", userId);
             return;
         };
-        session->OnCallingDisplayIdChanged(
-            callingWindowInfo.windowId_, callingWindowInfo.callingPid_, callingWindowInfo.displayId_);
+        session->OnWindowDisplayIdChanged(windowId, displayId);
     };
-    WindowAdapter::GetInstance().RegisterCallingWindowInfoChangedListener(callBack);
+    return WindowAdapter::GetInstance().RegisterWindowDisplayIdChangedListener(callBack);
 }
 
 void InputMethodSystemAbility::RegisterSecurityModeObserver()
@@ -2745,7 +2743,13 @@ void InputMethodSystemAbility::HandleWmsStarted()
     if (isScbEnable_.load()) {
         IMSA_HILOGI("scb enable, register WMS connection listener.");
         InitWmsConnectionMonitor();
-        InitWindowDisplayChangedMonitor();
+        ret = InitWindowDisplayChangedMonitor();
+        if (ret != ErrorCode::NO_ERROR) {
+            auto callback = [=]() { InitWindowDisplayChangedMonitor(); };
+            if (serviceHandler_ != nullptr) {
+                serviceHandler_->PostTask(callback, WMS_RETRY_INTERVAL);
+            }
+        }
         return;
     }
     // clear client
@@ -2904,7 +2908,7 @@ bool InputMethodSystemAbility::IsCurrentIme(int32_t userId, uint32_t tokenId)
     auto imeData = session->GetRealImeData();
     return imeData != nullptr && bundleName == imeData->ime.first;
 }
-
+// LCOV_EXCL_START
 int32_t InputMethodSystemAbility::StartInputType(int32_t userId, InputType type, bool isPersistence)
 {
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
@@ -2928,7 +2932,7 @@ int32_t InputMethodSystemAbility::StartInputType(int32_t userId, InputType type,
     return (type == InputType::SECURITY_INPUT) ? OnStartInputType(userId, switchInfo, false) :
         OnStartInputType(userId, switchInfo, true, isPersistence);
 }
-// LCOV_EXCL_START
+
 void InputMethodSystemAbility::NeedHideWhenSwitchInputType(int32_t userId, InputType type, bool &needHide)
 {
     if (!needHide) {
@@ -3213,7 +3217,7 @@ InputType InputMethodSystemAbility::GetSecurityInputType(const InputClientInfo &
         return InputType::NONE;
     }
 }
-
+// LCOV_EXCL_STOP
 int32_t InputMethodSystemAbility::StartSecurityIme(int32_t &userId, InputClientInfo &inputClientInfo)
 {
     InputType type = GetSecurityInputType(inputClientInfo);
@@ -3274,6 +3278,5 @@ int32_t InputMethodSystemAbility::GetCpuUsage()
     return cpuUsage;
 }
 #endif
-// LCOV_EXCL_STOP
 } // namespace MiscServices
 } // namespace OHOS

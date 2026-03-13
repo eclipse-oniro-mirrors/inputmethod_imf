@@ -28,11 +28,12 @@ namespace MiscServices {
 constexpr int32_t TEST_STOP_DELAY_TIME = 100; // 100ms
 constexpr int32_t WAIT_FOR_OTHERS = 50; // 50ms
 constexpr int32_t MS_TO_US = 1000;
+constexpr int32_t UID = 100;
 class ImeLifecycleManagerTest : public testing::Test {
 public:
     static void SetUpTestCase()
     {
-        imeLifecycleManager_ = std::make_shared<ImeLifecycleManager>(-1, StopImeCb, TEST_STOP_DELAY_TIME);
+        imeLifecycleManager_ = std::make_shared<ImeLifecycleManager>(-1, -1, StopImeCb, TEST_STOP_DELAY_TIME);
         auto runner = AppExecFwk::EventRunner::Create("test_imeLifecycleManager");
         eventHandler_ = std::make_shared<AppExecFwk::EventHandler>(runner);
     }
@@ -88,7 +89,8 @@ HWTEST_F(ImeLifecycleManagerTest, ControlIme_EventHandlerNull, TestSize.Level1)
 HWTEST_F(ImeLifecycleManagerTest, ControlIme_shouldStopIme, TestSize.Level1)
 {
     IMSA_HILOGI("ControlIme_shouldStopIme START");
-    auto manager = std::make_shared<ImeLifecycleManager>(-1, ImeLifecycleManagerTest::StopImeCb, TEST_STOP_DELAY_TIME);
+    auto manager = std::make_shared<ImeLifecycleManager>(-1, UID,
+        ImeLifecycleManagerTest::StopImeCb, TEST_STOP_DELAY_TIME);
     manager->ControlIme(true);
     usleep((TEST_STOP_DELAY_TIME + WAIT_FOR_OTHERS) * MS_TO_US);
     EXPECT_TRUE(ImeLifecycleManagerTest::isStopImeCalled_);
@@ -102,7 +104,8 @@ HWTEST_F(ImeLifecycleManagerTest, ControlIme_shouldStopIme, TestSize.Level1)
 HWTEST_F(ImeLifecycleManagerTest, ControlIme_shouldNotStopIme, TestSize.Level1)
 {
     IMSA_HILOGI("ControlIme_shouldNotStopIme START");
-    auto manager = std::make_shared<ImeLifecycleManager>(-1, ImeLifecycleManagerTest::StopImeCb, TEST_STOP_DELAY_TIME);
+    auto manager = std::make_shared<ImeLifecycleManager>(-1, UID,
+        ImeLifecycleManagerTest::StopImeCb, TEST_STOP_DELAY_TIME);
     manager->ControlIme(false);
     usleep((TEST_STOP_DELAY_TIME + WAIT_FOR_OTHERS) * MS_TO_US);
     EXPECT_FALSE(ImeLifecycleManagerTest::isStopImeCalled_);
@@ -116,7 +119,7 @@ HWTEST_F(ImeLifecycleManagerTest, ControlIme_shouldNotStopIme, TestSize.Level1)
 HWTEST_F(ImeLifecycleManagerTest, ControlIme_stopImeFuncIsNull, TestSize.Level1)
 {
     IMSA_HILOGI("ControlIme_stopImeFuncIsNull START");
-    auto manager = std::make_shared<ImeLifecycleManager>(-1, nullptr, TEST_STOP_DELAY_TIME);
+    auto manager = std::make_shared<ImeLifecycleManager>(-1, UID, nullptr, TEST_STOP_DELAY_TIME);
     manager->ControlIme(true);
     usleep((TEST_STOP_DELAY_TIME + WAIT_FOR_OTHERS) * MS_TO_US);
     EXPECT_FALSE(ImeLifecycleManagerTest::isStopImeCalled_);
@@ -130,7 +133,8 @@ HWTEST_F(ImeLifecycleManagerTest, ControlIme_stopImeFuncIsNull, TestSize.Level1)
 HWTEST_F(ImeLifecycleManagerTest, ControlIme_weakPtrIsExpired, TestSize.Level1)
 {
     IMSA_HILOGI("ControlIme_weakPtrIsExpired START");
-    auto manager = std::make_shared<ImeLifecycleManager>(-1, ImeLifecycleManagerTest::StopImeCb, TEST_STOP_DELAY_TIME);
+    auto manager = std::make_shared<ImeLifecycleManager>(-1, UID,
+        ImeLifecycleManagerTest::StopImeCb, TEST_STOP_DELAY_TIME);
     manager->ControlIme(true);
     manager = nullptr;
     usleep((TEST_STOP_DELAY_TIME + WAIT_FOR_OTHERS) * MS_TO_US);

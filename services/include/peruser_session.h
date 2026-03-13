@@ -129,8 +129,8 @@ public:
     int64_t GetCurrentClientPid(uint64_t displayId);
     int64_t GetInactiveClientPid(uint64_t displayId);
     int32_t OnPanelStatusChange(const InputWindowStatus &status, const ImeWindowInfo &info);
-    int32_t OnRegisterProxyIme(
-        uint64_t displayId, const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent, int32_t pid);
+    int32_t OnRegisterProxyIme(uint64_t displayId, const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent,
+        int32_t pid, int32_t uid);
     int32_t OnBindImeMirror(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent);
     int32_t OnUnbindImeMirror();
     int32_t UpdateLargeMemorySceneState(const int32_t memoryState);
@@ -166,7 +166,7 @@ public:
         uint64_t displayId, bool &isInputStart, uint32_t &callingWndId, int32_t &requestKeyboardReason);
     bool IsSaReady(int32_t saId);
     void TryUnloadSystemAbility();
-    void OnCallingDisplayIdChanged(const int32_t windowId, const int32_t callingPid, const uint64_t displayId);
+    void OnWindowDisplayIdChanged(int32_t windowId, uint64_t displayId);
     bool SpecialScenarioCheck();
     int32_t SpecialSendPrivateData(const std::unordered_map<std::string, PrivateDataValue> &privateCommand);
     int32_t SendVoicePrivateCommand(const bool isPersistence);
@@ -186,6 +186,7 @@ public:
     std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> GetClientBySelfPid(pid_t clientPid);
     std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> GetClientBySelfPidOrHostPid(
         pid_t clientPid);
+    void SetSwitchInputType(bool isSwitchInputType);
 
 private:
     struct ResetManager {
@@ -230,19 +231,20 @@ private:
     std::shared_ptr<ClientGroup> GetClientGroupByGroupId(uint64_t displayGroupId);
     int32_t InitRealImeData(
         const std::pair<std::string, std::string> &ime, const std::shared_ptr<ImeNativeCfg> &imeNativeCfg = nullptr);
-    std::shared_ptr<ImeData> UpdateRealImeData(sptr<IInputMethodCore> core, sptr<IRemoteObject> agent, pid_t pid);
+    std::shared_ptr<ImeData> UpdateRealImeData(sptr<IInputMethodCore> core, sptr<IRemoteObject> agent, pid_t pid,
+        pid_t uid);
     std::shared_ptr<ImeData> GetRealImeData(pid_t pid);
     void RemoveRealImeData();
     void RemoveRealImeData(pid_t pid);
     std::shared_ptr<ImeData> AddProxyImeData(
-        uint64_t displayId, sptr<IInputMethodCore> core, sptr<IRemoteObject> agent, pid_t pid);
+        uint64_t displayId, sptr<IInputMethodCore> core, sptr<IRemoteObject> agent, pid_t pid, pid_t uid);
     void AddProxyImeData(uint64_t displayId,
         std::vector<std::shared_ptr<ImeData>> &imeDataList, const std::shared_ptr<ImeData> &imeData);
     int32_t RemoveProxyImeData(uint64_t displayId, pid_t pid);
     void RemoveProxyImeData(pid_t pid);
     std::shared_ptr<ImeData> GetProxyImeData(pid_t pid);
     std::shared_ptr<ImeData> AddMirrorImeData(
-        const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent, pid_t pid);
+        const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent, pid_t pid, pid_t uid);
     std::shared_ptr<ImeData> GetMirrorImeData();
     std::shared_ptr<ImeData> GetMirrorImeData(pid_t pid);
     void RemoveMirrorImeData(pid_t pid);
@@ -250,7 +252,7 @@ private:
     std::shared_ptr<ImeData> GetImeData(pid_t pid, ImeType type);
     std::shared_ptr<ImeData> GetImeData(const std::shared_ptr<BindImeData> &bindImeData);
     int32_t FillImeData(sptr<IInputMethodCore> core, sptr<IRemoteObject> agent, pid_t pid, ImeType type,
-        std::shared_ptr<ImeData> &imeData);
+        std::shared_ptr<ImeData> &imeData, pid_t uid);
     int32_t BindClientWithIme(const std::shared_ptr<InputClientInfo> &clientInfo,
         const std::shared_ptr<ImeData> &imeData, bool isBindFromClient = false);
     void UnBindClientWithIme(const std::shared_ptr<InputClientInfo> &currentClientInfo, const DetachOptions &options);
@@ -391,6 +393,7 @@ private:
     std::mutex realImeDataLock_;
     std::shared_ptr<ImeData> realImeData_{ nullptr };
     std::atomic<bool> firstStartNeedRetry_ { true };
+    std::atomic<bool> isSwitchInputType_{ false };
 };
 } // namespace MiscServices
 } // namespace OHOS

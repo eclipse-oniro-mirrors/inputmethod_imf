@@ -27,7 +27,7 @@ enum class RequestType : int32_t {
 };
 class ImeStateManager {
 public:
-    explicit ImeStateManager(pid_t pid) : pid_(pid) { }
+    explicit ImeStateManager(pid_t pid, pid_t uid) : pid_(pid), uid_(uid) { }
     virtual ~ImeStateManager() = default;
     static void SetEventHandler(const std::shared_ptr<AppExecFwk::EventHandler> &eventHandler);
     bool IsIpcNeeded(RequestType type);
@@ -40,6 +40,7 @@ protected:
     std::mutex mutex_;
     static std::shared_ptr<AppExecFwk::EventHandler> eventHandler_;
     pid_t pid_;
+    pid_t uid_;
     bool isFrozen_ { true };
 
 private:
