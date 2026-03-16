@@ -648,7 +648,7 @@ HWTEST_F(InputMethodAbilityTest, testStartInputBeforeCreatePanel, TestSize.Level
         panelInfo.panelType = SOFT_KEYBOARD;
         panelInfo.panelFlag = FLG_FIXED;
         ret = inputMethodAbility_.CreatePanel(nullptr, panelInfo, softKeyboardPanel);
-        EXPECT_EQ(ErrorCode::NO_ERROR, ret);
+        ASSERT_EQ(ErrorCode::NO_ERROR, ret);
     }
     {
         std::unique_lock<std::mutex> lock(InputMethodAbilityTest::imeListenerCallbackLock_);
@@ -941,13 +941,13 @@ HWTEST_F(InputMethodAbilityTest, testCreatePanel001, TestSize.Level0)
     panelInfo.panelType = SOFT_KEYBOARD;
     panelInfo.panelFlag = FLG_FIXED;
     auto ret = inputMethodAbility_.CreatePanel(nullptr, panelInfo, softKeyboardPanel1);
-    EXPECT_TRUE(softKeyboardPanel1 != nullptr);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ASSERT_TRUE(softKeyboardPanel1 != nullptr);
+    ASSERT_EQ(ret, ErrorCode::NO_ERROR);
 
     std::shared_ptr<InputMethodPanel> softKeyboardPanel2 = nullptr;
     ret = inputMethodAbility_.CreatePanel(nullptr, panelInfo, softKeyboardPanel2);
-    EXPECT_TRUE(softKeyboardPanel2 == nullptr);
-    EXPECT_EQ(ret, ErrorCode::ERROR_OPERATE_PANEL);
+    ASSERT_TRUE(softKeyboardPanel2 == nullptr);
+    ASSERT_EQ(ret, ErrorCode::ERROR_OPERATE_PANEL);
 
     ret = inputMethodAbility_.DestroyPanel(softKeyboardPanel1);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
@@ -970,13 +970,13 @@ HWTEST_F(InputMethodAbilityTest, testCreatePanel002, TestSize.Level0)
     PanelInfo panelInfo = {};
     panelInfo.panelType = STATUS_BAR;
     auto ret = inputMethodAbility_.CreatePanel(nullptr, panelInfo, statusBar1);
-    EXPECT_TRUE(statusBar1 != nullptr);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ASSERT_TRUE(statusBar1 != nullptr);
+    ASSERT_EQ(ret, ErrorCode::NO_ERROR);
 
     std::shared_ptr<InputMethodPanel> statusBar2 = nullptr;
     ret = inputMethodAbility_.CreatePanel(nullptr, panelInfo, statusBar2);
-    EXPECT_TRUE(statusBar2 == nullptr);
-    EXPECT_EQ(ret, ErrorCode::ERROR_OPERATE_PANEL);
+    ASSERT_TRUE(statusBar2 == nullptr);
+    ASSERT_EQ(ret, ErrorCode::ERROR_OPERATE_PANEL);
 
     ret = inputMethodAbility_.DestroyPanel(statusBar1);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
@@ -1001,15 +1001,15 @@ HWTEST_F(InputMethodAbilityTest, testCreatePanel003, TestSize.Level0)
     panelInfo1.panelType = SOFT_KEYBOARD;
     panelInfo1.panelFlag = FLG_FIXED;
     auto ret = inputMethodAbility_.CreatePanel(nullptr, panelInfo1, softKeyboardPanel);
-    EXPECT_TRUE(softKeyboardPanel != nullptr);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ASSERT_TRUE(softKeyboardPanel != nullptr);
+    ASSERT_EQ(ret, ErrorCode::NO_ERROR);
 
     PanelInfo panelInfo2;
     panelInfo2.panelType = STATUS_BAR;
     std::shared_ptr<InputMethodPanel> statusBar = nullptr;
     ret = inputMethodAbility_.CreatePanel(nullptr, panelInfo2, statusBar);
-    EXPECT_TRUE(statusBar != nullptr);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ASSERT_TRUE(statusBar != nullptr);
+    ASSERT_EQ(ret, ErrorCode::NO_ERROR);
 
     ret = inputMethodAbility_.DestroyPanel(softKeyboardPanel);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
@@ -1034,8 +1034,8 @@ HWTEST_F(InputMethodAbilityTest, testCreatePanel004, TestSize.Level0)
     panelInfo.panelType = SOFT_KEYBOARD;
     panelInfo.panelFlag = FLG_FIXED;
     auto ret = inputMethodAbility_.CreatePanel(nullptr, panelInfo, inputMethodPanel);
-    EXPECT_TRUE(inputMethodPanel != nullptr);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ASSERT_TRUE(inputMethodPanel != nullptr);
+    ASSERT_EQ(ret, ErrorCode::NO_ERROR);
 
     ret = inputMethodAbility_.DestroyPanel(inputMethodPanel);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
@@ -1043,8 +1043,8 @@ HWTEST_F(InputMethodAbilityTest, testCreatePanel004, TestSize.Level0)
     PanelInfo panelInfo1;
     panelInfo1.panelType = STATUS_BAR;
     ret = inputMethodAbility_.CreatePanel(nullptr, panelInfo1, inputMethodPanel);
-    EXPECT_TRUE(inputMethodPanel != nullptr);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ASSERT_TRUE(inputMethodPanel != nullptr);
+    ASSERT_EQ(ret, ErrorCode::NO_ERROR);
 
     ret = inputMethodAbility_.DestroyPanel(inputMethodPanel);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
@@ -1052,8 +1052,8 @@ HWTEST_F(InputMethodAbilityTest, testCreatePanel004, TestSize.Level0)
     PanelInfo panelInfo2;
     panelInfo2.panelFlag = FLG_FLOATING;
     ret = inputMethodAbility_.CreatePanel(nullptr, panelInfo2, inputMethodPanel);
-    EXPECT_TRUE(inputMethodPanel != nullptr);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ASSERT_TRUE(inputMethodPanel != nullptr);
+    ASSERT_EQ(ret, ErrorCode::NO_ERROR);
 
     ret = inputMethodAbility_.DestroyPanel(inputMethodPanel);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
@@ -1074,8 +1074,8 @@ HWTEST_F(InputMethodAbilityTest, testCreatePanel005, TestSize.Level0)
     panelInfo.panelType = SOFT_KEYBOARD;
     panelInfo.panelFlag = FLG_FIXED;
     auto ret = inputMethodAbility_.CreatePanel(nullptr, panelInfo, softKeyboardPanel1);
-    EXPECT_TRUE(softKeyboardPanel1 != nullptr);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ASSERT_TRUE(softKeyboardPanel1 != nullptr);
+    ASSERT_EQ(ret, ErrorCode::NO_ERROR);
 
     ret = inputMethodAbility_.DestroyPanel(softKeyboardPanel1);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
@@ -1104,21 +1104,21 @@ HWTEST_F(InputMethodAbilityTest, testCreatePanel006, TestSize.Level0)
     panelInfo.panelType = SOFT_KEYBOARD;
     panelInfo.panelFlag = FLG_FIXED;
     auto ret = inputMethodAbility_.CreatePanel(nullptr, panelInfo, softKeyboardPanel1);
-    EXPECT_TRUE(softKeyboardPanel1 != nullptr);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ASSERT_TRUE(softKeyboardPanel1 != nullptr);
+    ASSERT_EQ(ret, ErrorCode::NO_ERROR);
 
     std::shared_ptr<InputMethodPanel> softKeyboardPanel2 = nullptr;
     ret = inputMethodAbility_.CreatePanel(nullptr, panelInfo, softKeyboardPanel2);
-    EXPECT_TRUE(softKeyboardPanel2 == nullptr);
-    EXPECT_EQ(ret, ErrorCode::ERROR_OPERATE_PANEL);
+    ASSERT_TRUE(softKeyboardPanel2 == nullptr);
+    ASSERT_EQ(ret, ErrorCode::ERROR_OPERATE_PANEL);
 
     ret = inputMethodAbility_.DestroyPanel(softKeyboardPanel1);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 
     std::shared_ptr<InputMethodPanel> softKeyboardPanel3 = nullptr;
     ret = inputMethodAbility_.CreatePanel(nullptr, panelInfo, softKeyboardPanel3);
-    EXPECT_TRUE(softKeyboardPanel3 != nullptr);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ASSERT_TRUE(softKeyboardPanel3 != nullptr);
+    ASSERT_EQ(ret, ErrorCode::NO_ERROR);
 
     ret = inputMethodAbility_.DestroyPanel(softKeyboardPanel2);
     EXPECT_EQ(ret, ErrorCode::ERROR_BAD_PARAMETERS);
@@ -1166,13 +1166,13 @@ HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatusInfo_001, TestSize.Level0)
     auto panel = std::make_shared<InputMethodPanel>();
     AccessScope scope(currentImeTokenId_, currentImeUid_);
     auto ret = inputMethodAbility_.CreatePanel(nullptr, info, panel);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ASSERT_EQ(ret, ErrorCode::NO_ERROR);
     auto panel1 = std::make_shared<InputMethodPanel>();
     PanelInfo info1;
     info1.panelType = SOFT_KEYBOARD;
     info1.panelFlag = FLG_FIXED;
     ret = inputMethodAbility_.CreatePanel(nullptr, info1, panel1);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ASSERT_EQ(ret, ErrorCode::NO_ERROR);
 
     TextListener::ResetParam();
     ret = inputMethodAbility_.ShowKeyboard(static_cast<int32_t>(RequestKeyboardReason::NONE));
@@ -1218,7 +1218,7 @@ HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatusInfo_002, TestSize.Level0)
     AccessScope scope(currentImeTokenId_, currentImeUid_);
     auto panel = std::make_shared<InputMethodPanel>();
     auto ret = inputMethodAbility_.CreatePanel(nullptr, info1, panel);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ASSERT_EQ(ret, ErrorCode::NO_ERROR);
     PanelStatusInfo statusInfo;
     statusInfo.panelInfo = info1;
     statusInfo.visible = true;
@@ -1253,7 +1253,7 @@ HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatusInfo_003, TestSize.Level0)
     auto panel = std::make_shared<InputMethodPanel>();
     AccessScope scope(currentImeTokenId_, currentImeUid_);
     auto ret = inputMethodAbility_.CreatePanel(nullptr, panelInfo, panel);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ASSERT_EQ(ret, ErrorCode::NO_ERROR);
     PanelStatusInfo statusInfo;
     statusInfo.panelInfo = panelInfo;
     statusInfo.visible = true;
@@ -1288,7 +1288,7 @@ HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatusInfo_004, TestSize.Level0)
     auto panel = std::make_shared<InputMethodPanel>();
     AccessScope scope(currentImeTokenId_, currentImeUid_);
     auto ret = inputMethodAbility_.CreatePanel(nullptr, info, panel);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ASSERT_EQ(ret, ErrorCode::NO_ERROR);
     PanelStatusInfo statusInfo;
     statusInfo.panelInfo = info;
     statusInfo.visible = true;
@@ -1335,7 +1335,7 @@ HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatusInfo_005, TestSize.Level0)
     AccessScope scope(currentImeTokenId_, currentImeUid_);
     auto panel = std::make_shared<InputMethodPanel>();
     ret = inputMethodAbility_.CreatePanel(nullptr, info, panel);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ASSERT_EQ(ret, ErrorCode::NO_ERROR);
     ret = inputMethodAbility_.ShowPanel(panel);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     // has panel
@@ -1366,7 +1366,7 @@ HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatusInfo_006, TestSize.Level0)
     auto panel = std::make_shared<InputMethodPanel>();
     AccessScope scope(currentImeTokenId_, currentImeUid_);
     auto ret = inputMethodAbility_.CreatePanel(nullptr, info, panel);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ASSERT_EQ(ret, ErrorCode::NO_ERROR);
     PanelStatusInfo statusInfo;
     statusInfo.panelInfo = info;
     statusInfo.visible = true;
@@ -1436,7 +1436,7 @@ HWTEST_F(InputMethodAbilityTest, testNotifyKeyboardHeight_003, TestSize.Level0)
     info.panelFlag = FLG_CANDIDATE_COLUMN;
     auto panel = std::make_shared<InputMethodPanel>();
     auto ret = inputMethodAbility_.CreatePanel(nullptr, info, panel);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ASSERT_EQ(ret, ErrorCode::NO_ERROR);
     panel->Resize(1, 1);
     imc_->Attach(textListener_);
     EXPECT_TRUE(TextListener::WaitNotifyKeyboardHeightCallback(0));
@@ -1460,7 +1460,7 @@ HWTEST_F(InputMethodAbilityTest, testAdjustKeyboard_001, TestSize.Level0)
     panelInfo.panelFlag = FLG_FIXED;
     auto panel = std::make_shared<InputMethodPanel>();
     auto ret = inputMethodAbility_.CreatePanel(nullptr, panelInfo, panel);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ASSERT_EQ(ret, ErrorCode::NO_ERROR);
 
     ret = inputMethodAbility_.AdjustKeyboard();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
@@ -2499,7 +2499,7 @@ HWTEST_F(InputMethodAbilityTest, testHidePanel, TestSize.Level0)
     AccessScope scope(currentImeTokenId_, currentImeUid_);
     auto panel = std::make_shared<InputMethodPanel>();
     auto ret = inputMethodAbility_.CreatePanel(nullptr, info1, panel);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ASSERT_EQ(ret, ErrorCode::NO_ERROR);
     ret = InputMethodAbilityTest::inputMethodAbility_.HidePanel(nullptr);
     EXPECT_EQ(ret, ErrorCode::ERROR_BAD_PARAMETERS);
 
