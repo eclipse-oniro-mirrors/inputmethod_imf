@@ -56,6 +56,7 @@
 #include "input_method_tools.h"
 #include "window_adapter.h"
 #include "os_account_manager.h"
+#include "res_sched_adapter.h"
 
  namespace OHOS {
 namespace MiscServices {
@@ -1134,6 +1135,7 @@ ErrCode InputMethodSystemAbility::PanelStatusChange(uint32_t status, const ImeWi
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_NULL_POINTER;
     }
+    ResSchedAdapter::NotifyPanelStatus(static_cast<InputWindowStatus>(status) == InputWindowStatus::SHOW);
     return session->OnPanelStatusChange(static_cast<InputWindowStatus>(status), info);
 }
 

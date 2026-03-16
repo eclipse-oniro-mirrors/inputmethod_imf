@@ -51,6 +51,7 @@
 #include "display_adapter.h"
 #include "imf_hook_manager.h"
 #include "res_sched_client.h"
+#include "res_sched_adapter.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -1474,6 +1475,7 @@ std::vector<std::shared_ptr<ImeData>> PerUserSession::GetAllReadyImeData(
 
 void PerUserSession::RemoveImeData(pid_t pid)
 {
+    ResSchedAdapter::ResetPanelStatusFlag(pid);
     RemoveRealImeData(pid);
     RemoveMirrorImeData(pid);
     RemoveProxyImeData(pid);
