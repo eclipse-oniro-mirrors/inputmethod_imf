@@ -57,7 +57,6 @@ public:
     static void TearDownTestCase(void);
     void SetUp();
     void TearDown();
-    static std::shared_ptr<InputMethodPanel> CreatePanel();
     static void DestroyPanel(const std::shared_ptr<InputMethodPanel> &panel);
     static void Attach();
     static void ImaCreatePanel(const PanelInfo &info, std::shared_ptr<InputMethodPanel> &panel);
@@ -146,18 +145,6 @@ void InputMethodPanelAdjustTest::TearDown(void)
     TaskManager::GetInstance().Reset();
 }
 
-std::shared_ptr<InputMethodPanel> InputMethodPanelAdjustTest::CreatePanel()
-{
-    AccessScope scope(currentImeTokenId_, currentImeUid_);
-    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
-    PanelInfo panelInfo;
-    panelInfo.panelType = SOFT_KEYBOARD;
-    panelInfo.panelFlag = FLG_FIXED;
-    auto ret = inputMethodPanel->CreatePanel(nullptr, panelInfo);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    return inputMethodPanel;
-}
-
 void InputMethodPanelAdjustTest::DestroyPanel(const std::shared_ptr<InputMethodPanel> &panel)
 {
     ASSERT_NE(panel, nullptr);
@@ -170,7 +157,7 @@ void InputMethodPanelAdjustTest::ImaCreatePanel(const PanelInfo &info, std::shar
 {
     AccessScope scope(currentImeTokenId_, currentImeUid_);
     auto ret = ima_.CreatePanel(nullptr, info, panel);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ASSERT_EQ(ret, ErrorCode::NO_ERROR);
 }
 
 void InputMethodPanelAdjustTest::ImaDestroyPanel(const std::shared_ptr<InputMethodPanel> &panel)
@@ -184,7 +171,7 @@ void InputMethodPanelAdjustTest::Attach()
 {
     IdentityCheckerMock::SetFocused(true);
     auto ret = imc_->Attach(textListener_, false);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ASSERT_EQ(ret, ErrorCode::NO_ERROR);
     std::this_thread::sleep_for(std::chrono::seconds(1));
     IdentityCheckerMock::SetFocused(false);
 }
