@@ -117,7 +117,9 @@ struct CallbackObjects {
     {
         taihe::env_guard guard;
         if (auto *env = guard.get_env()) {
-            env->GlobalReference_Delete(ref);
+            if (env->GlobalReference_Delete(ref) != ANI_OK) {
+                IMSA_HILOGE("Failed to delete global reference.");
+            }
         }
     }
     callbackTypes callback;
@@ -148,7 +150,9 @@ public:
     ~GlobalRefGuards()
     {
         if (env_ && ref_) {
-            env_->GlobalReference_Delete(ref_);
+            if (env_->GlobalReference_Delete(ref_) != ANI_OK) {
+                IMSA_HILOGE("Failed to delete global reference.");
+            }
         }
     }
 

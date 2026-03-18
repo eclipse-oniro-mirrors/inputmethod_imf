@@ -47,7 +47,11 @@ void InputMethodPanelListener::Subscribe(uint32_t windowId, const std::string &t
     auto subscriptionAction = [&type, &env, &callbackRef, &cb](uint32_t windowId,
         std::map<std::string, std::shared_ptr<CallbackObjects>> &cbs) -> bool {
         if (cbs.find(type) != cbs.end()) {
-            env->GlobalReference_Delete(callbackRef);
+            ani_status status;
+            if ((status = env->GlobalReference_Delete(callbackRef)) != ANI_OK) {
+                IMSA_HILOGI("delete reference failed");
+                return false;
+            }
             IMSA_HILOGI("callback already registered, type: %{public}s!", type.c_str());
             return true;
         }

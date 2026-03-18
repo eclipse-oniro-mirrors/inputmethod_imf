@@ -41,9 +41,16 @@ std::string AniExtraConfig::ConvertString(ani_env* env, ani_object in)
     }
     ani_size sz {};
     ani_string str = static_cast<ani_string>(in);
-    env->String_GetUTF8Size(str, &sz);
+    ani_status status;
+    if ((status = env->String_GetUTF8Size(str, &sz)) != ANI_OK) {
+        IMSA_HILOGE("Get string size failed, status: %{public}d.", status);
+        return "";
+    }
     std::string result(sz + 1, 0);
-    env->String_GetUTF8(str, result.data(), result.size(), &sz);
+    if ((status = env->String_GetUTF8(str, result.data(), result.size(), &sz)) != ANI_OK) {
+        IMSA_HILOGE("Get string size failed, status: %{public}d.", status);
+        return "";
+    }
     result.resize(sz);
     return result;
 }
@@ -112,8 +119,8 @@ bool AniExtraConfig::ParseValue(ani_env* env, ani_object aniValue, CustomValueTy
         valueSize = sizeof(bool);
         return true;
     }
-    env->FindClass("std.core.Int", &optionClass);
-    if (ANI_OK != env->Object_InstanceOf(aniValue, optionClass, &res)) {
+    auto status = env->FindClass("std.core.Int", &optionClass);
+    if (status != ANI_OK|| env->Object_InstanceOf(aniValue, optionClass, &res) != ANI_OK) {
         IMSA_HILOGE("to int failed");
         return false;
     }
@@ -155,8 +162,8 @@ bool AniExtraConfig::ParseRecordItem(ani_env* env, ani_object entryIterator,
         ani_object iteratorNextResult = {};
         env->Object_CallMethod_Ref(entryIterator, iterNextMethod, reinterpret_cast<ani_ref *>(&iteratorNextResult));
         ani_field fieldTmp = AniFindClassField(env, iterResultClass, "done");
-        env->Object_GetField_Boolean(iteratorNextResult, fieldTmp, &iter_done);
-        if (iter_done) {
+        ani_status ret = env->Object_GetField_Boolean(iteratorNextResult, fieldTmp, &iter_done);
+        if (ret != ANI_OK || iter_done) {
             break;
         }
         ani_object temp_ani_item = {};

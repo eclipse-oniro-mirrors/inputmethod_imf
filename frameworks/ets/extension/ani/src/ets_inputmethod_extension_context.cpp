@@ -79,13 +79,16 @@ bool AsyncCallback(ani_env *env, ani_object call, ani_object error, ani_object r
         return false;
     }
     ani_method method = nullptr;
-    if ((status = env->Class_FindMethod(clsCall, "invoke", nullptr, &method)) != ANI_OK || method == nullptr) {
+    if ((status = env->Class_FindMethod(clsCall, "invoke", ":", &method)) != ANI_OK || method == nullptr) {
         IMSA_HILOGE("Class_FindMethod status: %{public}d, or null method", status);
         return false;
     }
     if (error == nullptr) {
         ani_ref nullRef = nullptr;
-        env->GetNull(&nullRef);
+        ani_status status = env->GetNull(&nullRef);
+        if (status != ANI_OK) {
+            IMSA_HILOGE("Failed to GetNull: %{public}d.", status);
+        }
         error = reinterpret_cast<ani_object>(nullRef);
     }
     if (result == nullptr) {
