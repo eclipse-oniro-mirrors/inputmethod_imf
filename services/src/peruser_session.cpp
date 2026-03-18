@@ -1504,12 +1504,10 @@ void PerUserSession::OnScbStarted(bool isScbReboot)
         IMSA_HILOGI("dynamic start ime, do not start immediately");
         return;
     }
-    if (isScbReboot)
-    {
+    if (isScbReboot) {
         IMSA_HILOGI("userId: %{public}d, scb reboot, restart ime", userId_);
         IncreaseScbStartCount();
         AddRestartIme();
-        return;
     } else {
         auto imeData = GetRealImeData(true);
         if (imeData == nullptr && IsWmsReady()) {
