@@ -377,7 +377,7 @@ HWTEST_F(VirtualListenerTest, testImeEventListener_001, TestSize.Level1)
     ImeSettingListenerTestImpl::ResetParam();
     auto userId = -1;
     VirtualListenerTest::eventListener_->OnImeChange(property, subProperty);
-    VirtualListenerTest::eventListener_->OnImeChangeByUserId(property, subProperty, userId);
+    VirtualListenerTest::eventListener_->OnImeChangeWithUserId(property, subProperty, userId);
     VirtualListenerTest::eventListener_->OnImeShow(imeWindowInfo);
     VirtualListenerTest::eventListener_->OnImeHide(imeWindowInfo);
     EXPECT_FALSE(ImeSettingListenerTestImpl::WaitImeChange());

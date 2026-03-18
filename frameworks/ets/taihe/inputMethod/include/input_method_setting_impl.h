@@ -29,15 +29,18 @@ class InputMethodSettingImpl {
 public:
     static InputMethodSettingImpl &GetInstance();
     taihe::array<InputMethodProperty_t> GetInputMethodsAsync(bool enable);
+    taihe::array<InputMethodProperty_t> GetInputMethodsSyncByUserId(
+        bool enable, taihe::optional_view<int32_t> userId);
     taihe::array<InputMethodSubtype_t> ListCurrentInputMethodSubtypeSync();
     taihe::array<InputMethodSubtype_t> ListInputMethodSubtypeSync(InputMethodProperty_t const &inputMethodProperty);
-    taihe::array<InputMethodSubtype_t> GetInputMethodSubtype(int32_t userId, ::taihe::string_view bundleName);
+    taihe::array<InputMethodSubtype_t> GetInputMethodSubtypes(
+        ::taihe::string_view bundleName, taihe::optional_view<int32_t> userId);
     bool IsPanelShown(PanelInfo_t const &panelInfo);
     bool IsPanelShownId(PanelInfo_t const& panelInfo, int64_t displayId);
     taihe::array<InputMethodProperty_t> GetAllInputMethodsAsync();
-    taihe::array<InputMethodProperty_t> GetAllInputMethodsAsync(int32_t userId);
+    taihe::array<InputMethodProperty_t> GetAllInputMethodsSyncByUserId(taihe::optional_view<int32_t> userId);
     void OnImeChangeCallback(const Property &property, const SubProperty &subProperty);
-    void OnImeChangeCallbackByUserId(const Property &property, const SubProperty &subProperty, int32_t userId);
+    void OnImeChangeCallbackWithUserId(const Property &property, const SubProperty &subProperty, int32_t userId);
     void OnImeShowCallback(const ImeWindowInfo &info);
     void OnImeHideCallback(const ImeWindowInfo &info);
     void RegisterImeEvent(std::string const &eventName, int32_t eventMask, callbackType &&f, uintptr_t opq);
@@ -45,8 +48,8 @@ public:
     EnabledState_t GetInputMethodStateSync();
     void EnableInputMethodSync(::taihe::string_view bundleName, ::taihe::string_view extensionName,
         ::ohos::inputMethod::EnabledState enabledState);
-    void EnableInputMethodSyncByUserId(::taihe::string_view bundleName, ::taihe::string_view extensionName,
-        ::ohos::inputMethod::EnabledState enabledState, int32_t userId);
+    void EnableInputMethodByUserId(::taihe::string_view bundleName, ::taihe::string_view extensionName,
+        ::ohos::inputMethod::EnabledState enabledState, taihe::optional_view<int32_t> userId);
 
 private:
     PanelFlag softKbShowingFlag_{ FLG_CANDIDATE_COLUMN };
@@ -77,9 +80,10 @@ public:
     {
         return InputMethodSettingImpl::GetInstance().ListInputMethodSubtypeSync(inputMethodProperty);
     }
-    taihe::array<InputMethodSubtype_t> GetInputMethodSubtype(int32_t userId, ::taihe::string_view bundleName)
+    taihe::array<InputMethodSubtype_t> GetInputMethodSubtypes(
+        ::taihe::string_view bundleName, taihe::optional_view<int32_t> userId)
     {
-        return InputMethodSettingImpl::GetInstance().GetInputMethodSubtype(userId, bundleName);
+        return InputMethodSettingImpl::GetInstance().GetInputMethodSubtypes(bundleName, userId);
     }
     bool IsPanelShown(PanelInfo_t const &panelInfo)
     {
@@ -119,15 +123,15 @@ public:
     {
         InputMethodSettingImpl::GetInstance().UnregisterImeEvent("imeChange", EVENT_IME_CHANGE_MASK, opq);
     }
-    void OnImeChangeByUserId(
+    void OnImeChangeWithUserId(
         taihe::callback_view<void(InputMethodProperty_t const &, InputMethodSubtype_t const &, int32_t)> f,
         uintptr_t opq)
     {
-        InputMethodSettingImpl::GetInstance().RegisterImeEvent("imeChangeByUserId", EVENT_IME_CHANGE_MASK, f, opq);
+        InputMethodSettingImpl::GetInstance().RegisterImeEvent("imeChangeWithUserId", EVENT_IME_CHANGE_MASK, f, opq);
     }
-    void OffImeChangeByUserId(taihe::optional_view<uintptr_t> opq)
+    void OffImeChangeWithUserId(taihe::optional_view<uintptr_t> opq)
     {
-        InputMethodSettingImpl::GetInstance().UnregisterImeEvent("imeChangeByUserId", EVENT_IME_CHANGE_MASK, opq);
+        InputMethodSettingImpl::GetInstance().UnregisterImeEvent("imeChangeWithUserId", EVENT_IME_CHANGE_MASK, opq);
     }
     EnabledState_t GetInputMethodStateSync()
     {
@@ -138,23 +142,28 @@ public:
     {
         InputMethodSettingImpl::GetInstance().EnableInputMethodSync(bundleName, extensionName, enabledState);
     }
-    void EnableInputMethodSyncByUserId(::taihe::string_view bundleName, ::taihe::string_view extensionName,
-        ::ohos::inputMethod::EnabledState enabledState, int32_t userId)
+    void EnableInputMethodByUserId(::taihe::string_view bundleName, ::taihe::string_view extensionName,
+        ::ohos::inputMethod::EnabledState enabledState, taihe::optional_view<int32_t> userId)
     {
-        InputMethodSettingImpl::GetInstance().EnableInputMethodSyncByUserId(
+        InputMethodSettingImpl::GetInstance().EnableInputMethodByUserId(
             bundleName, extensionName, enabledState, userId);
     }
     taihe::array<InputMethodProperty_t> GetInputMethodsSync(bool enable)
     {
         return InputMethodSettingImpl::GetInstance().GetInputMethodsAsync(enable);
     }
+    taihe::array<InputMethodProperty_t> GetInputMethodsSyncByUserId(
+        bool enable, taihe::optional_view<int32_t> userId)
+    {
+        return InputMethodSettingImpl::GetInstance().GetInputMethodsSyncByUserId(enable, userId);
+    }
     taihe::array<InputMethodProperty_t> GetAllInputMethodsSync()
     {
         return InputMethodSettingImpl::GetInstance().GetAllInputMethodsAsync();
     }
-    taihe::array<InputMethodProperty_t> GetAllInputMethodsSyncByUserId(int32_t userId)
+    taihe::array<InputMethodProperty_t> GetAllInputMethodsSyncByUserId(taihe::optional_view<int32_t> userId)
     {
-        return InputMethodSettingImpl::GetInstance().GetAllInputMethodsAsync(userId);
+        return InputMethodSettingImpl::GetInstance().GetAllInputMethodsSyncByUserId(userId);
     }
 };
 } // namespace MiscServices

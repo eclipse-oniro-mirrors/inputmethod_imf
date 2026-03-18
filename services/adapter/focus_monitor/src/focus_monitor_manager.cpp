@@ -30,7 +30,7 @@ FocusMonitorManager &FocusMonitorManager::GetInstance()
     return focusMonitorManager;
 }
 
-int32_t FocusMonitorManager::RegisterFocusChangedListener(const FocusHandle &handle)
+int32_t FocusMonitorManager::RegisterFocusChangedListener(const FocusHandle &handle, int32_t userId)
 {
     sptr<IFocusChangedListener> listener = new (std::nothrow) FocusChangedListener(handle);
     if (listener == nullptr) {
@@ -38,9 +38,9 @@ int32_t FocusMonitorManager::RegisterFocusChangedListener(const FocusHandle &han
         return ErrorCode::ERROR_IMSA_MALLOC_FAILED;
     }
 #ifdef SCENE_BOARD_ENABLE
-    WMError ret = WindowManagerLite::GetInstance().RegisterFocusChangedListener(listener);
+    WMError ret = WindowManagerLite::GetInstance(userId).RegisterFocusChangedListener(listener);
 #else
-    WMError ret = WindowManager::GetInstance().RegisterFocusChangedListener(listener);
+    WMError ret = WindowManager::GetInstance(userId).RegisterFocusChangedListener(listener);
 #endif
     IMSA_HILOGI("register focus changed listener ret: %{public}d", ret);
     if (ret != WMError::WM_OK) {

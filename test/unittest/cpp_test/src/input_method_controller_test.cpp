@@ -302,7 +302,6 @@ void InputMethodControllerTest::SetUpTestCase(void)
         return;
     }
     imsa_->OnStart();
-    imsa_->userId_ = TddUtil::GetCurrentUserId();
     imsa_->identityChecker_ = std::make_shared<IdentityCheckerMock>();
     sptr<InputMethodSystemAbilityStub> serviceStub = imsa_;
     imsaProxy_ = new (std::nothrow) InputMethodSystemAbilityProxy(serviceStub->AsObject());
@@ -1904,7 +1903,7 @@ HWTEST_F(InputMethodControllerTest, testGetInputMethodState_001, TestSize.Level0
     info.enabledStatus = EnabledStatus::FULL_EXPERIENCE_MODE;
     ImeEnabledCfg cfg;
     cfg.enabledInfos.push_back(info);
-    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert({ imsa_->userId_, cfg });
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert({ 100, cfg });
     EnabledStatus status = EnabledStatus::DISABLED;
     auto ret = inputMethodController_->GetInputMethodState(status);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
@@ -1928,7 +1927,7 @@ HWTEST_F(InputMethodControllerTest, testGetInputMethodState_002, TestSize.Level0
     info.enabledStatus = EnabledStatus::BASIC_MODE;
     ImeEnabledCfg cfg;
     cfg.enabledInfos.push_back(info);
-    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert({ imsa_->userId_, cfg });
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert({ 100, cfg });
     EnabledStatus status = EnabledStatus::DISABLED;
     auto ret = inputMethodController_->GetInputMethodState(status);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
@@ -1952,7 +1951,7 @@ HWTEST_F(InputMethodControllerTest, testGetInputMethodState_003, TestSize.Level0
     info.enabledStatus = EnabledStatus::BASIC_MODE;
     ImeEnabledCfg cfg;
     cfg.enabledInfos.push_back(info);
-    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert({ imsa_->userId_, cfg });
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert({ 100, cfg });
     EnabledStatus status = EnabledStatus::DISABLED;
     auto ret = inputMethodController_->GetInputMethodState(status);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
@@ -1976,7 +1975,7 @@ HWTEST_F(InputMethodControllerTest, testGetInputMethodState_004, TestSize.Level0
     info.enabledStatus = EnabledStatus::BASIC_MODE;
     ImeEnabledCfg cfg;
     cfg.enabledInfos.push_back(info);
-    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert({ imsa_->userId_, cfg });
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert({ 100, cfg });
     EnabledStatus status = EnabledStatus::DISABLED;
     auto ret = inputMethodController_->GetInputMethodState(status);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
@@ -2602,7 +2601,7 @@ HWTEST_F(InputMethodControllerTest, testHideSoftKeyboardWitchDisplayId_002, Test
 {
     IMSA_HILOGI("IMC testHideSoftKeyboardWitchDisplayId_002 Test START");
     uint64_t displayId = 1000;
-    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(displayId, 0);
+    WindowAdapter::GetInstance().displayGroupIds_[100][displayId] = 0;
     IdentityCheckerMock::ResetParam();
     IdentityCheckerMock::SetBroker(true);
     int32_t ret = inputMethodController_->HideSoftKeyboard(displayId);
@@ -2621,7 +2620,7 @@ HWTEST_F(InputMethodControllerTest, testHideSoftKeyboardWitchDisplayId_003, Test
 {
     IMSA_HILOGI("IMC testHideSoftKeyboardWitchDisplayId_003 Test START");
     uint64_t displayId = 1000;
-    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(displayId, 0);
+    WindowAdapter::GetInstance().displayGroupIds_[100][displayId] = 0;
     IdentityCheckerMock::ResetParam();
     int32_t ret = inputMethodController_->HideSoftKeyboard(displayId);
     EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
@@ -2637,7 +2636,7 @@ HWTEST_F(InputMethodControllerTest, testHideSoftKeyboardWitchDisplayId_004, Test
 {
     IMSA_HILOGI("IMC testHideSoftKeyboardWitchDisplayId_004 Test START");
     uint64_t displayId = 1000;
-    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(displayId, 0);
+    WindowAdapter::GetInstance().displayGroupIds_[100][displayId] = 0;
     IdentityCheckerMock::ResetParam();
     IdentityCheckerMock::SetSystemApp(true);
     int32_t ret = inputMethodController_->HideSoftKeyboard(displayId);
@@ -2656,7 +2655,7 @@ HWTEST_F(InputMethodControllerTest, testHideSoftKeyboardWitchDisplayId_005, Test
     IMSA_HILOGI("IMC testHideSoftKeyboardWitchDisplayId_005 Test START");
     uint64_t displayId = 1000;
     WindowAdapter::GetInstance().displayGroupIds_.clear();
-    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(displayId, 0);
+    WindowAdapter::GetInstance().displayGroupIds_[100][displayId] = 0;
     IdentityCheckerMock::ResetParam();
     IdentityCheckerMock::SetSystemApp(true);
     IdentityCheckerMock::SetPermission(true);
@@ -2691,7 +2690,7 @@ HWTEST_F(InputMethodControllerTest, testShowSoftKeyboardWitchDisplayId_002, Test
 {
     IMSA_HILOGI("IMC testShowSoftKeyboardWitchDisplayId_002 Test START");
     uint64_t displayId = 1000;
-    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(displayId, 0);
+    WindowAdapter::GetInstance().displayGroupIds_[100][displayId] = 0;
     IdentityCheckerMock::ResetParam();
     IdentityCheckerMock::SetBroker(true);
     int32_t ret = inputMethodController_->ShowSoftKeyboard(displayId);
@@ -2710,7 +2709,7 @@ HWTEST_F(InputMethodControllerTest, testShowSoftKeyboardWitchDisplayId_003, Test
 {
     IMSA_HILOGI("IMC testShowSoftKeyboardWitchDisplayId_003 Test START");
     uint64_t displayId = 1000;
-    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(displayId, 0);
+    WindowAdapter::GetInstance().displayGroupIds_[100][displayId] = 0;
     IdentityCheckerMock::ResetParam();
     int32_t ret = inputMethodController_->ShowSoftKeyboard(displayId);
     EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
@@ -2726,7 +2725,7 @@ HWTEST_F(InputMethodControllerTest, testShowSoftKeyboardWitchDisplayId_004, Test
 {
     IMSA_HILOGI("IMC testShowSoftKeyboardWitchDisplayId_004 Test START");
     uint64_t displayId = 1000;
-    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(displayId, 0);
+    WindowAdapter::GetInstance().displayGroupIds_[100][displayId] = 0;
     IdentityCheckerMock::ResetParam();
     IdentityCheckerMock::SetSystemApp(true);
     int32_t ret = inputMethodController_->ShowSoftKeyboard(displayId);
@@ -2745,7 +2744,7 @@ HWTEST_F(InputMethodControllerTest, testShowSoftKeyboardWitchDisplayId_005, Test
     IMSA_HILOGI("IMC testShowSoftKeyboardWitchDisplayId_005 Test START");
     uint64_t displayId = 1000;
     WindowAdapter::GetInstance().displayGroupIds_.clear();
-    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(displayId, 0);
+    WindowAdapter::GetInstance().displayGroupIds_[100][displayId] = 0;
     IdentityCheckerMock::ResetParam();
     IdentityCheckerMock::SetSystemApp(true);
     IdentityCheckerMock::SetPermission(true);

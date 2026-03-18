@@ -70,7 +70,7 @@ void CJGetInputMethodSetting::OnImeChange(const Property &property, const SubPro
     callback(prop, subProp);
 }
 
-void CJGetInputMethodSetting::OnImeChangeByUserId(const Property &property,
+void CJGetInputMethodSetting::OnImeChangeWithUserId(const Property &property,
     const SubProperty &subProperty, int32_t userId)
 {
     IMSA_HILOGD("start");

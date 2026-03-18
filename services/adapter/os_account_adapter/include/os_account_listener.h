@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,23 +13,23 @@
  * limitations under the License.
  */
 
-#ifndef IMF_FOCUS_MONITOR_MANAGER_H
-#define IMF_FOCUS_MONITOR_MANAGER_H
+#ifndef IMF_OS_ACCOUNT_LISTENER_H
+#define IMF_OS_ACCOUNT_LISTENER_H
 
-#include <functional>
-
+#include "os_account_subscriber.h"
 namespace OHOS {
 namespace MiscServices {
-using FocusHandle = std::function<void(bool, uint64_t, int32_t, int32_t)>;
-class FocusMonitorManager {
+class OsAccountListener final : public AccountSA::OsAccountSubscriber {
 public:
-    static FocusMonitorManager &GetInstance();
-    int32_t RegisterFocusChangedListener(const FocusHandle &handle, int32_t userId);
+    explicit OsAccountListener(const AccountSA::OsAccountSubscribeInfo &info) : AccountSA::OsAccountSubscriber(info)
+    {
+    }
+    void OnStateChanged(const AccountSA::OsAccountStateData &data) override;
 
 private:
-    FocusMonitorManager() = default;
+    void SendUserEvent(int32_t eventId, const AccountSA::OsAccountStateData &data);
 };
 } // namespace MiscServices
 } // namespace OHOS
 
-#endif // IMF_FOCUS_MONITOR_MANAGER_H
+#endif // IMF_OS_ACCOUNT_LISTENER_H

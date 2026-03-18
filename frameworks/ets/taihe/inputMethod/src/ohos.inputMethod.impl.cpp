@@ -59,16 +59,21 @@ InputMethodProperty GetDefaultInputMethod()
     return inputMethodProperty;
 }
 
-InputMethodProperty GetDefaultInputMethodByUserId(int32_t userId)
+InputMethodProperty GetDefaultInputMethodByUserId(optional_view<int32_t> userId)
 {
     InputMethodProperty inputMethodProperty{};
-    if (userId < 0) {
-        int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
-        set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
-        return inputMethodProperty;
+    int32_t nativeUserId = -1;
+    if (userId.has_value()) {
+        nativeUserId = userId.value();
+        if (nativeUserId < 0) {
+            int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+            set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
+            return inputMethodProperty;
+        }
     }
     std::shared_ptr<Property> property;
-    int32_t ret = OHOS::MiscServices::InputMethodController::GetInstance()->GetDefaultInputMethod(property, userId);
+    int32_t ret = OHOS::MiscServices::InputMethodController::GetInstance()->GetDefaultInputMethod(
+        property, nativeUserId);
     if (ret != ErrorCode::NO_ERROR) {
         taihe::set_business_error(JsUtils::Convert(ret), "failed to get default input method!");
         IMSA_HILOGE("failed to get default input method!");
@@ -91,16 +96,20 @@ InputMethodProperty GetCurrentInputMethod()
     return inputMethodProperty;
 }
 
-InputMethodProperty GetCurrentInputMethodByUserId(int32_t userId)
+InputMethodProperty GetCurrentInputMethodByUserId(optional_view<int32_t> userId)
 {
     InputMethodProperty inputMethodProperty{};
-    if (userId < 0) {
-        int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
-        set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
-        return inputMethodProperty;
+    int32_t nativeUserId = -1;
+    if (userId.has_value()) {
+        nativeUserId = userId.value();
+        if (nativeUserId < 0) {
+            int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+            set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
+            return inputMethodProperty;
+        }
     }
     std::shared_ptr<Property> property =
-        OHOS::MiscServices::InputMethodController::GetInstance()->GetCurrentInputMethod(userId);
+        OHOS::MiscServices::InputMethodController::GetInstance()->GetCurrentInputMethod(nativeUserId);
     if (property == nullptr) {
         IMSA_HILOGE("current input method is nullptr!");
         return inputMethodProperty;
@@ -122,16 +131,20 @@ InputMethodSubtype GetCurrentInputMethodSubtype()
     return inputMethodSubtype;
 }
 
-InputMethodSubtype GetCurrentInputMethodSubtypeByUserId(int32_t userId)
+InputMethodSubtype GetCurrentInputMethodSubtypeByUserId(optional_view<int32_t> userId)
 {
     InputMethodSubtype inputMethodSubtype{};
-    if (userId < 0) {
-        int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
-        set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
-        return inputMethodSubtype;
+    int32_t nativeUserId = -1;
+    if (userId.has_value()) {
+        nativeUserId = userId.value();
+        if (nativeUserId < 0) {
+            int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+            set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
+            return inputMethodSubtype;
+        }
     }
     std::shared_ptr<SubProperty> subProperty =
-        OHOS::MiscServices::InputMethodController::GetInstance()->GetCurrentInputMethodSubtype(userId);
+        OHOS::MiscServices::InputMethodController::GetInstance()->GetCurrentInputMethodSubtype(nativeUserId);
     if (subProperty == nullptr) {
         IMSA_HILOGE("current input method subtype is nullptr!");
         return inputMethodSubtype;
@@ -153,15 +166,20 @@ uintptr_t GetSystemInputMethodConfigAbility()
     return reinterpret_cast<uintptr_t>(obj);
 }
 
-uintptr_t GetSystemInputMethodConfigAbilityByUserId(int32_t userId)
+uintptr_t GetSystemInputMethodConfigAbilityByUserId(optional_view<int32_t> userId)
 {
-    if (userId < 0) {
-        int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
-        set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
-        return reinterpret_cast<uintptr_t>(nullptr);
+    int32_t nativeUserId = -1;
+    if (userId.has_value()) {
+        nativeUserId = userId.value();
+        if (nativeUserId < 0) {
+            int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+            set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
+            return reinterpret_cast<uintptr_t>(nullptr);
+        }
     }
     OHOS::AppExecFwk::ElementName elementName;
-    int32_t ret = OHOS::MiscServices::InputMethodController::GetInstance()->GetInputMethodConfig(elementName, userId);
+    int32_t ret =
+        OHOS::MiscServices::InputMethodController::GetInstance()->GetInputMethodConfig(elementName, nativeUserId);
     if (ret != ErrorCode::NO_ERROR) {
         taihe::set_business_error(JsUtils::Convert(ret), "failed to get input method config ability!");
         IMSA_HILOGE("failed to get input method config ability!");
@@ -232,19 +250,24 @@ bool SwitchCurrentInputMethodSubtypeSync(InputMethodSubtype const &target)
     return true;
 }
 
-void SwitchInputMethodByUserId(int32_t userId, string_view bundleName, optional_view<string> subtypeId)
+void SwitchInputMethodByUserId(string_view bundleName, optional_view<string> subtypeId, optional_view<int32_t> userId)
 {
-    if (userId < 0) {
-        int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
-        set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
-        return;
-    }
     std::string id;
     if (subtypeId.has_value()) {
         id = subtypeId.value();
     }
+    int32_t nativeUserId = -1;
+    if (userId.has_value()) {
+        nativeUserId = userId.value();
+        if (nativeUserId < 0) {
+            int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+            set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
+            return;
+        }
+    }
+
     int32_t errCode = OHOS::MiscServices::InputMethodController::GetInstance()->SwitchInputMethod(
-        SwitchTrigger::SYSTEM_APP, std::string(bundleName), id, userId);
+        SwitchTrigger::SYSTEM_APP, std::string(bundleName), id, nativeUserId);
     if (errCode != ErrorCode::NO_ERROR) {
         int32_t code = JsUtils::Convert(errCode);
         std::string message = JsUtils::ToMessage(code);

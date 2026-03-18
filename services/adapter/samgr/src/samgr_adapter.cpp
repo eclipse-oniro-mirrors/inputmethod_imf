@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,23 +13,26 @@
  * limitations under the License.
  */
 
-#ifndef IMF_FOCUS_MONITOR_MANAGER_H
-#define IMF_FOCUS_MONITOR_MANAGER_H
+#include "samgr_adapter.h"
 
-#include <functional>
+#include "global.h"
+#include "iservice_registry.h"
+#include "system_ability_definition.h"
 
 namespace OHOS {
 namespace MiscServices {
-using FocusHandle = std::function<void(bool, uint64_t, int32_t, int32_t)>;
-class FocusMonitorManager {
-public:
-    static FocusMonitorManager &GetInstance();
-    int32_t RegisterFocusChangedListener(const FocusHandle &handle, int32_t userId);
-
-private:
-    FocusMonitorManager() = default;
-};
+bool SaMgrAdapter::IsSaReady(int32_t saId)
+{
+    auto saMgr = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    if (saMgr == nullptr) {
+        IMSA_HILOGE("get saMgr failed!");
+        return false;
+    }
+    if (saMgr->CheckSystemAbility(saId) == nullptr) {
+        IMSA_HILOGE("sa:%{public}d not ready!", saId);
+        return false;
+    }
+    return true;
+}
 } // namespace MiscServices
 } // namespace OHOS
-
-#endif // IMF_FOCUS_MONITOR_MANAGER_H

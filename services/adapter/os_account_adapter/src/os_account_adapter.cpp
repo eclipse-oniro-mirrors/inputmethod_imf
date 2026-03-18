@@ -16,7 +16,9 @@
 #include "os_account_adapter.h"
 
 #include "global.h"
+#include "os_account_listener.h"
 #include "os_account_manager.h"
+#include "os_account_subscriber.h"
 namespace OHOS {
 namespace MiscServices {
 // LCOV_EXCL_START
@@ -51,6 +53,33 @@ int32_t OsAccountAdapter::GetForegroundOsAccountLocalId()
     return userId;
 }
 
+std::vector<int32_t> OsAccountAdapter::GetForegroundOsAccountIds()
+{
+    std::vector<ForegroundOsAccount> accounts;
+    auto ret = OsAccountManager::GetForegroundOsAccounts(accounts);
+    if (ret != ERR_OK) {
+        IMSA_HILOGE("GetForegroundOsAccounts failed, ret: %{public}d.", ret);
+        return { MAIN_USER_ID };
+    }
+    std::vector<int32_t> userIds;
+    for (auto const &account : accounts) {
+        userIds.emplace_back(account.localId);
+    }
+    return userIds;
+}
+
+std::vector<ForegroundOsAccount> OsAccountAdapter::GetForegroundOsAccounts()
+{
+    std::vector<ForegroundOsAccount> accounts;
+    auto ret = OsAccountManager::GetForegroundOsAccounts(accounts);
+    if (ret != ERR_OK) {
+        IMSA_HILOGE("GetForegroundOsAccounts failed, ret: %{public}d.", ret);
+        ForegroundOsAccount defaultMainAccount(MAIN_USER_ID, MAIN_DISPLAY_ID);
+        accounts.emplace_back(defaultMainAccount);
+    }
+    return accounts;
+}
+
 int32_t OsAccountAdapter::GetOsAccountLocalIdFromUid(int32_t uid)
 {
     int32_t userId = INVALID_USER_ID;
@@ -68,6 +97,32 @@ int32_t OsAccountAdapter::IsOsAccountVerified(int32_t userId, bool &isUnlocked)
         IMSA_HILOGE("IsOsAccountVerified failed, userId: %{public}d, errCode: %{public}d", userId, errCode);
         return ErrorCode::ERROR_OS_ACCOUNT;
     }
+    return ErrorCode::NO_ERROR;
+}
+
+int32_t OsAccountAdapter::GetMainAccountId()
+{
+    int32_t accountId = INVALID_USER_ID;
+    auto errCode = OsAccountManager::GetForegroundOsAccountLocalId(ImfCommonConst::DEFAULT_DISPLAY_ID, accountId);
+    if (errCode != ERR_OK) {
+        IMSA_HILOGE("GetForegroundOsAccountLocalId failed, errCode: %{public}d", errCode);
+        return MAIN_USER_ID;
+    }
+    IMSA_HILOGD("accountId: %{public}d", accountId);
+    return accountId;
+}
+
+int32_t OsAccountAdapter::RegisterOsAccountStateListener()
+{
+    std::set<OsAccountState> states = { OsAccountState::REMOVED, OsAccountState::STOPPED, OsAccountState::SWITCHED };
+    OsAccountSubscribeInfo subscribeInfo(states, false); // no need handshake
+    auto listener = std::make_shared<OsAccountListener>(subscribeInfo);
+    ErrCode ret = OsAccountManager::SubscribeOsAccount(listener);
+    if (ret != ERR_OK) {
+        IMSA_HILOGI("SubscribeOsAccount failed: %{public}d", ret);
+        return ErrorCode::ERROR_OS_ACCOUNT;
+    }
+    IMSA_HILOGI("success");
     return ErrorCode::NO_ERROR;
 }
 // LCOV_EXCL_STOP

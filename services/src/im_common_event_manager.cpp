@@ -69,14 +69,11 @@ std::shared_ptr<ImCommonEventManager::EventSubscriber> ImCommonEventManager::Cre
 bool ImCommonEventManager::SubscribeEvent()
 {
     EventFwk::MatchingSkills matchingSkills;
-    matchingSkills.AddEvent(CommonEventSupport::COMMON_EVENT_USER_SWITCHED);
-    matchingSkills.AddEvent(CommonEventSupport::COMMON_EVENT_USER_REMOVED);
     matchingSkills.AddEvent(CommonEventSupport::COMMON_EVENT_PACKAGE_ADDED);
     matchingSkills.AddEvent(CommonEventSupport::COMMON_EVENT_PACKAGE_CHANGED);
     matchingSkills.AddEvent(CommonEventSupport::COMMON_EVENT_PACKAGE_REMOVED);
     matchingSkills.AddEvent(CommonEventSupport::COMMON_EVENT_BUNDLE_SCAN_FINISHED);
     matchingSkills.AddEvent(CommonEventSupport::COMMON_EVENT_DATA_SHARE_READY);
-    matchingSkills.AddEvent(CommonEventSupport::COMMON_EVENT_USER_STOPPED);
     matchingSkills.AddEvent(CommonEventSupport::COMMON_EVENT_BOOT_COMPLETED);
     matchingSkills.AddEvent(CommonEventSupport::COMMON_EVENT_SCREEN_UNLOCKED);
     matchingSkills.AddEvent(CommonEventSupport::COMMON_EVENT_SCREEN_LOCKED);
@@ -170,12 +167,6 @@ bool ImCommonEventManager::UnsubscribeEvent()
 ImCommonEventManager::EventSubscriber::EventSubscriber(const EventFwk::CommonEventSubscribeInfo &subscribeInfo)
     : EventFwk::CommonEventSubscriber(subscribeInfo)
 {
-    EventManagerFunc_[CommonEventSupport::COMMON_EVENT_USER_SWITCHED] =
-        [](EventSubscriber *that, const CommonEventData &data) { return that->StartUser(data); };
-    EventManagerFunc_[CommonEventSupport::COMMON_EVENT_USER_STOPPED] =
-        [](EventSubscriber *that, const CommonEventData &data) { return that->StopUser(data); };
-    EventManagerFunc_[CommonEventSupport::COMMON_EVENT_USER_REMOVED] =
-        [](EventSubscriber *that, const CommonEventData &data) { return that->RemoveUser(data); };
     EventManagerFunc_[CommonEventSupport::COMMON_EVENT_PACKAGE_REMOVED] =
         [](EventSubscriber *that, const CommonEventData &data) { return that->RemovePackage(data); };
     EventManagerFunc_[CommonEventSupport::COMMON_EVENT_BUNDLE_SCAN_FINISHED] =
@@ -250,21 +241,6 @@ void ImCommonEventManager::EventSubscriber::OnReceiveEvent(const EventFwk::Commo
     }
 }
 
-void ImCommonEventManager::EventSubscriber::StopUser(const CommonEventData &data)
-{
-    HandleUserEvent(MessageID::MSG_ID_USER_STOP, data);
-}
-
-void ImCommonEventManager::EventSubscriber::StartUser(const CommonEventData &data)
-{
-    HandleUserEvent(MessageID::MSG_ID_USER_START, data);
-}
-
-void ImCommonEventManager::EventSubscriber::RemoveUser(const CommonEventData &data)
-{
-    HandleUserEvent(MessageID::MSG_ID_USER_REMOVED, data);
-}
-
 void ImCommonEventManager::EventSubscriber::HandleLargeMemoryStateUpdate(const EventFwk::CommonEventData &data)
 {
     auto const &want = data.GetWant();
@@ -298,23 +274,6 @@ void ImCommonEventManager::EventSubscriber::HandleLargeMemoryStateUpdate(const E
         return;
     }
     msgHandle->SendMessage(msg);
-}
-
-void ImCommonEventManager::EventSubscriber::HandleUserEvent(int32_t messageId, const EventFwk::CommonEventData &data)
-{
-    auto userId = data.GetCode();
-    MessageParcel *parcel = new (std::nothrow) MessageParcel();
-    if (parcel == nullptr) {
-        return;
-    }
-    IMSA_HILOGD("userId:%{public}d, messageId:%{public}d", userId, messageId);
-    parcel->WriteInt32(userId);
-    Message *msg = new (std::nothrow) Message(messageId, parcel);
-    if (msg == nullptr) {
-        delete parcel;
-        return;
-    }
-    MessageHandler::Instance()->SendMessage(msg);
 }
 
 void ImCommonEventManager::EventSubscriber::OnBundleScanFinished(const EventFwk::CommonEventData &data)

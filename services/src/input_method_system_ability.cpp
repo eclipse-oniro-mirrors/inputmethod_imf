@@ -36,11 +36,13 @@
 #include "mem_mgr_client.h"
 #include "numkey_apps_manager.h"
 #include "os_account_adapter.h"
+#include "samgr_adapter.h"
 #include "scene_board_judgement.h"
 #include "securec.h"
 #include "system_ability_definition.h"
 #include "unordered_map"
 #include "variant"
+#include "window_monitors_manager.h"
 #ifdef IMF_SCREENLOCK_MGR_ENABLE
 #include "screenlock_manager.h"
 #endif
@@ -65,6 +67,7 @@ using namespace AppExecFwk;
 using namespace Security::AccessToken;
 using namespace std::chrono;
 using namespace HiviewDFX;
+using namespace AccountSA;
 constexpr uint32_t FATAL_TIMEOUT = 30;    // 30s
 constexpr int64_t WARNING_TIMEOUT = 5000; // 5s
 constexpr uint32_t MAX_RETRIES = 3;
@@ -133,10 +136,12 @@ void InputMethodSystemAbility::ResetDelayUnloadTask(uint32_t code)
 {
     auto task = [this]() {
         IMSA_HILOGI("start unload task");
-        auto session = UserSessionManager::GetInstance().GetUserSession(userId_);
-        if (session != nullptr) {
-            session->TryUnloadSystemAbility();
+        if (IsImeInUse()) {
+            IMSA_HILOGI("ime in use");
+            return;
         }
+        auto onDemandStartStopSa = std::make_shared<OnDemandStartStopSa>();
+        onDemandStartStopSa->UnloadInputMethodSystemAbility();
     };
 
     static std::mutex lastPostTimeLock;
@@ -165,18 +170,14 @@ void InputMethodSystemAbility::ResetDelayUnloadTask(uint32_t code)
 }
 bool InputMethodSystemAbility::IsImeInUse()
 {
-    auto session = UserSessionManager::GetInstance().GetUserSession(userId_);
-    if (session == nullptr) {
-        IMSA_HILOGE("session is nullptr userId: %{public}d", userId_.load());
-        return false;
+    auto userSessions = UserSessionManager::GetInstance().GetUserSessions();
+    for (const auto &userSession : userSessions) {
+        auto session = userSession.second;
+        if (session != nullptr && session->IsImeInUse()) {
+            return true;
+        }
     }
-
-    auto data = session->GetRealImeData(true);
-    if (data == nullptr || data->imeStateManager == nullptr) {
-        IMSA_HILOGE("data or imeStateManager is nullptr");
-        return false;
-    }
-    return data->imeStateManager->IsImeInUse();
+    return false;
 }
 #endif
 
@@ -226,7 +227,7 @@ void InputMethodSystemAbility::OnStart()
     Initialize();
     int32_t ret = Init();
     if (ret != ErrorCode::NO_ERROR) {
-        InputMethodSysEvent::GetInstance().ServiceFaultReporter("imf", ret);
+        InputMethodSysEvent::GetInstance().ServiceFaultReporter("imf", ret, ImfCommonConst::DEFAULT_USER_ID);
         auto callback = [=]() { Init(); };
         if (serviceHandler_ == nullptr) {
             IMSA_HILOGE("serviceHandler_ is nullptr!");
@@ -240,7 +241,6 @@ void InputMethodSystemAbility::OnStart()
     InputMethodSyncTrace tracer("InputMethodController Attach trace.");
     InputmethodDump::GetInstance().AddDumpAllMethod([this](int fd) { this->DumpAllMethod(fd); });
     IMSA_HILOGI("start imsa service success.");
-    return;
 }
 
 bool InputMethodSystemAbility::IsValidBundleName(const std::string &bundleName)
@@ -414,13 +414,23 @@ int32_t InputMethodSystemAbility::Init()
     return ErrorCode::NO_ERROR;
 }
 
-void InputMethodSystemAbility::UpdateUserInfo(int32_t userId)
+void InputMethodSystemAbility::InitUserInfo(int32_t userId, uint64_t displayId)
 {
-    IMSA_HILOGI("%{public}d switch to %{public}d.", userId_.load(), userId);
-    userId_ = userId;
-    UserSessionManager::GetInstance().AddUserSession(userId_);
-    InputMethodSysEvent::GetInstance().SetUserId(userId_);
-    NumkeyAppsManager::GetInstance().OnUserSwitched(userId_);
+    UserSessionManager::GetInstance().AddUserSession(userId);
+    if (WindowAdapter::GetInstance().GetDisplayGroupId(displayId, userId) == DEFAULT_DISPLAY_ID) {
+        NumkeyAppsManager::GetInstance().OnUserSwitched(userId);
+    }
+}
+
+void InputMethodSystemAbility::UpdateUserInfo(int32_t userId, uint64_t displayId)
+{
+    IMSA_HILOGI("display: %{public}" PRIu64 ", userId switch to %{public}d.", displayId, userId);
+    // update user-separated data
+    FullImeInfoManager::GetInstance().Switch(userId, displayId);
+    UserSessionManager::GetInstance().AddUserSession(userId);
+    if (WindowAdapter::GetInstance().GetDisplayGroupId(displayId, userId) == DEFAULT_DISPLAY_ID) {
+        NumkeyAppsManager::GetInstance().OnUserSwitched(userId);
+    }
 }
 
 int32_t InputMethodSystemAbility::OnIdle(const SystemAbilityOnDemandReason &idleReason)
@@ -475,11 +485,9 @@ void InputMethodSystemAbility::Initialize()
     // init work thread to handle the messages
     workThreadHandler = std::thread([this] { this->WorkThread(); });
     identityChecker_ = std::make_shared<IdentityCheckerImpl>();
-    userId_ = OsAccountAdapter::MAIN_USER_ID;
     UserSessionManager::GetInstance().SetEventHandler(serviceHandler_);
     ImeCfgManager::GetInstance().SetEventHandler(serviceHandler_);
-    UserSessionManager::GetInstance().AddUserSession(userId_);
-    InputMethodSysEvent::GetInstance().SetUserId(userId_);
+    UserSessionManager::GetInstance().AddUserSession(ImfCommonConst::START_USER_ID);
     IMSA_HILOGI("start get scene board enable status");
     ImeEnabledInfoManager::GetInstance().SetCurrentImeStatusChangedHandler(
         [this](int32_t userId, const std::string &bundleName, EnabledStatus newStatus) {
@@ -489,22 +497,49 @@ void InputMethodSystemAbility::Initialize()
     IMSA_HILOGI("Initialize end");
 }
 // LCOV_EXCL_START
-void InputMethodSystemAbility::RestartSessionIme(std::shared_ptr<PerUserSession> &session)
+void InputMethodSystemAbility::ResetAllImes()
 {
-    if (session == nullptr) {
-        UserSessionManager::GetInstance().AddUserSession(userId_);
-    }
-    session = UserSessionManager::GetInstance().GetUserSession(userId_);
-    if (session == nullptr) {
-        IMSA_HILOGE("%{public}d session is nullptr!", userId_.load());
+    RestartAllForegroundImes();
+    StopAllBackgroundImes();
+}
+
+void InputMethodSystemAbility::RestartAllForegroundImes()
+{
+#ifdef IMF_ON_DEMAND_START_STOP_SA_ENABLE
+    IMSA_HILOGD("dynamic start sa, no need");
+#else
+    if (ImeStateManagerFactory::GetInstance().GetDynamicStartIme()) {
+        IMSA_HILOGD("dynamic start ime, no need");
         return;
     }
-#ifndef IMF_ON_DEMAND_START_STOP_SA_ENABLE
-    if (!ImeStateManagerFactory::GetInstance().GetDynamicStartIme()) {
-        session->AddRestartIme();
+    auto accounts = OsAccountAdapter::GetForegroundOsAccountIds();
+    for (auto account : accounts) {
+        auto session = UserSessionManager::GetInstance().GetUserSession(account);
+        if (session == nullptr) {
+            UserSessionManager::GetInstance().AddUserSession(account);
+            session = UserSessionManager::GetInstance().GetUserSession(account);
+        }
+        if (session != nullptr) {
+            session->AddRestartIme();
+        }
     }
 #endif
-    StopImeInBackground();
+}
+
+void InputMethodSystemAbility::StopAllBackgroundImes()
+{
+    auto task = [this]() {
+        auto sessions = UserSessionManager::GetInstance().GetUserSessions();
+        for (const auto &tempSession : sessions) {
+            if (!OsAccountAdapter::IsOsAccountForeground(tempSession.first)) {
+                tempSession.second->StopCurrentIme();
+            }
+        }
+    };
+    if (serviceHandler_ == nullptr) {
+        return;
+    }
+    serviceHandler_->PostTask(task, __FUNCTION__, 0, AppExecFwk::EventQueue::Priority::IMMEDIATE);
 }
 
 std::shared_ptr<PerUserSession> InputMethodSystemAbility::GetSessionFromMsg(const Message *msg)
@@ -533,7 +568,7 @@ int32_t InputMethodSystemAbility::PrepareForOperateKeyboard(
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
     }
-    auto focusedRet = identityChecker_->IsFocused(pid, tokenId, windowId, abilityToken);
+    auto focusedRet = identityChecker_->IsFocused(pid, tokenId, userId, windowId, abilityToken);
     if (focusedRet.first) {
         return ErrorCode::NO_ERROR;
     }
@@ -544,8 +579,8 @@ int32_t InputMethodSystemAbility::PrepareForOperateKeyboard(
     return ErrorCode::NO_ERROR;
 }
 // LCOV_EXCL_START
-int32_t InputMethodSystemAbility::SwitchByCondition(const Condition &condition,
-    const std::shared_ptr<ImeInfo> &info)
+int32_t InputMethodSystemAbility::SwitchByCondition(
+    const Condition &condition, const std::shared_ptr<ImeInfo> &info, int32_t userId)
 {
     if (info == nullptr) {
         IMSA_HILOGE("info is nullptr!");
@@ -557,13 +592,13 @@ int32_t InputMethodSystemAbility::SwitchByCondition(const Condition &condition,
         return ErrorCode::ERROR_BAD_PARAMETERS;
     }
     SwitchInfo switchInfo = { std::chrono::system_clock::now(), target->name, target->id };
-    auto session = UserSessionManager::GetInstance().GetUserSession(userId_);
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
-        IMSA_HILOGE("%{public}d session is nullptr!", userId_.load());
+        IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_NULL_POINTER;
     }
     session->GetSwitchQueue().Push(switchInfo);
-    return OnSwitchInputMethod(userId_, switchInfo, SwitchTrigger::IMSA);
+    return OnSwitchInputMethod(userId, switchInfo, SwitchTrigger::IMSA);
 }
 // LCOV_EXCL_STOP
 void InputMethodSystemAbility::SubscribeCommonEvent()
@@ -621,7 +656,7 @@ int32_t InputMethodSystemAbility::GenerateClientInfo(
         clientInfo.uiExtensionHostPid = ImfCommonConst::INVALID_PID;
     }
     clientInfo.config.inputAttribute.bundleName = identityChecker_->GetBundleNameByToken(tokenId);
-    auto callingDisplayId = identityChecker_->GetDisplayIdByWindowId(clientInfo.config.windowId);
+    auto callingDisplayId = identityChecker_->GetDisplayIdByWindowId(clientInfo.config.windowId, userId);
     clientInfo.config.privateCommand.insert_or_assign(
         "displayId", PrivateDataValue(static_cast<int32_t>(callingDisplayId)));
     clientInfo.name = ImfHiSysEventUtil::GetAppName(tokenId);
@@ -714,7 +749,7 @@ int32_t InputMethodSystemAbility::StartInputInner(
     auto pid = IPCSkeleton::GetCallingPid();
     AccessTokenID tokenId = IPCSkeleton::GetCallingTokenID();
     auto checkRet =
-        IsFocusedOrBroker(pid, tokenId, inputClientInfo.config.windowId, inputClientInfo.config.abilityToken);
+        IsFocusedOrBroker(pid, tokenId, userId, inputClientInfo.config.windowId, inputClientInfo.config.abilityToken);
     if (!checkRet.first) {
         return ErrorCode::ERROR_CLIENT_NOT_FOCUSED;
     }
@@ -749,14 +784,14 @@ int32_t InputMethodSystemAbility::StartInputInner(
     return session->OnStartInput(inputClientInfo, agents, imeInfos);
 }
 
-std::pair<bool, FocusedInfo> InputMethodSystemAbility::IsFocusedOrBroker(
-    int64_t callingPid, uint32_t callingTokenId, uint32_t windowId, const sptr<IRemoteObject> &abilityToken)
+std::pair<bool, FocusedInfo> InputMethodSystemAbility::IsFocusedOrBroker(int64_t callingPid, uint32_t callingTokenId,
+    int32_t userId, uint32_t windowId, const sptr<IRemoteObject> &abilityToken)
 {
-    auto focusedRet = identityChecker_->IsFocused(callingPid, callingTokenId, windowId, abilityToken);
+    auto focusedRet = identityChecker_->IsFocused(callingPid, callingTokenId, userId, windowId, abilityToken);
     if (focusedRet.first) {
         return focusedRet;
     }
-    return identityChecker_->CheckBroker(callingTokenId);
+    return identityChecker_->CheckBroker(callingTokenId, userId);
 }
 // LCOV_EXCL_START
 int32_t InputMethodSystemAbility::CheckInputTypeOption(int32_t userId, InputClientInfo &inputClientInfo)
@@ -792,7 +827,7 @@ int32_t InputMethodSystemAbility::CheckInputTypeOption(int32_t userId, InputClie
         ImeCfgManager::GetInstance().ModifyTempScreenLockImeCfg(userId, ime);
         return session->StartUserSpecifiedIme();
     } else {
-        ImeCfgManager::GetInstance().ModifyTempScreenLockImeCfg(userId_, "");
+        ImeCfgManager::GetInstance().ModifyTempScreenLockImeCfg(userId, "");
     }
 #endif
     IMSA_HILOGD("Screen is unLocked!");
@@ -860,11 +895,22 @@ ErrCode InputMethodSystemAbility::StopInputSession(uint32_t windowId)
 ErrCode InputMethodSystemAbility::RequestHideInput(uint32_t windowId, uint64_t displayId, bool isFocusTriggered,
     int32_t userId)
 {
-    IMSA_HILOGI("isFocusTriggered/windowId/displayId:%{public}d/%{public}d/%{public}" PRIu64 ".", isFocusTriggered,
-        windowId, displayId);
+    IMSA_HILOGI("isFocusTriggered/windowId/displayId/userId:%{public}d/%{public}d/%{public}" PRIu64 "/%{public}d.",
+        isFocusTriggered, windowId, displayId, userId);
     AccessTokenID tokenId = IPCSkeleton::GetCallingTokenID();
     auto pid = IPCSkeleton::GetCallingPid();
-    auto [isFocused, focusedInfo] = identityChecker_->IsFocused(pid, tokenId, windowId);
+    int32_t outputUserId;
+    int32_t result = GetCallingUserId(outputUserId, userId);
+    if (result != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetCallingUserId failed, result:%{public}d", result);
+        return result;
+    }
+    auto session = UserSessionManager::GetInstance().GetUserSession(outputUserId);
+    if (session == nullptr) {
+        IMSA_HILOGE("%{public}d session is nullptr!", outputUserId);
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    auto [isFocused, focusedInfo] = identityChecker_->IsFocused(pid, tokenId, outputUserId, windowId);
     std::string callerBundleName;
     if (isFocused) {
         IMSA_HILOGD("caller focused, bundleName: %{public}s", callerBundleName.c_str());
@@ -879,18 +925,8 @@ ErrCode InputMethodSystemAbility::RequestHideInput(uint32_t windowId, uint64_t d
             return ErrorCode::ERROR_STATUS_PERMISSION_DENIED;
         }
     }
-    int32_t outputUserId;
-    int32_t result = GetCallingUserId(outputUserId, userId);
-    if (result != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("GetCallingUserId failed, result:%{public}d", result);
-        return result;
-    }
-    auto session = UserSessionManager::GetInstance().GetUserSession(outputUserId);
-    if (session == nullptr) {
-        IMSA_HILOGE("%{public}d session is nullptr!", outputUserId);
-        return ErrorCode::ERROR_NULL_POINTER;
-    }
-    return session->OnRequestHideInput(WindowAdapter::GetDisplayIdWithCorrect(windowId, displayId), callerBundleName);
+    return session->OnRequestHideInput(
+        WindowAdapter::GetDisplayIdWithCorrect(windowId, displayId, outputUserId), callerBundleName);
 }
 
 ErrCode InputMethodSystemAbility::SetCoreAndAgent(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent)
@@ -1044,7 +1080,7 @@ ErrCode InputMethodSystemAbility::HideCurrentInput(uint64_t displayId)
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
     }
-    if (!WindowAdapter::GetInstance().IsDisplayIdExist(displayId)) {
+    if (!WindowAdapter::GetInstance().IsDisplayIdExist(displayId, userId)) {
         IMSA_HILOGE("displayId:%{public}" PRIu64 " not exist!", displayId);
         return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
     }
@@ -1094,7 +1130,7 @@ int32_t InputMethodSystemAbility::ShowCurrentInputInner(uint64_t displayId)
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
     }
-    if (!WindowAdapter::GetInstance().IsDisplayIdExist(displayId)) {
+    if (!WindowAdapter::GetInstance().IsDisplayIdExist(displayId, userId)) {
         IMSA_HILOGE("displayId:%{public}" PRIu64 " not exist!", displayId);
         return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
     }
@@ -1165,12 +1201,11 @@ ErrCode InputMethodSystemAbility::SetCallingWindow(uint32_t windowId, const sptr
     IMSA_HILOGD("IMF SA setCallingWindow enter");
     auto pid = IPCSkeleton::GetCallingPid();
     AccessTokenID tokenId = IPCSkeleton::GetCallingTokenID();
-    auto checkRet =
-        IsFocusedOrBroker(pid, tokenId, windowId);
+    auto userId = GetCallingUserId();
+    auto checkRet = IsFocusedOrBroker(pid, tokenId, userId, windowId);
     if (!checkRet.first) {
         return ErrorCode::ERROR_CLIENT_NOT_FOCUSED;
     }
-    auto userId = GetCallingUserId();
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
@@ -1192,7 +1227,8 @@ ErrCode InputMethodSystemAbility::GetInputStartInfo(bool& isInputStart,
         IMSA_HILOGE("%{public}d session is nullptr!", callingUserId);
         return false;
     }
-    return session->GetInputStartInfo(GetCallingDisplayId(), isInputStart, callingWndId, requestKeyboardReason);
+    return session->GetInputStartInfo(
+        GetCallingDisplayId(callingUserId), isInputStart, callingWndId, requestKeyboardReason);
 }
 // LCOV_EXCL_STOP
 ErrCode InputMethodSystemAbility::IsCurrentIme(bool& resultValue)
@@ -1460,7 +1496,7 @@ int32_t InputMethodSystemAbility::StartSwitch(int32_t userId, const SwitchInfo &
         ret = session->StartIme(targetIme);
         if (ret != ErrorCode::NO_ERROR) {
             InputMethodSysEvent::GetInstance().InputmethodFaultReporter(
-                ret, switchInfo.bundleName, "switch input method failed!");
+                ret, switchInfo.bundleName, "switch input method failed!", userId);
             return ret;
         }
         if (!switchInfo.isTmpImeSwitchSubtype) {
@@ -1471,7 +1507,7 @@ int32_t InputMethodSystemAbility::StartSwitch(int32_t userId, const SwitchInfo &
     ret = info->isSpecificSubName ? ret : ErrorCode::NO_ERROR;
     if (ret != ErrorCode::NO_ERROR) {
         InputMethodSysEvent::GetInstance().InputmethodFaultReporter(
-            ret, switchInfo.bundleName, "switch input method subtype failed!");
+            ret, switchInfo.bundleName, "switch input method subtype failed!", userId);
     }
     return ret;
 }
@@ -1534,7 +1570,7 @@ int32_t InputMethodSystemAbility::OnSwitchInputMethod(int32_t userId, const Swit
     int32_t ret = CheckSwitchPermission(userId, switchInfo, trigger);
     if (ret != ErrorCode::NO_ERROR) {
         InputMethodSysEvent::GetInstance().InputmethodFaultReporter(ErrorCode::ERROR_STATUS_PERMISSION_DENIED,
-            switchInfo.bundleName, "switch input method failed!");
+            switchInfo.bundleName, "switch input method failed!", userId);
         session->GetSwitchQueue().Pop();
         return ret;
     }
@@ -1876,15 +1912,15 @@ void InputMethodSystemAbility::WorkThread()
             break;
         }
         switch (msg->msgId_) {
-            case MSG_ID_USER_START: {
-                OnUserStarted(msg);
+            case MSG_ID_USER_SWITCHED: {
+                OnUserSwitched(msg);
                 break;
             }
             case MSG_ID_USER_REMOVED: {
                 OnUserRemoved(msg);
                 break;
             }
-            case MSG_ID_USER_STOP: {
+            case MSG_ID_USER_STOPPED: {
                 OnUserStop(msg);
                 break;
             }
@@ -1911,9 +1947,11 @@ void InputMethodSystemAbility::WorkThread()
                 FullImeInfoManager::GetInstance().Update();
                 break;
             }
-            case MSG_ID_BOOT_COMPLETED:
-            case MSG_ID_OS_ACCOUNT_STARTED: {
+            case MSG_ID_BOOT_COMPLETED: {
                 FullImeInfoManager::GetInstance().Init();
+            }
+            case MSG_ID_OS_ACCOUNT_STARTED: {
+                HandleOsAccountStarted();
                 break;
             }
             case MSG_ID_SCREEN_UNLOCK: {
@@ -1939,6 +1977,9 @@ void InputMethodSystemAbility::WorkThread()
                 OnSysMemChanged();
                 break;
             }
+            case MSG_ID_WMS_STARTED: {
+                HandleWmsStarted();
+            }
             default: {
                 IMSA_HILOGD("the message is %{public}d.", msg->msgId_);
                 break;
@@ -1955,27 +1996,53 @@ void InputMethodSystemAbility::WorkThread()
  * \param msg the parameters are saved in msg->msgContent_
  * \return ErrorCode
  */
-int32_t InputMethodSystemAbility::OnUserStarted(const Message *msg)
+int32_t InputMethodSystemAbility::OnUserSwitched(const Message *msg)
 {
-    if (msg == nullptr) {
-        IMSA_HILOGE("msg is nullptr!");
+    if (msg == nullptr || msg->msgContent_ == nullptr) {
+        IMSA_HILOGE("message is nullptr!");
         return ErrorCode::ERROR_NULL_POINTER;
     }
-    if (msg->msgContent_ == nullptr) {
-        IMSA_HILOGE("msgContent_ is nullptr!");
-        return ErrorCode::ERROR_NULL_POINTER;
+    int32_t fromUserId = 0;
+    int32_t toUserId = 0;
+    uint64_t displayId = 0;
+    MessageParcel *data = msg->msgContent_;
+    if (!ITypesUtil::Unmarshal(*data, fromUserId, toUserId, displayId)) {
+        IMSA_HILOGE("failed to read message parcel");
+        return ErrorCode::ERROR_EX_PARCELABLE;
     }
-    auto newUserId = msg->msgContent_->ReadInt32();
-    FullImeInfoManager::GetInstance().Switch(newUserId);
-    // if scb enable, deal when receive wmsConnected.
-    if (isScbEnable_.load()) {
-        return ErrorCode::NO_ERROR;
-    }
-    if (newUserId == userId_) {
-        return ErrorCode::NO_ERROR;
-    }
-    HandleUserSwitched(newUserId);
+    IMSA_HILOGI("displayId: %{public}" PRIu64 " from %{public}d to %{public}d", displayId, fromUserId, toUserId);
+    HandleUserSwitchedOut(fromUserId, displayId);
+    HandleUserSwitchedIn(toUserId, displayId);
+#ifdef SCENE_BOARD_ENABLE
+    // if scb is enabled, restart ime when receive wmsConnected.
     return ErrorCode::NO_ERROR;
+#endif
+    // if scb is not enabled, restart ime when every user switched
+    StartNewUserIme(toUserId);
+    return ErrorCode::NO_ERROR;
+}
+
+void InputMethodSystemAbility::HandleUserSwitchedOut(int32_t userId, uint64_t displayId)
+{
+#ifndef SCENE_BOARD_ENABLE
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+    if (session != nullptr) {
+        session->RemoveAllCurrentClient();
+    }
+#endif
+}
+
+void InputMethodSystemAbility::HandleUserSwitchedIn(int32_t userId, uint64_t displayId)
+{
+    UpdateUserInfo(userId, displayId);
+    if (WindowMonitorsManager::GetInstance().IsInited(userId)) {
+        IMSA_HILOGD("user %{public}d has been inited", userId);
+    } else {
+        IMSA_HILOGI("user %{public}d has not been inited, init now", userId);
+        if (InitWindowMonitors(userId)) {
+            WindowMonitorsManager::GetInstance().SetInited(userId);
+        }
+    }
 }
 
 int32_t InputMethodSystemAbility::OnUserRemoved(const Message *msg)
@@ -1984,8 +2051,13 @@ int32_t InputMethodSystemAbility::OnUserRemoved(const Message *msg)
         IMSA_HILOGE("Aborted! Message is nullptr!");
         return ErrorCode::ERROR_NULL_POINTER;
     }
-    auto userId = msg->msgContent_->ReadInt32();
-    IMSA_HILOGI("start: %{public}d", userId);
+    int32_t userId = 0;
+    MessageParcel *data = msg->msgContent_;
+    if (!ITypesUtil::Unmarshal(*data, userId)) {
+        IMSA_HILOGE("failed to read parcel");
+        return ErrorCode::ERROR_EX_PARCELABLE;
+    }
+    IMSA_HILOGI("userId: %{public}d", userId);
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session != nullptr) {
         session->StopCurrentIme();
@@ -1993,6 +2065,7 @@ int32_t InputMethodSystemAbility::OnUserRemoved(const Message *msg)
     }
     FullImeInfoManager::GetInstance().Delete(userId);
     NumkeyAppsManager::GetInstance().OnUserRemoved(userId);
+    RemoveWindowMonitors(userId);
     return ErrorCode::NO_ERROR;
 }
 
@@ -2073,8 +2146,8 @@ int32_t InputMethodSystemAbility::OnPackageUpdated(int32_t userId, const std::st
     if (ret != ErrorCode::NO_ERROR) {
         return ret;
     }
-    if (userId != userId_) {
-        IMSA_HILOGD("not current user");
+    if (!OsAccountAdapter::IsOsAccountForeground(userId)) {
+        IMSA_HILOGD("not foreground user");
         return ErrorCode::NO_ERROR;
     }
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
@@ -2083,7 +2156,7 @@ int32_t InputMethodSystemAbility::OnPackageUpdated(int32_t userId, const std::st
     }
     session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
-        IMSA_HILOGE("%{public}d session is nullptr!", userId_.load());
+        IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_NULL_POINTER;
     }
     session->OnPackageUpdated(packageName);
@@ -2116,16 +2189,16 @@ void InputMethodSystemAbility::OnScreenUnlock(const Message *msg)
         return;
     }
     IMSA_HILOGI("userId: %{public}d", userId);
-    if (userId != userId_) {
+    if (!OsAccountAdapter::IsOsAccountForeground(userId)) {
         return;
     }
-    auto session = UserSessionManager::GetInstance().GetUserSession(userId_);
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
-        UserSessionManager::GetInstance().AddUserSession(userId_);
+        UserSessionManager::GetInstance().AddUserSession(userId);
     }
-    session = UserSessionManager::GetInstance().GetUserSession(userId_);
+    session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
-        IMSA_HILOGE("%{public}d session is nullptr!", userId_.load());
+        IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return;
     }
     session->OnScreenUnlock();
@@ -2173,29 +2246,25 @@ int32_t InputMethodSystemAbility::OnDisplayOptionalInputMethod()
 int32_t InputMethodSystemAbility::SwitchByCombinationKey(uint32_t state)
 {
     IMSA_HILOGD("InputMethodSystemAbility::SwitchByCombinationKey start.");
-    auto session = UserSessionManager::GetInstance().GetUserSession(userId_);
-    if (session == nullptr) {
-        IMSA_HILOGE("%{public}d session is nullptr!", userId_.load());
-        return ErrorCode::ERROR_NULL_POINTER;
-    }
+    auto userId = OsAccountAdapter::GetMainAccountId();
     if (CombinationKey::IsMatch(CombinationKeyFunction::SWITCH_MODE, state)) {
         IMSA_HILOGI("switch mode.");
-        return SwitchMode();
+        return SwitchMode(userId);
     }
     if (CombinationKey::IsMatch(CombinationKeyFunction::SWITCH_LANGUAGE, state)) {
         IMSA_HILOGI("switch language.");
-        return SwitchLanguage();
+        return SwitchLanguage(userId);
     }
     if (CombinationKey::IsMatch(CombinationKeyFunction::SWITCH_IME, state)) {
         IMSA_HILOGI("switch ime.");
-        DealSwitchRequest();
+        DealSwitchRequest(userId);
         return ErrorCode::NO_ERROR;
     }
     IMSA_HILOGE("keycode is undefined!");
     return ErrorCode::ERROR_EX_UNSUPPORTED_OPERATION;
 }
 
-void InputMethodSystemAbility::DealSwitchRequest()
+void InputMethodSystemAbility::DealSwitchRequest(int32_t userId)
 {
     {
         std::lock_guard<std::mutex> lock(switchImeMutex_);
@@ -2209,7 +2278,7 @@ void InputMethodSystemAbility::DealSwitchRequest()
             ++targetSwitchCount_;
         }
     }
-    auto switchTask = [this]() {
+    auto switchTask = [this, userId]() {
         auto checkSwitchCount = [this]() {
             std::lock_guard<std::mutex> lock(switchImeMutex_);
             if (targetSwitchCount_ > 0) {
@@ -2219,7 +2288,7 @@ void InputMethodSystemAbility::DealSwitchRequest()
             return false;
         };
         do {
-            SwitchType();
+            SwitchType(userId);
         } while (checkSwitchCount());
     };
     if (serviceHandler_ == nullptr) {
@@ -2230,11 +2299,11 @@ void InputMethodSystemAbility::DealSwitchRequest()
     serviceHandler_->PostTask(switchTask, "SwitchImeTask", 0, AppExecFwk::EventQueue::Priority::IMMEDIATE);
 }
 
-int32_t InputMethodSystemAbility::SwitchMode()
+int32_t InputMethodSystemAbility::SwitchMode(int32_t userId)
 {
-    auto bundleName = ImeCfgManager::GetInstance().GetCurrentImeCfg(userId_)->bundleName;
-    auto subName = ImeCfgManager::GetInstance().GetCurrentImeCfg(userId_)->subName;
-    auto info = ImeInfoInquirer::GetInstance().GetImeInfo(userId_, bundleName, subName);
+    auto bundleName = ImeCfgManager::GetInstance().GetCurrentImeCfg(userId)->bundleName;
+    auto subName = ImeCfgManager::GetInstance().GetCurrentImeCfg(userId)->subName;
+    auto info = ImeInfoInquirer::GetInstance().GetImeInfo(userId, bundleName, subName);
     if (info == nullptr) {
         IMSA_HILOGE("current ime is abnormal!");
         return ErrorCode::ERROR_BAD_PARAMETERS;
@@ -2244,14 +2313,14 @@ int32_t InputMethodSystemAbility::SwitchMode()
         return ErrorCode::NO_ERROR;
     }
     auto condition = info->subProp.mode == "upper" ? Condition::LOWER : Condition::UPPER;
-    return SwitchByCondition(condition, info);
+    return SwitchByCondition(condition, info, userId);
 }
 
-int32_t InputMethodSystemAbility::SwitchLanguage()
+int32_t InputMethodSystemAbility::SwitchLanguage(int32_t userId)
 {
-    auto bundleName = ImeCfgManager::GetInstance().GetCurrentImeCfg(userId_)->bundleName;
-    auto subName = ImeCfgManager::GetInstance().GetCurrentImeCfg(userId_)->subName;
-    auto info = ImeInfoInquirer::GetInstance().GetImeInfo(userId_, bundleName, subName);
+    auto bundleName = ImeCfgManager::GetInstance().GetCurrentImeCfg(userId)->bundleName;
+    auto subName = ImeCfgManager::GetInstance().GetCurrentImeCfg(userId)->subName;
+    auto info = ImeInfoInquirer::GetInstance().GetImeInfo(userId, bundleName, subName);
     if (info == nullptr) {
         IMSA_HILOGE("current ime is abnormal!");
         return ErrorCode::ERROR_BAD_PARAMETERS;
@@ -2264,10 +2333,10 @@ int32_t InputMethodSystemAbility::SwitchLanguage()
         return ErrorCode::NO_ERROR;
     }
     auto condition = info->subProp.language == "chinese" ? Condition::ENGLISH : Condition::CHINESE;
-    return SwitchByCondition(condition, info);
+    return SwitchByCondition(condition, info, userId);
 }
 
-int32_t InputMethodSystemAbility::SwitchType()
+int32_t InputMethodSystemAbility::SwitchType(int32_t userId)
 {
     SwitchInfo nextSwitchInfo = { std::chrono::system_clock::now(), "", "" };
     uint32_t cacheCount = 0;
@@ -2276,7 +2345,7 @@ int32_t InputMethodSystemAbility::SwitchType()
         cacheCount = targetSwitchCount_.exchange(0);
     }
     int32_t ret =
-        ImeInfoInquirer::GetInstance().GetSwitchInfoBySwitchCount(nextSwitchInfo, userId_, cacheCount);
+        ImeInfoInquirer::GetInstance().GetSwitchInfoBySwitchCount(nextSwitchInfo, userId, cacheCount);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("get next SwitchInfo failed, stop switching ime.");
         return ret;
@@ -2287,13 +2356,13 @@ int32_t InputMethodSystemAbility::SwitchType()
     }
     IMSA_HILOGD("switch to: %{public}s.", nextSwitchInfo.bundleName.c_str());
     nextSwitchInfo.timestamp = std::chrono::system_clock::now();
-    auto session = UserSessionManager::GetInstance().GetUserSession(userId_);
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
-        IMSA_HILOGE("%{public}d session is nullptr!", userId_.load());
+        IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_NULL_POINTER;
     }
     session->GetSwitchQueue().Push(nextSwitchInfo);
-    return OnSwitchInputMethod(userId_, nextSwitchInfo, SwitchTrigger::IMSA);
+    return OnSwitchInputMethod(userId, nextSwitchInfo, SwitchTrigger::IMSA);
 }
 
 void InputMethodSystemAbility::InitMonitors()
@@ -2344,7 +2413,7 @@ void InputMethodSystemAbility::HandleDataShareReady()
     }
     SettingsDataUtils::GetInstance().NotifyDataShareReady();
     FullImeInfoManager::GetInstance().Init();
-    NumkeyAppsManager::GetInstance().Init(userId_);
+    NumkeyAppsManager::GetInstance().Init(OsAccountAdapter::GetMainAccountId());
 }
 // LCOV_EXCL_START
 int32_t InputMethodSystemAbility::InitAccountMonitor()
@@ -2355,7 +2424,8 @@ int32_t InputMethodSystemAbility::InitAccountMonitor()
         IMSA_HILOGE("imCommonEventManager is nullptr!");
         return ErrorCode::ERROR_NULL_POINTER;
     }
-    return imCommonEventManager->SubscribeAccountManagerService([this]() { HandleOsAccountStarted(); });
+    return imCommonEventManager->SubscribeAccountManagerService(
+        [this]() { SendMessageToWorkThread(MessageID::MSG_ID_OS_ACCOUNT_STARTED); });
 }
 // LCOV_EXCL_STOP
 int32_t InputMethodSystemAbility::InitKeyEventMonitor()
@@ -2363,7 +2433,7 @@ int32_t InputMethodSystemAbility::InitKeyEventMonitor()
     IMSA_HILOGI("InputMethodSystemAbility::InitKeyEventMonitor start.");
     auto handler = [this]() {
         // Check device capslock status and ime cfg corrent, when device power-up.
-        HandleImeCfgCapsState();
+        HandleImeCfgCapsState(OsAccountAdapter::GetMainAccountId());
 
         for (int32_t attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             auto switchTrigger = [this](uint32_t keyCode) { return SwitchByCombinationKey(keyCode);};
@@ -2396,7 +2466,8 @@ bool InputMethodSystemAbility::InitWmsMonitor()
         IMSA_HILOGE("imCommonEventManager is nullptr!");
         return false;
     }
-    return imCommonEventManager->SubscribeWindowManagerService([this]() { HandleWmsStarted(); });
+    return imCommonEventManager->SubscribeWindowManagerService(
+        [this]() { SendMessageToWorkThread(MessageID::MSG_ID_WMS_STARTED); });
 }
 // LCOV_EXCL_START
 bool InputMethodSystemAbility::InitMemMgrMonitor()
@@ -2409,35 +2480,27 @@ bool InputMethodSystemAbility::InitMemMgrMonitor()
     return imCommonEventManager->SubscribeMemMgrService([this]() { HandleMemStarted(); });
 }
 
-void InputMethodSystemAbility::InitWmsConnectionMonitor()
-{
-    WmsConnectionMonitorManager::GetInstance().RegisterWMSConnectionChangedListener(
-        [this](bool isConnected, int32_t userId, int32_t screenId) {
-            isConnected ? HandleWmsConnected(userId, screenId) : HandleWmsDisconnected(userId, screenId);
-        });
-}
-
 void InputMethodSystemAbility::HandlePasteboardStarted()
 {
     IMSA_HILOGI("pasteboard started");
-    auto session = UserSessionManager::GetInstance().GetUserSession(userId_);
-    if (session == nullptr) {
-        IMSA_HILOGE("%{public}d session is nullptr!", userId_.load());
-        return;
+    auto accountIds = OsAccountAdapter::GetForegroundOsAccountIds();
+    for (auto const &accountId : accountIds) {
+        auto session = UserSessionManager::GetInstance().GetUserSession(accountId);
+        if (session == nullptr) {
+            IMSA_HILOGE("%{public}d session is nullptr!", accountId);
+            continue;
+        }
+        auto data = session->GetRealImeData(true);
+        if (data == nullptr) {
+            IMSA_HILOGE("readyImeData is nullptr.");
+            continue;
+        }
+        if (data->imeStateManager == nullptr) {
+            IMSA_HILOGE("imeStateManager is nullptr.");
+            continue;
+        }
+        data->imeStateManager->TemporaryActiveIme();
     }
-
-    auto data = session->GetRealImeData(true);
-    if (data == nullptr) {
-        IMSA_HILOGE("readyImeData is nullptr.");
-        return;
-    }
-
-    if (data->imeStateManager == nullptr) {
-        IMSA_HILOGE("imeStateManager is nullptr.");
-        return;
-    }
-
-    data->imeStateManager->TemporaryActiveIme();
 }
 
 bool InputMethodSystemAbility::InitPasteboardMonitor()
@@ -2458,26 +2521,81 @@ void InputMethodSystemAbility::InitSystemLanguageMonitor()
     SystemParamAdapter::GetInstance().WatchParam(SystemParamAdapter::SYSTEM_LANGUAGE_KEY);
 }
 
-int32_t InputMethodSystemAbility::InitFocusChangedMonitor()
+bool InputMethodSystemAbility::InitFocusChangedMonitor(int32_t userId)
 {
-    return FocusMonitorManager::GetInstance().RegisterFocusChangedListener(
-        [this](bool isOnFocused, uint64_t displayId, int32_t pid, int32_t uid) {
-            HandleFocusChanged(isOnFocused, displayId, pid, uid);
-        });
+    auto initFunc = [this, userId]() {
+        auto callback = [this](bool isFocused, uint64_t displayId, int32_t pid, int32_t uid) {
+            HandleFocusChanged(isFocused, displayId, pid, uid);
+        };
+        return FocusMonitorManager::GetInstance().RegisterFocusChangedListener(callback, userId);
+    };
+    auto ret = initFunc();
+    if (ret != ErrorCode::NO_ERROR) {
+        if (serviceHandler_ != nullptr) {
+            serviceHandler_->PostTask(initFunc, WMS_RETRY_INTERVAL);
+        }
+        return false;
+    }
+    return true;
 }
 
-int32_t InputMethodSystemAbility::InitWindowDisplayChangedMonitor()
+bool InputMethodSystemAbility::InitWmsConnectionMonitor(int32_t userId)
+{
+    auto initFunc = [this, userId]() {
+        auto callback = [this](bool isConnected, int32_t userId, int32_t screenId) {
+            isConnected ? HandleWmsConnected(userId, screenId) : HandleWmsDisconnected(userId, screenId);
+        };
+        return WmsConnectionMonitorManager::GetInstance().RegisterWMSConnectionChangedListener(callback, userId);
+    };
+    int32_t ret = initFunc();
+    if (ret != ErrorCode::NO_ERROR) {
+        if (serviceHandler_ != nullptr) {
+            serviceHandler_->PostTask(initFunc, WMS_RETRY_INTERVAL);
+        }
+        return false;
+    }
+    return true;
+}
+bool InputMethodSystemAbility::InitWindowDisplayChangedMonitor(int32_t userId)
 {
     IMSA_HILOGD("enter.");
-    auto callBack = [this](int32_t userId, int32_t windowId, uint64_t displayId) {
-        auto session = UserSessionManager::GetInstance().GetUserSession(userId);
-        if (session == nullptr) {
-            IMSA_HILOGE("user %{public}d session is nullptr!", userId);
-            return;
+    auto initFunc = [userId]() {
+        auto callback = [](int32_t userId, int32_t windowId, uint64_t displayId) {
+            auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+            if (session == nullptr) {
+                IMSA_HILOGE("window display id changed, user %{public}d session is nullptr!", userId);
+                return;
+            };
+            session->OnWindowDisplayIdChanged(windowId, displayId);
         };
-        session->OnWindowDisplayIdChanged(windowId, displayId);
+        return WindowAdapter::GetInstance().RegisterWindowDisplayIdChangedListener(callback, userId);
     };
-    return WindowAdapter::GetInstance().RegisterWindowDisplayIdChangedListener(callBack);
+    auto ret = initFunc();
+    if (ret != ErrorCode::NO_ERROR) {
+        if (serviceHandler_ != nullptr) {
+            serviceHandler_->PostTask(initFunc, WMS_RETRY_INTERVAL);
+        }
+        return false;
+    }
+    return true;
+}
+
+bool InputMethodSystemAbility::InitDisplayGroupMonitor(int32_t userId)
+{
+    auto ret = WindowAdapter::GetInstance().RegisterAllGroupInfoChangedListener(userId);
+    if (ret != ErrorCode::NO_ERROR) {
+        auto callback = [userId]() {
+            WindowAdapter::GetInstance().StoreAllDisplayGroupInfos(userId);
+            WindowAdapter::GetInstance().RegisterAllGroupInfoChangedListener(userId);
+        };
+        if (serviceHandler_ != nullptr) {
+            serviceHandler_->PostTask(callback, WMS_RETRY_INTERVAL);
+        }
+        return false;
+    } else {
+        WindowAdapter::GetInstance().StoreAllDisplayGroupInfos(userId);
+        return true;
+    }
 }
 
 void InputMethodSystemAbility::RegisterSecurityModeObserver()
@@ -2492,11 +2610,12 @@ void InputMethodSystemAbility::DataShareCallback(const std::string &key)
     if (key != SettingsDataUtils::SECURITY_MODE) {
         return;
     }
-    IMSA_HILOGI("%{public}d full experience change.", userId_.load());
     if (serviceHandler_ == nullptr) {
         return;
     }
-    auto task = [userId = userId_.load()]() {
+    auto task = []() {
+        auto userId = OsAccountAdapter::GetMainAccountId();
+        IMSA_HILOGI("DataShareCallback, %{public}d full experience change.", userId);
         ImeEnabledInfoManager::GetInstance().OnFullExperienceTableChanged(userId);
     };
     serviceHandler_->PostTask(task, "OnFullExperienceTableChanged", 0, AppExecFwk::EventQueue::Priority::IMMEDIATE);
@@ -2630,8 +2749,8 @@ bool InputMethodSystemAbility::IsStartInputTypePermitted(int32_t userId)
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return false;
     }
-    auto checkRet = identityChecker_->IsFocused(IPCSkeleton::GetCallingPid(), tokenId);
-    return checkRet.first && session->IsBoundToClient(GetCallingDisplayId());
+    auto checkRet = identityChecker_->IsFocused(IPCSkeleton::GetCallingPid(), tokenId, userId);
+    return checkRet.first && session->IsBoundToClient(GetCallingDisplayId(userId));
 }
 
 int32_t InputMethodSystemAbility::ConnectSystemCmd(const sptr<IRemoteObject> &channel, sptr<IRemoteObject> &agent)
@@ -2649,40 +2768,35 @@ int32_t InputMethodSystemAbility::ConnectSystemCmd(const sptr<IRemoteObject> &ch
     }
     return session->OnConnectSystemCmd(channel, agent);
 }
-// LCOV_EXCL_STOP
+
 void InputMethodSystemAbility::HandleWmsConnected(int32_t userId, int32_t screenId)
 {
-    if (userId == userId_) {
-        // device boot or scb in foreground reboot
-        HandleScbStarted(userId, screenId);
+    IMSA_HILOGD("in, userId: %{public}d, screenId: %{public}d", userId, screenId);
+    if (!OsAccountAdapter::IsOsAccountForeground(userId)) {
+        IMSA_HILOGW("userId: %{public}d not foreground", userId);
         return;
     }
-    // user switched
-    HandleUserSwitched(userId);
-}
-
-void InputMethodSystemAbility::HandleScbStarted(int32_t userId, int32_t screenId)
-{
-    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
-    if (session == nullptr) {
-        UserSessionManager::GetInstance().AddUserSession(userId);
+    int32_t currentUserId = WindowMonitorsManager::GetInstance().GetForegroundUser(screenId);
+    if (currentUserId == userId) {
+        // scb reboot
+        auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+        if (session == nullptr) {
+            UserSessionManager::GetInstance().AddUserSession(userId);
+        }
+        session = UserSessionManager::GetInstance().GetUserSession(userId);
+        if (session == nullptr) {
+            IMSA_HILOGE("%{public}d session is nullptr!", userId);
+            return;
+        }
+        session->OnScbStarted();
+    } else {
+        IMSA_HILOGI("new user: %{public}d", userId);
+        WindowMonitorsManager::GetInstance().UpdateForegroundUser(userId, screenId);
     }
-    session = UserSessionManager::GetInstance().GetUserSession(userId);
-    if (session == nullptr) {
-        IMSA_HILOGE("%{public}d session is nullptr!", userId);
-        return;
-    }
-#ifndef IMF_ON_DEMAND_START_STOP_SA_ENABLE
-    if (!ImeStateManagerFactory::GetInstance().GetDynamicStartIme()) {
-        session->IncreaseScbStartCount();
-        session->AddRestartIme();
-    }
-#endif
 }
 // LCOV_EXCL_START
-void InputMethodSystemAbility::HandleUserSwitched(int32_t userId)
+void InputMethodSystemAbility::StartNewUserIme(int32_t userId)
 {
-    UpdateUserInfo(userId);
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
         UserSessionManager::GetInstance().AddUserSession(userId);
@@ -2700,66 +2814,75 @@ void InputMethodSystemAbility::HandleUserSwitched(int32_t userId)
 // LCOV_EXCL_STOP
 void InputMethodSystemAbility::HandleWmsDisconnected(int32_t userId, int32_t screenId)
 {
-    // clear client
+    IMSA_HILOGD("in, userId: %{public}d, screenId: %{public}d", userId, screenId);
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session != nullptr) {
-        session->RemoveAllCurrentClient();
+        session->OnScbStopped();
     }
-
-#ifndef IMF_ON_DEMAND_START_STOP_SA_ENABLE
-    if (userId == userId_ && !ImeStateManagerFactory::GetInstance().GetDynamicStartIme()) {
-        // user switched or scb in foreground died, not deal
-        return;
-    }
-#endif
-    // scb in background died, stop ime
-    if (session == nullptr) {
-        return;
-    }
-    session->StopCurrentIme();
 }
 // LCOV_EXCL_START
 void InputMethodSystemAbility::HandleWmsStarted()
 {
     // singleton, device boot, wms reboot
     IMSA_HILOGI("Wms start.");
-    auto ret = InitFocusChangedMonitor();
-    if (ret != ErrorCode::NO_ERROR) {
-        auto callback = [=]() { InitFocusChangedMonitor(); };
-        if (serviceHandler_ != nullptr) {
-            serviceHandler_->PostTask(callback, WMS_RETRY_INTERVAL);
+    WindowMonitorsManager::GetInstance().Reset();
+    InitAllUsersWindowMonitors();
+
+#ifndef SCENE_BOARD_ENABLE
+    auto userSessions = UserSessionManager::GetInstance().GetUserSessions();
+    for (auto userSession : userSessions) {
+        auto session = userSession.second;
+        if (session != nullptr) {
+            session->RemoveAllCurrentClient();
         }
     }
-    ret = WindowAdapter::GetInstance().RegisterAllGroupInfoChangedListener();
-    if (ret != ErrorCode::NO_ERROR) {
-        auto callback = []() {
-            WindowAdapter::GetInstance().StoreAllDisplayGroupInfos();
-            WindowAdapter::GetInstance().RegisterAllGroupInfoChangedListener();
-        };
-        if (serviceHandler_ != nullptr) {
-            serviceHandler_->PostTask(callback, WMS_RETRY_INTERVAL);
-        }
+    // if scb is not enabled, reset all input methods when wms reboot
+    ResetAllImes();
+#endif
+}
+
+void InputMethodSystemAbility::InitAllUsersWindowMonitors()
+{
+    if (!SaMgrAdapter::IsSaReady(SUBSYS_ACCOUNT_SYS_ABILITY_ID_BEGIN)) {
+        IMSA_HILOGW("account sa not ready yet");
+        waitAccountReadyToInit_.store(true);
+        return;
     } else {
-        WindowAdapter::GetInstance().StoreAllDisplayGroupInfos();
+        waitAccountReadyToInit_.store(false);
     }
-    if (isScbEnable_.load()) {
-        IMSA_HILOGI("scb enable, register WMS connection listener.");
-        InitWmsConnectionMonitor();
-        ret = InitWindowDisplayChangedMonitor();
-        if (ret != ErrorCode::NO_ERROR) {
-            auto callback = [=]() { InitWindowDisplayChangedMonitor(); };
-            if (serviceHandler_ != nullptr) {
-                serviceHandler_->PostTask(callback, WMS_RETRY_INTERVAL);
-            }
-        }
+    if (!SaMgrAdapter::IsSaReady(WINDOW_MANAGER_SERVICE_ID)) {
+        IMSA_HILOGW("window sa not ready yet");
         return;
     }
-    // clear client
-    auto session = UserSessionManager::GetInstance().GetUserSession(userId_);
-    if (session != nullptr) {
-        session->RemoveAllCurrentClient();
+    auto accounts = OsAccountAdapter::GetForegroundOsAccountIds();
+    for (auto const &account : accounts) {
+        if (WindowMonitorsManager::GetInstance().IsInited(account)) {
+            IMSA_HILOGD("user %{public}d has been inited", account);
+            continue;
+        }
+        if (InitWindowMonitors(account)) {
+            WindowMonitorsManager::GetInstance().SetInited(account);
+        }
     }
-    RestartSessionIme(session);
+}
+
+bool InputMethodSystemAbility::InitWindowMonitors(int32_t userId)
+{
+    bool ret = InitFocusChangedMonitor(userId);
+    IMSA_HILOGI("user %{public}d InitFocusChangedMonitor isSuccess: %{public}d", userId, ret);
+    ret = InitDisplayGroupMonitor(userId);
+    IMSA_HILOGI("user %{public}d InitDisplayGroupMonitor isSuccess: %{public}d", userId, ret);
+    ret = InitWmsConnectionMonitor(userId);
+    IMSA_HILOGI("user %{public}d InitWmsConnectionMonitor isSuccess: %{public}d", userId, ret);
+    ret = InitWindowDisplayChangedMonitor(userId);
+    IMSA_HILOGI("user %{public}d InitWindowDisplayChangedMonitor isSuccess: %{public}d", userId, ret);
+    return ret;
+}
+
+void InputMethodSystemAbility::RemoveWindowMonitors(int32_t userId)
+{
+    IMSA_HILOGI("userId: %{public}d", userId);
+    WindowMonitorsManager::GetInstance().Reset();
 }
 
 void InputMethodSystemAbility::HandleFocusChanged(bool isFocused, uint64_t displayId, int32_t pid, int32_t uid)
@@ -2780,19 +2903,29 @@ void InputMethodSystemAbility::HandleMemStarted()
     Memory::MemMgrClient::GetInstance().NotifyProcessStatus(getpid(), 1, 1, INPUT_METHOD_SYSTEM_ABILITY_ID);
     Memory::MemMgrClient::GetInstance().SetCritical(getpid(), true, INPUT_METHOD_SYSTEM_ABILITY_ID);
     SystemParamAdapter::GetInstance().WatchParam(SystemParamAdapter::MEMORY_WATERMARK_KEY);
-    auto session = UserSessionManager::GetInstance().GetUserSession(userId_);
-    RestartSessionIme(session);
+    ResetAllImes();
 }
 
 void InputMethodSystemAbility::HandleOsAccountStarted()
 {
     IMSA_HILOGI("account start");
-    auto userId = OsAccountAdapter::GetForegroundOsAccountLocalId();
-    if (userId_ != userId) {
-        UpdateUserInfo(userId);
+    OsAccountAdapter::RegisterOsAccountStateListener();
+    FullImeInfoManager::GetInstance().Init();
+    if (!isAccountSaFirstStart_.load() || waitAccountReadyToInit_.load()) {
+        InitAllUsersWindowMonitors();
     }
-    Message *msg = new (std::nothrow) Message(MessageID::MSG_ID_OS_ACCOUNT_STARTED, nullptr);
+    isAccountSaFirstStart_.store(false);
+    auto accounts = OsAccountAdapter::GetForegroundOsAccounts();
+    for (const auto &account : accounts) {
+        InitUserInfo(account.localId, account.displayId);
+    }
+}
+
+void InputMethodSystemAbility::SendMessageToWorkThread(int32_t eventId)
+{
+    auto msg = new (std::nothrow) Message(eventId, nullptr);
     if (msg == nullptr) {
+        IMSA_HILOGE("failed to create message");
         return;
     }
     auto handler = MessageHandler::Instance();
@@ -2804,22 +2937,6 @@ void InputMethodSystemAbility::HandleOsAccountStarted()
     }
     handler->SendMessage(msg);
 }
-
-void InputMethodSystemAbility::StopImeInBackground()
-{
-    auto task = [this]() {
-        auto sessions = UserSessionManager::GetInstance().GetUserSessions();
-        for (const auto &tempSession : sessions) {
-            if (tempSession.first != userId_) {
-                tempSession.second->StopCurrentIme();
-            }
-        }
-    };
-    if (serviceHandler_ == nullptr) {
-        return;
-    }
-    serviceHandler_->PostTask(task, "StopImeInBackground", 0, AppExecFwk::EventQueue::Priority::IMMEDIATE);
-}
 // LCOV_EXCL_STOP
 int32_t InputMethodSystemAbility::GetUserId(int32_t uid)
 {
@@ -2828,7 +2945,7 @@ int32_t InputMethodSystemAbility::GetUserId(int32_t uid)
     // 0 represents user 0 in the system
     if (userId == 0) {
         IMSA_HILOGI("user 0");
-        return userId_;
+        return OsAccountAdapter::GetMainAccountId();
     }
     return userId;
 }
@@ -2843,6 +2960,7 @@ int32_t InputMethodSystemAbility::GetCallingUserId()
     } else {
         outputUserId = callerUserId;
     }
+    IMSA_HILOGD("uid: %{public}d, userId: %{public}d", callerUid, outputUserId);
     return outputUserId;
 }
 
@@ -2854,7 +2972,7 @@ int32_t InputMethodSystemAbility::GetCallingUserId(int32_t &outputUserId, int32_
     if (userId != -1) {
         auto errCode = AccountSA::OsAccountManager::IsOsAccountExists(userId, isExist);
         if (errCode != 0) {
-            IMSA_HILOGD("IsOsAccountExists failed, errCode:%{public}d", errCode);
+            IMSA_HILOGE("IsOsAccountExists failed, errCode:%{public}d", errCode);
             return ErrorCode::ERROR_USER_NOT_EXIST;
         }
         if (!isExist) {
@@ -2868,20 +2986,21 @@ int32_t InputMethodSystemAbility::GetCallingUserId(int32_t &outputUserId, int32_
             outputUserId = OsAccountAdapter::GetForegroundOsAccountLocalId();
         } else {
             if (!OsAccountAdapter::IsOsAccountForeground(userId)) {
-                IMSA_HILOGD("!OsAccountAdapter::IsOsAccountForeground(userId) failed, userId:%{public}d", userId);
+                IMSA_HILOGE("!OsAccountAdapter::IsOsAccountForeground(userId) failed, userId:%{public}d", userId);
                 return ErrorCode::ERROR_USER_NOT_IN_FOREGROUND;
             }
             if (!identityChecker_->IsSystemApp(IPCSkeleton::GetCallingFullTokenID()) &&
-                !identityChecker_->IsNativeSa(IPCSkeleton::GetCallingTokenID())) {
-                IMSA_HILOGD("no systerm and no sa, outputUserId:%{public}d", outputUserId);
+                !identityChecker_->IsNativeSa(IPCSkeleton::GetCallingTokenID()) &&
+                !identityChecker_->IsFormShell(IPCSkeleton::GetCallingFullTokenID())) {
+                IMSA_HILOGE("no system and no sa, outputUserId:%{public}d", outputUserId);
                 return ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION;
             }
             outputUserId = userId;
         }
     } else {
-        if (userId != -1) {
-            IMSA_HILOGD("userId != -1, userId:%{public}d", userId);
-            return ErrorCode::ERROR_INVALID_USER_OPERATION;
+        if (userId != -1 && userId != callerUserId) {
+            IMSA_HILOGE("cross user operation denied, caller: %{public}d, userId: %{public}d", callerUserId, userId);
+            return ErrorCode::ERROR_CROSS_USER_OPERATION_DENIED;
         }
         outputUserId = callerUserId;
     }
@@ -2890,9 +3009,9 @@ int32_t InputMethodSystemAbility::GetCallingUserId(int32_t &outputUserId, int32_
 }
 
 // LCOV_EXCL_START
-uint64_t InputMethodSystemAbility::GetCallingDisplayId(sptr<IRemoteObject> abilityToken)
+uint64_t InputMethodSystemAbility::GetCallingDisplayId(int32_t userId, sptr<IRemoteObject> abilityToken)
 {
-    return identityChecker_->GetDisplayIdByPid(IPCSkeleton::GetCallingPid(), abilityToken);
+    return identityChecker_->GetDisplayIdByPid(IPCSkeleton::GetCallingPid(), userId, abilityToken);
 }
 // LCOV_EXCL_STOP
 bool InputMethodSystemAbility::IsCurrentIme(int32_t userId, uint32_t tokenId)
@@ -2944,7 +3063,7 @@ void InputMethodSystemAbility::NeedHideWhenSwitchInputType(int32_t userId, Input
     InputTypeManager::GetInstance().GetImeByInputType(type, ime);
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
-        IMSA_HILOGE("UserId: %{public}d session is nullptr!", userId_.load());
+        IMSA_HILOGE("UserId: %{public}d session is nullptr!", userId);
         needHide = false;
         return;
     }
@@ -2960,22 +3079,22 @@ void InputMethodSystemAbility::NeedHideWhenSwitchInputType(int32_t userId, Input
 void InputMethodSystemAbility::HandleBundleScanFinished()
 {
     isBundleScanFinished_.store(true);
-    HandleImeCfgCapsState();
+    HandleImeCfgCapsState(OsAccountAdapter::GetMainAccountId());
 }
 
-bool InputMethodSystemAbility::ModifyImeCfgWithWrongCaps()
+bool InputMethodSystemAbility::ModifyImeCfgWithWrongCaps(int32_t userId)
 {
     bool isCapsEnable = false;
     if (!GetDeviceFunctionKeyState(MMI::KeyEvent::CAPS_LOCK_FUNCTION_KEY, isCapsEnable)) {
         IMSA_HILOGE("Get capslock function key state failed!");
         return false;
     }
-    auto currentImeCfg = ImeCfgManager::GetInstance().GetCurrentImeCfg(userId_);
+    auto currentImeCfg = ImeCfgManager::GetInstance().GetCurrentImeCfg(userId);
     if (currentImeCfg == nullptr) {
         IMSA_HILOGE("currentImeCfg is nullptr!");
         return false;
     }
-    auto info = ImeInfoInquirer::GetInstance().GetImeInfo(userId_, currentImeCfg->bundleName, currentImeCfg->subName);
+    auto info = ImeInfoInquirer::GetInstance().GetImeInfo(userId, currentImeCfg->bundleName, currentImeCfg->subName);
     if (info == nullptr) {
         IMSA_HILOGE("ime info is nullptr!");
         return false;
@@ -2992,7 +3111,7 @@ bool InputMethodSystemAbility::ModifyImeCfgWithWrongCaps()
         return false;
     }
     std::string correctImeName = info->prop.name + "/" + info->prop.id;
-    ImeCfgManager::GetInstance().ModifyImeCfg({ userId_, correctImeName, correctIme->id, false });
+    ImeCfgManager::GetInstance().ModifyImeCfg({ userId, correctImeName, correctIme->id, false });
     IMSA_HILOGD("Adjust imeCfg caps success! current imeName: %{public}s, subName: %{public}s",
         correctImeName.c_str(), correctIme->id.c_str());
     return true;
@@ -3014,22 +3133,17 @@ bool InputMethodSystemAbility::GetDeviceFunctionKeyState(int32_t functionKey, bo
     return true;
 }
 
-void InputMethodSystemAbility::HandleImeCfgCapsState()
+void InputMethodSystemAbility::HandleImeCfgCapsState(int32_t userId)
 {
     if (!isBundleScanFinished_.load()) {
         IMSA_HILOGE("Bundle scan is not ready.");
         return;
     }
-    auto session = UserSessionManager::GetInstance().GetUserSession(userId_);
-    if (session == nullptr) {
-        IMSA_HILOGE("UserId: %{public}d session is nullptr!", userId_.load());
-        return;
-    }
-    if (!session->IsSaReady(MULTIMODAL_INPUT_SERVICE_ID)) {
+    if (!SaMgrAdapter::IsSaReady(MULTIMODAL_INPUT_SERVICE_ID)) {
         IMSA_HILOGE("MMI service is not ready.");
         return;
     }
-    if (!ModifyImeCfgWithWrongCaps()) {
+    if (!ModifyImeCfgWithWrongCaps(userId)) {
         IMSA_HILOGE("Check ImeCfg capslock state correct failed!");
     }
 }
@@ -3195,9 +3309,10 @@ ErrCode InputMethodSystemAbility::SendPrivateData(const Value &value)
         IMSA_HILOGE("Uid failed, not permission!");
         return ErrorCode::ERROR_STATUS_PERMISSION_DENIED;
     }
-    auto session = UserSessionManager::GetInstance().GetUserSession(userId_);
+    auto userId = OsAccountAdapter::GetMainAccountId();
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
-        IMSA_HILOGE("UserId: %{public}d session is nullptr!", userId_.load());
+        IMSA_HILOGE("UserId: %{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
     }
     if (!session->SpecialScenarioCheck()) {
@@ -3244,22 +3359,37 @@ int32_t InputMethodSystemAbility::StartSecurityIme(int32_t &userId, InputClientI
 
 void InputMethodSystemAbility::OnSysMemChanged()
 {
-    auto session = UserSessionManager::GetInstance().GetUserSession(userId_);
-    if (session == nullptr) {
-        return;
-    }
-    if (SystemParamAdapter::GetInstance().GetBoolParam(SystemParamAdapter::MEMORY_WATERMARK_KEY)) {
-        session->TryDisconnectIme();
-        return;
-    }
+    bool waterMarkKey = SystemParamAdapter::GetInstance().GetBoolParam(SystemParamAdapter::MEMORY_WATERMARK_KEY);
 #ifdef IMF_RESTORE_IN_HIGH_CPU_USAGE
-    int32_t cpuUsage = GetCpuUsage();
-    if (cpuUsage > CPU_USAGE_HIGH_PERCENT) {
-        IMSA_HILOGD("lite device current cpu usage %{public}d is high then 70, no need startinput", cpuUsage);
-        return;
+    bool isCpuUsageHigh = false;
+    if (!waterMarkKey) {
+        int32_t cpuUsage = GetCpuUsage();
+        if (cpuUsage > CPU_USAGE_HIGH_PERCENT) {
+            isCpuUsageHigh = true;
+            IMSA_HILOGI("lite device current cpu usage %{public}d is high then 70, no need startinput", cpuUsage);
+        }
     }
 #endif
-    session->TryStartIme();
+    auto sessions = UserSessionManager::GetInstance().GetUserSessions();
+    for (auto const &session : sessions) {
+        auto userSession = session.second;
+        if (userSession == nullptr) {
+            continue;
+        }
+        if (waterMarkKey) {
+            userSession->TryDisconnectIme();
+        } else {
+            if (!OsAccountAdapter::IsOsAccountForeground(session.first)) {
+                continue;
+            }
+#ifdef IMF_RESTORE_IN_HIGH_CPU_USAGE
+            if (isCpuUsageHigh) {
+                continue;
+            }
+#endif
+            userSession->TryStartIme();
+        }
+    }
 }
 
 #ifdef IMF_RESTORE_IN_HIGH_CPU_USAGE

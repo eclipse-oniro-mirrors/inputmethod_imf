@@ -39,25 +39,24 @@ public:
     static constexpr uint32_t DEFAULT_DISPLAY_GROUP_ID = 0;
     ~WindowAdapter();
     static WindowAdapter &GetInstance();
-    static void GetFocusInfo(OHOS::Rosen::FocusChangeInfo &focusInfo, uint64_t displayId = DEFAULT_DISPLAY_ID);
-    static uint64_t GetDisplayIdByPid(int64_t callingPid);
-    static uint64_t GetDisplayIdByWindowId(int32_t callingWindowId);
-    static bool GetDisplayId(int64_t callingWindowId, uint64_t &displayId);
-    static uint64_t GetDisplayIdWithCorrect(int32_t windowId, uint64_t displayId);
-    static uint64_t GetDisplayIdByToken(sptr<IRemoteObject> abilityToken);
-    static bool ListWindowInfo(std::vector<sptr<OHOS::Rosen::WindowInfo>> &windowInfos);
-    static int32_t GetAllFocusWindowInfos(std::vector<Rosen::FocusChangeInfo> &focusWindowInfos);
-    uint64_t GetDisplayGroupId(uint64_t displayId);
-    bool IsDefaultDisplayGroup(uint64_t displayId);
-    uint64_t GetDisplayGroupId(uint32_t windowId);
-    bool IsDisplayGroupIdExist(uint64_t displayGroupId);
-    bool IsDisplayIdExist(uint64_t displayId);
-    int32_t StoreAllDisplayGroupInfos();
-    void OnDisplayGroupInfoChanged(uint64_t displayId, uint64_t displayGroupId, bool isAdd);
-    void OnFocused(const Rosen::FocusChangeInfo &focusWindowInfo);
-    void OnUnFocused(const Rosen::FocusChangeInfo &focusWindowInfo);
-    int32_t RegisterAllGroupInfoChangedListener();
-    int32_t RegisterWindowDisplayIdChangedListener(const WindowDisplayChangeHandler &handler);
+    static void GetFocusInfo(
+        OHOS::Rosen::FocusChangeInfo &focusInfo, int32_t userId, uint64_t displayId = DEFAULT_DISPLAY_ID);
+    static uint64_t GetDisplayIdByPid(int64_t callingPid, int32_t userId);
+    static uint64_t GetDisplayIdByWindowId(int32_t callingWindowId, int32_t userId);
+    static bool GetDisplayId(int64_t callingWindowId, uint64_t &displayId, int32_t userId);
+    static uint64_t GetDisplayIdWithCorrect(int32_t windowId, uint64_t displayId, int32_t userId);
+    static uint64_t GetDisplayIdByToken(sptr<IRemoteObject> abilityToken, int32_t userId);
+    static bool ListWindowInfo(std::vector<sptr<OHOS::Rosen::WindowInfo>> &windowInfos, int32_t userId);
+    static int32_t GetAllFocusWindowInfos(std::vector<Rosen::FocusChangeInfo> &focusWindowInfos, int32_t userId);
+    uint64_t GetDisplayGroupId(uint64_t displayId, int32_t userId);
+    bool IsDefaultDisplayGroup(uint64_t displayId, int32_t userId);
+    uint64_t GetDisplayGroupId(uint32_t windowId, int32_t userId);
+    bool IsDisplayGroupIdExist(uint64_t displayGroupId, int32_t userId);
+    bool IsDisplayIdExist(uint64_t displayId, int32_t userId);
+    int32_t StoreAllDisplayGroupInfos(int32_t userId);
+    void OnDisplayGroupInfoChanged(uint64_t displayId, uint64_t displayGroupId, bool isAdd, int32_t userId);
+    int32_t RegisterAllGroupInfoChangedListener(int32_t userId);
+    int32_t RegisterWindowDisplayIdChangedListener(const WindowDisplayChangeHandler &handler, int32_t userId);
 
     class WindowDisplayChangedListenerImpl : public OHOS::Rosen::IWindowInfoChangedListener {
     public:
@@ -71,25 +70,29 @@ public:
 
     class AllGroupInfoChangedListenerImpl : public OHOS::Rosen::IAllGroupInfoChangedListener {
     public:
-        AllGroupInfoChangedListenerImpl() = default;
+        explicit AllGroupInfoChangedListenerImpl(int32_t userId) : userId_(userId)
+        {
+        }
         ~AllGroupInfoChangedListenerImpl() = default;
         void OnDisplayGroupInfoChange(
             Rosen::DisplayGroupId displayGroupId, Rosen::DisplayId displayId, bool isAdd) override
         {
-            WindowAdapter::GetInstance().OnDisplayGroupInfoChanged(displayId, displayGroupId, isAdd);
+            WindowAdapter::GetInstance().OnDisplayGroupInfoChanged(displayId, displayGroupId, isAdd, userId_);
         }
+
+    private:
+        int32_t userId_;
     };
 
 private:
     WindowAdapter() = default;
     static int32_t GetAllDisplayGroupInfos(std::unordered_map<uint64_t, uint64_t> &displayGroupIds,
-        std::vector<Rosen::FocusChangeInfo> &focusWindowInfos);
-    void SetDisplayGroupIds(const std::unordered_map<uint64_t, uint64_t> &displayGroupIds);
-    void SetFocusWindowInfos(const std::vector<Rosen::FocusChangeInfo> &focusWindowInfos);
+        std::vector<Rosen::FocusChangeInfo> &focusWindowInfos, int32_t userId);
+    void SetDisplayGroupIds(const std::unordered_map<uint64_t, uint64_t> &displayGroupIds, int32_t userId);
+
+    // { key: userId, value: { key: displayId, value: displayGroupId }}
     std::mutex displayGroupIdsLock_;
-    std::unordered_map<uint64_t, uint64_t> displayGroupIds_; // key:displayId, value:displayGroupId
-    std::mutex focusWindowInfosLock_;
-    std::vector<Rosen::FocusChangeInfo> focusWindowInfos_;
+    std::unordered_map<int32_t, std::unordered_map<uint64_t, uint64_t>> displayGroupIds_;
 };
 } // namespace MiscServices
 } // namespace OHOS

@@ -24,6 +24,7 @@
 #include <memory>
 
 #include "global.h"
+#include "tdd_util.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -34,7 +35,7 @@ public:
     static void SetUpTestCase()
     {
         WindowDisplayChangeHandler callback = [](int32_t userId, int32_t windowId, uint64_t displayId) {};
-        WindowAdapter::GetInstance().RegisterWindowDisplayIdChangedListener(callback);
+        WindowAdapter::GetInstance().RegisterWindowDisplayIdChangedListener(callback, userId_);
     }
     static void TearDownTestCase()
     {
@@ -46,8 +47,10 @@ public:
     {
     }
     static bool hasHandled_;
+    static int32_t userId_;
 };
 bool WindowAdapterTest::hasHandled_{ false };
+int32_t WindowAdapterTest::userId_{ 100 };
 
 /**
  * @tc.name: WindowAdapter_GetFocusInfo
@@ -59,7 +62,7 @@ HWTEST_F(WindowAdapterTest, WindowAdapter_GetFocusInfo, TestSize.Level0)
 {
     IMSA_HILOGI("WindowAdapterTest::WindowAdapter_GetFocusInfo START");
     OHOS::Rosen::FocusChangeInfo focusInfo;
-    WindowAdapter::GetInstance().GetFocusInfo(focusInfo);
+    WindowAdapter::GetInstance().GetFocusInfo(focusInfo, WindowAdapterTest::userId_);
     EXPECT_TRUE(focusInfo.displayId_ >= 0);
 }
 
@@ -74,8 +77,8 @@ HWTEST_F(WindowAdapterTest, WindowAdapter_GetDisplayId, TestSize.Level0)
     IMSA_HILOGI("WindowAdapterTest::WindowAdapter_GetDisplayId START");
     int64_t callingPid = -1000;
     uint64_t displayId = 0;
-    auto ret = WindowAdapter::GetInstance().GetDisplayId(callingPid, displayId);
-    EXPECT_TRUE(ret);
+    auto ret = WindowAdapter::GetInstance().GetDisplayId(callingPid, displayId, WindowAdapterTest::userId_);
+    EXPECT_FALSE(ret);
 }
 
 /**
@@ -91,48 +94,34 @@ HWTEST_F(WindowAdapterTest, WindowAdapter_OnDisplayGroupInfoChanged, TestSize.Le
     uint64_t displayId = 100;
     uint64_t displayGroupId = 2;
     uint64_t displayId1 = 99;
+    int32_t userId = TddUtil::GetCurrentUserId();
     // empty, remove
-    WindowAdapter::GetInstance().OnDisplayGroupInfoChanged(displayId, displayGroupId, false);
-    auto iter = WindowAdapter::GetInstance().displayGroupIds_.find(displayId);
-    EXPECT_TRUE(iter == WindowAdapter::GetInstance().displayGroupIds_.end());
+    WindowAdapter::GetInstance().OnDisplayGroupInfoChanged(displayId, displayGroupId, false, userId);
+    auto userIter = WindowAdapter::GetInstance().displayGroupIds_.find(userId);
+    EXPECT_TRUE(userIter == WindowAdapter::GetInstance().displayGroupIds_.end());
     // add
-    WindowAdapter::GetInstance().OnDisplayGroupInfoChanged(displayId, displayGroupId, true);
-    iter = WindowAdapter::GetInstance().displayGroupIds_.find(displayId);
-    EXPECT_TRUE(iter != WindowAdapter::GetInstance().displayGroupIds_.end());
+    WindowAdapter::GetInstance().OnDisplayGroupInfoChanged(displayId, displayGroupId, true, userId);
+    userIter = WindowAdapter::GetInstance().displayGroupIds_.find(userId);
+    EXPECT_TRUE(userIter != WindowAdapter::GetInstance().displayGroupIds_.end());
+    auto displayGroupIds = userIter->second;
+    auto iter = displayGroupIds.find(displayId);
+    EXPECT_TRUE(iter != displayGroupIds.end());
     EXPECT_EQ(iter->second, displayGroupId);
     // not find displayId
-    WindowAdapter::GetInstance().OnDisplayGroupInfoChanged(displayId1, displayGroupId, false);
-    iter = WindowAdapter::GetInstance().displayGroupIds_.find(displayId);
-    EXPECT_TRUE(iter != WindowAdapter::GetInstance().displayGroupIds_.end());
+    WindowAdapter::GetInstance().OnDisplayGroupInfoChanged(displayId1, displayGroupId, false, userId);
+    userIter = WindowAdapter::GetInstance().displayGroupIds_.find(userId);
+    EXPECT_TRUE(userIter != WindowAdapter::GetInstance().displayGroupIds_.end());
+    displayGroupIds = userIter->second;
+    iter = displayGroupIds.find(displayId);
     EXPECT_EQ(iter->second, displayGroupId);
     // remove success
-    WindowAdapter::GetInstance().OnDisplayGroupInfoChanged(displayId, displayGroupId, false);
-    iter = WindowAdapter::GetInstance().displayGroupIds_.find(displayId);
-    EXPECT_TRUE(iter == WindowAdapter::GetInstance().displayGroupIds_.end());
+    WindowAdapter::GetInstance().OnDisplayGroupInfoChanged(displayId, displayGroupId, false, userId);
+    userIter = WindowAdapter::GetInstance().displayGroupIds_.find(userId);
+    EXPECT_TRUE(userIter != WindowAdapter::GetInstance().displayGroupIds_.end());
+    displayGroupIds = userIter->second;
+    iter = displayGroupIds.find(displayId);
+    EXPECT_TRUE(iter == displayGroupIds.end());
 }
-
-/**
- * @tc.name: WindowAdapter_OnUnfocused
- * @tc.desc: windowId
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(WindowAdapterTest, WindowAdapter_OnUnfocused, TestSize.Level0)
-{
-    IMSA_HILOGI("WindowAdapterTest::WindowAdapter_OnUnfocused START");
-    WindowAdapter::GetInstance().focusWindowInfos_.clear();
-    uint32_t windowId = 10;
-
-    Rosen::FocusChangeInfo focusWindowInfo;
-    focusWindowInfo.windowId_ = windowId;
-    WindowAdapter::GetInstance().OnUnFocused(focusWindowInfo);
-    EXPECT_TRUE(WindowAdapter::GetInstance().focusWindowInfos_.empty());
-
-    WindowAdapter::GetInstance().focusWindowInfos_.push_back(focusWindowInfo);
-    WindowAdapter::GetInstance().OnUnFocused(focusWindowInfo);
-    EXPECT_TRUE(WindowAdapter::GetInstance().focusWindowInfos_.empty());
-}
-
 #ifdef SCENE_BOARD_ENABLE
 /**
  * @tc.name: WindowAdapter_OnWindowInfoChanged

@@ -130,7 +130,6 @@ void InputMethodPrivateMemberTest::SetUp(void)
     ImeCfgManager::GetInstance().imeConfigs_.clear();
     FullImeInfoManager::GetInstance().fullImeInfos_.clear();
     ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.clear();
-    service_->userId_ = MAIN_USER_ID;
 }
 
 void InputMethodPrivateMemberTest::TearDown(void)
@@ -190,21 +189,22 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_TestOnUserStarted, TestSize.Level0)
     // isScbEnable_ is true
     service_->isScbEnable_ = true;
     MessageParcel *parcel = nullptr;
-    auto msg = std::make_shared<Message>(MessageID::MSG_ID_USER_START, parcel);
-    auto ret = service_->OnUserStarted(msg.get());
+    auto msg = std::make_shared<Message>(MessageID::MSG_ID_USER_SWITCHED, parcel);
+    auto ret = service_->OnUserSwitched(msg.get());
     EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
 
     // msg is nullptr
     service_->isScbEnable_ = false;
-    ret = service_->OnUserStarted(msg.get());
+    ret = service_->OnUserSwitched(msg.get());
     EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
 
     // userId is same
-    service_->userId_ = 50;
     MessageParcel *parcel1 = new MessageParcel();
-    parcel1->WriteInt32(50);
-    auto msg1 = std::make_shared<Message>(MessageID::MSG_ID_USER_START, parcel1);
-    ret = service_->OnUserStarted(msg1.get());
+    parcel1->WriteInt32(100);
+    parcel1->WriteInt32(100);
+    parcel1->WriteUint64(0);
+    auto msg1 = std::make_shared<Message>(MessageID::MSG_ID_USER_SWITCHED, parcel1);
+    ret = service_->OnUserSwitched(msg1.get());
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 
     // start ime
@@ -212,20 +212,22 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_TestOnUserStarted, TestSize.Level0)
     observer.OnConnected(60, 0);
     // imeStarting_ is true
     IMSA_HILOGI("InputMethodPrivateMemberTest::imeStarting_ is true");
-    service_->userId_ = 50;
     MessageParcel *parcel2 = new MessageParcel();
     parcel2->WriteInt32(60);
-    auto msg2 = std::make_shared<Message>(MessageID::MSG_ID_USER_START, parcel2);
-    ret = service_->OnUserStarted(msg2.get());
+    parcel2->WriteInt32(60);
+    parcel2->WriteUint64(0);
+    auto msg2 = std::make_shared<Message>(MessageID::MSG_ID_USER_SWITCHED, parcel2);
+    ret = service_->OnUserSwitched(msg2.get());
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     // imeStarting_ is false
     IMSA_HILOGI("InputMethodPrivateMemberTest::imeStarting_ is false");
-    service_->userId_ = 50;
     MessageParcel *parcel3 = new MessageParcel();
     observer.OnConnected(333, 0);
     parcel3->WriteInt32(333);
-    auto msg3 = std::make_shared<Message>(MessageID::MSG_ID_USER_START, parcel3);
-    ret = service_->OnUserStarted(msg3.get());
+    parcel3->WriteInt32(333);
+    parcel3->WriteUint64(0);
+    auto msg3 = std::make_shared<Message>(MessageID::MSG_ID_USER_SWITCHED, parcel3);
+    ret = service_->OnUserSwitched(msg3.get());
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 }
 
@@ -571,8 +573,6 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchByCombinationKey_006, TestSize.L
 HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchByCombinationKey_007, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest SA_SwitchByCombinationKey_007 TEST START");
-    auto userId = TddUtil::GetCurrentUserId();
-    service_->userId_ = userId;
     std::vector<Property> props;
     InputMethodController::GetInstance()->ListInputMethod(props);
     if (props.size() == 1) {
@@ -621,12 +621,11 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchByCombinationKey_Handler, TestSi
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest SA_SwitchByCombinationKey_Handler TEST START");
     auto userId = TddUtil::GetCurrentUserId();
-    service_->userId_ = userId;
-    service_->DealSwitchRequest();
+    service_->DealSwitchRequest(userId);
     EXPECT_NE(service_->serviceHandler_, nullptr);
     std::shared_ptr<AppExecFwk::EventHandler> tempHandler = service_->serviceHandler_;
     service_->serviceHandler_ = nullptr;
-    service_->DealSwitchRequest();
+    service_->DealSwitchRequest(userId);
     EXPECT_EQ(service_->serviceHandler_, nullptr);
     service_->serviceHandler_ = tempHandler;
 }
@@ -987,7 +986,6 @@ HWTEST_F(InputMethodPrivateMemberTest, TestHandlePackageEvent, TestSize.Level0)
     // userId is not same
     auto parcel2 = new (std::nothrow) MessageParcel();
     auto userId = 50;
-    service_->userId_ = 60;
     parcel2->WriteInt32(userId);
     parcel2->WriteString(bundleName);
     auto msg2 = std::make_shared<Message>(MessageID::MSG_ID_PACKAGE_REMOVED, parcel2);
@@ -996,7 +994,6 @@ HWTEST_F(InputMethodPrivateMemberTest, TestHandlePackageEvent, TestSize.Level0)
 
     //remove bundle not current ime
     auto parcel3 = new (std::nothrow) MessageParcel();
-    service_->userId_ = userId;
     ImeCfgManager::GetInstance().imeConfigs_.push_back({ 60, "testBundleName/testExtName", "testSubName", false });
     parcel3->WriteInt32(userId);
     parcel3->WriteString(bundleName);
@@ -1384,7 +1381,7 @@ HWTEST_F(InputMethodPrivateMemberTest, BranchCoverage002, TestSize.Level0)
     ret = service_->HandlePackageEvent(msg);
     EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
 
-    service_->HandleUserSwitched(INVALID_USER_ID);
+    service_->StartNewUserIme(INVALID_USER_ID);
 
     const SwitchInfo switchInfo;
     UserSessionManager::GetInstance().RemoveUserSession(INVALID_USER_ID);
@@ -1507,7 +1504,6 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_TestIMSAOnScreenUnlocked, TestSize.Lev
     service_->OnScreenUnlock(msg.get());
 
     int32_t userId = 1;
-    InputMethodPrivateMemberTest::service_->userId_ = 2;
     parcel = new (std::nothrow) MessageParcel();
     ASSERT_NE(parcel, nullptr);
     EXPECT_TRUE(ITypesUtil::Marshal(*parcel, userId));
@@ -1517,7 +1513,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_TestIMSAOnScreenUnlocked, TestSize.Lev
     UserSessionManager::GetInstance().userSessions_.clear();
     auto handler = UserSessionManager::GetInstance().eventHandler_;
     UserSessionManager::GetInstance().eventHandler_ = nullptr;
-    InputMethodPrivateMemberTest::service_->userId_ = userId;
+    userId = TddUtil::GetCurrentUserId();
     MessageParcel *parcel1 = new (std::nothrow) MessageParcel();
     ASSERT_NE(parcel1, nullptr);
     EXPECT_TRUE(ITypesUtil::Marshal(*parcel1, userId));
@@ -1544,7 +1540,6 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_OnScreenLock, TestSize.Level0)
     service_->OnScreenLock(msg.get());
 
     int32_t userId = 1;
-    InputMethodPrivateMemberTest::service_->userId_ = 2;
     parcel = new (std::nothrow) MessageParcel();
     ASSERT_NE(parcel, nullptr);
     EXPECT_TRUE(ITypesUtil::Marshal(*parcel, userId));
@@ -1554,7 +1549,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_OnScreenLock, TestSize.Level0)
     UserSessionManager::GetInstance().userSessions_.clear();
     auto handler = UserSessionManager::GetInstance().eventHandler_;
     UserSessionManager::GetInstance().eventHandler_ = nullptr;
-    InputMethodPrivateMemberTest::service_->userId_ = userId;
+    userId = TddUtil::GetCurrentUserId();
     MessageParcel *parcel1 = new (std::nothrow) MessageParcel();
     ASSERT_NE(parcel1, nullptr);
     EXPECT_TRUE(ITypesUtil::Marshal(*parcel1, userId));
@@ -2503,7 +2498,6 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_TestSysParamChanged_001, TestSize.Leve
     auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
     UserSessionManager::GetInstance().userSessions_.insert_or_assign(MAIN_USER_ID, userSession);
     sysAbility.OnSysMemChanged();
-    service_->userId_ = -1;
     ret = SystemParamAdapter::GetInstance().WatchParam(SystemParamAdapter::MEMORY_WATERMARK_KEY);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 }
@@ -3052,7 +3046,6 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_PostCurrentImeInfoReportHo
 HWTEST_F(InputMethodPrivateMemberTest, SA_TestOnPackageUpdated, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::SA_TestOnPackageUpdated start.");
-    int32_t userId = 101;
 
     // Update failed
     int32_t ret = InputMethodPrivateMemberTest::service_->OnPackageUpdated(101, "");
@@ -3061,12 +3054,10 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_TestOnPackageUpdated, TestSize.Level0)
     // not current userId
     auto imeCfg = ImeCfgManager::GetInstance().GetCurrentImeCfg(MAIN_USER_ID);
     ASSERT_NE(imeCfg, nullptr);
-    InputMethodPrivateMemberTest::service_->userId_ = userId;
     ret = InputMethodPrivateMemberTest::service_->OnPackageUpdated(MAIN_USER_ID, imeCfg->bundleName);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 
     // add user session
-    InputMethodPrivateMemberTest::service_->userId_ = MAIN_USER_ID;
     UserSessionManager::GetInstance().RemoveUserSession(MAIN_USER_ID);
     ret = InputMethodPrivateMemberTest::service_->OnPackageUpdated(MAIN_USER_ID, imeCfg->bundleName);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
@@ -3945,11 +3936,11 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_NeedHideRealIme, TestSize.
     need = userSession->NeedHideRealIme(clientGroupIdParam);
     EXPECT_TRUE(need);
     // clientGroupId exist, but keyboardGroupId not exist
-    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(displayId, clientGroupId);
+    WindowAdapter::GetInstance().displayGroupIds_[100][displayId] = clientGroupId;
     need = userSession->NeedHideRealIme(clientGroupIdParam);
     EXPECT_TRUE(need);
     // clientGroupId == clientGroupIdParam
-    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(displayId1, keyboardGroupId);
+    WindowAdapter::GetInstance().displayGroupIds_[100][displayId1] = keyboardGroupId;
     need = userSession->NeedHideRealIme(clientGroupIdParam);
     EXPECT_TRUE(need);
     // clientGroupId != clientGroupIdParam, keyboardGroupId == clientGroupIdParam
@@ -3995,8 +3986,8 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_RequestHideRealIme_001, Te
     userSession->clientGroupMap_[DEFAULT_DISPLAY_ID] = clientGroup;
     // set displayGroup valid
     WindowAdapter::GetInstance().displayGroupIds_.clear();
-    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(100, clientGroupId);
-    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(101, keyboardGroupId);
+    WindowAdapter::GetInstance().displayGroupIds_[100][100] = clientGroupId;
+    WindowAdapter::GetInstance().displayGroupIds_[100][101] = keyboardGroupId;
     ret = userSession->RequestHideRealIme(invalidClientGroupId);
     EXPECT_FALSE(ret);
 }
@@ -4023,7 +4014,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_RequestHideProxyIme_001, T
     auto info = std::make_shared<InputClientInfo>();
     info->bindImeData = std::make_shared<BindImeData>(proxyImePid, ImeType::PROXY_IME);
     WindowAdapter::GetInstance().displayGroupIds_.clear();
-    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(targetDisplayId, targetDisplayId);
+    WindowAdapter::GetInstance().displayGroupIds_[100][targetDisplayId] = targetDisplayId;
     InputMethodAbility::GetInstance().SetImeListener(std::make_shared<InputMethodEngineListenerImpl>());
 
     // 1 - GetProxyImeData not nullptr, not enable
@@ -4073,7 +4064,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_RequestHideProxyIme_002, T
     auto clientGroup = std::make_shared<ClientGroup>(targetDisplayId, nullptr);
     auto info = std::make_shared<InputClientInfo>();
     WindowAdapter::GetInstance().displayGroupIds_.clear();
-    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(targetDisplayId, targetDisplayId);
+    WindowAdapter::GetInstance().displayGroupIds_[100][targetDisplayId] = targetDisplayId;
 
     // 1 - proxyImeData is nullptr, clientGroup is nullptr
     userSession->proxyImeData_.clear();
@@ -4138,7 +4129,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnRequestHideInput_001, Te
     auto info = std::make_shared<InputClientInfo>();
     info->bindImeData = std::make_shared<BindImeData>(proxyImePid, ImeType::PROXY_IME);
     WindowAdapter::GetInstance().displayGroupIds_.clear();
-    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(targetDisplayId, targetDisplayId);
+    WindowAdapter::GetInstance().displayGroupIds_[100][targetDisplayId] = targetDisplayId;
     userSession->proxyImeData_.clear();
     userSession->proxyImeData_.insert_or_assign(targetDisplayId, proxyImeDataList);
     ret = userSession->OnRequestHideInput(targetDisplayId, "");
@@ -4315,11 +4306,11 @@ HWTEST_F(InputMethodPrivateMemberTest, IMSA_HideCurrentInput, TestSize.Level0)
     EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND);
 
     // identityChecker_ is nullptr
-    imsa.userId_ = TddUtil::GetCurrentUserId();
-    auto userSession = std::make_shared<PerUserSession>(imsa.userId_);
-    UserSessionManager::GetInstance().userSessions_.insert_or_assign(imsa.userId_, userSession);
+    auto userId = TddUtil::GetCurrentUserId();
+    auto userSession = std::make_shared<PerUserSession>(userId);
+    UserSessionManager::GetInstance().userSessions_.insert_or_assign(userId, userSession);
     WindowAdapter::GetInstance().displayGroupIds_.clear();
-    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(displayId, 0);
+    WindowAdapter::GetInstance().displayGroupIds_[100][displayId] = 0;
     ret = imsa.HideCurrentInput(displayId);
     EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
 
@@ -4343,11 +4334,11 @@ HWTEST_F(InputMethodPrivateMemberTest, IMSA_ShowCurrentInputInner, TestSize.Leve
     EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND);
 
     // identityChecker_ is nullptr
-    imsa.userId_ = TddUtil::GetCurrentUserId();
-    auto userSession = std::make_shared<PerUserSession>(imsa.userId_);
-    UserSessionManager::GetInstance().userSessions_.insert_or_assign(imsa.userId_, userSession);
+    auto userId = TddUtil::GetCurrentUserId();
+    auto userSession = std::make_shared<PerUserSession>(userId);
+    UserSessionManager::GetInstance().userSessions_.insert_or_assign(userId, userSession);
     WindowAdapter::GetInstance().displayGroupIds_.clear();
-    WindowAdapter::GetInstance().displayGroupIds_.insert_or_assign(displayId, 0);
+    WindowAdapter::GetInstance().displayGroupIds_[100][displayId] = 0;
     ret = imsa.ShowCurrentInputInner(displayId);
     EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
 

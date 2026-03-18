@@ -27,12 +27,12 @@ public:
     static constexpr int64_t INVALID_PID = -1;
     static constexpr int64_t INVALID_WINDOW_ID = 0;
     virtual ~IdentityChecker() = default;
-    virtual std::pair<bool, FocusedInfo> IsFocused(int64_t callingPid, uint32_t callingTokenId, uint32_t windowId = 0,
-        const sptr<IRemoteObject> &abilityToken = nullptr) = 0;
+    virtual std::pair<bool, FocusedInfo> IsFocused(int64_t callingPid, uint32_t callingTokenId, int32_t userId,
+        uint32_t windowId = 0, const sptr<IRemoteObject> &abilityToken = nullptr) = 0;
     virtual bool IsSystemApp(uint64_t fullTokenId) = 0;
     virtual bool IsBundleNameValid(uint32_t tokenId, const std::string &validBundleName) = 0;
     virtual bool HasPermission(uint32_t tokenId, const std::string &permission) = 0;
-    virtual std::pair<bool, FocusedInfo> CheckBroker(Security::AccessToken::AccessTokenID tokenId) = 0;
+    virtual std::pair<bool, FocusedInfo> CheckBroker(Security::AccessToken::AccessTokenID tokenId, int32_t userId) = 0;
     virtual bool IsBroker(Security::AccessToken::AccessTokenID tokenId) = 0;
     virtual bool IsNativeSa(Security::AccessToken::AccessTokenID tokenId) = 0;
     virtual bool IsFormShell(Security::AccessToken::AccessTokenID tokenId) = 0;
@@ -44,15 +44,15 @@ public:
     {
         return 0;
     };
-    virtual bool IsFocusedUIExtension(uint32_t callingTokenId)
+    virtual bool IsFocusedUIExtension(uint32_t callingTokenId, int32_t userId)
     {
         return false;
     };
-    virtual uint64_t GetDisplayIdByWindowId(int32_t callingWindowId)
+    virtual uint64_t GetDisplayIdByWindowId(int32_t callingWindowId, int32_t userId)
     {
         return DEFAULT_DISPLAY_ID;
     };
-    virtual uint64_t GetDisplayIdByPid(int64_t callingPid, sptr<IRemoteObject> abilityToken = nullptr)
+    virtual uint64_t GetDisplayIdByPid(int64_t callingPid, int32_t userId, sptr<IRemoteObject> abilityToken = nullptr)
     {
         return DEFAULT_DISPLAY_ID;
     };

@@ -30,19 +30,23 @@ WmsConnectionMonitorManager &WmsConnectionMonitorManager::GetInstance()
     return manager;
 }
 
-void WmsConnectionMonitorManager::RegisterWMSConnectionChangedListener(const ChangeHandler &handler)
+int32_t WmsConnectionMonitorManager::RegisterWMSConnectionChangedListener(const ChangeHandler &handler, int32_t userId)
 {
     sptr<IWMSConnectionChangedListener> listener = new (std::nothrow) WmsConnectionObserver(handler);
     if (listener == nullptr) {
         IMSA_HILOGE("failed to create listener!");
-        return;
+        return ErrorCode::ERROR_IMSA_NULLPTR;
     }
 #ifdef SCENE_BOARD_ENABLE
-    WMError ret = WindowManagerLite::GetInstance().RegisterWMSConnectionChangedListener(listener);
+    WMError ret = WindowManagerLite::GetInstance(userId).RegisterWMSConnectionChangedListener(listener);
 #else
-    WMError ret = WindowManager::GetInstance().RegisterWMSConnectionChangedListener(listener);
+    WMError ret = WindowManager::GetInstance(userId).RegisterWMSConnectionChangedListener(listener);
 #endif
     IMSA_HILOGI("register WMS connection listener ret: %{public}d.", ret);
+    if (ret != WMError::WM_OK) {
+        return ErrorCode::ERROR_WINDOW_MANAGER;
+    }
+    return ErrorCode::NO_ERROR;
 }
 } // namespace MiscServices
 } // namespace OHOS

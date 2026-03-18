@@ -56,22 +56,23 @@ InputMethodSysEvent &InputMethodSysEvent::GetInstance()
     return instance;
 }
 
-void InputMethodSysEvent::ServiceFaultReporter(const std::string &componentName, int32_t errCode)
+void InputMethodSysEvent::ServiceFaultReporter(const std::string &componentName, int32_t errCode, int32_t userId)
 {
     IMSA_HILOGD("start.");
     int32_t ret = HiSysEventWrite(HiSysEventNameSpace::Domain::INPUTMETHOD, "SERVICE_INIT_FAILED",
-        HiSysEventNameSpace::EventType::FAULT, "USER_ID", userId_, "COMPONENT_ID", componentName, "ERROR_CODE",
+        HiSysEventNameSpace::EventType::FAULT, "USER_ID", userId, "COMPONENT_ID", componentName, "ERROR_CODE",
         errCode);
     if (ret != HiviewDFX::SUCCESS) {
         IMSA_HILOGE("hisysevent ServiceFaultReporter failed! ret: %{public}d, errCode: %{public}d", ret, errCode);
     }
 }
 
-void InputMethodSysEvent::InputmethodFaultReporter(int32_t errCode, const std::string &name, const std::string &info)
+void InputMethodSysEvent::InputmethodFaultReporter(
+    int32_t errCode, const std::string &name, const std::string &info, int32_t userId)
 {
     IMSA_HILOGD("start.");
     int32_t ret = HiSysEventWrite(HiSysEventNameSpace::Domain::INPUTMETHOD, "UNAVAILABLE_INPUTMETHOD",
-        HiSysEventNameSpace::EventType::FAULT, "USER_ID", userId_, "APP_NAME", name, "ERROR_CODE", errCode, "INFO",
+        HiSysEventNameSpace::EventType::FAULT, "USER_ID", userId, "APP_NAME", name, "ERROR_CODE", errCode, "INFO",
         info);
     if (ret != HiviewDFX::SUCCESS) {
         IMSA_HILOGE("hisysevent InputmethodFaultReporter failed! ret: %{public}d,errCode %{public}d", ret, errCode);
@@ -180,10 +181,6 @@ std::string InputMethodSysEvent::GetOperateAction(int32_t infoCode)
     return "unknow action.";
 }
 // LCOV_EXCL_STOP
-void InputMethodSysEvent::SetUserId(int32_t userId)
-{
-    userId_ = userId;
-}
 
 void InputMethodSysEvent::StopTimer()
 {

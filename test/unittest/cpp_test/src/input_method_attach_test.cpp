@@ -64,7 +64,6 @@ public:
             return;
         }
         imsa_->OnStart();
-        imsa_->userId_ = TddUtil::GetCurrentUserId();
         imsa_->identityChecker_ = std::make_shared<IdentityCheckerMock>();
         sptr<InputMethodSystemAbilityStub> serviceStub = imsa_;
         imsaProxy_ = new InputMethodSystemAbilityProxy(serviceStub->AsObject());

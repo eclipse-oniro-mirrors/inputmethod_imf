@@ -22,7 +22,7 @@ using ChangeHandler = std::function<void(bool isConnected, int32_t userId, int32
 class WmsConnectionMonitorManager {
 public:
     static WmsConnectionMonitorManager &GetInstance();
-    void RegisterWMSConnectionChangedListener(const ChangeHandler &handler);
+    int32_t RegisterWMSConnectionChangedListener(const ChangeHandler &handler, int32_t userId);
 
 private:
     WmsConnectionMonitorManager() = default;

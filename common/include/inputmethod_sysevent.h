@@ -48,13 +48,14 @@ enum class ImeState : int32_t { UNBIND = 0, BIND };
 class InputMethodSysEvent {
 public:
     static InputMethodSysEvent &GetInstance();
-    void ServiceFaultReporter(const std::string &componentName, int32_t errCode);
-    void InputmethodFaultReporter(int32_t errCode, const std::string &name, const std::string &info);
+    void ServiceFaultReporter(
+        const std::string &componentName, int32_t errCode, int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
+    void InputmethodFaultReporter(int32_t errCode, const std::string &name, const std::string &info,
+        int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
     void RecordEvent(IMEBehaviour behaviour);
     void OperateSoftkeyboardBehaviour(OperateIMEInfoCode infoCode);
     void ReportImeState(ImeState state, pid_t pid, const std::string &bundleName);
     bool StartTimerForReport();
-    void SetUserId(int32_t userId);
     void ReportSystemShortCut(const std::string &shortcutName);
     static const std::chrono::steady_clock::time_point& GetLastOperateTime()
     {
@@ -77,7 +78,6 @@ private:
     std::mutex behaviourMutex_;
 
     std::shared_ptr<Utils::Timer> timer_ = nullptr;
-    int32_t userId_ = 0;
     uint32_t timerId_ = 0;
     std::mutex timerLock_;
     static inline constexpr int32_t ONE_DAY_IN_HOURS = 24;

@@ -112,19 +112,15 @@ private:
     void Initialize();
 
     std::thread workThreadHandler; /*!< thread handler of the WorkThread */
-    void RestartSessionIme(std::shared_ptr<PerUserSession> &session);
     std::shared_ptr<PerUserSession> GetSessionFromMsg(const Message *msg);
     int32_t PrepareForOperateKeyboard(std::shared_ptr<PerUserSession> &session, uint32_t windowId = 0,
         const sptr<IRemoteObject> &abilityToken = nullptr);
-    int32_t SwitchByCondition(const Condition &condition, const std::shared_ptr<ImeInfo> &info);
+    int32_t SwitchByCondition(const Condition &condition, const std::shared_ptr<ImeInfo> &info, int32_t userId);
     int32_t GetUserId(int32_t uid);
-    uint64_t GetCallingDisplayId(sptr<IRemoteObject> abilityToken = nullptr);
+    uint64_t GetCallingDisplayId(int32_t userId, sptr<IRemoteObject> abilityToken = nullptr);
     std::shared_ptr<IdentityChecker> identityChecker_ = nullptr;
     int32_t PrepareInput(int32_t userId, InputClientInfo &clientInfo, const FocusedInfo &focusedInfo);
     void WorkThread();
-    int32_t OnUserStarted(const Message *msg);
-    int32_t OnUserRemoved(const Message *msg);
-    int32_t OnUserStop(const Message *msg);
     int32_t OnHideKeyboardSelf(const Message *msg);
     void OnSysMemChanged();
     int32_t GetCpuUsage();
@@ -148,22 +144,22 @@ private:
     int32_t SwitchExtension(int32_t userId, const std::shared_ptr<ImeInfo> &info);
     int32_t SwitchSubType(int32_t userId, const std::shared_ptr<ImeInfo> &info);
     int32_t SwitchInputType(int32_t userId, const SwitchInfo &switchInfo, bool isPersistence = true);
+    void StartNewUserIme(int32_t userId);
     void GetValidSubtype(const std::string &subName, const std::shared_ptr<ImeInfo> &info);
     ServiceRunningState state_;
     void InitServiceHandler();
-    void UpdateUserInfo(int32_t userId);
+
+    void HandleFocusChanged(bool isFocused, uint64_t displayId, int32_t pid, int32_t uid);
     void HandleWmsConnected(int32_t userId, int32_t screenId);
     void HandleWmsDisconnected(int32_t userId, int32_t screenId);
-    void HandleScbStarted(int32_t userId, int32_t screenId);
-    void HandleUserSwitched(int32_t userId);
+
     void HandleWmsStarted();
     void HandleMemStarted();
     void HandleDataShareReady();
     void HandleOsAccountStarted();
-    void HandleFocusChanged(bool isFocused, uint64_t displayId, int32_t pid, int32_t uid);
-    void HandleImeCfgCapsState();
+    void HandleImeCfgCapsState(int32_t userId);
     void HandlePasteboardStarted();
-    void StopImeInBackground();
+
     int32_t InitAccountMonitor();
     static std::shared_ptr<AppExecFwk::EventHandler> serviceHandler_;
     std::atomic<int32_t> userId_;
@@ -173,31 +169,34 @@ private:
     bool InitWmsMonitor();
     void InitSystemLanguageMonitor();
     bool InitMemMgrMonitor();
-    void InitWmsConnectionMonitor();
-    int32_t InitFocusChangedMonitor();
-    int32_t InitWindowDisplayChangedMonitor();
+    bool InitFocusChangedMonitor(int32_t userId);
     bool InitPasteboardMonitor();
     bool InitHaMonitor();
+    bool InitWmsConnectionMonitor(int32_t userId);
+    bool InitWindowDisplayChangedMonitor(int32_t userId);
+    bool InitDisplayGroupMonitor(int32_t userId);
+    bool InitWindowMonitors(int32_t userId);
+    void RemoveWindowMonitors(int32_t userId);
     int32_t SwitchByCombinationKey(uint32_t state);
-    int32_t SwitchMode();
-    int32_t SwitchLanguage();
-    int32_t SwitchType();
+    int32_t SwitchMode(int32_t userId);
+    int32_t SwitchLanguage(int32_t userId);
+    int32_t SwitchType(int32_t userId);
     int32_t GenerateClientInfo(int32_t userId, InputClientInfo &clientInfo, const FocusedInfo &focusedInfo = {});
     void RegisterSecurityModeObserver();
     int32_t CheckInputTypeOption(int32_t userId, InputClientInfo &inputClientInfo);
     int32_t IsDefaultImeFromTokenId(int32_t userId, uint32_t tokenId);
-    void DealSwitchRequest();
+    void DealSwitchRequest(int32_t userId);
     bool IsCurrentIme(int32_t userId, uint32_t tokenId);
     int32_t StartInputType(int32_t userId, InputType type, bool isPersistence = true);
     // if switch input type need to switch ime, then no need to hide panel first.
     void NeedHideWhenSwitchInputType(int32_t userId, InputType type, bool &needHide);
     bool GetDeviceFunctionKeyState(int32_t functionKey, bool &isEnable);
-    bool ModifyImeCfgWithWrongCaps();
+    bool ModifyImeCfgWithWrongCaps(int32_t userId);
     void HandleBundleScanFinished();
     int32_t StartInputInner(InputClientInfo &inputClientInfo, std::vector<sptr<IRemoteObject>> &agents,
         std::vector<BindImeInfo> &imeInfos);
-    std::pair<bool, FocusedInfo> IsFocusedOrBroker(int64_t callingPid, uint32_t callingTokenId, uint32_t windowId = 0,
-        const sptr<IRemoteObject> &abilityToken = nullptr);
+    std::pair<bool, FocusedInfo> IsFocusedOrBroker(int64_t callingPid, uint32_t callingTokenId, int32_t userId,
+        uint32_t windowId = 0, const sptr<IRemoteObject> &abilityToken = nullptr);
     int32_t ShowInputInner(sptr<IInputClient> client, uint32_t windowId, int32_t requestKeyboardReason = 0);
     int32_t ShowCurrentInputInner();
     int32_t ShowCurrentInputInner(uint64_t displayId);
@@ -223,6 +222,20 @@ private:
     void DecreaseAttachCount();
     bool IsTmpIme(int32_t userId, uint32_t tokenId);
     bool IsTmpImeSwitchSubtype(int32_t userId, uint32_t tokenId, const SwitchInfo &switchInfo);
+    void SendMessageToWorkThread(int32_t eventId);
+
+    void ResetAllImes();
+    void RestartAllForegroundImes();
+    void StopAllBackgroundImes();
+
+    int32_t OnUserSwitched(const Message *msg);
+    int32_t OnUserRemoved(const Message *msg);
+    int32_t OnUserStop(const Message *msg);
+    void HandleUserSwitchedOut(int32_t userId, uint64_t displayId);
+    void HandleUserSwitchedIn(int32_t userId, uint64_t displayId);
+    void InitAllUsersWindowMonitors();
+    void InitUserInfo(int32_t userId, uint64_t displayId);
+    void UpdateUserInfo(int32_t userId, uint64_t displayId);
 
     class AttachStateGuard {
     public:
@@ -244,6 +257,8 @@ private:
     std::mutex switchImeMutex_;
     std::atomic<bool> switchTaskExecuting_ = false;
     std::atomic<uint32_t> targetSwitchCount_ = 0;
+    std::atomic<bool> isAccountSaFirstStart_{ true };
+    std::atomic<bool> waitAccountReadyToInit_{ false };
 };
 } // namespace MiscServices
 } // namespace OHOS

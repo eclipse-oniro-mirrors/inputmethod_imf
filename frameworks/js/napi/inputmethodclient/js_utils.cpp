@@ -98,7 +98,7 @@ const std::map<int32_t, int32_t> JsUtils::ERROR_CODE_MAP = {
     { ErrorCode::ERROR_TRY_IME_START_FAILED, EXCEPTION_IMMS },
     { ErrorCode::ERROR_USER_NOT_EXIST, EXCEPTION_USER_NOT_EXIST },
     { ErrorCode::ERROR_USER_NOT_IN_FOREGROUND, EXCEPTION_USER_NOT_IN_FOREGROUND },
-    { ErrorCode::ERROR_INVALID_USER_OPERATION, EXCEPTION_INVALID_USER_OPERATION },
+    { ErrorCode::ERROR_CROSS_USER_OPERATION_DENIED, EXCEPTION_CROSS_USER_OPERATION_DENIED },
 };
 
 const std::map<int32_t, std::string> JsUtils::ERROR_CODE_CONVERT_MESSAGE_MAP = {
@@ -136,6 +136,10 @@ const std::map<int32_t, std::string> JsUtils::ERROR_CODE_CONVERT_MESSAGE_MAP = {
         3.When the gradient mode is not enabled, the gradient height can only be 0." },
     { EXCEPTION_PRECONDITION_REQUIRED, "this operation must be called after adjustPanelRect or resize." },
     { EXCEPTION_INVALID_DISPLAYID, "invalid display id." },
+    { EXCEPTION_USER_NOT_EXIST, "the specified user dose not exist." },
+    { EXCEPTION_USER_NOT_IN_FOREGROUND, "the specified user is not in the foreground." },
+    { EXCEPTION_CROSS_USER_OPERATION_DENIED, "cross-user operation denied. Only user 0 applications are authorized "
+                                             "for this operation" },
 };
 
 const std::map<int32_t, std::string> JsUtils::PARAMETER_TYPE = {

@@ -28,7 +28,7 @@ namespace OHOS {
 namespace MiscServices {
 namespace MessageID {
 enum {
-    MSG_ID_USER_START = 0,  //  a user started
+    MSG_ID_USER_SWITCHED = 0,  //  on user switched
     MSG_ID_USER_REMOVED,    // a user removed
     MSG_ID_PACKAGE_REMOVED, // a package is removed
     MSG_ID_BUNDLE_SCAN_FINISHED, // bundle scan finished
@@ -44,8 +44,9 @@ enum {
     MSG_ID_SELECT_BY_RANGE,
     MSG_ID_SELECT_BY_MOVEMENT,
     MSG_ID_HANDLE_EXTEND_ACTION,
-    MSG_ID_USER_STOP,
+    MSG_ID_USER_STOPPED,
     MSG_ID_REGULAR_UPDATE_IME_INFO,
+    MSG_ID_WMS_STARTED,
 
     MSG_ID_HIDE_KEYBOARD_SELF, // hide the current keyboard
 

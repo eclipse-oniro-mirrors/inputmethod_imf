@@ -82,7 +82,7 @@ interface InputMethodSetting {
     @gen_async("listInputMethodSubtype")
     @gen_promise("listInputMethodSubtype")
     ListInputMethodSubtypeSync(inputMethodProperty: InputMethodProperty): Array<InputMethodSubtype>;
-    GetInputMethodSubtype(userId: i32, bundleName: String): Array<InputMethodSubtype>;
+    GetInputMethodSubtypes(bundleName: String, userId: Optional<i32>): Array<InputMethodSubtype>;
     @overload("isPanelShown")
     IsPanelShown(panelInfo: PanelInfo): bool;
     @overload("isPanelShown")
@@ -95,8 +95,8 @@ interface InputMethodSetting {
     OnImeChange(callback: (inputMethodProperty: InputMethodProperty, inputMethodSubtype: InputMethodSubtype) => void, @sts_last opq: Opaque): void;
     OffImeChange(opq: Optional<@sts_type("Function2<InputMethodProperty, ohos_InputMethodSubtype.InputMethodSubtype, void>") Opaque>): void;
 
-    OnImeChangeByUserId(callback: (inputMethodProperty: InputMethodProperty, inputMethodSubtype: InputMethodSubtype, userId: i32) => void, @sts_last opq: Opaque): void;
-    OffImeChangeByUserId(opq: Optional<@sts_type("Function3<InputMethodProperty, ohos_InputMethodSubtype.InputMethodSubtype, int, void>") Opaque>): void;
+    OnImeChangeWithUserId(callback: (inputMethodProperty: InputMethodProperty, inputMethodSubtype: InputMethodSubtype, userId: i32) => void, @sts_last opq: Opaque): void;
+    OffImeChangeWithUserId(opq: Optional<@sts_type("Function3<InputMethodProperty, ohos_InputMethodSubtype.InputMethodSubtype, int, void>") Opaque>): void;
 
     OnImeShow(callback: (info: Array<InputWindowInfo>) => void, @sts_last opq: Opaque): void;
     OffImeShow(opq: Optional<@sts_type("Function1<Array<InputWindowInfo>, void>") Opaque>): void;
@@ -111,14 +111,17 @@ interface InputMethodSetting {
     EnableInputMethodSync(bundleName: String, extensionName: String, enabledState: EnabledState): void;
 
     @gen_promise("enableInputMethod")
-    EnableInputMethodSyncByUserId(bundleName: String, extensionName: String, enabledState: EnabledState, userId: i32): void;
+    EnableInputMethodByUserId(bundleName: String, extensionName: String, enabledState: EnabledState, userId: Optional<i32>): void;
 
+    @overload("getInputMethodsSync")
     GetInputMethodsSync(enable: bool): Array<InputMethodProperty>;
+    @overload("getInputMethodsSync")
+    GetInputMethodsSyncByUserId(enable: bool, userId: Optional<i32>): Array<InputMethodProperty>;
 
     @overload("getAllInputMethodsSync")
     GetAllInputMethodsSync(): Array<InputMethodProperty>;
     @overload("getAllInputMethodsSync")
-    GetAllInputMethodsSyncByUserId(userId: i32): Array<InputMethodProperty>;
+    GetAllInputMethodsSyncByUserId(userId: Optional<i32>): Array<InputMethodProperty>;
 }
 
 struct CursorInfo {
@@ -336,30 +339,30 @@ function GetController(): InputMethodController;
 @overload("getDefaultInputMethod")
 function GetDefaultInputMethod(): InputMethodProperty;
 @overload("getDefaultInputMethod")
-function GetDefaultInputMethodByUserId(userId: i32): InputMethodProperty;
+function GetDefaultInputMethodByUserId(userId: Optional<i32>): InputMethodProperty;
 
 @overload("getCurrentInputMethod")
 function GetCurrentInputMethod(): InputMethodProperty;
 @overload("getCurrentInputMethod")
-function GetCurrentInputMethodByUserId(userId: i32): InputMethodProperty;
+function GetCurrentInputMethodByUserId(userId: Optional<i32>): InputMethodProperty;
 
 @overload("getCurrentInputMethodSubtype")
 function GetCurrentInputMethodSubtype(): InputMethodSubtype;
 @overload("getCurrentInputMethodSubtype")
-function GetCurrentInputMethodSubtypeByUserId(userId: i32): InputMethodSubtype;
+function GetCurrentInputMethodSubtypeByUserId(userId: Optional<i32>): InputMethodSubtype;
 
 @overload("getSystemInputMethodConfigAbility")
 function GetSystemInputMethodConfigAbility(): @sts_type("ElementName") Opaque;
 @overload("getSystemInputMethodConfigAbility")
-function GetSystemInputMethodConfigAbilityByUserId(userId: i32): @sts_type("ElementName") Opaque;
+function GetSystemInputMethodConfigAbilityByUserId(userId: Optional<i32>): @sts_type("ElementName") Opaque;
 
 @gen_async("switchInputMethod")
 @gen_promise("switchInputMethod")
 function SwitchInputMethodWithTarget(target: InputMethodProperty): bool;
 @gen_promise("switchInputMethod")
 function SwitchInputMethodSync(bundleName: String, subtypeId: Optional<String>);
-@gen_promise("switchInputMethod")
-function SwitchInputMethodByUserId(userId: i32, bundleName: String, subtypeId: Optional<String>);
+@gen_promise("switchInputMethodWithUserId")
+function SwitchInputMethodByUserId(bundleName: String, subtypeId: Optional<String>, userId: Optional<i32>);
 
 @gen_async("switchCurrentInputMethodSubtype")
 @gen_promise("switchCurrentInputMethodSubtype")

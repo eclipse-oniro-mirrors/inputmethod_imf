@@ -19,11 +19,14 @@
 #include <cstdint>
 #include <vector>
 
+#include "os_account_info.h"
+
 namespace OHOS {
 namespace MiscServices {
 class OsAccountAdapter {
 public:
     static constexpr int32_t MAIN_USER_ID = 100;
+    static constexpr int32_t MAIN_DISPLAY_ID = 0;
     static constexpr int32_t INVALID_USER_ID = -1;
     static constexpr int32_t INVALID_UID = -1;
     static int32_t GetOsAccountLocalIdFromUid(int32_t uid);
@@ -31,6 +34,10 @@ public:
     static std::vector<int32_t> QueryActiveOsAccountIds();
     static bool IsOsAccountForeground(int32_t userId);
     static int32_t IsOsAccountVerified(int32_t userId, bool &isUnlocked);
+    static std::vector<AccountSA::ForegroundOsAccount> GetForegroundOsAccounts();
+    static std::vector<int32_t> GetForegroundOsAccountIds();
+    static int32_t GetMainAccountId();
+    static int32_t RegisterOsAccountStateListener();
 
 private:
     static constexpr uint32_t RETRY_INTERVAL = 100;

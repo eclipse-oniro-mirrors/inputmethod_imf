@@ -382,7 +382,7 @@ void PerUserSession::OnHideSoftKeyBoardSelf()
 
 int32_t PerUserSession::OnRequestHideInput(uint64_t displayId, const std::string &callerBundleName)
 {
-    auto displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId);
+    auto displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId, userId_);
     IMSA_HILOGD("start, displayId: %{public}" PRIu64 ", groupId: %{public}" PRIu64 ".", displayId, displayGroupId);
     if (RequestHideRealIme(displayGroupId)) {
         IMSA_HILOGI("hide real ime");
@@ -481,8 +481,9 @@ bool PerUserSession::NeedHideRealIme(uint64_t clientGroupId)
     if (clientInfo == nullptr) {
         return true;
     }
-    if (!WindowAdapter::GetInstance().IsDisplayGroupIdExist(clientInfo->clientGroupId) ||
-        !WindowAdapter::GetInstance().IsDisplayGroupIdExist(clientInfo->config.inputAttribute.displayGroupId)) {
+    if (!WindowAdapter::GetInstance().IsDisplayGroupIdExist(clientInfo->clientGroupId, userId_) ||
+        !WindowAdapter::GetInstance().IsDisplayGroupIdExist(
+            clientInfo->config.inputAttribute.displayGroupId, userId_)) {
         return true;
     }
     /* requestHide triggered by the group where the edit box resides/where the soft keyboard resides
@@ -1491,6 +1492,35 @@ void PerUserSession::RemoveDeathRecipient(
         return;
     }
     object->RemoveDeathRecipient(deathRecipient);
+}
+
+void PerUserSession::OnScbStarted()
+{
+#ifdef IMF_ON_DEMAND_START_STOP_SA_ENABLE
+    IMSA_HILOGI("start stop sa on demand, no need restart ime immediately");
+    return;
+#endif
+    if (ImeStateManagerFactory::GetInstance().GetDynamicStartIme()) {
+        IMSA_HILOGI("dynamic start ime, do not start immediately");
+        return;
+    }
+    IMSA_HILOGI("userId: %{public}d, restart ime", userId_);
+    IncreaseScbStartCount();
+    AddRestartIme();
+}
+
+void PerUserSession::OnScbStopped()
+{
+    RemoveAllCurrentClient();
+#ifndef IMF_ON_DEMAND_START_STOP_SA_ENABLE
+    if (!ImeStateManagerFactory::GetInstance().GetDynamicStartIme()) {
+        IMSA_HILOGI("no need to stop ime");
+        return;
+    }
+#endif
+    // If sa start stop on demand or dynamic start ime, stop current ime now.
+    IMSA_HILOGI("stop ime");
+    StopCurrentIme();
 }
 
 void PerUserSession::OnFocused(uint64_t displayId, int32_t pid, int32_t uid)
@@ -2854,7 +2884,7 @@ void PerUserSession::TryUnloadSystemAbility()
 
 std::shared_ptr<ClientGroup> PerUserSession::GetClientGroup(uint64_t displayId)
 {
-    auto clientGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId);
+    auto clientGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId, userId_);
     return GetClientGroupByGroupId(clientGroupId);
 }
 
@@ -2898,7 +2928,7 @@ void PerUserSession::OnWindowDisplayIdChanged(int32_t windowId, uint64_t display
         return;
     }
     auto oldClientGroupId = clientInfo->clientGroupId;
-    auto newClientGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId);
+    auto newClientGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId, userId_);
     // Cross-group scenarios are handled by the attach.
     if (!IsSameClientGroup(oldClientGroupId, newClientGroupId)) {
         IMSA_HILOGW(
@@ -2907,7 +2937,7 @@ void PerUserSession::OnWindowDisplayIdChanged(int32_t windowId, uint64_t display
     }
     auto oldKeyboardGroupId = clientInfo->config.inputAttribute.displayGroupId;
     auto newKeyboardDisplayId = displayId;
-    auto newKeyboardGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(newKeyboardDisplayId);
+    auto newKeyboardGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(newKeyboardDisplayId, userId_);
     // Cross-group scenarios are handled by the attach.
     if (!IsSameClientGroup(oldKeyboardGroupId, newKeyboardGroupId)) {
         IMSA_HILOGW("not same keyboard group:%{public}" PRIu64 "/%{public}" PRIu64 ".", oldKeyboardGroupId,
@@ -3300,6 +3330,16 @@ bool PerUserSession::IsEnable(const std::shared_ptr<ImeData> &data, uint64_t dis
     }
     data->core->IsEnable(ret, displayId);
     return ret;
+}
+
+bool PerUserSession::IsImeInUse()
+{
+    auto data = GetRealImeData(true);
+    if (data == nullptr || data->imeStateManager == nullptr) {
+        IMSA_HILOGE("data or imeStateManager is nullptr");
+        return false;
+    }
+    return data->imeStateManager->IsImeInUse();
 }
 } // namespace MiscServices
 } // namespace OHOS
