@@ -43,20 +43,20 @@ WindowAdapter &WindowAdapter::GetInstance()
     return windowAdapter;
 }
 
-void WindowAdapter::GetFocusInfo(OHOS::Rosen::FocusChangeInfo &focusInfo, uint64_t displayId)
+void WindowAdapter::GetFocusInfo(OHOS::Rosen::FocusChangeInfo &focusInfo, int32_t userId, uint64_t displayId)
 {
 #ifdef SCENE_BOARD_ENABLE
-    WindowManagerLite::GetInstance().GetFocusWindowInfo(focusInfo, displayId);
+    WindowManagerLite::GetInstance(userId).GetFocusWindowInfo(focusInfo, displayId);
 #else
-    WindowManager::GetInstance().GetFocusWindowInfo(focusInfo, displayId);
+    WindowManager::GetInstance(userId).GetFocusWindowInfo(focusInfo, displayId);
 #endif
 }
 // LCOV_EXCL_STOP
-bool WindowAdapter::ListWindowInfo(std::vector<sptr<OHOS::Rosen::WindowInfo>> &windowInfos)
+bool WindowAdapter::ListWindowInfo(std::vector<sptr<OHOS::Rosen::WindowInfo>> &windowInfos, int32_t userId)
 {
 #ifdef SCENE_BOARD_ENABLE
     WindowInfoOption option;
-    WMError ret = WindowManagerLite::GetInstance().ListWindowInfo(option, windowInfos);
+    WMError ret = WindowManagerLite::GetInstance(userId).ListWindowInfo(option, windowInfos);
     if (ret != WMError::WM_OK) {
         IMSA_HILOGE("ListWindowInfo failed, ret: %{public}d", ret);
         return false;
@@ -68,11 +68,11 @@ bool WindowAdapter::ListWindowInfo(std::vector<sptr<OHOS::Rosen::WindowInfo>> &w
 #endif
 }
 // LCOV_EXCL_START
-uint64_t WindowAdapter::GetDisplayIdByToken(sptr<IRemoteObject> abilityToken)
+uint64_t WindowAdapter::GetDisplayIdByToken(sptr<IRemoteObject> abilityToken, int32_t userId)
 {
 #ifdef SCENE_BOARD_ENABLE
     OHOS::Rosen::MainWindowInfo info;
-    WMError ret = WindowManagerLite::GetInstance().GetMainWindowInfoByToken(abilityToken, info);
+    WMError ret = WindowManagerLite::GetInstance(userId).GetMainWindowInfoByToken(abilityToken, info);
     if (ret != WMError::WM_OK) {
         IMSA_HILOGE("GetMainWindowInfoByToken failed, ret: %{public}d", ret);
         return DEFAULT_DISPLAY_ID;
@@ -85,16 +85,16 @@ uint64_t WindowAdapter::GetDisplayIdByToken(sptr<IRemoteObject> abilityToken)
 #endif
 }
 
-uint64_t WindowAdapter::GetDisplayIdByWindowId(int32_t callingWindowId)
+uint64_t WindowAdapter::GetDisplayIdByWindowId(int32_t callingWindowId, int32_t userId)
 {
 #ifdef SCENE_BOARD_ENABLE
     if (callingWindowId == DEFAULT_DISPLAY_ID) {
         FocusChangeInfo info;
-        WindowManagerLite::GetInstance().GetFocusWindowInfo(info);
+        WindowManagerLite::GetInstance(userId).GetFocusWindowInfo(info);
         callingWindowId = info.windowId_;
     }
     std::vector<sptr<WindowInfo>> windowInfos;
-    if (!ListWindowInfo(windowInfos)) {
+    if (!ListWindowInfo(windowInfos, userId)) {
         return DEFAULT_DISPLAY_ID;
     }
     auto iter = std::find_if(windowInfos.begin(), windowInfos.end(), [&callingWindowId](const auto &windowInfo) {
@@ -116,7 +116,7 @@ uint64_t WindowAdapter::GetDisplayIdByWindowId(int32_t callingWindowId)
 #endif
 }
 
-uint64_t WindowAdapter::GetDisplayIdWithCorrect(int32_t windowId, uint64_t displayId)
+uint64_t WindowAdapter::GetDisplayIdWithCorrect(int32_t windowId, uint64_t displayId, int32_t userId)
 {
     uint64_t displayIdOut = DEFAULT_DISPLAY_ID;
 #ifdef SCENE_BOARD_ENABLE
@@ -124,7 +124,7 @@ uint64_t WindowAdapter::GetDisplayIdWithCorrect(int32_t windowId, uint64_t displ
         return displayIdOut;
     }
     std::vector<sptr<WindowInfo>> windowInfos;
-    if (!ListWindowInfo(windowInfos)) {
+    if (!ListWindowInfo(windowInfos, userId)) {
         return displayIdOut;
     }
     auto iter = std::find_if(windowInfos.begin(), windowInfos.end(), [&windowId](const auto &windowInfo) {
@@ -146,11 +146,11 @@ uint64_t WindowAdapter::GetDisplayIdWithCorrect(int32_t windowId, uint64_t displ
 #endif
 }
 
-uint64_t WindowAdapter::GetDisplayIdByPid(int64_t callingPid)
+uint64_t WindowAdapter::GetDisplayIdByPid(int64_t callingPid, int32_t userId)
 {
 #ifdef SCENE_BOARD_ENABLE
     std::vector<sptr<WindowInfo>> windowInfos;
-    if (!ListWindowInfo(windowInfos)) {
+    if (!ListWindowInfo(windowInfos, userId)) {
         return DEFAULT_DISPLAY_ID;
     }
     auto iter = std::find_if(windowInfos.begin(), windowInfos.end(), [&callingPid](const auto &windowInfo) {
@@ -172,12 +172,12 @@ uint64_t WindowAdapter::GetDisplayIdByPid(int64_t callingPid)
 #endif
 }
 
-bool WindowAdapter::GetDisplayId(int64_t callingPid, uint64_t &displayId)
+bool WindowAdapter::GetDisplayId(int64_t callingPid, uint64_t &displayId, int32_t userId)
 {
     displayId = DEFAULT_DISPLAY_ID;
 #ifdef SCENE_BOARD_ENABLE
     std::vector<sptr<WindowInfo>> windowInfos;
-    if (!ListWindowInfo(windowInfos)) {
+    if (!ListWindowInfo(windowInfos, userId)) {
         return false;
     }
     auto iter = std::find_if(windowInfos.begin(), windowInfos.end(), [&callingPid](const auto &windowInfo) {
@@ -200,12 +200,12 @@ bool WindowAdapter::GetDisplayId(int64_t callingPid, uint64_t &displayId)
 #endif
 }
 
-int32_t WindowAdapter::StoreAllDisplayGroupInfos()
+int32_t WindowAdapter::StoreAllDisplayGroupInfos(int32_t userId)
 {
 #ifdef SCENE_BOARD_ENABLE
     std::unordered_map<uint64_t, uint64_t> displayGroupIds;
     std::vector<FocusChangeInfo> focusWindowInfos;
-    auto ret = GetAllDisplayGroupInfos(displayGroupIds, focusWindowInfos);
+    auto ret = GetAllDisplayGroupInfos(displayGroupIds, focusWindowInfos, userId);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("GetAllGroupInfo failed, ret: %{public}d", ret);
         return ret;
@@ -216,10 +216,10 @@ int32_t WindowAdapter::StoreAllDisplayGroupInfos()
     return ErrorCode::NO_ERROR;
 }
 // LCOV_EXCL_STOP
-int32_t WindowAdapter::GetAllFocusWindowInfos(std::vector<FocusChangeInfo> &focusWindowInfos)
+int32_t WindowAdapter::GetAllFocusWindowInfos(std::vector<FocusChangeInfo> &focusWindowInfos, int32_t userId)
 {
     std::unordered_map<uint64_t, uint64_t> displayGroupIds;
-    auto ret = GetAllDisplayGroupInfos(displayGroupIds, focusWindowInfos);
+    auto ret = GetAllDisplayGroupInfos(displayGroupIds, focusWindowInfos, userId);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("GetAllGroupInfo failed, ret: %{public}d", ret);
         return ret;
@@ -228,65 +228,85 @@ int32_t WindowAdapter::GetAllFocusWindowInfos(std::vector<FocusChangeInfo> &focu
         IMSA_HILOGD("display:%{public}" PRIu64 "/%{public}" PRIu64 ".", key, value);
     }
     for (const auto &info : focusWindowInfos) {
-        IMSA_HILOGD("focus:%{public}d/%{public}" PRIu64 "/%{public}" PRIu64 "/%{public}d", info.windowId_,
-            info.displayGroupId_, info.realDisplayId_, info.pid_);
+        IMSA_HILOGD("user: %{public}d, focus:%{public}d/%{public}" PRIu64 "/%{public}" PRIu64 "/%{public}d", userId,
+            info.windowId_, info.displayGroupId_, info.realDisplayId_, info.pid_);
     }
     return ErrorCode::NO_ERROR;
 }
 
-uint64_t WindowAdapter::GetDisplayGroupId(uint64_t displayId)
+uint64_t WindowAdapter::GetDisplayGroupId(uint64_t displayId, int32_t userId)
 {
-    IMSA_HILOGD("by displayId run in:%{public}" PRIu64 ".", displayId);
+    IMSA_HILOGD("userId %{public}d, by displayId run in:%{public}" PRIu64 ".", userId, displayId);
     std::lock_guard<std::mutex> lock(displayGroupIdsLock_);
-    auto iter = displayGroupIds_.find(displayId);
-    if (iter != displayGroupIds_.end()) {
-        IMSA_HILOGD("by displayId:%{public}" PRIu64 "/%{public}" PRIu64 ".", displayId, iter->second);
-        return iter->second;
+    auto userIter = displayGroupIds_.find(userId);
+    if (userIter == displayGroupIds_.end()) {
+        IMSA_HILOGE("user %{public}d not found", userId);
+        return DEFAULT_DISPLAY_GROUP_ID;
     }
-    return DEFAULT_DISPLAY_GROUP_ID;
+    auto userDisplayGroupIds = userIter->second;
+    auto groupIter = userDisplayGroupIds.find(displayId);
+    if (groupIter == userDisplayGroupIds.end()) {
+        IMSA_HILOGE("display %{public}" PRIu64 " not found", displayId);
+        return DEFAULT_DISPLAY_GROUP_ID;
+    }
+    uint64_t displayGroupId = groupIter->second;
+    IMSA_HILOGD(
+        "userId %{public}d, by displayId:%{public}" PRIu64 "/%{public}" PRIu64 ".", userId, displayId, displayGroupId);
+    return displayGroupId;
 }
-
-bool WindowAdapter::IsDisplayGroupIdExist(uint64_t displayGroupId)
+// LCOV_EXCL_START
+bool WindowAdapter::IsDisplayGroupIdExist(uint64_t displayGroupId, int32_t userId)
 {
     if (displayGroupId == DEFAULT_DISPLAY_GROUP_ID) {
         return true;
     }
     IMSA_HILOGD("displayGroupId:%{public}" PRIu64 ".", displayGroupId);
     std::lock_guard<std::mutex> lock(displayGroupIdsLock_);
-    auto iter = std::find_if(displayGroupIds_.begin(), displayGroupIds_.end(),
+    auto userIter = displayGroupIds_.find(userId);
+    if (userIter == displayGroupIds_.end()) {
+        IMSA_HILOGE("user %{public}d not found", userId);
+        return false;
+    }
+    auto displayGroupIds = userIter->second;
+    auto iter = std::find_if(displayGroupIds.begin(), displayGroupIds.end(),
         [displayGroupId](const std::pair<uint64_t, uint64_t> &pair) { return pair.second == displayGroupId; });
-    return iter != displayGroupIds_.end();
+    return iter != displayGroupIds.end();
 }
 
-bool WindowAdapter::IsDisplayIdExist(uint64_t displayId)
+bool WindowAdapter::IsDisplayIdExist(uint64_t displayId, int32_t userId)
 {
     if (displayId == DEFAULT_DISPLAY_ID) {
         return true;
     }
     IMSA_HILOGD("displayId:%{public}" PRIu64 ".", displayId);
     std::lock_guard<std::mutex> lock(displayGroupIdsLock_);
-    return displayGroupIds_.find(displayId) != displayGroupIds_.end();
+    auto iter = displayGroupIds_.find(userId);
+    if (iter == displayGroupIds_.end()) {
+        IMSA_HILOGE("user %{public}d not found", userId);
+        return false;
+    }
+    auto displayGroupIds = iter->second;
+    return displayGroupIds.find(displayId) != displayGroupIds.end();
 }
 
-// LCOV_EXCL_START
-bool WindowAdapter::IsDefaultDisplayGroup(uint64_t displayId)
+bool WindowAdapter::IsDefaultDisplayGroup(uint64_t displayId, int32_t userId)
 {
-    return GetDisplayGroupId(displayId) == DEFAULT_DISPLAY_GROUP_ID;
+    return GetDisplayGroupId(displayId, userId) == DEFAULT_DISPLAY_GROUP_ID;
 }
 
-uint64_t WindowAdapter::GetDisplayGroupId(uint32_t windowId)
+uint64_t WindowAdapter::GetDisplayGroupId(uint32_t windowId, int32_t userId)
 {
     IMSA_HILOGD("by windowId run in:%{public}d.", windowId);
-    auto displayId = GetDisplayIdByWindowId(windowId);
-    return GetDisplayGroupId(displayId);
+    auto displayId = GetDisplayIdByWindowId(windowId, userId);
+    return GetDisplayGroupId(displayId, userId);
 }
 // LCOV_EXCL_STOP
-int32_t WindowAdapter::GetAllDisplayGroupInfos(
-    std::unordered_map<uint64_t, uint64_t> &displayGroupIds, std::vector<FocusChangeInfo> &focusWindowInfos)
+int32_t WindowAdapter::GetAllDisplayGroupInfos(std::unordered_map<uint64_t, uint64_t> &displayGroupIds,
+    std::vector<FocusChangeInfo> &focusWindowInfos, int32_t userId)
 {
 #ifdef SCENE_BOARD_ENABLE
     std::vector<sptr<FocusChangeInfo>> focusWindowInfoPtr;
-    WindowManagerLite::GetInstance().GetAllGroupInfo(displayGroupIds, focusWindowInfoPtr);
+    WindowManagerLite::GetInstance(userId).GetAllGroupInfo(displayGroupIds, focusWindowInfoPtr);
     for (const auto &info : focusWindowInfoPtr) {
         if (info != nullptr) {
             focusWindowInfos.push_back(*info);
@@ -295,77 +315,47 @@ int32_t WindowAdapter::GetAllDisplayGroupInfos(
     std::sort(focusWindowInfos.begin(), focusWindowInfos.end(),
         [](const FocusChangeInfo &a, const FocusChangeInfo &b) { return a.displayId_ < b.displayId_; });
 
-    GetInstance().SetDisplayGroupIds(displayGroupIds);
-    GetInstance().SetFocusWindowInfos(focusWindowInfos);
+    GetInstance().SetDisplayGroupIds(displayGroupIds, userId);
     return ErrorCode::NO_ERROR;
 #else
     return ErrorCode::NO_ERROR;
 #endif
 }
 
-void WindowAdapter::SetDisplayGroupIds(const std::unordered_map<uint64_t, uint64_t> &displayGroupIds)
+void WindowAdapter::SetDisplayGroupIds(const std::unordered_map<uint64_t, uint64_t> &displayGroupIds, int32_t userId)
 {
     std::lock_guard<std::mutex> lock(displayGroupIdsLock_);
-    displayGroupIds_ = displayGroupIds;
+    displayGroupIds_[userId] = displayGroupIds;
 }
 
-void WindowAdapter::SetFocusWindowInfos(const std::vector<Rosen::FocusChangeInfo> &focusWindowInfos)
-{
-    std::lock_guard<std::mutex> lock(focusWindowInfosLock_);
-    focusWindowInfos_ = focusWindowInfos;
-}
 // LCOV_EXCL_START
-void WindowAdapter::OnDisplayGroupInfoChanged(uint64_t displayId, uint64_t displayGroupId, bool isAdd)
+void WindowAdapter::OnDisplayGroupInfoChanged(uint64_t displayId, uint64_t displayGroupId, bool isAdd, int32_t userId)
 {
     IMSA_HILOGI("display change:%{public}" PRIu64 "/%{public}" PRIu64 "/%{public}d.", displayId,
         displayGroupId, isAdd);
     std::lock_guard<std::mutex> lock(displayGroupIdsLock_);
     if (isAdd) {
-        displayGroupIds_[displayId] = displayGroupId;
+        displayGroupIds_[userId][displayId] = displayGroupId;
         return;
     }
-    auto iter = displayGroupIds_.find(displayId);
-    if (iter == displayGroupIds_.end()) {
+    auto userIter = displayGroupIds_.find(userId);
+    if (userIter == displayGroupIds_.end()) {
+        IMSA_HILOGE("user %{public}d not found", userId);
         return;
     }
-    displayGroupIds_.erase(displayId);
+    auto &displayGroupIds = userIter->second;
+    displayGroupIds.erase(displayId);
 }
 
-void WindowAdapter::OnFocused(const FocusChangeInfo &focusWindowInfo)
-{
-    std::lock_guard<std::mutex> lock(focusWindowInfosLock_);
-    auto iter =
-        std::find_if(focusWindowInfos_.begin(), focusWindowInfos_.end(), [&focusWindowInfo](const auto &focusInfo) {
-            return focusWindowInfo.displayGroupId_ == focusInfo.displayGroupId_;
-        });
-    if (iter != focusWindowInfos_.end()) {
-        focusWindowInfos_.erase(iter);
-    }
-    auto insertPos = std::lower_bound(focusWindowInfos_.begin(), focusWindowInfos_.end(), focusWindowInfo,
-        [](const FocusChangeInfo &a, const FocusChangeInfo &b) { return a.displayId_ < b.displayId_; });
-    focusWindowInfos_.insert(insertPos, focusWindowInfo);
-}
-
-void WindowAdapter::OnUnFocused(const FocusChangeInfo &focusWindowInfo)
-{
-    std::lock_guard<std::mutex> lock(focusWindowInfosLock_);
-    auto iter = std::find_if(focusWindowInfos_.begin(), focusWindowInfos_.end(),
-        [&focusWindowInfo](const auto &focusInfo) { return focusWindowInfo.windowId_ == focusInfo.windowId_; });
-    if (iter == focusWindowInfos_.end()) {
-        return;
-    }
-    focusWindowInfos_.erase(iter);
-}
-// LCOV_EXCL_STOP
-int32_t WindowAdapter::RegisterAllGroupInfoChangedListener()
+int32_t WindowAdapter::RegisterAllGroupInfoChangedListener(int32_t userId)
 {
 #ifdef SCENE_BOARD_ENABLE
-    sptr<IAllGroupInfoChangedListener> listener = new (std::nothrow) AllGroupInfoChangedListenerImpl();
+    sptr<IAllGroupInfoChangedListener> listener = new (std::nothrow) AllGroupInfoChangedListenerImpl(userId);
     if (listener == nullptr) {
         IMSA_HILOGE("failed to create listener");
         return ErrorCode::ERROR_IMSA_MALLOC_FAILED;
     }
-    auto wmErr = WindowManagerLite::GetInstance().RegisterAllGroupInfoChangedListener(listener);
+    auto wmErr = WindowManagerLite::GetInstance(userId).RegisterAllGroupInfoChangedListener(listener);
     IMSA_HILOGI("register AllGroupInfoChangedListener ret: %{public}d", wmErr);
     if (wmErr != WMError::WM_OK) {
         return ErrorCode::ERROR_WINDOW_MANAGER;
@@ -376,7 +366,7 @@ int32_t WindowAdapter::RegisterAllGroupInfoChangedListener()
 #endif
 }
 
-int32_t WindowAdapter::RegisterWindowDisplayIdChangedListener(const WindowDisplayChangeHandler &handler)
+int32_t WindowAdapter::RegisterWindowDisplayIdChangedListener(const WindowDisplayChangeHandler &handler, int32_t userId)
 {
 #ifdef SCENE_BOARD_ENABLE
     sptr<IWindowInfoChangedListener> listener = new (std::nothrow) WindowDisplayChangedListenerImpl(handler);
@@ -387,7 +377,7 @@ int32_t WindowAdapter::RegisterWindowDisplayIdChangedListener(const WindowDispla
     std::unordered_set<WindowInfoKey> observedInfo;
     observedInfo.insert(WindowInfoKey::DISPLAY_ID);
     listener->AddInterestInfo(WindowInfoKey::WINDOW_ID);
-    auto wmErr = WindowManagerLite::GetInstance().RegisterWindowInfoChangeCallback(observedInfo, listener);
+    auto wmErr = WindowManagerLite::GetInstance(userId).RegisterWindowInfoChangeCallback(observedInfo, listener);
     IMSA_HILOGI("register WindowInfoChangeListener ret: %{public}d", wmErr);
     if (wmErr != WMError::WM_OK) {
         return ErrorCode::ERROR_WINDOW_MANAGER;

@@ -68,8 +68,8 @@ public:
     public:
         IdentityCheckerMock() = default;
         virtual ~IdentityCheckerMock() = default;
-        std::pair<bool, FocusedInfo> IsFocused(int64_t callingPid, uint32_t callingTokenId, uint32_t windowId = 0,
-            const sptr<IRemoteObject> &abilityToken = nullptr) override
+        std::pair<bool, FocusedInfo> IsFocused(int64_t callingPid, uint32_t callingTokenId, int32_t userId,
+            uint32_t windowId = 0, const sptr<IRemoteObject> &abilityToken = nullptr) override
         {
             FocusedInfo info;
             return { isFocused_, info };
@@ -106,7 +106,7 @@ public:
         {
             return true;
         }
-        bool IsFocusedUIExtension(uint32_t callingTokenId) override
+        bool IsFocusedUIExtension(uint32_t callingTokenId, int32_t userId) override
         {
             return isFocusedUIExtension_;
         }
@@ -114,7 +114,7 @@ public:
         {
             return true;
         }
-        std::pair<bool, FocusedInfo> CheckBroker(Security::AccessToken::AccessTokenID tokenId) override
+        std::pair<bool, FocusedInfo> CheckBroker(Security::AccessToken::AccessTokenID tokenId, int32_t userId) override
         {
             FocusedInfo info;
             return { isBroker_, info };
@@ -887,7 +887,8 @@ HWTEST_F(IdentityCheckerTest, testIsFocusedUIExtension, TestSize.Level1)
     IMSA_HILOGI("IdentityCheckerTest testIsFocusedUIExtension start");
     sptr<IRemoteObject> abilityToken = nullptr;
     uint32_t callingTokenId = INVAL_TOKEN_ID;
-    auto ret = identityCheckerImpl_->IsFocusedUIExtension(callingTokenId, abilityToken);
+    int32_t userId = 100;
+    auto ret = IdentityCheckerTest::identityCheckerImpl_->IsFocusedUIExtension(callingTokenId, abilityToken, userId);
     EXPECT_FALSE(ret);
 }
 
@@ -901,12 +902,12 @@ HWTEST_F(IdentityCheckerTest, testGetUIExtensionWindowId, TestSize.Level1)
 {
     IMSA_HILOGI("IdentityCheckerTest testGetUIExtensionWindowId start");
     sptr<IRemoteObject> abilityToken = nullptr;
-    auto ret = identityCheckerImpl_->GetUIExtensionWindowId(abilityToken);
+    auto ret = IdentityCheckerTest::identityCheckerImpl_->GetUIExtensionWindowId(abilityToken);
     EXPECT_EQ(ret, INVAL_WINDOW_ID);
 
     abilityToken = new (std::nothrow) MockIRemoteObject();
     ASSERT_NE(abilityToken, nullptr);
-    ret = identityCheckerImpl_->GetUIExtensionWindowId(abilityToken);
+    ret = IdentityCheckerTest::identityCheckerImpl_->GetUIExtensionWindowId(abilityToken);
     EXPECT_EQ(ret, INVAL_WINDOW_ID);
 }
 
@@ -923,13 +924,16 @@ HWTEST_F(IdentityCheckerTest, testIsFocused, TestSize.Level1)
     const auto demoPid = 10;
     const auto demoTokenId = 10;
     IMSA_HILOGI("IdentityCheckerTest IsFocused with null token");
-    auto isFocusedResult1 = identityCheckerImpl_->IsFocused(demoPid, demoTokenId, windowId_, nullptr);
+    int32_t userId = 100;
+    auto isFocusedResult1 =
+        IdentityCheckerTest::identityCheckerImpl_->IsFocused(demoPid, demoTokenId, userId, windowId_, nullptr);
     EXPECT_FALSE(isFocusedResult1.first);
 
     auto abilityToken = new (std::nothrow) MockIRemoteObject();
     ASSERT_NE(abilityToken, nullptr);
     IMSA_HILOGI("IdentityCheckerTest IsFocused with valid token");
-    auto isFocusedResult2 = identityCheckerImpl_->IsFocused(demoPid, demoTokenId, windowId_, abilityToken);
+    auto isFocusedResult2 =
+        IdentityCheckerTest::identityCheckerImpl_->IsFocused(demoPid, demoTokenId, userId, windowId_, abilityToken);
     EXPECT_FALSE(isFocusedResult2.first);
 }
 
@@ -942,12 +946,13 @@ HWTEST_F(IdentityCheckerTest, testIsFocused, TestSize.Level1)
 HWTEST_F(IdentityCheckerTest, testWindowAdapter_GetDisplayIdByToken, TestSize.Level1)
 {
     IMSA_HILOGI("IdentityCheckerTest testWindowAdapter_GetDisplayIdByToken start");
-    const auto displayId = WindowAdapter::GetDisplayIdByToken(nullptr);
+    int32_t userId = 100;
+    const auto displayId = WindowAdapter::GetDisplayIdByToken(nullptr, userId);
     EXPECT_EQ(displayId, DEFAULT_DISPLAY_ID);
 
     auto abilityToken = new (std::nothrow) MockIRemoteObject();
     ASSERT_NE(abilityToken, nullptr);
-    const auto displayId2 = WindowAdapter::GetDisplayIdByToken(abilityToken);
+    const auto displayId2 = WindowAdapter::GetDisplayIdByToken(abilityToken, userId);
     EXPECT_EQ(displayId2, DEFAULT_DISPLAY_ID);
 }
 

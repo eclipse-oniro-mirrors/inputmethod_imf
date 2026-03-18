@@ -161,7 +161,7 @@ public:
     static napi_value UnSubscribeImechange(napi_env env, napi_callback_info info);
     static std::shared_ptr<JsGetInputMethodSetting> GetInputMethodSettingInstance();
     void OnImeChange(const Property &property, const SubProperty &subProperty) override;
-    void OnImeChangeByUserId(const Property &property, const SubProperty &subProperty, std::int32_t userId) override;
+    void OnImeChangeWithUserId(const Property &property, const SubProperty &subProperty, std::int32_t userId) override;
     void OnImeShow(const ImeWindowInfo &info) override;
     void OnImeHide(const ImeWindowInfo &info) override;
 

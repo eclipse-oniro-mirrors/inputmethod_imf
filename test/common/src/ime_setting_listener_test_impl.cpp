@@ -87,7 +87,7 @@ void ImeSettingListenerTestImpl::OnImeChange(const Property &property, const Sub
     imeSettingListenerCv_.notify_one();
 }
 
-void ImeSettingListenerTestImpl::OnImeChangeByUserId(const Property &property, const SubProperty &subProperty,
+void ImeSettingListenerTestImpl::OnImeChangeWithUserId(const Property &property, const SubProperty &subProperty,
     int32_t userId)
 {
     std::unique_lock<std::mutex> lock(imeSettingListenerLock_);

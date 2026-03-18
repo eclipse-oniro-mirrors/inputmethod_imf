@@ -2405,10 +2405,10 @@ HWTEST_F(InputMethodAbilityTest, TestServiceHandler_, TestSize.Level0)
     EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
     ret = imsa_->SwitchExtension(userId, info);
     MessageParcel *parcel1 = new (std::nothrow) MessageParcel();
-    auto msg = std::make_shared<Message>(MessageID::MSG_ID_USER_START, parcel1);
-    ret = imsa_->OnUserStarted(msg.get());
+    auto msg = std::make_shared<Message>(MessageID::MSG_ID_USER_SWITCHED, parcel1);
+    ret = imsa_->OnUserSwitched(msg.get());
     msg.reset();
-    ret = imsa_->OnUserStarted(msg.get());
+    ret = imsa_->OnUserSwitched(msg.get());
     EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
     imsa_->serviceHandler_ = temp;
 }

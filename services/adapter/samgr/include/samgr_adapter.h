@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2023 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -13,23 +13,17 @@
  * limitations under the License.
  */
 
-#ifndef IMF_FOCUS_MONITOR_MANAGER_H
-#define IMF_FOCUS_MONITOR_MANAGER_H
+#ifndef IMF_SERVICES_SAMGR_MGR_H
+#define IMF_SERVICES_SAMGR_MGR_H
 
-#include <functional>
+#include <cstdint>
 
 namespace OHOS {
 namespace MiscServices {
-using FocusHandle = std::function<void(bool, uint64_t, int32_t, int32_t)>;
-class FocusMonitorManager {
+class SaMgrAdapter {
 public:
-    static FocusMonitorManager &GetInstance();
-    int32_t RegisterFocusChangedListener(const FocusHandle &handle, int32_t userId);
-
-private:
-    FocusMonitorManager() = default;
+    static bool IsSaReady(int32_t saId);
 };
 } // namespace MiscServices
 } // namespace OHOS
-
-#endif // IMF_FOCUS_MONITOR_MANAGER_H
+#endif // IMF_SERVICES_SAMGR_MGR_H

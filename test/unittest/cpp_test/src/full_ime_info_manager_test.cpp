@@ -119,7 +119,7 @@ HWTEST_F(FullImeInfoManagerTest, test_Switch_001, TestSize.Level0)
     int32_t userId = 100;
     std::vector<FullImeInfo> imeInfos;
     FullImeInfoManager::GetInstance().fullImeInfos_.insert_or_assign(userId, imeInfos);
-    auto ret = FullImeInfoManager::GetInstance().Switch(userId);
+    auto ret = FullImeInfoManager::GetInstance().Switch(userId, 0);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 }
 
@@ -134,7 +134,7 @@ HWTEST_F(FullImeInfoManagerTest, test_Switch_002, TestSize.Level0)
     int32_t userId = 100;
     std::vector<FullImeInfo> imeInfos;
     ImeInfoInquirer::GetInstance().SetFullImeInfo(false, imeInfos);
-    auto ret = FullImeInfoManager::GetInstance().Switch(userId);
+    auto ret = FullImeInfoManager::GetInstance().Switch(userId, 0);
     EXPECT_EQ(ret, ErrorCode::ERROR_PACKAGE_MANAGER);
 }
 
@@ -168,7 +168,7 @@ HWTEST_F(FullImeInfoManagerTest, test_Switch_003, TestSize.Level0)
     ImeInfoInquirer::GetInstance().SetFullImeInfo(true, imeInfos);
 
     int32_t userId1 = 101;
-    auto ret = FullImeInfoManager::GetInstance().Switch(userId1);
+    auto ret = FullImeInfoManager::GetInstance().Switch(userId1, 0);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     EXPECT_EQ(FullImeInfoManager::GetInstance().fullImeInfos_.size(), 2);
     auto it = FullImeInfoManager::GetInstance().fullImeInfos_.find(userId1);

@@ -33,7 +33,6 @@ void FocusChangedListener::OnFocused(const sptr<Rosen::FocusChangeInfo> &focusCh
     if (focusHandle_ != nullptr) {
         focusHandle_(true, focusChangeInfo->displayId_, focusChangeInfo->pid_, focusChangeInfo->uid_);
     }
-    WindowAdapter::GetInstance().OnFocused(*focusChangeInfo);
 }
 
 void FocusChangedListener::OnUnfocused(const sptr<Rosen::FocusChangeInfo> &focusChangeInfo)
@@ -47,7 +46,6 @@ void FocusChangedListener::OnUnfocused(const sptr<Rosen::FocusChangeInfo> &focus
     if (focusHandle_ != nullptr) {
         focusHandle_(false, focusChangeInfo->displayId_, focusChangeInfo->pid_, focusChangeInfo->uid_);
     }
-    WindowAdapter::GetInstance().OnUnFocused(*focusChangeInfo);
 }
 } // namespace MiscServices
 } // namespace OHOS

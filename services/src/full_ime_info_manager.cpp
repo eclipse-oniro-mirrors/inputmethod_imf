@@ -77,11 +77,14 @@ int32_t FullImeInfoManager::RegularInit()
     return ErrorCode::NO_ERROR;
 }
 
-int32_t FullImeInfoManager::Switch(int32_t userId)
+int32_t FullImeInfoManager::Switch(int32_t userId, uint64_t displayId)
 {
     std::vector<FullImeInfo> infos;
     auto ret = AddUser(userId, infos);
-    ImeEnabledInfoManager::GetInstance().Switch(userId, infos);
+    // data in global table remains foreground user of default display
+    if (displayId == ImfCommonConst::DEFAULT_DISPLAY_ID) {
+        ImeEnabledInfoManager::GetInstance().Switch(userId, infos);
+    }
     return ret;
 }
 

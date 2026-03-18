@@ -48,6 +48,32 @@ array<InputMethodProperty_t> InputMethodSettingImpl::GetInputMethodsAsync(bool e
     return array<InputMethodProperty_t>(vecProperty);
 }
 
+array<InputMethodProperty_t> InputMethodSettingImpl::GetInputMethodsSyncByUserId(
+    bool enable, optional_view<int32_t> userId)
+{
+    int32_t nativeUserId = -1;
+    if (userId.has_value()) {
+        nativeUserId = userId.value();
+        if (nativeUserId < 0) {
+            int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+            set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
+            return array<InputMethodProperty_t>(nullptr, 0);
+        }
+    }
+    std::vector<Property> properties;
+    int32_t errCode = InputMethodController::GetInstance()->ListInputMethod(enable, properties, nativeUserId);
+    if (errCode != ErrorCode::NO_ERROR) {
+        set_business_error(JsUtils::Convert(errCode), "failed to get input method!");
+        IMSA_HILOGE("failed to get input method, errCode:%{public}d!", errCode);
+        return array<InputMethodProperty_t>(nullptr, 0);
+    }
+    std::vector<InputMethodProperty_t> vecProperty;
+    for (const auto &property : properties) {
+        vecProperty.push_back(PropertyConverter::ConvertProperty(property));
+    }
+    return array<InputMethodProperty_t>(vecProperty);
+}
+
 array<InputMethodSubtype_t> InputMethodSettingImpl::ListCurrentInputMethodSubtypeSync()
 {
     std::vector<SubProperty> subProperties;
@@ -89,13 +115,17 @@ array<InputMethodSubtype_t> InputMethodSettingImpl::ListInputMethodSubtypeSync(
     return array<InputMethodSubtype_t>(vecSubtype);
 }
 
-array<InputMethodSubtype_t> InputMethodSettingImpl::GetInputMethodSubtype(
-    int32_t userId, ::taihe::string_view bundleName)
+array<InputMethodSubtype_t> InputMethodSettingImpl::GetInputMethodSubtypes(
+    ::taihe::string_view bundleName, optional_view<int32_t> userId)
 {
-    if (userId < 0) {
-        int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
-        set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
-        return array<InputMethodSubtype_t>(nullptr, 0);
+    int32_t nativeUserId = -1;
+    if (userId.has_value()) {
+        nativeUserId = userId.value();
+        if (nativeUserId < 0) {
+            int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+            set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
+            return array<InputMethodSubtype_t>(nullptr, 0);
+        }
     }
     Property property;
     property.name = std::string(bundleName);
@@ -106,7 +136,7 @@ array<InputMethodSubtype_t> InputMethodSettingImpl::GetInputMethodSubtype(
     }
     std::vector<SubProperty> subProperties;
     int32_t errCode =
-        InputMethodController::GetInstance()->ListInputMethodSubtype(property, subProperties, userId);
+        InputMethodController::GetInstance()->ListInputMethodSubtype(property, subProperties, nativeUserId);
     if (errCode != ErrorCode::NO_ERROR) {
         set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
         IMSA_HILOGE("failed to get input method subtype, errCode:%{public}d!", errCode);
@@ -174,15 +204,19 @@ array<InputMethodProperty_t> InputMethodSettingImpl::GetAllInputMethodsAsync()
     return array<InputMethodProperty_t>(vecProperty);
 }
 
-array<InputMethodProperty_t> InputMethodSettingImpl::GetAllInputMethodsAsync(int32_t userId)
+array<InputMethodProperty_t> InputMethodSettingImpl::GetAllInputMethodsSyncByUserId(optional_view<int32_t> userId)
 {
-    if (userId < 0) {
-        int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
-        set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
-        return array<InputMethodProperty_t>(nullptr, 0);
+    int32_t nativeUserId = -1;
+    if (userId.has_value()) {
+        nativeUserId = userId.value();
+        if (nativeUserId < 0) {
+            int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+            set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
+            return array<InputMethodProperty_t>(nullptr, 0);
+        }
     }
     std::vector<Property> properties;
-    int32_t errCode = InputMethodController::GetInstance()->ListInputMethod(properties, userId);
+    int32_t errCode = InputMethodController::GetInstance()->ListInputMethod(properties, nativeUserId);
     if (errCode != ErrorCode::NO_ERROR) {
         set_business_error(JsUtils::Convert(errCode), "failed to get input method!");
         IMSA_HILOGE("failed to get input method, errCode:%{public}d!", errCode);
@@ -304,7 +338,7 @@ void InputMethodSettingImpl::OnImeChangeCallback(const Property &property, const
     }
 }
 
-void InputMethodSettingImpl::OnImeChangeCallbackByUserId(
+void InputMethodSettingImpl::OnImeChangeCallbackWithUserId(
     const Property &property, const SubProperty &subProperty, int32_t userId)
 {
     if (userId < 0) {
@@ -313,7 +347,7 @@ void InputMethodSettingImpl::OnImeChangeCallbackByUserId(
         return;
     }
     std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_["imeChangeByUserId"];
+    auto &cbVec = jsCbMap_["imeChangeWithUserId"];
     for (auto &cb : cbVec) {
         auto &func =
             std::get<taihe::callback<void(InputMethodProperty_t const &, InputMethodSubtype_t const &,
@@ -428,13 +462,17 @@ void InputMethodSettingImpl::EnableInputMethodSync(::taihe::string_view bundleNa
     IMSA_HILOGI("EnableIme success!");
 }
 
-void InputMethodSettingImpl::EnableInputMethodSyncByUserId(::taihe::string_view bundleName,
-    ::taihe::string_view extensionName, ::ohos::inputMethod::EnabledState enabledState, int32_t userId)
+void InputMethodSettingImpl::EnableInputMethodByUserId(::taihe::string_view bundleName,
+    ::taihe::string_view extensionName, ::ohos::inputMethod::EnabledState enabledState, optional_view<int32_t> userId)
 {
-    if (userId < 0) {
-        int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
-        set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
-        return;
+    int32_t nativeUserId = -1;
+    if (userId.has_value()) {
+        nativeUserId = userId.value();
+        if (nativeUserId < 0) {
+            int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+            set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
+            return;
+        }
     }
     int32_t errCode = ErrorCode::ERROR_EX_NULL_POINTER;
     OHOS::MiscServices::EnabledStatus status;
@@ -444,7 +482,7 @@ void InputMethodSettingImpl::EnableInputMethodSyncByUserId(::taihe::string_view 
         return;
     }
     errCode = instance->EnableIme(std::string(bundleName), std::string(extensionName),
-        static_cast<OHOS::MiscServices::EnabledStatus>(enabledState.get_value()), userId);
+        static_cast<OHOS::MiscServices::EnabledStatus>(enabledState.get_value()), nativeUserId);
     if (errCode != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("EnableImeByUserId failed!");
         set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));

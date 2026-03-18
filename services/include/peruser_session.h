@@ -121,6 +121,8 @@ public:
     void NotifyImeChangeToClients(const Property &property, const SubProperty &subProperty);
     int32_t SwitchSubtype(const SubProperty &subProperty);
     int32_t SwitchSubtypeWithoutStartIme(const SubProperty &subProperty);
+    void OnScbStarted(bool isScbReboot);
+    void OnScbStopped();
     void OnFocused(uint64_t displayId, int32_t pid, int32_t uid);
     void OnUnfocused(uint64_t displayId, int32_t pid, int32_t uid);
     void OnScreenUnlock();
@@ -186,6 +188,7 @@ public:
     std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> GetClientBySelfPid(pid_t clientPid);
     std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> GetClientBySelfPidOrHostPid(
         pid_t clientPid);
+    bool IsImeInUse();
     void SetSwitchInputType(bool isSwitchInputType);
 
 private:

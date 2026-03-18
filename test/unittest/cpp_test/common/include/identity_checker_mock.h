@@ -24,8 +24,8 @@ class IdentityCheckerMock : public IdentityChecker {
 public:
     IdentityCheckerMock() = default;
     virtual ~IdentityCheckerMock() = default;
-    std::pair<bool, FocusedInfo> IsFocused(int64_t callingPid, uint32_t callingTokenId, uint32_t windowId = 0,
-        const sptr<IRemoteObject> &abilityToken = nullptr) override
+    std::pair<bool, FocusedInfo> IsFocused(int64_t callingPid, uint32_t callingTokenId, int32_t userId,
+        uint32_t windowId = 0, const sptr<IRemoteObject> &abilityToken = nullptr) override
     {
         FocusedInfo info;
         return { isFocused_, info };
@@ -58,7 +58,7 @@ public:
         {
             return bundleName_;
     }
-    uint64_t GetDisplayIdByWindowId(int32_t callingWindowId) override
+    uint64_t GetDisplayIdByWindowId(int32_t callingWindowId, int32_t userId) override
     {
         return 0;
     }
@@ -70,7 +70,7 @@ public:
     {
         return isUIExtension_;
     }
-    std::pair<bool, FocusedInfo> CheckBroker(Security::AccessToken::AccessTokenID tokenId) override
+    std::pair<bool, FocusedInfo> CheckBroker(Security::AccessToken::AccessTokenID tokenId, int32_t userId) override
     {
         FocusedInfo info;
         return { isBroker_, info };

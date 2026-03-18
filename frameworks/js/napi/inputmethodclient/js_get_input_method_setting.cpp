@@ -39,7 +39,7 @@ const std::string JsGetInputMethodSetting::IMS_CLASS_NAME = "InputMethodSetting"
 const std::unordered_map<std::string, uint32_t> EVENT_TYPE{{"imeChange", EVENT_IME_CHANGE_MASK},
     {"imeShow", EVENT_IME_SHOW_MASK},
     {"imeHide", EVENT_IME_HIDE_MASK},
-    {"imeChangeByUserId", EVENT_IME_CHANGE_MASK}};
+    {"imeChangeWithUserId", EVENT_IME_CHANGE_MASK}};
 std::mutex JsGetInputMethodSetting::msMutex_;
 std::shared_ptr<JsGetInputMethodSetting> JsGetInputMethodSetting::inputMethod_{ nullptr };
 std::mutex JsGetInputMethodSetting::eventHandlerMutex_;
@@ -73,8 +73,8 @@ napi_value JsGetInputMethodSetting::Init(napi_env env, napi_value exports)
         DECLARE_NAPI_FUNCTION("getInputMethodState", GetInputMethodState),
         DECLARE_NAPI_FUNCTION("on", Subscribe),
         DECLARE_NAPI_FUNCTION("off", UnSubscribe),
-        DECLARE_NAPI_FUNCTION("onImeChangeByUserId", SubscribeImechange),
-        DECLARE_NAPI_FUNCTION("offImeChangeByUserId", UnSubscribeImechange),
+        DECLARE_NAPI_FUNCTION("onImeChangeWithUserId", SubscribeImechange),
+        DECLARE_NAPI_FUNCTION("offImeChangeWithUserId", UnSubscribeImechange),
     };
     napi_value cons = nullptr;
     IMF_CALL(napi_define_class(env, IMS_CLASS_NAME.c_str(), IMS_CLASS_NAME.size(), JsConstructor, nullptr,
@@ -708,7 +708,7 @@ napi_value JsGetInputMethodSetting::Subscribe(napi_env env, napi_callback_info i
 
 napi_value JsGetInputMethodSetting::SubscribeImechange(napi_env env, napi_callback_info info)
 {
-    std::string type = "imeChangeByUserId";
+    std::string type = "imeChangeWithUserId";
     size_t argc = ARGC_ONE;
     napi_value argv[ARGC_ONE] = { nullptr };
     IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
@@ -821,7 +821,7 @@ napi_value JsGetInputMethodSetting::UnSubscribe(napi_env env, napi_callback_info
 
 napi_value JsGetInputMethodSetting::UnSubscribeImechange(napi_env env, napi_callback_info info)
 {
-    std::string type = "imeChangeByUserId";
+    std::string type = "imeChangeWithUserId";
     size_t argc = ARGC_ONE;
     napi_value argv[ARGC_ONE] = { nullptr };
     IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
@@ -894,14 +894,14 @@ void JsGetInputMethodSetting::OnImeChange(const Property &property, const SubPro
     eventHandler->PostTask(task, type, 0, AppExecFwk::EventQueue::Priority::VIP);
 }
 
-void JsGetInputMethodSetting::OnImeChangeByUserId(const Property &property, const SubProperty &subProperty,
+void JsGetInputMethodSetting::OnImeChangeWithUserId(const Property &property, const SubProperty &subProperty,
     int32_t userId)
 {
     if (userId < 0) {
         IMSA_HILOGD("userId invaild!");
         return;
     }
-    std::string type = "imeChangeByUserId";
+    std::string type = "imeChangeWithUserId";
     auto entry = GetEntry(type, [&property, &subProperty, userId](UvEntry &entry) {
         entry.property = property;
         entry.subProperty = subProperty;

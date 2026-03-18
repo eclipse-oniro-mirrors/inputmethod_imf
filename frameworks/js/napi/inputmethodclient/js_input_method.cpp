@@ -41,7 +41,7 @@ napi_value JsInputMethod::Init(napi_env env, napi_value exports)
         DECLARE_NAPI_FUNCTION("getDefaultInputMethod", GetDefaultInputMethod),
         DECLARE_NAPI_FUNCTION("getSystemInputMethodConfigAbility", GetSystemInputMethodConfigAbility),
         DECLARE_NAPI_FUNCTION("switchCurrentInputMethodSubtype", SwitchCurrentInputMethodSubtype),
-        DECLARE_NAPI_FUNCTION("switchInputMethodByUserId", SwitchInputMethodByUserId),
+        DECLARE_NAPI_FUNCTION("switchInputMethodWithUserId", SwitchInputMethodByUserId),
         DECLARE_NAPI_FUNCTION("switchCurrentInputMethodAndSubtype", SwitchCurrentInputMethodAndSubtype),
         DECLARE_NAPI_FUNCTION("setSimpleKeyboardEnabled", SetSimpleKeyboardEnabled),
         DECLARE_NAPI_FUNCTION("onAttachmentDidFail", OnAttachmentDidFail),
@@ -711,29 +711,33 @@ napi_value JsInputMethod::SwitchInputMethodByUserId(napi_env env, napi_callback_
     auto ctxt = std::make_shared<SwitchInputMethodContext>();
     auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
         napi_status status = napi_generic_failure;
-        PARAM_CHECK_RETURN(env, argc >= 2, "at least two parameter is required!", TYPE_NONE, napi_invalid_arg);
-        PARAM_CHECK_RETURN(env, JsUtil::GetType(env, argv[0]) == napi_number, "userId must be number!",
-            TYPE_NUMBER, napi_invalid_arg);
-        status = JsUtils::GetValue(env, argv[0], ctxt->userId);
-        PARAM_CHECK_RETURN(env, ctxt->userId >= 0, "invalid userId", TYPE_NONE, napi_invalid_arg);
-        napi_valuetype valueType = JsUtil::GetType(env, argv[1]);
+        PARAM_CHECK_RETURN(env, argc >= 1, "at least one parameter is required!", TYPE_NONE, napi_invalid_arg);
+        // 0 - bundleName
+        napi_valuetype valueType = JsUtil::GetType(env, argv[0]);
         PARAM_CHECK_RETURN(env, valueType == napi_string,
             "bundleName type must be string!", TYPE_NONE, napi_invalid_arg);
-        status = JsUtils::GetValue(env, argv[1], ctxt->packageName);
+        status = JsUtils::GetValue(env, argv[0], ctxt->packageName);
         ctxt->trigger = SwitchTrigger::SYSTEM_APP;
-        napi_valuetype type = napi_undefined;
+        // 1 - subtypeId
+        if (argc > 1) {
+            valueType = napi_undefined;
+            napi_typeof(env, argv[1], &valueType);
+            if (valueType == napi_string) {
+                JsUtil::GetValue(env, argv[1], ctxt->id);
+            }
+        }
+        // 2 - userId
         if (argc > 2) {
-            napi_typeof(env, argv[2], &type);
-            if (type == napi_string) {
-                JsUtil::GetValue(env, argv[2], ctxt->id);
+            valueType = napi_undefined;
+            napi_typeof(env, argv[2], &valueType);
+            if (valueType == napi_number) {
+                JsUtil::GetValue(env, argv[2], ctxt->userId);
+                PARAM_CHECK_RETURN(env, ctxt->userId >= 0, "invalid userId", TYPE_NONE, napi_invalid_arg);
             }
         }
         return status;
     };
-    auto output = [ctxt](napi_env env, napi_value *result) -> napi_status {
-        napi_status status = napi_get_boolean(env, ctxt->isSwitchInput, result);
-        return status;
-    };
+    auto output = [ctxt](napi_env env, napi_value *result) -> napi_status { return napi_ok; };
     auto exec = [ctxt](AsyncCall::Context *ctx) {
         int32_t errCode = ErrorCode::ERROR_EX_NULL_POINTER;
         auto instance = InputMethodController::GetInstance();
@@ -743,7 +747,6 @@ napi_value JsInputMethod::SwitchInputMethodByUserId(napi_env env, napi_callback_
         if (errCode == ErrorCode::NO_ERROR) {
             ctxt->status = napi_ok;
             ctxt->SetState(ctxt->status);
-            ctxt->isSwitchInput = true;
         } else {
             IMSA_HILOGE("exec SwitchInputMethod failed ret: %{public}d!", errCode);
             ctxt->SetErrorCode(errCode);

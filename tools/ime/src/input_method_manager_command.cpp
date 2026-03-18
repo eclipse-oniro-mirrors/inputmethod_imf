@@ -17,10 +17,15 @@
 #include <getopt.h>
 #include <iostream>
 
+#include "global.h"
 #include "input_method_controller.h"
+#include "input_method_property.h"
+#include "input_method_status.h"
 
 namespace OHOS {
 namespace MiscServices {
+
+static int32_t g_userId = ImfCommonConst::DEFAULT_USER_ID;
 
 static std::string EnabledStatusToString(EnabledStatus status)
 {
@@ -44,7 +49,11 @@ bool ValidateImeExists(const std::string& bundle)
         std::cout << "Error: InputMethodController instance is null." << std::endl;
         return false;
     }
-    controller->ListInputMethod(methods);
+    auto ret = controller->ListInputMethod(methods, g_userId);
+    if (ret != ErrorCode::NO_ERROR) {
+        std::cout << "Error: list input method failed. Error code:" << ret << std::endl;
+        return false;
+    }
     for (const auto& m : methods) {
         if (m.name == bundle) {
             return true;
@@ -71,6 +80,25 @@ std::string GetBundleName(const char* optarg)
         return "";
     }
     return bundleName;
+}
+
+int32_t GetUserId(const char* optarg)
+{
+    if (optarg == nullptr) {
+        std::cout << "Error: Invalid user id!" << std::endl;
+        return ImfCommonConst::DEFAULT_USER_ID;
+    }
+    char* endPtr = nullptr;
+    long userId = std::strtol(optarg, &endPtr, 10);
+    if (endPtr == optarg || *endPtr != '\0') {
+        std::cout << "Error: Invalid user id format!" << std::endl;
+        return ImfCommonConst::DEFAULT_USER_ID;
+    }
+    if (userId < 0 || userId > INT32_MAX) {
+        std::cout << "Error: User id must be non-negative!" << std::endl;
+        return ImfCommonConst::DEFAULT_USER_ID;
+    }
+    return static_cast<int32_t>(userId);
 }
 
 void HandleStatusChange(const char* optarg, int32_t argc, char *argv[], EnabledStatus status,
@@ -111,7 +139,7 @@ void HandleStatusChange(const char* optarg, int32_t argc, char *argv[], EnabledS
         std::cout << "Error: InputMethodController instance is null." << std::endl;
         return;
     }
-    auto ret = controller->EnableIme(bundleName, "", status);
+    auto ret = controller->EnableIme(bundleName, "", status, g_userId);
     if (ret == ErrorCode::NO_ERROR) {
         std::cout << successMsg << ". status:" << EnabledStatusToString(status) << std::endl;
     } else {
@@ -133,7 +161,7 @@ void HandleSwitchIme(const char* optarg)
         std::cout << "Error: InputMethodController instance is null." << std::endl;
         return;
     }
-    int32_t ret = controller->SwitchInputMethod(SwitchTrigger::NATIVE_SA, bundleName);
+    int32_t ret = controller->SwitchInputMethod(SwitchTrigger::NATIVE_SA, bundleName, "", g_userId);
     if (ret == 0) {
         std::cout << "Succeeded in switching the input method. IME:" << bundleName << std::endl;
     } else {
@@ -152,7 +180,7 @@ void HandleGetCurrentIme(int32_t argc)
         std::cout << "Error: InputMethodController instance is null." << std::endl;
         return;
     }
-    auto propertyData = controller->GetCurrentInputMethod();
+    auto propertyData = controller->GetCurrentInputMethod(g_userId);
     if (propertyData != nullptr) {
         std::cout << "The current input method is: " << propertyData->name << ", status: "
                   << EnabledStatusToString(propertyData->status) << std::endl;
@@ -173,13 +201,13 @@ void HandleListIme(int32_t argc)
         return;
     }
     std::vector<Property> methods;
-    auto ret = controller->ListInputMethod(methods);
+    auto ret = controller->ListInputMethod(methods, g_userId);
     if (ret != ErrorCode::NO_ERROR) {
         std::cout << "Error: list input method failed. Error code:" << ret << std::endl;
         return;
     }
     std::shared_ptr<Property> property;
-    ret = controller->GetDefaultInputMethod(property);
+    ret = controller->GetDefaultInputMethod(property, g_userId);
     if (property == nullptr) {
         std::cout << "Error: list input method failed. Error code:" << ret << std::endl;
         return;
@@ -196,8 +224,14 @@ void HandleListIme(int32_t argc)
 int32_t InputMethodManagerCommand::ParseCommand(int32_t argc, char *argv[])
 {
     int32_t optCode = 0;
-    while ((optCode = getopt(argc, argv, "d:e:ghls:")) != -1) {
+    int32_t savedOptind = 0;
+
+    while ((optCode = getopt(argc, argv, "d:e:ghls:u:")) != -1) {
         switch (optCode) {
+            case 'u':
+                g_userId = GetUserId(optarg);
+                savedOptind = optind;
+                break;
             case 'e':
                 HandleStatusChange(optarg, argc, argv, EnabledStatus::BASIC_MODE, "Succeeded in enabling IME");
                 return ErrorCode::NO_ERROR;
@@ -223,6 +257,20 @@ int32_t InputMethodManagerCommand::ParseCommand(int32_t argc, char *argv[])
                 return ErrorCode::NO_ERROR;
         }
     }
+
+    if (savedOptind > 0 && optind == savedOptind) {
+        optind = 1;
+        g_userId = ImfCommonConst::DEFAULT_USER_ID;
+        while ((optCode = getopt(argc, argv, "d:e:ghls:")) != -1) {
+            switch (optCode) {
+                case '?':
+                    ShowUsage(argc);
+                    return ErrorCode::NO_ERROR;
+                default:
+                    return ErrorCode::NO_ERROR;
+            }
+        }
+    }
     return ErrorCode::NO_ERROR;
 }
 
@@ -235,17 +283,21 @@ void InputMethodManagerCommand::ShowUsage(int32_t argc)
     std::cout << "\nInput Method Manager Command Line Tool\n"
               << "Usage: ime [OPTION] [ARGUMENT]\n\n"
               << "Options:\n"
-              << "  -e <bundle> [-b | -f] Enable the specified input method to specified mode.\n"
+              << "  -u <userId>           Specify user ID for the operation (optional).\n"
+              << "  -e <bundle>... [-b | -f] Enable the specified input method to specified mode.\n"
               << "                        If the -b/-f option is not set, the default value is -b.\n"
               << "                        Current operation cannot be applied to the preconfigured"
               << " default input method.\n"
-              << "  -d <bundle>           Disable the specified input method.\n"
-              << "  -s <bundle>           Switch to the specified input method.\n"
+              << "  -d <bundle>...        Disable the specified input method.\n"
+              << "  -s <bundle>...        Switch to the specified input method.\n"
               << "                        In the lock screen or password input box scenario,"
               << " switching to other input methods is not allowed.\n"
               << "  -g                    Get current input method.\n"
               << "  -l                    List all input methods.\n"
-              << "  -h                    Show this help message.\n";
+              << "  -h                    Show this help message.\n"
+              << "\nNote: -u option can be used with other options to specify the target user ID.\n"
+              << "      Example: ime -u 100 -g  (Get current input method for user 100)\n"
+              << "               ime -u 100 -s com.example.ime  (Switch input method for user 100)\n";
 }
 } // namespace MiscServices
 } // namespace OHOS

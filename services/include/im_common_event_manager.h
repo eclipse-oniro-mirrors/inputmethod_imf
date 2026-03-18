@@ -45,9 +45,6 @@ public:
         EventSubscriber(const EventFwk::CommonEventSubscribeInfo &subscribeInfo);
         void OnReceiveEvent(const EventFwk::CommonEventData &data);
         void RemovePackage(const EventFwk::CommonEventData &data);
-        void StartUser(const EventFwk::CommonEventData &data);
-        void RemoveUser(const EventFwk::CommonEventData &data);
-        void StopUser(const EventFwk::CommonEventData &data);
         void OnBundleScanFinished(const EventFwk::CommonEventData &data);
         void OnDataShareReady(const EventFwk::CommonEventData &data);
         void AddPackage(const EventFwk::CommonEventData &data);
@@ -62,7 +59,6 @@ public:
         using EventListenerFunc = std::function<void(EventSubscriber *that, const EventFwk::CommonEventData &data)>;
         std::map<std::string, EventListenerFunc> EventManagerFunc_;
         void HandlePackageEvent(int32_t messageId, const EventFwk::CommonEventData &data);
-        void HandleUserEvent(int32_t messageId, const EventFwk::CommonEventData &data);
         std::pair<bool, int32_t> IfNeedToBeProcessed(int32_t messageId, int32_t userId, const std::string &bundleName);
     };
 

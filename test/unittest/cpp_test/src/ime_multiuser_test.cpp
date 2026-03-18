@@ -509,7 +509,7 @@ HWTEST_F(ImeMultiUserTest, testMultiUserSwitchInputMethod_004, TestSize.Level1)
 
     int32_t userId = TddUtil::GetCurrentUserId();
     int32_t ret = imc_->SwitchInputMethod(SwitchTrigger::SYSTEM_APP, bundleName, extName[0], userId);
-    EXPECT_EQ(ret, ErrorCode::ERROR_INVALID_USER_OPERATION);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 
     sleep(WAIT_IME_READY_TIME);
 }

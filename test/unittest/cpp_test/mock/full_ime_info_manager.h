@@ -27,7 +27,7 @@ public:
     static FullImeInfoManager &GetInstance();
     int32_t RegularInit();
     int32_t Init();                                                // regular Init/boot complete/data share ready
-    int32_t Switch(int32_t userId);                                // user switched
+    int32_t Switch(int32_t userId, uint64_t displayId);                                // user switched
     int32_t Update();                                              // language change
     int32_t Delete(int32_t userId);                                // user removed
     int32_t Add(int32_t userId, const std::string &bundleName);    // package added

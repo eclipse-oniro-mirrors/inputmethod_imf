@@ -103,7 +103,6 @@ void InputMethodPanelAdjustTest::SetUpTestCase(void)
         return;
     }
     imsa_->OnStart();
-    imsa_->userId_ = TddUtil::GetCurrentUserId();
     imsa_->identityChecker_ = std::make_shared<IdentityCheckerMock>();
     imc_->abilityManager_ = imsa_;
     {

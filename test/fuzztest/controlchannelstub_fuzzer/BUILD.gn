@@ -47,6 +47,7 @@ ohos_fuzztest("ControlChannelStubFuzzTest") {
     "c_utils:utils",
     "hilog:libhilog",
     "input:libmmi-client",
+    "os_account:os_account_innerkits",
     "ipc:ipc_single",
     "safwk:system_ability_fwk",
   ]

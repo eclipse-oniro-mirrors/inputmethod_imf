@@ -31,16 +31,16 @@ using namespace Rosen;
 using namespace Security::AccessToken;
 using namespace OHOS::AAFwk;
 
-std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocused(
-    int64_t callingPid, uint32_t callingTokenId, uint32_t windowId, const sptr<IRemoteObject> &abilityToken)
+std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocused(int64_t callingPid, uint32_t callingTokenId,
+    int32_t userId, uint32_t windowId, const sptr<IRemoteObject> &abilityToken)
 {
 #ifdef SCENE_BOARD_ENABLE
     std::vector<FocusChangeInfo> focusWindowInfos;
-    WindowAdapter::GetAllFocusWindowInfos(focusWindowInfos);
+    WindowAdapter::GetAllFocusWindowInfos(focusWindowInfos, userId);
     if (focusWindowInfos.empty()) {
         IMSA_HILOGF("focus window infos is empty!");
     }
-    auto retInfo = IsFocusedUIAbility(callingPid, windowId, focusWindowInfos);
+    auto retInfo = IsFocusedUIAbility(callingPid, windowId, focusWindowInfos, userId);
     if (retInfo.first) {
         IMSA_HILOGD("%{public}" PRId64 "/%{public}d is focused uiAbility!", callingPid, windowId);
         return retInfo;
@@ -48,31 +48,31 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocused(
     if (ImeInfoInquirer::GetInstance().IsInputMethodExtension(callingPid)) {
         return retInfo;
     }
-    retInfo = IsFocusedUIExtension(callingTokenId, abilityToken, focusWindowInfos);
+    retInfo = IsFocusedUIExtension(callingTokenId, abilityToken, focusWindowInfos, userId);
     if (!retInfo.first) {
         IMSA_HILOGE("%{public}" PRId64 "/%{public}d/%{public}d is not focused!", callingPid, windowId, callingTokenId);
     }
     return retInfo;
 #else
-    return IsFocusedScbNotEnable(callingPid, callingTokenId, windowId, abilityToken);
+    return IsFocusedScbNotEnable(callingPid, callingTokenId, windowId, abilityToken, userId);
 #endif
 }
 // LCOV_EXCL_START
-bool IdentityCheckerImpl::IsFocusedUIExtension(uint32_t callingTokenId)
+bool IdentityCheckerImpl::IsFocusedUIExtension(uint32_t callingTokenId, int32_t userId)
 {
     std::vector<FocusChangeInfo> focusWindowInfos;
-    WindowAdapter::GetAllFocusWindowInfos(focusWindowInfos);
-    auto checkRet = IsFocusedUIExtension(callingTokenId, nullptr, focusWindowInfos);
+    WindowAdapter::GetAllFocusWindowInfos(focusWindowInfos, userId);
+    auto checkRet = IsFocusedUIExtension(callingTokenId, nullptr, focusWindowInfos, userId);
     return checkRet.first;
 }
 // LCOV_EXCL_STOP
 std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIAbility(
-    int64_t callingPid, uint32_t windowId, const std::vector<FocusChangeInfo> &focusWindowInfos)
+    int64_t callingPid, uint32_t windowId, const std::vector<FocusChangeInfo> &focusWindowInfos, int32_t userId)
 {
     std::pair<bool, FocusedInfo> retInfo{ false, {} };
     if (windowId != ImfCommonConst::INVALID_WINDOW_ID) {
-        auto displayId = WindowAdapter::GetDisplayIdByWindowId(windowId);
-        retInfo = IsFocusedUIAbility(callingPid, displayId, focusWindowInfos);
+        auto displayId = WindowAdapter::GetDisplayIdByWindowId(windowId, userId);
+        retInfo = IsFocusedUIAbility(callingPid, displayId, focusWindowInfos, userId);
         if (retInfo.first) {
             return retInfo;
         }
@@ -80,10 +80,10 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIAbility(
     return IsFocusedUIAbility(callingPid, focusWindowInfos);
 }
 
-std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIAbility(
-    int64_t callingPid, uint64_t displayId, const std::vector<FocusChangeInfo> &focusWindowInfos)
+std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIAbility(int64_t callingPid, uint64_t displayId,
+    const std::vector<FocusChangeInfo> &focusWindowInfos, int32_t userId)
 {
-    auto displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId);
+    auto displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId, userId);
     auto iter = std::find_if(
         focusWindowInfos.begin(), focusWindowInfos.end(), [callingPid, displayGroupId](const auto focusWindowInfo) {
             return focusWindowInfo.pid_ == callingPid && focusWindowInfo.displayGroupId_ == displayGroupId;
@@ -170,13 +170,13 @@ bool IdentityCheckerImpl::HasPermission(uint32_t tokenId, const std::string &per
     return true;
 }
 
-std::pair<bool, FocusedInfo> IdentityCheckerImpl::CheckBroker(AccessTokenID tokenId)
+std::pair<bool, FocusedInfo> IdentityCheckerImpl::CheckBroker(AccessTokenID tokenId, int32_t userId)
 {
     if (!IsBrokerInner(tokenId)) {
         return { false, {} };
     }
     FocusChangeInfo focusInfo;
-    WindowAdapter::GetFocusInfo(focusInfo);
+    WindowAdapter::GetFocusInfo(focusInfo, userId);
     return GenerateFocusCheckRet(focusInfo, { focusInfo });
 }
 
@@ -221,14 +221,14 @@ uint32_t IdentityCheckerImpl::GetUIExtensionWindowId(sptr<IRemoteObject> ability
 }
 
 std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(uint32_t callingTokenId,
-    const sptr<IRemoteObject> &abilityToken, const std::vector<FocusChangeInfo> &focusWindowInfos)
+    const sptr<IRemoteObject> &abilityToken, const std::vector<FocusChangeInfo> &focusWindowInfos, int32_t userId)
 {
     uint32_t windowId = GetUIExtensionWindowId(abilityToken);
     if (windowId != ImfCommonConst::INVALID_WINDOW_ID) {
-        auto displayIdByWindow = WindowAdapter::GetDisplayIdByWindowId(windowId);
+        auto displayIdByWindow = WindowAdapter::GetDisplayIdByWindowId(windowId, userId);
         IMSA_HILOGD("windowId is: %{public}d, displayId is %{public}" PRIu64 "", windowId, displayIdByWindow);
         if (displayIdByWindow != DEFAULT_DISPLAY_ID) {
-            return IsFocusedUIExtension(windowId, displayIdByWindow, focusWindowInfos);
+            return IsFocusedUIExtension(windowId, displayIdByWindow, focusWindowInfos, userId);
         }
     }
 
@@ -236,7 +236,7 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(uint32_t 
     constexpr size_t MAX_FOCUS_UI_EXTENSION_CHECK_LOOP = 3;
     auto focusSize = focusWindowInfos.size();
     for (size_t i = 0; i < focusSize && i < MAX_FOCUS_UI_EXTENSION_CHECK_LOOP; i++) {
-        retInfo = IsFocusedUIExtension(focusWindowInfos[i].realDisplayId_, callingTokenId, focusWindowInfos);
+        retInfo = IsFocusedUIExtension(focusWindowInfos[i].realDisplayId_, callingTokenId, focusWindowInfos, userId);
         if (retInfo.first) {
             IMSA_HILOGD(
                 "loop %{public}zu, focus ui extension in %{public}" PRIu64 ".", i, focusWindowInfos[i].realDisplayId_);
@@ -247,9 +247,9 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(uint32_t 
 }
 // LCOV_EXCL_START
 std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(
-    uint32_t windowId, uint64_t displayId, const std::vector<FocusChangeInfo> &focusWindowInfos)
+    uint32_t windowId, uint64_t displayId, const std::vector<FocusChangeInfo> &focusWindowInfos, int32_t userId)
 {
-    auto displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId);
+    auto displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId, userId);
     auto iter = std::find_if(
         focusWindowInfos.begin(), focusWindowInfos.end(), [displayGroupId, windowId](const auto focusWindowInfo) {
             return focusWindowInfo.displayGroupId_ == displayGroupId
@@ -264,7 +264,7 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(
 }
 // LCOV_EXCL_STOP
 std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(
-    uint64_t displayId, uint32_t callingTokenId, const std::vector<FocusChangeInfo> &focusWindowInfos)
+    uint64_t displayId, uint32_t callingTokenId, const std::vector<FocusChangeInfo> &focusWindowInfos, int32_t userId)
 {
     std::pair<bool, FocusedInfo> retInfo{ false, {} };
     auto client = AbilityManagerClient::GetInstance();
@@ -282,7 +282,7 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(
     if (!isFocused) {
         return retInfo;
     }
-    auto displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId);
+    auto displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId, userId);
     auto iter = std::find_if(focusWindowInfos.begin(), focusWindowInfos.end(),
         [displayGroupId](const auto &focusWindowInfo) { return focusWindowInfo.displayGroupId_ == displayGroupId; });
     if (iter == focusWindowInfos.end()) {
@@ -309,22 +309,22 @@ std::string IdentityCheckerImpl::GetBundleNameByToken(uint32_t tokenId)
     return info.bundleName;
 }
 
-uint64_t IdentityCheckerImpl::GetDisplayIdByWindowId(int32_t callingWindowId)
+uint64_t IdentityCheckerImpl::GetDisplayIdByWindowId(int32_t callingWindowId, int32_t userId)
 {
-    return WindowAdapter::GetDisplayIdByWindowId(callingWindowId);
+    return WindowAdapter::GetDisplayIdByWindowId(callingWindowId, userId);
 }
 // LCOV_EXCL_START
-uint64_t IdentityCheckerImpl::GetDisplayIdByPid(int64_t callingPid, sptr<IRemoteObject> abilityToken)
+uint64_t IdentityCheckerImpl::GetDisplayIdByPid(int64_t callingPid, int32_t userId, sptr<IRemoteObject> abilityToken)
 {
     uint64_t displayId = 0;
-    bool ret = WindowAdapter::GetDisplayId(callingPid, displayId);
+    bool ret = WindowAdapter::GetDisplayId(callingPid, displayId, userId);
     if (ret || abilityToken == nullptr) {
         return displayId;
     }
     AAFwk::UIExtensionSessionInfo info;
     AAFwk::AbilityManagerClient::GetInstance()->GetUIExtensionSessionInfo(abilityToken, info);
     auto windowId = info.hostWindowId;
-    displayId = WindowAdapter::GetDisplayIdByWindowId(windowId);
+    displayId = WindowAdapter::GetDisplayIdByWindowId(windowId, userId);
     IMSA_HILOGD("GetDisplayIdByPid displayId: %{public}" PRIu64 "", displayId);
     return displayId;
 }
@@ -345,17 +345,17 @@ bool IdentityCheckerImpl::IsUIExtension(int64_t pid)
     return ImeInfoInquirer::GetInstance().IsUIExtension(pid);
 }
 
-std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedScbNotEnable(
-    int64_t callingPid, uint32_t callingTokenId, uint32_t windowId, const sptr<IRemoteObject> &abilityToken)
+std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedScbNotEnable(int64_t callingPid, uint32_t callingTokenId,
+    uint32_t windowId, const sptr<IRemoteObject> &abilityToken, int32_t userId)
 {
     std::pair<bool, FocusedInfo> retInfo{ false, {} };
     retInfo.second.windowId = windowId;
     uint64_t displayId;
     if (abilityToken != nullptr) {
-        displayId = WindowAdapter::GetDisplayIdByToken(abilityToken);
+        displayId = WindowAdapter::GetDisplayIdByToken(abilityToken, userId);
         IMSA_HILOGD("abilityToken not nullptr, displayId: %{public}" PRIu64 "", displayId);
     } else {
-        displayId = WindowAdapter::GetDisplayIdByPid(callingPid);
+        displayId = WindowAdapter::GetDisplayIdByPid(callingPid, userId);
     }
     FocusChangeInfo focusInfo;
     WindowAdapter::GetFocusInfo(focusInfo, displayId);
@@ -369,7 +369,7 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedScbNotEnable(
     if (ImeInfoInquirer::GetInstance().IsInputMethodExtension(callingPid)) {
         return retInfo;
     }
-    bool isFocused = IsFocusedUIExtension(callingTokenId, abilityToken);
+    bool isFocused = IsFocusedUIExtension(callingTokenId, abilityToken, userId);
     if (!isFocused) {
         IMSA_HILOGE("not focused, focusedPid: %{public}d, callerPid: %{public}" PRId64 ", callerToken: "
                     "%{public}d",
@@ -380,15 +380,16 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedScbNotEnable(
     return retInfo;
 }
 
-bool IdentityCheckerImpl::IsFocusedUIExtension(uint32_t callingTokenId, sptr<IRemoteObject> abilityToken)
+bool IdentityCheckerImpl::IsFocusedUIExtension(
+    uint32_t callingTokenId, sptr<IRemoteObject> abilityToken, int32_t userId)
 {
     uint32_t windowId = GetUIExtensionWindowId(abilityToken);
     if (windowId != INVALID_WINDOW_ID) {
-        auto displayIdByWindow = WindowAdapter::GetDisplayIdByWindowId(windowId);
+        auto displayIdByWindow = WindowAdapter::GetDisplayIdByWindowId(windowId, userId);
         IMSA_HILOGD("windowId is: %{public}d, displayId is %{public}" PRIu64 "", windowId, displayIdByWindow);
         if (displayIdByWindow != DEFAULT_DISPLAY_ID) {
             FocusChangeInfo focusInfo;
-            WindowAdapter::GetFocusInfo(focusInfo, displayIdByWindow);
+            WindowAdapter::GetFocusInfo(focusInfo, userId, displayIdByWindow);
             return windowId == static_cast<uint32_t>(focusInfo.windowId_);
         }
     }

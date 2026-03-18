@@ -125,7 +125,7 @@ int32_t ImeEventMonitorManagerImpl::OnImeChange(const Property &property, const 
     auto listeners = GetListeners(EVENT_IME_CHANGE_MASK);
     for (const auto &listener : listeners) {
         listener->OnImeChange(property, subProperty);
-        listener->OnImeChangeByUserId(property, subProperty, userId);
+        listener->OnImeChangeWithUserId(property, subProperty, userId);
     }
     return ErrorCode::NO_ERROR;
 }
