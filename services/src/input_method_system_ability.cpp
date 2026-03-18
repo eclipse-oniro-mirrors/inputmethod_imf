@@ -2823,7 +2823,6 @@ void InputMethodSystemAbility::HandleWmsStarted()
 {
     // singleton, device boot, wms reboot
     IMSA_HILOGI("Wms start.");
-    WindowMonitorsManager::GetInstance().Reset();
     InitAllUsersWindowMonitors();
 
 #ifndef SCENE_BOARD_ENABLE
