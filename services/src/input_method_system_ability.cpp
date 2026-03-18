@@ -2790,7 +2790,7 @@ void InputMethodSystemAbility::HandleWmsConnected(int32_t userId, int32_t screen
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return;
     }
-    session->OnScbStarted(isScbReboot);    
+    session->OnScbStarted(isScbReboot);
 }
 // LCOV_EXCL_START
 void InputMethodSystemAbility::StartNewUserIme(int32_t userId)
