@@ -121,7 +121,7 @@ public:
     void NotifyImeChangeToClients(const Property &property, const SubProperty &subProperty);
     int32_t SwitchSubtype(const SubProperty &subProperty);
     int32_t SwitchSubtypeWithoutStartIme(const SubProperty &subProperty);
-    void OnScbStarted();
+    void OnScbStarted(bool isScbReboot);
     void OnScbStopped();
     void OnFocused(uint64_t displayId, int32_t pid, int32_t uid);
     void OnUnfocused(uint64_t displayId, int32_t pid, int32_t uid);

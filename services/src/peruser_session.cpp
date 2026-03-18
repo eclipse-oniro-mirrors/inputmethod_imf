@@ -1494,7 +1494,7 @@ void PerUserSession::RemoveDeathRecipient(
     object->RemoveDeathRecipient(deathRecipient);
 }
 
-void PerUserSession::OnScbStarted()
+void PerUserSession::OnScbStarted(bool isScbReboot)
 {
 #ifdef IMF_ON_DEMAND_START_STOP_SA_ENABLE
     IMSA_HILOGI("start stop sa on demand, no need restart ime immediately");
@@ -1504,9 +1504,19 @@ void PerUserSession::OnScbStarted()
         IMSA_HILOGI("dynamic start ime, do not start immediately");
         return;
     }
-    IMSA_HILOGI("userId: %{public}d, restart ime", userId_);
-    IncreaseScbStartCount();
-    AddRestartIme();
+    if (isScbReboot)
+    {
+        IMSA_HILOGI("userId: %{public}d, scb reboot, restart ime", userId_);
+        IncreaseScbStartCount();
+        AddRestartIme();
+        return;
+    } else {
+        auto imeData = GetRealImeData(true);
+        if (imeData == nullptr && IsWmsReady()) {
+            IMSA_HILOGI("userId: %{public}d, new scb started, start ime", userId_);
+            StartCurrentIme();
+        }
+    }
 }
 
 void PerUserSession::OnScbStopped()

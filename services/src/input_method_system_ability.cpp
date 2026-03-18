@@ -2777,22 +2777,20 @@ void InputMethodSystemAbility::HandleWmsConnected(int32_t userId, int32_t screen
         return;
     }
     int32_t currentUserId = WindowMonitorsManager::GetInstance().GetForegroundUser(screenId);
-    if (currentUserId == userId) {
-        // scb reboot
-        auto session = UserSessionManager::GetInstance().GetUserSession(userId);
-        if (session == nullptr) {
-            UserSessionManager::GetInstance().AddUserSession(userId);
-        }
-        session = UserSessionManager::GetInstance().GetUserSession(userId);
-        if (session == nullptr) {
-            IMSA_HILOGE("%{public}d session is nullptr!", userId);
-            return;
-        }
-        session->OnScbStarted();
-    } else {
-        IMSA_HILOGI("new user: %{public}d", userId);
+    bool isScbReboot = currentUserId == userId;
+    if (!isScbReboot) {
         WindowMonitorsManager::GetInstance().UpdateForegroundUser(userId, screenId);
     }
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+    if (session == nullptr) {
+        UserSessionManager::GetInstance().AddUserSession(userId);
+    }
+    session = UserSessionManager::GetInstance().GetUserSession(userId);
+    if (session == nullptr) {
+        IMSA_HILOGE("%{public}d session is nullptr!", userId);
+        return;
+    }
+    session->OnScbStarted(isScbReboot);    
 }
 // LCOV_EXCL_START
 void InputMethodSystemAbility::StartNewUserIme(int32_t userId)
