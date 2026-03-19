@@ -239,7 +239,10 @@ void InputMethodControllerImpl::RegisterListener(std::string const &type, callba
             return (ANI_OK == env->Reference_StrictEquals(callbackRef, obj->ref, &isEqual)) && isEqual;
         });
     if (isDuplicate) {
-        env->GlobalReference_Delete(callbackRef);
+        ani_status status;
+        if ((status = env->GlobalReference_Delete(callbackRef)) != ANI_OK) {
+            IMSA_HILOGI("delete reference failed");
+        }
         IMSA_HILOGI("callback already registered, type: %{public}s!", type.c_str());
         return;
     }

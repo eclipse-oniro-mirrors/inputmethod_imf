@@ -79,7 +79,10 @@ void InputMethodClientImpl::RegisterListener(std::string const &type, callbackTy
             return (ANI_OK == env->Reference_StrictEquals(callbackRef, obj->ref, &isEqual)) && isEqual;
         });
     if (isDuplicate) {
-        env->GlobalReference_Delete(callbackRef);
+        ani_status status;
+        if ((status = env->GlobalReference_Delete(callbackRef)) != ANI_OK) {
+            IMSA_HILOGI("delete reference failed");
+        }
         IMSA_HILOGD("%{public}s is already registered", type.c_str());
         return;
     }

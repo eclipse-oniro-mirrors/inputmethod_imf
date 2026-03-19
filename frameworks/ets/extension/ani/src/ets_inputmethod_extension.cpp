@@ -179,11 +179,13 @@ void ETSInputMethodExtension::BindContext(std::shared_ptr<AbilityRuntime::Abilit
         return;
     }
     if ((status = env->Class_FindField(etsAbilityObj_->aniCls, "context", &field)) != ANI_OK) {
+        env->GlobalReference_Delete(contextGlobalRef);
         IMSA_HILOGI("Class_FindField failed, status : %{public}d", status);
         return;
     }
 
     if ((status = env->Object_SetField_Ref(etsAbilityObj_->aniObj, field, contextGlobalRef)) != ANI_OK) {
+        env->GlobalReference_Delete(contextGlobalRef);
         IMSA_HILOGI("Object_SetField_Ref failed, status : %{public}d", status);
         return;
     }

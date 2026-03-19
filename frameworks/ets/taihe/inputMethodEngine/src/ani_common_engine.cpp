@@ -341,7 +341,9 @@ ani_object CommonConvert::CreateAniUndefined(ani_env* env)
         IMSA_HILOGE("null env");
         return nullptr;
     }
-    env->GetUndefined(&aniRef);
+    if (env->GetUndefined(&aniRef) != ANI_OK) {
+        IMSA_HILOGE("GetUndefined failed");
+    }
     return static_cast<ani_object>(aniRef);
 }
 
@@ -381,7 +383,7 @@ ani_object CommonConvert::CreateAniSize(ani_env* env, uint32_t width, uint32_t h
         return CommonConvert::CreateAniUndefined(env);
     }
     ani_method aniCtor;
-    ret = env->Class_FindMethod(aniClass, "<ctor>", nullptr, &aniCtor);
+    ret = env->Class_FindMethod(aniClass, "<ctor>", ":", &aniCtor);
     if (ret != ANI_OK) {
         IMSA_HILOGE("[ANI] ctor not found");
         return CommonConvert::CreateAniUndefined(env);
@@ -392,8 +394,14 @@ ani_object CommonConvert::CreateAniSize(ani_env* env, uint32_t width, uint32_t h
         IMSA_HILOGE("[ANI] fail to new obj");
         return CommonConvert::CreateAniUndefined(env);
     }
-    CallAniMethodVoid(env, aniRect, aniClass, "<set>width", nullptr, ani_int(width));
-    CallAniMethodVoid(env, aniRect, aniClass, "<set>height", nullptr, ani_int(height));
+    ret = CallAniMethodVoid(env, aniRect, aniClass, "<set>width", nullptr, ani_int(width));
+    if (ret == ANI_OK) {
+        ret = CallAniMethodVoid(env, aniRect, aniClass, "<set>height", nullptr, ani_int(height));
+    }
+    if (ret != ANI_OK) {
+        IMSA_HILOGE("[ANI] width or height not found");
+        return CommonConvert::CreateAniUndefined(env);
+    }
     return aniRect;
 }
 
@@ -796,10 +804,21 @@ ani_object CommonConvert::CreateAniRect(ani_env* env, Rosen::Rect rect)
         IMSA_HILOGE("[ANI] fail to create new obj");
         return CreateAniUndefined(env);
     }
-    CallAniMethodVoid(env, aniRect, aniClass, "<set>left", nullptr, ani_int(rect.posX_));
-    CallAniMethodVoid(env, aniRect, aniClass, "<set>top", nullptr, ani_int(rect.posY_));
-    CallAniMethodVoid(env, aniRect, aniClass, "<set>width", nullptr, ani_int(rect.width_));
-    CallAniMethodVoid(env, aniRect, aniClass, "<set>height", nullptr, ani_int(rect.height_));
+    
+    ret = CallAniMethodVoid(env, aniRect, aniClass, "<set>left", nullptr, ani_int(rect.posX_));
+    if (ret == ANI_OK) {
+        ret = CallAniMethodVoid(env, aniRect, aniClass, "<set>top", nullptr, ani_int(rect.posY_));
+    }
+    if (ret == ANI_OK) {
+        ret = CallAniMethodVoid(env, aniRect, aniClass, "<set>width", nullptr, ani_int(rect.width_));
+    }
+    if (ret == ANI_OK) {
+        ret = CallAniMethodVoid(env, aniRect, aniClass, "<set>height", nullptr, ani_int(rect.height_));
+    }
+    if (ret != ANI_OK) {
+        IMSA_HILOGE("[ANI] fail to CallAniMethodVoid");
+        return CreateAniUndefined(env);
+    }
     return aniRect;
 }
 
