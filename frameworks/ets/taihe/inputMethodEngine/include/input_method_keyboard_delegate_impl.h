@@ -17,6 +17,7 @@
 
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -54,13 +55,13 @@ public:
 private:
     static std::mutex mutex_;
     static std::mutex handlerMutex_;
-    static std::map<std::string, std::vector<std::unique_ptr<CallbackObjects>>> jsCbMap_;
+    static std::map<std::string, std::vector<std::shared_ptr<CallbackObjects>>> jsCbMap_;
 
     static std::map<std::string, std::vector<taihe::callback<bool(KeyEvent_t const& event)>>> eventCbMap_;
     static std::mutex keyboardMutex_;
     static std::shared_ptr<KeyboardDelegateImpl> keyboardDelegate_;
     static std::shared_ptr<AppExecFwk::EventHandler> handler_;
-    static bool isRegistered(const std::string &type);
+    static bool IsRegistered(const std::string &type);
     static void DealKeyEvent(const std::shared_ptr<MMI::KeyEvent> &keyEvent,
         uint64_t cbId, const std::string &type, const sptr<IRemoteObject> &channelObject);
 

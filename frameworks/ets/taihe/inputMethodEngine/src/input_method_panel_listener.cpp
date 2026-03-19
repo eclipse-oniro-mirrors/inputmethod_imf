@@ -36,7 +36,6 @@ InputMethodPanelListener::~InputMethodPanelListener() {}
 
 void InputMethodPanelListener::Subscribe(uint32_t windowId, const std::string &type, callbackTypes &&cb, uintptr_t opq)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
     ani_object callbackObj = reinterpret_cast<ani_object>(opq);
     ani_ref callbackRef;
     ani_env *env = taihe::get_env();
@@ -66,7 +65,6 @@ void InputMethodPanelListener::Subscribe(uint32_t windowId, const std::string &t
 
 void InputMethodPanelListener::RemoveInfo(uint32_t windowId, const std::string &type)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
     jsCbMap_.ComputeIfPresent(windowId,
         [&type](auto windowId, std::map<std::string, std::shared_ptr<CallbackObjects>> &cbs) {
             cbs.erase(type);
@@ -92,7 +90,6 @@ std::shared_ptr<CallbackObjects> InputMethodPanelListener::GetCallback(uint32_t 
 void InputMethodPanelListener::OnPanelStatus(uint32_t windowId, bool isShow)
 {
     std::string type = isShow ? "show" : "hide";
-    std::lock_guard<std::mutex> lock(mutex_);
     auto cbVec = GetCallback(windowId, type);
     if (cbVec == nullptr) {
         IMSA_HILOGE("callBack is nullptr!");
@@ -106,7 +103,6 @@ void InputMethodPanelListener::OnPanelStatus(uint32_t windowId, bool isShow)
 void InputMethodPanelListener::OnSizeChange(uint32_t windowId, const WindowSize &size)
 {
     std::string type = "sizeChange";
-    std::lock_guard<std::mutex> lock(mutex_);
     auto cbVec = GetCallback(windowId, type);
     if (cbVec == nullptr) {
         IMSA_HILOGE("callBack is nullptr!");
@@ -130,7 +126,6 @@ void InputMethodPanelListener::OnSizeChange(uint32_t windowId, const WindowSize 
 void InputMethodPanelListener::OnSizeChange(uint32_t windowId, const WindowSize &size,
     const PanelAdjustInfo &keyboardArea, const std::string &event)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
     auto cbVec = GetCallback(windowId, event);
     if (cbVec == nullptr) {
         IMSA_HILOGE("callBack is nullptr!");
@@ -160,12 +155,6 @@ void InputMethodPanelListener::OnSizeChange(uint32_t windowId, const WindowSize 
         auto &func = std::get<taihe::callback<void(uintptr_t, taihe::optional_view<KeyboardArea_t>)>>(cbVec->callback);
         func(windowSize, taihe::optional<KeyboardArea_t>(std::in_place_t{}, area));
     }
-}
-
-void InputMethodPanelListener::SetEventHandler(std::shared_ptr<AppExecFwk::EventHandler> handler)
-{
-    std::unique_lock<decltype(eventHandlerMutex_)> lock(eventHandlerMutex_);
-    handler_ = handler;
 }
 } // namespace MiscServices
 } // namespace OHOS

@@ -23,7 +23,7 @@ using namespace taihe;
 std::mutex KeyboardDelegateImpl::mutex_;
 std::mutex KeyboardDelegateImpl::handlerMutex_;
 std::mutex KeyboardDelegateImpl::keyboardMutex_;
-std::map<std::string, std::vector<std::unique_ptr<CallbackObjects>>> KeyboardDelegateImpl::jsCbMap_;
+std::map<std::string, std::vector<std::shared_ptr<CallbackObjects>>> KeyboardDelegateImpl::jsCbMap_;
 std::map<std::string, std::vector<taihe::callback<bool(KeyEvent_t const& event)>>> KeyboardDelegateImpl::eventCbMap_;
 std::shared_ptr<AppExecFwk::EventHandler> KeyboardDelegateImpl::handler_{ nullptr };
 std::shared_ptr<KeyboardDelegateImpl> KeyboardDelegateImpl::keyboardDelegate_{ nullptr };
@@ -59,7 +59,7 @@ void KeyboardDelegateImpl::RegisterListener(std::string const &type, callbackTyp
     }
     auto &cbVec = jsCbMap_[type];
     bool isDuplicate =
-        std::any_of(cbVec.begin(), cbVec.end(), [env, callbackRef](std::unique_ptr<CallbackObjects> &obj) {
+        std::any_of(cbVec.begin(), cbVec.end(), [env, callbackRef](const std::shared_ptr<CallbackObjects> &obj) {
             ani_boolean isEqual = false;
             return (ANI_OK == env->Reference_StrictEquals(callbackRef, obj->ref, &isEqual)) && isEqual;
         });
@@ -68,7 +68,7 @@ void KeyboardDelegateImpl::RegisterListener(std::string const &type, callbackTyp
         IMSA_HILOGD("%{public}s is already registered", type.c_str());
         return;
     }
-    cbVec.emplace_back(std::make_unique<CallbackObjects>(cb, callbackRef));
+    cbVec.emplace_back(std::make_shared<CallbackObjects>(cb, callbackRef));
     IMSA_HILOGI("Registered success type: %{public}s", type.c_str());
 }
 
@@ -101,7 +101,7 @@ void KeyboardDelegateImpl::UnRegisterListener(std::string const &type, taihe::op
         return;
     }
 
-    const auto pred = [env, targetRef = guard.get()](std::unique_ptr<CallbackObjects> &obj) {
+    const auto pred = [env, targetRef = guard.get()](const std::shared_ptr<CallbackObjects> &obj) {
         ani_boolean is_equal = false;
         return (ANI_OK == env->Reference_StrictEquals(targetRef, obj->ref, &is_equal)) && is_equal;
     };
@@ -122,6 +122,7 @@ void KeyboardDelegateImpl::RegisterListenerEvent(std::string const &type,
         IMSA_HILOGE("subscribe failed, type: %{public}s.", type.c_str());
         return;
     }
+
     {
         std::lock_guard<std::mutex> lock(handlerMutex_);
         if (handler_ == nullptr) {
@@ -133,6 +134,7 @@ void KeyboardDelegateImpl::RegisterListenerEvent(std::string const &type,
             }
         }
     }
+
     std::lock_guard<std::mutex> lock(mutex_);
     auto &cbVec = eventCbMap_[type];
     auto it = std::find_if(cbVec.begin(), cbVec.end(),
@@ -184,9 +186,12 @@ void KeyboardDelegateImpl::UnRegisterListenerEvent(std::string const &type,
 bool KeyboardDelegateImpl::OnKeyEvent(int32_t keyCode, int32_t keyStatus, sptr<KeyEventConsumerProxy> &consumer)
 {
     std::string type = (keyStatus == ARGC_TWO ? "keyDown" : "keyUp");
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_[type];
-    for (auto &cb : cbVec) {
+    std::vector<std::shared_ptr<CallbackObjects>> callbacks;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        callbacks = jsCbMap_[type];
+    }
+    for (auto &cb : callbacks) {
         auto &func = std::get<taihe::callback<bool(KeyEventType_t const&)>>(cb->callback);
         KeyEventType_t event {
             .keyCode = keyCode,
@@ -230,9 +235,12 @@ bool KeyboardDelegateImpl::OnKeyEvent(const std::shared_ptr<MMI::KeyEvent> &keyE
     sptr<KeyEventConsumerProxy> &consumer)
 {
     std::string type = "keyEvent";
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_[type];
-    for (auto &cb : cbVec) {
+    std::vector<std::shared_ptr<CallbackObjects>> callbacks;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        callbacks = jsCbMap_[type];
+    }
+    for (auto &cb : callbacks) {
         auto &func = std::get<taihe::callback<bool(KeyEvent_t const&)>>(cb->callback);
         bool isConsumed = func(CommonConvert::ToTaiheKeyEvent(keyEvent));
         if (consumer != nullptr) {
@@ -246,9 +254,12 @@ bool KeyboardDelegateImpl::OnKeyEvent(const std::shared_ptr<MMI::KeyEvent> &keyE
 void KeyboardDelegateImpl::OnCursorUpdate(int32_t positionX, int32_t positionY, int32_t height)
 {
     std::string type = "cursorContextChange";
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_[type];
-    for (auto &cb : cbVec) {
+    std::vector<std::shared_ptr<CallbackObjects>> callbacks;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        callbacks = jsCbMap_[type];
+    }
+    for (auto &cb : callbacks) {
         auto &func = std::get<taihe::callback<void(double, double, double)>>(cb->callback);
         func(positionX, positionY, height);
     }
@@ -257,9 +268,12 @@ void KeyboardDelegateImpl::OnCursorUpdate(int32_t positionX, int32_t positionY, 
 void KeyboardDelegateImpl::OnSelectionChange(int32_t oldBegin, int32_t oldEnd, int32_t newBegin, int32_t newEnd)
 {
     std::string type = "selectionChange";
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_[type];
-    for (auto &cb : cbVec) {
+    std::vector<std::shared_ptr<CallbackObjects>> callbacks;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        callbacks = jsCbMap_[type];
+    }
+    for (auto &cb : callbacks) {
         auto &func = std::get<taihe::callback<void(int32_t, int32_t, int32_t, int32_t)>>(cb->callback);
         func(oldBegin, oldEnd, newBegin, newEnd);
     }
@@ -268,9 +282,12 @@ void KeyboardDelegateImpl::OnSelectionChange(int32_t oldBegin, int32_t oldEnd, i
 void KeyboardDelegateImpl::OnTextChange(const std::string &text)
 {
     std::string type = "textChange";
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_[type];
-    for (auto &cb : cbVec) {
+    std::vector<std::shared_ptr<CallbackObjects>> callbacks;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        callbacks = jsCbMap_[type];
+    }
+    for (auto &cb : callbacks) {
         auto &func = std::get<taihe::callback<void(taihe::string_view)>>(cb->callback);
         func(taihe::string_view(text));
     }
@@ -279,15 +296,18 @@ void KeyboardDelegateImpl::OnTextChange(const std::string &text)
 void KeyboardDelegateImpl::OnEditorAttributeChange(const InputAttribute &inputAttribute)
 {
     std::string type = "editorAttributeChanged";
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_[type];
-    for (auto &cb : cbVec) {
+    std::vector<std::shared_ptr<CallbackObjects>> callbacks;
+    {
+        std::lock_guard<std::mutex> lock(mutex_);
+        callbacks = jsCbMap_[type];
+    }
+    for (auto &cb : callbacks) {
         auto &func = std::get<taihe::callback<void(EditorAttribute_t const&)>>(cb->callback);
         func(CommonConvert::NativeAttributeToAni(inputAttribute));
     }
 }
 
-bool KeyboardDelegateImpl::isRegistered(const std::string &type)
+bool KeyboardDelegateImpl::IsRegistered(const std::string &type)
 {
     {
         std::lock_guard<std::mutex> lock(mutex_);
@@ -307,7 +327,7 @@ bool KeyboardDelegateImpl::OnDealKeyEvent(const std::shared_ptr<MMI::KeyEvent> &
         return false;
     }
     std::string type = (keyEvent->GetKeyAction() == ARGC_TWO ? "keyDown" : "keyUp");
-    if (!isRegistered(type)) {
+    if (!IsRegistered(type)) {
         IMSA_HILOGW("key event callback is not registered.");
         return false;
     }
@@ -333,23 +353,25 @@ void KeyboardDelegateImpl::DealKeyEvent(const std::shared_ptr<MMI::KeyEvent> &ke
         IMSA_HILOGW("keyEvent is nullptr");
         return;
     }
+    std::vector<taihe::callback<bool(KeyEvent_t const& event)>> eventCallbacks;
+    std::vector<std::shared_ptr<CallbackObjects>> codeCallbacks;
     {
         std::lock_guard<std::mutex> lock(mutex_);
-        auto &cbEventVec = eventCbMap_["keyEvent"];
-        for (auto &cb : cbEventVec) {
-            isKeyEventConsumed = cb(CommonConvert::ToTaiheKeyEvent(keyEvent));
-            break;
-        }
-        auto &cbCodeVec = jsCbMap_[type];
-        for (auto &cb : cbCodeVec) {
-            auto &func = std::get<taihe::callback<bool(KeyEventType_t const&)>>(cb->callback);
-            KeyEventType_t event {
-                .keyCode = keyEvent->GetKeyCode(),
-                .keyAction = keyEvent->GetKeyAction(),
-            };
-            isKeyCodeConsumed = func(event);
-            break;
-        }
+        eventCallbacks = eventCbMap_["keyEvent"];
+        codeCallbacks = jsCbMap_[type];
+    }
+    for (auto &cb : eventCallbacks) {
+        isKeyEventConsumed = cb(CommonConvert::ToTaiheKeyEvent(keyEvent));
+        break;
+    }
+    for (auto &cb : codeCallbacks) {
+        auto &func = std::get<taihe::callback<bool(KeyEventType_t const&)>>(cb->callback);
+        KeyEventType_t event {
+            .keyCode = keyEvent->GetKeyCode(),
+            .keyAction = keyEvent->GetKeyAction(),
+        };
+        isKeyCodeConsumed = func(event);
+        break;
     }
     bool consumeResult = isKeyEventConsumed || isKeyCodeConsumed;
     if (!consumeResult) {

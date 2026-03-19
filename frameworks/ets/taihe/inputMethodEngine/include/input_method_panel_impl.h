@@ -33,7 +33,7 @@ namespace OHOS {
 namespace MiscServices {
 class PanelImpl {
 public:
-    static std::shared_ptr<PanelImpl> GetInstance();
+    PanelImpl();
     ~PanelImpl();
     void CreatePanel(uintptr_t ctx, PanelInfo_t const& info, std::shared_ptr<InputMethodPanel> &panel);
     SystemPanelInsetsData_t GetSystemPanelCurrentInsetsAsync(int64_t id, int64_t displayId);
@@ -64,12 +64,8 @@ private:
     bool IsPanelFlagValid(PanelFlag panelFlag, bool isEnhancedCalled);
     ImmersiveMode_t ConvertMode(ImmersiveMode mode);
     bool IsVaildImmersiveMode(ImmersiveMode mode);
-    void SetNative(const std::shared_ptr<InputMethodPanel> &panel);
-    std::shared_ptr<InputMethodPanel> GetNative();
     bool ParseUpdateRegionParam(std::vector<Rosen::Rect> &hotArea, uintptr_t inputRegion);
-    static std::mutex panelMutex_;
-    static std::shared_ptr<PanelImpl> panel_;
-    static std::shared_ptr<InputMethodPanel> inputMethodPanel_;
+    std::shared_ptr<InputMethodPanel> inputMethodPanel_{ nullptr };
     static BlockQueue<uint32_t> jobQueue_;
     static std::atomic<uint32_t> jobId_;
 };
@@ -77,9 +73,13 @@ private:
 class IMFPanelImpl {
 public:
     IMFPanelImpl(uintptr_t ctx, PanelInfo_t const& info)
+        : panelImpl_(std::make_shared<PanelImpl>())
     {
-        value_ = std::shared_ptr<InputMethodPanel>();
-        PanelImpl::GetInstance()->CreatePanel(ctx, info, value_);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->CreatePanel(ctx, info, value_);
     }
 
     int64_t GetImplPtr()
@@ -94,171 +94,300 @@ public:
 
     void SetUiContentAsync(int64_t id, taihe::string_view path)
     {
-        PanelImpl::GetInstance()->SetUiContent(id, path, nullptr);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->SetUiContent(id, path, nullptr);
     }
 
     void SetUiContentSync(int64_t id, taihe::string_view path)
     {
-        PanelImpl::GetInstance()->SetUiContent(id, path, nullptr);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->SetUiContent(id, path, nullptr);
     }
 
     void SetUiContentStorage(int64_t id, ::taihe::string_view path, uintptr_t storage)
     {
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
         ani_object obj = reinterpret_cast<ani_object>(storage);
         if (obj == nullptr) {
             IMSA_HILOGW("storage is nullptr");
         }
-        PanelImpl::GetInstance()->SetUiContent(id, path, obj);
+        panelImpl_->SetUiContent(id, path, obj);
     }
 
     void SetUiContentStorageSync(int64_t id, ::taihe::string_view path, uintptr_t storage)
     {
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
         ani_object obj = reinterpret_cast<ani_object>(storage);
         if (obj == nullptr) {
             IMSA_HILOGW("storage is nullptr");
         }
-        PanelImpl::GetInstance()->SetUiContent(id, path, obj);
+        panelImpl_->SetUiContent(id, path, obj);
     }
 
     void ResizeAsync(int64_t id, int64_t width, int64_t height)
     {
-        PanelImpl::GetInstance()->ResizeAsync(id, width, height);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->ResizeAsync(id, width, height);
     }
 
     void MoveToAsync(int64_t id, int32_t x, int32_t y)
     {
-        PanelImpl::GetInstance()->MoveToAsync(id, x, y);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->MoveToAsync(id, x, y);
     }
 
     int64_t GetDisplayIdSync(int64_t id)
     {
-        return PanelImpl::GetInstance()->GetDisplayIdSync(id);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return 0;
+        }
+        return panelImpl_->GetDisplayIdSync(id);
     }
 
     void ShowAsync(int64_t id)
     {
-        PanelImpl::GetInstance()->ShowAsync(id);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->ShowAsync(id);
     }
 
     void HideAsync(int64_t id)
     {
-        PanelImpl::GetInstance()->HideAsync(id);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->HideAsync(id);
     }
 
     void SetKeepScreenOnAsync(bool isKeepScreenOn)
     {
-        PanelImpl::GetInstance()->SetKeepScreenOnAsync(isKeepScreenOn);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->SetKeepScreenOnAsync(isKeepScreenOn);
     }
 
     SystemPanelInsetsData_t GetSystemPanelCurrentInsetsAsync(int64_t id, int64_t displayId)
     {
-        return PanelImpl::GetInstance()->GetSystemPanelCurrentInsetsAsync(id, displayId);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return SystemPanelInsetsData_t::make_type_null();
+        }
+        return panelImpl_->GetSystemPanelCurrentInsetsAsync(id, displayId);
     }
 
     void SetSystemPanelButtonColorAsync(int64_t id, FillColorData_t const& fillColor,
         BackgroundColorData_t const& backgroundColor)
     {
-        PanelImpl::GetInstance()->SetSystemPanelButtonColorAsync(id, fillColor, backgroundColor);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->SetSystemPanelButtonColorAsync(id, fillColor, backgroundColor);
     }
 
     void SetShadow(double radius, ::taihe::string_view color, double offsetX, double offsetY)
     {
-        PanelImpl::GetInstance()->SetShadow(radius, color, offsetX, offsetY);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->SetShadow(radius, color, offsetX, offsetY);
     }
 
     void StartMoving()
     {
-        PanelImpl::GetInstance()->StartMoving();
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->StartMoving();
     }
 
     void ChangeFlag(PanelFlag_t flag)
     {
-        PanelImpl::GetInstance()->ChangeFlag(flag);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->ChangeFlag(flag);
     }
 
     void SetPrivacyMode(bool isPrivacyMode)
     {
-        PanelImpl::GetInstance()->SetPrivacyMode(isPrivacyMode);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->SetPrivacyMode(isPrivacyMode);
     }
 
     void AdjustPanelRect(PanelFlag_t flag, PanelRect_t const& rect)
     {
-        PanelImpl::GetInstance()->AdjustPanelRect(flag, rect);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->AdjustPanelRect(flag, rect);
     }
 
     void AdjustPanelRectEnhanced(PanelFlag_t flag, EnhancedPanelRect_t const& rect)
     {
-        PanelImpl::GetInstance()->AdjustPanelRectEnhanced(flag, rect);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->AdjustPanelRectEnhanced(flag, rect);
     }
 
     void UpdateRegion(uintptr_t inputRegion)
     {
-        PanelImpl::GetInstance()->UpdateRegion(inputRegion);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->UpdateRegion(inputRegion);
     }
 
     void SetImmersiveMode(ImmersiveMode_t mode)
     {
-        PanelImpl::GetInstance()->SetImmersiveMode(mode);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->SetImmersiveMode(mode);
     }
 
     ImmersiveMode_t GetImmersiveMode()
     {
-        return PanelImpl::GetInstance()->GetImmersiveMode();
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return CommonConvert::ConvertMode(ImmersiveMode::NONE_IMMERSIVE);
+        }
+        return panelImpl_->GetImmersiveMode();
     }
 
     void SetImmersiveEffect(ImmersiveEffect_t const& effect)
     {
-        PanelImpl::GetInstance()->SetImmersiveEffect(effect);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->SetImmersiveEffect(effect);
     }
 
     void OnShow(taihe::callback_view<void(UndefinedType_t const&)> callback, uintptr_t opq)
     {
-        PanelImpl::GetInstance()->RegisterListener("show", callback, opq);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->RegisterListener("show", callback, opq);
     }
 
     void OffShow(taihe::optional_view<uintptr_t> opq)
     {
-        PanelImpl::GetInstance()->UnRegisterListener("show", opq);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->UnRegisterListener("show", opq);
     }
 
     void OnHide(taihe::callback_view<void(UndefinedType_t const&)> callback, uintptr_t opq)
     {
-        PanelImpl::GetInstance()->RegisterListener("hide", callback, opq);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->RegisterListener("hide", callback, opq);
     }
 
     void OffHide(taihe::optional_view<uintptr_t> opq)
     {
-        PanelImpl::GetInstance()->UnRegisterListener("hide", opq);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->UnRegisterListener("hide", opq);
     }
 
     void OnSizeUpdate(taihe::callback_view<void(uintptr_t, KeyboardArea_t const&)> callback, uintptr_t opq)
     {
-        PanelImpl::GetInstance()->RegisterListener("sizeUpdate", callback, opq);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->RegisterListener("sizeUpdate", callback, opq);
     }
 
     void OffSizeUpdate(taihe::optional_view<uintptr_t> opq)
     {
-        PanelImpl::GetInstance()->UnRegisterListener("sizeUpdate", opq);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->UnRegisterListener("sizeUpdate", opq);
     }
 
     void OnSizeChange(taihe::callback_view<void(uintptr_t, taihe::optional_view<KeyboardArea_t>)> callback,
         uintptr_t opq)
     {
-        PanelImpl::GetInstance()->RegisterListener("sizeChange", callback, opq);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->RegisterListener("sizeChange", callback, opq);
     }
 
     void OffSizeChange(taihe::optional_view<taihe::callback<void(uintptr_t, taihe::optional_view<KeyboardArea_t>)>> opq)
     {
-        PanelImpl::GetInstance()->UnRegisterListener("sizeChange", nullptr);
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->UnRegisterListener("sizeChange", nullptr);
     }
 
     int64_t LineUp()
     {
-        return PanelImpl::GetInstance()->LineUp();
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return 0;
+        }
+        return panelImpl_->LineUp();
     }
+
+    ~IMFPanelImpl();
+    
+    void ReleaseNative();
 
 private:
     std::shared_ptr<InputMethodPanel> value_;
+    std::shared_ptr<PanelImpl> panelImpl_;
 };
 } // namespace MiscServices
 } // namespace OHOS

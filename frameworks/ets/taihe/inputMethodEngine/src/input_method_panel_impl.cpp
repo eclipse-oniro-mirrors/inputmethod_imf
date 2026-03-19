@@ -23,42 +23,16 @@ namespace MiscServices {
 using namespace taihe;
 using WMError = OHOS::Rosen::WMError;
 constexpr int32_t MAX_WAIT_TIME = 10;
-std::mutex PanelImpl::panelMutex_;
-std::shared_ptr<PanelImpl> PanelImpl::panel_{ nullptr };
-std::shared_ptr<InputMethodPanel> PanelImpl::inputMethodPanel_{ nullptr };
 BlockQueue<uint32_t> PanelImpl::jobQueue_{ MAX_WAIT_TIME };
 std::atomic<uint32_t> PanelImpl::jobId_{ 0 };
-std::shared_ptr<PanelImpl> PanelImpl::GetInstance()
+
+PanelImpl::PanelImpl()
 {
-    std::shared_ptr<InputMethodPanelListener> panelImpl = InputMethodPanelListener::GetInstance();
-    if (panelImpl != nullptr) {
-        IMSA_HILOGD("set eventHandler.");
-        panelImpl->SetEventHandler(AppExecFwk::EventHandler::Current());
-    }
-    if (panel_ == nullptr) {
-        std::lock_guard<std::mutex> lock(panelMutex_);
-        auto panel = std::make_shared<PanelImpl>();
-        if (panel == nullptr) {
-            IMSA_HILOGE("create panel failed!");
-            return nullptr;
-        }
-        panel_ = panel;
-    }
-    return panel_;
 }
 
 PanelImpl::~PanelImpl()
 {
     inputMethodPanel_ = nullptr;
-}
-
-void PanelImpl::SetNative(const std::shared_ptr<InputMethodPanel> &panel)
-{
-    inputMethodPanel_ = panel;
-}
-std::shared_ptr<InputMethodPanel> PanelImpl::GetNative()
-{
-    return inputMethodPanel_;
 }
 
 void PanelImpl::CreatePanel(uintptr_t ctx, PanelInfo_t const& info, std::shared_ptr<InputMethodPanel> &panel)
@@ -208,6 +182,9 @@ bool PanelImpl::IsPanelFlagValid(PanelFlag panelFlag, bool isEnhancedCalled)
     if (!isEnhancedCalled && !isValid) {
         IMSA_HILOGE("invalid panelFlag!");
         return false;
+    } else if (isEnhancedCalled && !isValid) {
+        IMSA_HILOGE("invalid panelFlag for enhanced call!");
+        return false;
     }
     return true;
 }
@@ -287,6 +264,12 @@ void PanelImpl::AdjustPanelRect(PanelFlag_t flag, PanelRect_t const& rect)
         return;
     }
     PanelFlag panelFlag = static_cast<PanelFlag>(flag.get_value());
+    if (!IsPanelFlagValid(panelFlag, false)) {
+        IMSA_HILOGE("invalid panelFlag!");
+        set_business_error(IMFErrorCode::EXCEPTION_PARAMCHECK, JsUtils::ToMessage(IMFErrorCode::EXCEPTION_PARAMCHECK));
+        jobQueue_.Pop();
+        return;
+    }
     ani_env* env = taihe::get_env();
     LayoutParams layoutParams;
     if (!CommonConvert::ParsePanelRect(env, rect, layoutParams)) {
@@ -319,6 +302,12 @@ void PanelImpl::AdjustPanelRectEnhanced(PanelFlag_t flag, EnhancedPanelRect_t co
         return;
     }
     PanelFlag panelFlag = static_cast<PanelFlag>(flag.get_value());
+    if (!IsPanelFlagValid(panelFlag, true)) {
+        IMSA_HILOGE("invalid panelFlag for enhanced call!");
+        set_business_error(JsUtils::Convert(ErrorCode::ERROR_INVALID_PANEL_FLAG),
+            JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_INVALID_PANEL_FLAG)));
+        return;
+    }
     EnhancedLayoutParams enhancedLayoutParams;
     HotAreas hotAreas;
     ani_env* env = taihe::get_env();
@@ -327,26 +316,25 @@ void PanelImpl::AdjustPanelRectEnhanced(PanelFlag_t flag, EnhancedPanelRect_t co
         set_business_error(IMFErrorCode::EXCEPTION_IME, JsUtils::ToMessage(IMFErrorCode::EXCEPTION_IME));
         return;
     }
-    if (!CommonConvert::ParseEnhancedPanelRect(env, rect, enhancedLayoutParams, hotAreas)) {
+    auto ret = CommonConvert::ParseEnhancedPanelRect(env, rect, enhancedLayoutParams, hotAreas);
+    if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("parse  EnhancedPanelRect failed");
-        set_business_error(JsUtils::Convert(ErrorCode::ERROR_IME),
-            JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IME)));
-        return;
-    }
-    int32_t ret = inputMethodPanel_->AdjustPanelRect(panelFlag, enhancedLayoutParams, hotAreas);
-    if (ret == ErrorCode::NO_ERROR) {
-        IMSA_HILOGI("AdjustPanelRect success!");
-        return;
-    } else if (ret == ErrorCode::ERROR_PARAMETER_CHECK_FAILED) {
-        IMSA_HILOGE("invalid param");
-        set_business_error(JsUtils::Convert(ret),
-            JsUtils::ToMessage(JsUtils::Convert(ret)));
-        return;
-    } else if (ret == ErrorCode::ERROR_INVALID_PANEL_TYPE) {
-        IMSA_HILOGE("only used for SOFT_KEYBOARD panel");
         set_business_error(JsUtils::Convert(ret), JsUtils::ToMessage(JsUtils::Convert(ret)));
         return;
     }
+    ret = inputMethodPanel_->IsEnhancedParamValid(panelFlag, enhancedLayoutParams);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("IsEnhancedParamValid failed ret:%{public}d", ret);
+        set_business_error(JsUtils::Convert(ret), JsUtils::ToMessage(JsUtils::Convert(ret)));
+        return;
+    }
+    ret = inputMethodPanel_->AdjustPanelRect(panelFlag, enhancedLayoutParams, hotAreas);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("AdjustPanelRect failed ret:%{public}d", ret);
+        set_business_error(JsUtils::Convert(ret), JsUtils::ToMessage(JsUtils::Convert(ret)));
+        return;
+    }
+    IMSA_HILOGI("AdjustPanelRect success!");
 }
 
 int64_t PanelImpl::GetDisplayIdSync(int64_t id)
@@ -678,7 +666,7 @@ void PanelImpl::UnRegisterListener(std::string const &type, taihe::optional_view
         IMSA_HILOGE("RegisterListener failed, type: %{public}s!", type.c_str());
         return;
     }
-    IMSA_HILOGD("RegisterListener type: %{public}s.", type.c_str());
+    IMSA_HILOGD("UnRegisterListener type: %{public}s.", type.c_str());
     if (type == "sizeUpdate") {
         if (!InputMethodAbility::GetInstance().IsSystemApp()) {
             set_business_error(IMFErrorCode::EXCEPTION_SYSTEM_PERMISSION,
@@ -700,6 +688,18 @@ int64_t PanelImpl::LineUp()
     uint32_t id = ++jobId_;
     jobQueue_.Push(id);
     return static_cast<int64_t>(id);
+}
+
+IMFPanelImpl::~IMFPanelImpl()
+{
+    value_ = nullptr;
+    panelImpl_ = nullptr;
+}
+
+void IMFPanelImpl::ReleaseNative()
+{
+    value_ = nullptr;
+    panelImpl_ = nullptr;
 }
 } // namespace MiscServices
 } // namespace OHOS
