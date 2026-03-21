@@ -652,8 +652,7 @@ bool CommonConvert::GetRectOrUndefined(ani_env* env, ani_object param, const cha
         IMSA_HILOGD("%{public}s : undefined", name);
         return false;
     }
-    ani_object obj = static_cast<ani_object>(ref);
-    if (!ParseWindowRect(env, name, obj, rect)) {
+    if (!ParseWindowRect(env, name, param, rect)) {
         IMSA_HILOGD("Parse %{public}s failed", name);
         return false;
     }
@@ -679,8 +678,8 @@ bool CommonConvert::GetRegionOrUndefined(ani_env* env, ani_object param, const c
         return false;
     }
     if (isUndefined) {
-        IMSA_HILOGD("%{public}s : undefined", name);
-        return false;
+        IMSA_HILOGD("%{public}s : optional param undefined", name);
+        return true;
     }
     ani_object obj = static_cast<ani_object>(ref);
     if (!ParseRects(obj, rect, MAX_INPUT_REGION_LEN)) {
@@ -691,19 +690,19 @@ bool CommonConvert::GetRegionOrUndefined(ani_env* env, ani_object param, const c
     return true;
 }
 
-bool CommonConvert::ParseEnhancedPanelRect(ani_env* env, EnhancedPanelRect_t const& rect,
+int32_t CommonConvert::ParseEnhancedPanelRect(ani_env* env, EnhancedPanelRect_t const& rect,
     EnhancedLayoutParams& param, HotAreas& hotAreas)
 {
     if (env == nullptr) {
         IMSA_HILOGE("env is nullptr");
-        return false;
+        return ErrorCode::ERROR_NULL_POINTER;
     }
     ani_object obj = ::taihe::into_ani<EnhancedPanelRect_t>(env, rect);
     ani_boolean isUndefined;
     ani_status ret = env->Reference_IsUndefined(obj, &isUndefined);
     if (ret != ANI_OK || isUndefined) {
         IMSA_HILOGE("EnhancedPanelRect isUndefined failed or undefined ret: %{public}d", ret);
-        return false;
+        return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
     }
 
     // Get the isFullScreen
@@ -738,20 +737,18 @@ bool CommonConvert::ParseEnhancedPanelRect(ani_env* env, EnhancedPanelRect_t con
     }
     // has landscapeInputRegion -> Get the hotAreas
     std::vector<Rosen::Rect> landRects;
-    if (GetRegionOrUndefined(env, obj, "landscapeInputRegion", landRects)) {
-        hotAreas.landscape.keyboardHotArea = landRects;
-    } else {
-        hotAreas.landscape.keyboardHotArea.clear();
+    if (!GetRegionOrUndefined(env, obj, "landscapeInputRegion", landRects)) {
+        return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
     }
+    hotAreas.landscape.keyboardHotArea = landRects;
 
     // has portraitInputRegion -> Get the hotAreas
     std::vector<Rosen::Rect> portRects;
-    if (GetRegionOrUndefined(env, obj, "portraitInputRegion", portRects)) {
-        hotAreas.portrait.keyboardHotArea = portRects;
-    } else {
-        hotAreas.portrait.keyboardHotArea.clear();
+    if (!GetRegionOrUndefined(env, obj, "portraitInputRegion", portRects)) {
+        return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
     }
-    return true;
+    hotAreas.portrait.keyboardHotArea = portRects;
+    return ErrorCode::NO_ERROR;
 }
 
 ani_enum_item CommonConvert::CreateAniWindowStatus(ani_env* env, Rosen::WindowStatus status)

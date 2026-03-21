@@ -193,7 +193,7 @@ public:
     static bool ParseRects(ani_object aniRects, std::vector<Rosen::Rect> &rects, int32_t maxNum);
     static bool ParseWindowRect(ani_env *env, const char* propertyName, ani_object obj, Rosen::Rect &result);
     static bool ParsePanelRect(ani_env* env, PanelRect_t const& rect, LayoutParams& param);
-    static bool ParseEnhancedPanelRect(ani_env* env, EnhancedPanelRect_t const& rect,
+    static int32_t ParseEnhancedPanelRect(ani_env* env, EnhancedPanelRect_t const& rect,
         EnhancedLayoutParams& param, HotAreas& hotAreas);
     static ani_enum_item CreateAniWindowStatus(ani_env* env, Rosen::WindowStatus type);
     static ani_object CreateAniRect(ani_env* env, Rosen::Rect rect);

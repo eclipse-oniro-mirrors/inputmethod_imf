@@ -39,16 +39,12 @@ public:
         const std::string &event) override;
     void Subscribe(uint32_t windowId, const std::string &type, callbackTypes &&cb, uintptr_t opq);
     void RemoveInfo(uint32_t windowId, const std::string &type);
-    void SetEventHandler(std::shared_ptr<AppExecFwk::EventHandler> handler);
 
 private:
     std::shared_ptr<CallbackObjects> GetCallback(uint32_t windowId, const std::string &type);
-    std::mutex mutex_;
     ConcurrentMap<uint32_t, std::map<std::string, std::shared_ptr<CallbackObjects>>> jsCbMap_;
     static std::mutex listenerMutex_;
     static std::shared_ptr<InputMethodPanelListener> instance_;
-    mutable std::shared_mutex eventHandlerMutex_;
-    std::shared_ptr<AppExecFwk::EventHandler> handler_;
 };
 } // namespace MiscServices
 } // namespace OHOS

@@ -116,6 +116,7 @@ void InputMethodAbilityImpl::DestroyPanelAsync(Panel_t panel)
         set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
         return;
     }
+    panelImpl->ReleaseNative();
     IMSA_HILOGI("DestroyPanel success!");
 }
 
