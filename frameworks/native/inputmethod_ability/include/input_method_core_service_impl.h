@@ -16,12 +16,12 @@
 #ifndef FRAMEWORKS_INPUTMETHOD_ABILITY_INCLUDE_INPUT_METHOD_CORE_SERVICE_IMPL_H
 #define FRAMEWORKS_INPUTMETHOD_ABILITY_INCLUDE_INPUT_METHOD_CORE_SERVICE_IMPL_H
 
-#include "system_ability.h"
-
 #include "iinput_method_core.h"
 #include "input_method_core_stub.h"
-#include "iremote_object.h"
+#include "input_method_utils.h"
 #include "inputmethod_message_handler.h"
+#include "iremote_object.h"
+#include "system_ability.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -49,6 +49,7 @@ public:
     ErrCode OnCallingWindowIdChanged(uint32_t editorWindowId, uint32_t keyboardWindowId) override;
     ErrCode OnSendPrivateData(const Value &Value) override;
     ErrCode NotifyPreemption() override;
+    ErrCode GetSoftKeyboardWindowInfo(ImeWindowInfo &imeWindowInfo);
 };
 }  // namespace MiscServices
 }  // namespace OHOS

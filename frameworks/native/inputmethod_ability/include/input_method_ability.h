@@ -139,6 +139,7 @@ public:
 
     int32_t OnStopInputService(bool isTerminateIme);
     HiSysEventClientInfo GetBindClientInfo();
+    int32_t GetSoftKeyboardWindowInfo(ImeWindowInfo &imeWindowInfo);
 private:
     std::mutex controlChannelLock_;
     std::shared_ptr<InputControlChannelProxy> controlChannel_ = nullptr;
@@ -194,7 +195,6 @@ private:
     void ClearInputAttribute();
     void NotifyPanelStatusInfo(const PanelStatusInfo &info);
     int32_t HideKeyboardImplWithoutLock(int32_t cmdId, uint32_t sessionId);
-    int32_t ShowKeyboardImplWithLock(int32_t cmdId);
     int32_t ShowKeyboardImplWithoutLock(int32_t cmdId);
     void NotifyPanelStatusInfo(const PanelStatusInfo &info, std::shared_ptr<InputDataChannelProxy> &channelProxy);
     void ClearInputType();
@@ -211,7 +211,8 @@ private:
     void SetSysPanelStatus(const SysPanelStatus &sysPanelStatus);
     bool IsSystemPanelSupported();
     void ConfigurationUpdate(Rosen::DisplayId displayId);
-    
+    void NotifyInputStartToClients(InputWindowStatus status, PanelFlag flag);
+
     ConcurrentMap<PanelType, std::shared_ptr<InputMethodPanel>> panels_ {};
     std::atomic_bool isBound_ { false };
     std::atomic_bool isProxyIme_{ false };

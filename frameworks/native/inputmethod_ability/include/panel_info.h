@@ -30,6 +30,7 @@ enum PanelFlag {
     FLG_FIXED = 0,
     FLG_FLOATING,
     FLG_CANDIDATE_COLUMN,
+    FLG_NONE,
 };
 
 enum SetShadowOperation {
@@ -53,7 +54,15 @@ struct Shadow {
 
 struct PanelInfo : public Parcelable {
     PanelType panelType = SOFT_KEYBOARD;
-    PanelFlag panelFlag = FLG_FIXED;
+    PanelFlag panelFlag = FLG_NONE;
+
+    std::string ToString() const
+    {
+        std::string info;
+        info.append("panelType: " + std::to_string(panelType) + "/");
+        info.append("panelFlag: " + std::to_string(panelFlag));
+        return info;
+    }
 
     bool ReadFromParcel(Parcel &in)
     {

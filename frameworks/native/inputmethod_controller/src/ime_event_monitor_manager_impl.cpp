@@ -130,41 +130,39 @@ int32_t ImeEventMonitorManagerImpl::OnImeChange(const Property &property, const 
     return ErrorCode::NO_ERROR;
 }
 
-int32_t ImeEventMonitorManagerImpl::OnPanelStatusChange(const InputWindowStatus &status, const ImeWindowInfo &info)
+int32_t ImeEventMonitorManagerImpl::OnPanelStatusChange(const ImeWindowInfo &oldInfo, const ImeWindowInfo &newInfo)
 {
-    IMSA_HILOGD("ImeEventMonitorManagerImpl, status: %{public}u, window: %{public}s", static_cast<uint32_t>(status),
-        info.windowInfo.ToString().c_str());
-    if (status == InputWindowStatus::HIDE) {
-        return OnImeHide(info);
+    IMSA_HILOGD("ImeEventMonitorManagerImpl, status: %{public}u, panel: %{public}s, window: %{public}s",
+        static_cast<uint32_t>(newInfo.status), newInfo.panelInfo.ToString().c_str(),
+        newInfo.windowInfo.ToString().c_str());
+    OnImeWindowInfoChanged(oldInfo, newInfo);
+    if (newInfo.status == InputWindowStatus::HIDE) {
+        return OnImeHide(newInfo);
     }
-    if (status == InputWindowStatus::SHOW) {
-        return OnImeShow(info);
+    if (newInfo.status == InputWindowStatus::SHOW) {
+        return OnImeShow(newInfo);
     }
     return ErrorCode::ERROR_BAD_PARAMETERS;
 }
 
-int32_t ImeEventMonitorManagerImpl::OnInputStart(uint32_t callingWndId, int32_t requestKeyboardReason)
+int32_t ImeEventMonitorManagerImpl::OnInputStart(const InputStartInfo &inputStartInfo)
 {
-    isInputStart_ = true;
-    callingWindow_ = callingWndId;
-    requestKeyboardReason_ = requestKeyboardReason;
     auto listeners = GetListeners(EVENT_INPUT_STATUS_CHANGED_MASK);
     for (const auto &listener : listeners) {
         if (listener != nullptr) {
-            IMSA_HILOGD("listener start to callback, callingWndId: %{public}u", callingWndId);
-            listener->OnInputStart(callingWndId, requestKeyboardReason);
+            IMSA_HILOGD("inputStartInfo: %{public}s", inputStartInfo.ToString().c_str());
+            listener->OnInputStart(inputStartInfo);
         }
     }
     return ErrorCode::NO_ERROR;
 }
 
-int32_t ImeEventMonitorManagerImpl::OnInputStop()
+int32_t ImeEventMonitorManagerImpl::OnInputStop(const InputStopInfo &inputStopInfo)
 {
-    isInputStart_ = false;
     auto listeners = GetListeners(EVENT_INPUT_STATUS_CHANGED_MASK);
     for (const auto &listener : listeners) {
         if (listener != nullptr) {
-            listener->OnInputStop();
+            listener->OnInputStop(inputStopInfo);
         }
     }
     return ErrorCode::NO_ERROR;
@@ -184,6 +182,15 @@ int32_t ImeEventMonitorManagerImpl::OnImeHide(const ImeWindowInfo &info)
     auto listeners = GetListeners(EVENT_IME_HIDE_MASK);
     for (const auto &listener : listeners) {
         listener->OnImeHide(info);
+    }
+    return ErrorCode::NO_ERROR;
+}
+
+int32_t ImeEventMonitorManagerImpl::OnImeWindowInfoChanged(const ImeWindowInfo &oldInfo, const ImeWindowInfo &newInfo)
+{
+    auto listeners = GetListeners(EVENT_IME_WINDOW_INFO_CHANGED_MASK);
+    for (const auto &listener : listeners) {
+        listener->OnImeWindowInfoChanged(oldInfo, newInfo);
     }
     return ErrorCode::NO_ERROR;
 }

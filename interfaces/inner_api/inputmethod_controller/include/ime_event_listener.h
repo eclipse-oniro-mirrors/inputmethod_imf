@@ -25,15 +25,18 @@ constexpr uint32_t EVENT_IME_CHANGE_MASK = 1u;
 constexpr uint32_t EVENT_IME_SHOW_MASK = 1u << 1u;
 constexpr uint32_t EVENT_IME_HIDE_MASK = 1u << 2u;
 constexpr uint32_t EVENT_INPUT_STATUS_CHANGED_MASK = 1u << 3u; // OnInputStart and OnInputStop
+constexpr uint32_t EVENT_IME_WINDOW_INFO_CHANGED_MASK = 1u << 4u;
 class ImeEventListener {
 public:
     virtual ~ImeEventListener() = default;
     virtual void OnImeChange(const Property &property, const SubProperty &subProperty){};
     virtual void OnImeChangeWithUserId(const Property &property, const SubProperty &subProperty, int32_t userId){};
+    // OnImeShow/OnImeHide/OnImeWindowInfoChanged only contain SOFT_KEYBOARD(FLG_FIXED and FLG_FLOATING)
     virtual void OnImeShow(const ImeWindowInfo &info){};
     virtual void OnImeHide(const ImeWindowInfo &info){};
-    virtual void OnInputStart(uint32_t callingWndId, int32_t requestKeyboardReason) {};
-    virtual void OnInputStop() {};
+    virtual void OnImeWindowInfoChanged(const ImeWindowInfo &oldInfo, const ImeWindowInfo &newInfo){};
+    virtual void OnInputStart(const InputStartInfo &inputStartInfo){};
+    virtual void OnInputStop(const InputStopInfo &inputStopInfo){};
 };
 } // namespace MiscServices
 } // namespace OHOS

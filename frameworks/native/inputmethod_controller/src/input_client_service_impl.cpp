@@ -77,19 +77,19 @@ ErrCode InputClientServiceImpl::OnSwitchInput(const Property &property, const Su
     return ImeEventMonitorManagerImpl::GetInstance().OnImeChange(property, subProperty, userId);
 }
 
-ErrCode InputClientServiceImpl::OnPanelStatusChange(const uint32_t status, const ImeWindowInfo& info)
+ErrCode InputClientServiceImpl::OnPanelStatusChange(const ImeWindowInfo &oldInfo, const ImeWindowInfo &newInfo)
 {
-    return ImeEventMonitorManagerImpl::GetInstance().OnPanelStatusChange(static_cast<InputWindowStatus>(status), info);
+    return ImeEventMonitorManagerImpl::GetInstance().OnPanelStatusChange(oldInfo, newInfo);
 }
 
-ErrCode InputClientServiceImpl::NotifyInputStart(uint32_t callingWndId, int32_t requestKeyboardReason)
+ErrCode InputClientServiceImpl::NotifyInputStart(const InputStartInfo &inputStartInfo)
 {
-    return ImeEventMonitorManagerImpl::GetInstance().OnInputStart(callingWndId, requestKeyboardReason);
+    return ImeEventMonitorManagerImpl::GetInstance().OnInputStart(inputStartInfo);
 }
 
-ErrCode InputClientServiceImpl::NotifyInputStop()
+ErrCode InputClientServiceImpl::NotifyInputStop(const InputStopInfo &inputStopInfo)
 {
-    return ImeEventMonitorManagerImpl::GetInstance().OnInputStop();
+    return ImeEventMonitorManagerImpl::GetInstance().OnInputStop(inputStopInfo);
 }
 
 ErrCode InputClientServiceImpl::DeactivateClient()

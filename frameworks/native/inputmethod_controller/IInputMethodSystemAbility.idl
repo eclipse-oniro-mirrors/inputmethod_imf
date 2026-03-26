@@ -44,7 +44,9 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void ListCurrentInputMethodSubtype([out] SubProperty[] subProps, [in] int userId);
     void ListInputMethodSubtype([in] String name, [out] SubProperty[] subProps, [in] int userId);
     void SwitchInputMethod([in] String bundleName, [in] String name, [in] unsigned int trigger, [in] int userId);
-    [oneway] void PanelStatusChange([in] unsigned int status, [in] ImeWindowInfo info);
+    void GetSoftKeyboardWindowInfo([in] int32_t userId, [out] ImeWindowInfo imeWindowInfo);
+    [oneway] void OnInputStart([in] InputStartInfo inputStartInfo);
+    [oneway] void PanelStatusChange([in] ImeWindowInfo oldInfo, [in] ImeWindowInfo newInfo);
     void UpdateListenEventFlag([in] InputClientInfoInner clientInfoInner, [in] unsigned int eventFlag);
     void IsCurrentIme([out] boolean resultValue);
     void IsInputTypeSupported([in] int type, [out] boolean resultValue);

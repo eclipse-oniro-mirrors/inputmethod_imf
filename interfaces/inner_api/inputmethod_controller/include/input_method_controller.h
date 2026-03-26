@@ -1058,6 +1058,9 @@ public:
     void HandleKeyEventResult(uint64_t cbId, bool consumeResult);
 
     IMF_API void SetImcInnerListener(const std::shared_ptr<ImcInnerListener> &imcInnerListener);
+
+    IMF_API int32_t GetSoftKeyboardWindowInfo(int32_t userId, ImeWindowInfo &imeWindowInfo);
+
 private:
     friend class MockInputMethodSystemAbilityProxy;
     InputMethodController();

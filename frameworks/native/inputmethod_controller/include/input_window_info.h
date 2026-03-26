@@ -42,9 +42,10 @@ struct InputWindowInfo : public Parcelable {
     std::string ToString() const
     {
         std::string info;
-        info.append(name + ", ");
-        info.append("[displayId/left/top/width/height]: " + std::to_string(displayId) + std::to_string(left) + "/" +
-                    std::to_string(top) + "/" + std::to_string(width) + "/" + std::to_string(height));
+        info.append("[name]: " + name + "/");
+        info.append("[displayId/userId/left/top/width/height]: " + std::to_string(displayId) + "/"
+                    + std::to_string(userId) + "/" + std::to_string(left) + "/" + std::to_string(top) + "/"
+                    + std::to_string(width) + "/" + std::to_string(height));
         return info;
     }
 
@@ -95,11 +96,23 @@ struct InputWindowInfo : public Parcelable {
 };
 
 struct ImeWindowInfo : public Parcelable {
+    InputWindowStatus status{ InputWindowStatus::NONE };
     PanelInfo panelInfo;
     InputWindowInfo windowInfo;
 
+    std::string ToString() const
+    {
+        std::string info;
+        info.append("[status]: " + std::to_string(static_cast<uint32_t>(status)) + "/");
+        info.append("[panelType/panelFlag]: " + std::to_string(panelInfo.panelType) + "/"
+                    + std::to_string(panelInfo.panelFlag) + "/");
+        info.append(windowInfo.ToString());
+        return info;
+    }
     bool ReadFromParcel(Parcel &in)
     {
+        auto statusTmp = in.ReadUint32();
+        status = static_cast<InputWindowStatus>(statusTmp);
         std::unique_ptr<PanelInfo> pInfo(in.ReadParcelable<PanelInfo>());
         if (pInfo == nullptr) {
             return false;
@@ -116,6 +129,9 @@ struct ImeWindowInfo : public Parcelable {
 
     bool Marshalling(Parcel &out) const
     {
+        if (!out.WriteUint32(static_cast<uint32_t>(status))) {
+            return false;
+        }
         if (!out.WriteParcelable(&panelInfo)) {
             return false;
         }

@@ -720,10 +720,7 @@ void InputMethodPanel::UpdateLayoutInfo(PanelFlag panelFlag, const LayoutParams 
     if (panelFlag_ != panelFlag || IsNeedNotify(panelFlag)) {
         InputMethodAbility::GetInstance().NotifyPanelStatus(true, panelFlag);
     }
-    if (panelType_ == SOFT_KEYBOARD && panelFlag == FLG_CANDIDATE_COLUMN) {
-        PanelStatusChangeToImc(InputWindowStatus::HIDE, { 0, 0, 0, 0 });
-    }
-    panelFlag_ = panelFlag;
+    UpdatePanelFlag(panelFlag);
 }
 
 int32_t InputMethodPanel::ParseEnhancedParams(
@@ -1222,9 +1219,6 @@ int32_t InputMethodPanel::ChangePanelFlag(PanelFlag panelFlag)
         IMSA_HILOGE("STATUS_BAR cannot ChangePanelFlag!");
         return ErrorCode::ERROR_BAD_PARAMETERS;
     }
-    if (panelType_ == SOFT_KEYBOARD && panelFlag == FLG_CANDIDATE_COLUMN) {
-        PanelStatusChangeToImc(InputWindowStatus::HIDE, { 0, 0, 0, 0 });
-    }
     WindowGravity gravity = WindowGravity::WINDOW_GRAVITY_FLOAT;
     if (panelFlag == FLG_FIXED) {
         gravity = WindowGravity::WINDOW_GRAVITY_BOTTOM;
@@ -1240,7 +1234,7 @@ int32_t InputMethodPanel::ChangePanelFlag(PanelFlag panelFlag)
     if (!isScbEnable_) {
         auto ret = window_->SetWindowGravity(gravity, invalidGravityPercent);
         if (ret == WMError::WM_OK) {
-            panelFlag_ = panelFlag;
+            UpdatePanelFlag(panelFlag);
         }
         IMSA_HILOGI("flag: %{public}d, ret: %{public}d.", panelFlag, ret);
         return ret == WMError::WM_OK ? ErrorCode::NO_ERROR : ErrorCode::ERROR_OPERATE_PANEL;
@@ -1249,11 +1243,31 @@ int32_t InputMethodPanel::ChangePanelFlag(PanelFlag panelFlag)
     LayoutParams layoutParams = { enhancedParams.landscape.rect, enhancedParams.portrait.rect };
     auto ret = AdjustPanelRect(panelFlag, layoutParams);
     if (ret == ErrorCode::NO_ERROR) {
-        panelFlag_ = panelFlag;
+        UpdatePanelFlag(panelFlag);
     }
     InputMethodAbility::GetInstance().NotifyPanelStatus(true, panelFlag);
     IMSA_HILOGI("flag: %{public}d, ret: %{public}d.", panelFlag, ret);
     return ret == ErrorCode::NO_ERROR ? ErrorCode::NO_ERROR : ErrorCode::ERROR_OPERATE_PANEL;
+}
+
+void InputMethodPanel::UpdatePanelFlag(PanelFlag newPanelFlag)
+{
+    if (newPanelFlag == panelFlag_) {
+        return;
+    }
+    panelFlag_ = newPanelFlag;
+    if (isScbEnable_) {
+        return;
+    }
+    if (window_ == nullptr) {
+        IMSA_HILOGE("window_ is nullptr!");
+        return;
+    }
+    auto status = InputWindowStatus::SHOW;
+    if (!IsShowing()) {
+        status = InputWindowStatus::HIDE;
+    }
+    PanelStatusChangeToImc(InputWindowStatus::SHOW, window_->GetRect());
 }
 
 PanelType InputMethodPanel::GetPanelType()
@@ -1448,13 +1462,10 @@ void InputMethodPanel::PanelStatusChange(const InputWindowStatus &status)
     }
 }
 
-void InputMethodPanel::PanelStatusChangeToImc(const InputWindowStatus &status, const Rosen::Rect &rect)
+void InputMethodPanel::PanelStatusChangeToImc(const InputWindowStatus &newStatus, const Rosen::Rect &rect)
 {
-    ImeWindowInfo info;
-    info.panelInfo.panelType = panelType_;
-    info.panelInfo.panelFlag = panelFlag_;
-    if (info.panelInfo.panelType != SOFT_KEYBOARD || info.panelInfo.panelFlag == FLG_CANDIDATE_COLUMN) {
-        IMSA_HILOGW("no need to deal.");
+    if (panelType_ != SOFT_KEYBOARD) {
+        IMSA_HILOGW("not soft keyboard, no need to deal.");
         return;
     }
     auto proxy = ImaUtils::GetImsaProxy();
@@ -1466,22 +1477,52 @@ void InputMethodPanel::PanelStatusChangeToImc(const InputWindowStatus &status, c
         IMSA_HILOGE("window_ is nullptr!");
         return;
     }
+    auto oldImeWindowInfo = imeWindowInfo_;
+    auto oldStatus = imeWindowInfo_.status;
+    if (newStatus == oldStatus && oldStatus == InputWindowStatus::HIDE) {
+        IMSA_HILOGD("always hide!");
+        return;
+    }
+    imeWindowInfo_.status = newStatus;
+    auto oldPanelFlag = imeWindowInfo_.panelInfo.panelFlag;
+    auto newPanelFlag = panelFlag_;
+    imeWindowInfo_.panelInfo.panelFlag = panelFlag_;
+    imeWindowInfo_.panelInfo.panelType = panelType_;
+    std::string name = window_->GetWindowName() + "/" + std::to_string(window_->GetWindowId());
+    imeWindowInfo_.windowInfo.name = std::move(name);
+    imeWindowInfo_.windowInfo.displayId = GetCurDisplayId();
+
+    if (newStatus == oldStatus && oldStatus == InputWindowStatus::SHOW) {    // 一直显示
+        // flag 一直是候选词，不处理
+        if (oldPanelFlag == newPanelFlag && oldPanelFlag == PanelFlag::FLG_CANDIDATE_COLUMN) {
+            return;
+        }
+        // 切换到候选词，回调隐藏
+        if (oldPanelFlag != PanelFlag::FLG_CANDIDATE_COLUMN && newPanelFlag == FLG_CANDIDATE_COLUMN) {
+            // 回调隐藏
+            imeWindowInfo_.status = InputWindowStatus::HIDE;
+            imeWindowInfo_.panelInfo.panelFlag = oldPanelFlag;
+            return proxy->PanelStatusChange(static_cast<uint32_t>(InputWindowStatus::HIDE), imeWindowInfo_);
+        }
+    } else {        // 之前显示，现在隐藏      现在隐藏，之前显示
+        // 后选词，不处理
+        if (newPanelFlag == FLG_CANDIDATE_COLUMN){
+            return;
+        }
+    }
     auto panelRect = rect;
-    if (status == InputWindowStatus::SHOW &&
-        GetInputWindowAvoidArea(info.panelInfo.panelFlag, panelRect) != ErrorCode::NO_ERROR) {
+    if (newStatus == InputWindowStatus::SHOW
+        && GetInputWindowAvoidArea(imeWindowInfo_.panelInfo.panelFlag, panelRect) != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("GetInputWindowAvoidArea failed");
         return;
     }
-    std::string name = window_->GetWindowName() + "/" + std::to_string(window_->GetWindowId());
-    info.windowInfo.name = std::move(name);
-    info.windowInfo.left = panelRect.posX_;
-    info.windowInfo.top = panelRect.posY_;
-    info.windowInfo.width = panelRect.width_;
-    info.windowInfo.height = panelRect.height_;
-    info.windowInfo.displayId = GetCurDisplayId();
-    IMSA_HILOGD("rect: %{public}s, status: %{public}d, panelFlag: %{public}d.", panelRect.ToString().c_str(), status,
-        info.panelInfo.panelFlag);
-    proxy->PanelStatusChange(static_cast<uint32_t>(status), info);
+    imeWindowInfo_.windowInfo.left = panelRect.posX_;
+    imeWindowInfo_.windowInfo.top = panelRect.posY_;
+    imeWindowInfo_.windowInfo.width = panelRect.width_;
+    imeWindowInfo_.windowInfo.height = panelRect.height_;
+    IMSA_HILOGD("rect: %{public}s, status: %{public}d, panelFlag: %{public}d.", panelRect.ToString().c_str(),
+        newStatus, imeWindowInfo_.panelInfo.panelFlag);
+    proxy->PanelStatusChange(static_cast<uint32_t>(newStatus), imeWindowInfo_);
 }
 
 int32_t InputMethodPanel::GetInputWindowAvoidArea(PanelFlag panelFlag, Rosen::Rect &windowRect)

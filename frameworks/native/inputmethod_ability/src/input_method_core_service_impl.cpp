@@ -144,5 +144,10 @@ ErrCode InputMethodCoreServiceImpl::NotifyPreemption()
 {
     return InputMethodAbility::GetInstance().OnNotifyPreemption();
 }
+
+ErrCode InputMethodCoreServiceImpl::GetSoftKeyboardWindowInfo(ImeWindowInfo &imeWindowInfo)
+{
+    return InputMethodAbility::GetInstance().GetSoftKeyboardWindowInfo(imeWindowInfo);
+}
 } // namespace MiscServices
 } // namespace OHOS

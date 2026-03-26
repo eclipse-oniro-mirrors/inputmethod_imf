@@ -145,7 +145,7 @@ private:
     int32_t SetPanelProperties();
     std::string GeneratePanelName();
     void PanelStatusChange(const InputWindowStatus &status);
-    void PanelStatusChangeToImc(const InputWindowStatus &status, const Rosen::Rect &rect);
+    void PanelStatusChangeToImc(const InputWindowStatus &newStatus, const Rosen::Rect &rect);
     bool MarkListener(const std::string &type, bool isRegister);
     bool SetPanelSizeChangeListener(std::shared_ptr<PanelStatusListener> statusListener);
     std::shared_ptr<PanelStatusListener> GetPanelListener();
@@ -244,6 +244,7 @@ private:
     void WaitSetUIContent();
     int32_t ShowKeyboardToWms(uint32_t windowId);
     bool IsValidParamWithConfig();
+    void UpdatePanelFlag(PanelFlag newPanelFlag);
 
     sptr<OHOS::Rosen::Window> window_ = nullptr;
     sptr<OHOS::Rosen::WindowOption> winOption_ = nullptr;
@@ -309,6 +310,8 @@ private:
     std::mutex panelStatusChangeMutex_;
 
     std::atomic<bool> hasSetSize_ { false };
+
+    ImeWindowInfo imeWindowInfo_;
 };
 } // namespace MiscServices
 } // namespace OHOS

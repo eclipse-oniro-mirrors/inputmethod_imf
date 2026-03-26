@@ -21,6 +21,7 @@
 #include <set>
 
 #include "ime_event_listener.h"
+#include "input_method_utils.h"
 #include "visibility.h"
 
 namespace OHOS {
@@ -31,9 +32,9 @@ public:
     IMF_API int32_t RegisterImeEventListener(uint32_t eventFlag, const std::shared_ptr<ImeEventListener> &listener);
     IMF_API int32_t UnRegisterImeEventListener(uint32_t eventFlag, const std::shared_ptr<ImeEventListener> &listener);
     int32_t OnImeChange(const Property &property, const SubProperty &subProperty, int32_t userId);
-    int32_t OnPanelStatusChange(const InputWindowStatus &status, const ImeWindowInfo &info);
-    int32_t OnInputStart(uint32_t callingWndId, int32_t requestKeyboardReason);
-    int32_t OnInputStop();
+    int32_t OnPanelStatusChange(const ImeWindowInfo &oldInfo, const ImeWindowInfo &newInfo);
+    int32_t OnInputStart(const InputStartInfo &inputStartInfo);
+    int32_t OnInputStop(const InputStopInfo &inputStopInfo);
 
 private:
     ImeEventMonitorManagerImpl();
@@ -41,12 +42,10 @@ private:
     static constexpr uint32_t MAX_EVENT_NUM = 4;
     int32_t OnImeShow(const ImeWindowInfo &info);
     int32_t OnImeHide(const ImeWindowInfo &info);
+    int32_t OnImeWindowInfoChanged(const ImeWindowInfo &oldInfo, const ImeWindowInfo &newInfo);
     std::set<std::shared_ptr<ImeEventListener>> GetListeners(uint32_t eventMask);
     std::mutex lock_;
-    std::map<uint32_t, std::set<std::shared_ptr<ImeEventListener>>> listeners_ {};
-    bool isInputStart_ { false };
-    uint32_t callingWindow_ { 0 };
-    int32_t requestKeyboardReason_ { 0 };
+    std::map<uint32_t, std::set<std::shared_ptr<ImeEventListener>>> listeners_{};
 };
 } // namespace MiscServices
 } // namespace OHOS

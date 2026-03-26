@@ -63,7 +63,9 @@ public:
     ErrCode DisplayOptionalInputMethod() override;
     ErrCode SetCoreAndAgent(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent) override;
     ErrCode InitConnect() override;
-    ErrCode PanelStatusChange(uint32_t status, const ImeWindowInfo &info) override;
+    ErrCode PanelStatusChange(const ImeWindowInfo &oldInfo, const ImeWindowInfo &newInfo) override;
+    ErrCode OnInputStart(const InputStartInfo &inputStartInfo) override;
+    ErrCode GetSoftKeyboardWindowInfo(int32_t userId, ImeWindowInfo &imeWindowInfo) override;
     ErrCode UpdateListenEventFlag(const InputClientInfoInner &clientInfoInner, uint32_t eventFlag) override;
     ErrCode SetCallingWindow(uint32_t windowId, const sptr<IInputClient> &client) override;
     ErrCode GetInputStartInfo(bool &isInputStart, uint32_t &callingWndId, int32_t &requestKeyboardReason) override;

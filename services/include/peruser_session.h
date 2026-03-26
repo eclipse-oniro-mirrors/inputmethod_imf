@@ -130,7 +130,6 @@ public:
     int32_t OnPackageUpdated(const std::string &bundleName);
     int64_t GetCurrentClientPid(uint64_t displayId);
     int64_t GetInactiveClientPid(uint64_t displayId);
-    int32_t OnPanelStatusChange(const InputWindowStatus &status, const ImeWindowInfo &info);
     int32_t OnRegisterProxyIme(uint64_t displayId, const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent,
         int32_t pid, int32_t uid);
     int32_t OnBindImeMirror(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent);
@@ -190,6 +189,7 @@ public:
         pid_t clientPid);
     bool IsImeInUse();
     void SetSwitchInputType(bool isSwitchInputType);
+    int32_t GetSoftKeyboardWindowInfo(ImeWindowInfo &windowInfo);
 
 private:
     struct ResetManager {

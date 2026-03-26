@@ -658,6 +658,16 @@ std::shared_ptr<Property> InputMethodController::GetCurrentInputMethod(int32_t u
     return property;
 }
 
+int32_t InputMethodController::GetSoftKeyboardWindowInfo(int32_t userId, ImeWindowInfo &imeWindowInfo)
+{
+    auto proxy = GetSystemAbilityProxy();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("imsa proxy is nullptr!");
+        return ErrorCode::ERROR_SERVICE_START_FAILED;
+    }
+    return proxy->GetSoftKeyboardWindowInfo(userId, imeWindowInfo);
+}
+
 std::shared_ptr<SubProperty> InputMethodController::GetCurrentInputMethodSubtype(int32_t userId)
 {
     InputMethodSyncTrace tracer("IMC_GetCurrentInputMethodSubtype");

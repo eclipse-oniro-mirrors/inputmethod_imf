@@ -37,4 +37,5 @@ interface OHOS.MiscServices.IInputMethodCore {
     void OnCallingWindowIdChanged([in] unsigned int editorWindowId, [in] unsigned int keyboardWindowId);
     void OnSendPrivateData([in] Value value);
     void NotifyPreemption();
+    void GetSoftKeyboardWindowInfo([out] ImeWindowInfo imeWindowInfo);
 }

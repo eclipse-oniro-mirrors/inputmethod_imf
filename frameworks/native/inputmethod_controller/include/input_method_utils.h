@@ -17,13 +17,15 @@
 #define FRAMEWORKS_INPUTMETHOD_CONTROLLER_INCLUDE_INPUT_METHOD_UTILS_H
 
 #include <stdint.h>
+
 #include <variant>
 
 #include "global.h"
 #include "input_attribute.h"
+#include "input_window_info.h"
 #include "iremote_object.h"
-#include "panel_info.h"
 #include "key_event.h"
+#include "panel_info.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -566,6 +568,95 @@ struct FocusedInfo {
     uint64_t keyboardDisplayId{ ImfCommonConst::DEFAULT_DISPLAY_ID };            // keyboard in
     uint64_t keyboardDisplayGroupId{ ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID }; // keyboard in
     pid_t uiExtensionHostPid{ ImfCommonConst::INVALID_PID };
+};
+
+struct InputStartInfo : public Parcelable {
+public:
+    uint32_t keyboardWindowId{ ImfCommonConst::INVALID_WINDOW_ID };
+    RequestKeyboardReason requestKeyboardReason = RequestKeyboardReason::NONE;
+    ImeWindowInfo imeWindowInfo{};
+
+    bool ReadFromParcel(Parcel &in)
+    {
+        keyboardWindowId = in.ReadUint32();
+        auto reasonTmp = in.ReadInt32();
+        requestKeyboardReason = static_cast<RequestKeyboardReason>(reasonTmp);
+        std::unique_ptr<ImeWindowInfo> wInfo(in.ReadParcelable<ImeWindowInfo>());
+        if (wInfo == nullptr) {
+            return false;
+        }
+        imeWindowInfo = *wInfo;
+        return true;
+    }
+
+    bool Marshalling(Parcel &out) const
+    {
+        if (!out.WriteUint32(keyboardWindowId)) {
+            return false;
+        }
+        if (!out.WriteInt32(static_cast<uint32_t>(requestKeyboardReason))) {
+            return false;
+        }
+        return out.WriteParcelable(&imeWindowInfo);
+    }
+
+    static InputStartInfo *Unmarshalling(Parcel &in)
+    {
+        InputStartInfo *data = new (std::nothrow) InputStartInfo();
+        if (data && !data->ReadFromParcel(in)) {
+            delete data;
+            data = nullptr;
+        }
+        return data;
+    }
+
+    std::string ToString() const
+    {
+        std::string info;
+        info.append("[keyboardWindowId]: " + std::to_string(keyboardWindowId) + "/");
+        info.append("[requestKeyboardReason]: " + std::to_string(static_cast<int32_t>(requestKeyboardReason)) + "/");
+        info.append(imeWindowInfo.ToString());
+        return info;
+    }
+};
+
+struct InputStopInfo : public Parcelable {
+public:
+    int32_t userId{ ImfCommonConst::DEFAULT_USER_ID };
+    uint64_t displayId{ ImfCommonConst::DEFAULT_DISPLAY_ID };
+
+    bool ReadFromParcel(Parcel &in)
+    {
+        userId = in.ReadInt32();
+        displayId = in.ReadUint32();
+        return true;
+    }
+
+    bool Marshalling(Parcel &out) const
+    {
+        if (!out.WriteInt32(userId)) {
+            return false;
+        }
+        return out.WriteUint32(displayId);
+    }
+
+    static InputStartInfo *Unmarshalling(Parcel &in)
+    {
+        InputStartInfo *data = new (std::nothrow) InputStartInfo();
+        if (data && !data->ReadFromParcel(in)) {
+            delete data;
+            data = nullptr;
+        }
+        return data;
+    }
+
+    std::string ToString() const
+    {
+        std::string info;
+        info.append("[userId]: " + std::to_string(userId) + "/");
+        info.append("[displayId]: " + std::to_string(displayId));
+        return info;
+    }
 };
 } // namespace MiscServices
 } // namespace OHOS

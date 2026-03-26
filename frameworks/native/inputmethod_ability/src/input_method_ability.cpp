@@ -552,12 +552,6 @@ int32_t InputMethodAbility::ShowKeyboard(int32_t requestKeyboardReason)
     return ShowKeyboardImplWithoutLock(cmdCount);
 }
 
-int32_t InputMethodAbility::ShowKeyboardImplWithLock(int32_t cmdId)
-{
-    std::lock_guard<std::recursive_mutex> lock(keyboardCmdLock_);
-    return ShowKeyboardImplWithoutLock(cmdId);
-}
-
 int32_t InputMethodAbility::ShowKeyboardImplWithoutLock(int32_t cmdId)
 {
     if (cmdId != cmdId_) {
@@ -566,6 +560,7 @@ int32_t InputMethodAbility::ShowKeyboardImplWithoutLock(int32_t cmdId)
     }
     if (imeListener_ == nullptr) {
         IMSA_HILOGE("imeListener is nullptr!");
+        NotifyInputStartToClients(InputWindowStatus::HIDE, PanelFlag::FLG_NONE);
         return ErrorCode::ERROR_IME;
     }
     IMSA_HILOGI("IMA start.");
@@ -573,6 +568,7 @@ int32_t InputMethodAbility::ShowKeyboardImplWithoutLock(int32_t cmdId)
         auto panel = GetSoftKeyboardPanel();
         if (panel == nullptr) {
             IMSA_HILOGE("panel is nullptr!");
+            NotifyInputStartToClients(InputWindowStatus::HIDE, PanelFlag::FLG_NONE);
             return ErrorCode::ERROR_IME;
         }
         auto flag = panel->GetPanelFlag();
@@ -580,9 +576,15 @@ int32_t InputMethodAbility::ShowKeyboardImplWithoutLock(int32_t cmdId)
         if (flag == FLG_CANDIDATE_COLUMN) {
             IMSA_HILOGI("panel flag is candidate, no need to show.");
             NotifyKeyboardHeight(0, flag);
+            NotifyInputStartToClients(InputWindowStatus::HIDE, flag);
             return ErrorCode::NO_ERROR;
         }
-        return ShowPanel(panel, flag, Trigger::IMF);
+        auto ret = ShowPanel(panel, flag, Trigger::IMF);
+        auto status = ret != ErrorCode::NO_ERROR ? InputWindowStatus::SHOW : InputWindowStatus::HIDE;
+        NotifyInputStartToClients(status, flag);
+        return ret;
+    } else {
+        NotifyInputStartToClients(InputWindowStatus::HIDE, PanelFlag::FLG_NONE);
     }
     isShowAfterCreate_.store(true);
     IMSA_HILOGI("panel not create.");
@@ -592,6 +594,23 @@ int32_t InputMethodAbility::ShowKeyboardImplWithoutLock(int32_t cmdId)
     }
     imeListener_->OnKeyboardStatus(true);
     return ErrorCode::NO_ERROR;
+}
+
+void InputMethodAbility::NotifyInputStartToClients(InputWindowStatus status, PanelFlag flag)
+{
+    auto proxy = GetImsaProxy();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("imsa proxy is nullptr!");
+        return;
+    }
+    InputStartInfo info;
+    info.keyboardWindowId = GetInputAttribute().windowId;
+    info.requestKeyboardReason = GetAttachOptions().requestKeyboardReason;
+    info.imeWindowInfo.status = status;
+    info.imeWindowInfo.panelInfo.panelType = PanelType::SOFT_KEYBOARD;
+    info.imeWindowInfo.panelInfo.panelFlag = flag;
+    info.imeWindowInfo.windowInfo.displayId = GetInputAttribute().callingDisplayId;
+    return proxy->OnInputStart(info);
 }
 
 void InputMethodAbility::NotifyPanelStatusInfo(const PanelStatusInfo &info)
@@ -1983,6 +2002,23 @@ SysPanelStatus InputMethodAbility::GetSysPanelStatus()
 {
     std::lock_guard<std::mutex> lock(sysPanelStatusLock_);
     return sysPanelStatus_;
+}
+
+int32_t InputMethodAbility::GetSoftKeyboardWindowInfo(ImeWindowInfo &imeWindowInfo)
+{
+    auto panel = GetSoftKeyboardPanel();
+    if (panel == nullptr) {
+        imeWindowInfo.status = InputWindowStatus::NONE;
+        return ErrorCode::NO_ERROR;
+    }
+    imeWindowInfo.panelInfo.panelType = SOFT_KEYBOARD;
+    imeWindowInfo.panelInfo.panelFlag = panel->GetPanelFlag();
+    imeWindowInfo.status = panel->IsShowing() ? InputWindowStatus::SHOW : InputWindowStatus::NONE;
+    if (imeWindowInfo.status == InputWindowStatus::SHOW) {
+        imeWindowInfo.windowInfo.displayId = GetInputAttribute().callingDisplayId;
+    }
+    IMSA_HILOGI("windowInfo: %{public}s.", imeWindowInfo.ToString().c_str());
+    return ErrorCode::NO_ERROR;
 }
 } // namespace MiscServices
 } // namespace OHOS
