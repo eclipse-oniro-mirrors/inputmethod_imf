@@ -25,12 +25,16 @@ copy_taihe_idl("copy_taihe_deps") {
   sources = [ "idl/ohos.InputMethodSubtype.taihe" ]
 }
 
+copy_taihe_idl("copy_panel_taihe") {
+  sources = [ "idl/ohos.inputMethod.Panel.taihe" ]
+}
+
 copy_taihe_idl("inputMethod_taihe") {
-  sources = [
-    "idl/ohos.inputMethod.Panel.taihe",
-    "idl/ohos.inputMethod.taihe",
+  sources = [ "idl/ohos.inputMethod.taihe" ]
+  deps = [
+    ":copy_panel_taihe",
+    ":copy_taihe_deps",
   ]
-  deps = [ ":copy_taihe_deps" ]
 }
 
 ohos_taihe("run_taihe") {
@@ -89,8 +93,8 @@ taihe_shared_library("inputmethod_taihe_native") {
   ]
   external_deps = [
     "ability_runtime:abilitykit_native",
-    "ace_engine:ace_uicontent",
     "ability_runtime:napi_common",
+    "ace_engine:ace_uicontent",
     "bundle_framework:bms_ani_common",
     "ffrt:libffrt",
     "ipc:ipc_single",

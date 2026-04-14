@@ -59,5 +59,15 @@ bool ITypesUtil::Unmarshalling(std::string &output, MessageParcel &data)
 {
     return data.ReadString(output);
 }
+
+bool ITypesUtil::Marshalling(bool input, MessageParcel &data)
+{
+    return data.WriteBool(input);
+}
+
+bool ITypesUtil::Unmarshalling(bool &output, MessageParcel &data)
+{
+    return data.ReadBool(output);
+}
 } // namespace MiscServices
 } // namespace OHOS

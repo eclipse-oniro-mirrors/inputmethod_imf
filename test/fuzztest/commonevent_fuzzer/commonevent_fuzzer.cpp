@@ -75,8 +75,6 @@ void FuzzSwitchOperation(FuzzedDataProvider &provider)
     DelayedSingleton<InputMethodSystemAbility>::GetInstance()->UpdateUserInfo(fuzzedInt32, fuzzedUint64);
  
     DelayedSingleton<InputMethodSystemAbility>::GetInstance()->RegisterProxyIme(fuzzedUint64, core, remoteObject);
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->SwitchExtension(fuzzedInt32, info);
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->SwitchSubType(fuzzedInt32, info);
     DelayedSingleton<InputMethodSystemAbility>::GetInstance()->HandleFocusChanged(fuzzedBool,
         fuzzedUint64, fuzzedInt32, fuzzedInt32);
 }

@@ -26,7 +26,6 @@
 #include "accesstoken_kit.h"
 #include "fuzzer/FuzzedDataProvider.h"
 #include "global.h"
-#include "ime_cfg_manager.h"
 #include "input_client_service_impl.h"
 #include "input_method_controller.h"
 #include "inputmethodsystemability_fuzzer.h"

@@ -19,9 +19,12 @@
 #undef private
 
 #include <gtest/gtest.h>
+
 #include <functional>
+
 #include "global.h"
 #include "ipc_skeleton.h"
+#include "res_sched_client.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -75,6 +78,45 @@ HWTEST_F(ResSchedAdapterTest, ResSchedAdapterTest_ResetPanelStatusFlag, TestSize
     ResSchedAdapter::ResetPanelStatusFlag(pid);
     auto it = ResSchedAdapter::lastPanelStatusMap_.find(pid);
     EXPECT_EQ(it, ResSchedAdapter::lastPanelStatusMap_.end());
+}
+
+/**
+ * @tc.name: ResSchedAdapterTest_NotifyMakeImage
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(ResSchedAdapterTest, ResSchedAdapterTest_NotifyMakeImage, TestSize.Level0)
+{
+    AAFwk::Want want;
+    int32_t userId = 1000;
+    nlohmann::json expectedReply;
+
+    // report failed
+    int32_t expectedRet = 10;
+    ResourceSchedule::ResSchedClient::SetReportSyncEventRet(expectedRet);
+    auto ret = ResSchedAdapter::NotifyMakeImage(userId, want);
+    EXPECT_EQ(ret, expectedRet);
+
+    // report success, reply not contain errCode;
+    expectedRet = ErrorCode::NO_ERROR;
+    ResourceSchedule::ResSchedClient::SetReportSyncEventRet(expectedRet);
+    ResourceSchedule::ResSchedClient::SetReportSyncEventReply(expectedReply);
+    ret = ResSchedAdapter::NotifyMakeImage(userId, want);
+    EXPECT_EQ(ret, ErrorCode::ERROR_EX_SERVICE_SPECIFIC);
+
+    // contain errCode, but not number
+    expectedReply["errCode"] = "1";
+    ResourceSchedule::ResSchedClient::SetReportSyncEventReply(expectedReply);
+    ret = ResSchedAdapter::NotifyMakeImage(userId, want);
+    EXPECT_EQ(ret, ErrorCode::ERROR_EX_SERVICE_SPECIFIC);
+
+    // contain errCode, is number
+    int32_t errcode = 124;
+    expectedReply["errCode"] = errcode;
+    ResourceSchedule::ResSchedClient::SetReportSyncEventReply(expectedReply);
+    ret = ResSchedAdapter::NotifyMakeImage(userId, want);
+    EXPECT_EQ(ret, errcode);
 }
 } // namespace MiscServices
 } // namespace OHOS

@@ -21,7 +21,7 @@
 #include <set>
 
 #include "ime_event_listener.h"
-#include "input_method_utils.h"
+#include "input_status_info.h"
 #include "visibility.h"
 
 namespace OHOS {
@@ -29,8 +29,8 @@ namespace MiscServices {
 class ImeEventMonitorManagerImpl {
 public:
     IMF_API static ImeEventMonitorManagerImpl &GetInstance();
-    IMF_API int32_t RegisterImeEventListener(uint32_t eventFlag, const std::shared_ptr<ImeEventListener> &listener);
-    IMF_API int32_t UnRegisterImeEventListener(uint32_t eventFlag, const std::shared_ptr<ImeEventListener> &listener);
+    IMF_API int32_t RegisterImeEventListener(uint32_t eventFlag, std::shared_ptr<ImeEventListener> listener);
+    IMF_API int32_t UnRegisterImeEventListener(uint32_t eventFlag, std::shared_ptr<ImeEventListener> listener);
     int32_t OnImeChange(const Property &property, const SubProperty &subProperty, int32_t userId);
     int32_t OnPanelStatusChange(const ImeWindowInfo &oldInfo, const ImeWindowInfo &newInfo);
     int32_t OnInputStart(const InputStartInfo &inputStartInfo);
@@ -40,9 +40,10 @@ private:
     ImeEventMonitorManagerImpl();
     ~ImeEventMonitorManagerImpl();
     static constexpr uint32_t MAX_EVENT_NUM = 4;
+    int32_t NotifyInputStartWhenRegister(uint32_t eventFlag, std::shared_ptr<ImeEventListener> listener);
     int32_t OnImeShow(const ImeWindowInfo &info);
     int32_t OnImeHide(const ImeWindowInfo &info);
-    int32_t OnImeWindowInfoChanged(const ImeWindowInfo &oldInfo, const ImeWindowInfo &newInfo);
+    int32_t OnSoftKeyboardInfoChanged(const ImeWindowInfo &oldInfo, const ImeWindowInfo &newInfo);
     std::set<std::shared_ptr<ImeEventListener>> GetListeners(uint32_t eventMask);
     std::mutex lock_;
     std::map<uint32_t, std::set<std::shared_ptr<ImeEventListener>>> listeners_{};

@@ -24,9 +24,9 @@
 #include <unordered_set>
 #include <vector>
 
+#include "bundle_mgr_client.h"
 #include "input_method_property.h"
 #include "input_method_status.h"
-
 namespace OHOS {
 namespace MiscServices {
 struct ImeNativeCfg {
@@ -39,7 +39,6 @@ struct ImeNativeCfg {
 struct SystemConfig {
     std::string systemInputMethodConfigAbility;
     std::string defaultInputMethod;
-    std::string systemSpecialInputMethod;
     bool enableInputMethodFeature = false;
     bool enableFullExperienceFeature = false;
     EnabledStatus initEnabledState{ EnabledStatus::DISABLED };
@@ -98,7 +97,6 @@ public:
     bool IsSpecialSaUid(int32_t callingUid);
     void InitSystemConfig();
     SystemConfig GetSystemConfig();
-    std::string GetSystemSpecialIme();
     bool IsInputMethod(int32_t userId, const std::string &bundleName);
     bool IsRunningIme(int32_t userId, const std::string &bundleName);
     std::vector<std::string> GetRunningIme(int32_t userId);
@@ -126,8 +124,11 @@ public:
     void SetImeInfo(int32_t userId, const std::vector<std::shared_ptr<ImeInfo>> &imeInfos);
     std::string GetImeVersionName(int32_t userId, const std::string &bundleName);
     void SetImeVersionName(const std::string &versionName);
+    bool GetBundleInfoByBundleName(int32_t userId, const std::string &bundleName, AppExecFwk::BundleInfo &bundleInfo);
+    std::string GetSystemPanelAppIdentifier();
+
 private:
-    bool isQueryAllFullImeInfosOk_{ false };
+    bool isQueryAllFullImeInfosOk_ { false };
     std::vector<std::pair<int32_t, std::vector<FullImeInfo>>> allFullImeInfos_;
     bool isQueryFullImeInfosOk_{ false };
     std::vector<FullImeInfo> fullImeInfos_;

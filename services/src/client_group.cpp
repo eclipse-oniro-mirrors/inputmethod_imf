@@ -39,7 +39,8 @@ int32_t ClientGroup::AddClientInfo(
             { { UpdateFlag::TEXT_CONFIG, clientInfo.config }, { UpdateFlag::CLIENT_TYPE, clientInfo.type },
                 { UpdateFlag::UIEXTENSION_TOKENID, clientInfo.uiExtensionTokenId },
                 { UpdateFlag::UIEXTENSION_HOST_WINDOW_PID, clientInfo.uiExtensionHostPid },
-                { UpdateFlag::CLIENT_GROUP_ID, clientInfo.clientGroupId } });
+                { UpdateFlag::CLIENT_GROUP_ID, clientInfo.clientGroupId },
+                { UpdateFlag::REQUEST_KEYBOARD_REASON, clientInfo.requestKeyboardReason } });
         return ErrorCode::NO_ERROR;
     }
     auto info = std::make_shared<InputClientInfo>(clientInfo);
@@ -130,6 +131,10 @@ void ClientGroup::UpdateClientInfo(const sptr<IRemoteObject> &client,
             }
             case UpdateFlag::CLIENT_GROUP_ID: {
                 VariantUtil::GetValue(updateInfo.second, it->second->clientGroupId);
+                break;
+            }
+            case UpdateFlag::REQUEST_KEYBOARD_REASON: {
+                VariantUtil::GetValue(updateInfo.second, it->second->requestKeyboardReason);
                 break;
             }
             default:

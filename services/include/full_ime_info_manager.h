@@ -36,7 +36,7 @@ public:
     std::string Get(int32_t userId, uint32_t tokenId);
     bool Get(int32_t userId, const std::string &bundleName, FullImeInfo &fullImeInfo);
     bool Has(int32_t userId, const std::string &bundleName);
-    int32_t Get(int32_t userId, std::vector<Property> &props);
+    int32_t Get(int32_t userId, std::vector<Property> &props, bool containSysSpecialIme);
 
 private:
     FullImeInfoManager();

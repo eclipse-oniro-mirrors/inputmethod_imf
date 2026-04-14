@@ -17,7 +17,7 @@
 #define SERVICES_INCLUDE_IME_INFO_ENQUIRER_H
 
 #include "bundle_mgr_proxy.h"
-#include "ime_cfg_manager.h"
+#include "ime_enabled_info_manager.h"
 #include "input_method_info.h"
 #include "input_method_property.h"
 #include "resource_manager.h"
@@ -98,7 +98,6 @@ public:
     void InitDynamicStartImeCfg();
     SystemConfig GetSystemConfig();
     ImeNativeCfg GetDefaultIme();
-    std::string GetSystemSpecialIme();
     int32_t QueryFullImeInfo(std::vector<std::pair<int32_t, std::vector<FullImeInfo>>> &imeInfos);
     int32_t QueryFullImeInfo(int32_t userId, std::vector<FullImeInfo> &imeInfos, bool needBrief = false);
     int32_t GetFullImeInfo(int32_t userId, const std::string &bundleName, FullImeInfo &imeInfo);
@@ -115,6 +114,9 @@ public:
     bool GetCompatibleDeviceType(const std::string &bundleName, std::string &compatibleDeviceType);
     bool GetSaInfo(const std::string &saName, SaInfo &saInfo);
     bool IsUIExtension(int64_t pid);
+    bool IsSysIme(const std::string &bundleName);
+    bool GetBundleInfoByBundleName(int32_t userId, const std::string &bundleName, AppExecFwk::BundleInfo &bundleInfo);
+    std::string GetSystemPanelAppIdentifier();
 
 private:
     ImeInfoInquirer() = default;
@@ -125,7 +127,6 @@ private:
         const AppExecFwk::ExtensionAbilityInfo &extension, ImeTargetString target, int32_t userId);
     std::string GetStringById(const std::string &bundleName, const std::string &moduleName, const uint32_t labelId,
         const int32_t userId);
-    bool GetBundleInfoByBundleName(int32_t userId, const std::string &bundleName, AppExecFwk::BundleInfo &bundleInfo);
     std::shared_ptr<ImeInfo> GetImeInfoFromCache(const int32_t userId, const std::string &bundleName,
         const std::string &subName);
     std::shared_ptr<ImeInfo> GetImeInfoFromBundleMgr(
@@ -157,7 +158,7 @@ private:
     SystemConfig systemConfig_;
     ProductConfig productConfig_;
     std::vector<DynamicStartImeCfgItem> dynamicStartImeList_;
-    bool IsTempInputMethod(const OHOS::AppExecFwk::ExtensionAbilityInfo &extInfo);
+    bool IsSystemSpecialIme(const OHOS::AppExecFwk::ExtensionAbilityInfo &extInfo);
 };
 } // namespace MiscServices
 } // namespace OHOS

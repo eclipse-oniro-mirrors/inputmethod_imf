@@ -31,7 +31,7 @@ struct ImeExtendInfo {
 };
 
 enum class StartReason {
-    DEFALUT_START = 0,
+    DEFAULT_START = 0,
     RESTART_AFTER_DIED = 1,
 };
 
@@ -41,7 +41,7 @@ struct ImeNativeCfg {
     std::string subName;
     std::string extName;
     ImeExtendInfo imeExtendInfo;
-    StartReason startReason = StartReason::DEFALUT_START;
+    StartReason startReason = StartReason::DEFAULT_START;
 };
 struct ExtraInfo : public Serializable {
     bool isDefaultIme{ false };
@@ -145,6 +145,7 @@ public:
     std::shared_ptr<ImeNativeCfg> GetCurrentImeCfg(int32_t userId);
     std::shared_ptr<ImeNativeCfg> GetCurrentImeCfgWithCorrect(int32_t userId);
     ImeNativeCfg GetUserCfgIme(int32_t userId);
+    bool IsUserCfgIme(int32_t userId, const std::string &bundleName);
     bool IsDefaultImeSet(int32_t userId);
     /* add for compatibility that sys ime mod full experience table in it's full experience switch changed */
     void OnFullExperienceTableChanged(int32_t userId);

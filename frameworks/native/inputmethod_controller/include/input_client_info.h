@@ -34,6 +34,7 @@ enum class UpdateFlag : uint32_t {
     BIND_IME_DATA,
     UIEXTENSION_HOST_WINDOW_PID,
     CLIENT_GROUP_ID,
+    REQUEST_KEYBOARD_REASON,
 };
 enum class ImeType : int32_t {
     IME = 0,

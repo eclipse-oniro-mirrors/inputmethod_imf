@@ -52,13 +52,14 @@ using namespace Rosen;
 constexpr int32_t INVALID_USER_ID = -1;
 constexpr int32_t MAIN_USER_ID = 100;
 constexpr const uint16_t EACH_LINE_LENGTH = 500;
-constexpr int32_t PERMISSION_NUM = 6;
+constexpr int32_t PERMISSION_NUM = 7;
 constexpr int32_t FIRST_PARAM_INDEX = 0;
 constexpr int32_t SECOND_PARAM_INDEX = 1;
 constexpr int32_t THIRD_PARAM_INDEX = 2;
 constexpr int32_t FOURTH_PARAM_INDEX = 3;
 constexpr int32_t FIFTH_PARAM_INDEX = 4;
 constexpr int32_t SIXTH_PARAM_INDEX = 5;
+constexpr int32_t SEVENTH_PARAM_INDEX = 6;
 static constexpr int32_t MAX_TIMEOUT_WAIT_FOCUS = 2000;
 constexpr int32_t WAIT_CLICK_COMPLETE = 100;
 uint64_t TddUtil::selfTokenID_ = 0;
@@ -282,6 +283,7 @@ void TddUtil::GrantNativePermission()
     perms[FOURTH_PARAM_INDEX] = "ohos.permission.INJECT_INPUT_EVENT";
     perms[FIFTH_PARAM_INDEX] = "ohos.permission.GET_BUNDLE_INFO_PRIVILEGED";
     perms[SIXTH_PARAM_INDEX] = "ohos.permission.GET_RUNNING_INFO";
+    perms[SEVENTH_PARAM_INDEX] = "ohos.permission.MANAGE_LOCAL_ACCOUNTS";
     TokenInfoParams infoInstance = {
         .dcapsNum = 0,
         .permsNum = PERMISSION_NUM,
@@ -458,10 +460,8 @@ void TddUtil::InitCurrentImePermissionInfo()
         return;
     }
     currentBundleNameMock_ = property->name;
-    session->InitRealImeData({ property->name, property->id });
-    ImeCfgManager::GetInstance().imeConfigs_ = {
-        { userId, property->name + "/" + property->id, "", false }
-    };
+    sptr<AAFwk::IAbilityConnection> connection = nullptr;
+    session->InitRealImeData(connection, { property->name, property->id });
 }
 
 void TddUtil::EnabledAllIme()

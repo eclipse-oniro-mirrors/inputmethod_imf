@@ -159,7 +159,6 @@ void IdentityCheckerTest::SetUpTestCase(void)
         return;
     }
     service_->OnStart();
-    ImeCfgManager::GetInstance().imeConfigs_ = { { MAIN_USER_ID, CURRENT_IME, CURRENT_SUBNAME, false } };
     identityCheckerImpl_ = std::make_shared<IdentityCheckerImpl>();
 }
 

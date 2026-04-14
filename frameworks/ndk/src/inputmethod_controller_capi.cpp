@@ -152,10 +152,43 @@ static TextConfig ConstructTextConfig(const InputMethod_TextConfig &config)
     return textConfig;
 }
 
+static InputMethod_ErrorCode PerformAttach(InputMethod_TextEditorProxy *textEditorProxy,
+    const AttachOptions &attachOptions, const TextConfig &textConfig,
+    InputMethod_InputMethodProxy **inputMethodProxy)
+{
+    auto controller = InputMethodController::GetInstance();
+    if (controller == nullptr) {
+        IMSA_HILOGE("controller is nullptr");
+        return IME_ERR_NULL_POINTER;
+    }
+    OHOS::sptr<NativeTextChangedListener> listener = nullptr;
+    {
+        std::lock_guard<std::mutex> guard(g_textEditorProxyMapMutex);
+        if (g_inputMethodProxy != nullptr) {
+            listener = g_inputMethodProxy->listener;
+        }
+    }
+    int32_t err = controller->Attach(listener, attachOptions, textConfig, ClientType::CAPI);
+    if (err != ErrorCode::NO_ERROR) {
+        return ErrorCodeConvert(err);
+    }
+    {
+        std::lock_guard<std::mutex> guard(g_textEditorProxyMapMutex);
+        if (g_inputMethodProxy == nullptr || g_inputMethodProxy->textEditor != textEditorProxy) {
+            IMSA_HILOGE("Attach failed, g_inputMethodProxy has been updated by other thread");
+            return IME_ERR_IMCLIENT;
+        }
+        g_inputMethodProxy->attached = true;
+        *inputMethodProxy = g_inputMethodProxy;
+    }
+    return IME_ERR_OK;
+}
+
 InputMethod_ErrorCode OH_InputMethodController_AttachWithUIContext(ArkUI_ContextHandle context,
     InputMethod_TextEditorProxy *textEditorProxy, InputMethod_AttachOptions *options,
     InputMethod_InputMethodProxy **inputMethodProxy)
 {
+    IMSA_HILOGD("start");
     if (context == nullptr || (IsValidTextEditorProxy(textEditorProxy) != IME_ERR_OK) || options == nullptr ||
         inputMethodProxy == nullptr) {
         IMSA_HILOGE("invalid parameter");
@@ -181,40 +214,18 @@ InputMethod_ErrorCode OH_InputMethodController_AttachWithUIContext(ArkUI_Context
     auto textConfig = ConstructTextConfig(config);
     textConfig.windowId = windowId;
 
-    auto controller = InputMethodController::GetInstance();
-    if (controller == nullptr) {
-        IMSA_HILOGE("controller is nullptr");
-        return IME_ERR_NULL_POINTER;
-    }
-    OHOS::sptr<NativeTextChangedListener> listener = nullptr;
-    {
-        std::lock_guard<std::mutex> guard(g_textEditorProxyMapMutex);
-        if (g_inputMethodProxy != nullptr) {
-            listener = g_inputMethodProxy->listener;
-        }
-    }
     AttachOptions attachOptions;
     attachOptions.isShowKeyboard = options->showKeyboard;
     attachOptions.requestKeyboardReason =
         static_cast<RequestKeyboardReason>(static_cast<int32_t>(options->requestKeyboardReason));
-    int32_t err = controller->Attach(listener, attachOptions, textConfig, ClientType::CAPI);
-    if (err == ErrorCode::NO_ERROR) {
-        errCode = IME_ERR_OK;
-        std::lock_guard<std::mutex> guard(g_textEditorProxyMapMutex);
-        if (g_inputMethodProxy != nullptr) {
-            g_inputMethodProxy->attached = true;
-        }
-        *inputMethodProxy = g_inputMethodProxy;
-    } else {
-        errCode = ErrorCodeConvert(err);
-    }
 
-    return errCode;
+    return PerformAttach(textEditorProxy, attachOptions, textConfig, inputMethodProxy);
 }
 
 InputMethod_ErrorCode OH_InputMethodController_Attach(InputMethod_TextEditorProxy *textEditor,
     InputMethod_AttachOptions *options, InputMethod_InputMethodProxy **inputMethodProxy)
 {
+    IMSA_HILOGD("start");
     if ((IsValidTextEditorProxy(textEditor) != IME_ERR_OK) || options == nullptr || inputMethodProxy == nullptr) {
         IMSA_HILOGE("invalid parameter");
         return IME_ERR_NULL_POINTER;
@@ -230,35 +241,12 @@ InputMethod_ErrorCode OH_InputMethodController_Attach(InputMethod_TextEditorProx
 
     auto textConfig = ConstructTextConfig(config);
 
-    auto controller = InputMethodController::GetInstance();
-    if (controller == nullptr) {
-        IMSA_HILOGE("controller is nullptr");
-        return IME_ERR_NULL_POINTER;
-    }
-    OHOS::sptr<NativeTextChangedListener> listener = nullptr;
-    {
-        std::lock_guard<std::mutex> guard(g_textEditorProxyMapMutex);
-        if (g_inputMethodProxy != nullptr) {
-            listener = g_inputMethodProxy->listener;
-        }
-    }
     AttachOptions attachOptions;
     attachOptions.isShowKeyboard = options->showKeyboard;
     attachOptions.requestKeyboardReason =
         static_cast<RequestKeyboardReason>(static_cast<int32_t>(options->requestKeyboardReason));
-    int32_t err = controller->Attach(listener, attachOptions, textConfig, ClientType::CAPI);
-    if (err == ErrorCode::NO_ERROR) {
-        errCode = IME_ERR_OK;
-        std::lock_guard<std::mutex> guard(g_textEditorProxyMapMutex);
-        if (g_inputMethodProxy != nullptr) {
-            g_inputMethodProxy->attached = true;
-        }
-        *inputMethodProxy = g_inputMethodProxy;
-    } else {
-        errCode = ErrorCodeConvert(err);
-    }
 
-    return errCode;
+    return PerformAttach(textEditor, attachOptions, textConfig, inputMethodProxy);
 }
 
 void ClearInputMethodProxy(void)

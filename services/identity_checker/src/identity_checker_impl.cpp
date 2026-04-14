@@ -98,9 +98,9 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::GenerateFocusCheckRet(
     const FocusChangeInfo &focusWindowInfo, const std::vector<Rosen::FocusChangeInfo> &focusWindowInfos)
 {
     FocusedInfo focusedInfo;
-    focusedInfo.displayId = focusWindowInfo.realDisplayId_;
-    focusedInfo.windowId = static_cast<uint32_t>(focusWindowInfo.windowId_);
-    focusedInfo.displayGroupId = focusWindowInfo.displayGroupId_;
+    focusedInfo.editorDisplayId = focusWindowInfo.realDisplayId_;
+    focusedInfo.editorWindowId = static_cast<uint32_t>(focusWindowInfo.windowId_);
+    focusedInfo.editorDisplayGroupId = focusWindowInfo.displayGroupId_;
     focusedInfo.keyboardDisplayId = focusWindowInfo.realDisplayId_;
     focusedInfo.keyboardWindowId = static_cast<uint32_t>(focusWindowInfo.windowId_);
     focusedInfo.keyboardDisplayGroupId = focusWindowInfo.displayGroupId_;
@@ -349,7 +349,7 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedScbNotEnable(int64_t 
     uint32_t windowId, const sptr<IRemoteObject> &abilityToken, int32_t userId)
 {
     std::pair<bool, FocusedInfo> retInfo{ false, {} };
-    retInfo.second.windowId = windowId;
+    retInfo.second.editorWindowId = windowId;
     uint64_t displayId;
     if (abilityToken != nullptr) {
         displayId = WindowAdapter::GetDisplayIdByToken(abilityToken, userId);

@@ -50,8 +50,9 @@ public:
     void NotifyDataShareReady();
     bool IsDataShareReady();
     void Release();
-    EnabledStatus ComputeEnabledStatus(const std::string &bundleName, EnabledStatus initStatus);
-    
+    EnabledStatus ComputeEnabledStatus(
+        const std::string &bundleName, bool isSystemSpecialIme, EnabledStatus initStatus);
+
 private:
     SettingsDataUtils() = default;
     ~SettingsDataUtils();

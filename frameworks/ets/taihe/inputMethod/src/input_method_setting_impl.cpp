@@ -16,6 +16,7 @@
 
 #include "ani_common.h"
 #include "ime_event_monitor_manager_impl.h"
+#include "ime_system_channel.h"
 #include "input_method_controller.h"
 #include "input_method_event_listener.h"
 #include "js_utils.h"
@@ -492,6 +493,58 @@ void InputMethodSettingImpl::EnableInputMethodByUserId(::taihe::string_view bund
         return;
     }
     IMSA_HILOGI("EnableImeByUserId success!");
+}
+
+CursorInfo_t InputMethodSettingImpl::GetCursorInfo(taihe::optional_view<int32_t> userId)
+{
+    int32_t nativeUserId = ImfCommonConst::DEFAULT_USER_ID;
+    CursorInfo cursorInfo;
+    if (userId.has_value()) {
+        nativeUserId = userId.value();
+        if (nativeUserId < 0) {
+            int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+            set_business_error(JsUtils::Convert(errCode), "userId must be greater than or equal to 0");
+            return PropertyConverter::ConvertCursorInfo(cursorInfo);
+        }
+    }
+
+    int32_t errCode = ErrorCode::ERROR_EX_NULL_POINTER;
+    auto instance = InputMethodController::GetInstance();
+    if (instance != nullptr) {
+        errCode = instance->GetCursorInfo(cursorInfo, nativeUserId);
+    }
+    if (errCode != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetCursorInfo failed, errCode:%{public}d!", errCode);
+        set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
+        return PropertyConverter::ConvertCursorInfo(cursorInfo);
+    }
+    IMSA_HILOGI("GetCursorInfo success!");
+    return PropertyConverter::ConvertCursorInfo(cursorInfo);
+}
+
+InputMethodProperty_t InputMethodSettingImpl::GetDefaultInputMethodAbility()
+{
+    InputMethodProperty_t inputMethodProperty {};
+    std::shared_ptr<Property> property = nullptr;
+    auto channel = ImeSystemCmdChannel::GetInstance();
+    if (channel == nullptr) {
+        return inputMethodProperty;
+    }
+
+    if (!(channel->IsSystemApp())) {
+        IMSA_HILOGE("not system app");
+        taihe::set_business_error(EXCEPTION_SYSTEM_PERMISSION, JsUtils::ToMessage(EXCEPTION_SYSTEM_PERMISSION));
+        return inputMethodProperty;
+    }
+
+    int32_t ret = channel->GetDefaultImeCfg(property);
+    if (ret != ErrorCode::NO_ERROR || property == nullptr) {
+        IMSA_HILOGE("GetDefaultImeCfg failed, ret:%{public}d", ret);
+        set_business_error(EXCEPTION_IMMS, JsUtils::ToMessage(EXCEPTION_IMMS));
+        return inputMethodProperty;
+    }
+    inputMethodProperty = PropertyConverter::ConvertProperty(property);
+    return inputMethodProperty;
 }
 } // namespace MiscServices
 } // namespace OHOS

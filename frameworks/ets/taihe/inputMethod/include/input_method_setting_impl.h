@@ -50,9 +50,11 @@ public:
         ::ohos::inputMethod::EnabledState enabledState);
     void EnableInputMethodByUserId(::taihe::string_view bundleName, ::taihe::string_view extensionName,
         ::ohos::inputMethod::EnabledState enabledState, taihe::optional_view<int32_t> userId);
+    CursorInfo_t GetCursorInfo(taihe::optional_view<int32_t> userId);
+    InputMethodProperty_t GetDefaultInputMethodAbility();
 
 private:
-    PanelFlag softKbShowingFlag_{ FLG_CANDIDATE_COLUMN };
+    PanelFlag softKbShowingFlag_ { FLG_CANDIDATE_COLUMN };
     PanelFlag GetSoftKbShowingFlag();
     void SetSoftKbShowingFlag(PanelFlag flag);
     void OnPanelStatusChange(std::string const &type, const InputWindowInfo &info);
@@ -164,6 +166,14 @@ public:
     taihe::array<InputMethodProperty_t> GetAllInputMethodsSyncByUserId(taihe::optional_view<int32_t> userId)
     {
         return InputMethodSettingImpl::GetInstance().GetAllInputMethodsSyncByUserId(userId);
+    }
+    CursorInfo_t GetCursorInfo(taihe::optional_view<int32_t> userId)
+    {
+        return InputMethodSettingImpl::GetInstance().GetCursorInfo(userId);
+    }
+    InputMethodProperty_t GetDefaultInputMethodAbility()
+    {
+        return InputMethodSettingImpl::GetInstance().GetDefaultInputMethodAbility();
     }
 };
 } // namespace MiscServices

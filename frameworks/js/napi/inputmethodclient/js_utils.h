@@ -63,6 +63,7 @@ enum IMFErrorCode : int32_t {
     EXCEPTION_USER_NOT_EXIST = 12800023,
     EXCEPTION_USER_NOT_IN_FOREGROUND = 12800024,
     EXCEPTION_CROSS_USER_OPERATION_DENIED = 12800025,
+    EXCEPTION_SYSTEM_PANEL_ERROR = 12800026,
 };
 
 enum TypeCode : int32_t {
@@ -181,6 +182,7 @@ public:
     static napi_value GetValue(napi_env env, const std::vector<InputWindowInfo> &in);
     static napi_value GetValue(napi_env env, const InputWindowInfo &in);
     static napi_value GetValue(napi_env env, const Rosen::Rect &in);
+    static napi_value GetValue(napi_env env, const CursorInfo &in);
     static napi_value GetJsPrivateCommand(napi_env env, const std::unordered_map<std::string, PrivateDataValue> &in);
     static napi_value GetValue(napi_env env, const std::vector<uint8_t> &in);
     static napi_status GetValue(napi_env env, const std::string &in, napi_value &out);

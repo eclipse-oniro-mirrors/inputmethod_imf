@@ -14,6 +14,8 @@
  */
 #include "ime_event_listener_manager.h"
 
+#include <window_adapter.h>
+
 #include <cinttypes>
 
 #include "event_status_manager.h"
@@ -138,7 +140,7 @@ void ImeEventListenerManager::OnListenerDied(int32_t userId, const sptr<IInputCl
 
 int32_t ImeEventListenerManager::NotifyInputStart(int32_t userId, const InputStartInfo &inputStartInfo)
 {
-    IMSA_HILOGD("enter.");
+    IMSA_HILOGD("userId/inputStartInfo: %{public}d/%{public}s.", userId, inputStartInfo.ToString().c_str());
     auto listenerInfos = GetListenerInfo(userId);
     for (const auto &listenerInfo : listenerInfos) {
         if (listenerInfo.client == nullptr || !EventStatusManager::IsInputStatusChangedOn(listenerInfo.eventFlag)) {
@@ -147,7 +149,9 @@ int32_t ImeEventListenerManager::NotifyInputStart(int32_t userId, const InputSta
         }
         IMSA_HILOGI("pid/eventFlag: %{public}" PRId64 "/%{public}u", listenerInfo.pid, listenerInfo.eventFlag);
         auto inputStartInfoNotify = inputStartInfo;
-        inputStartInfoNotify.imeWindowInfo.windowInfo.userId = userId;
+        inputStartInfoNotify.userId = userId;
+        inputStartInfoNotify.clientInfo.displayGroupId =
+            WindowAdapter::GetInstance().GetDisplayGroupId(inputStartInfoNotify.clientInfo.displayId, userId);
         int32_t ret = listenerInfo.client->NotifyInputStart(inputStartInfoNotify);
         if (ret != ErrorCode::NO_ERROR) {
             IMSA_HILOGE("failed to notify OnInputStart, errorCode: %{public}d", ret);
@@ -157,9 +161,10 @@ int32_t ImeEventListenerManager::NotifyInputStart(int32_t userId, const InputSta
     return ErrorCode::NO_ERROR;
 }
 
-int32_t ImeEventListenerManager::NotifyInputStop(int32_t userId, uint64_t displayId)
+int32_t ImeEventListenerManager::NotifyInputStop(int32_t userId, uint64_t displayId, InputStopScene scene)
 {
-    IMSA_HILOGI("enter.");
+    IMSA_HILOGD("userId/displayId/scene: %{public}d/%{public}" PRIu64 "/%{public}u.", userId, displayId,
+        static_cast<uint32_t>(scene));
     auto listenerInfos = GetListenerInfo(userId);
     for (const auto &listenerInfo : listenerInfos) {
         if (listenerInfo.client == nullptr || !EventStatusManager::IsInputStatusChangedOn(listenerInfo.eventFlag)) {
@@ -168,7 +173,9 @@ int32_t ImeEventListenerManager::NotifyInputStop(int32_t userId, uint64_t displa
         }
         InputStopInfo info;
         info.userId = userId;
+        info.scene = scene;
         info.displayId = displayId;
+        info.displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId, userId);
         IMSA_HILOGI("pid/eventFlag: %{public}" PRId64 "/%{public}u", listenerInfo.pid, listenerInfo.eventFlag);
         int32_t ret = listenerInfo.client->NotifyInputStop(info);
         if (ret != ErrorCode::NO_ERROR) {
@@ -183,7 +190,8 @@ int32_t ImeEventListenerManager::NotifyInputStop(int32_t userId, uint64_t displa
 int32_t ImeEventListenerManager::NotifyPanelStatusChange(
     int32_t userId, const ImeWindowInfo &oldInfo, const ImeWindowInfo &newInfo)
 {
-    IMSA_HILOGI("enter.");
+    IMSA_HILOGD("userId/oldInfo/newInfo: %{public}d/%{public}s/%{public}s.", userId, oldInfo.ToString().c_str(),
+        newInfo.ToString().c_str());
     auto listenerInfos = GetListenerInfo(userId);
     for (const auto &listenerInfo : listenerInfos) {
         if (listenerInfo.client == nullptr) {
@@ -195,11 +203,11 @@ int32_t ImeEventListenerManager::NotifyPanelStatusChange(
             && !EventStatusManager::IsImeWindowInfoChangedOn(listenerInfo.eventFlag)) {
             continue;
         }
-        ImeWindowInfo oldInfoTmp = oldInfo;
-        oldInfoTmp.windowInfo.userId = userId;
-        ImeWindowInfo updatedInfo = newInfo;
-        updatedInfo.windowInfo.userId = userId;
-        int32_t ret = listenerInfo.client->OnPanelStatusChange(oldInfoTmp, updatedInfo);
+        ImeWindowInfo finalOldInfo = oldInfo;
+        finalOldInfo.windowInfo.userId = userId;
+        ImeWindowInfo finalNewInfo = newInfo;
+        finalNewInfo.windowInfo.userId = userId;
+        int32_t ret = listenerInfo.client->OnPanelStatusChange(finalOldInfo, finalNewInfo);
         if (ret != ErrorCode::NO_ERROR) {
             IMSA_HILOGE("failed to NotifyPanelStatusChange, ret: %{public}d", ret);
             continue;

@@ -26,9 +26,9 @@ namespace OHOS {
 
 void FuzzUpdateEnabledStatus(FuzzedDataProvider &provider)
 {
-    size_t size = provider.ConsumeIntegralInRange<size_t>(0, 10);
+    size_t sizeNum = provider.ConsumeIntegralInRange<size_t>(0, 10);
     auto userId = provider.ConsumeIntegral<int32_t>();
-    auto enabledStatus = static_cast<EnabledStatus>(size);
+    auto enabledStatus = static_cast<EnabledStatus>(sizeNum);
     auto fuzzedString = provider.ConsumeRandomLengthString();
     ImeEnabledInfoManager::GetInstance().Update(userId, fuzzedString, fuzzedString + "ext", enabledStatus);
 }

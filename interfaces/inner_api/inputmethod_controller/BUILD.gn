@@ -260,6 +260,7 @@ ohos_shared_library("inputmethod_client") {
   sources += filter_include(oninputstop_notify_output_values, [ "*_proxy.cpp" ])
 
   external_deps = [
+    "ability_base:want",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "cJSON:cjson",
@@ -271,7 +272,6 @@ ohos_shared_library("inputmethod_client") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
   ]
-  public_external_deps = [ "ability_base:want" ]
 
   if (imf_on_demand_start_stop_sa_enable) {
     if (defined(defines)) {
@@ -334,6 +334,7 @@ ohos_static_library("inputmethod_client_static") {
   ]
 
   external_deps = [
+    "ability_base:want",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "cJSON:cjson",
@@ -362,8 +363,6 @@ ohos_static_library("inputmethod_client_static") {
   oninputstop_notify_output_values =
       get_target_outputs(":oninputstop_notify_interface")
   sources += filter_include(oninputstop_notify_output_values, [ "*_proxy.cpp" ])
-
-  public_external_deps = [ "ability_base:want" ]
 
   subsystem_name = "inputmethod"
   part_name = "imf"
@@ -407,6 +406,7 @@ ohos_static_library("inputmethod_client_fuzz_static") {
   ]
 
   external_deps = [
+    "ability_base:want",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "cJSON:cjson",
@@ -431,8 +431,6 @@ ohos_static_library("inputmethod_client_fuzz_static") {
                               "*_proxy.cpp",
                               "*_stub.cpp",
                             ])
-
-  public_external_deps = [ "ability_base:want" ]
 
   subsystem_name = "inputmethod"
   part_name = "imf"

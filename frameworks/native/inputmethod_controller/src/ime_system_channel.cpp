@@ -97,6 +97,7 @@ int32_t ImeSystemCmdChannel::ConnectSystemCmd(const sptr<OnSystemCmdListener> &l
         IMSA_HILOGD("in connected state.");
         return ErrorCode::NO_ERROR;
     }
+    GetSmartMenuConfig();
     return RunConnectSystemCmd();
 }
 
@@ -121,12 +122,13 @@ int32_t ImeSystemCmdChannel::RunConnectSystemCmd()
     sptr<IRemoteObject> agent = nullptr;
     static constexpr uint32_t RETRY_INTERVAL = 100;
     static constexpr uint32_t BLOCK_RETRY_TIMES = 5;
-    if (!BlockRetry(RETRY_INTERVAL, BLOCK_RETRY_TIMES, [&agent, this, proxy]() -> bool {
-            int32_t ret = proxy->ConnectSystemCmd(systemChannelStub_->AsObject(), agent);
+    int32_t ret = ErrorCode::NO_ERROR;
+    if (!BlockRetry(RETRY_INTERVAL, BLOCK_RETRY_TIMES, [&agent, this, proxy, &ret]() -> bool {
+            ret = proxy->ConnectSystemCmd(systemChannelStub_->AsObject(), agent);
             return ret == ErrorCode::NO_ERROR;
         })) {
-        IMSA_HILOGE("failed to connect system cmd!");
-        return ErrorCode::ERROR_SYSTEM_CMD_CHANNEL_ERROR;
+        IMSA_HILOGE("failed to connect system cmd, ret: %{public}d", ret);
+        return ret;
     }
     OnConnectCmdReady(agent);
     IMSA_HILOGI("connect system cmd success.");
@@ -213,20 +215,13 @@ int32_t ImeSystemCmdChannel::SendPrivateCommand(
     const std::unordered_map<std::string, PrivateDataValue> &privateCommand, bool validateDefaultIme)
 {
     IMSA_HILOGD("start.");
-    if (TextConfig::IsSystemPrivateCommand(privateCommand)) {
-        if (!TextConfig::IsPrivateCommandValid(privateCommand)) {
-            IMSA_HILOGE("invalid private command size!");
-            return ErrorCode::ERROR_INVALID_PRIVATE_COMMAND_SIZE;
-        }
-        auto agent = GetSystemCmdAgent();
-        if (agent == nullptr) {
-            IMSA_HILOGE("agent is nullptr!");
-            return ErrorCode::ERROR_CLIENT_NOT_BOUND;
-        }
-        Value value(privateCommand);
-        return agent->SendPrivateCommand(value);
+    auto agent = GetSystemCmdAgent();
+    if (agent == nullptr) {
+        IMSA_HILOGE("agent is nullptr!");
+        return ErrorCode::ERROR_CLIENT_NOT_BOUND;
     }
-    return ErrorCode::ERROR_INVALID_PRIVATE_COMMAND;
+    Value value(privateCommand);
+    return agent->SendPrivateCommand(value);
 }
 // LCOV_EXCL_STOP
 int32_t ImeSystemCmdChannel::NotifyPanelStatus(const SysPanelStatus &sysPanelStatus)
@@ -239,29 +234,30 @@ int32_t ImeSystemCmdChannel::NotifyPanelStatus(const SysPanelStatus &sysPanelSta
     listener->NotifyPanelStatus(sysPanelStatus);
     return ErrorCode::NO_ERROR;
 }
-// LCOV_EXCL_START
-std::string ImeSystemCmdChannel::GetSmartMenuCfg(int32_t userId)
+
+void ImeSystemCmdChannel::GetSmartMenuConfig()
 {
     std::shared_ptr<Property> defaultIme = nullptr;
-    int32_t ret = GetDefaultImeCfg(defaultIme, userId);
+    int32_t ret = GetDefaultImeCfg(defaultIme);
     if (ret != ErrorCode::NO_ERROR || defaultIme == nullptr) {
         IMSA_HILOGE("failed to GetDefaultInputMethod!");
-        return "";
+        return;
     }
     BundleMgrClient client;
     BundleInfo bundleInfo;
     if (!client.GetBundleInfo(defaultIme->name, BundleFlag::GET_BUNDLE_WITH_EXTENSION_INFO, bundleInfo)) {
         IMSA_HILOGE("failed to GetBundleInfo!");
-        return "";
+        return;
     }
     ExtensionAbilityInfo extInfo;
     GetExtensionInfo(bundleInfo.extensionInfos, extInfo);
     std::vector<std::string> profiles;
     if (!client.GetResConfigFile(extInfo, SMART_MENU_METADATA_NAME, profiles) || profiles.empty()) {
         IMSA_HILOGE("failed to GetResConfigFile!");
-        return "";
+        return;
     }
-    return profiles[0];
+    std::unordered_map<std::string, PrivateDataValue> privateCommand = { { "smartMenu", profiles[0]} };
+    ReceivePrivateCommand(privateCommand);
 }
 
 void ImeSystemCmdChannel::GetExtensionInfo(
@@ -293,6 +289,69 @@ int32_t ImeSystemCmdChannel::GetDefaultImeCfg(std::shared_ptr<Property> &propert
     }
     property = std::make_shared<Property>(prop);
     return ret;
+}
+
+bool ImeSystemCmdChannel::IsSystemApp()
+{
+    IMSA_HILOGD("start");
+    if (isSystemApp_.load()) {
+        return true;
+    }
+    auto proxy = GetSystemAbilityProxy();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("failed to get imsa proxy!");
+        return false;
+    }
+    bool ret = false;
+    int32_t errCode = proxy->IsSystemApp(ret);
+    if (errCode != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("failed to check system app, errCode: %{public}d", errCode);
+        return false;
+    }
+    if (ret) {
+        isSystemApp_.store(true);
+    }
+    return ret;
+}
+
+// Validate user-provided private commands (excluding system-added fields like 'sys_cmd')
+// This ensures user commands comply with the spec: max 5 commands, 32KB total size
+bool ImeSystemCmdChannel::IsUserPrivateCommandValid(
+    const std::unordered_map<std::string, PrivateDataValue> &privateCommand)
+{
+    if (privateCommand.empty()) {
+        IMSA_HILOGE("privateCommand is empty.");
+        return false;
+    }
+    if (privateCommand.size() > MAX_PRIVATE_COMMAND_COUNT) {
+        IMSA_HILOGE("User command size must be less than or equal to 5.");
+        return false;
+    }
+    size_t totalSize = 0;
+    for (const auto &iter : privateCommand) {
+        size_t keySize = iter.first.size();
+        size_t idx = iter.second.index();
+        size_t valueSize = 0;
+
+        if (idx == static_cast<size_t>(PrivateDataValueType::VALUE_TYPE_STRING)) {
+            auto stringValue = std::get_if<std::string>(&iter.second);
+            if (stringValue == nullptr) {
+                IMSA_HILOGE("get stringValue failed.");
+                return false;
+            }
+            valueSize = (*stringValue).size();
+        } else if (idx == static_cast<size_t>(PrivateDataValueType::VALUE_TYPE_BOOL)) {
+            valueSize = sizeof(bool);
+        } else if (idx == static_cast<size_t>(PrivateDataValueType::VALUE_TYPE_NUMBER)) {
+            valueSize = sizeof(int32_t);
+        }
+        totalSize = totalSize + keySize + valueSize;
+    }
+    if (totalSize > MAX_PRIVATE_COMMAND_SIZE) {
+        IMSA_HILOGE("totalSize : %{public}zu", totalSize);
+        return false;
+    }
+    return true;
 }
 // LCOV_EXCL_STOP
 } // namespace MiscServices

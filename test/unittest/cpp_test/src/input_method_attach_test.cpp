@@ -894,5 +894,117 @@ HWTEST_F(InputMethodAttachTest, testOninputstop001, TestSize.Level0)
     ret = inputMethodController_->Close();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 }
+
+/**
+ * @tc.name: testGetCursorInfo_001
+ * @tc.desc: IMC test GetCursorInfo with default userId
+ * @tc.type: IMC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodAttachTest, testGetCursorInfo_001, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testGetCursorInfo_001 Test START");
+    sptr<OnTextChangedListener> textListener = new TextListener();
+    CursorInfo cursor = { 1.0, 10.0, 2.0, 7.0, 0 };
+    Range selectionRange = { 1, 2 };
+    InputAttribute attribute = { 1, 1 };
+    uint32_t windowId = 10;
+    TextConfig textConfig = {
+        .inputAttribute = attribute, .cursorInfo = cursor, .range = selectionRange, .windowId = windowId
+    };
+    inputMethodController_->Attach(textListener, false, textConfig);
+
+    CursorInfo cursorInfo;
+    int32_t userId = 100; // Default user ID for testing
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetSystemApp(true);
+
+    auto ret = inputMethodController_->GetCursorInfo(cursorInfo, userId);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    IMSA_HILOGI("cursorInfo0: left=%{public}f, top=%{public}f, width=%{public}f, height=%{public}f.",
+        cursorInfo.left, cursorInfo.top, cursorInfo.width, cursorInfo.height);
+    EXPECT_TRUE(cursorInfo == cursor);
+
+    ret = inputMethodController_->GetCursorInfo(cursorInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    IMSA_HILOGI("cursorInfo1: left=%{public}f, top=%{public}f, width=%{public}f, height=%{public}f.",
+        cursorInfo.left, cursorInfo.top, cursorInfo.width, cursorInfo.height);
+    EXPECT_TRUE(cursorInfo == cursor);
+
+    IdentityCheckerMock::ResetParam();
+}
+
+/**
+ * @tc.name: testGetCursorInfo_002
+ * @tc.desc: IMC test GetCursorInfo without system permission
+ * @tc.type: IMC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodAttachTest, testGetCursorInfo_002, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testGetCursorInfo_002 Test START");
+    sptr<OnTextChangedListener> textListener = new TextListener();
+    InputAttribute inputAttribute = { .isTextPreviewSupported = false };
+    inputMethodController_->Attach(textListener, false, inputAttribute);
+
+    CursorInfo cursorInfo;
+    int32_t userId = 100;
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetSystemApp(false); // Not system app
+
+    auto ret = inputMethodController_->GetCursorInfo(cursorInfo, userId);
+
+    EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+
+    IdentityCheckerMock::ResetParam();
+}
+
+/**
+ * @tc.name: testGetCursorInfo_003
+ * @tc.desc: IMC test GetCursorInfo with different userId
+ * @tc.type: IMC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodAttachTest, testGetCursorInfo_003, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testGetCursorInfo_003 Test START");
+    sptr<OnTextChangedListener> textListener = new TextListener();
+    InputAttribute inputAttribute = { .isTextPreviewSupported = false };
+    inputMethodController_->Attach(textListener, false, inputAttribute);
+    CursorInfo cursorInfo;
+    int32_t userId = 133; // Different user ID
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetSystemApp(true);
+
+    auto ret = inputMethodController_->GetCursorInfo(cursorInfo, userId);
+
+    EXPECT_EQ(ret, ErrorCode::ERROR_USER_NOT_EXIST);
+
+    IdentityCheckerMock::ResetParam();
+}
+
+/**
+ * @tc.name: testGetCursorInfo_004
+ * @tc.desc: IMC test GetCursorInfo without attach
+ * @tc.type: IMC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodAttachTest, testGetCursorInfo_004, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testGetCursorInfo_004 Test START");
+    inputMethodController_->Close();
+
+    CursorInfo cursorInfo;
+    int32_t userId = 100;
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetSystemApp(true);
+
+    auto ret = inputMethodController_->GetCursorInfo(cursorInfo, userId);
+
+    // Should return error when not attached
+    EXPECT_NE(ret, ErrorCode::NO_ERROR);
+
+    IdentityCheckerMock::ResetParam();
+}
 } // namespace MiscServices
 } // namespace OHOS

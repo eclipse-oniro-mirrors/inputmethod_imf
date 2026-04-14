@@ -16,6 +16,7 @@
 #ifndef SERVICES_INCLUDE_OS_ACCOUNT_ADAPTER_H
 #define SERVICES_INCLUDE_OS_ACCOUNT_ADAPTER_H
 
+#include <atomic>
 #include <cstdint>
 #include <vector>
 
@@ -30,10 +31,12 @@ public:
     static std::vector<int32_t> QueryActiveOsAccountIds();
     static bool IsOsAccountForeground(int32_t userId);
     static int32_t IsOsAccountVerified(int32_t userId, bool &isUnlocked);
-
+    static void SetIsOsAccountVerified(int32_t returnValue, bool isUnlocked);
 private:
     static constexpr uint32_t RETRY_INTERVAL = 100;
     static constexpr uint32_t BLOCK_RETRY_TIMES = 10;
+    static std::atomic<bool> isVerified_;
+    static int32_t isOsAccountVerifiedRet_;
 };
 } // namespace MiscServices
 } // namespace OHOS

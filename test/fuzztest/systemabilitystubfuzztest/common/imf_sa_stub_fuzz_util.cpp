@@ -18,7 +18,6 @@
 #include "accesstoken_kit.h"
 #include "fuzzer/FuzzedDataProvider.h"
 #include "global.h"
-#include "ime_cfg_manager.h"
 #include "input_client_service_impl.h"
 #include "input_method_agent_service_impl.h"
 #include "input_method_core_service_impl.h"
@@ -145,7 +144,6 @@ void ImfSaStubFuzzUtil::Initialize()
     DelayedSingleton<InputMethodSystemAbility>::GetInstance()->Initialize();
     DelayedSingleton<InputMethodSystemAbility>::GetInstance()->InitServiceHandler();
     DelayedSingleton<InputMethodSystemAbility>::GetInstance()->state_ = ServiceRunningState::STATE_RUNNING;
-    ImeCfgManager::GetInstance().Init();
     DelayedSingleton<InputMethodSystemAbility>::GetInstance()->SubscribeCommonEvent();
     int32_t ret = DelayedSingleton<InputMethodSystemAbility>::GetInstance()->InitKeyEventMonitor();
     IMSA_HILOGI("init KeyEvent monitor %{public}s", ret == ErrorCode::NO_ERROR ? "success" : "failed");

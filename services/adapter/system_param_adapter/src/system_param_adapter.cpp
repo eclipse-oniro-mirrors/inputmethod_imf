@@ -46,6 +46,11 @@ bool SystemParamAdapter::GetBoolParam(const std::string &key)
     return system::GetBoolParameter(key, false);
 }
 
+bool SystemParamAdapter::IsInLowMemWaterMark()
+{
+    return GetBoolParam(SystemParamAdapter::MEMORY_WATERMARK_KEY);
+}
+
 void SystemParamAdapter::OnLanguageChange(const char *key, const char *value, void *context)
 {
     HandleSysParamChanged(key, value, SYSTEM_LANGUAGE_KEY, MessageID::MSG_ID_SYS_LANGUAGE_CHANGED);

@@ -38,11 +38,12 @@ napi_value JsKeyboardPanelManager::Init(napi_env env, napi_value info)
 {
     napi_property_descriptor descriptor[] = {
         DECLARE_NAPI_FUNCTION("sendPrivateCommand", SendPrivateCommand),
-        DECLARE_NAPI_FUNCTION("getSmartMenuCfg", GetSmartMenuCfg),
-        DECLARE_NAPI_FUNCTION("on", Subscribe),
-        DECLARE_NAPI_FUNCTION("off", UnSubscribe),
-        DECLARE_NAPI_FUNCTION("getDefaultInputMethod", GetDefaultInputMethod),
-        DECLARE_NAPI_FUNCTION("connectSystemCmd", ConnectSystemCmd),
+        DECLARE_NAPI_FUNCTION("connectSystemChannel", ConnectSystemChannel),
+        DECLARE_NAPI_FUNCTION("onSystemPrivateCommand", OnSystemPrivateCommand),
+        DECLARE_NAPI_FUNCTION("offSystemPrivateCommand", OffSystemPrivateCommand),
+        DECLARE_NAPI_FUNCTION("onSystemPanelStatusChange", OnSystemPanelStatusChange),
+        DECLARE_NAPI_FUNCTION("offSystemPanelStatusChange", OffSystemPanelStatusChange),
+        DECLARE_NAPI_STATIC_PROPERTY("InputMethodInputType", GetJsInputMethodInputType(env)),
     };
     IMF_CALL(
         napi_define_properties(env, info, sizeof(descriptor) / sizeof(napi_property_descriptor), descriptor));
@@ -72,7 +73,27 @@ struct PanelManagerContext : public AsyncCall::Context {
     }
 };
 
-napi_value JsKeyboardPanelManager::ConnectSystemCmd(napi_env env, napi_callback_info info)
+napi_value JsKeyboardPanelManager::GetJsInputMethodInputType(napi_env env)
+{
+    napi_value inputMethodInputType = nullptr;
+    IMF_CALL(napi_create_object(env, &inputMethodInputType));
+    bool ret = JsUtil::Object::WriteProperty(env, inputMethodInputType, "NONE", static_cast<int32_t>(InputType::NONE));
+    ret = ret &&
+        JsUtil::Object::WriteProperty(
+            env, inputMethodInputType, "CAMERA_INPUT", static_cast<int32_t>(InputType::CAMERA_INPUT));
+    ret = ret &&
+        JsUtil::Object::WriteProperty(
+            env, inputMethodInputType, "SECURITY_INPUT", static_cast<int32_t>(InputType::SECURITY_INPUT));
+    ret = ret &&
+        JsUtil::Object::WriteProperty(
+            env, inputMethodInputType, "VOICE_INPUT", static_cast<int32_t>(InputType::VOICE_INPUT));
+    ret = ret &&
+        JsUtil::Object::WriteProperty(
+            env, inputMethodInputType, "FLOATING_VOICE_INPUT", static_cast<int32_t>(InputType::VOICEKB_INPUT));
+    return ret ? inputMethodInputType : JsUtil::Const::Null(env);
+}
+
+napi_value JsKeyboardPanelManager::ConnectSystemChannel(napi_env env, napi_callback_info info)
 {
     auto ctxt = std::make_shared<PanelManagerContext>();
     auto manager = JsKeyboardPanelManager::GetInstance();
@@ -89,72 +110,120 @@ napi_value JsKeyboardPanelManager::ConnectSystemCmd(napi_env env, napi_callback_
             return;
         }
         auto ret = channel->ConnectSystemCmd(manager);
+        if (ret != ErrorCode::NO_ERROR && ret != ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION &&
+            ret != ErrorCode::ERROR_STATUS_PERMISSION_DENIED && ret != ErrorCode::ERROR_SYSTEM_PANEL_ERROR) {
+            ret = ErrorCode::ERROR_IMSA_NULLPTR;
+        }
         ctxt->SetErrorCode(ret);
-        CHECK_RETURN_VOID(ret == ErrorCode::NO_ERROR, "ConnectSystemCmd return error!");
+        CHECK_RETURN_VOID(ret == ErrorCode::NO_ERROR, "ConnectSystemChannel return error!");
         ctxt->SetState(napi_ok);
     };
-    // 0 means JsAPI:ConnectSystemCmd has 0 params at most.
+    // 0 means JsAPI:ConnectSystemChannel has 0 params at most.
     AsyncCall asyncCall(env, info, ctxt, 0);
-    return asyncCall.Call(env, exec, "ConnectSystemCmd");
+    return asyncCall.Call(env, exec, "ConnectSystemChannel");
 }
 
-napi_value JsKeyboardPanelManager::Subscribe(napi_env env, napi_callback_info info)
+napi_value JsKeyboardPanelManager::OnSystemPrivateCommand(napi_env env, napi_callback_info info)
 {
-    size_t argc = 2; // has 2 param
-    napi_value argv[2] = { nullptr };
+    IMSA_HILOGD("OnSystemPrivateCommand start");
+    size_t argc = 1; // has 1 param
+    napi_value argv[1] = { nullptr };
     napi_value thisVar = nullptr;
     void *data = nullptr;
     IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
-    std::string type;
-    // 2 means least param num.
-    if (argc < 2 || !JsUtil::GetValue(env, argv[0], type) ||
-        !EventChecker::IsValidEventType(EventSubscribeModule::KEYBOARD_PANEL_MANAGER, type) ||
-        JsUtil::GetType(env, argv[1]) != napi_function) {
-        IMSA_HILOGE("subscribe failed, type: %{public}s!", type.c_str());
-        return nullptr;
+    if (argc < 1 || JsUtil::GetType(env, argv[0]) != napi_function) {
+        IMSA_HILOGE("OnSystemPrivateCommand failed, invalid callback!");
+        return JsUtil::Const::Null(env);
     }
     auto manager = JsKeyboardPanelManager::GetInstance();
     if (manager == nullptr) {
         IMSA_HILOGE("manager is nullptr!");
-        return nullptr;
+        return JsUtil::Const::Null(env);
     }
-    IMSA_HILOGD("subscribe type: %{public}s.", type.c_str());
+    std::string type = "systemPrivateCommand";
+    IMSA_HILOGD("OnSystemPrivateCommand register type: %{public}s.", type.c_str());
     std::shared_ptr<JSCallbackObject> callback =
-        std::make_shared<JSCallbackObject>(env, argv[1], std::this_thread::get_id(),
+        std::make_shared<JSCallbackObject>(env, argv[0], std::this_thread::get_id(),
             AppExecFwk::EventHandler::Current());
-    manager->RegisterListener(argv[1], type, callback);
+    manager->RegisterListener(argv[0], type, callback);
     return JsUtil::Const::Null(env);
 }
 
-napi_value JsKeyboardPanelManager::UnSubscribe(napi_env env, napi_callback_info info)
+napi_value JsKeyboardPanelManager::OffSystemPrivateCommand(napi_env env, napi_callback_info info)
 {
-    size_t argc = 2; // has 2 param
-    napi_value argv[2] = { nullptr };
+    IMSA_HILOGD("OffSystemPrivateCommand start");
+    size_t argc = 1; // has 1 param
+    napi_value argv[1] = { nullptr };
     napi_value thisVar = nullptr;
     void *data = nullptr;
     IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
-    std::string type;
-    // 1 means least param num.
-    if (argc < 1 || !JsUtil::GetValue(env, argv[0], type) ||
-        !EventChecker::IsValidEventType(EventSubscribeModule::KEYBOARD_PANEL_MANAGER, type)) {
-        IMSA_HILOGE("unsubscribe failed, type: %{public}s!", type.c_str());
-        return nullptr;
+    auto manager = JsKeyboardPanelManager::GetInstance();
+    if (manager == nullptr) {
+        IMSA_HILOGE("manager is nullptr!");
+        return JsUtil::Const::Null(env);
+    }
+    std::string type = "systemPrivateCommand";
+    // if the param is not napi_function/napi_null/napi_undefined, return
+    auto paramType = JsUtil::GetType(env, argv[0]);
+    if (paramType != napi_function && paramType != napi_null && paramType != napi_undefined) {
+        return JsUtil::Const::Null(env);
+    }
+    // if the param is napi_function, delete it, else delete all
+    argv[0] = paramType == napi_function ? argv[0] : nullptr;
+    IMSA_HILOGD("OffSystemPrivateCommand unregister type: %{public}s.", type.c_str());
+    manager->UnRegisterListener(argv[0], type, env);
+    return JsUtil::Const::Null(env);
+}
+
+napi_value JsKeyboardPanelManager::OnSystemPanelStatusChange(napi_env env, napi_callback_info info)
+{
+    IMSA_HILOGD("OnSystemPanelStatusChange start");
+    size_t argc = 1; // has 1 param
+    napi_value argv[1] = { nullptr };
+    napi_value thisVar = nullptr;
+    void *data = nullptr;
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
+    if (argc < 1 || JsUtil::GetType(env, argv[0]) != napi_function) {
+        IMSA_HILOGE("OnSystemPanelStatusChange failed, invalid callback!");
+        return JsUtil::Const::Null(env);
     }
     auto manager = JsKeyboardPanelManager::GetInstance();
     if (manager == nullptr) {
         IMSA_HILOGE("manager is nullptr!");
-        return nullptr;
+        return JsUtil::Const::Null(env);
     }
-    // if the second param is not napi_function/napi_null/napi_undefined, return
-    auto paramType = JsUtil::GetType(env, argv[1]);
-    if (paramType != napi_function && paramType != napi_null && paramType != napi_undefined) {
-        return nullptr;
-    }
-    // if the second param is napi_function, delete it, else delete all
-    argv[1] = paramType == napi_function ? argv[1] : nullptr;
+    std::string type = "systemPanelStatusChange";
+    IMSA_HILOGD("OnSystemPanelStatusChange register type: %{public}s.", type.c_str());
+    std::shared_ptr<JSCallbackObject> callback =
+        std::make_shared<JSCallbackObject>(env, argv[0], std::this_thread::get_id(),
+            AppExecFwk::EventHandler::Current());
+    manager->RegisterListener(argv[0], type, callback);
+    return JsUtil::Const::Null(env);
+}
 
-    IMSA_HILOGD("unsubscribe type: %{public}s.", type.c_str());
-    manager->UnRegisterListener(argv[1], type);
+napi_value JsKeyboardPanelManager::OffSystemPanelStatusChange(napi_env env, napi_callback_info info)
+{
+    IMSA_HILOGD("OffSystemPanelStatusChange start");
+    size_t argc = 1; // has 1 param
+    napi_value argv[1] = { nullptr };
+    napi_value thisVar = nullptr;
+    void *data = nullptr;
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
+    auto manager = JsKeyboardPanelManager::GetInstance();
+    if (manager == nullptr) {
+        IMSA_HILOGE("manager is nullptr!");
+        return JsUtil::Const::Null(env);
+    }
+    std::string type = "systemPanelStatusChange";
+    // if the param is not napi_function/napi_null/napi_undefined, return
+    auto paramType = JsUtil::GetType(env, argv[0]);
+    if (paramType != napi_function && paramType != napi_null && paramType != napi_undefined) {
+        return JsUtil::Const::Null(env);
+    }
+    // if the param is napi_function, delete it, else delete all
+    argv[0] = paramType == napi_function ? argv[0] : nullptr;
+    IMSA_HILOGD("OffSystemPanelStatusChange unregister type: %{public}s.", type.c_str());
+    manager->UnRegisterListener(argv[0], type, env);
     return JsUtil::Const::Null(env);
 }
 
@@ -162,6 +231,10 @@ void JsKeyboardPanelManager::RegisterListener(napi_value callback, std::string t
     std::shared_ptr<JSCallbackObject> callbackObj)
 {
     IMSA_HILOGD("register listener: %{public}s.", type.c_str());
+    auto channel = ImeSystemCmdChannel::GetInstance();
+    CHECK_RETURN_VOID(channel != nullptr, "channel is nullptr");
+    RESULT_CHECK_RETURN_VOID(callbackObj->env_, channel->IsSystemApp(), EXCEPTION_SYSTEM_PERMISSION, "", TYPE_NONE);
+
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     if (jsCbMap_.empty() || jsCbMap_.find(type) == jsCbMap_.end()) {
         IMSA_HILOGD("methodName: %{public}s is not registered!", type.c_str());
@@ -182,9 +255,13 @@ void JsKeyboardPanelManager::RegisterListener(napi_value callback, std::string t
     jsCbMap_[type].push_back(std::move(callbackObj));
 }
 
-void JsKeyboardPanelManager::UnRegisterListener(napi_value callback, std::string type)
+void JsKeyboardPanelManager::UnRegisterListener(napi_value callback, std::string type, napi_env env)
 {
     IMSA_HILOGI("event: %{public}s.", type.c_str());
+    auto channel = ImeSystemCmdChannel::GetInstance();
+    CHECK_RETURN_VOID(channel != nullptr, "channel is nullptr");
+    RESULT_CHECK_RETURN_VOID(env, channel->IsSystemApp(), EXCEPTION_SYSTEM_PERMISSION, "", TYPE_NONE);
+
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     if (jsCbMap_.empty() || jsCbMap_.find(type) == jsCbMap_.end()) {
         IMSA_HILOGE("methodName: %{public}s already unRegistered!", type.c_str());
@@ -209,38 +286,20 @@ void JsKeyboardPanelManager::UnRegisterListener(napi_value callback, std::string
     }
 }
 
-napi_value JsKeyboardPanelManager::GetSmartMenuCfg(napi_env env, napi_callback_info info)
-{
-    auto ctxt = std::make_shared<SmartMenuContext>();
-    auto output = [ctxt](napi_env env, napi_value *result) -> napi_status {
-        *result = JsUtil::GetValue(env, ctxt->smartMenu);
-        return napi_ok;
-    };
-    auto exec = [ctxt](AsyncCall::Context *ctx) {
-        auto channel = ImeSystemCmdChannel::GetInstance();
-        if (channel == nullptr) {
-            ctxt->SetState(napi_generic_failure);
-            ctxt->smartMenu = {};
-            ctxt->SetErrorCode(ErrorCode::ERROR_NULL_POINTER);
-            return;
-        }
-        ctxt->smartMenu = channel->GetSmartMenuCfg();
-        ctxt->SetState(napi_ok);
-    };
-    ctxt->SetAction(nullptr, std::move(output));
-    // 1 means JsAPI:displayOptionalInputMethod has 1 params at most.
-    AsyncCall asyncCall(env, info, ctxt, 1);
-    return asyncCall.Call(env, exec, "GetSmartMenuCfg");
-}
-
 napi_value JsKeyboardPanelManager::SendPrivateCommand(napi_env env, napi_callback_info info)
 {
     auto ctxt = std::make_shared<SendPrivateCommandContext>();
     auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
+        auto channel = ImeSystemCmdChannel::GetInstance();
+        CHECK_RETURN(channel != nullptr, "SendPrivateCommand channel is nullptr", napi_generic_failure);
+        RESULT_CHECK_RETURN(
+            env, channel->IsSystemApp(), EXCEPTION_SYSTEM_PERMISSION, "", TYPE_NONE, napi_generic_failure);
         PARAM_CHECK_RETURN(env, argc > 0, "at least one parameter is required!", TYPE_NONE, napi_generic_failure);
         CHECK_RETURN(JsUtils::GetValue(env, argv[0], ctxt->privateCommand) == napi_ok,
             "commandData covert failed, type must be Record<string, CommandDataType>", napi_generic_failure);
-        if (!TextConfig::IsPrivateCommandValid(ctxt->privateCommand)) {
+        // Validate user-provided commands BEFORE adding sys_cmd field
+        // This ensures user commands comply with spec: max 5 commands, 32KB total size
+        if (!ImeSystemCmdChannel::IsUserPrivateCommandValid(ctxt->privateCommand)) {
             PARAM_CHECK_RETURN(env, false, "commandData size limit 32KB, count limit 5.", TYPE_NONE,
                 napi_generic_failure);
         }
@@ -254,14 +313,17 @@ napi_value JsKeyboardPanelManager::SendPrivateCommand(napi_env env, napi_callbac
         auto channel = ImeSystemCmdChannel::GetInstance();
         if (channel == nullptr) {
             ctxt->SetState(napi_generic_failure);
+            privateCommandQueue_.Pop();
             return;
         }
+        ctxt->privateCommand["sys_cmd"] = 1;
         int32_t code = channel->SendPrivateCommand(ctxt->privateCommand);
         privateCommandQueue_.Pop();
         if (code == ErrorCode::NO_ERROR) {
             ctxt->SetState(napi_ok);
         } else {
-            ctxt->SetErrorCode(code);
+            IMSA_HILOGE("SendPrivateCommand failed, code: %{public}d", code);
+            ctxt->SetErrorCode(ErrorCode::ERROR_SYSTEM_PANEL_ERROR);
         }
     };
     ctxt->SetAction(std::move(input), std::move(output));
@@ -270,45 +332,11 @@ napi_value JsKeyboardPanelManager::SendPrivateCommand(napi_env env, napi_callbac
     return asyncCall.Call(env, exec, "SendPrivateCommand");
 }
 
-napi_value JsKeyboardPanelManager::GetDefaultInputMethod(napi_env env, napi_callback_info info)
-{
-    std::shared_ptr<Property> property;
-    auto channel = ImeSystemCmdChannel::GetInstance();
-    if (channel == nullptr) {
-        return nullptr;
-    }
-    int32_t ret = channel->GetDefaultImeCfg(property);
-    if (ret != ErrorCode::NO_ERROR || property == nullptr) {
-        IMSA_HILOGE("GetDefaultImeCfg failed or property is nullptr ret: %{public}d!", ret);
-        return nullptr;
-    }
-    return GetJsInputMethodProperty(env, *property);
-}
-
-napi_value JsKeyboardPanelManager::GetJsInputMethodProperty(napi_env env, const Property &property)
-{
-    napi_value obj = nullptr;
-    napi_create_object(env, &obj);
-
-    auto ret = JsUtil::Object::WriteProperty(env, obj, "packageName", property.name);
-    ret = ret && JsUtil::Object::WriteProperty(env, obj, "name", property.name);
-    ret = ret && JsUtil::Object::WriteProperty(env, obj, "methodId", property.id);
-    ret = ret && JsUtil::Object::WriteProperty(env, obj, "id", property.id);
-    ret = ret && JsUtil::Object::WriteProperty(env, obj, "icon", property.icon);
-    ret = ret && JsUtil::Object::WriteProperty(env, obj, "iconId", property.iconId);
-    ret = ret && JsUtil::Object::WriteProperty(env, obj, "label", property.label);
-    ret = ret && JsUtil::Object::WriteProperty(env, obj, "labelId", property.labelId);
-    if (!ret) {
-        IMSA_HILOGE("init module inputMethod.Panel.PanelType failed, ret: %{public}d", ret);
-    }
-    return obj;
-}
-
 void JsKeyboardPanelManager::ReceivePrivateCommand(
     const std::unordered_map<std::string, PrivateDataValue> &privateCommand)
 {
     IMSA_HILOGD("start.");
-    std::string type = "panelPrivateCommand";
+    std::string type = "systemPrivateCommand";
     auto entry = GetEntry(type, [&privateCommand](UvEntry &entry) { entry.privateCommand = privateCommand; });
     if (entry == nullptr) {
         return;
@@ -342,7 +370,7 @@ void JsKeyboardPanelManager::ReceivePrivateCommand(
 void JsKeyboardPanelManager::NotifyPanelStatus(const SysPanelStatus &sysPanelStatus)
 {
     IMSA_HILOGD("start");
-    std::string type = "isPanelShow";
+    std::string type = "systemPanelStatusChange";
     auto entry =
         GetEntry(type, [sysPanelStatus](UvEntry &entry) { entry.sysPanelStatus = sysPanelStatus; });
     if (entry == nullptr) {
@@ -403,25 +431,12 @@ std::shared_ptr<JsKeyboardPanelManager::UvEntry> JsKeyboardPanelManager::GetEntr
     return entry;
 }
 
-napi_value JsPanelShadow::Write(napi_env env, const Shadow &in)
-{
-    napi_value jsObject = nullptr;
-    napi_create_object(env, &jsObject);
-    bool ret = JsUtil::Object::WriteProperty(env, jsObject, "radius", in.radius);
-    ret = ret && JsUtil::Object::WriteProperty(env, jsObject, "color", in.color);
-    ret = ret && JsUtil::Object::WriteProperty(env, jsObject, "offsetX", in.offsetX);
-    ret = ret && JsUtil::Object::WriteProperty(env, jsObject, "offsetY", in.offsetY);
-    return ret ? jsObject : JsUtil::Const::Null(env);
-}
-
 napi_value JsPanelStatus::Write(napi_env env, const SysPanelStatus &in)
 {
     napi_value jsObject = nullptr;
     napi_create_object(env, &jsObject);
     bool ret = JsUtil::Object::WriteProperty(env, jsObject, "inputType", static_cast<int32_t>(in.inputType));
-    ret = ret && JsUtil::Object::WriteProperty(env, jsObject, "flag", in.flag);
-    ret = ret && JsUtil::Object::WriteProperty(env, jsObject, "width", in.width);
-    ret = ret && JsUtil::Object::WriteProperty(env, jsObject, "height", in.height);
+    ret = ret && JsUtil::Object::WriteProperty(env, jsObject, "panelFlag", in.flag);
     ret = ret && JsUtil::Object::WriteProperty(env, jsObject, "isPanelRaised", in.isPanelRaised);
     ret = ret && JsUtil::Object::WriteProperty(env, jsObject, "needFuncButton", in.needFuncButton);
     return ret ? jsObject : JsUtil::Const::Null(env);

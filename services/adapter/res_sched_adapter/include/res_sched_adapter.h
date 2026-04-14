@@ -21,10 +21,12 @@
 #include <mutex>
 #include <string>
 
+#include "want.h"
 namespace OHOS {
 namespace MiscServices {
 class ResSchedAdapter final {
 public:
+    static int32_t NotifyMakeImage(int32_t userId, const AAFwk::Want &want);
     static void NotifyPanelStatus(bool isPanelShow);
     static void ResetPanelStatusFlag(uint32_t pid);
     
@@ -34,5 +36,4 @@ private:
 };
 } // namespace MiscServices
 } // namespace OHOS
-
 #endif // INPUTMETHOD_IMF_RES_SCHED_ADAPTER_H

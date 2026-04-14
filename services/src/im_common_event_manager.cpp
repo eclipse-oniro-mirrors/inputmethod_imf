@@ -37,6 +37,7 @@ constexpr const char *COMMON_EVENT_PARAM_BUNDLE_RES_CHANGE_TYPE = "bundleResourc
 constexpr const char *EVENT_LARGE_MEMORY_STATUS_CHANGED = "usual.event.memmgr.large_memory_status_changed";
 constexpr const char *EVENT_MEMORY_STATE = "memory_state";
 constexpr const char *EVENT_PARAM_UID = "uid";
+constexpr const char *COMMON_EVENT_NOTIFY_SA_MAKE_IMAGE = "NOTIFY_SA_MAKE_IMAGE";
 ImCommonEventManager::ImCommonEventManager()
 {
 }
@@ -78,6 +79,7 @@ bool ImCommonEventManager::SubscribeEvent()
     matchingSkills.AddEvent(CommonEventSupport::COMMON_EVENT_SCREEN_UNLOCKED);
     matchingSkills.AddEvent(CommonEventSupport::COMMON_EVENT_SCREEN_LOCKED);
     matchingSkills.AddEvent(CommonEventSupport::COMMON_EVENT_BUNDLE_RESOURCES_CHANGED);
+    matchingSkills.AddEvent(COMMON_EVENT_NOTIFY_SA_MAKE_IMAGE);
 
     EventFwk::CommonEventSubscribeInfo subscriberInfo(matchingSkills);
 
@@ -159,6 +161,11 @@ bool ImCommonEventManager::SubscribeHaService(const Handler &handler, int32_t ha
     return SubscribeManagerServiceCommon(handler, haServiceId);
 }
 
+bool ImCommonEventManager::SubscribeAppMgrService(const Handler &handler)
+{
+    return SubscribeManagerServiceCommon(handler, APP_MGR_SERVICE_ID);
+}
+
 bool ImCommonEventManager::UnsubscribeEvent()
 {
     return true;
@@ -187,6 +194,8 @@ ImCommonEventManager::EventSubscriber::EventSubscriber(const EventFwk::CommonEve
         [](EventSubscriber *that, const CommonEventData &data) { return that->OnBundleResChanged(data); };
     EventManagerFunc_[EVENT_LARGE_MEMORY_STATUS_CHANGED] =
         [](EventSubscriber *that, const CommonEventData &data) { return that->HandleLargeMemoryStateUpdate(data); };
+    EventManagerFunc_[COMMON_EVENT_NOTIFY_SA_MAKE_IMAGE] =
+        [](EventSubscriber *that, const CommonEventData &data) { return that->HandleNotifyMakeImage(data); };
 }
 
 void ImCommonEventManager::EventSubscriber::OnBundleResChanged(const CommonEventData &data)
@@ -271,6 +280,28 @@ void ImCommonEventManager::EventSubscriber::HandleLargeMemoryStateUpdate(const E
         IMSA_HILOGE("MessageHandler is nullptr!");
         delete msg;
         msg = nullptr;
+        return;
+    }
+    msgHandle->SendMessage(msg);
+}
+
+void ImCommonEventManager::EventSubscriber::HandleNotifyMakeImage(const EventFwk::CommonEventData &data)
+{
+    auto const &want = data.GetWant();
+    auto bundleName = want.GetBundle();
+    if (!ImeInfoInquirer::GetInstance().IsSysIme(bundleName)) {
+        IMSA_HILOGE("%{public}s not sys ime!", bundleName.c_str());
+        return;
+    }
+    Message *msg = new (std::nothrow) Message(MessageID::MSG_ID_TRIGGER_MAKE_SYS_IME_IMAGE, nullptr);
+    if (msg == nullptr) {
+        IMSA_HILOGE("Failed to create Message!");
+        return;
+    }
+    MessageHandler *msgHandle = MessageHandler::Instance();
+    if (msgHandle == nullptr) {
+        IMSA_HILOGE("MessageHandler is nullptr!");
+        delete msg;
         return;
     }
     msgHandle->SendMessage(msg);
@@ -452,7 +483,8 @@ void ImCommonEventManager::SystemAbilityStatusChangeListener::OnAddSystemAbility
     IMSA_HILOGD("systemAbilityId: %{public}d.", systemAbilityId);
     if (systemAbilityId != COMMON_EVENT_SERVICE_ID && systemAbilityId != MULTIMODAL_INPUT_SERVICE_ID &&
         systemAbilityId != WINDOW_MANAGER_SERVICE_ID && systemAbilityId != SUBSYS_ACCOUNT_SYS_ABILITY_ID_BEGIN &&
-        systemAbilityId != MEMORY_MANAGER_SA_ID && systemAbilityId != PASTEBOARD_SERVICE_ID) {
+        systemAbilityId != MEMORY_MANAGER_SA_ID && systemAbilityId != PASTEBOARD_SERVICE_ID &&
+        systemAbilityId != APP_MGR_SERVICE_ID) {
         return;
     }
     if (func_ != nullptr) {

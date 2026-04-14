@@ -47,7 +47,11 @@ private:
     sptr<IRemoteObject> remoteObj_;
     std::condition_variable loadSaCv_;
     std::mutex loadSaMtx_;
-    static constexpr int32_t LOAD_SA_MAX_WAIT_TIME = 5; // 5s
+    #ifdef IMF_ON_DEMAND_START_STOP_SA_ENABLE
+        static constexpr int32_t LOAD_SA_MAX_WAIT_TIME = 5; // 5s
+    #else
+        static constexpr int32_t LOAD_SA_MAX_WAIT_TIME = 2; // 2s
+    #endif
     static constexpr int32_t RETRY_MAX_WAIT_TIME = 6; // 6s
     static std::atomic<uint32_t> processingIpcCount_;
     std::chrono::system_clock::time_point lastLoadTime_{};

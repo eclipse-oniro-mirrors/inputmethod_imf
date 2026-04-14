@@ -15,7 +15,6 @@
 
 #define private public
 #define protected public
-#include "ime_cfg_manager.h"
 #include "ime_info_inquirer.h"
 #include "sys_cfg_parser.h"
 #undef private
@@ -65,8 +64,7 @@ public:
     static constexpr const char *INPUT_SYS_CGF = "{\"systemConfig\":{\"enableInputMethodFeature\":true,"
                                                  "\"enableFullExperienceFeature\":true,"
                                                  "\"systemInputMethodConfigAbility\":\"setAbility\","
-                                                 "\"defaultInputMethod\":\"bundleName/extName\","
-                                                 "\"systemSpecialInputMethod\":\"systemSpecialInputMethod\"}, "
+                                                 "\"defaultInputMethod\":\"bundleName/extName\"},"
                                                  "\"supportedInputTypeList\":[{\"inputType\":0,\"bundleName\":"
                                                  "\"testBundleName\", "
                                                  "\"subtypeId\":\"testSubtypeId\"},{\"inputType\":1,\"bundleName\":"
@@ -102,69 +100,6 @@ public:
 };
 
 /**
- * @tc.name: testParseImePersistCfg001
- * @tc.desc: parse imePersistCfg
- * @tc.type: FUNC
- * @tc.require:
- * @tc.author: chenyu
- */
-HWTEST_F(JsonOperateTest, testParseImePersistCfg001, TestSize.Level1)
-{
-    IMSA_HILOGI("JsonOperateTest testParseImePersistCfg001 START");
-    ImeCfgManager::GetInstance().imeConfigs_.clear();
-    auto ret = ImeCfgManager::GetInstance().ParseImeCfg(JsonOperateTest::IME_PERSIST_CFG);
-    ASSERT_TRUE(ret);
-    ASSERT_EQ(ImeCfgManager::GetInstance().imeConfigs_.size(), 2);
-    auto cfg = ImeCfgManager::GetInstance().imeConfigs_;
-    EXPECT_EQ(cfg[0].userId, 100);
-    EXPECT_EQ(cfg[0].currentIme, "bundleName/extName");
-    EXPECT_EQ(cfg[0].currentSubName, "subName");
-    EXPECT_EQ(cfg[1].userId, 104);
-    EXPECT_EQ(cfg[1].currentIme, "bundleName1/extName1");
-    EXPECT_EQ(cfg[1].currentSubName, "subName1");
-
-    ImeCfgManager::GetInstance().imeConfigs_.clear();
-    ret = ImeCfgManager::GetInstance().ParseImeCfg(JsonOperateTest::IME_PERSIST_CFG_NULL);
-    EXPECT_TRUE(ret);
-    EXPECT_TRUE(ImeCfgManager::GetInstance().imeConfigs_.empty());
-
-    ImeCfgManager::GetInstance().imeConfigs_.clear();
-    ret = ImeCfgManager::GetInstance().ParseImeCfg(JsonOperateTest::IME_PERSIST_CFG_VALUE_TYPE_ERROR);
-    EXPECT_FALSE(ret);
-    EXPECT_TRUE(ImeCfgManager::GetInstance().imeConfigs_.empty());
-
-    ImeCfgManager::GetInstance().imeConfigs_.clear();
-    ret = ImeCfgManager::GetInstance().ParseImeCfg(JsonOperateTest::IME_PERSIST_CFG_NAME_LACK);
-    EXPECT_FALSE(ret);
-    EXPECT_TRUE(ImeCfgManager::GetInstance().imeConfigs_.empty());
-
-    ImeCfgManager::GetInstance().imeConfigs_.clear();
-    ret = ImeCfgManager::GetInstance().ParseImeCfg(JsonOperateTest::IME_PERSIST_CFG_NAME_ERROR);
-    EXPECT_FALSE(ret);
-    EXPECT_TRUE(ImeCfgManager::GetInstance().imeConfigs_.empty());
-
-    ret = ImeCfgManager::GetInstance().ParseImeCfg(JsonOperateTest::ENABLE_KEYBOARD);
-    EXPECT_FALSE(ret);
-}
-
-/**
- * @tc.name: testPackageImePersistCfg001
- * @tc.desc: package imePersistCfg
- * @tc.type: FUNC
- * @tc.require:
- * @tc.author: chenyu
- */
-HWTEST_F(JsonOperateTest, testPackageImePersistCfg001, TestSize.Level1)
-{
-    IMSA_HILOGI("JsonOperateTest testPackageImePersistCfg001 START");
-    ImeCfgManager::GetInstance().imeConfigs_.clear();
-    ImeCfgManager::GetInstance().imeConfigs_.emplace_back(100, "bundleName/extName", "subName", false);
-    ImeCfgManager::GetInstance().imeConfigs_.emplace_back(104, "bundleName1/extName1", "subName1", false);
-    auto str = ImeCfgManager::GetInstance().PackageImeCfg();
-    EXPECT_EQ(str, JsonOperateTest::IME_PERSIST_CFG);
-}
-
-/**
  * @tc.name: testParseSystemConfig001
  * @tc.desc: parse systemConfig
  * @tc.type: FUNC
@@ -180,7 +115,6 @@ HWTEST_F(JsonOperateTest, testParseSystemConfig001, TestSize.Level1)
     auto systemConfig = imeSystemConfig.systemConfig;
     EXPECT_EQ(systemConfig.systemInputMethodConfigAbility, "setAbility");
     EXPECT_EQ(systemConfig.defaultInputMethod, "bundleName/extName");
-    EXPECT_EQ(systemConfig.systemSpecialInputMethod, "systemSpecialInputMethod");
     EXPECT_TRUE(systemConfig.enableInputMethodFeature);
     EXPECT_TRUE(systemConfig.enableFullExperienceFeature);
 }

@@ -1,0 +1,294 @@
+/*
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
+ * Licensed under the Apache License, Version 2.0 (the "License");
+ * you may not use this file except in compliance with the License.
+ * You may obtain a copy of the License at
+ *
+ *     http://www.apache.org/licenses/LICENSE-2.0
+ *
+ * Unless required by applicable law or agreed to in writing, software
+ * distributed under the License is distributed on an "AS IS" BASIS,
+ * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+ * See the License for the specific language governing permissions and
+ * limitations under the License.
+ */
+#define private public
+#define protected public
+#include "input_method_controller.h"
+#include "input_method_system_ability_proxy.h"
+#include "input_client_service_impl.h"
+#undef private
+
+#include "inputmethodcontrollerthree_fuzzer.h"
+
+#include <cstddef>
+#include <cstdint>
+
+#include "fuzzer/FuzzedDataProvider.h"
+#include "global.h"
+#include "input_attribute.h"
+#include "key_event.h"
+#include "message_parcel.h"
+#include "text_listener.h"
+
+using namespace OHOS::MiscServices;
+namespace OHOS {
+constexpr int32_t PRIVATEDATAVALUE = 100;
+void TestListInputMethod(sptr<InputMethodController> imc, FuzzedDataProvider &provider)
+{
+    auto fuzzedBool1 = provider.ConsumeBool();
+    auto fuzzedBool2 = provider.ConsumeBool();
+    auto fuzzedUserId = provider.ConsumeIntegral<int32_t>();
+    std::vector<Property> properties = {};
+    imc->ListInputMethod(properties, fuzzedUserId);
+    imc->ListInputMethod(fuzzedBool1, properties, fuzzedUserId);
+    imc->ListInputMethod(fuzzedBool2, properties, fuzzedUserId);
+}
+
+void TestListInputMethodSubtype(sptr<InputMethodController> imc, FuzzedDataProvider &provider)
+{
+    std::string fuzzedString = provider.ConsumeRandomLengthString();
+    std::vector<SubProperty> subProperties = {};
+    Property property;
+    property.name = fuzzedString;
+    property.id = fuzzedString;
+    property.label = fuzzedString;
+    property.icon = fuzzedString;
+    property.iconId = provider.ConsumeIntegral<uint32_t>();
+    auto fuzzedUserId = provider.ConsumeIntegral<int32_t>();
+    imc->ListInputMethodSubtype(property, subProperties, fuzzedUserId);
+}
+
+void TestDispatchKeyEvent(sptr<InputMethodController> imc, FuzzedDataProvider &provider)
+{
+    sptr<OnTextChangedListener> textListener = new TextListener();
+    if (textListener == nullptr) {
+        return;
+    }
+    imc->Attach(textListener);
+    imc->isBound_.store(true);
+
+    std::shared_ptr<MMI::KeyEvent> keyEvent = MMI::KeyEvent::Create();
+    if (keyEvent == nullptr) {
+        return;
+    }
+    auto fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
+    keyEvent->SetKeyAction(fuzzedInt32);
+    keyEvent->SetKeyCode(fuzzedInt32);
+    imc->DispatchKeyEvent(keyEvent, [](std::shared_ptr<MMI::KeyEvent> &keyEvent, bool isConsumed) {});
+}
+
+void TestOnSelectionChange(sptr<InputMethodController> imc, FuzzedDataProvider &provider)
+{
+    sptr<OnTextChangedListener> textListener = new TextListener();
+    if (textListener == nullptr) {
+        return;
+    }
+    imc->Attach(textListener);
+    imc->isBound_.store(true);
+
+    auto fuzzedInt32t = provider.ConsumeIntegral<int32_t>();
+    auto fuzzedInt = provider.ConsumeIntegral<int>();
+    std::string fuzzedString = provider.ConsumeRandomLengthString();
+    std::u16string fuzzedU16String(fuzzedString.begin(), fuzzedString.end());
+    CursorInfo cursorInfo;
+    cursorInfo.height = fuzzedInt32t;
+    cursorInfo.left = fuzzedInt32t;
+    cursorInfo.top = fuzzedInt32t;
+    cursorInfo.width = fuzzedInt32t;
+    imc->OnCursorUpdate(cursorInfo);
+
+    imc->OnSelectionChange(fuzzedU16String, fuzzedInt, fuzzedInt);
+}
+
+void TestOnConfigurationChange(sptr<InputMethodController> imc, FuzzedDataProvider &provider)
+{
+    sptr<OnTextChangedListener> textListener = new TextListener();
+    if (textListener == nullptr) {
+        return;
+    }
+    imc->Attach(textListener);
+    imc->isBound_.store(true);
+
+    int32_t value = provider.ConsumeIntegralInRange<int32_t>(0, 8);
+    Configuration info;
+    EnterKeyType keyType = static_cast<EnterKeyType>(value);
+    info.SetEnterKeyType(keyType);
+    TextInputType textInputType = TextInputType::DATETIME;
+    info.SetTextInputType(textInputType);
+    imc->OnConfigurationChange(info);
+    int32_t enterKeyType;
+    int32_t inputPattern;
+    imc->GetEnterKeyType(enterKeyType);
+    imc->GetInputPattern(inputPattern);
+}
+
+void TestSwitchInputMethod(sptr<InputMethodController> imc, FuzzedDataProvider &provider)
+{
+    int32_t value = provider.ConsumeIntegralInRange<int32_t>(0, 3);
+    auto fuzzedTrigger = static_cast<SwitchTrigger>(value);
+    std::string fuzzedString = provider.ConsumeRandomLengthString();
+    auto fuzzedUserId = provider.ConsumeIntegral<int32_t>();
+    imc->SwitchInputMethod(fuzzedTrigger, fuzzedString, fuzzedString, fuzzedUserId);
+}
+
+void TestSetCallingWindow(sptr<InputMethodController> imc, FuzzedDataProvider &provider)
+{
+    sptr<OnTextChangedListener> textListener = new TextListener();
+    if (textListener == nullptr) {
+        return;
+    }
+    imc->Attach(textListener);
+    auto fuzzedUInt32 = provider.ConsumeIntegral<uint32_t>();
+    imc->SetCallingWindow(fuzzedUInt32);
+}
+
+void TestUpdateListenEventFlag(sptr<InputMethodController> imc, FuzzedDataProvider &provider)
+{
+    auto fuzzedUint32 = provider.ConsumeIntegral<uint32_t>();
+    imc->UpdateListenEventFlag(static_cast<uint32_t>(fuzzedUint32), static_cast<uint32_t>(fuzzedUint32), true);
+    imc->UpdateListenEventFlag(static_cast<uint32_t>(fuzzedUint32), static_cast<uint32_t>(fuzzedUint32), false);
+}
+
+void TestAttach(sptr<InputMethodController> imc, FuzzedDataProvider &provider)
+{
+    sptr<OnTextChangedListener> textListener = new TextListener();
+    if (textListener == nullptr) {
+        return;
+    }
+    auto fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
+    InputAttribute inputAttribute;
+    inputAttribute.inputPattern = fuzzedInt32;
+    inputAttribute.enterKeyType = fuzzedInt32;
+    inputAttribute.inputOption = fuzzedInt32;
+    imc->Attach(textListener, true, inputAttribute);
+    imc->Attach(textListener, false, inputAttribute);
+}
+
+void InputType(sptr<InputMethodController> imc, FuzzedDataProvider &provider)
+{
+    int32_t value = provider.ConsumeIntegralInRange<int32_t>(0, 1);
+    enum InputType fuzzedInputType = static_cast<enum InputType>(value);
+    imc->IsInputTypeSupported(fuzzedInputType);
+    imc->StartInputType(fuzzedInputType);
+}
+
+void FUZZIsPanelShown(sptr<InputMethodController> imc, FuzzedDataProvider &provider)
+{
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FIXED;
+    auto flag = provider.ConsumeBool();
+    imc->IsPanelShown(panelInfo, flag);
+}
+
+void FUZZPrintLogIfAceTimeout(sptr<InputMethodController> imc, FuzzedDataProvider &provider)
+{
+    auto start = provider.ConsumeIntegral<int64_t>();
+    imc->PrintLogIfAceTimeout(start);
+}
+
+void FUZZGetInputStartInfo(sptr<InputMethodController> imc, FuzzedDataProvider &provider)
+{
+    auto dataBool = provider.ConsumeBool();
+    auto callingWndId = provider.ConsumeIntegral<uint32_t>();
+    auto int32Value = provider.ConsumeIntegral<int32_t>();
+    std::string fuzzedString = provider.ConsumeRandomLengthString();
+    auto fuzzedUserId = provider.ConsumeIntegral<int32_t>();
+    imc->GetInputStartInfo(dataBool, callingWndId, int32Value);
+    imc->EnableIme(fuzzedString);
+    imc->IsCurrentImeByPid(int32Value, fuzzedUserId);
+    imc->UpdateTextPreviewState(dataBool);
+}
+
+void FUZZSetControllerListener(sptr<InputMethodController> imc, FuzzedDataProvider &provider)
+{
+    sptr<OnTextChangedListener> textListener = new TextListener();
+    if (textListener == nullptr) {
+        return;
+    }
+    imc->Attach(textListener);
+    std::string fuzzedString = provider.ConsumeRandomLengthString();
+    auto uint32Value = provider.ConsumeIntegral<uint32_t>();
+    auto dataBool = provider.ConsumeBool();
+    static std::vector<SubProperty> subProps;
+    static std::shared_ptr<Property> property = std::make_shared<Property>();
+    property->name = fuzzedString;
+    property->id = fuzzedString;
+    property->label = fuzzedString;
+    property->icon = fuzzedString;
+    property->iconId = uint32Value;
+
+    OHOS::AppExecFwk::ElementName inputMethodConfig;
+    inputMethodConfig.SetDeviceID(fuzzedString);
+    inputMethodConfig.SetAbilityName(fuzzedString);
+    inputMethodConfig.SetBundleName(fuzzedString);
+    inputMethodConfig.SetModuleName(fuzzedString);
+    wptr<IRemoteObject> agentObject = nullptr;
+    SubProperty subProperty;
+    subProperty.label = fuzzedString;
+    subProperty.labelId = uint32Value;
+    subProperty.name = fuzzedString;
+    subProperty.id = fuzzedString;
+    subProperty.mode = fuzzedString;
+    subProperty.locale = fuzzedString;
+    subProperty.icon = fuzzedString;
+    subProps.push_back(subProperty);
+    std::unordered_map <std::string, PrivateDataValue> privateCommand;
+    PrivateDataValue privateDataValue1 = fuzzedString;
+    PrivateDataValue privateDataValue2 = static_cast<int32_t>(dataBool);
+    PrivateDataValue privateDataValue3 = PRIVATEDATAVALUE;
+    privateCommand.emplace("value1", privateDataValue1);
+    privateCommand.emplace("value2", privateDataValue2);
+    privateCommand.emplace("value3", privateDataValue3);
+    auto fuzzedUserId = provider.ConsumeIntegral<int32_t>();
+    imc->SetControllerListener(nullptr);
+    imc->GetInputMethodConfig(inputMethodConfig, fuzzedUserId);
+    imc->OnRemoteSaDied(agentObject);
+    imc->SendPrivateCommand(privateCommand);
+}
+
+void TestShowTextInputInner(sptr<InputMethodController> imc, FuzzedDataProvider &provider)
+{
+    sptr<OnTextChangedListener> textListener = new TextListener();
+    if (textListener == nullptr) {
+        return;
+    }
+    auto fuzzedBool = provider.ConsumeBool();
+    std::string fuzzedString = provider.ConsumeRandomLengthString();
+    auto data = provider.ConsumeIntegral<uint8_t>();
+    std::vector<uint8_t> msgParam;
+    msgParam.push_back(data);
+    std::unordered_map <std::string, PrivateDataValue> privateCommand;
+    imc->Attach(textListener);
+    AttachOptions attachOptions;
+    attachOptions.isShowKeyboard = fuzzedBool;
+    attachOptions.requestKeyboardReason = RequestKeyboardReason::NONE;
+    ClientType clientType = ClientType::INNER_KIT;
+    imc->ShowTextInputInner(attachOptions, clientType);
+    imc->isEditable_.store(true);
+    imc->SendPrivateData(privateCommand);
+}
+} // namespace OHOS
+
+/* Fuzzer entry point */
+extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
+{
+    /* Run your code on data */
+    if (data == nullptr || size == 0) {
+        return 0;
+    }
+    FuzzedDataProvider provider(data, size);
+
+    OHOS::sptr<InputMethodController> imc = InputMethodController::GetInstance();
+
+    OHOS::TestUpdateListenEventFlag(imc, provider);
+    OHOS::TestAttach(imc, provider);
+    OHOS::InputType(imc, provider);
+    OHOS::FUZZIsPanelShown(imc, provider);
+    OHOS::FUZZPrintLogIfAceTimeout(imc, provider);
+    OHOS::FUZZGetInputStartInfo(imc, provider);
+    OHOS::FUZZSetControllerListener(imc, provider);
+    OHOS::TestShowTextInputInner(imc, provider);
+    return 0;
+}

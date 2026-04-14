@@ -20,6 +20,7 @@
 #include "ime_info_inquirer.h"
 #include "input_method_system_ability_stub.h"
 #include "input_method_types.h"
+#include "input_status_info.h"
 #include "input_type_manager.h"
 #include "inputmethod_dump.h"
 #include "inputmethod_trace.h"
@@ -64,11 +65,11 @@ public:
     ErrCode SetCoreAndAgent(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent) override;
     ErrCode InitConnect() override;
     ErrCode PanelStatusChange(const ImeWindowInfo &oldInfo, const ImeWindowInfo &newInfo) override;
-    ErrCode OnInputStart(const InputStartInfo &inputStartInfo) override;
-    ErrCode GetSoftKeyboardWindowInfo(int32_t userId, ImeWindowInfo &imeWindowInfo) override;
+    ErrCode NotifyInputStart(const InputStartInfo &inputStartInfo) override;
+    ErrCode GetSoftKeyboardInfo(int32_t userId, BoundImeInfo &imeInfo) override;
     ErrCode UpdateListenEventFlag(const InputClientInfoInner &clientInfoInner, uint32_t eventFlag) override;
     ErrCode SetCallingWindow(uint32_t windowId, const sptr<IInputClient> &client) override;
-    ErrCode GetInputStartInfo(bool &isInputStart, uint32_t &callingWndId, int32_t &requestKeyboardReason) override;
+    ErrCode GetInputStartInfo(InputStartInfo &inputStartInfo) override;
     ErrCode SendPrivateData(const Value &value) override;
 
     ErrCode IsCurrentIme(bool &resultValue) override;
@@ -100,6 +101,7 @@ public:
     ErrCode IsCapacitySupport(int32_t capacity, bool &isSupport) override;
     ErrCode BindImeMirror(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent) override;
     ErrCode UnbindImeMirror() override;
+    ErrCode GetCursorInfo(int32_t userId, CursorInfoInner &cursorInfo) override;
     int32_t GetCallingUserId();
     int32_t GetCallingUserId(int32_t &outputUserId, int32_t inputUserId = -1);
 
@@ -125,6 +127,8 @@ private:
     void WorkThread();
     int32_t OnHideKeyboardSelf(const Message *msg);
     void OnSysMemChanged();
+    int32_t OnSysImeImageCreated(const Message *msg);
+    int32_t OnMakeSysImeImage();
     int32_t GetCpuUsage();
     bool IsNeedSwitch(int32_t userId, const std::string &bundleName, const std::string &subName);
     int32_t CheckEnableAndSwitchPermission();
@@ -142,9 +146,6 @@ private:
     void OnScreenLock(const Message *msg);
     int32_t OnDisplayOptionalInputMethod();
     void SubscribeCommonEvent();
-    int32_t Switch(int32_t userId, const std::string &bundleName, const std::shared_ptr<ImeInfo> &info);
-    int32_t SwitchExtension(int32_t userId, const std::shared_ptr<ImeInfo> &info);
-    int32_t SwitchSubType(int32_t userId, const std::shared_ptr<ImeInfo> &info);
     int32_t SwitchInputType(int32_t userId, const SwitchInfo &switchInfo, bool isPersistence = true);
     void StartNewUserIme(int32_t userId);
     void GetValidSubtype(const std::string &subName, const std::shared_ptr<ImeInfo> &info);
@@ -174,6 +175,7 @@ private:
     bool InitFocusChangedMonitor(int32_t userId);
     bool InitPasteboardMonitor();
     bool InitHaMonitor();
+    void SubscribeAppMgrService();
     bool InitWmsConnectionMonitor(int32_t userId);
     bool InitWindowDisplayChangedMonitor(int32_t userId);
     bool InitDisplayGroupMonitor(int32_t userId);

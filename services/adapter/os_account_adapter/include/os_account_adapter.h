@@ -33,7 +33,7 @@ public:
     static int32_t GetForegroundOsAccountLocalId();
     static std::vector<int32_t> QueryActiveOsAccountIds();
     static bool IsOsAccountForeground(int32_t userId);
-    static int32_t IsOsAccountVerified(int32_t userId, bool &isUnlocked);
+    static int32_t IsOsAccountVerified(int32_t userId, bool &isVerified);
     static std::vector<AccountSA::ForegroundOsAccount> GetForegroundOsAccounts();
     static std::vector<int32_t> GetForegroundOsAccountIds();
     static int32_t GetMainAccountId();

@@ -14,8 +14,8 @@
  */
 #define private public
 #define protected public
+#include "app_mgr_adapter.h"
 #include "full_ime_info_manager.h"
-#include "ime_cfg_manager.h"
 #include "ime_info_inquirer.h"
 #include "input_method_agent_service_impl.h"
 #include "input_method_core_service_impl.h"
@@ -41,7 +41,6 @@
 #include <string>
 #include <vector>
 
-#include "app_mgr_adapter.h"
 #include "application_info.h"
 #include "combination_key.h"
 #include "display_adapter.h"
@@ -50,7 +49,7 @@
 #include "iinput_method_agent.h"
 #include "iinput_method_core.h"
 #include "im_common_event_manager.h"
-#include "ime_cfg_manager.h"
+
 #include "input_client_service_impl.h"
 #include "input_client_stub.h"
 #include "input_method_ability.h"
@@ -127,7 +126,6 @@ void InputMethodPrivateMemberTest::TearDownTestCase(void)
 void InputMethodPrivateMemberTest::SetUp(void)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::SetUp");
-    ImeCfgManager::GetInstance().imeConfigs_.clear();
     FullImeInfoManager::GetInstance().fullImeInfos_.clear();
     ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.clear();
 }
@@ -135,7 +133,6 @@ void InputMethodPrivateMemberTest::SetUp(void)
 void InputMethodPrivateMemberTest::TearDown(void)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::TearDown");
-    ImeCfgManager::GetInstance().imeConfigs_.clear();
     FullImeInfoManager::GetInstance().fullImeInfos_.clear();
     ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.clear();
 }
@@ -368,21 +365,6 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSessionParameterNullptr001, TestSi
     EXPECT_EQ(client, nullptr);
 }
 
-/**
- * @tc.name: SA_ImeCfgManagerTest_002
- * @tc.desc: getImeCfg failed
- * @tc.type: FUNC
- * @tc.require:
- * @tc.author: chenyu
- */
-HWTEST_F(InputMethodPrivateMemberTest, SA_ImeCfgManagerTest_002, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodPrivateMemberTest SA_ImeCfgManagerTest_002 TEST START");
-    ImeCfgManager cfgManager;
-    auto cfg = cfgManager.GetImeCfg(100);
-    EXPECT_TRUE(cfg.currentSubName.empty());
-    EXPECT_TRUE(cfg.currentIme.empty());
-}
 
 /**
  * @tc.name: SA_SwitchByCombinationKey_001
@@ -394,7 +376,6 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_ImeCfgManagerTest_002, TestSize.Level0
 HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchByCombinationKey_001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest SA_SwitchByCombinationKey_001 TEST START");
-    ImeCfgManager cfgManager;
     auto ret = service_->SwitchByCombinationKey(0);
     EXPECT_EQ(ret, ErrorCode::ERROR_EX_UNSUPPORTED_OPERATION);
 }
@@ -433,7 +414,6 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchByCombinationKey_002, TestSize.L
 HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchByCombinationKey_003, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest SA_SwitchByCombinationKey_003 TEST START");
-    ImeCfgManager cfgManager;
     FullImeInfo info;
     info.isNewIme = true;
     info.prop.name = "testBundleName";
@@ -797,21 +777,6 @@ HWTEST_F(InputMethodPrivateMemberTest, III_TestIsNewExtInfos_001, TestSize.Level
 }
 
 /**
- * @tc.name: ICM_TestDeleteImeCfg_001
- * @tc.desc: delete ime cfg correctly
- * @tc.type: FUNC
- * @tc.require:
- * @tc.author: chenyu
- */
-HWTEST_F(InputMethodPrivateMemberTest, ICM_TestDeleteImeCfg_001, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodPrivateMemberTest ICM_TestDeleteImeCfg_001 TEST START");
-    ImeCfgManager::GetInstance().imeConfigs_.push_back({ 100, "testBundleName", "testSubName", false });
-    ImeCfgManager::GetInstance().DeleteImeCfg(100);
-    EXPECT_TRUE(ImeCfgManager::GetInstance().imeConfigs_.empty());
-}
-
-/**
  * @tc.name: WMSConnectObserver_001
  * @tc.desc:
  * @tc.type: FUNC
@@ -994,7 +959,6 @@ HWTEST_F(InputMethodPrivateMemberTest, TestHandlePackageEvent, TestSize.Level0)
 
     //remove bundle not current ime
     auto parcel3 = new (std::nothrow) MessageParcel();
-    ImeCfgManager::GetInstance().imeConfigs_.push_back({ 60, "testBundleName/testExtName", "testSubName", false });
     parcel3->WriteInt32(userId);
     parcel3->WriteString(bundleName);
     auto msg3 = std::make_shared<Message>(MessageID::MSG_ID_PACKAGE_REMOVED, parcel3);
@@ -1353,10 +1317,6 @@ HWTEST_F(InputMethodPrivateMemberTest, BranchCoverage001, TestSize.Level0)
     ret2 = service_->SwitchInputMethod(bundleName, subName, static_cast<uint32_t>(trigger), -1);
     EXPECT_EQ(ret2, ErrorCode::ERROR_BAD_PARAMETERS);
 
-    const std::shared_ptr<ImeInfo> info = nullptr;
-    ret2 = service_->SwitchSubType(INVALID_USER_ID, info);
-    EXPECT_NE(ret2, ErrorCode::NO_ERROR);
-
     const SwitchInfo switchInfo;
     ret2 = service_->SwitchInputType(INVALID_USER_ID, switchInfo);
     EXPECT_NE(ret2, ErrorCode::NO_ERROR);
@@ -1573,13 +1533,14 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_TestPerUserSessionOnScreenUnlocked, Te
     userSession->realImeData_ = nullptr;
     userSession->OnScreenUnlock();
 
-    userSession->InitRealImeData({ "", "" });
+    sptr<AAFwk::IAbilityConnection> connection = nullptr;
+    userSession->InitRealImeData(connection, { "", "" });
     userSession->OnScreenUnlock();
 
-    auto imeCfg = ImeCfgManager::GetInstance().GetCurrentImeCfg(MAIN_USER_ID);
+    auto imeCfg = ImeEnabledInfoManager::GetInstance().GetCurrentImeCfg(MAIN_USER_ID);
     EXPECT_NE(imeCfg, nullptr);
     userSession->realImeData_ = nullptr;
-    userSession->InitRealImeData({ imeCfg->bundleName, imeCfg->extName });
+    userSession->InitRealImeData(connection, { imeCfg->bundleName, imeCfg->extName });
     userSession->OnScreenUnlock();
 }
 
@@ -1802,6 +1763,12 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SpecialScenarioCheck, TestSize.Level0)
     EXPECT_FALSE(allow);
 
     info->config.inputAttribute.inputPattern = InputAttribute::PATTERN_PASSWORD;
+    group->mapClients_.insert_or_assign(client->AsObject(), info);
+    session.clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
+    allow = session.SpecialScenarioCheck();
+    EXPECT_FALSE(allow);
+
+    info->config.inputAttribute.isOneTimeCodeNumberFlag = true;
     group->mapClients_.insert_or_assign(client->AsObject(), info);
     session.clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
     allow = session.SpecialScenarioCheck();
@@ -2563,16 +2530,22 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_TryDisconnectIme_001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::SA_TryDisconnectIme_001 start.");
     auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    // has no imeData
     userSession->realImeData_ = nullptr;
     auto ret = userSession->TryDisconnectIme();
     EXPECT_EQ(ret, ErrorCode::ERROR_IME_NOT_STARTED);
+    // has imeData, but starting
     auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, 10);
     userSession->realImeData_ = imeData;
-
+    ret = userSession->TryDisconnectIme();
+    EXPECT_EQ(ret, ErrorCode::ERROR_IME_NOT_STARTED);
+    // attaching
+    imeData->imeStatus = ImeStatus::READY;
+    userSession->realImeData_ = imeData;
     userSession->attachingCount_ = 1;
     ret = userSession->TryDisconnectIme();
     EXPECT_EQ(ret, ErrorCode::ERROR_OPERATION_NOT_ALLOWED);
-
+    // has current client bind with ime
     userSession->attachingCount_ = 0;
     auto group = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
     sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
@@ -2585,47 +2558,8 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_TryDisconnectIme_001, TestSize.Level0)
     EXPECT_EQ(ret, ErrorCode::ERROR_OPERATION_NOT_ALLOWED);
 
     userSession->clientGroupMap_.clear();
-    userSession->SetImeConnection(nullptr);
-    ret = userSession->TryDisconnectIme();
-    EXPECT_EQ(ret, ErrorCode::ERROR_IME_NOT_STARTED);
-    sptr<AAFwk::IAbilityConnection> connection = new (std::nothrow) ImeConnection();
-    userSession->SetImeConnection(connection);
     ret = userSession->TryDisconnectIme();
     EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_IME_DISCONNECT_FAILED);
-}
-
-/**
- * @tc.name: SA_TestClearImeConnection_001
- * @tc.desc: SA_TestClearImeConnection_001
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(InputMethodPrivateMemberTest, SA_TestClearImeConnection_001, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_TestClearImeConnection_001 start.");
-    sptr<AAFwk::IAbilityConnection> connection = new (std::nothrow) ImeConnection();
-    sptr<AAFwk::IAbilityConnection> connection1 = new (std::nothrow) ImeConnection();
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
-
-    userSession->SetImeConnection(connection);
-    EXPECT_EQ(userSession->GetImeConnection(), connection);
-    userSession->ClearImeConnection(connection);
-    EXPECT_EQ(userSession->GetImeConnection(), nullptr);
-
-    userSession->SetImeConnection(connection);
-    EXPECT_EQ(userSession->GetImeConnection(), connection);
-    userSession->ClearImeConnection(nullptr);
-    EXPECT_EQ(userSession->GetImeConnection(), connection);
-
-    userSession->SetImeConnection(nullptr);
-    EXPECT_EQ(userSession->GetImeConnection(), nullptr);
-    userSession->ClearImeConnection(connection);
-    EXPECT_EQ(userSession->GetImeConnection(), nullptr);
-
-    userSession->SetImeConnection(connection);
-    EXPECT_EQ(userSession->GetImeConnection(), connection);
-    userSession->ClearImeConnection(connection1);
-    EXPECT_EQ(userSession->GetImeConnection(), connection);
 }
 
 /**
@@ -3056,7 +2990,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_TestOnPackageUpdated, TestSize.Level0)
     EXPECT_EQ(ret, ErrorCode::ERROR_PACKAGE_MANAGER);
 
     // not current userId
-    auto imeCfg = ImeCfgManager::GetInstance().GetCurrentImeCfg(MAIN_USER_ID);
+    auto imeCfg = ImeEnabledInfoManager::GetInstance().GetCurrentImeCfg(MAIN_USER_ID);
     ASSERT_NE(imeCfg, nullptr);
     ret = InputMethodPrivateMemberTest::service_->OnPackageUpdated(MAIN_USER_ID, imeCfg->bundleName);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
@@ -3083,7 +3017,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnPackageUpdated, TestSize
 
     // attaching, no need
     userSession->attachingCount_ = 1;
-    auto imeCfg = ImeCfgManager::GetInstance().GetCurrentImeCfg(MAIN_USER_ID);
+    auto imeCfg = ImeEnabledInfoManager::GetInstance().GetCurrentImeCfg(MAIN_USER_ID);
     ASSERT_NE(imeCfg, nullptr);
     ret = userSession->OnPackageUpdated(imeCfg->bundleName);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
@@ -3119,7 +3053,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnImeDied, TestSize.Level0
     pid_t pid = 10;
     auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
     // imeData is nullptr
-    auto currentIme = ImeCfgManager::GetInstance().GetCurrentImeCfg(MAIN_USER_ID);
+    auto currentIme = ImeEnabledInfoManager::GetInstance().GetCurrentImeCfg(MAIN_USER_ID);
     ASSERT_NE(currentIme, nullptr);
     auto temp = ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod;
     ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod =
@@ -4402,7 +4336,6 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_IsPanelShown_001, TestSize
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 }
 
-
 /**
  * @tc.name: PerUserSession_StartInputService_IsRestartAfterTimeout_001
  * @tc.desc: Test StartInputService with isRestartAfterTimeout=true returns ERROR_IME_NOT_STARTED
@@ -4510,6 +4443,507 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_HandleFirstStart_StopCurre
 
     auto ret = userSession->HandleFirstStart(ime, true);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+#ifndef IMF_ON_DEMAND_START_STOP_SA_ENABLE
+/**
+ * @tc.name: PerUserSession_NeedStartIme_001
+ * @tc.desc: NeedStartIme
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_NeedStartIme_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_NeedStartIme_001 start.");
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
+    // ime dynamic start, return false
+    ImeStateManagerFactory::GetInstance().ifDynamicStartIme_ = true;
+    auto need = userSession->NeedStartIme(ImeStartScene::NORMAL_START);
+    EXPECT_FALSE(need);
+    // large mem state, return false
+    ImeStateManagerFactory::GetInstance().ifDynamicStartIme_ = false;
+    userSession->largeMemoryState_ = LargeMemoryState::LARGE_MEMORY_NEED;
+    need = userSession->NeedStartIme(ImeStartScene::NORMAL_START);
+    EXPECT_FALSE(need);
+    // not foreground user, return false
+    userSession->largeMemoryState_ = LargeMemoryState::LARGE_MEMORY_NOT_NEED;
+    userSession->userId_ = INVALID_USER_ID;
+    need = userSession->NeedStartIme(ImeStartScene::NORMAL_START);
+    userSession->userId_ = TddUtil::GetCurrentUserId();
+    EXPECT_FALSE(need);
+#ifdef SCENE_BOARD_ENABLE
+    // wms not ready, return false
+    WmsConnectionObserver::connectedUserId_.clear();
+    need = userSession->NeedStartIme(ImeStartScene::NORMAL_START);
+    EXPECT_FALSE(need);
+#endif
+    WmsConnectionObserver::connectedUserId_.insert(userSession->userId_);
+    // NORMAL_START, IsMemoryWatermarkEnabled is false, return true
+    ImeInfoInquirer::GetInstance().productConfig_.disabledMemoryWatermark = false;
+    need = userSession->NeedStartIme(ImeStartScene::NORMAL_START);
+    EXPECT_TRUE(need);
+    // MAKE_IMAGE, return true
+    need = userSession->NeedStartIme(ImeStartScene::MAKE_IMAGE);
+    EXPECT_TRUE(need);
+    // NORMAL_START, IsMemoryWatermarkEnabled is true
+    ImeInfoInquirer::GetInstance().productConfig_.disabledMemoryWatermark = true;
+    need = userSession->NeedStartIme(ImeStartScene::NORMAL_START);
+    if (SystemParamAdapter::GetInstance().IsInLowMemWaterMark()) {
+        EXPECT_FALSE(need);
+    } else {
+        EXPECT_TRUE(need);
+    }
+    // MAKE_IMAGE, return true
+    need = userSession->NeedStartIme(ImeStartScene::MAKE_IMAGE);
+    EXPECT_TRUE(need);
+}
+
+/**
+ * @tc.name: PerUserSession_NeedMakeImage_001
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_NeedMakeImage_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_NeedMakeImage_001 start.");
+    auto userId = 1000;
+    auto userSession = std::make_shared<PerUserSession>(userId, nullptr);
+    std::string sysBundleName = "sysBundleName";
+    std::string sysExtName = "sysExtName";
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = sysBundleName + "/" + sysExtName;
+    // not sys ime, return false
+    auto makeRet = userSession->NeedMakeImage("testBundleName", "testExtName");
+    EXPECT_FALSE(makeRet.first);
+    EXPECT_EQ(makeRet.second, ImageFailedReason::FAILED_OTHERS);
+    // el2 verfiled failed
+    makeRet = userSession->NeedMakeImage(sysBundleName, sysExtName);
+    EXPECT_FALSE(makeRet.first);
+    EXPECT_EQ(makeRet.second, ImageFailedReason::FAILED_OTHERS);
+    // not need start ime
+    TddUtil::GrantNativePermission(); // for el2 verfiled
+    userSession->userId_ = TddUtil::GetCurrentUserId();
+    ImeStateManagerFactory::GetInstance().ifDynamicStartIme_ = true;
+    makeRet = userSession->NeedMakeImage(sysBundleName, sysExtName);
+    EXPECT_FALSE(makeRet.first);
+    EXPECT_EQ(makeRet.second, ImageFailedReason::FAILED_OTHERS);
+    // has imedata
+    ImeStateManagerFactory::GetInstance().ifDynamicStartIme_ = false;
+    userSession->largeMemoryState_ = LargeMemoryState::LARGE_MEMORY_NOT_NEED;
+    WmsConnectionObserver::connectedUserId_.insert(userSession->userId_);
+    auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, 12);
+    imeData->ime.first = sysBundleName;
+    userSession->realImeData_ = imeData;
+    makeRet = userSession->NeedMakeImage(sysBundleName, sysExtName);
+    EXPECT_FALSE(makeRet.first);
+    EXPECT_EQ(makeRet.second, ImageFailedReason::FAILED_HAS_RUNNING_IME);
+    // has no imeData, return true
+    userSession->realImeData_ = nullptr;
+    makeRet = userSession->NeedMakeImage(sysBundleName, sysExtName);
+    EXPECT_TRUE(makeRet.first);
+    EXPECT_EQ(makeRet.second, ImageFailedReason::FAILED_NONE);
+}
+
+/**
+ * @tc.name: PerUserSession_MakeImage_001
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_MakeImage_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_MakeImage_001 start.");
+    TddUtil::GrantNativePermission(); // for el2 verfiled
+    auto userId = TddUtil::GetCurrentUserId();
+    auto userSession = std::make_shared<PerUserSession>(userId, nullptr);
+    std::string sysBundleName = "sysBundleName";
+    std::string sysExtName = "sysExtName";
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = sysBundleName + "/" + sysExtName;
+    userSession->realImeData_ = nullptr;
+    ImeStateManagerFactory::GetInstance().ifDynamicStartIme_ = false;
+    userSession->largeMemoryState_ = LargeMemoryState::LARGE_MEMORY_NOT_NEED;
+    WmsConnectionObserver::connectedUserId_.insert(userSession->userId_);
+    // NeedMakeImage return false
+    userSession->largeMemoryState_ = LargeMemoryState::LARGE_MEMORY_NEED;
+    auto makeRet = userSession->MakeImage(sysBundleName, sysExtName);
+    EXPECT_FALSE(makeRet.first);
+    EXPECT_EQ(makeRet.second, ImageFailedReason::FAILED_OTHERS);
+
+    int32_t userId1 = 1000;
+    auto userSession1 = std::make_shared<PerUserSession>(userId1, nullptr);
+    userSession1->StopImageTimeoutTask();
+    userSession1->StartImageTimeoutTask();
+    std::shared_ptr<AppExecFwk::EventRunner> runner = AppExecFwk::EventRunner::Create("test_handler");
+    auto handler = std::make_shared<AppExecFwk::EventHandler>(runner);
+    auto userSession2 = std::make_shared<PerUserSession>(userId1, handler);
+    userSession2->StopImageTimeoutTask();
+    userSession2->StartImageTimeoutTask();
+
+    // NotifyMakeImage return failed
+    userSession->largeMemoryState_ = LargeMemoryState::LARGE_MEMORY_NOT_NEED;
+    makeRet = userSession->MakeImage(sysBundleName, sysExtName);
+    EXPECT_FALSE(makeRet.first);
+    EXPECT_EQ(makeRet.second, ImageFailedReason::FAILED_OTHERS);
+}
+
+/**
+ * @tc.name: PerUserSession_StartImeInSysImageChanged_001
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_StartImeInSysImageChanged_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_StartImeInSysImageChanged_001 start.");
+    auto userId = TddUtil::GetCurrentUserId();
+    auto userSession = std::make_shared<PerUserSession>(userId, nullptr);
+    auto sysBundleName = ImeInfoInquirer::GetInstance().GetDefaultIme().bundleName;
+    auto sysExtName = ImeInfoInquirer::GetInstance().GetDefaultIme().extName;
+    // has imeData, return false
+    auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, 12);
+    userSession->realImeData_ = imeData;
+    auto ret = userSession->StartImeInSysImageChanged();
+    EXPECT_EQ(ret, ErrorCode::ERROR_IME_HAS_STARTED);
+    // sys ime not user cfg ime, return false
+    userSession->realImeData_ = nullptr;
+    ImeEnabledCfg cfg;
+    ImeEnabledInfo imeInfo;
+    imeInfo.bundleName = "bundleName";
+    imeInfo.extensionName = "extName";
+    imeInfo.extraInfo.isDefaultIme = true;
+    cfg.enabledInfos.emplace_back(imeInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(userId, cfg);
+    ret = userSession->StartImeInSysImageChanged();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    // dynamic start ime, return false
+    ImeEnabledCfg cfg1;
+    ImeEnabledInfo imeInfo1;
+    imeInfo1.bundleName = sysBundleName;
+    imeInfo1.extensionName = sysExtName;
+    imeInfo1.extraInfo.isDefaultIme = true;
+    cfg1.enabledInfos.emplace_back(imeInfo1);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(userId, cfg1);
+    ImeStateManagerFactory::GetInstance().ifDynamicStartIme_ = true;
+    ret = userSession->StartImeInSysImageChanged();
+    EXPECT_EQ(ret, ErrorCode::ERROR_SCENE_UNSUPPORTED);
+    // return true
+    ImeStateManagerFactory::GetInstance().ifDynamicStartIme_ = false;
+    userSession->largeMemoryState_ = LargeMemoryState::LARGE_MEMORY_NOT_NEED;
+    WmsConnectionObserver::connectedUserId_.insert(userSession->userId_);
+    ret = userSession->StartImeInSysImageChanged();
+    if (ImeInfoInquirer::GetInstance().IsMemoryWatermarkEnabled()
+        && SystemParamAdapter::GetInstance().IsInLowMemWaterMark()) {
+        EXPECT_EQ(ret, ErrorCode::ERROR_SCENE_UNSUPPORTED);
+    } else {
+        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    }
+}
+
+/**
+ * @tc.name: PerUserSession_HandleSysImeInDied
+ * @tc.desc: PerUserSession_HandleSysImeInDied
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_HandleSysImeInDied, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_HandleSysImeInDied start.");
+    std::string sysBundleName = "sysBundleName";
+    std::string sysExtName = "sysExtName";
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = sysBundleName + "/" + sysExtName;
+    ImeEnabledCfg cfg;
+    ImeEnabledInfo imeInfo;
+    imeInfo.bundleName = "bundleName";
+    imeInfo.extensionName = "extName";
+    imeInfo.extraInfo.isDefaultIme = true;
+    imeInfo.extraInfo.currentSubName = "subName";
+    cfg.enabledInfos.emplace_back(imeInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert({ MAIN_USER_ID, cfg });
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
+    // imeType is not IME
+    auto ret = userSession->HandleSysImeInDied(ImeType::PROXY_IME, false);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    // current ime not sys ime
+    ret = userSession->HandleSysImeInDied(ImeType::IME, false);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    // disconnectedByRss is false
+    ImeEnabledCfg cfg1;
+    ImeEnabledInfo imeInfo1;
+    imeInfo1.bundleName = sysBundleName;
+    imeInfo1.extensionName = sysExtName;
+    imeInfo1.extraInfo.isDefaultIme = true;
+    imeInfo1.extraInfo.currentSubName = "subName";
+    cfg1.enabledInfos.emplace_back(imeInfo1);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert({ MAIN_USER_ID, cfg1 });
+    ret = userSession->HandleSysImeInDied(ImeType::IME, false);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    // disconnectedByRss is true
+    ret = userSession->HandleSysImeInDied(ImeType::IME, true);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: PerUserSession_OnMakeSysImeImage_001
+ * @tc.desc: PerUserSession_OnMakeSysImeImage_001
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnMakeSysImeImage_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_OnMakeSysImeImage_001 start.");
+    int32_t userId = 10000;
+    std::string sysBundleName = "sysBundleName";
+    std::string sysExtName = "sysExtName";
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = sysBundleName + "/" + sysExtName;
+    ImeEnabledCfg cfg;
+    ImeEnabledInfo imeInfo;
+    imeInfo.bundleName = "bundleName";
+    imeInfo.extensionName = "extName";
+    imeInfo.extraInfo.isDefaultIme = true;
+    cfg.enabledInfos.emplace_back(imeInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert({ userId, cfg });
+    auto userSession = std::make_shared<PerUserSession>(userId, nullptr);
+    // make image failed
+    // not user cfg ime
+    auto ret = userSession->OnMakeSysImeImage();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    // user cfg ime ,but failed el2 verify
+    imeInfo.bundleName = sysBundleName;
+    imeInfo.extensionName = sysExtName;
+    cfg.enabledInfos.clear();
+    cfg.enabledInfos.emplace_back(imeInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert({ userId, cfg });
+    ret = userSession->OnMakeSysImeImage();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: PerUserSession_OnMakeSysImeImage_002
+ * @tc.desc: PerUserSession_OnMakeSysImeImage_002
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnMakeSysImeImage_002, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_OnMakeSysImeImage_002 start.");
+    int32_t userId = TddUtil::GetCurrentUserId();
+    std::string sysBundleName = "sysBundleName";
+    std::string sysExtName = "sysExtName";
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = sysBundleName + "/" + sysExtName;
+    ImeEnabledCfg cfg;
+    ImeEnabledInfo imeInfo;
+    imeInfo.bundleName = sysBundleName;
+    imeInfo.extensionName = sysExtName;
+    imeInfo.extraInfo.isDefaultIme = true;
+    cfg.enabledInfos.emplace_back(imeInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert({ userId, cfg });
+    auto userSession = std::make_shared<PerUserSession>(userId, nullptr);
+    auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, 12);
+    imeData->ime.first = sysBundleName;
+    userSession->realImeData_ = imeData;
+    ImeStateManagerFactory::GetInstance().ifDynamicStartIme_ = false;
+    userSession->largeMemoryState_ = LargeMemoryState::LARGE_MEMORY_NOT_NEED;
+    WmsConnectionObserver::connectedUserId_.insert(userSession->userId_);
+
+    // make image failed
+    // user cfg ime, failed in has running ime
+    imeInfo.bundleName = sysBundleName;
+    imeInfo.extensionName = sysExtName;
+    cfg.enabledInfos.clear();
+    cfg.enabledInfos.emplace_back(imeInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert({ userId, cfg });
+    auto ret = userSession->OnMakeSysImeImage();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+#endif
+
+/**
+ * @tc.name: IMSA_OnSysImeImageCreated
+ * @tc.desc: IMSA_OnSysImeImageCreated
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, IMSA_OnSysImeImageCreated, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::IMSA_OnSysImeImageCreated start.");
+    UserSessionManager::GetInstance().userSessions_.clear();
+    InputMethodSystemAbility imsa;
+    // msg is nullptr
+    Message *msg = nullptr;
+    auto ret = imsa.OnSysImeImageCreated(msg);
+    EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
+
+    // msgContent_ is nullptr
+    auto msg1 = std::make_shared<Message>(MessageID::MSG_ID_SYS_IME_IMAGE_CREATED, nullptr);
+    ret = imsa.OnSysImeImageCreated(msg1.get());
+    EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
+
+    // session not found
+    int32_t uid = 20020031;
+    auto parcel2 = new (std::nothrow) MessageParcel();
+    ASSERT_NE(parcel2, nullptr);
+    ITypesUtil::Marshal(*parcel2, uid);
+    Message *msg2 = new (std::nothrow) Message(MessageID::MSG_ID_SYS_IME_IMAGE_CREATED, parcel2);
+    ret = imsa.OnSysImeImageCreated(msg2);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND);
+    delete msg2;
+
+    // success
+    auto parcel3 = new (std::nothrow) MessageParcel();
+    ASSERT_NE(parcel3, nullptr);
+    ITypesUtil::Marshal(*parcel3, uid);
+    Message *msg3 = new (std::nothrow) Message(MessageID::MSG_ID_SYS_IME_IMAGE_CREATED, parcel3);
+    int32_t userId = imsa.GetUserId(uid);
+    auto userSession = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_.insert_or_assign(userId, userSession);
+    ret = imsa.OnSysImeImageCreated(msg3);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    delete msg3;
+}
+
+/**
+ * @tc.name: IMSA_OnMakeSysImeImage
+ * @tc.desc: IMSA_OnMakeSysImeImage
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, IMSA_OnMakeSysImeImage, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::IMSA_OnMakeSysImeImage start.");
+    InputMethodSystemAbility imsa;
+    UserSessionManager::GetInstance().userSessions_.clear();
+    int32_t userId = 10045;
+    UserSessionManager::GetInstance().userSessions_.insert_or_assign(userId, nullptr);
+    auto ret = imsa.OnMakeSysImeImage();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: AppMgrAdapter_RegisterImageProcessStateObserver
+ * @tc.desc: AppMgrAdapter_RegisterImageProcessStateObserver
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, AppMgrAdapter_RegisterImageProcessStateObserver, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::AppMgrAdapter_RegisterImageProcessStateObserver start.");
+    AppMgrAdapter::imageStateObserver_ = nullptr;
+    auto ret = AppMgrAdapter::RegisterImageProcessStateObserver();
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_APP_MGR_ERROR);
+
+    // has registered
+    AppMgrAdapter::imageStateObserver_ = new (std::nothrow) AppMgrAdapter::ImageProcessStateObserverImpl();
+    ret = AppMgrAdapter::RegisterImageProcessStateObserver();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: AppMgrAdapter_OnImageProcessStateChanged
+ * @tc.desc: AppMgrAdapter_OnImageProcessStateChanged
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, AppMgrAdapter_OnImageProcessStateChanged, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::AppMgrAdapter_OnImageProcessStateChanged start.");
+    auto msgHandler = MessageHandler::Instance();
+    while (!msgHandler->mQueue.empty()) {
+        msgHandler->mQueue.pop();
+    }
+    std::string sysBundleName = "sysBundleName";
+    std::string sysExtName = "sysExtName";
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = sysBundleName + "/" + sysExtName;
+    // state is not ImageProcessState::IMAGE_PROCESS_CREATE
+    AppMgrAdapter::ImageProcessStateObserverImpl observer;
+    ImageProcessStateData data;
+    data.state = static_cast<int32_t>(ImageProcessState::IMAGE_PROCESS_TERMINATED);
+    observer.OnImageProcessStateChanged(data);
+    EXPECT_TRUE(msgHandler->mQueue.empty());
+    // not sys ime
+    data.state = static_cast<int32_t>(ImageProcessState::IMAGE_PROCESS_CREATE);
+    data.bundleName = "testBundleName";
+    observer.OnImageProcessStateChanged(data);
+    EXPECT_TRUE(msgHandler->mQueue.empty());
+    // success
+    data.bundleName = sysBundleName;
+    observer.OnImageProcessStateChanged(data);
+    EXPECT_EQ(msgHandler->mQueue.size(), 1);
+}
+
+/**
+ * @tc.name: ImCommonEventManager_HandleNotifyMakeImage
+ * @tc.desc: ImCommonEventManager_HandleNotifyMakeImage
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, ImCommonEventManager_HandleNotifyMakeImage, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::ImCommonEventManager_HandleNotifyMakeImage start.");
+    std::string testBundleName = "testBundleName";
+    std::string sysBundleName = "sysBundleName";
+    std::string sysExtName = "sysExtName";
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = sysBundleName + "/" + sysExtName;
+
+    EventFwk::MatchingSkills matchingSkills;
+    EventFwk::CommonEventSubscribeInfo subscriberInfo(matchingSkills);
+    auto subscriber = std::make_shared<ImCommonEventManager::EventSubscriber>(subscriberInfo);
+    AAFwk::Want want;
+    want.SetBundle(testBundleName);
+    EventFwk::CommonEventData data;
+    data.SetWant(want);
+    auto msgHandler = MessageHandler::Instance();
+    while (!msgHandler->mQueue.empty()) {
+        msgHandler->mQueue.pop();
+    }
+    // not sys ime
+    subscriber->HandleNotifyMakeImage(data);
+    EXPECT_TRUE(msgHandler->mQueue.empty());
+
+    // success
+    AAFwk::Want want1;
+    want1.SetBundle(sysBundleName);
+    EventFwk::CommonEventData data1;
+    data1.SetWant(want1);
+    subscriber->HandleNotifyMakeImage(data1);
+    EXPECT_EQ(msgHandler->mQueue.size(), 1);
+}
+
+/**
+ * @tc.name: PerUserSession_NotifyImeChangedToClients_001
+ * @tc.desc: Test PerUserSession_NotifyImeChangedToClients_001
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_NotifyImeChangedToClients_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_NotifyImeChangedToClients_001 start.");
+    ImeEnabledInfo enabledInfo{ "", "extName1", EnabledStatus::BASIC_MODE };
+    enabledInfo.extraInfo.isDefaultIme = true;
+    ImeEnabledCfg cfg;
+    cfg.enabledInfos.push_back(enabledInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(MAIN_USER_ID, cfg);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto ret = userSession->NotifyImeChangedToClients();
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_GET_IME_INFO_FAILED);
+}
+
+/**
+ * @tc.name: PerUserSession_NotifyImeChangedToClients_002
+ * @tc.desc: Test PerUserSession_NotifyImeChangedToClients_002
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_NotifyImeChangedToClients_002, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_NotifyImeChangedToClients_002 start.");
+    ImeEnabledInfo enabledInfo{ "bundleName", "extName1", EnabledStatus::BASIC_MODE };
+    enabledInfo.extraInfo.isDefaultIme = true;
+    ImeEnabledCfg cfg;
+    cfg.enabledInfos.push_back(enabledInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(MAIN_USER_ID, cfg);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto ret = userSession->NotifyImeChangedToClients();
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_GET_IME_INFO_FAILED);
 }
 } // namespace MiscServices
 } // namespace OHOS

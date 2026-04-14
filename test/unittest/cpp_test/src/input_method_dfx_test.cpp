@@ -15,7 +15,6 @@
 
 #define private public
 #define protected public
-#include "ime_cfg_manager.h"
 #include "input_method_ability.h"
 #include "input_method_controller.h"
 #include "input_method_system_ability.h"
@@ -249,7 +248,6 @@ void InputMethodDfxTest::TearDownTestCase(void)
     IMSA_HILOGI("InputMethodDfxTest::TearDownTestCase");
     IdentityCheckerMock::ResetParam();
     imsa_->OnStop();
-    ImeCfgManager::GetInstance().imeConfigs_.clear();
 }
 
 void InputMethodDfxTest::SetUp(void)

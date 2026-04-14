@@ -478,8 +478,8 @@ HWTEST_F(FullImeInfoManagerTest, test_Get_001, TestSize.Level0)
 
     int32_t userId1 = 101;
     std::vector<Property> props;
-    auto ret = FullImeInfoManager::GetInstance().Get(userId1, props);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    auto ret = FullImeInfoManager::GetInstance().Get(userId1, props, false);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_GET_IME_INFO_FAILED);
     EXPECT_TRUE(props.empty());
 }
 
@@ -495,11 +495,17 @@ HWTEST_F(FullImeInfoManagerTest, test_Get_002, TestSize.Level0)
     std::vector<FullImeInfo> imeInfos;
     FullImeInfo info;
     imeInfos.push_back(info);
+    FullImeInfo info1;
+    info1.isSystemSpecialIme = true;
+    imeInfos.push_back(info1);
     FullImeInfoManager::GetInstance().fullImeInfos_.insert_or_assign(userId, imeInfos);
     std::vector<Property> props;
-    auto ret = FullImeInfoManager::GetInstance().Get(userId, props);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    // not contain sys special ime
+    FullImeInfoManager::GetInstance().Get(userId, props, false);
     EXPECT_EQ(props.size(), 1);
+    // contain sys special ime
+    FullImeInfoManager::GetInstance().Get(userId, props, true);
+    EXPECT_EQ(props.size(), 2);
 }
 
 /**

@@ -17,6 +17,7 @@
 
 #include "event_checker.h"
 #include "ime_event_monitor_manager_impl.h"
+#include "ime_system_channel.h"
 #include "input_client_info.h"
 #include "input_method_controller.h"
 #include "input_method_status.h"
@@ -71,10 +72,12 @@ napi_value JsGetInputMethodSetting::Init(napi_env env, napi_value exports)
         DECLARE_NAPI_FUNCTION("isPanelShown", IsPanelShown),
         DECLARE_NAPI_FUNCTION("enableInputMethod", EnableInputMethod),
         DECLARE_NAPI_FUNCTION("getInputMethodState", GetInputMethodState),
+        DECLARE_NAPI_FUNCTION("getCursorInfo", GetCursorInfo),
         DECLARE_NAPI_FUNCTION("on", Subscribe),
         DECLARE_NAPI_FUNCTION("off", UnSubscribe),
         DECLARE_NAPI_FUNCTION("onImeChangeWithUserId", SubscribeImechange),
         DECLARE_NAPI_FUNCTION("offImeChangeWithUserId", UnSubscribeImechange),
+        DECLARE_NAPI_FUNCTION("getDefaultInputMethodAbility", GetDefaultInputMethodAbility),
     };
     napi_value cons = nullptr;
     IMF_CALL(napi_define_class(env, IMS_CLASS_NAME.c_str(), IMS_CLASS_NAME.size(), JsConstructor, nullptr,
@@ -1062,6 +1065,55 @@ void JsGetInputMethodSetting::GetIsUpdateFlag(const std::string &type, bool &isU
             break;
         }
     }
+}
+
+napi_value JsGetInputMethodSetting::GetCursorInfo(napi_env env, napi_callback_info info)
+{
+    IMSA_HILOGD("run in GetCursorInfo");
+    size_t argc = ARGC_ONE;
+    napi_value argv[1] = { nullptr };
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    int32_t userId = ImfCommonConst::DEFAULT_USER_ID;
+    PARAM_CHECK_RETURN(env, argc < ARGC_TWO, "too many parameters!", TYPE_NONE, JsUtil::Const::Null(env));
+    if (argc > 0) {
+        auto type = JsUtil::GetType(env, argv[0]);
+        if (type != napi_undefined && type != napi_null) {
+            PARAM_CHECK_RETURN(env, type == napi_number, "userId", TYPE_NUMBER, JsUtil::Const::Null(env));
+            PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[0], userId) == napi_ok, "userId type must be int!",
+                TYPE_NONE, JsUtil::Const::Null(env));
+            PARAM_CHECK_RETURN(env, userId >= 0, "userId invaild!", TYPE_NONE, JsUtil::Const::Null(env));
+        }
+    }
+    int32_t ret = ErrorCode::ERROR_EX_NULL_POINTER;
+    auto instance = InputMethodController::GetInstance();
+    CursorInfo cursorInfo;
+    if (instance != nullptr) {
+        ret = instance->GetCursorInfo(cursorInfo, userId);
+    }
+    if (ret != ErrorCode::NO_ERROR) {
+        JsUtils::ThrowException(env, JsUtils::Convert(ret), "", TYPE_NONE);
+        return JsUtil::Const::Null(env);
+    }
+    return JsUtils::GetValue(env, cursorInfo);
+}
+
+napi_value JsGetInputMethodSetting::GetDefaultInputMethodAbility(napi_env env, napi_callback_info info)
+{
+    std::shared_ptr<Property> property;
+    auto channel = ImeSystemCmdChannel::GetInstance();
+    if (channel == nullptr) {
+        return nullptr;
+    }
+
+    RESULT_CHECK_RETURN(env, channel->IsSystemApp(), EXCEPTION_SYSTEM_PERMISSION, "", TYPE_NONE, nullptr);
+
+    int32_t ret = channel->GetDefaultImeCfg(property);
+    if (ret != ErrorCode::NO_ERROR || property == nullptr) {
+        JsUtils::ThrowException(env, EXCEPTION_IMMS, "failed to get default input methods", TYPE_NONE);
+        IMSA_HILOGE("GetDefaultImeCfg failed or property is nullptr ret: %{public}d!", ret);
+        return nullptr;
+    }
+    return JsInputMethod::GetJsInputMethodProperty(env, *property);
 }
 } // namespace MiscServices
 } // namespace OHOS

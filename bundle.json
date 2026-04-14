@@ -1,14 +1,14 @@
 {
-  "name": "@ohos/imf", 
-  "description": "Provide input capability to ime app", 
-  "version": "3.1", 
-  "license": "Apache License 2.0", 
-  "publishAs": "code-segment", 
+  "name": "@ohos/imf",
+  "description": "Provide input capability to ime app",
+  "version": "3.1",
+  "license": "Apache License 2.0",
+  "publishAs": "code-segment",
   "segment": {
-      "destPath": "base/inputmethod/imf"
-  }, 
-  "dirs": { }, 
-  "scripts": { }, 
+    "destPath": "base/inputmethod/imf"
+  },
+  "dirs": {},
+  "scripts": {},
   "component": {
       "name": "imf", 
       "subsystem": "inputmethod", 
@@ -78,6 +78,7 @@
                   "//base/inputmethod/imf/frameworks/ndk:ohinputmethod",
                   "//base/inputmethod/imf/frameworks/ets/taihe/inputMethod:inputmethod_taihe",
                   "//base/inputmethod/imf/frameworks/ets/taihe/inputMethodEngine:inputmethod_engine_taihe",
+                  "//base/inputmethod/imf/frameworks/ets/taihe/keyboardPanelManager:systempanelmanager_taihe",
                   "//base/inputmethod/imf/frameworks/ets/inputmethodlist:inputmethod_list_dialog"
               ], 
               "service_group": [
@@ -94,7 +95,7 @@
                   "//base/inputmethod/imf/frameworks/js/napi/inputmethodability:inputmethodengine", 
                   "//base/inputmethod/imf/frameworks/js/napi/inputmethod_extension_ability:inputmethodextensionability_napi",
                   "//base/inputmethod/imf/frameworks/js/napi/inputmethod_extension_context:inputmethodextensioncontext_napi",
-                  "//base/inputmethod/imf/frameworks/js/napi/keyboardpanelmanager:keyboardpanelmanager",
+                  "//base/inputmethod/imf/frameworks/js/napi/keyboardpanelmanager:inputmethodsystempanelmanager",
                   "//base/inputmethod/imf/frameworks/cj:cj_inputmethod_ffi",
                   "//base/inputmethod/imf/frameworks/kits/extension_cj:cj_inputmethod_extension_ffi",
                   "//base/inputmethod/imf/seccomp_policy:imf_ext_secure_filter",

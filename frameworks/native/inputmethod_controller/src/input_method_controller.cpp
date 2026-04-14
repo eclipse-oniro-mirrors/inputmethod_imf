@@ -42,6 +42,7 @@
 #include "sys/prctl.h"
 #include "system_ability_definition.h"
 #include "system_cmd_channel_stub.h"
+#include "system_ability_status_change_stub.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -72,6 +73,20 @@ static constexpr int32_t MAX_TIMEOUT = 2500;
 constexpr int64_t DISPATCH_KEYBOARD_TIME_OUT = 5; // 5ms
 constexpr size_t MAX_AGENT_NUMBER = 2;
 const std::string IME_MIRROR_NAME = "proxyIme_IME_MIRROR";
+class SaMgrListener : public SystemAbilityStatusChangeStub {
+public:
+    explicit SaMgrListener(std::function<void()> handler) : func_(handler) {};
+    ~SaMgrListener() override = default;
+    void OnAddSystemAbility(int32_t systemAbilityId, const std::string &deviceId) override;
+    void OnRemoveSystemAbility(int32_t systemAbilityId, const std::string &deviceId) override {}
+
+private:
+    std::function<void()> func_;
+};
+
+std::mutex listenerMapMutex_;
+sptr<ISystemAbilityStatusChange> saMgrListener_;
+
 InputMethodController::InputMethodController()
 {
     IMSA_HILOGD("IMC structure.");
@@ -149,6 +164,11 @@ int32_t InputMethodController::Initialize()
         IMSA_HILOGE("failed to new channel!");
         return ErrorCode::ERROR_NULL_POINTER;
     }
+
+    SubscribeSaStart([this]() {
+        this->RestoreListenInfoInSaDied();
+        }, INPUT_METHOD_SYSTEM_ABILITY_ID);
+
     InputAttribute attribute;
     attribute.inputPattern = InputAttribute::PATTERN_TEXT;
     clientInfo_.attribute = attribute;
@@ -240,6 +260,17 @@ void InputMethodController::CalibrateImmersiveParam(InputAttribute &inputAttribu
     }
 }
 
+void InputMethodController::CalibrateInputPatternParam(InputAttribute &inputAttribute)
+{
+    if (inputAttribute.inputPattern != InputAttribute::PATTERN_ONE_TIME_CODE_NUMBER) {
+        IMSA_HILOGD("no calibration required, inputPattern = %{public}d", inputAttribute.inputPattern);
+        return;
+    }
+    inputAttribute.inputPattern = static_cast<int32_t>(TextInputType::NUMBER);
+    inputAttribute.isOneTimeCodeNumberFlag = true;
+    IMSA_HILOGW("isOneTimeCodeNumberFlag = %{public}d", inputAttribute.isOneTimeCodeNumberFlag);
+}
+
 void InputMethodController::SaveTextConfig(const TextConfig &textConfig)
 {
     IMSA_HILOGD("textConfig: %{public}s.", textConfig.ToString().c_str());
@@ -250,6 +281,7 @@ void InputMethodController::SaveTextConfig(const TextConfig &textConfig)
         std::lock_guard<std::mutex> lock(textConfigLock_);
         textConfig_ = textConfig;
         CalibrateImmersiveParam(textConfig_.inputAttribute);
+        CalibrateInputPatternParam(textConfig_.inputAttribute);
         textConfig_.cursorInfo = cursorInfo;
         StringUtils::TruncateUtf16String(textConfig_.inputAttribute.placeholder, MAX_PLACEHOLDER_SIZE);
         StringUtils::TruncateUtf16String(textConfig_.inputAttribute.abilityName, MAX_ABILITY_NAME_SIZE);
@@ -576,15 +608,14 @@ bool InputMethodController::WasAttached()
     return isBound_.load();
 }
 
-int32_t InputMethodController::GetInputStartInfo(
-    bool &isInputStart, uint32_t &callingWndId, int32_t &requestKeyboardReason)
+int32_t InputMethodController::GetInputStartInfo(InputStartInfo &inputStartInfo)
 {
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
         IMSA_HILOGE("proxy is nullptr!");
         return false;
     }
-    return proxy->GetInputStartInfo(isInputStart, callingWndId, requestKeyboardReason);
+    return proxy->GetInputStartInfo(inputStartInfo);
 }
 
 int32_t InputMethodController::ListInputMethodCommon(InputMethodStatus status, std::vector<Property> &props,
@@ -658,14 +689,14 @@ std::shared_ptr<Property> InputMethodController::GetCurrentInputMethod(int32_t u
     return property;
 }
 
-int32_t InputMethodController::GetSoftKeyboardWindowInfo(int32_t userId, ImeWindowInfo &imeWindowInfo)
+int32_t InputMethodController::GetSoftKeyboardInfo(int32_t userId, BoundImeInfo &imeInfo)
 {
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
         IMSA_HILOGE("imsa proxy is nullptr!");
         return ErrorCode::ERROR_SERVICE_START_FAILED;
     }
-    return proxy->GetSoftKeyboardWindowInfo(userId, imeWindowInfo);
+    return proxy->GetSoftKeyboardInfo(userId, imeInfo);
 }
 
 std::shared_ptr<SubProperty> InputMethodController::GetCurrentInputMethodSubtype(int32_t userId)
@@ -774,7 +805,9 @@ void InputMethodController::OnRemoteSaDied(const wptr<IRemoteObject> &remote)
 {
     IMSA_HILOGI("input method service death.");
     // imf sa died, current client callback inputStop
-    ImeEventMonitorManagerImpl::GetInstance().OnInputStop();
+    InputStopInfo info;
+    info.isImsaDied = true;
+    ImeEventMonitorManagerImpl::GetInstance().OnInputStop(info);
     auto textListener = GetTextListener();
     if (textListener != nullptr && textConfig_.inputAttribute.isTextPreviewSupported) {
         IMSA_HILOGD("finish text preview.");
@@ -819,7 +852,6 @@ void InputMethodController::RestoreListenInfoInSaDied()
 
 void InputMethodController::RestoreClientInfoInSaDied()
 {
-    RestoreListenInfoInSaDied();
     if (!IsEditable()) {
         IMSA_HILOGD("not editable.");
         return;
@@ -1147,6 +1179,26 @@ int32_t InputMethodController::GetTextConfig(TextTotalConfig &config)
         config.textSelection.newEnd = textConfig_.range.end;
     }
     IMSA_HILOGD("textConfig: %{public}s.", config.ToString().c_str());
+    return ErrorCode::NO_ERROR;
+}
+
+int32_t InputMethodController::GetCursorInfo(CursorInfo &cursorInfo, int32_t userId)
+{
+    IMSA_HILOGD("InputMethodController::GetCursorInfo start, userId: %{public}d.", userId);
+    auto proxy = GetSystemAbilityProxy();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("proxy is nullptr!");
+        return ErrorCode::ERROR_SERVICE_START_FAILED;
+    }
+    CursorInfoInner cursorInfoInner;
+    int32_t ret = proxy->GetCursorInfo(userId, cursorInfoInner);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetCursorInfo failed: %{public}d", ret);
+        return ret;
+    }
+    cursorInfo = InputMethodTools::GetInstance().InnerToCursorInfo(cursorInfoInner);
+    IMSA_HILOGD("cursorInfo: left=%{public}f, top=%{public}f, width=%{public}f, height=%{public}f.",
+        cursorInfo.left, cursorInfo.top, cursorInfo.width, cursorInfo.height);
     return ErrorCode::NO_ERROR;
 }
 
@@ -2578,6 +2630,58 @@ void OnTextChangedListener::OnDetachV2()
         listener->OnDetach();
     };
     eventHandler->PostTask(task, "OnDetachV2", 0, AppExecFwk::EventQueue::Priority::VIP);
+}
+
+bool InputMethodController::SubscribeSaStart(std::function<void()> handler, int32_t saId)
+{
+    if (handler == nullptr) {
+        IMSA_HILOGE("handler is nullptr");
+        return false;
+    }
+    {
+        std::lock_guard<std::mutex> lockGuard(listenerMapMutex_);
+        if (saMgrListener_ != nullptr) {
+            IMSA_HILOGW("saId:%{public}d is already registered", saId);
+            return true;
+        }
+    }
+
+    auto abilityManager = SystemAbilityManagerClient::GetInstance().GetSystemAbilityManager();
+    if (abilityManager == nullptr) {
+        IMSA_HILOGE("abilityManager is nullptr, saId: %{public}d", saId);
+        return false;
+    }
+    sptr<ISystemAbilityStatusChange> listener = new (std::nothrow) SaMgrListener([handler]() {
+        if (handler != nullptr) {
+            handler();
+        }
+    });
+    if (listener == nullptr) {
+        IMSA_HILOGE("failed to create listener, saId: %{public}d", saId);
+        return false;
+    }
+    int32_t ret = abilityManager->SubscribeSystemAbility(saId, listener);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("subscribe system ability failed, ret: %{public}d, saId: %{public}d", ret, saId);
+        return false;
+    }
+    {
+        std::lock_guard<std::mutex> lockGuard(listenerMapMutex_);
+        saMgrListener_ = listener;
+    }
+    IMSA_HILOGD("subscribe system ability success, saId: %{public}d", saId);
+    return true;
+}
+
+void SaMgrListener::OnAddSystemAbility(int32_t systemAbilityId, const std::string &deviceId)
+{
+    IMSA_HILOGD("systemAbilityId: %{public}d.", systemAbilityId);
+    if (systemAbilityId != INPUT_METHOD_SYSTEM_ABILITY_ID) {
+        return;
+    }
+    if (func_ != nullptr) {
+        func_();
+    }
 }
 // LCOV_EXCL_STOP
 } // namespace MiscServices

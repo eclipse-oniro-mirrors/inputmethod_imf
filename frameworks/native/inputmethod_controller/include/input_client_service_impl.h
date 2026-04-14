@@ -17,8 +17,7 @@
 #define FRAMEWORKS_INPUTMETHOD_CONTROLLER_INCLUDE_INPUT_CLIENT_IMPL_H
 
 #include "iinput_client.h"
-#include "input_client_stub.h"
-#include "input_method_utils.h"
+#include "input_status_info.h"
 #include "input_window_info.h"
 #include "iremote_object.h"
 #include "notify_service_impl.h"

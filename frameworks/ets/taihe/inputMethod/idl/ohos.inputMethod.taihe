@@ -122,6 +122,9 @@ interface InputMethodSetting {
     GetAllInputMethodsSync(): Array<InputMethodProperty>;
     @overload("getAllInputMethodsSync")
     GetAllInputMethodsSyncByUserId(userId: Optional<i32>): Array<InputMethodProperty>;
+
+    GetCursorInfo(userId: Optional<i32>): CursorInfo;
+    GetDefaultInputMethodAbility(): InputMethodProperty;
 }
 
 struct CursorInfo {
@@ -129,6 +132,7 @@ struct CursorInfo {
     top: f64;
     width: f64;
     height: f64;
+    displayId: i64;
 }
 
 enum Direction : i32 {

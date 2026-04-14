@@ -14,6 +14,7 @@
  */
 
 #include "res_sched_adapter.h"
+
 #include "extension_ability_info.h"
 #include "global.h"
 #include "ipc_skeleton.h"
@@ -26,6 +27,29 @@ using namespace OHOS::ResourceSchedule;
 constexpr const char *INPUT_METHOD_SERVICE_SA_NAME = "inputmethod_service";
 std::mutex ResSchedAdapter::lastPanelStatusMapLock_;
 std::map<uint32_t, bool> ResSchedAdapter::lastPanelStatusMap_;
+int32_t ResSchedAdapter::NotifyMakeImage(int32_t userId, const AAFwk::Want &want)
+{
+    auto resType = ResType::SYNC_RES_TYPE_NOTIFY_MAKE_IMAGE;
+    nlohmann::json payload;
+    auto bundleName = want.GetBundle();
+    payload.emplace("bundleName", bundleName);
+    auto wantUri = want.ToUri();
+    payload.emplace("want", wantUri);
+    payload.emplace("userId", userId);
+    nlohmann::json reply;
+    auto ret = ResSchedClient::GetInstance().ReportSyncEvent(resType, 0, payload, reply);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("%{public}d/%{public}s report failed:%{public}d.", userId, bundleName.c_str(), ret);
+        return ret;
+    }
+    if (!reply.contains("errCode") || !reply["errCode"].is_number()) {
+        IMSA_HILOGE("%{public}d/%{public}s abnormal reply.", userId, bundleName.c_str());
+        return ErrorCode::ERROR_EX_SERVICE_SPECIFIC;
+    }
+    auto errCode = static_cast<int32_t>(reply["errCode"]);
+    IMSA_HILOGI("%{public}d/%{public}s final reply ret:%{public}d.", userId, bundleName.c_str(), errCode);
+    return errCode;
+}
 
 void ResSchedAdapter::NotifyPanelStatus(bool isPanelShow)
 {
@@ -54,7 +78,7 @@ void ResSchedAdapter::NotifyPanelStatus(bool isPanelShow)
         { "uid",           std::to_string(IPCSkeleton::GetCallingUid())                                        }
     };
     IMSA_HILOGD("report RSS isPanelShow: %{public}d.", isPanelShow);
-    ResourceSchedule::ResSchedClient::GetInstance().ReportData(type, status, payload);
+    ResSchedClient::GetInstance().ReportData(type, status, payload);
 }
 
 void ResSchedAdapter::ResetPanelStatusFlag(uint32_t pid)

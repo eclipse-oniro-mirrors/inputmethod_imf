@@ -127,9 +127,11 @@ struct CursorInfo {
     double top = -1.0;
     double width = -1.0;
     double height = -1.0;
+    uint64_t displayId = 0;
     bool operator==(const CursorInfo &info) const
     {
-        return (left == info.left && top == info.top && width == info.width && height == info.height);
+        return (left == info.left && top == info.top && width == info.width && height == info.height &&
+            displayId == info.displayId);
     }
 };
 
@@ -138,9 +140,11 @@ struct CursorInfoInner : public Parcelable {
     double top = -1.0;
     double width = -1.0;
     double height = -1.0;
+    uint64_t displayId = 0;
     bool operator==(const CursorInfoInner &info) const
     {
-        return (left == info.left && top == info.top && width == info.width && height == info.height);
+        return (left == info.left && top == info.top && width == info.width && height == info.height &&
+            displayId == info.displayId);
     }
 
     bool ReadFromParcel(Parcel &in)
@@ -149,6 +153,7 @@ struct CursorInfoInner : public Parcelable {
         top = in.ReadDouble();
         width = in.ReadDouble();
         height = in.ReadDouble();
+        displayId = in.ReadUint64();
         return true;
     }
 
@@ -167,6 +172,10 @@ struct CursorInfoInner : public Parcelable {
         }
 
         if (!out.WriteDouble(height)) {
+            return false;
+        }
+
+        if (!out.WriteUint64(displayId)) {
             return false;
         }
         return true;
@@ -312,7 +321,7 @@ using PrivateDataValue = std::variant<std::string, bool, int32_t>;
 enum class RequestKeyboardReason : int32_t {
     NONE = 0,          // no event reason
     MOUSE = 1,         // user triggered mouse event
-	TOUCH = 2,         // user triggered touch event
+    TOUCH = 2,         // user triggered touch event
     OTHER = 20         // other reason
 };
 
@@ -340,11 +349,10 @@ public:
     InputAttribute inputAttribute = {};
     CursorInfo cursorInfo = {};
     TextSelection textSelection = {};
-    uint32_t windowId = INVALID_WINDOW_ID;  // editor in
+    uint32_t windowId = INVALID_WINDOW_ID;  // editor in, external Padding, only for transfer from imc->imsa in inner
     double positionY = 0;
     double height = 0;
     std::unordered_map<std::string, PrivateDataValue> privateCommand = {};
-    RequestKeyboardReason requestKeyboardReason = RequestKeyboardReason::NONE;
     sptr<IRemoteObject> abilityToken { nullptr };
     bool isSimpleKeyboardEnabled { false }; // indicates enable basic keyboard or not
 
@@ -360,7 +368,8 @@ public:
         config.append(
             " newRange: " + std::to_string(textSelection.newBegin) + "/" + std::to_string(textSelection.newEnd));
         config.append(" cursor: " + std::to_string(cursorInfo.left) + "/" + std::to_string(cursorInfo.top) + "/" +
-            std::to_string(cursorInfo.width) + "/" + std::to_string(cursorInfo.height));
+            std::to_string(cursorInfo.width) + "/" + std::to_string(cursorInfo.height) + "/" +
+            std::to_string(cursorInfo.displayId));
         return config;
     }
 };
@@ -374,7 +383,6 @@ public:
     double positionY = 0;
     double height = 0;
     Value commandValue;
-    RequestKeyboardReason requestKeyboardReason = RequestKeyboardReason::NONE;
     bool isSimpleKeyboardEnabled = false;
     sptr<IRemoteObject> abilityToken { nullptr };
 
@@ -560,102 +568,65 @@ struct ResponseDataInner : public Parcelable {
     ResponseData rspData = std::monostate{};
 };
 
-struct FocusedInfo {
-    uint32_t windowId{ ImfCommonConst::INVALID_WINDOW_ID };                      // editor in
-    uint64_t displayId{ ImfCommonConst::DEFAULT_DISPLAY_ID };                    // editor in
-    uint64_t displayGroupId{ ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID };         // editor in
+struct FocusedInfo : public Parcelable {
+    uint32_t editorWindowId{ ImfCommonConst::INVALID_WINDOW_ID };                // editor in
+    uint64_t editorDisplayId{ ImfCommonConst::DEFAULT_DISPLAY_ID };              // editor in
+    uint64_t editorDisplayGroupId{ ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID };   // editor in
     uint32_t keyboardWindowId{ ImfCommonConst::INVALID_WINDOW_ID };              // keyboard in
     uint64_t keyboardDisplayId{ ImfCommonConst::DEFAULT_DISPLAY_ID };            // keyboard in
     uint64_t keyboardDisplayGroupId{ ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID }; // keyboard in
     pid_t uiExtensionHostPid{ ImfCommonConst::INVALID_PID };
-};
 
-struct InputStartInfo : public Parcelable {
-public:
-    uint32_t keyboardWindowId{ ImfCommonConst::INVALID_WINDOW_ID };
-    RequestKeyboardReason requestKeyboardReason = RequestKeyboardReason::NONE;
-    ImeWindowInfo imeWindowInfo{};
+    std::string ToString() const
+    {
+        std::string config;
+        config.append("editorWindowId/editorDisplayId/editorDisplayGroupId: " + std::to_string(editorWindowId) + "/"
+                      + std::to_string(editorDisplayId) + "/" + std::to_string(editorDisplayGroupId));
+        config.append(" keyboardWindowId/keyboardDisplayId/keyboardDisplayGroupId: " + std::to_string(keyboardWindowId)
+                      + "/" + std::to_string(keyboardDisplayId) + "/" + std::to_string(keyboardDisplayGroupId));
+        config.append(" uiExtensionHostPid: " + std::to_string(uiExtensionHostPid));
+        return config;
+    }
 
     bool ReadFromParcel(Parcel &in)
     {
+        editorWindowId = in.ReadUint32();
+        editorDisplayId = in.ReadUint64();
+        editorDisplayGroupId = in.ReadUint64();
         keyboardWindowId = in.ReadUint32();
-        auto reasonTmp = in.ReadInt32();
-        requestKeyboardReason = static_cast<RequestKeyboardReason>(reasonTmp);
-        std::unique_ptr<ImeWindowInfo> wInfo(in.ReadParcelable<ImeWindowInfo>());
-        if (wInfo == nullptr) {
-            return false;
-        }
-        imeWindowInfo = *wInfo;
+        keyboardDisplayId = in.ReadUint64();
+        keyboardDisplayGroupId = in.ReadUint64();
         return true;
     }
 
     bool Marshalling(Parcel &out) const
     {
+        if (!out.WriteUint32(editorWindowId)) {
+            return false;
+        }
+        if (!out.WriteUint64(editorDisplayId)) {
+            return false;
+        }
+        if (!out.WriteUint64(editorDisplayGroupId)) {
+            return false;
+        }
         if (!out.WriteUint32(keyboardWindowId)) {
             return false;
         }
-        if (!out.WriteInt32(static_cast<uint32_t>(requestKeyboardReason))) {
+        if (!out.WriteUint64(keyboardDisplayId)) {
             return false;
         }
-        return out.WriteParcelable(&imeWindowInfo);
+        return out.WriteUint64(keyboardDisplayGroupId);
     }
 
-    static InputStartInfo *Unmarshalling(Parcel &in)
+    static FocusedInfo *Unmarshalling(Parcel &in)
     {
-        InputStartInfo *data = new (std::nothrow) InputStartInfo();
+        FocusedInfo *data = new (std::nothrow) FocusedInfo();
         if (data && !data->ReadFromParcel(in)) {
             delete data;
             data = nullptr;
         }
         return data;
-    }
-
-    std::string ToString() const
-    {
-        std::string info;
-        info.append("[keyboardWindowId]: " + std::to_string(keyboardWindowId) + "/");
-        info.append("[requestKeyboardReason]: " + std::to_string(static_cast<int32_t>(requestKeyboardReason)) + "/");
-        info.append(imeWindowInfo.ToString());
-        return info;
-    }
-};
-
-struct InputStopInfo : public Parcelable {
-public:
-    int32_t userId{ ImfCommonConst::DEFAULT_USER_ID };
-    uint64_t displayId{ ImfCommonConst::DEFAULT_DISPLAY_ID };
-
-    bool ReadFromParcel(Parcel &in)
-    {
-        userId = in.ReadInt32();
-        displayId = in.ReadUint32();
-        return true;
-    }
-
-    bool Marshalling(Parcel &out) const
-    {
-        if (!out.WriteInt32(userId)) {
-            return false;
-        }
-        return out.WriteUint32(displayId);
-    }
-
-    static InputStartInfo *Unmarshalling(Parcel &in)
-    {
-        InputStartInfo *data = new (std::nothrow) InputStartInfo();
-        if (data && !data->ReadFromParcel(in)) {
-            delete data;
-            data = nullptr;
-        }
-        return data;
-    }
-
-    std::string ToString() const
-    {
-        std::string info;
-        info.append("[userId]: " + std::to_string(userId) + "/");
-        info.append("[displayId]: " + std::to_string(displayId));
-        return info;
     }
 };
 } // namespace MiscServices

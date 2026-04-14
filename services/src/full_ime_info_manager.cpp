@@ -162,15 +162,19 @@ int32_t FullImeInfoManager::Update(int32_t userId, const std::string &bundleName
     return ErrorCode::NO_ERROR;
 }
 // LCOV_EXCL_STOP
-int32_t FullImeInfoManager::Get(int32_t userId, std::vector<Property> &props)
+int32_t FullImeInfoManager::Get(int32_t userId, std::vector<Property> &props, bool containSysSpecialIme)
 {
+    props = {};
     {
         std::lock_guard<std::mutex> lock(lock_);
         auto it = fullImeInfos_.find(userId);
         if (it == fullImeInfos_.end()) {
-            return {};
+            return ErrorCode::ERROR_IMSA_GET_IME_INFO_FAILED;
         }
-        for (auto &fullImeInfo : it->second) {
+        for (const auto &fullImeInfo : it->second) {
+            if (!containSysSpecialIme && fullImeInfo.isSystemSpecialIme) {
+                continue;
+            }
             props.push_back(fullImeInfo.prop);
         }
     }
@@ -179,6 +183,7 @@ int32_t FullImeInfoManager::Get(int32_t userId, std::vector<Property> &props)
         IMSA_HILOGE("get enabled status failed:%{public}d!", ret);
         return ErrorCode::ERROR_ENABLE_IME;
     }
+    IMSA_HILOGD("get success:%{public}d/%{public}zu!", containSysSpecialIme, props.size());
     return ErrorCode::NO_ERROR;
 }
 

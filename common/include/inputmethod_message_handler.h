@@ -49,6 +49,8 @@ enum {
     MSG_ID_WMS_STARTED,
 
     MSG_ID_HIDE_KEYBOARD_SELF, // hide the current keyboard
+    MSG_ID_SYS_IME_IMAGE_CREATED,
+    MSG_ID_TRIGGER_MAKE_SYS_IME_IMAGE,
 
     // the request from IMSA to IMC
     MSG_ID_INSERT_CHAR,

@@ -34,8 +34,10 @@ ohos_static_library("imf_json_static") {
 
   cflags_cc = [ "-fvisibility=hidden" ]
 
-  public_external_deps = [ "cJSON:cjson" ]
-  external_deps = [ "hilog:libhilog" ]
+  external_deps = [
+    "cJSON:cjson",
+    "hilog:libhilog",
+  ]
   subsystem_name = "inputmethod"
   part_name = "imf"
 }

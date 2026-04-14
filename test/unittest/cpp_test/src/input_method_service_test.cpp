@@ -32,6 +32,14 @@
 #include "pointer_event.h"
 #include "full_ime_info_manager.h"
 #include "ime_info_inquirer.h"
+#include "input_method_system_ability.h"
+#include "identity_checker_impl.h"
+#include "identity_checker_mock.h"
+#include "user_session_manager.h"
+#include "peruser_session.h"
+#include "input_method_core_service_impl.h"
+#include "input_method_agent_service_impl.h"
+#include "tdd_util.h"
 #undef private
 
 namespace OHOS {
@@ -353,6 +361,97 @@ HWTEST_F(InputMethodServiceTest, ImCommonEventManager_HandlePackageEvent_Process
     subscriber->AddPackage(eventData);
 
     EXPECT_TRUE(FullImeInfoManager::GetInstance().fullImeInfos_[userId].empty());
+}
+
+/**
+ * @tc.name: testConnectSystemCmd001
+ * @tc.desc: Test ConnectSystemCmd when identityChecker_ is nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodServiceTest, testConnectSystemCmd001, TestSize.Level1)
+{
+    IMSA_HILOGI("testConnectSystemCmd001 TEST START");
+    sptr<IRemoteObject> channel = nullptr;
+    sptr<IRemoteObject> agent = nullptr;
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    if (imsa != nullptr) {
+        imsa->identityChecker_ = nullptr;
+        int32_t result = imsa->ConnectSystemCmd(channel, agent);
+        EXPECT_EQ(result, ErrorCode::ERROR_NULL_POINTER);
+    }
+}
+
+/**
+ * @tc.name: testConnectSystemCmd003
+ * @tc.desc: Test ConnectSystemCmd when caller lacks PERMISSION_CONNECT_IME_ABILITY
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodServiceTest, testConnectSystemCmd003, TestSize.Level1)
+{
+    IMSA_HILOGI("testConnectSystemCmd003 TEST START");
+    sptr<IRemoteObject> channel = nullptr;
+    sptr<IRemoteObject> agent = nullptr;
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    if (imsa != nullptr) {
+        IdentityCheckerMock::ResetParam();
+        IdentityCheckerMock::SetSystemApp(true);
+        IdentityCheckerMock::SetPermission(false);
+        imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+        int32_t result = imsa->ConnectSystemCmd(channel, agent);
+        EXPECT_EQ(result, ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
+    }
+}
+
+/**
+ * @tc.name: testConnectSystemCmd004
+ * @tc.desc: Test ConnectSystemCmd when session is nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodServiceTest, testConnectSystemCmd004, TestSize.Level1)
+{
+    IMSA_HILOGI("testConnectSystemCmd004 TEST START");
+    sptr<IRemoteObject> channel = nullptr;
+    sptr<IRemoteObject> agent = nullptr;
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    if (imsa != nullptr) {
+        IdentityCheckerMock::ResetParam();
+        IdentityCheckerMock::SetSystemApp(true);
+        IdentityCheckerMock::SetPermission(true);
+        imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+        int32_t result = imsa->ConnectSystemCmd(channel, agent);
+        EXPECT_EQ(result, ErrorCode::ERROR_NULL_POINTER);
+    }
+}
+
+/**
+ * @tc.name: testConnectSystemCmd005
+ * @tc.desc: Test ConnectSystemCmd with appIdentifier = "123" (feature app)
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodServiceTest, testConnectSystemCmd005, TestSize.Level1)
+{
+    IMSA_HILOGI("testConnectSystemCmd005 TEST START");
+    sptr<IRemoteObject> channel = nullptr;
+    sptr<IRemoteObject> agent = nullptr;
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    if (imsa != nullptr) {
+        IdentityCheckerMock::ResetParam();
+        IdentityCheckerMock::SetSystemApp(true);
+        IdentityCheckerMock::SetPermission(true);
+        IdentityCheckerMock::bundleName_ = "test.app";
+        imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+        int32_t userId = TddUtil::GetCurrentUserId();
+        auto session = std::make_shared<PerUserSession>(userId);
+        sptr<IInputMethodCore> mockCore = new (std::nothrow) InputMethodCoreServiceImpl();
+        sptr<IRemoteObject> mockAgent = new (std::nothrow) InputMethodAgentServiceImpl();
+        auto imeData = std::make_shared<ImeData>(mockCore, mockAgent, nullptr, 100);
+        imeData->imeStatus = ImeStatus::READY;
+        session->realImeData_ = imeData;
+        UserSessionManager::GetInstance().userSessions_[userId] = session;
+        int32_t result = imsa->ConnectSystemCmd(channel, agent);
+        EXPECT_NE(result, ErrorCode::ERROR_SYSTEM_PANEL_ERROR);
+        UserSessionManager::GetInstance().userSessions_.clear();
+    }
 }
 } // namespace MiscServices
 } // namespace OHOS

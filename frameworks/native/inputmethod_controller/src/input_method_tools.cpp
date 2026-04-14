@@ -45,13 +45,16 @@ InputAttributeInner InputMethodTools::AttributeToInner(const InputAttribute &att
     inner.inputOption = attribute.inputOption;
     inner.enterKeyType = attribute.enterKeyType;
     inner.isTextPreviewSupported = attribute.isTextPreviewSupported;
+    inner.isOneTimeCodeNumberFlag = attribute.isOneTimeCodeNumberFlag;
     inner.bundleName = attribute.bundleName;
     inner.immersiveMode = attribute.immersiveMode;
     inner.gradientMode = attribute.gradientMode;
     inner.fluidLightMode = attribute.fluidLightMode;
-    inner.windowId = attribute.windowId;
-    inner.callingDisplayId = attribute.callingDisplayId;
-    inner.displayGroupId = attribute.displayGroupId;
+    inner.editorWindowId = attribute.editorWindowId;
+    inner.editorDisplayId = attribute.editorDisplayId;
+    inner.keyboardWindowId = attribute.keyboardWindowId;
+    inner.keyboardDisplayId = attribute.keyboardDisplayId;
+    inner.keyboardDisplayGroupId = attribute.keyboardDisplayGroupId;
     inner.placeholder = attribute.placeholder;
     inner.abilityName = attribute.abilityName;
     inner.capitalizeMode = attribute.capitalizeMode;
@@ -67,13 +70,16 @@ InputAttribute InputMethodTools::InnerToAttribute(const InputAttributeInner &inn
     inputAttribute.inputOption = inner.inputOption;
     inputAttribute.enterKeyType = inner.enterKeyType;
     inputAttribute.isTextPreviewSupported = inner.isTextPreviewSupported;
+    inputAttribute.isOneTimeCodeNumberFlag = inner.isOneTimeCodeNumberFlag;
     inputAttribute.bundleName = inner.bundleName;
     inputAttribute.immersiveMode = inner.immersiveMode;
     inputAttribute.gradientMode = inner.gradientMode;
     inputAttribute.fluidLightMode = inner.fluidLightMode;
-    inputAttribute.windowId = inner.windowId;
-    inputAttribute.callingDisplayId = inner.callingDisplayId;
-    inputAttribute.displayGroupId = inner.displayGroupId;
+    inputAttribute.editorWindowId = inner.editorWindowId;
+    inputAttribute.editorDisplayId = inner.editorDisplayId;
+    inputAttribute.keyboardWindowId = inner.keyboardWindowId;
+    inputAttribute.keyboardDisplayId = inner.keyboardDisplayId;
+    inputAttribute.keyboardDisplayGroupId = inner.keyboardDisplayGroupId;
     inputAttribute.placeholder = inner.placeholder;
     inputAttribute.abilityName = inner.abilityName;
     inputAttribute.capitalizeMode = inner.capitalizeMode;
@@ -89,6 +95,7 @@ CursorInfoInner InputMethodTools::CursorInfoToInner(const CursorInfo &cursorInfo
     inner.top = cursorInfo.top;
     inner.width = cursorInfo.width;
     inner.height = cursorInfo.height;
+    inner.displayId = cursorInfo.displayId;
     return inner;
 }
 
@@ -99,8 +106,10 @@ CursorInfo InputMethodTools::InnerToCursorInfo(const CursorInfoInner &inner)
     cursorInfo.top = inner.top;
     cursorInfo.width = inner.width;
     cursorInfo.height = inner.height;
+    cursorInfo.displayId = inner.displayId;
     return cursorInfo;
 }
+
 // LCOV_EXCL_START
 RangeInner InputMethodTools::RangeToInner(const Range &range)
 {

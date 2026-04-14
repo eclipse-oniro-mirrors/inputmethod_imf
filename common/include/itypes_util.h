@@ -44,6 +44,9 @@ public:
     static bool Marshalling(const std::string &input, MessageParcel &data);
     static bool Unmarshalling(std::string &output, MessageParcel &data);
 
+    static bool Marshalling(bool input, MessageParcel &data);
+    static bool Unmarshalling(bool &output, MessageParcel &data);
+
     template<typename T, typename... Types>
     static bool Marshal(MessageParcel &parcel, const T &first, const Types &...others);
     template<typename T, typename... Types>

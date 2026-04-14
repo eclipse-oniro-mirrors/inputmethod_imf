@@ -120,16 +120,16 @@ ErrCode InputMethodCoreServiceImpl::OnClientInactive(const sptr<IRemoteObject> &
     return ERR_OK;
 }
 // LCOV_EXCL_STOP
-ErrCode InputMethodCoreServiceImpl::OnCallingDisplayIdChanged(uint64_t displayId)
+ErrCode InputMethodCoreServiceImpl::OnCallingDisplayIdChanged(uint64_t editorDisplayId, uint64_t keyboardDisplayId)
 {
-    auto task = std::make_shared<TaskImsaOnCallingDisplayIdChanged>(displayId);
+    auto task = std::make_shared<TaskImsaOnCallingDisplayIdChanged>(editorDisplayId, keyboardDisplayId;
     TaskManager::GetInstance().PostTask(task);
     return ERR_OK;
 }
 
-ErrCode InputMethodCoreServiceImpl::OnCallingWindowIdChanged(uint32_t editorWindowId, uint32_t keyboardWindowId)
+ErrCode InputMethodCoreServiceImpl::OnCallingWindowIdChanged(uint32_t rawEditorWindowId, const FocusedInfo &focusedInfo)
 {
-    auto task = std::make_shared<TaskImsaOnCallingWindowIdChanged>(editorWindowId, keyboardWindowId);
+    auto task = std::make_shared<TaskImsaOnCallingWindowIdChanged>(rawEditorWindowId, focusedInfo);
     TaskManager::GetInstance().PostTask(task);
     return ERR_OK;
 }
@@ -145,9 +145,9 @@ ErrCode InputMethodCoreServiceImpl::NotifyPreemption()
     return InputMethodAbility::GetInstance().OnNotifyPreemption();
 }
 
-ErrCode InputMethodCoreServiceImpl::GetSoftKeyboardWindowInfo(ImeWindowInfo &imeWindowInfo)
+ErrCode InputMethodCoreServiceImpl::GetSoftKeyboardInfo(BoundImeInfo &imeInfo)
 {
-    return InputMethodAbility::GetInstance().GetSoftKeyboardWindowInfo(imeWindowInfo);
+    return InputMethodAbility::GetInstance().GetSoftKeyboardInfo(imeInfo);
 }
 } // namespace MiscServices
 } // namespace OHOS

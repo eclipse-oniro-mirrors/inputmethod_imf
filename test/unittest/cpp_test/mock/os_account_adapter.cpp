@@ -18,6 +18,8 @@
 #include "global.h"
 namespace OHOS {
 namespace MiscServices {
+std::atomic<bool> OsAccountAdapter::isVerified_{ false };
+int32_t OsAccountAdapter::isOsAccountVerifiedRet_{ ErrorCode::NO_ERROR };
 bool OsAccountAdapter::IsOsAccountForeground(int32_t userId)
 {
     return true;
@@ -42,9 +44,16 @@ int32_t OsAccountAdapter::GetOsAccountLocalIdFromUid(int32_t uid)
     return userId;
 }
 
-int32_t OsAccountAdapter::IsOsAccountVerified(int32_t userId, bool &isUnlocked)
+void OsAccountAdapter::SetIsOsAccountVerified(int32_t returnValue, bool isVerified)
 {
-    return ErrorCode::NO_ERROR;
+    isVerified_ = isVerified;
+    isOsAccountVerifiedRet_ = returnValue;
+}
+
+int32_t OsAccountAdapter::IsOsAccountVerified(int32_t userId, bool &isVerified)
+{
+    isVerified = isVerified_.load();
+    return isOsAccountVerifiedRet_;
 }
 } // namespace MiscServices
 } // namespace OHOS

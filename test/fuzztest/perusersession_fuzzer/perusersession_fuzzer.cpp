@@ -91,7 +91,7 @@ bool FuzzPerUserSession(FuzzedDataProvider &provider)
     std::vector<sptr<IRemoteObject>> agents;
     std::vector<BindImeInfo> imeInfos;
     userSessions->OnStartInput(clientInfo, agents, imeInfos);
-    userSessions->NotifyImeChangeToClients(property, subProperty);
+    userSessions->NotifyImeChangedToClients();
     userSessions->OnHideCurrentInput(DEFAULT_DISPLAY_ID);
     userSessions->OnHideInput(client);
     userSessions->OnReleaseInput(client, 0);

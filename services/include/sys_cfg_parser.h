@@ -37,7 +37,6 @@ struct SystemConfig : public Serializable {
     static constexpr const char *HA_SERVICE_NAME = "haService";
     std::string systemInputMethodConfigAbility;
     std::string defaultInputMethod;
-    std::string systemSpecialInputMethod;
     bool enableInputMethodFeature = false;
     bool enableFullExperienceFeature = false;
     EnabledStatus initEnabledState{ EnabledStatus::DISABLED };
@@ -50,12 +49,12 @@ struct SystemConfig : public Serializable {
     std::unordered_set<std::string> defaultMainDisplayScreenList;
     std::unordered_set<std::string> supportedCapacityList;
     std::vector<SaInfo> dependentSaList;
+    std::string systemPanelAppIdentifier;
 
     bool Unmarshal(cJSON *node) override
     {
         GetValue(node, GET_NAME(systemInputMethodConfigAbility), systemInputMethodConfigAbility);
         GetValue(node, GET_NAME(defaultInputMethod), defaultInputMethod);
-        GetValue(node, GET_NAME(systemSpecialInputMethod), systemSpecialInputMethod);
         GetValue(node, GET_NAME(enableInputMethodFeature), enableInputMethodFeature);
         GetValue(node, GET_NAME(enableFullExperienceFeature), enableFullExperienceFeature);
         auto enableState = static_cast<int32_t>(EnabledStatus::DISABLED);
@@ -70,6 +69,7 @@ struct SystemConfig : public Serializable {
         GetValue(node, GET_NAME(defaultMainDisplayScreenList), defaultMainDisplayScreenList);
         GetValue(node, GET_NAME(supportedCapacityList), supportedCapacityList);
         GetValue(node, GET_NAME(dependentSaList), dependentSaList);
+        GetValue(node, GET_NAME(systemPanelAppIdentifier), systemPanelAppIdentifier);
         return true;
     }
 };

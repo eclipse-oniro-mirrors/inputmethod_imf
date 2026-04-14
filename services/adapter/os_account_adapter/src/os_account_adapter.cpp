@@ -90,9 +90,9 @@ int32_t OsAccountAdapter::GetOsAccountLocalIdFromUid(int32_t uid)
     return userId;
 }
 
-int32_t OsAccountAdapter::IsOsAccountVerified(int32_t userId, bool &isUnlocked)
+int32_t OsAccountAdapter::IsOsAccountVerified(int32_t userId, bool &isVerified)
 {
-    auto errCode = OsAccountManager::IsOsAccountVerified(userId, isUnlocked);
+    auto errCode = OsAccountManager::IsOsAccountVerified(userId, isVerified);
     if (errCode != ERR_OK) {
         IMSA_HILOGE("IsOsAccountVerified failed, userId: %{public}d, errCode: %{public}d", userId, errCode);
         return ErrorCode::ERROR_OS_ACCOUNT;

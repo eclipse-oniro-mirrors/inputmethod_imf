@@ -1334,7 +1334,7 @@ int32_t InputMethodPanel::ShowKeyboardToWms(uint32_t windowId)
         return ErrorCode::ERROR_IMA_NULLPTR;
     }
     KeyboardEffectOption option = ConvertToWmEffect(GetImmersiveMode(), LoadImmersiveEffect());
-    const auto screenId = InputMethodAbility::GetInstance().GetInputAttribute().callingScreenId;
+    const auto screenId = InputMethodAbility::GetInstance().GetInputAttribute().keyboardScreenId;
     IMSA_HILOGI("ShowPanel windowId: %{public}u screenId: %{public}" PRIu64 ".", windowId, screenId);
     InputMethodSyncTrace tracer("InputMethodPanel_ShowPanel");
     auto ret = window_->ShowKeyboard(windowId, screenId, option);
@@ -1502,7 +1502,8 @@ void InputMethodPanel::PanelStatusChangeToImc(const InputWindowStatus &newStatus
             // 回调隐藏
             imeWindowInfo_.status = InputWindowStatus::HIDE;
             imeWindowInfo_.panelInfo.panelFlag = oldPanelFlag;
-            return proxy->PanelStatusChange(static_cast<uint32_t>(InputWindowStatus::HIDE), imeWindowInfo_);
+            proxy->PanelStatusChange(oldImeWindowInfo, imeWindowInfo_);
+            return;
         }
     } else {        // 之前显示，现在隐藏      现在隐藏，之前显示
         // 后选词，不处理
@@ -1522,7 +1523,7 @@ void InputMethodPanel::PanelStatusChangeToImc(const InputWindowStatus &newStatus
     imeWindowInfo_.windowInfo.height = panelRect.height_;
     IMSA_HILOGD("rect: %{public}s, status: %{public}d, panelFlag: %{public}d.", panelRect.ToString().c_str(),
         newStatus, imeWindowInfo_.panelInfo.panelFlag);
-    proxy->PanelStatusChange(static_cast<uint32_t>(newStatus), imeWindowInfo_);
+    proxy->PanelStatusChange(oldImeWindowInfo, imeWindowInfo_);
 }
 
 int32_t InputMethodPanel::GetInputWindowAvoidArea(PanelFlag panelFlag, Rosen::Rect &windowRect)
@@ -2322,7 +2323,7 @@ sptr<Rosen::Display> InputMethodPanel::GetCurDisplay()
 
 uint64_t InputMethodPanel::GetCurDisplayId()
 {
-    return InputMethodAbility::GetInstance().GetInputAttribute().callingDisplayId;
+    return InputMethodAbility::GetInstance().GetInputAttribute().keyboardDisplayId;
 }
 
 bool InputMethodPanel::IsInMainDisplay()
@@ -2776,16 +2777,24 @@ void InputMethodPanel::OnVisibilityChange(bool isVisible)
 
 bool InputMethodPanel::IsValidParamWithConfig()
 {
+    if (!isAdjustInfoInitialized_.load()) {
+        int32_t ret = InitAdjustInfo();
+        if (ret != ErrorCode::NO_ERROR) {
+            IMSA_HILOGE("failed to init adjust info, ret: %{public}d", ret);
+            return false;
+        }
+    }
     bool isPortrait = IsDisplayPortrait();
     auto keys = GetScreenStatus(panelFlag_);
     auto styleKey = isPortrait ? std::get<1>(keys) : std::get<0>(keys);
+    std::lock_guard<std::mutex> lk(panelAdjustLock_);
     for (const auto &info : panelAdjust_) {
         if (IsVectorsEqual(info.first, styleKey)) {
             return !(info.second.top == 0 && info.second.left == 0 && info.second.right == 0
                 && info.second.bottom == 0);
         }
     }
-    return true;
+    return false;
 }
 } // namespace MiscServices
 } // namespace OHOS

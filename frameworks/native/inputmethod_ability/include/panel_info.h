@@ -24,6 +24,7 @@ namespace MiscServices {
 enum PanelType {
     SOFT_KEYBOARD = 0,
     STATUS_BAR,
+    TYPE_NONE,
 };
 
 enum PanelFlag {

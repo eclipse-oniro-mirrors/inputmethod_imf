@@ -19,6 +19,7 @@
 #include <cstdint>
 #include <string>
 
+#include "image_process_state_observer_stub.h"
 #include "running_process_info.h"
 
 namespace OHOS {
@@ -26,9 +27,28 @@ namespace MiscServices {
 class AppMgrAdapter final {
 public:
     static bool HasBundleName(pid_t pid, const std::string &bundleName);
+    static int32_t RegisterImageProcessStateObserver();
+    static void ResetImageProcessStateObserver();
+    static int32_t GetRunningProcessInfoByPid(pid_t pid, OHOS::AppExecFwk::RunningProcessInfo &info);
+    static int32_t GetRunningProcessInfosByUserId(
+        int32_t userId, std::vector<OHOS::AppExecFwk::RunningProcessInfo> &infos);
+    class ImageProcessStateObserverImpl : public AppExecFwk::ImageProcessStateObserverStub {
+    public:
+        ImageProcessStateObserverImpl() = default;
+        ~ImageProcessStateObserverImpl() = default;
+        void OnImageProcessStateChanged(const AppExecFwk::ImageProcessStateData &imageProcessStateData) override;
+        void OnForkAllWorkProcessFailed(
+            const AppExecFwk::ImageProcessStateData &imageProcessStateData, int32_t errCode) override
+        {
+        }
+
+    private:
+        void NotifySysImeImageCreated(int32_t uid);
+    };
 
 private:
-    static int32_t GetRunningProcessInfoByPid(pid_t pid, OHOS::AppExecFwk::RunningProcessInfo &info);
+    static std::mutex imageStateObserverLock_;
+    static sptr<AppExecFwk::IImageProcessStateObserver> imageStateObserver_;
 };
 } // namespace MiscServices
 } // namespace OHOS

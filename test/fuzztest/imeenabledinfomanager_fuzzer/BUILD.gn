@@ -48,6 +48,7 @@ ohos_fuzztest("ImeEnabledInfoManagerFuzzTest") {
   external_deps = [
     "ability_base:want",
     "bundle_framework:appexecfwk_core",
+    "cJSON:cjson",
     "c_utils:utils",
     "config_policy:configpolicy_util",
     "data_share:datashare_common",

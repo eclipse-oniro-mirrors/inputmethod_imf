@@ -107,8 +107,6 @@ bool TextTotalConfigInner::ReadFromParcel(Parcel &in)
             return false;
         }
     commandValue = *commandValueInfo;
-    int32_t requestKeyboardReasonData = in.ReadInt32();
-    requestKeyboardReason = static_cast<RequestKeyboardReason>(requestKeyboardReasonData);
     abilityToken = (static_cast<MessageParcel*>(&in))->ReadRemoteObject();
     isSimpleKeyboardEnabled = in.ReadBool();
     return true;
@@ -309,10 +307,6 @@ bool TextTotalConfigInner::Marshalling(Parcel &out) const
     }
 
     if (!out.WriteParcelable(&commandValue)) {
-        return false;
-    }
-
-    if (!out.WriteInt32(static_cast<int32_t>(requestKeyboardReason))) {
         return false;
     }
 

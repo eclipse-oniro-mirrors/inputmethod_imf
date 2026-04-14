@@ -358,6 +358,7 @@ ohos_shared_library("inputmethod_ability") {
   configs = [ ":inputmethod_ability_native_config" ]
 
   external_deps = [
+    "window_manager:libwm",
     "ability_base:configuration",
     "ability_base:want",
     "ability_runtime:ability_context_native",
@@ -379,8 +380,6 @@ ohos_shared_library("inputmethod_ability") {
     "window_manager:libdm",
     "window_manager:libwsutils",
   ]
-
-  public_external_deps = [ "window_manager:libwm" ]
 
   deps = [
     ":input_control_channel_interface",
@@ -486,6 +485,7 @@ ohos_static_library("inputmethod_ability_static") {
   ]
 
   external_deps = [
+    "window_manager:libwm",
     "ability_base:configuration",
     "ability_base:want",
     "ability_runtime:ability_context_native",
@@ -508,8 +508,6 @@ ohos_static_library("inputmethod_ability_static") {
     "window_manager:libdm",
     "window_manager:libwsutils",
   ]
-
-  public_external_deps = [ "window_manager:libwm" ]
 
   deps = [
     ":input_control_channel_interface",
@@ -600,11 +598,13 @@ ohos_static_library("inputmethod_ability_fuzz_static") {
   ]
 
   external_deps = [
+    "window_manager:libwm",
     "ability_base:configuration",
     "ability_base:want",
     "ability_runtime:ability_context_native",
     "ability_runtime:app_manager",
     "bundle_framework:appexecfwk_base",
+    "cJSON:cjson",
     "c_utils:utils",
     "config_policy:configpolicy_util",
     "eventhandler:libeventhandler",
@@ -620,8 +620,6 @@ ohos_static_library("inputmethod_ability_fuzz_static") {
     "window_manager:libdm",
     "window_manager:libwsutils",
   ]
-
-  public_external_deps = [ "window_manager:libwm" ]
 
   deps = [
     ":input_control_channel_interface",

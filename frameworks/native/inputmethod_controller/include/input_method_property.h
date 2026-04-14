@@ -158,6 +158,7 @@ struct FullImeInfo {
     Property prop;
     std::vector<SubProperty> subProps;
     std::string versionName;
+    bool isSystemSpecialIme{ false };
     void ShrinkStrings()
     {
         appId.shrink_to_fit();

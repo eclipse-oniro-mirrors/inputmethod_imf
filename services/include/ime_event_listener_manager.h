@@ -26,7 +26,7 @@
 #include "iinput_client.h"
 #include "input_death_recipient.h"
 #include "input_method_property.h"
-#include "input_method_utils.h"
+#include "input_status_info.h"
 #include "input_window_info.h"
 namespace OHOS {
 namespace MiscServices {
@@ -42,7 +42,7 @@ public:
     static ImeEventListenerManager &GetInstance();
     int32_t UpdateListenerInfo(int32_t userId, const ImeEventListenerInfo &info);
     int32_t NotifyInputStart(int32_t userId, const InputStartInfo &inputStartInfo);
-    int32_t NotifyInputStop(int32_t userId, uint64_t displayGroupId);
+    int32_t NotifyInputStop(int32_t userId, uint64_t displayId, InputStopScene scene);
     int32_t NotifyPanelStatusChange(int32_t userId, const ImeWindowInfo &oldInfo, const ImeWindowInfo &newInfo);
     int32_t NotifyImeChange(int32_t userId, const Property &property, const SubProperty &subProperty);
 

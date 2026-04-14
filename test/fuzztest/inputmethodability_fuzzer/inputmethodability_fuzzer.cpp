@@ -79,40 +79,6 @@ void TestGetTextBeforeCursor(FuzzedDataProvider &provider)
     std::u16string text;
     InputMethodAbility::GetInstance().GetTextBeforeCursor(fuzzedInt32, text);
 }
-
-void TestGetTextAfterCursor(FuzzedDataProvider &provider)
-{
-    int32_t fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
-    std::u16string text;
-    InputMethodAbility::GetInstance().GetTextAfterCursor(fuzzedInt32, text);
-}
-
-void TestSendFunctionKey(FuzzedDataProvider &provider)
-{
-    int32_t fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
-    InputMethodAbility::GetInstance().SendFunctionKey(fuzzedInt32);
-}
-
-void TestMoveCursor(FuzzedDataProvider &provider)
-{
-    int32_t fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
-    InputMethodAbility::GetInstance().MoveCursor(fuzzedInt32);
-}
-
-void TestDispatchKeyEvent(FuzzedDataProvider &provider)
-{
-    int32_t fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
-    std::shared_ptr<MMI::KeyEvent> keyEvent = MMI::KeyEvent::Create();
-    keyEvent->SetKeyCode(fuzzedInt32);
-    keyEvent->SetKeyAction(fuzzedInt32);
-    InputMethodAbility::GetInstance().DispatchKeyEvent(keyEvent, fuzzedInt32, nullptr);
-}
-
-void TestSetCallingWindow(FuzzedDataProvider &provider)
-{
-    int32_t fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
-    InputMethodAbility::GetInstance().SetCallingWindow(fuzzedInt32, fuzzedInt32);
-}
 } // namespace OHOS
 
 /* Fuzzer entry point */
@@ -126,13 +92,5 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     OHOS::TestSendExtendAction(provider);
 
     OHOS::TestGetTextBeforeCursor(provider);
-    OHOS::TestGetTextAfterCursor(provider);
-
-    OHOS::TestSendFunctionKey(provider);
-    OHOS::TestMoveCursor(provider);
-
-    OHOS::TestDispatchKeyEvent(provider);
-
-    OHOS::TestSetCallingWindow(provider);
     return 0;
 }

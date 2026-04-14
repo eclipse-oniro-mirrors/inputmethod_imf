@@ -247,8 +247,16 @@ bool SettingsDataUtils::IsDataShareReady()
     return isDataShareReady_.load();
 }
 
-EnabledStatus SettingsDataUtils::ComputeEnabledStatus(const std::string &bundleName, EnabledStatus initStatus)
+EnabledStatus SettingsDataUtils::ComputeEnabledStatus(
+    const std::string &bundleName, bool isSystemSpecialIme, EnabledStatus initStatus)
 {
+    if (bundleName.empty()) {
+        return EnabledStatus::DISABLED;
+    }
+    if (isSystemSpecialIme) {
+        IMSA_HILOGI("%{public}s is sys special ime!", bundleName.c_str());
+        return EnabledStatus::FULL_EXPERIENCE_MODE;
+    }
     auto status = ComputeSysCfgEnabledStatus(initStatus);
     auto sysIme = ImeInfoInquirer::GetInstance().GetDefaultIme();
     if (sysIme.bundleName.empty()) {

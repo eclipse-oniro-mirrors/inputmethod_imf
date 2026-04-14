@@ -98,8 +98,8 @@ EditorAttribute_t CommonConvert::NativeAttributeToAni(const InputAttribute &inpu
     result.bundleName = taihe::optional<taihe::string>(std::in_place_t{}, inputAttribute.bundleName);
     result.immersiveMode = taihe::optional<ImmersiveMode_t>(std::in_place_t{},
         ConvertMode(static_cast<ImmersiveMode>(inputAttribute.immersiveMode)));
-    result.windowId = taihe::optional<int32_t>(std::in_place_t{}, inputAttribute.windowId);
-    result.displayId = taihe::optional<uint64_t>(std::in_place_t{}, inputAttribute.callingDisplayId);
+    result.windowId = taihe::optional<int32_t>(std::in_place_t{}, inputAttribute.keyboardWindowId);
+    result.displayId = taihe::optional<uint64_t>(std::in_place_t{}, inputAttribute.keyboardDisplayId);
     result.placeholder = taihe::optional<taihe::string>(std::in_place_t{},
         std::string(Str16ToStr8(inputAttribute.placeholder)));
     result.abilityName = taihe::optional<taihe::string>(std::in_place_t{},
@@ -296,7 +296,7 @@ ani_object CommonConvert::Uint8ArrayToObject(ani_env *env, const std::vector<uin
         IMSA_HILOGE("null env");
         return aniObject;
     }
-    ani_status retCode = env->FindClass("escompat.Uint8Array", &arrayClass);
+    ani_status retCode = env->FindClass("std.core.Uint8Array", &arrayClass);
     if (retCode != ANI_OK) {
         IMSA_HILOGE("Failed: env->FindClass()");
         return aniObject;
@@ -801,7 +801,7 @@ ani_object CommonConvert::CreateAniRect(ani_env* env, Rosen::Rect rect)
         IMSA_HILOGE("[ANI] fail to create new obj");
         return CreateAniUndefined(env);
     }
-    
+
     ret = CallAniMethodVoid(env, aniRect, aniClass, "<set>left", nullptr, ani_int(rect.posX_));
     if (ret == ANI_OK) {
         ret = CallAniMethodVoid(env, aniRect, aniClass, "<set>top", nullptr, ani_int(rect.posY_));

@@ -17,6 +17,8 @@ sequenceable input_method_property..OHOS.MiscServices.Property;
 sequenceable input_method_property..OHOS.MiscServices.SubProperty;
 sequenceable input_window_info..OHOS.MiscServices.InputWindowStatus;
 sequenceable input_window_info..OHOS.MiscServices.ImeWindowInfo;
+sequenceable input_status_info..OHOS.MiscServices.InputStartInfo;
+sequenceable input_status_info..OHOS.MiscServices.InputStopInfo;
 sequenceable OHOS.IRemoteObject;
 import InputMethodClientTypes;
 interface OHOS.MiscServices.IInputClient {

@@ -318,12 +318,6 @@ SystemConfig ImeInfoInquirer::GetSystemConfig()
     return sysCfg_;
 }
 
-std::string ImeInfoInquirer::GetSystemSpecialIme()
-{
-    std::lock_guard<std::mutex> lock(sysCfgLock_);
-    return sysCfg_.systemSpecialInputMethod;
-}
-
 void ImeInfoInquirer::SetRunningIme(int32_t userId, const std::vector<std::string> &ime)
 {
     std::lock_guard<std::mutex> lock(runningImeLock_);
@@ -489,6 +483,18 @@ std::string ImeInfoInquirer::GetImeVersionName(int32_t userId, const std::string
 void ImeInfoInquirer::SetImeVersionName(const std::string &versionName)
 {
     versionName_ = versionName;
+}
+
+bool ImeInfoInquirer::GetBundleInfoByBundleName(
+    int32_t userId, const std::string &bundleName, AppExecFwk::BundleInfo &bundleInfo)
+{
+    bundleInfo.signatureInfo.appIdentifier = "123";
+    return true;
+}
+
+std::string ImeInfoInquirer::GetSystemPanelAppIdentifier()
+{
+    return "123";
 }
 } // namespace MiscServices
 } // namespace OHOS

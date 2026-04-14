@@ -26,6 +26,7 @@ public:
     static SystemParamAdapter &GetInstance();
     int32_t WatchParam(const std::string &key);
     bool GetBoolParam(const std::string &key);
+    bool IsInLowMemWaterMark();
 
 private:
     SystemParamAdapter() = default;
