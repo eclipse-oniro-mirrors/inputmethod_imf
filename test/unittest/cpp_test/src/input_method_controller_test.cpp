@@ -2832,5 +2832,6 @@ HWTEST_F(InputMethodControllerTest, testCalibrateInputPatternParam_001, TestSize
     inputMethodController_->CalibrateInputPatternParam(inputAttribute1);
     EXPECT_FALSE(inputAttribute1.isOneTimeCodeNumberFlag);
 }
+FDJFGH
 } // namespace MiscServices
 } // namespace OHOS
