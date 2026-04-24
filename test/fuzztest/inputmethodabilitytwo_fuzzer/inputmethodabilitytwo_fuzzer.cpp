@@ -49,7 +49,8 @@ bool InitializeClientInfo(InputClientInfo &clientInfo) __attribute__((no_sanitiz
 void TestCallingDisplayIdChanged(FuzzedDataProvider &provider) __attribute__((no_sanitize("cfi")))
 {
     uint64_t fuzzedUint64 = provider.ConsumeIntegral<uint64_t>();
-    InputMethodAbility::GetInstance().OnCallingDisplayIdChanged(fuzzedUint64);
+    bool isNotifyInputStart = provider.ConsumeBool();
+    InputMethodAbility::GetInstance().OnCallingDisplayIdChanged(fuzzedUint64, fuzzedUint64, isNotifyInputStart);
 }
 
 void TestUnregisterProxyIme(FuzzedDataProvider &provider) __attribute__((no_sanitize("cfi")))
@@ -91,7 +92,7 @@ void TestOperationKeyboard(FuzzedDataProvider &provider) __attribute__((no_sanit
     int32_t cmdId = provider.ConsumeIntegral<int32_t>();
     uint32_t sessionId = provider.ConsumeIntegral<uint32_t>();
     InputMethodAbility::GetInstance().HideKeyboardImplWithoutLock(cmdId, sessionId);
-    InputMethodAbility::GetInstance().ShowKeyboardImplWithLock(cmdId);
+    InputMethodAbility::GetInstance().ShowKeyboardImplWithoutLock(cmdId);
 }
 
 void TestInterfaceCoverage(FuzzedDataProvider &provider) __attribute__((no_sanitize("cfi")))

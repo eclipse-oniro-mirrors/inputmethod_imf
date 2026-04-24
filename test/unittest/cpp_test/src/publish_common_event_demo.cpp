@@ -70,12 +70,12 @@ void NotifySaMakeImage(const std::string &bundleName)
     CommonEventData data;
     data.SetWant(want);
     auto ret = CommonEventManager::PublishCommonEvent(data);
-    printf("=====NotifySaMakeImage:bundleName/ret:%s/%d.=====\n", ret, bundleName.c_str());
+    printf("=====NotifySaMakeImage:bundleName/ret:%d/%s.=====\n", ret, bundleName.c_str());
 }
 
 void GetRunningProcessInfosByUserId(int32_t userId, std::vector<RunningProcessInfo> &infos)
 {
-    auto appMgrClient = DelayedSingleton<AppMgrClient>::GetInstance();
+    auto appMgrClient = OHOS::DelayedSingleton<AppMgrClient>::GetInstance();
     if (appMgrClient == nullptr) {
         printf("appMgrClient is nullptr.");
         return;

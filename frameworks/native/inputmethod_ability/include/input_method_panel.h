@@ -23,6 +23,7 @@
 
 #include "calling_window_info.h"
 #include "display_manager.h"
+#include "input_status_info.h"
 #include "input_window_info.h"
 #include "native_engine/native_engine.h"
 #include "panel_common.h"
@@ -245,6 +246,7 @@ private:
     int32_t ShowKeyboardToWms(uint32_t windowId);
     bool IsValidParamWithConfig();
     void UpdatePanelFlag(PanelFlag newPanelFlag);
+    void NotifySoftKeyBoardInfoChanged(PanelFlag panelFlag, InputWindowStatus status);
 
     sptr<OHOS::Rosen::Window> window_ = nullptr;
     sptr<OHOS::Rosen::WindowOption> winOption_ = nullptr;
@@ -311,7 +313,8 @@ private:
 
     std::atomic<bool> hasSetSize_ { false };
 
-    ImeWindowInfo imeWindowInfo_;
+    std::mutex oldBindImeInfoLock_;
+    BoundImeInfo oldBindImeInfo_;
 };
 } // namespace MiscServices
 } // namespace OHOS

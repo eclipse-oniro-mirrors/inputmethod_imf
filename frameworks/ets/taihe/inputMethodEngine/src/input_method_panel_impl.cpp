@@ -12,6 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include <thread>
 #include "input_method_panel_impl.h"
 #include "js_utils.h"
 #include "input_method_panel_listener.h"
@@ -256,85 +257,150 @@ void PanelImpl::AdjustPanelRect(PanelFlag_t flag, PanelRect_t const& rect)
     if (!jobQueue_.Wait(static_cast<int64_t>(id))) {
         IMSA_HILOGW("wait timeout id: %{public}" PRId64 "", id);
     }
-    if (inputMethodPanel_ == nullptr) {
-        IMSA_HILOGE("panel is nullptr!");
-        set_business_error(JsUtils::Convert(ErrorCode::ERROR_IME),
-            JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IME)));
-        jobQueue_.Pop();
-        return;
-    }
-    PanelFlag panelFlag = static_cast<PanelFlag>(flag.get_value());
-    if (!IsPanelFlagValid(panelFlag, false)) {
-        IMSA_HILOGE("invalid panelFlag!");
-        set_business_error(IMFErrorCode::EXCEPTION_PARAMCHECK, JsUtils::ToMessage(IMFErrorCode::EXCEPTION_PARAMCHECK));
-        jobQueue_.Pop();
-        return;
-    }
-    ani_env* env = taihe::get_env();
     LayoutParams layoutParams;
-    if (!CommonConvert::ParsePanelRect(env, rect, layoutParams)) {
-        IMSA_HILOGE("ParsePanelRect is failed!");
-        set_business_error(IMFErrorCode::EXCEPTION_PARAMCHECK, JsUtils::ToMessage(IMFErrorCode::EXCEPTION_PARAMCHECK));
+    if (!PrepareAdjustPanelRect(flag, rect, layoutParams)) {
         jobQueue_.Pop();
         return;
     }
-    int32_t ret = inputMethodPanel_->AdjustPanelRect(panelFlag, layoutParams);
-    jobQueue_.Pop();
-    if (ret == ErrorCode::NO_ERROR) {
-        IMSA_HILOGI("AdjustPanelRect success!");
-        return;
-    } else if (ret == ErrorCode::ERROR_PARAMETER_CHECK_FAILED) {
-        IMSA_HILOGE("invalid param");
-        set_business_error(JsUtils::Convert(ret), JsUtils::ToMessage(JsUtils::Convert(ret)));
-        return;
-    } else {
-        IMSA_HILOGE("AdjustPanelRect failed!");
-        set_business_error(JsUtils::Convert(ret), JsUtils::ToMessage(JsUtils::Convert(ret)));
-    }
+    std::weak_ptr<PanelImpl> weakThis = shared_from_this();
+    auto task = [weakThis, panelFlag = static_cast<PanelFlag>(flag.get_value()), layoutParams]() {
+        auto self = weakThis.lock();
+        if (self == nullptr || self->inputMethodPanel_ == nullptr) {
+            return;
+        }
+        int32_t ret = self->inputMethodPanel_->AdjustPanelRect(panelFlag, layoutParams);
+        jobQueue_.Pop();
+        self->HandleAdjustPanelRectResult(ret);
+    };
+    std::thread obj(task);
+    obj.detach();
+    IMSA_HILOGI("AdjustPanelRect task posted to async thread");
 }
 
 void PanelImpl::AdjustPanelRectEnhanced(PanelFlag_t flag, EnhancedPanelRect_t const& rect)
+{
+    EnhancedLayoutParams enhancedLayoutParams;
+    HotAreas hotAreas;
+    if (!PrepareAdjustPanelRectEnhanced(flag, rect, enhancedLayoutParams, hotAreas)) {
+        jobQueue_.Pop();
+        return;
+    }
+    std::weak_ptr<PanelImpl> weakThis = shared_from_this();
+    auto task = [weakThis, panelFlag = static_cast<PanelFlag>(flag.get_value()), enhancedLayoutParams, hotAreas]() {
+        auto self = weakThis.lock();
+        if (self == nullptr || self->inputMethodPanel_ == nullptr) {
+            return;
+        }
+        int32_t ret = self->inputMethodPanel_->AdjustPanelRect(panelFlag, enhancedLayoutParams, hotAreas);
+        jobQueue_.Pop();
+        self->HandleAdjustPanelRectResult(ret);
+    };
+    std::thread obj(task);
+    obj.detach();
+    IMSA_HILOGI("AdjustPanelRectEnhanced task posted to async thread");
+}
+
+void PanelImpl::AdjustPanelRectSync(PanelFlag_t flag, PanelRect_t const& rect)
+{
+    int64_t id = LineUp();
+    if (!jobQueue_.Wait(static_cast<int64_t>(id))) {
+        IMSA_HILOGW("wait timeout id: %{public}" PRId64 "", id);
+    }
+    LayoutParams layoutParams;
+    if (!PrepareAdjustPanelRect(flag, rect, layoutParams)) {
+        jobQueue_.Pop();
+        return;
+    }
+    int32_t ret = inputMethodPanel_->AdjustPanelRect(static_cast<PanelFlag>(flag.get_value()), layoutParams);
+    jobQueue_.Pop();
+    HandleAdjustPanelRectResult(ret);
+}
+
+void PanelImpl::AdjustPanelRectSyncEnhanced(PanelFlag_t flag, EnhancedPanelRect_t const& rect)
+{
+    EnhancedLayoutParams enhancedLayoutParams;
+    HotAreas hotAreas;
+    if (!PrepareAdjustPanelRectEnhanced(flag, rect, enhancedLayoutParams, hotAreas)) {
+        jobQueue_.Pop();
+        return;
+    }
+    int32_t ret =
+        inputMethodPanel_->AdjustPanelRect(static_cast<PanelFlag>(flag.get_value()), enhancedLayoutParams, hotAreas);
+    jobQueue_.Pop();
+    HandleAdjustPanelRectResult(ret);
+}
+
+bool PanelImpl::PrepareAdjustPanelRect(PanelFlag_t flag, PanelRect_t const& rect, LayoutParams& layoutParams)
 {
     if (inputMethodPanel_ == nullptr) {
         IMSA_HILOGE("panel is nullptr!");
         set_business_error(JsUtils::Convert(ErrorCode::ERROR_IME),
             JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IME)));
-        return;
+        return false;
+    }
+    PanelFlag panelFlag = static_cast<PanelFlag>(flag.get_value());
+    if (!IsPanelFlagValid(panelFlag, false)) {
+        IMSA_HILOGE("invalid panelFlag!");
+        set_business_error(IMFErrorCode::EXCEPTION_PARAMCHECK, JsUtils::ToMessage(IMFErrorCode::EXCEPTION_PARAMCHECK));
+        return false;
+    }
+    ani_env* env = taihe::get_env();
+    if (!CommonConvert::ParsePanelRect(env, rect, layoutParams)) {
+        IMSA_HILOGE("ParsePanelRect is failed!");
+        set_business_error(IMFErrorCode::EXCEPTION_PARAMCHECK, JsUtils::ToMessage(IMFErrorCode::EXCEPTION_PARAMCHECK));
+        return false;
+    }
+    return true;
+}
+
+bool PanelImpl::PrepareAdjustPanelRectEnhanced(PanelFlag_t flag, EnhancedPanelRect_t const& rect,
+    EnhancedLayoutParams& enhancedLayoutParams, HotAreas& hotAreas)
+{
+    if (inputMethodPanel_ == nullptr) {
+        IMSA_HILOGE("panel is nullptr!");
+        set_business_error(JsUtils::Convert(ErrorCode::ERROR_IME),
+            JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IME)));
+        return false;
     }
     PanelFlag panelFlag = static_cast<PanelFlag>(flag.get_value());
     if (!IsPanelFlagValid(panelFlag, true)) {
         IMSA_HILOGE("invalid panelFlag for enhanced call!");
         set_business_error(JsUtils::Convert(ErrorCode::ERROR_INVALID_PANEL_FLAG),
             JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_INVALID_PANEL_FLAG)));
-        return;
+        return false;
     }
-    EnhancedLayoutParams enhancedLayoutParams;
-    HotAreas hotAreas;
     ani_env* env = taihe::get_env();
     if (env == nullptr) {
         IMSA_HILOGE("env is nullptr!");
         set_business_error(IMFErrorCode::EXCEPTION_IME, JsUtils::ToMessage(IMFErrorCode::EXCEPTION_IME));
-        return;
+        return false;
     }
     auto ret = CommonConvert::ParseEnhancedPanelRect(env, rect, enhancedLayoutParams, hotAreas);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("parse  EnhancedPanelRect failed");
         set_business_error(JsUtils::Convert(ret), JsUtils::ToMessage(JsUtils::Convert(ret)));
-        return;
+        return false;
     }
     ret = inputMethodPanel_->IsEnhancedParamValid(panelFlag, enhancedLayoutParams);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("IsEnhancedParamValid failed ret:%{public}d", ret);
         set_business_error(JsUtils::Convert(ret), JsUtils::ToMessage(JsUtils::Convert(ret)));
-        return;
+        return false;
     }
-    ret = inputMethodPanel_->AdjustPanelRect(panelFlag, enhancedLayoutParams, hotAreas);
-    if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("AdjustPanelRect failed ret:%{public}d", ret);
+    return true;
+}
+
+void PanelImpl::HandleAdjustPanelRectResult(int32_t ret)
+{
+    if (ret == ErrorCode::NO_ERROR) {
+        IMSA_HILOGI("AdjustPanelRect success!");
+    } else if (ret == ErrorCode::ERROR_PARAMETER_CHECK_FAILED) {
+        IMSA_HILOGI("Invalid param");
         set_business_error(JsUtils::Convert(ret), JsUtils::ToMessage(JsUtils::Convert(ret)));
-        return;
+    } else {
+        IMSA_HILOGI("AdjustPanelRect failed");
+        set_business_error(JsUtils::Convert(ret), JsUtils::ToMessage(JsUtils::Convert(ret)));
     }
-    IMSA_HILOGI("AdjustPanelRect success!");
 }
 
 int64_t PanelImpl::GetDisplayIdSync(int64_t id)

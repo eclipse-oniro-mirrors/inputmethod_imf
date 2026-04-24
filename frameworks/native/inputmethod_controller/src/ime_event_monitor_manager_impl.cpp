@@ -89,12 +89,9 @@ int32_t ImeEventMonitorManagerImpl::NotifyInputStartWhenRegister(
         auto ret = instance->GetInputStartInfo(info);
         if (ret != ErrorCode::NO_ERROR) {
             IMSA_HILOGD("failed to GetInputStartInfo:%{public}d!", ret);
-            return ret;
+            return;
         }
-        if (info.clientInfo.displayGroupId == ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID
-            && info.clientInfo.isShowKeyboard) {
-            listener->OnInputStart(info.clientInfo.windowId, info.clientInfo.requestKeyboardReason);
-        }
+        listener->OnInputStart(info.clientInfo.rawWindowId, info.clientInfo.requestKeyboardReason);
         listener->OnInputStart(info);
     };
     std::thread obj(task);
@@ -155,15 +152,15 @@ int32_t ImeEventMonitorManagerImpl::OnImeChange(const Property &property, const 
     return ErrorCode::NO_ERROR;
 }
 
-int32_t ImeEventMonitorManagerImpl::OnPanelStatusChange(const ImeWindowInfo &oldInfo, const ImeWindowInfo &newInfo)
+int32_t ImeEventMonitorManagerImpl::OnPanelStatusChange(const InputWindowStatus &status, const ImeWindowInfo &info)
 {
-    IMSA_HILOGD("oldInfo/newInfo: %{public}s/%{public}s.", oldInfo.ToString().c_str(), newInfo.ToString().c_str());
-    OnSoftKeyboardInfoChanged(oldInfo, newInfo);
-    if (newInfo.status == InputWindowStatus::HIDE) {
-        return OnImeHide(newInfo);
+    IMSA_HILOGD("ImeEventMonitorManagerImpl, status: %{public}u, window: %{public}s", static_cast<uint32_t>(status),
+                info.windowInfo.ToString().c_str());
+    if (status == InputWindowStatus::HIDE) {
+        return OnImeHide(info);
     }
-    if (newInfo.status == InputWindowStatus::SHOW) {
-        return OnImeShow(newInfo);
+    if (status == InputWindowStatus::SHOW) {
+        return OnImeShow(info);
     }
     return ErrorCode::ERROR_BAD_PARAMETERS;
 }
@@ -176,12 +173,12 @@ int32_t ImeEventMonitorManagerImpl::OnInputStart(const InputStartInfo &inputStar
         if (listener == nullptr) {
             continue;
         }
-        if (inputStartInfo.clientInfo.displayGroupId == ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID
-            && inputStartInfo.scene != InputStartScene::DISPLAY_CHANGED
-            && (inputStartInfo.scene != InputStartScene::ATTACH || inputStartInfo.clientInfo.isShowKeyboard)) {
-            listener->OnInputStart(inputStartInfo.clientInfo.windowId, inputStartInfo.clientInfo.requestKeyboardReason);
+        if (inputStartInfo.isNewCb) {
+            listener->OnInputStart(inputStartInfo);
+        } else {
+            listener->OnInputStart(
+                inputStartInfo.clientInfo.rawWindowId, inputStartInfo.clientInfo.requestKeyboardReason);
         }
-        listener->OnInputStart(inputStartInfo);
     }
     return ErrorCode::NO_ERROR;
 }
@@ -221,14 +218,16 @@ int32_t ImeEventMonitorManagerImpl::OnImeHide(const ImeWindowInfo &info)
 }
 
 int32_t ImeEventMonitorManagerImpl::OnSoftKeyboardInfoChanged(
-    const ImeWindowInfo &oldInfo, const ImeWindowInfo &newInfo)
+    int32_t userId, const BoundImeInfo &oldImeInfo, const BoundImeInfo &newImeInfo)
 {
+    IMSA_HILOGD("userId/oldInfo/newInfo: %{public}d/%{public}s/%{public}s.", userId, oldImeInfo.ToString().c_str(),
+        newImeInfo.ToString().c_str());
     auto listeners = GetListeners(EVENT_SOFT_KEYBOARD_INFO_CHANGED_MASK);
     for (const auto &listener : listeners) {
         if (listener == nullptr) {
             continue;
         }
-        listener->OnSoftKeyboardInfoChanged(oldInfo, newInfo);
+        listener->OnSoftKeyboardInfoChanged(userId, oldImeInfo, newImeInfo);
     }
     return ErrorCode::NO_ERROR;
 }

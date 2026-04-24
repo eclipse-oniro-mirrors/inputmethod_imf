@@ -24,7 +24,7 @@ namespace MiscServices {
 enum PanelType {
     SOFT_KEYBOARD = 0,
     STATUS_BAR,
-    TYPE_NONE,
+    PANEL_TYPE_NONE,
 };
 
 enum PanelFlag {
@@ -55,7 +55,7 @@ struct Shadow {
 
 struct PanelInfo : public Parcelable {
     PanelType panelType = SOFT_KEYBOARD;
-    PanelFlag panelFlag = FLG_NONE;
+    PanelFlag panelFlag = FLG_FIXED;
 
     std::string ToString() const
     {

@@ -179,8 +179,8 @@ private:
     std::shared_ptr<InputControlChannelProxy> GetInputControlChannel();
 
     void Initialize();
-    int32_t InvokeStartInputCallbackWithInfoRestruct(const InputClientInfo &clientInfo);
-    int32_t InvokeStartInputCallback(const InputClientInfo &clientInfo);
+    int32_t InvokeStartInputCallbackWithInfoRestruct(const TextTotalConfig &textConfig, bool isNotifyInputStart);
+    int32_t InvokeStartInputCallback(const TextTotalConfig &textConfig, bool isNotifyInputStart);
     void HandleRequestKeyboardReasonChanged(const RequestKeyboardReason &requestKeyboardReason);
     void InvokeAttachOptionsCallback(const AttachOptions &options, bool isFirstNotify = false);
     void SetAttachOptions(const AttachOptions &options);

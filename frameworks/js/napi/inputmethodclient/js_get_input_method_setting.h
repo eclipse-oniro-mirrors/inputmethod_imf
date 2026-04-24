@@ -199,7 +199,7 @@ private:
     static std::mutex msMutex_;
     static std::shared_ptr<JsGetInputMethodSetting> inputMethod_;
 
-    PanelFlag softKbShowingFlag_{ FLG_NONE };
+    PanelFlag softKbShowingFlag_{ FLG_CANDIDATE_COLUMN };
     PanelFlag GetSoftKbShowingFlag();
     void SetSoftKbShowingFlag(PanelFlag flag);
     void GetIsUpdateFlag(const std::string &type, bool &isUpdateFlag);

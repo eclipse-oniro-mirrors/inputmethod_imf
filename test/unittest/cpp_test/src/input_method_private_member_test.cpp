@@ -52,6 +52,7 @@
 
 #include "input_client_service_impl.h"
 #include "input_client_stub.h"
+#include "input_method_utils.h"
 #include "input_method_ability.h"
 #include "input_method_agent_proxy.h"
 #include "input_method_agent_service_impl.h"
@@ -3550,14 +3551,14 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnWindowDisplayIdChanged, 
     userSession->clientGroupMap_.insert_or_assign(ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID, group);
     userSession->OnWindowDisplayIdChanged(windowId, defaultDisplayId);
 
-    auto ret = userSession->NotifyCallingDisplayChanged(defaultDisplayId, nullptr);
+    auto ret = userSession->NotifyCallingDisplayChanged(defaultDisplayId, defaultDisplayId, nullptr);
     EXPECT_EQ(ret, ErrorCode::ERROR_IME_NOT_STARTED);
     auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, callingPid);
     imeData->type = ImeType::PROXY_IME;
-    ret = userSession->NotifyCallingDisplayChanged(defaultDisplayId, imeData);
+    ret = userSession->NotifyCallingDisplayChanged(defaultDisplayId, defaultDisplayId, imeData);
     EXPECT_EQ(ret, ErrorCode::ERROR_IME_NOT_STARTED);
     imeData->type = ImeType::IME;
-    ret = userSession->NotifyCallingDisplayChanged(defaultDisplayId, imeData);
+    ret = userSession->NotifyCallingDisplayChanged(defaultDisplayId, defaultDisplayId, imeData);
     EXPECT_NE(ret, ErrorCode::ERROR_IME_NOT_STARTED);
 }
 
@@ -4944,6 +4945,45 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_NotifyImeChangedToClients_
     auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
     auto ret = userSession->NotifyImeChangedToClients();
     EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_GET_IME_INFO_FAILED);
+}
+
+/**
+ * @tc.name: PerUserSession_GetCursorInfo_DiffPid
+ * @tc.desc: Test PerUserSession_GetCursorInfo when callingPid != clientInfo->pid
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_GetCursorInfo_DiffPid, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_GetCursorInfo_DiffPid start.");
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    pid_t callingPid = IPCSkeleton::GetCallingPid();
+    pid_t clientPid = callingPid + 1;
+
+    auto group = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+    group->SetCurrentClient(client);
+
+    auto clientInfo = std::make_shared<InputClientInfo>();
+    ASSERT_NE(clientInfo, nullptr);
+    clientInfo->client = client;
+    clientInfo->pid = clientPid;
+    clientInfo->config.inputAttribute.callingDisplayId = 100;
+    clientInfo->bindImeData = std::make_shared<BindImeData>(clientPid, ImeType::IME);
+    group->mapClients_.insert_or_assign(client->AsObject(), clientInfo);
+    userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
+
+    CursorInfoInner cursorInfoInner;
+    cursorInfoInner.left = 0.0;
+    cursorInfoInner.top = 0.0;
+    cursorInfoInner.width = 10.0;
+    cursorInfoInner.height = 20.0;
+    cursorInfoInner.displayId = 0;
+
+    auto ret = userSession->GetCursorInfo(cursorInfoInner, callingPid);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_EQ(cursorInfoInner.displayId, 100);
 }
 } // namespace MiscServices
 } // namespace OHOS

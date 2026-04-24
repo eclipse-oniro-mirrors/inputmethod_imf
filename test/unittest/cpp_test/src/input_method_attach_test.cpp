@@ -914,12 +914,15 @@ HWTEST_F(InputMethodAttachTest, testGetCursorInfo_001, TestSize.Level0)
     };
     inputMethodController_->Attach(textListener, false, textConfig);
 
+    auto ret = inputMethodController_->OnCursorUpdate(cursor);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
     CursorInfo cursorInfo;
     int32_t userId = 100; // Default user ID for testing
     IdentityCheckerMock::ResetParam();
     IdentityCheckerMock::SetSystemApp(true);
 
-    auto ret = inputMethodController_->GetCursorInfo(cursorInfo, userId);
+    ret = inputMethodController_->GetCursorInfo(cursorInfo, userId);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     IMSA_HILOGI("cursorInfo0: left=%{public}f, top=%{public}f, width=%{public}f, height=%{public}f.",
         cursorInfo.left, cursorInfo.top, cursorInfo.width, cursorInfo.height);

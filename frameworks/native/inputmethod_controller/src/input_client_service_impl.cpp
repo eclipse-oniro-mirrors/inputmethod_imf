@@ -18,6 +18,7 @@
 #include "input_client_stub.h"
 #include "ime_event_monitor_manager_impl.h"
 #include "input_method_controller.h"
+#include "input_method_tools.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -77,9 +78,9 @@ ErrCode InputClientServiceImpl::OnSwitchInput(const Property &property, const Su
     return ImeEventMonitorManagerImpl::GetInstance().OnImeChange(property, subProperty, userId);
 }
 
-ErrCode InputClientServiceImpl::OnPanelStatusChange(const ImeWindowInfo &oldInfo, const ImeWindowInfo &newInfo)
+ErrCode InputClientServiceImpl::OnPanelStatusChange(const uint32_t status, const ImeWindowInfo& info)
 {
-    return ImeEventMonitorManagerImpl::GetInstance().OnPanelStatusChange(oldInfo, newInfo);
+    return ImeEventMonitorManagerImpl::GetInstance().OnPanelStatusChange(static_cast<InputWindowStatus>(status), info);
 }
 
 ErrCode InputClientServiceImpl::NotifyInputStart(const InputStartInfo &inputStartInfo)
@@ -92,6 +93,12 @@ ErrCode InputClientServiceImpl::NotifyInputStop(const InputStopInfo &inputStopIn
     return ImeEventMonitorManagerImpl::GetInstance().OnInputStop(inputStopInfo);
 }
 
+ErrCode InputClientServiceImpl::NotifySoftKeyBoardInfoChanged(
+    int32_t userId, const BoundImeInfo &oldImeInfo, const BoundImeInfo &newImeInfo)
+{
+    return ImeEventMonitorManagerImpl::GetInstance().OnSoftKeyboardInfoChanged(userId, oldImeInfo, newImeInfo);
+}
+
 ErrCode InputClientServiceImpl::DeactivateClient()
 {
     auto instance = InputMethodController::GetInstance();
@@ -100,6 +107,20 @@ ErrCode InputClientServiceImpl::DeactivateClient()
     } else {
         IMSA_HILOGW("failed to get InputMethodController instance!");
     }
+    return ERR_OK;
+}
+
+ErrCode InputClientServiceImpl::GetCurrentCursorInfo(CursorInfoInner &cursorInfo)
+{
+    IMSA_HILOGD("InputClientServiceImpl::GetCurrentCursorInfo start.");
+    auto instance = InputMethodController::GetInstance();
+    if (instance == nullptr) {
+        IMSA_HILOGW("failed to get InputMethodController instance!");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    CursorInfo info = InputMethodTools::GetInstance().InnerToCursorInfo(cursorInfo);
+    instance->GetCurrentCursorInfo(info);
+    cursorInfo = InputMethodTools::GetInstance().CursorInfoToInner(info);
     return ERR_OK;
 }
 }  // namespace MiscServices

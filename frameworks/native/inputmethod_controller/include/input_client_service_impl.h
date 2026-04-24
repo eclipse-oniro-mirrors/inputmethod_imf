@@ -19,6 +19,8 @@
 #include "iinput_client.h"
 #include "input_status_info.h"
 #include "input_window_info.h"
+#include "input_client_stub.h"
+#include "input_method_utils.h"
 #include "iremote_object.h"
 #include "notify_service_impl.h"
 #include "on_input_stop_notify_proxy.h"
@@ -37,11 +39,14 @@ public:
         bool isStopInactiveClient, const sptr<IRemoteObject> &object, bool isSendKeyboardStatus) override;
     ErrCode OnInputStopAsync(bool isStopInactiveClient, bool isSendKeyboardStatus) override;
     ErrCode OnSwitchInput(const Property& property, const SubProperty& subProperty, int32_t userId) override;
-    ErrCode OnPanelStatusChange(const ImeWindowInfo &oldInfo, const ImeWindowInfo &newInfo) override;
+    ErrCode OnPanelStatusChange(const uint32_t status, const ImeWindowInfo& info) override;
     ErrCode NotifyInputStart(const InputStartInfo &inputStartInfo) override;
     ErrCode NotifyInputStop(const InputStopInfo &inputStopInfo) override;
+    ErrCode NotifySoftKeyBoardInfoChanged(
+        int32_t userId, const BoundImeInfo &oldImeInfo, const BoundImeInfo &newImeInfo);
     ErrCode DeactivateClient() override;
     ErrCode OnImeMirrorStop(const sptr<IRemoteObject> &object) override;
+    ErrCode GetCurrentCursorInfo(CursorInfoInner &cursorInfo) override;
 };
 }  // namespace MiscServices
 }  // namespace OHOS

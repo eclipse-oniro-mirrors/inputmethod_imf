@@ -98,8 +98,8 @@ EditorAttribute_t CommonConvert::NativeAttributeToAni(const InputAttribute &inpu
     result.bundleName = taihe::optional<taihe::string>(std::in_place_t{}, inputAttribute.bundleName);
     result.immersiveMode = taihe::optional<ImmersiveMode_t>(std::in_place_t{},
         ConvertMode(static_cast<ImmersiveMode>(inputAttribute.immersiveMode)));
-    result.windowId = taihe::optional<int32_t>(std::in_place_t{}, inputAttribute.keyboardWindowId);
-    result.displayId = taihe::optional<uint64_t>(std::in_place_t{}, inputAttribute.keyboardDisplayId);
+    result.windowId = taihe::optional<int32_t>(std::in_place_t{}, inputAttribute.windowId);
+    result.displayId = taihe::optional<uint64_t>(std::in_place_t{}, inputAttribute.callingDisplayId);
     result.placeholder = taihe::optional<taihe::string>(std::in_place_t{},
         std::string(Str16ToStr8(inputAttribute.placeholder)));
     result.abilityName = taihe::optional<taihe::string>(std::in_place_t{},

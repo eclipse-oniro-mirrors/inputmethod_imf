@@ -111,7 +111,8 @@ void TestDispatchKeyEvent(FuzzedDataProvider &provider)
 void TestSetCallingWindow(FuzzedDataProvider &provider)
 {
     int32_t fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
-    InputMethodAbility::GetInstance().SetCallingWindow(fuzzedInt32, fuzzedInt32);
+    FocusedInfo focusedInfo;
+    InputMethodAbility::GetInstance().SetCallingWindow(fuzzedInt32, focusedInfo);
 }
 } // namespace OHOS
 

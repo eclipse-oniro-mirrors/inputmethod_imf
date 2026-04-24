@@ -146,10 +146,10 @@ struct InputAttribute {
     int32_t fluidLightMode { 0 };
     uint32_t editorWindowId = 0;             // editor in
     uint64_t editorDisplayId = 0;            // editor in
-    uint32_t keyboardWindowId = 0;           // keyboard in
-    uint64_t keyboardDisplayId = 0;          // keyboard in
-    uint64_t keyboardDisplayGroupId = 0;     // keyboard in, only use in imsa
-    uint64_t keyboardScreenId = 0;            // keyboard in, only use in ima
+    uint32_t windowId = 0;                   // keyboard in
+    uint64_t callingDisplayId = 0;           // keyboard in
+    uint64_t displayGroupId = 0;             // keyboard in, only use in imsa
+    uint64_t callingScreenId = 0;            // keyboard in, only use in ima
     std::u16string placeholder { u"" };
     std::u16string abilityName { u"" };
     CapitalizeMode capitalizeMode = CapitalizeMode::NONE;
@@ -184,8 +184,8 @@ struct InputAttribute {
         ss << "[" << "inputPattern:" << inputPattern
         << "enterKeyType:" << enterKeyType << "inputOption:" << inputOption
         << "isTextPreviewSupported:" << isTextPreviewSupported << "bundleName:" << bundleName
-        << "immersiveMode:" << immersiveMode << "windowId:" << keyboardWindowId
-           << "displayId:" << keyboardDisplayId << "needNumInput: " << needAutoInputNumkey
+        << "immersiveMode:" << immersiveMode << "windowId:" << windowId << "displayId:" << callingDisplayId
+           << "needNumInput: " << needAutoInputNumkey
         << "extraConfig.customSettings.size: " << extraConfig.customSettings.size()
         << "]";
         return ss.str();
@@ -195,8 +195,8 @@ struct InputAttribute {
     {
         std::string info;
         info.append("pattern/enterKey:" + std::to_string(inputPattern) + "/" + std::to_string(enterKeyType));
-        info.append(" windowId/displayId/displayGroupId:" + std::to_string(keyboardWindowId) + "/"
-                    + std::to_string(keyboardDisplayId) + "/" + std::to_string(keyboardDisplayGroupId));
+        info.append(" windowId/displayId/displayGroupId:" + std::to_string(windowId) + "/"
+                    + std::to_string(callingDisplayId) + "/" + std::to_string(displayGroupId));
         info.append(" textPreview/immersiveMode:" + std::to_string(static_cast<int32_t>(isTextPreviewSupported)) + "/"
                     + std::to_string(immersiveMode));
         return info;
@@ -220,10 +220,9 @@ struct InputAttributeInner : public Parcelable {
     int32_t fluidLightMode { 0 };
     uint32_t editorWindowId = 0;             // editor in
     uint64_t editorDisplayId = 0;            // editor in
-    uint32_t keyboardWindowId = 0;           // keyboard in
-    uint64_t keyboardDisplayId = 0;          // keyboard in
-    uint64_t keyboardDisplayGroupId = 0;     // keyboard in, only use in imsa
-    uint64_t keyboardScreenId = 0;            // keyboard in, only use in ima
+    uint32_t windowId = 0;                   // keyboard in
+    uint64_t callingDisplayId = 0;           // keyboard in
+    uint64_t displayGroupId = 0;             // keyboard in, only use in imsa
     std::u16string placeholder { u"" };
     std::u16string abilityName { u"" };
     CapitalizeMode capitalizeMode = CapitalizeMode::NONE;
@@ -241,9 +240,9 @@ struct InputAttributeInner : public Parcelable {
         immersiveMode = in.ReadInt32();
         editorWindowId = in.ReadUint32();
         editorDisplayId = in.ReadUint64();
-        keyboardWindowId = in.ReadUint32();
-        keyboardDisplayId = in.ReadUint64();
-        keyboardDisplayGroupId = in.ReadUint64();
+        windowId = in.ReadUint32();
+        callingDisplayId = in.ReadUint64();
+        displayGroupId = in.ReadUint64();
         placeholder = in.ReadString16();
         abilityName = in.ReadString16();
         int32_t readCapitalizeMode = in.ReadInt32();
@@ -292,13 +291,13 @@ struct InputAttributeInner : public Parcelable {
         if (!out.WriteUint64(editorDisplayId)) {
             return false;
         }
-        if (!out.WriteUint32(keyboardWindowId)) {
+        if (!out.WriteUint32(windowId)) {
             return false;
         }
-        if (!out.WriteUint64(keyboardWindowId)) {
+        if (!out.WriteUint64(callingDisplayId)) {
             return false;
         }
-        if (!out.WriteUint64(keyboardDisplayGroupId)) {
+        if (!out.WriteUint64(displayGroupId)) {
             return false;
         }
         auto ret = out.WriteString16(placeholder) && out.WriteString16(abilityName);

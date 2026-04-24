@@ -353,6 +353,7 @@ public:
     double positionY = 0;
     double height = 0;
     std::unordered_map<std::string, PrivateDataValue> privateCommand = {};
+    RequestKeyboardReason requestKeyboardReason = RequestKeyboardReason::NONE;
     sptr<IRemoteObject> abilityToken { nullptr };
     bool isSimpleKeyboardEnabled { false }; // indicates enable basic keyboard or not
 
@@ -383,6 +384,7 @@ public:
     double positionY = 0;
     double height = 0;
     Value commandValue;
+    RequestKeyboardReason requestKeyboardReason = RequestKeyboardReason::NONE;
     bool isSimpleKeyboardEnabled = false;
     sptr<IRemoteObject> abilityToken { nullptr };
 
@@ -569,9 +571,9 @@ struct ResponseDataInner : public Parcelable {
 };
 
 struct FocusedInfo : public Parcelable {
-    uint32_t editorWindowId{ ImfCommonConst::INVALID_WINDOW_ID };                // editor in
-    uint64_t editorDisplayId{ ImfCommonConst::DEFAULT_DISPLAY_ID };              // editor in
-    uint64_t editorDisplayGroupId{ ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID };   // editor in
+    uint32_t windowId{ ImfCommonConst::INVALID_WINDOW_ID };                      // editor in
+    uint64_t displayId{ ImfCommonConst::DEFAULT_DISPLAY_ID };                    // editor in
+    uint64_t displayGroupId{ ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID };         // editor in
     uint32_t keyboardWindowId{ ImfCommonConst::INVALID_WINDOW_ID };              // keyboard in
     uint64_t keyboardDisplayId{ ImfCommonConst::DEFAULT_DISPLAY_ID };            // keyboard in
     uint64_t keyboardDisplayGroupId{ ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID }; // keyboard in
@@ -580,8 +582,8 @@ struct FocusedInfo : public Parcelable {
     std::string ToString() const
     {
         std::string config;
-        config.append("editorWindowId/editorDisplayId/editorDisplayGroupId: " + std::to_string(editorWindowId) + "/"
-                      + std::to_string(editorDisplayId) + "/" + std::to_string(editorDisplayGroupId));
+        config.append("editorWindowId/editorDisplayId/editorDisplayGroupId: " + std::to_string(windowId) + "/"
+                      + std::to_string(displayId) + "/" + std::to_string(displayGroupId));
         config.append(" keyboardWindowId/keyboardDisplayId/keyboardDisplayGroupId: " + std::to_string(keyboardWindowId)
                       + "/" + std::to_string(keyboardDisplayId) + "/" + std::to_string(keyboardDisplayGroupId));
         config.append(" uiExtensionHostPid: " + std::to_string(uiExtensionHostPid));
@@ -590,9 +592,9 @@ struct FocusedInfo : public Parcelable {
 
     bool ReadFromParcel(Parcel &in)
     {
-        editorWindowId = in.ReadUint32();
-        editorDisplayId = in.ReadUint64();
-        editorDisplayGroupId = in.ReadUint64();
+        windowId = in.ReadUint32();
+        displayId = in.ReadUint64();
+        displayGroupId = in.ReadUint64();
         keyboardWindowId = in.ReadUint32();
         keyboardDisplayId = in.ReadUint64();
         keyboardDisplayGroupId = in.ReadUint64();
@@ -601,13 +603,13 @@ struct FocusedInfo : public Parcelable {
 
     bool Marshalling(Parcel &out) const
     {
-        if (!out.WriteUint32(editorWindowId)) {
+        if (!out.WriteUint32(windowId)) {
             return false;
         }
-        if (!out.WriteUint64(editorDisplayId)) {
+        if (!out.WriteUint64(displayId)) {
             return false;
         }
-        if (!out.WriteUint64(editorDisplayGroupId)) {
+        if (!out.WriteUint64(displayGroupId)) {
             return false;
         }
         if (!out.WriteUint32(keyboardWindowId)) {

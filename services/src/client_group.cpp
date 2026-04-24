@@ -39,8 +39,7 @@ int32_t ClientGroup::AddClientInfo(
             { { UpdateFlag::TEXT_CONFIG, clientInfo.config }, { UpdateFlag::CLIENT_TYPE, clientInfo.type },
                 { UpdateFlag::UIEXTENSION_TOKENID, clientInfo.uiExtensionTokenId },
                 { UpdateFlag::UIEXTENSION_HOST_WINDOW_PID, clientInfo.uiExtensionHostPid },
-                { UpdateFlag::CLIENT_GROUP_ID, clientInfo.clientGroupId },
-                { UpdateFlag::REQUEST_KEYBOARD_REASON, clientInfo.requestKeyboardReason } });
+                { UpdateFlag::CLIENT_GROUP_ID, clientInfo.clientGroupId } });
         return ErrorCode::NO_ERROR;
     }
     auto info = std::make_shared<InputClientInfo>(clientInfo);
@@ -86,8 +85,9 @@ void ClientGroup::RemoveClientInfo(const sptr<IRemoteObject> &client)
 }
 // LCOV_EXCL_START
 void ClientGroup::UpdateClientInfo(const sptr<IRemoteObject> &client,
-    const std::unordered_map<UpdateFlag, std::variant<bool, uint32_t, ImeType, ClientState, TextTotalConfig,
-                                             ClientType, pid_t, std::shared_ptr<BindImeData>, uint64_t>> &updateInfos)
+    const std::unordered_map<UpdateFlag, std::variant<bool, uint32_t, ImeType, ClientState, TextTotalConfig, ClientType,
+                                             pid_t, std::shared_ptr<BindImeData>, uint64_t, RequestKeyboardReason>>
+        &updateInfos)
 {
     if (client == nullptr) {
         IMSA_HILOGE("client is nullptr!");
@@ -134,7 +134,7 @@ void ClientGroup::UpdateClientInfo(const sptr<IRemoteObject> &client,
                 break;
             }
             case UpdateFlag::REQUEST_KEYBOARD_REASON: {
-                VariantUtil::GetValue(updateInfo.second, it->second->requestKeyboardReason);
+                VariantUtil::GetValue(updateInfo.second, it->second->config.requestKeyboardReason);
                 break;
             }
             default:

@@ -972,7 +972,7 @@ void JsGetInputMethodSetting::OnImeShow(const ImeWindowInfo &info)
     }
     // FLG_FLOATING->FLG_FIXED in show/show FLG_FIXED/ rotating(resize) in FLG_FIXED show
     if ((info.panelInfo.panelFlag == FLG_FIXED && showingFlag == FLG_FLOATING) ||
-        (info.panelInfo.panelFlag == FLG_FIXED && showingFlag == FLG_NONE) ||
+        (info.panelInfo.panelFlag == FLG_FIXED && showingFlag == FLG_CANDIDATE_COLUMN) ||
         (info.panelInfo.panelFlag == FLG_FIXED && showingFlag == FLG_FIXED)) {
         OnPanelStatusChange("imeShow", info.windowInfo);
     }
@@ -981,11 +981,8 @@ void JsGetInputMethodSetting::OnImeShow(const ImeWindowInfo &info)
 
 void JsGetInputMethodSetting::OnImeHide(const ImeWindowInfo &info)
 {
-    if (info.panelInfo.panelType != PanelType::SOFT_KEYBOARD) {
-        return;
-    }
-    SetSoftKbShowingFlag(FLG_NONE);
-    if (info.panelInfo.panelFlag != PanelFlag::FLG_FIXED) {
+    SetSoftKbShowingFlag(FLG_CANDIDATE_COLUMN);
+    if (info.panelInfo.panelType != PanelType::SOFT_KEYBOARD || info.panelInfo.panelFlag != PanelFlag::FLG_FIXED) {
         return;
     }
     OnPanelStatusChange("imeHide", info.windowInfo);

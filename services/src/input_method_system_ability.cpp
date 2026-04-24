@@ -660,12 +660,12 @@ int32_t InputMethodSystemAbility::GenerateClientInfo(
     clientInfo.config.privateCommand.insert_or_assign(
         "displayId", PrivateDataValue(static_cast<int32_t>(callingDisplayId)));
     clientInfo.name = ImfHiSysEventUtil::GetAppName(tokenId);
-    clientInfo.clientGroupId = focusedInfo.editorDisplayGroupId;
-    clientInfo.config.inputAttribute.editorWindowId = focusedInfo.editorWindowId;
-    clientInfo.config.inputAttribute.editorDisplayId = focusedInfo.editorDisplayId;
-    clientInfo.config.inputAttribute.keyboardWindowId = focusedInfo.keyboardWindowId;
-    clientInfo.config.inputAttribute.keyboardDisplayId = focusedInfo.keyboardDisplayId;
-    clientInfo.config.inputAttribute.keyboardDisplayGroupId = focusedInfo.keyboardDisplayGroupId;
+    clientInfo.clientGroupId = focusedInfo.displayGroupId;
+    clientInfo.config.inputAttribute.editorWindowId = focusedInfo.windowId;
+    clientInfo.config.inputAttribute.editorDisplayId = focusedInfo.displayId;
+    clientInfo.config.inputAttribute.windowId = focusedInfo.keyboardWindowId;
+    clientInfo.config.inputAttribute.callingDisplayId = focusedInfo.keyboardDisplayId;
+    clientInfo.config.inputAttribute.displayGroupId = focusedInfo.keyboardDisplayGroupId;
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session != nullptr) {
         clientInfo.config.inputAttribute.needAutoInputNumkey =
@@ -759,7 +759,7 @@ int32_t InputMethodSystemAbility::StartInputInner(
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
     }
-    auto displayId = checkRet.second.editorDisplayId;
+    auto displayId = checkRet.second.displayId;
     if (session->GetCurrentClientPid(displayId) != IPCSkeleton::GetCallingPid() &&
         session->GetInactiveClientPid(displayId) != IPCSkeleton::GetCallingPid()) {
         // notify inputStart when caller pid different from both current client and inactive client
@@ -1153,7 +1153,7 @@ int32_t InputMethodSystemAbility::ShowCurrentInputInner(uint64_t displayId)
     return session->OnShowCurrentInputInTargetDisplay(displayId);
 }
 
-ErrCode InputMethodSystemAbility::PanelStatusChange(const ImeWindowInfo &oldInfo, const ImeWindowInfo &newInfo)
+ErrCode InputMethodSystemAbility::PanelStatusChange(uint32_t status, const ImeWindowInfo &info)
 {
     auto userId = GetCallingUserId();
     auto tokenId = IPCSkeleton::GetCallingTokenID();
@@ -1164,12 +1164,16 @@ ErrCode InputMethodSystemAbility::PanelStatusChange(const ImeWindowInfo &oldInfo
     auto commonEventManager = ImCommonEventManager::GetInstance();
     if (commonEventManager != nullptr) {
         auto ret = commonEventManager->PublishPanelStatusChangeEvent(
-            userId, static_cast<InputWindowStatus>(newInfo.status), newInfo);
+            userId, static_cast<InputWindowStatus>(status), info);
         IMSA_HILOGD("public panel status change event: %{public}d", ret);
     }
-    IMSA_HILOGD("oldInfo/newInfo: %{public}s/%{public}s.", oldInfo.ToString().c_str(), newInfo.ToString().c_str());
-    ResSchedAdapter::NotifyPanelStatus(static_cast<InputWindowStatus>(newInfo.status) == InputWindowStatus::SHOW);
-    return ImeEventListenerManager::GetInstance().NotifyPanelStatusChange(userId, oldInfo, newInfo);
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+    if (session == nullptr) {
+        IMSA_HILOGE("%{public}d session is nullptr!", userId);
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    ResSchedAdapter::NotifyPanelStatus(static_cast<InputWindowStatus>(status) == InputWindowStatus::SHOW);
+    return session->OnPanelStatusChange(static_cast<InputWindowStatus>(status), info);
 }
 
 ErrCode InputMethodSystemAbility::NotifyInputStart(const InputStartInfo &inputStartInfo)
@@ -1183,8 +1187,29 @@ ErrCode InputMethodSystemAbility::NotifyInputStart(const InputStartInfo &inputSt
     return ImeEventListenerManager::GetInstance().NotifyInputStart(userId, inputStartInfo);
 }
 
+ErrCode InputMethodSystemAbility::NotifySoftKeyBoardInfoChanged(
+    const BoundImeInfo &oldImeInfo, const BoundImeInfo &newImeInfo)
+{
+    auto userId = GetCallingUserId();
+    auto tokenId = IPCSkeleton::GetCallingTokenID();
+    if (!IsCurrentIme(userId, tokenId)) {
+        IMSA_HILOGE("not current ime!");
+        return ErrorCode::ERROR_NOT_CURRENT_IME;
+    }
+    return ImeEventListenerManager::GetInstance().NotifySoftKeyBoardInfoChanged(userId, oldImeInfo, newImeInfo);
+}
+
 ErrCode InputMethodSystemAbility::GetSoftKeyboardInfo(int32_t userId, BoundImeInfo &imeInfo)
 {
+    if (identityChecker_ == nullptr) {
+        IMSA_HILOGE("identityChecker_ is nullptr!");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    if (!identityChecker_->IsSystemApp(IPCSkeleton::GetCallingFullTokenID())
+        && !identityChecker_->IsNativeSa(IPCSkeleton::GetCallingTokenID())) {
+        IMSA_HILOGE("not system application!");
+        return ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION;
+    }
     int32_t outputUserId;
     int32_t result = GetCallingUserId(outputUserId, userId);
     if (result != ErrorCode::NO_ERROR) {
@@ -1197,7 +1222,7 @@ ErrCode InputMethodSystemAbility::GetSoftKeyboardInfo(int32_t userId, BoundImeIn
         return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
     }
     auto ret = session->GetSoftKeyboardInfo(imeInfo);
-    IMSA_HILOGD("userId/imeInfo:%{public}d/%{public}s!", userId, imeInfo);
+    IMSA_HILOGD("userId/imeInfo:%{public}d/%{public}s!", userId, imeInfo.ToString().c_str());
     return ret;
 }
 
@@ -1206,7 +1231,8 @@ ErrCode InputMethodSystemAbility::UpdateListenEventFlag(const InputClientInfoInn
     InputClientInfo clientInfo = InputMethodTools::GetInstance().InnerToInputClientInfo(clientInfoInner);
     IMSA_HILOGD("finalEventFlag: %{public}u, eventFlag: %{public}u.", clientInfo.eventFlag, eventFlag);
     if (EventStatusManager::IsImeHideOn(eventFlag) || EventStatusManager::IsImeShowOn(eventFlag) ||
-        EventStatusManager::IsInputStatusChangedOn(eventFlag)) {
+        EventStatusManager::IsInputStatusChangedOn(eventFlag) ||
+        EventStatusManager::IsSoftKeyboardInfoChangedOn(eventFlag)) {
         if (identityChecker_ == nullptr) {
             IMSA_HILOGE("identityChecker_ is nullptr!");
             return ErrorCode::ERROR_NULL_POINTER;
@@ -3205,7 +3231,8 @@ ErrCode InputMethodSystemAbility::GetCursorInfo(int32_t userId, CursorInfoInner 
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
     }
-    return session->GetCursorInfo(cursorInfo);
+    pid_t clientPid = IPCSkeleton::GetCallingPid();
+    return session->GetCursorInfo(cursorInfo, clientPid);
 }
 // LCOV_EXCL_STOP
 ErrCode InputMethodSystemAbility::ShowCurrentInput(uint64_t displayId, uint32_t type)

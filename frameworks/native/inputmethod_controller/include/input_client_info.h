@@ -88,7 +88,6 @@ struct InputClientInfo {
     bool needHide { false }; // panel needs to be hidden first, when input pattern is switched between pwd and normal
     uint32_t uiExtensionTokenId{ IMF_INVALID_TOKENID }; // the value is valid only in curClient and only UIExtension
     pid_t uiExtensionHostPid{ INVALID_PID };
-    RequestKeyboardReason requestKeyboardReason { RequestKeyboardReason::NONE }; // show keyboard reason
     ClientType type{ INNER_KIT };                                               // for hiSysEvent
     std::string name; // for hiSysEvent, client name:SA/processName app/bundleName
     std::shared_ptr<BindImeData> bindImeData{ nullptr };
@@ -110,7 +109,6 @@ struct InputClientInfoInner : public Parcelable {
     bool isNotifyInputStart { true };
     bool needHide { false }; // panel needs to be hidden first, when input pattern is switched between pwd and normal
     uint32_t uiExtensionTokenId { IMF_INVALID_TOKENID }; // the value is valid only in curClient and only UIExtension
-    RequestKeyboardReason requestKeyboardReason { RequestKeyboardReason::NONE }; // show keyboard reason
     ClientType type{ INNER_KIT };                                               // for hiSysEvent
     std::string name; // for hiSysEvent, client name:SA/processName app/bundleName
 

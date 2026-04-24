@@ -194,7 +194,7 @@ public:
     void SetSwitchInputType(bool isSwitchInputType);
     int32_t GetSoftKeyboardInfo(BoundImeInfo &imeInfo);
     int32_t NotifyImeChangedToClients();
-    int32_t GetCursorInfo(CursorInfoInner &cursorInfo);
+    int32_t GetCursorInfo(CursorInfoInner &cursorInfo, const pid_t clientPid);
 
 private:
     struct ResetManager {

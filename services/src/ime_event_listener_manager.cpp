@@ -138,6 +138,56 @@ void ImeEventListenerManager::OnListenerDied(int32_t userId, const sptr<IInputCl
     }
 }
 
+int32_t ImeEventListenerManager::NotifySoftKeyBoardInfoChanged(
+    int32_t userId, const BoundImeInfo &oldImeInfo, const BoundImeInfo &newImeInfo)
+{
+    IMSA_HILOGD("userId/oldInfo/newInfo: %{public}d/%{public}s/%{public}s.", userId, oldImeInfo.ToString().c_str(),
+        newImeInfo.ToString().c_str());
+    auto listenerInfos = GetListenerInfo(userId);
+    for (const auto &listenerInfo : listenerInfos) {
+        if (listenerInfo.client == nullptr) {
+            IMSA_HILOGD("client nullptr or no need to notify.");
+            continue;
+        }
+        if (!EventStatusManager::IsSoftKeyboardInfoChangedOn(listenerInfo.eventFlag)) {
+            continue;
+        }
+        int32_t ret = listenerInfo.client->NotifySoftKeyBoardInfoChanged(userId, oldImeInfo, newImeInfo);
+        if (ret != ErrorCode::NO_ERROR) {
+            IMSA_HILOGE("failed to NotifySoftKeyBoardInfoChanged, ret: %{public}d", ret);
+            continue;
+        }
+    }
+    return ErrorCode::NO_ERROR;
+}
+
+int32_t ImeEventListenerManager::NotifyInputStart(
+    int32_t userId, int32_t callingWndId, uint64_t displayGroupId, int32_t requestKeyboardReason)
+{
+    IMSA_HILOGD("enter.");
+    if (displayGroupId != ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID) {
+        return ErrorCode::NO_ERROR;
+    }
+    auto listenerInfos = GetListenerInfo(userId);
+    for (const auto &listenerInfo : listenerInfos) {
+        if (listenerInfo.client == nullptr || !EventStatusManager::IsInputStatusChangedOn(listenerInfo.eventFlag)) {
+            IMSA_HILOGE("nullptr listenerInfo or no need to notify");
+            continue;
+        }
+        IMSA_HILOGI("pid/eventFlag: %{public}" PRId64 "/%{public}u", listenerInfo.pid, listenerInfo.eventFlag);
+        InputStartInfo inputStartInfo;
+        inputStartInfo.isNewCb = false;
+        inputStartInfo.clientInfo.rawWindowId = callingWndId;
+        inputStartInfo.clientInfo.requestKeyboardReason = requestKeyboardReason;
+        int32_t ret = listenerInfo.client->NotifyInputStart(inputStartInfo);
+        if (ret != ErrorCode::NO_ERROR) {
+            IMSA_HILOGE("failed to notify OnInputStart, errorCode: %{public}d", ret);
+            continue;
+        }
+    }
+    return ErrorCode::NO_ERROR;
+}
+
 int32_t ImeEventListenerManager::NotifyInputStart(int32_t userId, const InputStartInfo &inputStartInfo)
 {
     IMSA_HILOGD("userId/inputStartInfo: %{public}d/%{public}s.", userId, inputStartInfo.ToString().c_str());
@@ -149,6 +199,7 @@ int32_t ImeEventListenerManager::NotifyInputStart(int32_t userId, const InputSta
         }
         IMSA_HILOGI("pid/eventFlag: %{public}" PRId64 "/%{public}u", listenerInfo.pid, listenerInfo.eventFlag);
         auto inputStartInfoNotify = inputStartInfo;
+        inputStartInfoNotify.isNewCb = true;
         inputStartInfoNotify.userId = userId;
         inputStartInfoNotify.clientInfo.displayGroupId =
             WindowAdapter::GetInstance().GetDisplayGroupId(inputStartInfoNotify.clientInfo.displayId, userId);
@@ -183,31 +234,30 @@ int32_t ImeEventListenerManager::NotifyInputStop(int32_t userId, uint64_t displa
             continue;
         }
     }
-    IMSA_HILOGI("NotifyInputStopToClients end");
     return ErrorCode::NO_ERROR;
 }
 
 int32_t ImeEventListenerManager::NotifyPanelStatusChange(
-    int32_t userId, const ImeWindowInfo &oldInfo, const ImeWindowInfo &newInfo)
+    int32_t userId, const InputWindowStatus &status, const ImeWindowInfo &info)
 {
-    IMSA_HILOGD("userId/oldInfo/newInfo: %{public}d/%{public}s/%{public}s.", userId, oldInfo.ToString().c_str(),
-        newInfo.ToString().c_str());
+    IMSA_HILOGI("enter.");
     auto listenerInfos = GetListenerInfo(userId);
     for (const auto &listenerInfo : listenerInfos) {
         if (listenerInfo.client == nullptr) {
             IMSA_HILOGD("client nullptr or no need to notify.");
             continue;
         }
-        if ((newInfo.status == InputWindowStatus::SHOW && !EventStatusManager::IsImeShowOn(listenerInfo.eventFlag))
-            && (newInfo.status == InputWindowStatus::HIDE && !EventStatusManager::IsImeHideOn(listenerInfo.eventFlag))
-            && !EventStatusManager::IsImeWindowInfoChangedOn(listenerInfo.eventFlag)) {
+        if (status == InputWindowStatus::SHOW && !EventStatusManager::IsImeShowOn(listenerInfo.eventFlag)) {
+            IMSA_HILOGD("has not imeShow callback");
             continue;
         }
-        ImeWindowInfo finalOldInfo = oldInfo;
-        finalOldInfo.windowInfo.userId = userId;
-        ImeWindowInfo finalNewInfo = newInfo;
-        finalNewInfo.windowInfo.userId = userId;
-        int32_t ret = listenerInfo.client->OnPanelStatusChange(finalOldInfo, finalNewInfo);
+        if (status == InputWindowStatus::HIDE && !EventStatusManager::IsImeHideOn(listenerInfo.eventFlag)) {
+            IMSA_HILOGD("has not imeHide callback");
+            continue;
+        }
+        ImeWindowInfo updatedInfo = info;
+        updatedInfo.windowInfo.userId = userId;
+        int32_t ret = listenerInfo.client->OnPanelStatusChange(static_cast<uint32_t>(status), updatedInfo);
         if (ret != ErrorCode::NO_ERROR) {
             IMSA_HILOGE("failed to NotifyPanelStatusChange, ret: %{public}d", ret);
             continue;

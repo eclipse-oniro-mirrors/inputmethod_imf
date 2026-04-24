@@ -52,9 +52,9 @@ InputAttributeInner InputMethodTools::AttributeToInner(const InputAttribute &att
     inner.fluidLightMode = attribute.fluidLightMode;
     inner.editorWindowId = attribute.editorWindowId;
     inner.editorDisplayId = attribute.editorDisplayId;
-    inner.keyboardWindowId = attribute.keyboardWindowId;
-    inner.keyboardDisplayId = attribute.keyboardDisplayId;
-    inner.keyboardDisplayGroupId = attribute.keyboardDisplayGroupId;
+    inner.windowId = attribute.windowId;
+    inner.callingDisplayId = attribute.callingDisplayId;
+    inner.displayGroupId = attribute.displayGroupId;
     inner.placeholder = attribute.placeholder;
     inner.abilityName = attribute.abilityName;
     inner.capitalizeMode = attribute.capitalizeMode;
@@ -77,9 +77,9 @@ InputAttribute InputMethodTools::InnerToAttribute(const InputAttributeInner &inn
     inputAttribute.fluidLightMode = inner.fluidLightMode;
     inputAttribute.editorWindowId = inner.editorWindowId;
     inputAttribute.editorDisplayId = inner.editorDisplayId;
-    inputAttribute.keyboardWindowId = inner.keyboardWindowId;
-    inputAttribute.keyboardDisplayId = inner.keyboardDisplayId;
-    inputAttribute.keyboardDisplayGroupId = inner.keyboardDisplayGroupId;
+    inputAttribute.windowId = inner.windowId;
+    inputAttribute.callingDisplayId = inner.callingDisplayId;
+    inputAttribute.displayGroupId = inner.displayGroupId;
     inputAttribute.placeholder = inner.placeholder;
     inputAttribute.abilityName = inner.abilityName;
     inputAttribute.capitalizeMode = inner.capitalizeMode;
@@ -195,7 +195,6 @@ InputClientInfoInner InputMethodTools::InputClientInfoToInner(const InputClientI
     inner.isNotifyInputStart = inputClientInfo.isNotifyInputStart;
     inner.needHide = inputClientInfo.needHide;
     inner.uiExtensionTokenId = inputClientInfo.uiExtensionTokenId;
-    inner.requestKeyboardReason = inputClientInfo.requestKeyboardReason;
     inner.type = inputClientInfo.type;
     inner.name = inputClientInfo.name;
     return inner;
@@ -218,7 +217,6 @@ InputClientInfo InputMethodTools::InnerToInputClientInfo(const InputClientInfoIn
     inputClientInfo.isNotifyInputStart = inner.isNotifyInputStart;
     inputClientInfo.needHide = inner.needHide;
     inputClientInfo.uiExtensionTokenId = inner.uiExtensionTokenId;
-    inputClientInfo.requestKeyboardReason = inner.requestKeyboardReason;
     inputClientInfo.type = inner.type;
     inputClientInfo.name = inner.name;
     return inputClientInfo;

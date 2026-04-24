@@ -37,7 +37,7 @@ public:
     void RemoveClientInfo(const sptr<IRemoteObject> &client);
     void UpdateClientInfo(const sptr<IRemoteObject> &client,
         const std::unordered_map<UpdateFlag, std::variant<bool, uint32_t, ImeType, ClientState, TextTotalConfig,
-            ClientType, pid_t, std::shared_ptr<BindImeData>, uint64_t>> &updateInfos);
+            ClientType, pid_t, std::shared_ptr<BindImeData>, uint64_t, RequestKeyboardReason>> &updateInfos);
 
     std::shared_ptr<InputClientInfo> GetClientInfo(sptr<IRemoteObject> inputClient);
     std::shared_ptr<InputClientInfo> GetClientInfo(pid_t pid);

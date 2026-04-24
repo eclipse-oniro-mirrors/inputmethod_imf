@@ -32,9 +32,10 @@ public:
     IMF_API int32_t RegisterImeEventListener(uint32_t eventFlag, std::shared_ptr<ImeEventListener> listener);
     IMF_API int32_t UnRegisterImeEventListener(uint32_t eventFlag, std::shared_ptr<ImeEventListener> listener);
     int32_t OnImeChange(const Property &property, const SubProperty &subProperty, int32_t userId);
-    int32_t OnPanelStatusChange(const ImeWindowInfo &oldInfo, const ImeWindowInfo &newInfo);
+    int32_t OnPanelStatusChange(const InputWindowStatus &status, const ImeWindowInfo &info);
     int32_t OnInputStart(const InputStartInfo &inputStartInfo);
     int32_t OnInputStop(const InputStopInfo &inputStopInfo);
+    int32_t OnSoftKeyboardInfoChanged(int32_t userId, const BoundImeInfo &oldImeInfo, const BoundImeInfo &newImeInfo);
 
 private:
     ImeEventMonitorManagerImpl();
@@ -43,7 +44,6 @@ private:
     int32_t NotifyInputStartWhenRegister(uint32_t eventFlag, std::shared_ptr<ImeEventListener> listener);
     int32_t OnImeShow(const ImeWindowInfo &info);
     int32_t OnImeHide(const ImeWindowInfo &info);
-    int32_t OnSoftKeyboardInfoChanged(const ImeWindowInfo &oldInfo, const ImeWindowInfo &newInfo);
     std::set<std::shared_ptr<ImeEventListener>> GetListeners(uint32_t eventMask);
     std::mutex lock_;
     std::map<uint32_t, std::set<std::shared_ptr<ImeEventListener>>> listeners_{};

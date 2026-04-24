@@ -1059,6 +1059,8 @@ public:
 
     IMF_API void SetImcInnerListener(const std::shared_ptr<ImcInnerListener> &imcInnerListener);
 
+    int32_t GetCurrentCursorInfo(CursorInfo &cursorInfo);
+
     /**
      * @brief Get soft keyboard window info.
      *

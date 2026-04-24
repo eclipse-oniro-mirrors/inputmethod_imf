@@ -411,16 +411,16 @@ int32_t InputMethodController::AttachExec(sptr<OnTextChangedListener> listener, 
     }
     ClearEditorCache(clientInfo_.isNotifyInputStart, lastListener);
     SetTextListener(listener);
+    SaveTextConfig(textConfig);
+    GetTextConfig(clientInfo_.config);
+    std::vector<sptr<IRemoteObject>> agents;
+    std::vector<BindImeInfo> imeInfos;
     {
         std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
         clientInfo_.isShowKeyboard = attachOptions.isShowKeyboard;
+        clientInfo_.type = type;
+        clientInfo_.config.requestKeyboardReason = attachOptions.requestKeyboardReason;
     }
-    SaveTextConfig(textConfig);
-    GetTextConfig(clientInfo_.config);
-    clientInfo_.requestKeyboardReason = attachOptions.requestKeyboardReason;
-    clientInfo_.type = type;
-    std::vector<sptr<IRemoteObject>> agents;
-    std::vector<BindImeInfo> imeInfos;
     int32_t ret = StartInput(clientInfo_, agents, imeInfos);
     if (ret != ErrorCode::NO_ERROR) {
         auto evenInfo = HiSysOriginalInfo::Builder()
@@ -806,7 +806,7 @@ void InputMethodController::OnRemoteSaDied(const wptr<IRemoteObject> &remote)
     IMSA_HILOGI("input method service death.");
     // imf sa died, current client callback inputStop
     InputStopInfo info;
-    info.isImsaDied = true;
+    info.scene = InputStopScene::IMSA_DIED;
     ImeEventMonitorManagerImpl::GetInstance().OnInputStop(info);
     auto textListener = GetTextListener();
     if (textListener != nullptr && textConfig_.inputAttribute.isTextPreviewSupported) {
@@ -1182,6 +1182,19 @@ int32_t InputMethodController::GetTextConfig(TextTotalConfig &config)
     return ErrorCode::NO_ERROR;
 }
 
+int32_t InputMethodController::GetCurrentCursorInfo(CursorInfo &cursorInfo)
+{
+    IMSA_HILOGD("InputMethodController::GetCurrentCursorInfo start.");
+    std::lock_guard<std::mutex> lock(cursorInfoMutex_);
+    cursorInfo.left = cursorInfo_.left;
+    cursorInfo.top = cursorInfo_.top;
+    cursorInfo.width = cursorInfo_.width;
+    cursorInfo.height = cursorInfo_.height;
+    IMSA_HILOGD("GetCurrentCursorInfo: left=%{public}f, top=%{public}f, width=%{public}f, height=%{public}f.",
+        cursorInfo.left, cursorInfo.top, cursorInfo.width, cursorInfo.height);
+    return ErrorCode::NO_ERROR;
+}
+
 int32_t InputMethodController::GetCursorInfo(CursorInfo &cursorInfo, int32_t userId)
 {
     IMSA_HILOGD("InputMethodController::GetCursorInfo start, userId: %{public}d.", userId);
@@ -1196,7 +1209,15 @@ int32_t InputMethodController::GetCursorInfo(CursorInfo &cursorInfo, int32_t use
         IMSA_HILOGE("GetCursorInfo failed: %{public}d", ret);
         return ret;
     }
-    cursorInfo = InputMethodTools::GetInstance().InnerToCursorInfo(cursorInfoInner);
+    if (IsEditable()) {
+        GetCurrentCursorInfo(cursorInfo);
+    } else {
+        cursorInfo = InputMethodTools::GetInstance().InnerToCursorInfo(cursorInfoInner);
+    }
+    CursorInfo invalidCursor = { -1.0, -1.0, -1.0, -1.0, 0 };
+    if (cursorInfo == invalidCursor) {
+        cursorInfo = { 0, 0, 0, 0, 0 };
+    }
     IMSA_HILOGD("cursorInfo: left=%{public}f, top=%{public}f, width=%{public}f, height=%{public}f.",
         cursorInfo.left, cursorInfo.top, cursorInfo.width, cursorInfo.height);
     return ErrorCode::NO_ERROR;

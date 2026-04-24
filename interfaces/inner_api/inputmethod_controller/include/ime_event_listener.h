@@ -34,12 +34,12 @@ public:
     virtual void OnImeChangeWithUserId(const Property &property, const SubProperty &subProperty, int32_t userId){};
     virtual void OnImeShow(const ImeWindowInfo &info){};
     virtual void OnImeHide(const ImeWindowInfo &info){};
-    virtual void OnInputStart(uint32_t callingWndId, int32_t requestKeyboardReason){};
-    virtual void OnInputStop(){};
-    // OnSoftKeyboardInfoChanged only contain SOFT_KEYBOARD(FLG_FIXED and FLG_FLOATING)
-    virtual void OnSoftKeyboardInfoChanged(const ImeWindowInfo &oldInfo, const ImeWindowInfo &newInfo){};
+    virtual void OnInputStart(uint32_t callingWndId, int32_t requestKeyboardReason){}; // deprecated
+    virtual void OnInputStop(){};                                                      // deprecated
     virtual void OnInputStart(const InputStartInfo &inputStartInfo){};
     virtual void OnInputStop(const InputStopInfo &inputStopInfo){};
+    virtual void OnSoftKeyboardInfoChanged(
+        int32_t userId, const BoundImeInfo &oldImeInfo, const BoundImeInfo &newImeInfo){};
 };
 } // namespace MiscServices
 } // namespace OHOS
