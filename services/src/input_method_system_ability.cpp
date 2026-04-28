@@ -1167,13 +1167,9 @@ ErrCode InputMethodSystemAbility::PanelStatusChange(uint32_t status, const ImeWi
             userId, static_cast<InputWindowStatus>(status), info);
         IMSA_HILOGD("public panel status change event: %{public}d", ret);
     }
-    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
-    if (session == nullptr) {
-        IMSA_HILOGE("%{public}d session is nullptr!", userId);
-        return ErrorCode::ERROR_NULL_POINTER;
-    }
     ResSchedAdapter::NotifyPanelStatus(static_cast<InputWindowStatus>(status) == InputWindowStatus::SHOW);
-    return session->OnPanelStatusChange(static_cast<InputWindowStatus>(status), info);
+    return ImeEventListenerManager::GetInstance().NotifyPanelStatusChange(
+        userId, static_cast<InputWindowStatus>(status), info);
 }
 
 ErrCode InputMethodSystemAbility::NotifyInputStart(const InputStartInfo &inputStartInfo)

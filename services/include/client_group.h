@@ -51,7 +51,7 @@ public:
     int64_t GetInactiveClientPid();
 
     bool IsClientExist(sptr<IRemoteObject> inputClient);
-    bool IsNotifyInputStop(const sptr<IInputClient> &client);
+    std::tuple<bool, uint64_t, bool> IsNotifyInputStop(const sptr<IInputClient> &client);
 
     sptr<IInputClient> GetCurrentClient();
     void SetCurrentClient(sptr<IInputClient> client);

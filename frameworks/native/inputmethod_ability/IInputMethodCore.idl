@@ -15,8 +15,8 @@
 
 sequenceable input_client_info..OHOS.MiscServices.InputClientInfoInner;
 sequenceable input_method_property..OHOS.MiscServices.SubProperty;
-sequenceable input_method_utils..OHOS.MiscServices.FocusedInfo;
 sequenceable input_method_utils..OHOS.MiscServices.Value;
+sequenceable input_method_utils..OHOS.MiscServices.FocusedInfo;
 sequenceable input_status_info..OHOS.MiscServices.BoundImeInfo;
 sequenceable panel_info..OHOS.MiscServices.PanelInfo;
 sequenceable OHOS.IRemoteObject;
@@ -37,7 +37,7 @@ interface OHOS.MiscServices.IInputMethodCore {
     [oneway] void OnSetInputType([in] int inputType);
     void OnCallingDisplayIdChanged([in] unsigned long editorDisplayId, [in] unsigned long keyboardDisplayId);
     void OnCallingWindowIdChanged([in] unsigned int rawEditorWindowId, [in] FocusedInfo focusedInfo);
+    void GetSoftKeyboardInfo([out] BoundImeInfo imeInfo);
     void OnSendPrivateData([in] Value value);
     void NotifyPreemption();
-    void GetSoftKeyboardInfo([out] BoundImeInfo imeInfo);
 }

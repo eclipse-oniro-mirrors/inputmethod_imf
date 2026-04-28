@@ -226,6 +226,7 @@ PanelStatusInfoInner InputMethodTools::PanelStatusInfoToInner(const PanelStatusI
 {
     PanelStatusInfoInner inner;
     inner.panelInfo = panelStatusInfo.panelInfo;
+    inner.inputType = panelStatusInfo.inputType;
     inner.visible = panelStatusInfo.visible;
     inner.trigger = panelStatusInfo.trigger;
     inner.sessionId = panelStatusInfo.sessionId;
@@ -236,6 +237,7 @@ PanelStatusInfo InputMethodTools::InnerToPanelStatusInfo(const PanelStatusInfoIn
 {
     PanelStatusInfo panelStatusInfo;
     panelStatusInfo.panelInfo = inner.panelInfo;
+    panelStatusInfo.inputType = inner.inputType;
     panelStatusInfo.visible = inner.visible;
     panelStatusInfo.trigger = inner.trigger;
     panelStatusInfo.sessionId = inner.sessionId;

@@ -40,7 +40,7 @@ public:
 private:
     ImeEventMonitorManagerImpl();
     ~ImeEventMonitorManagerImpl();
-    static constexpr uint32_t MAX_EVENT_NUM = 4;
+    static constexpr uint32_t MAX_EVENT_NUM = 5;
     int32_t NotifyInputStartWhenRegister(uint32_t eventFlag, std::shared_ptr<ImeEventListener> listener);
     int32_t OnImeShow(const ImeWindowInfo &info);
     int32_t OnImeHide(const ImeWindowInfo &info);

@@ -34,10 +34,9 @@ enum class InputStartScene : uint32_t {
 };
 
 struct BoundImeInfo : public Parcelable {
-    InputWindowStatus status{ InputWindowStatus::NONE };
+    InputWindowStatus status{ InputWindowStatus::HIDE };
     PanelFlag panelFlag{ PanelFlag::FLG_NONE };
     uint64_t displayId{ ImfCommonConst::DEFAULT_DISPLAY_ID };
-    uint32_t windowId{ ImfCommonConst::INVALID_WINDOW_ID };
     bool operator==(const BoundImeInfo &info) const
     {
         return status == info.status && panelFlag == info.panelFlag && displayId == info.displayId;
@@ -48,7 +47,6 @@ struct BoundImeInfo : public Parcelable {
         info.append("[status]: " + std::to_string(static_cast<uint32_t>(status)) + "/");
         info.append("[panelFlag]: " + std::to_string(panelFlag) + "/");
         info.append("[displayId]: " + std::to_string(displayId) + "/");
-        info.append("[windowId]: " + std::to_string(windowId));
         return info;
     }
 
@@ -59,7 +57,6 @@ struct BoundImeInfo : public Parcelable {
         auto panelFlagTmp = in.ReadInt32();
         panelFlag = static_cast<PanelFlag>(panelFlagTmp);
         displayId = in.ReadUint64();
-        windowId = in.ReadUint32();
         return true;
     }
 
@@ -71,10 +68,7 @@ struct BoundImeInfo : public Parcelable {
         if (!out.WriteInt32(static_cast<int32_t>(panelFlag))) {
             return false;
         }
-        if (!out.WriteUint64(displayId)) {
-            return false;
-        }
-        return out.WriteUint32(windowId);
+        return out.WriteUint64(displayId);
     }
 
     static BoundImeInfo *Unmarshalling(Parcel &in)
@@ -90,8 +84,7 @@ struct BoundImeInfo : public Parcelable {
 
 struct BoundClientInfo : public Parcelable {
     uint64_t displayId{ ImfCommonConst::DEFAULT_DISPLAY_ID };
-    uint64_t displayGroupId{ ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID };
-    uint32_t rawWindowId{ ImfCommonConst::INVALID_WINDOW_ID };
+    uint32_t rawWindowId{ ImfCommonConst::INVALID_WINDOW_ID };  // only used in inner
     uint32_t windowId{ ImfCommonConst::INVALID_WINDOW_ID };
     int32_t requestKeyboardReason = 0;
     bool isShowKeyboard{ true }; // only valid in InputStartScene::ATTACH
@@ -99,7 +92,6 @@ struct BoundClientInfo : public Parcelable {
     {
         std::string info;
         info.append("[displayId]: " + std::to_string(displayId) + "/");
-        info.append("[displayGroupId]: " + std::to_string(displayGroupId) + "/");
         info.append("[rawWindowId]: " + std::to_string(rawWindowId) + "/");
         info.append("[windowId]: " + std::to_string(windowId) + "/");
         info.append("[requestKeyboardReason]: " + std::to_string(requestKeyboardReason) + "/");
@@ -110,7 +102,6 @@ struct BoundClientInfo : public Parcelable {
     bool ReadFromParcel(Parcel &in)
     {
         displayId = in.ReadUint64();
-        displayGroupId = in.ReadUint64();
         rawWindowId = in.ReadUint32();
         windowId = in.ReadUint32();
         requestKeyboardReason = in.ReadInt32();
@@ -121,9 +112,6 @@ struct BoundClientInfo : public Parcelable {
     bool Marshalling(Parcel &out) const
     {
         if (!out.WriteUint64(displayId)) {
-            return false;
-        }
-        if (!out.WriteUint64(displayGroupId)) {
             return false;
         }
         if (!out.WriteUint32(rawWindowId)) {
@@ -155,7 +143,7 @@ public:
     InputStartScene scene{ InputStartScene::NONE };
     BoundClientInfo clientInfo;
     BoundImeInfo imeInfo;
-    bool isNewCb = false;
+    bool isNewCb = false;  // only used in inner
 
     bool ReadFromParcel(Parcel &in)
     {
@@ -216,8 +204,7 @@ public:
 };
 
 enum class InputStopScene : uint32_t {
-    CLIENT_EXIT,
-    HIDE_KEYBOARD,
+    CLIENT_TRIGGER,
     IMSA_DIED,
     IME_DIED,
     NONE,
@@ -229,7 +216,8 @@ public:
     // if scene is IMSA_DIED, the below param is invalid
     int32_t userId{ ImfCommonConst::DEFAULT_USER_ID };
     uint64_t displayId{ ImfCommonConst::DEFAULT_DISPLAY_ID };
-    uint64_t displayGroupId{ ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID };
+    uint64_t displayGroupId{ ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID }; // only used in inner
+    bool isRealIme{ false };                                             // only used in inner
 
     bool ReadFromParcel(Parcel &in)
     {
@@ -238,6 +226,7 @@ public:
         userId = in.ReadInt32();
         displayId = in.ReadUint64();
         displayGroupId = in.ReadUint64();
+        isRealIme = in.ReadBool();
         return true;
     }
 
@@ -249,10 +238,13 @@ public:
         if (!out.WriteInt32(userId)) {
             return false;
         }
-        if (!out.WriteInt32(displayId)) {
+        if (!out.WriteUint64(displayId)) {
             return false;
         }
-        return out.WriteUint64(displayGroupId);
+        if (!out.WriteUint64(displayGroupId)) {
+            return false;
+        }
+        return out.WriteBool(isRealIme);
     }
 
     static InputStopInfo *Unmarshalling(Parcel &in)
@@ -271,7 +263,8 @@ public:
         info.append("[scene]: " + std::to_string(static_cast<uint32_t>(scene)) + "/");
         info.append("[userId]: " + std::to_string(userId) + "/");
         info.append("[displayId]: " + std::to_string(displayId) + "/");
-        info.append("[displayGroupId]: " + std::to_string(displayGroupId));
+        info.append("[displayGroupId]: " + std::to_string(displayGroupId) + "/");
+        info.append("[isRealIme]: " + std::to_string(isRealIme));
         return info;
     }
 };

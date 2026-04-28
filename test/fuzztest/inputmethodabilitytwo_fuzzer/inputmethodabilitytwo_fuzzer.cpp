@@ -49,8 +49,7 @@ bool InitializeClientInfo(InputClientInfo &clientInfo) __attribute__((no_sanitiz
 void TestCallingDisplayIdChanged(FuzzedDataProvider &provider) __attribute__((no_sanitize("cfi")))
 {
     uint64_t fuzzedUint64 = provider.ConsumeIntegral<uint64_t>();
-    bool isNotifyInputStart = provider.ConsumeBool();
-    InputMethodAbility::GetInstance().OnCallingDisplayIdChanged(fuzzedUint64, fuzzedUint64, isNotifyInputStart);
+    InputMethodAbility::GetInstance().OnCallingDisplayIdChanged(fuzzedUint64, fuzzedUint64);
 }
 
 void TestUnregisterProxyIme(FuzzedDataProvider &provider) __attribute__((no_sanitize("cfi")))

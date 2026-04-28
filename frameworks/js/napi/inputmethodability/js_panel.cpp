@@ -59,7 +59,8 @@ napi_value JsPanel::Init(napi_env env)
         DECLARE_NAPI_FUNCTION("on", Subscribe),
         DECLARE_NAPI_FUNCTION("off", UnSubscribe),
         DECLARE_NAPI_FUNCTION("adjustPanelRect", AdjustPanelRect),
-        DECLARE_NAPI_FUNCTION("adjustPanelRectSync", AdjustPanelRectSync),
+        DECLARE_NAPI_FUNCTION("updatePanelRect", UpdatePanelRect),
+        DECLARE_NAPI_FUNCTION("updatePanelRectSync", UpdatePanelRectSync),
         DECLARE_NAPI_FUNCTION("updateRegion", UpdateRegion),
         DECLARE_NAPI_FUNCTION("startMoving", StartMoving),
         DECLARE_NAPI_FUNCTION("getDisplayId", GetDisplayId),
@@ -683,7 +684,13 @@ napi_value JsPanel::AdjustPanelRect(napi_env env, napi_callback_info info)
     return asyncCall.Call(env, exec, "adjustPanelRect");
 }
 
-napi_value JsPanel::AdjustPanelRectSync(napi_env env, napi_callback_info info)
+napi_value JsPanel::UpdatePanelRect(napi_env env, napi_callback_info info)
+{
+    IMSA_HILOGI("JsPanel enter!");
+    return AdjustPanelRect(env, info);
+}
+
+napi_value JsPanel::UpdatePanelRectSync(napi_env env, napi_callback_info info)
 {
     IMSA_HILOGI("JsPanel enter!");
     size_t argc = ARGC_MAX;
@@ -694,7 +701,7 @@ napi_value JsPanel::AdjustPanelRectSync(napi_env env, napi_callback_info info)
 
     auto panel = UnwrapPanel(env, thisVar);
     if (panel == nullptr) {
-        IMSA_HILOGE("inputMethodPanel_ is nullptr!");
+        IMSA_HILOGE("inputMethodPanel is nullptr!");
         return JsUtil::Const::Null(env);
     }
 

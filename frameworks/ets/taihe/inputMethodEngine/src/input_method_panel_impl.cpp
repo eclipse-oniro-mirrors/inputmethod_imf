@@ -254,7 +254,7 @@ void PanelImpl::UpdateRegion(uintptr_t inputRegion)
 void PanelImpl::AdjustPanelRect(PanelFlag_t flag, PanelRect_t const& rect)
 {
     int64_t id = LineUp();
-    if (!jobQueue_.Wait(static_cast<int64_t>(id))) {
+    if (!jobQueue_.Wait(id)) {
         IMSA_HILOGW("wait timeout id: %{public}" PRId64 "", id);
     }
     LayoutParams layoutParams;
@@ -269,7 +269,7 @@ void PanelImpl::AdjustPanelRect(PanelFlag_t flag, PanelRect_t const& rect)
             return;
         }
         int32_t ret = self->inputMethodPanel_->AdjustPanelRect(panelFlag, layoutParams);
-        jobQueue_.Pop();
+        self->jobQueue_.Pop();
         self->HandleAdjustPanelRectResult(ret);
     };
     std::thread obj(task);
@@ -292,7 +292,7 @@ void PanelImpl::AdjustPanelRectEnhanced(PanelFlag_t flag, EnhancedPanelRect_t co
             return;
         }
         int32_t ret = self->inputMethodPanel_->AdjustPanelRect(panelFlag, enhancedLayoutParams, hotAreas);
-        jobQueue_.Pop();
+        self->jobQueue_.Pop();
         self->HandleAdjustPanelRectResult(ret);
     };
     std::thread obj(task);
@@ -300,10 +300,10 @@ void PanelImpl::AdjustPanelRectEnhanced(PanelFlag_t flag, EnhancedPanelRect_t co
     IMSA_HILOGI("AdjustPanelRectEnhanced task posted to async thread");
 }
 
-void PanelImpl::AdjustPanelRectSync(PanelFlag_t flag, PanelRect_t const& rect)
+void PanelImpl::UpdatePanelRect(PanelFlag_t flag, PanelRect_t const& rect)
 {
     int64_t id = LineUp();
-    if (!jobQueue_.Wait(static_cast<int64_t>(id))) {
+    if (!jobQueue_.Wait(id)) {
         IMSA_HILOGW("wait timeout id: %{public}" PRId64 "", id);
     }
     LayoutParams layoutParams;
@@ -316,7 +316,7 @@ void PanelImpl::AdjustPanelRectSync(PanelFlag_t flag, PanelRect_t const& rect)
     HandleAdjustPanelRectResult(ret);
 }
 
-void PanelImpl::AdjustPanelRectSyncEnhanced(PanelFlag_t flag, EnhancedPanelRect_t const& rect)
+void PanelImpl::UpdatePanelRectEnhanced(PanelFlag_t flag, EnhancedPanelRect_t const& rect)
 {
     EnhancedLayoutParams enhancedLayoutParams;
     HotAreas hotAreas;
@@ -395,10 +395,10 @@ void PanelImpl::HandleAdjustPanelRectResult(int32_t ret)
     if (ret == ErrorCode::NO_ERROR) {
         IMSA_HILOGI("AdjustPanelRect success!");
     } else if (ret == ErrorCode::ERROR_PARAMETER_CHECK_FAILED) {
-        IMSA_HILOGI("Invalid param");
+        IMSA_HILOGE("Invalid param");
         set_business_error(JsUtils::Convert(ret), JsUtils::ToMessage(JsUtils::Convert(ret)));
     } else {
-        IMSA_HILOGI("AdjustPanelRect failed");
+        IMSA_HILOGE("AdjustPanelRect failed");
         set_business_error(JsUtils::Convert(ret), JsUtils::ToMessage(JsUtils::Convert(ret)));
     }
 }

@@ -113,8 +113,7 @@ void FuzzInterfaceCovage(FuzzedDataProvider &provider)
     windowInfo.height = provider.ConsumeIntegral<uint32_t>();
     info.panelInfo = panelInfo;
     info.windowInfo = windowInfo;
-    info.status = static_cast<InputWindowStatus>(status);
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->PanelStatusChange(info, info);
+    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->PanelStatusChange(status, info);
 
     sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
     uint32_t type = provider.ConsumeIntegral<uint32_t>();

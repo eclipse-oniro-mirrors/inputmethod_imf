@@ -64,7 +64,8 @@
               "selinux_adapter",
               "runtime_core",
               "ace_engine",
-              "hiview"
+              "hiview",
+              "ets_frontend"
           ]
       }, 
       "build": {

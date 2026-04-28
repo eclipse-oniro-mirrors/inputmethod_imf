@@ -93,7 +93,7 @@ public:
         : Task(TASK_TYPE_IMSA_DISPLAYID_CHANGED)
     {
         auto func = [editorDisplayId, keyboardDisplayId]() {
-            InputMethodAbility::GetInstance().OnCallingDisplayIdChanged(editorDisplayId, keyboardDisplayId, true);
+            InputMethodAbility::GetInstance().OnCallingDisplayIdChanged(editorDisplayId, keyboardDisplayId);
         };
         actions_.emplace_back(std::make_unique<Action>(func));
     }

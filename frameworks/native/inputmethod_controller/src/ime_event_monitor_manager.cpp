@@ -22,13 +22,9 @@
 
 namespace OHOS {
 namespace MiscServices {
-ImeEventMonitorManager::ImeEventMonitorManager()
-{
-}
+ImeEventMonitorManager::ImeEventMonitorManager() { }
 
-ImeEventMonitorManager::~ImeEventMonitorManager()
-{
-}
+ImeEventMonitorManager::~ImeEventMonitorManager() { }
 
 ImeEventMonitorManager &ImeEventMonitorManager::GetInstance()
 {

@@ -155,7 +155,7 @@ int32_t ImeEventMonitorManagerImpl::OnImeChange(const Property &property, const 
 int32_t ImeEventMonitorManagerImpl::OnPanelStatusChange(const InputWindowStatus &status, const ImeWindowInfo &info)
 {
     IMSA_HILOGD("ImeEventMonitorManagerImpl, status: %{public}u, window: %{public}s", static_cast<uint32_t>(status),
-                info.windowInfo.ToString().c_str());
+        info.windowInfo.ToString().c_str());
     if (status == InputWindowStatus::HIDE) {
         return OnImeHide(info);
     }
@@ -194,7 +194,9 @@ int32_t ImeEventMonitorManagerImpl::OnInputStop(const InputStopInfo &inputStopIn
         if (inputStopInfo.displayGroupId == ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID) {
             listener->OnInputStop();
         }
-        listener->OnInputStop(inputStopInfo);
+        if (inputStopInfo.isRealIme) {
+            listener->OnInputStop(inputStopInfo);
+        }
     }
     return ErrorCode::NO_ERROR;
 }

@@ -47,9 +47,6 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void ListCurrentInputMethodSubtype([out] SubProperty[] subProps, [in] int userId);
     void ListInputMethodSubtype([in] String name, [out] SubProperty[] subProps, [in] int userId);
     void SwitchInputMethod([in] String bundleName, [in] String name, [in] unsigned int trigger, [in] int userId);
-    void GetSoftKeyboardInfo([in] int userId, [out] BoundImeInfo imeInfo);
-    [oneway] void NotifyInputStart([in] InputStartInfo inputStartInfo);
-    [oneway] void NotifySoftKeyBoardInfoChanged[in] BoundImeInfo oldImeInfo, [in] BoundImeInfo newImeInfo);
     [oneway] void PanelStatusChange([in] unsigned int status, [in] ImeWindowInfo info);
     void UpdateListenEventFlag([in] InputClientInfoInner clientInfoInner, [in] unsigned int eventFlag);
     void IsCurrentIme([out] boolean resultValue);
@@ -70,6 +67,9 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void ShowCurrentInputDeprecated([in] unsigned int windowId);
     void SetCallingWindow([in] unsigned int windowId, [in] IInputClient client);
     void GetInputStartInfo([out] InputStartInfo inputStartInfo);
+    void GetSoftKeyboardInfo([in] int userId, [out] BoundImeInfo imeInfo);
+    [oneway] void NotifyInputStart([in] InputStartInfo inputStartInfo);
+    [oneway] void NotifySoftKeyBoardInfoChanged([in] BoundImeInfo oldImeInfo, [in] BoundImeInfo newImeInfo);
     void RegisterProxyIme([in] unsigned long displayId, [in] IInputMethodCore core, [in] IRemoteObject agent);
     void UnregisterProxyIme([in] unsigned long displayId);
     void SendPrivateData([in] Value value);

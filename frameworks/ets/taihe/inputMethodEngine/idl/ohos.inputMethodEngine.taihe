@@ -480,10 +480,15 @@ interface Panel {
     @overload("adjustPanelRect")
     AdjustPanelRectEnhanced(flag: PanelFlag, rect: EnhancedPanelRect): void;
 
-    @rename("adjustPanelRectSync")
-    AdjustPanelRectSync(flag: PanelFlag, rect: PanelRect): void;
-    @rename("adjustPanelRectSync")
-    AdjustPanelRectSyncEnhanced(flag: PanelFlag, rect: EnhancedPanelRect): void;
+    @rename("updatePanelRect")
+    @promise UpdatePanelRect(flag: PanelFlag, rect: PanelRect): void;
+    @rename("updatePanelRect")
+    @promise UpdatePanelRectEnhanced(flag: PanelFlag, rect: EnhancedPanelRect): void;
+
+    @rename("updatePanelRectSync")
+    UpdatePanelRectSync(flag: PanelFlag, rect: PanelRect): void;
+    @rename("updatePanelRectSync")
+    UpdatePanelRectEnhancedSync(flag: PanelFlag, rect: EnhancedPanelRect): void;
 
     UpdateRegion(inputRegion: @sts_type("Array<window.Rect>") Opaque): void;
     SetImmersiveMode(mode: ImmersiveMode): void;

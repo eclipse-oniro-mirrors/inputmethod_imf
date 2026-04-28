@@ -278,15 +278,25 @@ bool ClientGroup::IsClientExist(sptr<IRemoteObject> inputClient)
     return mapClients_.find(inputClient) != mapClients_.end();
 }
 
-bool ClientGroup::IsNotifyInputStop(const sptr<IInputClient> &client)
+std::tuple<bool, uint64_t, bool> ClientGroup::IsNotifyInputStop(const sptr<IInputClient> &client)
 {
+    if (client == nullptr) {
+        IMSA_HILOGE("client is nullptr.");
+        return { false, ImfCommonConst::DEFAULT_DISPLAY_ID, false };
+    }
+    auto clientInfo = GetClientInfo(client->AsObject());
+    if (clientInfo == nullptr) {
+        IMSA_HILOGE("clientInfo is nullptr.");
+        return { false, ImfCommonConst::DEFAULT_DISPLAY_ID, false };
+    }
+    bool isRealIme = clientInfo->bindImeData != nullptr && clientInfo->bindImeData->IsRealIme();
     if (IsSameClient(client, GetCurrentClient())) {
-        return true;
+        return { true, clientInfo->config.inputAttribute.editorDisplayId, isRealIme };
     }
     if (GetCurrentClient() == nullptr && IsSameClient(client, GetInactiveClient())) {
-        return true;
+        return { true, clientInfo->config.inputAttribute.editorDisplayId, isRealIme };
     }
-    return false;
+    return { false, clientInfo->config.inputAttribute.editorDisplayId, isRealIme };
 }
 
 sptr<IInputClient> ClientGroup::GetCurrentClient()

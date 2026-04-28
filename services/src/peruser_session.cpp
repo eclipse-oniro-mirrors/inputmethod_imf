@@ -148,7 +148,7 @@ int32_t PerUserSession::HideKeyboard(
         RestoreCurrentImeSubType();
     }
     ImeEventListenerManager::GetInstance().NotifyInputStop(
-        userId_, clientInfo->config.inputAttribute.editorDisplayId, InputStopScene::HIDE_KEYBOARD);
+        userId_, clientInfo->config.inputAttribute.editorDisplayId, InputStopScene::CLIENT_TRIGGER, data->IsRealIme());
     return ErrorCode::NO_ERROR;
 }
 
@@ -197,14 +197,17 @@ void PerUserSession::OnClientDied(sptr<IInputClient> remote)
     if (clientGroup == nullptr) {
         return;
     }
+    auto [isNotify, displayId, isRealIme] = clientGroup->IsNotifyInputStop(remote);
+    if (isNotify) {
+        ImeEventListenerManager::GetInstance().NotifyInputStop(
+            userId_, displayId, InputStopScene::CLIENT_TRIGGER, isRealIme);
+    }
     auto clientInfo = clientGroup->GetClientInfo(remote->AsObject());
     IMSA_HILOGI("userId: %{public}d.", userId_);
     if (IsSameClient(remote, clientGroup->GetCurrentClient())) {
         if (clientInfo != nullptr) {
             auto imeData = GetImeData(clientInfo->bindImeData);
             StopImeInput(imeData, clientInfo, 0);
-            ImeEventListenerManager::GetInstance().NotifyInputStop(
-                userId_, clientInfo->config.inputAttribute.editorDisplayId, InputStopScene::CLIENT_EXIT);
         }
         clientGroup->SetCurrentClient(nullptr);
     }
@@ -212,8 +215,6 @@ void PerUserSession::OnClientDied(sptr<IInputClient> remote)
         if (clientInfo != nullptr) {
             auto imeData = GetImeData(clientInfo->bindImeData);
             StopImeInput(imeData, clientInfo, 0);
-            ImeEventListenerManager::GetInstance().NotifyInputStop(
-                userId_, clientInfo->config.inputAttribute.editorDisplayId, InputStopScene::CLIENT_EXIT);
         }
         clientGroup->SetInactiveClient(nullptr);
     }
@@ -250,8 +251,8 @@ void PerUserSession::OnImeDied(const sptr<IInputMethodCore> &remote, ImeType typ
     if (clientGroup != nullptr && clientInfo != nullptr) {
         auto currentClient = clientGroup->GetCurrentClient();
         if (IsSameClient(currentClient, clientInfo->client)) {
-            ImeEventListenerManager::GetInstance().NotifyInputStop(
-                userId_, clientInfo->config.inputAttribute.editorDisplayId, InputStopScene::IME_DIED);
+            ImeEventListenerManager::GetInstance().NotifyInputStop(userId_,
+                clientInfo->config.inputAttribute.editorDisplayId, InputStopScene::IME_DIED, type == ImeType::IME);
             StopClientInput(clientInfo);
             if (type == ImeType::IME) {
                 StartImeInImeDied();
@@ -487,6 +488,7 @@ int32_t PerUserSession::UpdateClientAfterRequestHide(uint64_t displayGroupId, co
     if (clientGroup == nullptr) {
         return ErrorCode::NO_ERROR;
     }
+    std::shared_ptr<InputClientInfo> clientInfo = nullptr;
     auto currentClient = clientGroup->GetCurrentClient();
     if (currentClient != nullptr) {
         auto currentClientInfo = clientGroup->GetClientInfo(currentClient->AsObject());
@@ -497,16 +499,21 @@ int32_t PerUserSession::UpdateClientAfterRequestHide(uint64_t displayGroupId, co
             RemoveClient(currentClient, clientGroup, options);
         } else {
             clientGroup->UpdateClientInfo(currentClient->AsObject(), { { UpdateFlag::ISSHOWKEYBOARD, false } });
-            if (currentClientInfo != nullptr) {
-                ImeEventListenerManager::GetInstance().NotifyInputStop(
-                    userId_, currentClientInfo->config.inputAttribute.editorDisplayId, InputStopScene::HIDE_KEYBOARD);  // todo
-            }
         }
+        clientInfo = currentClientInfo;
     }
     auto inactiveClient = clientGroup->GetInactiveClient();
     if (inactiveClient != nullptr) {
+        if (clientInfo == nullptr) {
+            clientInfo = clientGroup->GetClientInfo(inactiveClient->AsObject());
+        }
         DetachOptions options = { .sessionId = 0, .isUnbindFromClient = false, .isInactiveClient = true };
         RemoveClient(inactiveClient, clientGroup, options);
+    }
+    if (clientInfo != nullptr) {
+        bool isRealIme = clientInfo->bindImeData != nullptr && clientInfo->bindImeData->IsRealIme();
+        ImeEventListenerManager::GetInstance().NotifyInputStop(
+            userId_, clientInfo->config.inputAttribute.editorDisplayId, InputStopScene::CLIENT_TRIGGER, isRealIme);
     }
     return ErrorCode::NO_ERROR;
 }
@@ -555,11 +562,16 @@ int32_t PerUserSession::OnReleaseInput(const sptr<IInputClient> &client, uint32_
         IMSA_HILOGD("client not found");
         return ErrorCode::NO_ERROR;
     }
+    auto [isReady, displayId, isRealIme] = clientGroup->IsNotifyInputStop(client);
     DetachOptions options = { .sessionId = sessionId, .isUnbindFromClient = true };
     int32_t ret = RemoveClient(client, clientGroup, options);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("remove client failed");
         return ret;
+    }
+    if (isReady) {
+        ImeEventListenerManager::GetInstance().NotifyInputStop(
+            userId_, displayId, InputStopScene::CLIENT_TRIGGER, isRealIme);
     }
     return ErrorCode::NO_ERROR;
 }
@@ -576,17 +588,9 @@ int32_t PerUserSession::RemoveClient(
         UnBindClientWithIme(clientInfo, options);
         clientGroup->SetCurrentClient(nullptr);
         StopClientInput(clientInfo, options);
-        if (clientInfo != nullptr) {
-            ImeEventListenerManager::GetInstance().NotifyInputStop(
-                userId_, clientInfo->config.inputAttribute.editorDisplayId, InputStopScene::CLIENT_EXIT);
-        }
     } else if (IsSameClient(client, clientGroup->GetInactiveClient())) {
         clientGroup->SetInactiveClient(nullptr);
         StopClientInput(clientInfo, options);
-        if (clientInfo != nullptr) {
-            ImeEventListenerManager::GetInstance().NotifyInputStop(
-                userId_, clientInfo->config.inputAttribute.editorDisplayId, InputStopScene::CLIENT_EXIT);
-        }
     } else if (options.needNotifyClient) {
         StopClientInput(clientInfo, options);
     }
@@ -2026,9 +2030,9 @@ void PerUserSession::HandleWindowIdChanged(
 
 int32_t PerUserSession::GetInputStartInfo(InputStartInfo &inputStartInfo)
 {
-    auto [clientGroup, clientInfo] = GetClientBoundRealIme();
+    auto [clientGroup, clientInfo] = GetCurrentClientBoundRealIme();
     if (clientInfo == nullptr) {
-        IMSA_HILOGD("has no client bound real ime.");
+        IMSA_HILOGD("has no current client bound real ime.");
         return ErrorCode::ERROR_CLIENT_NOT_BOUND;
     }
     inputStartInfo.scene = InputStartScene::ATTACH;
@@ -2045,7 +2049,7 @@ int32_t PerUserSession::GetInputStartInfo(InputStartInfo &inputStartInfo)
     }
     BoundImeInfo imeInfo;
     auto ret = RequestIme(
-        imeData, RequestType::NORMAL, [&imeData, &imeInfo] { return imeData->core->GetSoftKeyboardInfo(imeInfo); });
+        imeData, RequestType::NORMAL, [imeData, &imeInfo] { return imeData->core->GetSoftKeyboardInfo(imeInfo); });
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("failed to get soft keyboard window info:%{public}d.", ret);
         return ErrorCode::ERROR_EX_ILLEGAL_STATE;
@@ -2337,6 +2341,12 @@ int32_t PerUserSession::RemoveAllCurrentClient()
         auto clientGroupObject = clientGroup.second;
         if (clientGroupObject == nullptr) {
             continue;
+        }
+        auto [isNotify, displayId, isRealIme] =
+            clientGroupObject->IsNotifyInputStop(clientGroupObject->GetCurrentClient());
+        if (isNotify) {
+            ImeEventListenerManager::GetInstance().NotifyInputStop(
+                userId_, displayId, InputStopScene::CLIENT_TRIGGER, isRealIme);
         }
         DetachOptions options = { .sessionId = 0, .isUnbindFromClient = false };
         RemoveClient(clientGroupObject->GetCurrentClient(), clientGroupObject, options);

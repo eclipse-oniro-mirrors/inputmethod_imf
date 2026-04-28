@@ -43,7 +43,7 @@ public:
     ErrCode NotifyInputStart(const InputStartInfo &inputStartInfo) override;
     ErrCode NotifyInputStop(const InputStopInfo &inputStopInfo) override;
     ErrCode NotifySoftKeyBoardInfoChanged(
-        int32_t userId, const BoundImeInfo &oldImeInfo, const BoundImeInfo &newImeInfo);
+        int32_t userId, const BoundImeInfo &oldImeInfo, const BoundImeInfo &newImeInfo) override;
     ErrCode DeactivateClient() override;
     ErrCode OnImeMirrorStop(const sptr<IRemoteObject> &object) override;
     ErrCode GetCurrentCursorInfo(CursorInfoInner &cursorInfo) override;

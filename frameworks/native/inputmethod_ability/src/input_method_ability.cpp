@@ -444,14 +444,19 @@ void InputMethodAbility::SetCallingWindow(uint32_t rawEditorWindowId, const Focu
 {
     IMSA_HILOGD("InputMethodAbility rawEditorWindowId/focusedInfo: %{public}u/%{public}s.", rawEditorWindowId,
         focusedInfo.ToString().c_str());
-    uint32_t oldKeyboardWindowId = 0;
-    uint32_t oldEditorWindowId = 0;
+    uint64_t oldEditorDisplayId = 0;
+    uint64_t oldKeyboardDisplayId = 0;
     {
         std::lock_guard<std::mutex> lock(inputAttrLock_);
-        oldKeyboardWindowId = inputAttribute_.windowId;
-        oldEditorWindowId = inputAttribute_.editorWindowId;
+        oldEditorDisplayId = inputAttribute_.editorDisplayId;
+        oldKeyboardDisplayId = inputAttribute_.callingDisplayId;
         inputAttribute_.windowId = focusedInfo.keyboardWindowId;
         inputAttribute_.editorWindowId = focusedInfo.windowId;
+    }
+    if (focusedInfo.keyboardDisplayId == oldKeyboardDisplayId && focusedInfo.displayId == oldEditorDisplayId) {
+        NotifyInputStartToClients(InputStartScene::WINDOW_CHANGED);
+    } else {
+        OnCallingDisplayIdChanged(focusedInfo.displayId, focusedInfo.keyboardDisplayId);
     }
     panels_.ForEach([keyboardWindowId = focusedInfo.keyboardWindowId](
                         const PanelType &panelType, const std::shared_ptr<InputMethodPanel> &panel) {
@@ -460,10 +465,6 @@ void InputMethodAbility::SetCallingWindow(uint32_t rawEditorWindowId, const Focu
     });
     if (imeListener_ != nullptr) {
         imeListener_->OnSetCallingWindow(rawEditorWindowId);
-    }
-    OnCallingDisplayIdChanged(focusedInfo.displayId, focusedInfo.keyboardDisplayId, false);
-    if (oldKeyboardWindowId != focusedInfo.keyboardWindowId || oldEditorWindowId != focusedInfo.windowId) {
-        NotifyInputStartToClients(InputStartScene::WINDOW_CHANGED);
     }
 }
 
@@ -608,7 +609,12 @@ int32_t InputMethodAbility::ShowKeyboardImplWithoutLock(int32_t cmdId)
 void InputMethodAbility::NotifyInputStartToClients(InputStartScene scene, bool isShowKeyboard)
 {
     if (isProxyIme_.load()) {
-        IMSA_HILOD("proxy ime, no need to notify.");
+        IMSA_HILOGD("proxy ime, no need to notify.");
+        return;
+    }
+    auto proxy = GetImsaProxy();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("imsa proxy is nullptr!");
         return;
     }
     InputStartInfo info;
@@ -618,28 +624,32 @@ void InputMethodAbility::NotifyInputStartToClients(InputStartScene scene, bool i
     info.clientInfo.displayId = GetInputAttribute().editorDisplayId;
     info.clientInfo.requestKeyboardReason = static_cast<int32_t>(GetAttachOptions().requestKeyboardReason);
 
-    auto status = InputWindowStatus::HIDE;
-    auto panelFlag = PanelFlag::FLG_NONE;
     auto panel = GetSoftKeyboardPanel();
-    if (panel != nullptr) {
-        status = panel->IsShowing() ? InputWindowStatus::SHOW : InputWindowStatus::HIDE;
-        panelFlag = panel->GetPanelFlag();
-    }
-    info.imeInfo.status = status;
-    info.imeInfo.displayId = GetInputAttribute().callingDisplayId;
-    info.imeInfo.windowId = GetInputAttribute().windowId;
-    info.imeInfo.panelFlag = panelFlag;
-    auto proxy = GetImsaProxy();
-    if (proxy == nullptr) {
-        IMSA_HILOGE("imsa proxy is nullptr!");
+    if (panel == nullptr) {
+        info.imeInfo.status = InputWindowStatus::HIDE;
+        proxy->NotifyInputStart(info);
         return;
+    }
+    info.imeInfo.panelFlag = panel->GetPanelFlag();
+    info.imeInfo.status = panel->IsShowing() ? InputWindowStatus::SHOW : InputWindowStatus::HIDE;
+    info.imeInfo.displayId = ImfCommonConst::DEFAULT_DISPLAY_ID;
+    if (info.imeInfo.status == InputWindowStatus::HIDE) {
+        proxy->NotifyInputStart(info);
+        return;
+    }
+    info.imeInfo.displayId = GetInputAttribute().callingDisplayId;
+    if (scene != InputStartScene::ATTACH && scene != InputStartScene::SHOW_KEYBOARD) {
+        auto ret = panel->GetDisplayId(info.imeInfo.displayId);
+        if (ret != ErrorCode::NO_ERROR) {
+            info.imeInfo.displayId = GetInputAttribute().callingDisplayId;
+        }
     }
     proxy->NotifyInputStart(info);
 }
 
-void InputMethodAbility::NotifyPanelStatusInfo(const PanelStatusInfo &info)
+void InputMethodAbility::NotifyPanelStatusInfo(PanelStatusInfo &info)
 {
-    // CANDIDATE_COLUMN not notify
+    // When panelFlag is CANDIDATE_COLUMN and inputType is not VOICEKB_INPUT, no need to notify.
     auto channel = GetInputDataChannelProxy();
     NotifyPanelStatusInfo(info, channel);
 }
@@ -942,6 +952,8 @@ int32_t InputMethodAbility::GetTextConfig(TextTotalConfig &textConfig)
         textConfig.inputAttribute.bundleName = GetInputAttribute().bundleName;
         textConfig.inputAttribute.callingDisplayId = GetInputAttribute().callingDisplayId;
         textConfig.inputAttribute.windowId = GetInputAttribute().windowId;
+        textConfig.inputAttribute.editorDisplayId = GetInputAttribute().editorDisplayId;
+        textConfig.inputAttribute.editorWindowId = GetInputAttribute().editorWindowId;
     }
     return ret;
 }
@@ -1368,7 +1380,7 @@ int32_t InputMethodAbility::HideKeyboard(Trigger trigger, uint32_t sessionId)
         }
         auto flag = panel->GetPanelFlag();
         imeListener_->OnKeyboardStatus(false);
-        if (flag == FLG_CANDIDATE_COLUMN) {
+        if (flag == FLG_CANDIDATE_COLUMN && inputType_ != InputType::VOICEKB_INPUT) {
             IMSA_HILOGI("panel flag is candidate, no need to hide.");
             return ErrorCode::NO_ERROR;
         }
@@ -1722,10 +1734,11 @@ int32_t InputMethodAbility::GetCallingWindowInfo(CallingWindowInfo &windowInfo)
 }
 
 void InputMethodAbility::NotifyPanelStatusInfo(
-    const PanelStatusInfo &info, std::shared_ptr<InputDataChannelProxy> &channelProxy)
+    PanelStatusInfo &info, std::shared_ptr<InputDataChannelProxy> &channelProxy)
 {
-    // CANDIDATE_COLUMN not notify
-    if (info.panelInfo.panelFlag == PanelFlag::FLG_CANDIDATE_COLUMN) {
+    // When panelFlag is CANDIDATE_COLUMN and inputType is not VOICEKB_INPUT, no need to notify.
+    info.inputType = GetInputType();
+    if (info.panelInfo.panelFlag == PanelFlag::FLG_CANDIDATE_COLUMN && info.inputType != InputType::VOICEKB_INPUT) {
         return;
     }
     if (channelProxy != nullptr) {
@@ -1851,8 +1864,7 @@ void InputMethodAbility::ReportImeStartInput(
     IMSA_HILOGD("HiSysEvent report end:[%{public}d, %{public}d]!", eventCode, errCode);
 }
 
-int32_t InputMethodAbility::OnCallingDisplayIdChanged(
-    uint64_t editorDisplayId, uint64_t keyboardDisplayId, bool notifyInputStart)
+int32_t InputMethodAbility::OnCallingDisplayIdChanged(uint64_t editorDisplayId, uint64_t keyboardDisplayId)
 {
     auto oldKeyboardDisplayId = GetInputAttribute().callingDisplayId;
     auto oldEditorDisplayId = GetInputAttribute().editorDisplayId;
@@ -1861,12 +1873,6 @@ int32_t InputMethodAbility::OnCallingDisplayIdChanged(
         oldEditorDisplayId, oldKeyboardDisplayId, editorDisplayId, keyboardDisplayId);
     if (oldKeyboardDisplayId == keyboardDisplayId && editorDisplayId == oldEditorDisplayId) {
         return ErrorCode::NO_ERROR;
-    }
-    if (oldKeyboardDisplayId != keyboardDisplayId) {
-        auto panel = GetSoftKeyboardPanel();
-        if (panel != nullptr && panel->GetPanelFlag() == PanelFlag::FLG_FIXED) {
-            HidePanel(panel, PanelFlag::FLG_FIXED, Trigger::IMF, 0);
-        }
     }
     {
         std::lock_guard<std::mutex> lock(inputAttrLock_);
@@ -1880,11 +1886,13 @@ int32_t InputMethodAbility::OnCallingDisplayIdChanged(
             inputAttribute_.callingScreenId = 0;
         }
     }
-    if (notifyInputStart){
-        NotifyInputStartToClients(InputStartScene::DISPLAY_CHANGED);
-    }
+    NotifyInputStartToClients(InputStartScene::DISPLAY_CHANGED);
     if (oldKeyboardDisplayId == keyboardDisplayId) {
         return ErrorCode::NO_ERROR;
+    }
+    auto panel = GetSoftKeyboardPanel();
+    if (panel != nullptr && panel->GetPanelFlag() == PanelFlag::FLG_FIXED) {
+        HidePanel(panel, PanelFlag::FLG_FIXED, Trigger::IMF, 0);
     }
     ConfigurationUpdate(keyboardDisplayId);
     if (imeListener_ == nullptr) {
@@ -2052,9 +2060,16 @@ int32_t InputMethodAbility::GetSoftKeyboardInfo(BoundImeInfo &imeInfo)
     }
     imeInfo.panelFlag = panel->GetPanelFlag();
     imeInfo.status = panel->IsShowing() ? InputWindowStatus::SHOW : InputWindowStatus::HIDE;
-    imeInfo.displayId = GetInputAttribute().callingDisplayId;
-    imeInfo.windowId = GetInputAttribute().windowId;
-    IMSA_HILOGI("imeInfo: %{public}s.", imeInfo.ToString().c_str());
+    imeInfo.displayId = ImfCommonConst::DEFAULT_DISPLAY_ID;
+    if (imeInfo.status == InputWindowStatus::HIDE) {
+        IMSA_HILOGD("hide status: %{public}s.", imeInfo.ToString().c_str());
+        return ErrorCode::NO_ERROR;
+    }
+    auto ret = panel->GetDisplayId(imeInfo.displayId);
+    if (ret != ErrorCode::NO_ERROR) {
+        imeInfo.displayId = GetInputAttribute().callingDisplayId;
+    }
+    IMSA_HILOGD("show status: %{public}s.", imeInfo.ToString().c_str());
     return ErrorCode::NO_ERROR;
 }
 } // namespace MiscServices

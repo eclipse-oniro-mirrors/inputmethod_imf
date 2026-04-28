@@ -53,15 +53,33 @@ void GrantNativePermission()
     delete[] perms;
 }
 
+BoundImeInfo GetSoftKeyboardInfo()
+{
+    auto userId = 100;
+    BoundImeInfo imeInfo;
+    auto ret = InputMethodController::GetInstance()->GetSoftKeyboardInfo(userId, imeInfo);
+    printf("=====GetSoftKeyboardInfo ret/imeInfo:%d/%s.=====\n", ret, imeInfo.ToString().c_str());
+    return imeInfo;
+}
+
+void GetSoftKeyboardWithInvalidUserId()
+{
+    int32_t userId = 1000;
+    BoundImeInfo imeInfo;
+    auto ret = InputMethodController::GetInstance()->GetSoftKeyboardInfo(userId, imeInfo);
+    printf("=====GetSoftKeyboardWithInvalidUserId ret/imeInfo:%d/%s.=====\n", ret, imeInfo.ToString().c_str());
+}
+
 class ImeEventListenerImplListener : public ImeEventListener {
 public:
     void OnInputStart(uint32_t callingWndId, int32_t requestKeyboardReason) override
     {
-        printf("=====callingWndId/requestKeyboardReason:%u/%d.=====\n", callingWndId, requestKeyboardReason);
+        printf(
+            "=====OnInputStart callingWndId/requestKeyboardReason:%u/%d.=====\n", callingWndId, requestKeyboardReason);
     }
     void OnInputStop() override
     {
-        printf("=====run in.=====\n.");
+        printf("=====OnInputStop run in.=====\n.");
     }
     void OnInputStart(const InputStartInfo &inputStartInfo) override
     {
@@ -76,6 +94,10 @@ public:
     {
         printf("=====oldInfo/newInfo:%d/%s/%s.=====\n", userId, oldImeInfo.ToString().c_str(),
             newImeInfo.ToString().c_str());
+        auto imeInfo = GetSoftKeyboardInfo();
+        if (imeInfo == newImeInfo) {
+            printf("=====get boundImeInfo same with cb.=====\n");
+        }
     }
 };
 
@@ -175,22 +197,6 @@ void UnRegisterInputStatusChangedListener()
     inputStatusChangedListeners_.pop_back();
     printf("=====UnRegister input status changed succeed, current listener nums:%zu.=====\n",
         inputStatusChangedListeners_.size());
-}
-
-void GetSoftKeyboardInfo()
-{
-    auto userId = 100;
-    BoundImeInfo imeInfo;
-    auto ret = InputMethodController::GetInstance()->GetSoftKeyboardInfo(userId, imeInfo);
-    printf("=====GetSoftKeyboardInfo ret/imeInfo:%d/%s.=====\n", ret, imeInfo.ToString().c_str());
-}
-
-void GetSoftKeyboardWithInvalidUserId()
-{
-    int32_t userId = 1000;
-    BoundImeInfo imeInfo;
-    auto ret = InputMethodController::GetInstance()->GetSoftKeyboardInfo(userId, imeInfo);
-    printf("=====GetSoftKeyboardWithInvalidUserId ret/imeInfo:%d/%s.=====\n", ret, imeInfo.ToString().c_str());
 }
 
 int main()

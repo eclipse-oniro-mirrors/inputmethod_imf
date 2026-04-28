@@ -91,7 +91,8 @@ public:
     static napi_value Subscribe(napi_env env, napi_callback_info info);
     static napi_value UnSubscribe(napi_env env, napi_callback_info info);
     static napi_value AdjustPanelRect(napi_env env, napi_callback_info info);
-    static napi_value AdjustPanelRectSync(napi_env env, napi_callback_info info);
+    static napi_value UpdatePanelRect(napi_env env, napi_callback_info info);
+    static napi_value UpdatePanelRectSync(napi_env env, napi_callback_info info);
     static napi_value UpdateRegion(napi_env env, napi_callback_info info);
     static napi_value StartMoving(napi_env env, napi_callback_info info);
     static napi_value GetDisplayId(napi_env env, napi_callback_info info);

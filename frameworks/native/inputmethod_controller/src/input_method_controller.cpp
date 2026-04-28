@@ -1700,7 +1700,8 @@ void InputMethodController::NotifyPanelStatusInfo(const PanelStatusInfo &info)
         IMSA_HILOGE("listener is nullptr!");
         return;
     }
-    if (info.panelInfo.panelType == PanelType::SOFT_KEYBOARD) {
+    if (info.panelInfo.panelType == PanelType::SOFT_KEYBOARD &&
+            info.panelInfo.panelFlag != PanelFlag::FLG_CANDIDATE_COLUMN) {
         info.visible ? SendKeyboardStatus(KeyboardStatus::SHOW) : SendKeyboardStatus(KeyboardStatus::HIDE);
     }
 

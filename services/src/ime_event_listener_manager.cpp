@@ -14,13 +14,12 @@
  */
 #include "ime_event_listener_manager.h"
 
-#include <window_adapter.h>
-
 #include <cinttypes>
 
 #include "event_status_manager.h"
 #include "global.h"
 #include "input_client_info.h"
+#include "window_adapter.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -161,6 +160,28 @@ int32_t ImeEventListenerManager::NotifySoftKeyBoardInfoChanged(
     return ErrorCode::NO_ERROR;
 }
 
+int32_t ImeEventListenerManager::NotifyInputStart(int32_t userId, const InputStartInfo &inputStartInfo)
+{
+    IMSA_HILOGD("userId/inputStartInfo: %{public}d/%{public}s.", userId, inputStartInfo.ToString().c_str());
+    auto listenerInfos = GetListenerInfo(userId);
+    for (const auto &listenerInfo : listenerInfos) {
+        if (listenerInfo.client == nullptr || !EventStatusManager::IsInputStatusChangedOn(listenerInfo.eventFlag)) {
+            IMSA_HILOGE("nullptr listenerInfo or no need to notify");
+            continue;
+        }
+        IMSA_HILOGI("pid/eventFlag: %{public}" PRId64 "/%{public}u", listenerInfo.pid, listenerInfo.eventFlag);
+        auto inputStartInfoNotify = inputStartInfo;
+        inputStartInfoNotify.isNewCb = true;
+        inputStartInfoNotify.userId = userId;
+        int32_t ret = listenerInfo.client->NotifyInputStart(inputStartInfoNotify);
+        if (ret != ErrorCode::NO_ERROR) {
+            IMSA_HILOGE("failed to notify OnInputStart, errorCode: %{public}d", ret);
+            continue;
+        }
+    }
+    return ErrorCode::NO_ERROR;
+}
+
 int32_t ImeEventListenerManager::NotifyInputStart(
     int32_t userId, int32_t callingWndId, uint64_t displayGroupId, int32_t requestKeyboardReason)
 {
@@ -188,31 +209,8 @@ int32_t ImeEventListenerManager::NotifyInputStart(
     return ErrorCode::NO_ERROR;
 }
 
-int32_t ImeEventListenerManager::NotifyInputStart(int32_t userId, const InputStartInfo &inputStartInfo)
-{
-    IMSA_HILOGD("userId/inputStartInfo: %{public}d/%{public}s.", userId, inputStartInfo.ToString().c_str());
-    auto listenerInfos = GetListenerInfo(userId);
-    for (const auto &listenerInfo : listenerInfos) {
-        if (listenerInfo.client == nullptr || !EventStatusManager::IsInputStatusChangedOn(listenerInfo.eventFlag)) {
-            IMSA_HILOGE("nullptr listenerInfo or no need to notify");
-            continue;
-        }
-        IMSA_HILOGI("pid/eventFlag: %{public}" PRId64 "/%{public}u", listenerInfo.pid, listenerInfo.eventFlag);
-        auto inputStartInfoNotify = inputStartInfo;
-        inputStartInfoNotify.isNewCb = true;
-        inputStartInfoNotify.userId = userId;
-        inputStartInfoNotify.clientInfo.displayGroupId =
-            WindowAdapter::GetInstance().GetDisplayGroupId(inputStartInfoNotify.clientInfo.displayId, userId);
-        int32_t ret = listenerInfo.client->NotifyInputStart(inputStartInfoNotify);
-        if (ret != ErrorCode::NO_ERROR) {
-            IMSA_HILOGE("failed to notify OnInputStart, errorCode: %{public}d", ret);
-            continue;
-        }
-    }
-    return ErrorCode::NO_ERROR;
-}
-
-int32_t ImeEventListenerManager::NotifyInputStop(int32_t userId, uint64_t displayId, InputStopScene scene)
+int32_t ImeEventListenerManager::NotifyInputStop(
+    int32_t userId, uint64_t displayId, InputStopScene scene, bool isRealIme)
 {
     IMSA_HILOGD("userId/displayId/scene: %{public}d/%{public}" PRIu64 "/%{public}u.", userId, displayId,
         static_cast<uint32_t>(scene));
@@ -226,6 +224,7 @@ int32_t ImeEventListenerManager::NotifyInputStop(int32_t userId, uint64_t displa
         info.userId = userId;
         info.scene = scene;
         info.displayId = displayId;
+        info.isRealIme = isRealIme;
         info.displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId, userId);
         IMSA_HILOGI("pid/eventFlag: %{public}" PRId64 "/%{public}u", listenerInfo.pid, listenerInfo.eventFlag);
         int32_t ret = listenerInfo.client->NotifyInputStop(info);

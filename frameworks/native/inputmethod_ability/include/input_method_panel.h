@@ -146,7 +146,8 @@ private:
     int32_t SetPanelProperties();
     std::string GeneratePanelName();
     void PanelStatusChange(const InputWindowStatus &status);
-    void PanelStatusChangeToImc(const InputWindowStatus &newStatus, const Rosen::Rect &rect);
+    void PanelStatusChangeToImc(
+        const InputWindowStatus &status, const Rosen::Rect &rect, bool triggeredBySwitchCandidate = false);
     bool MarkListener(const std::string &type, bool isRegister);
     bool SetPanelSizeChangeListener(std::shared_ptr<PanelStatusListener> statusListener);
     std::shared_ptr<PanelStatusListener> GetPanelListener();
@@ -313,8 +314,8 @@ private:
 
     std::atomic<bool> hasSetSize_ { false };
 
-    std::mutex oldBindImeInfoLock_;
-    BoundImeInfo oldBindImeInfo_;
+    std::mutex bindImeInfoLock_;
+    BoundImeInfo bindImeInfo_;
 };
 } // namespace MiscServices
 } // namespace OHOS

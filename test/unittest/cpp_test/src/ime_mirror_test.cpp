@@ -12,428 +12,526 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
+#include "refbase.h"
+#include "wm_common.h"
 
-#include <gtest/gtest.h>
-#include <gtest/hwext/gtest-multithread.h>
+struct AniEnv;
+typedef struct AniEnv ani_env;
+class AniObject;
+typedef AniObject *ani_object;
+namespace OHOS {
+namespace Rosen {
+class RSTransaction;
+class Window : virtual public RefBase {};
+class WindowOption : virtual public RefBase {};
+
+class IWindowChangeListener : virtual public RefBase {
+public:
+    virtual void OnSizeChange(Rect rect, WindowSizeChangeReason reason,
+        const std::shared_ptr<RSTransaction> &rsTransaction = nullptr)
+    {
+    }
+};
+
+class IKeyboardPanelInfoChangeListener : virtual public RefBase {
+public:
+    virtual void OnKeyboardPanelInfoChanged(const KeyboardPanelInfo &keyboardPanelInfo) {}
+};
+
+class IWindowVisibilityChangedListener : virtual public RefBase {
+public:
+    virtual void OnWindowVisibilityChangedCallback(const bool isVisible) {}
+};
+} // namespace Rosen
+} // namespace OHOS
+
+// Prevent window.h from redefining these types when included via input_method_panel.h
+#define OHOS_ROSEN_WINDOW_H
 
 #define private public
 #include "input_method_ability.h"
-#include "input_method_ability_interface.h"
+#include "input_method_controller.h"
 #include "task_manager.h"
 #undef private
-#include "input_method_controller.h"
-#include "input_method_engine_listener_impl.h"
-#include "keyboard_listener_test_impl.h"
-#include "scope_utils.h"
-#include "sys_cfg_parser.h"
-#include "text_listener.h"
-#include "ime_setting_listener_test_impl.h"
-#include "ime_event_monitor_manager_impl.h"
 
+#include <gtest/gtest.h>
+#include <gmock/gmock.h>
+
+#include "global.h"
+#include "input_attribute.h"
+#include "input_client_info.h"
+#include "input_method_agent_proxy.h"
+#include "input_method_agent_service_impl.h"
+#include "input_method_core_service_impl.h"
+#include "ime_mirror_manager.h"
+#include "mock_input_method_system_ability_proxy.h"
+#include "mock_iremote_object.h"
+
+using namespace testing;
 using namespace testing::ext;
-using namespace testing::mt;
 namespace OHOS {
 namespace MiscServices {
-constexpr int32_t INVALID_UID = -1;
-constexpr uint32_t ATTACH_WAIT_TIME = 20;
-class ImeMirrorTest : public testing::Test {
+constexpr int32_t TEST_SA_ID = 1600004; // INPUT_METHOD_SYSTEM_ABILITY_ID
+const std::string IME_MIRROR_NAME_LOCAL = "proxyIme_IME_MIRROR";
+
+// ============================================================================
+// Group 1: ImeMirrorManager Tests
+// ============================================================================
+
+class ImeMirrorManagerTest : public testing::Test {
 public:
-    static sptr<InputMethodController> imc_;
-    static bool isImeMirrorFeatureEnabled_;
-    static int32_t agentUid_;
-    static void SetUpTestCase(void)
+    static void SetUpTestSuite()
     {
-        IMSA_HILOGI("ImeMirrorTest::SetUpTestCase");
-        TddUtil::StorageSelfTokenID();
-        TddUtil::InitWindow(true);
-        imc_ = InputMethodController::GetInstance();
-
-        TddUtil::SetTestTokenID(TddUtil::AllocTestTokenID(true, "ImeProxyTest"));
-        auto listener = std::make_shared<ImeSettingListenerTestImpl>();
-        ImeEventMonitorManagerImpl::GetInstance().RegisterImeEventListener(
-            EVENT_IME_HIDE_MASK | EVENT_IME_SHOW_MASK | EVENT_IME_CHANGE_MASK, listener);
-
-        ImeSettingListenerTestImpl::ResetParam();
-        TddUtil::SetTestTokenID(
-            TddUtil::AllocTestTokenID(true, "ImeProxyTest", { "ohos.permission.CONNECT_IME_ABILITY" }));
-        TddUtil::EnabledAllIme();
-        SubProperty subProp;
-        subProp.name = "com.example.testIme";
-        subProp.id = "InputMethodExtAbility";
-        auto ret = imc_->SwitchInputMethod(SwitchTrigger::CURRENT_IME, subProp.name, subProp.id);
-        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-        EXPECT_TRUE(ImeSettingListenerTestImpl::WaitImeChange(subProp));
-        TddUtil::RestoreSelfTokenID();
-
-        // native sa permission
-        TddUtil::GrantNativePermission();
-        SystemConfig systemConfig;
-        SysCfgParser::ParseSystemConfig(systemConfig);
-        isImeMirrorFeatureEnabled_ =
-            systemConfig.supportedCapacityList.find("ime_mirror") != systemConfig.supportedCapacityList.end();
-        if (isImeMirrorFeatureEnabled_) {
-            if (systemConfig.proxyImeUidList.empty()) {
-                isImeMirrorFeatureEnabled_ = false;
-            }
-            for (auto id : systemConfig.proxyImeUidList) {
-                agentUid_ = id;
-            }
-        }
-    }
-    static void TearDownTestCase(void)
-    {
-        IMSA_HILOGI("ImeMirrorTest::TearDownTestCase");
-        TddUtil::DestroyWindow();
-        TddUtil::RestoreSelfTokenID();
-    }
-    void SetUp()
-    {
-        if (!isImeMirrorFeatureEnabled_) {
-            GTEST_SKIP() << "ime mirror ime feature is not enabled";
-        }
-        IMSA_HILOGI("ImeMirrorTest::SetUp");
-        InputMethodAbilityInterface::GetInstance().SetImeListener(std::make_shared<InputMethodEngineListenerImpl>());
-        InputMethodAbilityInterface::GetInstance().SetKdListener(std::make_shared<KeyboardListenerTestImpl>());
         TaskManager::GetInstance().SetInited(true);
-        InputMethodEngineListenerImpl::ResetParam();
-        KeyboardListenerTestImpl::ResetParam();
-    }
-    void TearDown()
-    {
-        IMSA_HILOGI("ImeMirrorTest::TearDown");
-        TaskManager::GetInstance().Reset();
     }
 
-    static int32_t Attach(bool isShowKeyboard = true)
+    void SetUp() override
     {
-        TextConfig config;
-        config.cursorInfo = { .left = 0, .top = 1, .width = 0.5, .height = 1.2 };
-        sptr<OnTextChangedListener> testListener = new TextListener();
-        auto ret = imc_->Attach(testListener, isShowKeyboard, config);
-        return ret;
-    }
-    static void Close()
-    {
-        imc_->Close();
+        ima_ = &InputMethodAbility::GetInstance();
+        ima_->imeMirrorMgr_.SetImeMirrorEnable(false);
+        ima_->imeMirrorMgr_.UnSubscribeSaStart(TEST_SA_ID);
     }
 
-    static void AttachAndRegisterProxy()
+    void TearDown() override {}
+
+protected:
+    InputMethodAbility *ima_ = nullptr;
+};
+
+/**
+ * @tc.name: SetImeMirrorEnable_True_then_IsImeMirrorEnable_ReturnsTrue
+ * @tc.desc: Verify SetImeMirrorEnable(true) makes IsImeMirrorEnable() return true
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeMirrorManagerTest, SetImeMirrorEnable_True_then_IsImeMirrorEnable_ReturnsTrue, TestSize.Level1)
+{
+    ima_->imeMirrorMgr_.SetImeMirrorEnable(true);
+    EXPECT_TRUE(ima_->imeMirrorMgr_.IsImeMirrorEnable());
+}
+
+/**
+ * @tc.name: SetImeMirrorEnable_False_then_IsImeMirrorEnable_ReturnsFalse
+ * @tc.desc: Verify SetImeMirrorEnable(false) makes IsImeMirrorEnable() return false
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeMirrorManagerTest, SetImeMirrorEnable_False_then_IsImeMirrorEnable_ReturnsFalse, TestSize.Level1)
+{
+    ima_->imeMirrorMgr_.SetImeMirrorEnable(true);
+    EXPECT_TRUE(ima_->imeMirrorMgr_.IsImeMirrorEnable());
+
+    ima_->imeMirrorMgr_.SetImeMirrorEnable(false);
+    EXPECT_FALSE(ima_->imeMirrorMgr_.IsImeMirrorEnable());
+}
+
+/**
+ * @tc.name: SubscribeSaStart_NullHandler_ReturnsFalse
+ * @tc.desc: Verify SubscribeSaStart returns false when handler is nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeMirrorManagerTest, SubscribeSaStart_NullHandler_ReturnsFalse, TestSize.Level1)
+{
+    auto result = ima_->imeMirrorMgr_.SubscribeSaStart(nullptr, TEST_SA_ID);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: SubscribeSaStart_ValidHandler_ReturnsTrue
+ * @tc.desc: Verify SubscribeSaStart returns true when SystemAbilityManager is available
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeMirrorManagerTest, SubscribeSaStart_ValidHandler_ReturnsTrue, TestSize.Level1)
+{
+    ima_->imeMirrorMgr_.UnSubscribeSaStart(TEST_SA_ID);
+    bool called = false;
+    auto handler = [&called]() { called = true; };
+    auto result = ima_->imeMirrorMgr_.SubscribeSaStart(handler, TEST_SA_ID);
+    EXPECT_TRUE(result);
+}
+
+// ============================================================================
+// Group 2: InputMethodAbility Mirror Tests
+// ============================================================================
+
+class ImeMirrorAbilityTest : public testing::Test {
+public:
+    static sptr<NiceMock<MockInputMethodSystemAbilityProxy>> mockProxy_;
+    static InputMethodAbility *ima_;
+
+    static void SetUpTestSuite()
     {
-        {
-            UidScope uidScope(ImeMirrorTest::agentUid_);
-            auto ret = InputMethodAbilityInterface::GetInstance().BindImeMirror();
-            EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+        ima_ = &InputMethodAbility::GetInstance();
+        mockProxy_ = new NiceMock<MockInputMethodSystemAbilityProxy>();
+
+        // Inject mock proxy into IMA
+        ima_->abilityManager_ = mockProxy_;
+
+        // Set default ON_CALL for permissive behavior
+        ON_CALL(*mockProxy_, BindImeMirror(_, _)).WillByDefault(Return(ErrorCode::NO_ERROR));
+        ON_CALL(*mockProxy_, UnbindImeMirror()).WillByDefault(Return(ErrorCode::NO_ERROR));
+
+        TaskManager::GetInstance().SetInited(true);
+    }
+
+    static void TearDownTestSuite()
+    {
+        ima_->abilityManager_ = nullptr;
+        ima_->agentStub_ = nullptr;
+        ima_->coreStub_ = nullptr;
+        mockProxy_ = nullptr;
+    }
+
+    void SetUp() override
+    {
+        ima_->isBound_.store(false);
+        ima_->imeMirrorMgr_.SetImeMirrorEnable(false);
+        ima_->abilityManager_ = mockProxy_;
+
+        if (ima_->agentStub_ == nullptr) {
+            ima_->agentStub_ = new InputMethodAgentServiceImpl();
+        }
+        if (ima_->coreStub_ == nullptr) {
+            ima_->coreStub_ = new InputMethodCoreServiceImpl();
         }
 
-        auto ret = Attach();
-        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-        EXPECT_TRUE(InputMethodEngineListenerImpl::WaitInputStart());
+        ON_CALL(*mockProxy_, BindImeMirror(_, _)).WillByDefault(Return(ErrorCode::NO_ERROR));
+        ON_CALL(*mockProxy_, UnbindImeMirror()).WillByDefault(Return(ErrorCode::NO_ERROR));
+
+        TaskManager::GetInstance().SetInited(true);
     }
 
-    static void CloseAndUnregisterProxy()
+    void TearDown() override {}
+};
+
+sptr<NiceMock<MockInputMethodSystemAbilityProxy>> ImeMirrorAbilityTest::mockProxy_ = nullptr;
+InputMethodAbility *ImeMirrorAbilityTest::ima_ = nullptr;
+
+/**
+ * @tc.name: BindImeMirror_AlreadyBound_ReturnsNoError
+ * @tc.desc: Verify BindImeMirror returns NO_ERROR immediately when already bound
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeMirrorAbilityTest, BindImeMirror_AlreadyBound_ReturnsNoError, TestSize.Level1)
+{
+    ima_->isBound_.store(true);
+
+    auto ret = ima_->BindImeMirror();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: BindImeMirror_NullProxy_ReturnsErrorServiceStartFailed
+ * @tc.desc: Verify BindImeMirror returns ERROR_SERVICE_START_FAILED when proxy is null
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeMirrorAbilityTest, BindImeMirror_NullProxy_ReturnsErrorServiceStartFailed, TestSize.Level1)
+{
+    ima_->abilityManager_ = nullptr;
+
+    auto ret = ima_->BindImeMirror();
+    EXPECT_EQ(ret, ErrorCode::ERROR_NOT_AI_APP_IME);
+}
+
+/**
+ * @tc.name: BindImeMirror_NullAgentStub_ReturnsErrorNullPointer
+ * @tc.desc: Verify BindImeMirror returns ERROR_NULL_POINTER when agentStub_ is null
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeMirrorAbilityTest, BindImeMirror_NullAgentStub_ReturnsErrorNullPointer, TestSize.Level1)
+{
+    ima_->agentStub_ = nullptr;
+
+    auto ret = ima_->BindImeMirror();
+    EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
+}
+
+/**
+ * @tc.name: BindImeMirror_Success_SetsBoundAndEnable
+ * @tc.desc: Verify successful BindImeMirror sets isBound_ true and ImeMirrorEnable true
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeMirrorAbilityTest, BindImeMirror_Success_SetsBoundAndEnable, TestSize.Level1)
+{
+    auto ret = ima_->BindImeMirror();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_TRUE(ima_->isBound_.load());
+    EXPECT_TRUE(ima_->imeMirrorMgr_.IsImeMirrorEnable());
+}
+
+/**
+ * @tc.name: BindImeMirror_ProxyReturnsError_PropagatesError
+ * @tc.desc: Verify BindImeMirror propagates error when proxy->BindImeMirror fails
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeMirrorAbilityTest, BindImeMirror_ProxyReturnsError_PropagatesError, TestSize.Level1)
+{
+    ima_->isBound_.store(false);
+    ON_CALL(*mockProxy_, BindImeMirror(_, _)).WillByDefault(Return(ErrorCode::ERROR_NOT_AI_APP_IME));
+
+    auto ret = ima_->BindImeMirror();
+    EXPECT_EQ(ret, ErrorCode::ERROR_NOT_AI_APP_IME);
+    EXPECT_FALSE(ima_->isBound_.load());
+    EXPECT_FALSE(ima_->imeMirrorMgr_.IsImeMirrorEnable());
+}
+
+/**
+ * @tc.name: UnbindImeMirror_ClearsBoundAndEnable
+ * @tc.desc: Verify UnbindImeMirror clears isBound_ and ImeMirrorEnable
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeMirrorAbilityTest, UnbindImeMirror_ClearsBoundAndEnable, TestSize.Level1)
+{
+    ima_->isBound_.store(false);
+    auto ret = ima_->BindImeMirror();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_TRUE(ima_->isBound_.load());
+    EXPECT_TRUE(ima_->imeMirrorMgr_.IsImeMirrorEnable());
+
+    ret = ima_->UnbindImeMirror();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_FALSE(ima_->isBound_.load());
+    EXPECT_FALSE(ima_->imeMirrorMgr_.IsImeMirrorEnable());
+}
+
+/**
+ * @tc.name: GetInputDataChannelProxyWrap_MirrorEnabled_ReturnsNull
+ * @tc.desc: Verify GetInputDataChannelProxyWrap returns nullptr when ImeMirror is enabled
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeMirrorAbilityTest, GetInputDataChannelProxyWrap_MirrorEnabled_ReturnsNull, TestSize.Level1)
+{
+    ima_->imeMirrorMgr_.SetImeMirrorEnable(true);
+
+    auto result = ima_->GetInputDataChannelProxyWrap();
+    EXPECT_EQ(result, nullptr);
+}
+
+/**
+ * @tc.name: GetInputDataChannelProxyWrap_MirrorDisabled_ReturnsChannel
+ * @tc.desc: Verify GetInputDataChannelProxyWrap returns the stored channel when mirror is disabled
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeMirrorAbilityTest, GetInputDataChannelProxyWrap_MirrorDisabled_ReturnsChannel, TestSize.Level1)
+{
+    ima_->imeMirrorMgr_.SetImeMirrorEnable(false);
+    auto result = ima_->GetInputDataChannelProxyWrap();
+    EXPECT_EQ(result, nullptr);
+}
+
+/**
+ * @tc.name: BindUnbindImeMirror_RepeatBothSucceed
+ * @tc.desc: Verify bind twice then unbind twice all succeed
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeMirrorAbilityTest, BindUnbindImeMirror_RepeatBothSucceed, TestSize.Level1)
+{
+    ima_->isBound_.store(false);
+    auto ret = ima_->BindImeMirror();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_TRUE(ima_->isBound_.load());
+
+    ret = ima_->BindImeMirror();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    ret = ima_->UnbindImeMirror();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_FALSE(ima_->isBound_.load());
+
+    ret = ima_->UnbindImeMirror();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+// ============================================================================
+// Group 3: InputMethodController Mirror Tests
+// ============================================================================
+
+class ImeMirrorControllerTest : public testing::Test {
+public:
+    static sptr<NiceMock<MockInputMethodSystemAbilityProxy>> mockProxy_;
+    static sptr<InputMethodController> imc_;
+
+    static void SetUpTestSuite()
     {
-        Close();
-        EXPECT_TRUE(InputMethodEngineListenerImpl::WaitInputFinish());
-        {
-            UidScope uidScope(ImeMirrorTest::agentUid_);
-            auto ret = InputMethodAbilityInterface::GetInstance().UnbindImeMirror();
-            EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-        }
+        imc_ = InputMethodController::GetInstance();
+        mockProxy_ = new NiceMock<MockInputMethodSystemAbilityProxy>();
+
+        MockInputMethodSystemAbilityProxy::SetImsaProxyForTest(imc_, mockProxy_);
+
+        ON_CALL(*mockProxy_, BindImeMirror(_, _)).WillByDefault(Return(ErrorCode::NO_ERROR));
+        ON_CALL(*mockProxy_, UnbindImeMirror()).WillByDefault(Return(ErrorCode::NO_ERROR));
+
+        TaskManager::GetInstance().SetInited(true);
+    }
+
+    static void TearDownTestSuite()
+    {
+        MockInputMethodSystemAbilityProxy::SetImsaProxyForTest(imc_, nullptr);
+        mockProxy_ = nullptr;
+    }
+
+    void SetUp() override
+    {
+        // Reset IMC state
+        imc_->agentInfoList_.clear();
+        imc_->isBound_.store(false);
+        imc_->isEditable_.store(false);
+        imc_->textConfig_ = TextConfig();
+    }
+
+    void TearDown() override {}
+
+protected:
+    void AddMirrorAgent(sptr<IRemoteObject> agentObj)
+    {
+        InputMethodController::AgentInfo info;
+        info.agentObject = agentObj;
+        info.agent = std::make_shared<InputMethodAgentProxy>(agentObj);
+        info.imeType = ImeType::IME_MIRROR;
+        imc_->agentInfoList_.push_back(info);
+    }
+
+    void AddNormalAgent(sptr<IRemoteObject> agentObj)
+    {
+        InputMethodController::AgentInfo info;
+        info.agentObject = agentObj;
+        info.agent = std::make_shared<InputMethodAgentProxy>(agentObj);
+        info.imeType = ImeType::NONE;
+        imc_->agentInfoList_.push_back(info);
     }
 };
-sptr<InputMethodController> ImeMirrorTest::imc_;
-bool ImeMirrorTest::isImeMirrorFeatureEnabled_ { false };
-int32_t ImeMirrorTest::agentUid_ { INVALID_UID };
+
+sptr<NiceMock<MockInputMethodSystemAbilityProxy>> ImeMirrorControllerTest::mockProxy_ = nullptr;
+sptr<InputMethodController> ImeMirrorControllerTest::imc_ = nullptr;
 
 /**
- * @tc.name: RegisterUnbindImeMirrorWithoutPermission_fail
- * @tc.desc: Register or unregister ime mirror without permission
+ * @tc.name: SetAgent_WithMirrorName_SetsImeTypeToMirror
+ * @tc.desc: Verify SetAgent with IME_MIRROR_NAME_LOCAL sets imeType to IME_MIRROR
  * @tc.type: FUNC
  */
-HWTEST_F(ImeMirrorTest, RegisterUnbindImeMirrorWithoutPermission_fail, TestSize.Level1)
+HWTEST_F(ImeMirrorControllerTest, SetAgent_WithMirrorName_SetsImeTypeToMirror, TestSize.Level1)
 {
-    IMSA_HILOGI("ImeMirrorTest::RegisterUnbindImeMirrorWithoutPermission_fail start");
-    auto ret = InputMethodAbilityInterface::GetInstance().BindImeMirror();
-    EXPECT_EQ(ret, ErrorCode::ERROR_NOT_AI_APP_IME);
-    ret = InputMethodAbilityInterface::GetInstance().UnbindImeMirror();
-    EXPECT_EQ(ret, ErrorCode::ERROR_NOT_AI_APP_IME);
+    auto agentObj = new NiceMock<MockIRemoteObject>();
+    imc_->SetAgent(agentObj, IME_MIRROR_NAME_LOCAL);
+
+    ASSERT_EQ(imc_->agentInfoList_.size(), 1u);
+    EXPECT_EQ(imc_->agentInfoList_[0].imeType, ImeType::IME_MIRROR);
 }
 
 /**
- * @tc.name: BindImeMirrorAndVerifyTextSelectionConfig_success
- * @tc.desc: Register ime mirror and verify text\selection\config success
+ * @tc.name: GetAgent_SkipsMirrorAgents
+ * @tc.desc: Verify GetAgent skips mirror agents and returns a normal agent
  * @tc.type: FUNC
  */
-HWTEST_F(ImeMirrorTest, BindImeMirrorAndVerifyTextSelectionConfig_success, TestSize.Level1)
+HWTEST_F(ImeMirrorControllerTest, GetAgent_SkipsMirrorAgents, TestSize.Level1)
 {
-    IMSA_HILOGI("ImeMirrorTest::BindImeMirrorAndVerifyTextSelectionConfig_success start");
-    AttachAndRegisterProxy();
-    auto instance = InputMethodAbilityInterface::GetInstance();
-    auto ret = instance.InsertText("1234567890");
-    EXPECT_EQ(ret, ErrorCode::ERROR_IMA_CHANNEL_NULLPTR);
+    auto mirrorObj = new NiceMock<MockIRemoteObject>();
+    AddMirrorAgent(mirrorObj);
 
-    ret = ImeMirrorTest::imc_->OnSelectionChange(u"1234567890", 1, 1);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_TRUE(KeyboardListenerTestImpl::WaitTextChange("1234567890"));
-    EXPECT_TRUE(KeyboardListenerTestImpl::WaitSelectionChange(1));
+    auto normalObj = new NiceMock<MockIRemoteObject>();
+    AddNormalAgent(normalObj);
 
-    Configuration config;
-    config.SetEnterKeyType(EnterKeyType::GO);
-    ret = ImeMirrorTest::imc_->OnConfigurationChange(config);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    InputAttribute attr;
-    attr.enterKeyType = static_cast<int32_t>(EnterKeyType::GO);
-    EXPECT_FALSE(KeyboardListenerTestImpl::WaitEditorAttributeChange(attr));
-
-    ret = ImeMirrorTest::imc_->SendFunctionKey(static_cast<int32_t>(EnterKeyType::NEW_LINE));
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_TRUE(KeyboardListenerTestImpl::WaitFunctionKey(static_cast<int32_t>(EnterKeyType::NEW_LINE)));
-
-    CloseAndUnregisterProxy();
+    auto agent = imc_->GetAgent();
+    ASSERT_NE(agent, nullptr);
+    EXPECT_EQ(imc_->agentInfoList_.size(), 2u);
 }
 
 /**
- * @tc.name: BindImeMirrorAndVerifyPasswordTextHandling_fail
- * @tc.desc: Register ime mirror and verify password text handling fail
+ * @tc.name: OnInputReady_MirrorName_DoesNotSetBindImeInfo
+ * @tc.desc: Verify OnInputReady with IME_MIRROR_NAME_LOCAL does not set bind/editable state
  * @tc.type: FUNC
  */
-HWTEST_F(ImeMirrorTest, BindImeMirrorAndVerifyPasswordTextHandling_fail, TestSize.Level1)
+HWTEST_F(ImeMirrorControllerTest, OnInputReady_MirrorName_DoesNotSetBindImeInfo, TestSize.Level1)
 {
-    IMSA_HILOGI("ImeMirrorTest::BindImeMirrorAndVerifyPasswordTextHandling_fail start");
-    AttachAndRegisterProxy();
-    // Test multiple secure input types
-    std::vector<TextInputType> secureTypes = { TextInputType::NEW_PASSWORD, TextInputType::NUMBER_PASSWORD,
-        TextInputType::VISIBLE_PASSWORD, TextInputType::SCREEN_LOCK_PASSWORD };
-    for (auto type : secureTypes) {
-        Configuration config;
-        config.SetTextInputType(type);
-        auto ret = ImeMirrorTest::imc_->OnConfigurationChange(config);
-        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    auto agentObj = new NiceMock<MockIRemoteObject>();
+    BindImeInfo imeInfo;
+    imeInfo.bundleName = IME_MIRROR_NAME_LOCAL;
+    imeInfo.pid = 100;
 
-        ret = ImeMirrorTest::imc_->OnSelectionChange(u"secure123", 1, 1);
-        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-        // Secure text should not be received by proxy
-        EXPECT_FALSE(KeyboardListenerTestImpl::WaitTextChange("secure123"));
+    imc_->OnInputReady(agentObj, imeInfo);
 
-        ret = ImeMirrorTest::imc_->SendFunctionKey(static_cast<int32_t>(EnterKeyType::NEW_LINE));
-        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-        EXPECT_FALSE(KeyboardListenerTestImpl::WaitFunctionKey(static_cast<int32_t>(EnterKeyType::NEW_LINE)));
-    }
-
-    CloseAndUnregisterProxy();
+    EXPECT_FALSE(imc_->isBound_.load());
+    EXPECT_FALSE(imc_->isEditable_.load());
+    ASSERT_EQ(imc_->agentInfoList_.size(), 1u);
+    EXPECT_EQ(imc_->agentInfoList_[0].imeType, ImeType::IME_MIRROR);
 }
 
 /**
- * @tc.name: BindImeMirrorAndVerifyLongTextHandling_success
- * @tc.desc: Verify long text processing capability after registering ime mirror
+ * @tc.name: OnImeMirrorStop_RemovesMirrorAgent
+ * @tc.desc: Verify OnImeMirrorStop removes the matching mirror agent from agentInfoList
  * @tc.type: FUNC
  */
-HWTEST_F(ImeMirrorTest, BindImeMirrorAndVerifyLongTextHandling_success, TestSize.Level1)
+HWTEST_F(ImeMirrorControllerTest, OnImeMirrorStop_RemovesMirrorAgent, TestSize.Level1)
 {
-    IMSA_HILOGI("ImeMirrorTest::BindImeMirrorAndVerifyLongTextHandling_success start");
-    AttachAndRegisterProxy();
+    auto mirrorObj = new NiceMock<MockIRemoteObject>();
+    AddMirrorAgent(mirrorObj);
+    ASSERT_EQ(imc_->agentInfoList_.size(), 1u);
 
-    // Generate extra-long text
-    std::u16string longText;
-    for (int i = 0; i < 1000; ++i) {
-        longText += u"test";
-    }
-    auto ret = ImeMirrorTest::imc_->OnSelectionChange(longText, 500, 500);
+    imc_->OnImeMirrorStop(mirrorObj);
+    EXPECT_TRUE(imc_->agentInfoList_.empty());
+}
+
+/**
+ * @tc.name: OnImeMirrorStop_WrongObject_DoesNothing
+ * @tc.desc: Verify OnImeMirrorStop with non-matching object does not remove any agent
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeMirrorControllerTest, OnImeMirrorStop_WrongObject_DoesNothing, TestSize.Level1)
+{
+    auto mirrorObj = new NiceMock<MockIRemoteObject>();
+    AddMirrorAgent(mirrorObj);
+
+    auto wrongObj = new NiceMock<MockIRemoteObject>();
+    imc_->OnImeMirrorStop(wrongObj);
+
+    EXPECT_EQ(imc_->agentInfoList_.size(), 1u);
+}
+
+/**
+ * @tc.name: SendRequestToAllAgents_MirrorSkippedOnSecurity
+ * @tc.desc: Verify mirror agent is skipped when security flag is set
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeMirrorControllerTest, SendRequestToAllAgents_MirrorSkippedOnSecurity, TestSize.Level1)
+{
+    auto mirrorObj = new NiceMock<MockIRemoteObject>();
+    AddMirrorAgent(mirrorObj);
+
+    auto normalObj = new NiceMock<MockIRemoteObject>();
+    AddNormalAgent(normalObj);
+
+    imc_->textConfig_.inputAttribute.inputPattern = InputAttribute::PATTERN_PASSWORD;
+    ASSERT_TRUE(imc_->textConfig_.inputAttribute.IsSecurityImeFlag());
+
+    int32_t callCount = 0;
+    auto ret = imc_->SendRequestToAllAgents([&callCount](std::shared_ptr<IInputMethodAgent> agent) {
+        callCount++;
+        return ErrorCode::NO_ERROR;
+    });
+
+    EXPECT_EQ(callCount, 1);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    // Verify long text is received correctly
-    EXPECT_TRUE(KeyboardListenerTestImpl::WaitTextChange(std::string(longText.begin(), longText.end())));
-
-    CloseAndUnregisterProxy();
 }
 
 /**
- * @tc.name: RegisterAndUnbindImeMirrorImmediately_VerifyInputListenerInvalid_fail
- * @tc.desc: Register and immediately unregister ime mirror, verify input start/finish listener is invalid
+ * @tc.name: SendRequestToImeMirrorAgent_SecurityFlag_ReturnsPermissionDenied
+ * @tc.desc: Verify SendRequestToImeMirrorAgent returns permission denied on security flag
  * @tc.type: FUNC
  */
-HWTEST_F(ImeMirrorTest, RegisterAndUnbindImeMirrorImmediately_VerifyInputListenerInvalid_fail, TestSize.Level1)
+HWTEST_F(ImeMirrorControllerTest, SendRequestToImeMirrorAgent_SecurityFlag_ReturnsPermissionDenied, TestSize.Level1)
 {
-    IMSA_HILOGI("ImeMirrorTest::RegisterAndUnbindImeMirrorImmediately_VerifyInputListenerInvalid_fail start");
-    {
-        UidScope uidScope(ImeMirrorTest::agentUid_);
-        auto ret = InputMethodAbilityInterface::GetInstance().BindImeMirror();
-        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-        ret = InputMethodAbilityInterface::GetInstance().UnbindImeMirror();
-        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    }
+    auto mirrorObj = new NiceMock<MockIRemoteObject>();
+    AddMirrorAgent(mirrorObj);
 
-    auto ret = Attach();
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_FALSE(InputMethodEngineListenerImpl::WaitInputStart());
-    Close();
-    EXPECT_FALSE(InputMethodEngineListenerImpl::WaitInputFinish());
-}
+    imc_->textConfig_.inputAttribute.inputPattern = InputAttribute::PATTERN_PASSWORD;
+    ASSERT_TRUE(imc_->textConfig_.inputAttribute.IsSecurityImeFlag());
 
-/**
- * @tc.name: UnregisterProxyDuringTextInput_success
- * @tc.desc: Unregister proxy during text input and verify no further text reception
- * @tc.type: FUNC
- */
-HWTEST_F(ImeMirrorTest, UnregisterProxyDuringTextInput_success, TestSize.Level1)
-{
-    IMSA_HILOGI("ImeMirrorTest::UnregisterProxyDuringTextInput_success start");
-    AttachAndRegisterProxy();
+    bool taskCalled = false;
+    auto ret = imc_->SendRequestToImeMirrorAgent([&taskCalled](std::shared_ptr<IInputMethodAgent> agent) {
+        taskCalled = true;
+        return ErrorCode::NO_ERROR;
+    });
 
-    // Send text before unregistration
-    auto ret = imc_->OnSelectionChange(u"before unregister", 0, 0);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_TRUE(KeyboardListenerTestImpl::WaitTextChange("before unregister"));
-
-    // Unregister proxy
-    {
-        UidScope uidScope(agentUid_);
-        ret = InputMethodAbilityInterface::GetInstance().UnbindImeMirror();
-        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    }
-
-    // Send text after unregistration, proxy should not receive it
-    ret = imc_->OnSelectionChange(u"after unregister", 0, 0);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_FALSE(KeyboardListenerTestImpl::WaitTextChange("after unregister"));
-
-    InputMethodEngineListenerImpl::ResetParam();
-    Close();
-    EXPECT_FALSE(InputMethodEngineListenerImpl::WaitInputFinish());
-}
-
-/**
- * @tc.name: RepeatBindImeMirror_success
- * @tc.desc: Test multiple registrations of ime mirror, verify duplicate registration handling logic
- * @tc.type: FUNC
- */
-HWTEST_F(ImeMirrorTest, RepeatBindImeMirror_success, TestSize.Level1)
-{
-    IMSA_HILOGI("ImeMirrorTest::RepeatBindImeMirror_success start");
-    {
-        UidScope uidScope(ImeMirrorTest::agentUid_);
-        // First registration should succeed
-        auto ret = InputMethodAbilityInterface::GetInstance().BindImeMirror();
-        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-        // Duplicate registration should return success (idempotent handling)
-        ret = InputMethodAbilityInterface::GetInstance().BindImeMirror();
-        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-        // Unregister once
-        ret = InputMethodAbilityInterface::GetInstance().UnbindImeMirror();
-        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-        // Unregister again
-        ret = InputMethodAbilityInterface::GetInstance().UnbindImeMirror();
-        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    }
-}
-
-/**
- * @tc.name: RegisterAfterAttach_success
- * @tc.desc: Verify proxy registration works correctly when Register is called after Attach
- * @tc.type: FUNC
- */
-HWTEST_F(ImeMirrorTest, RegisterAfterAttach_success, TestSize.Level1)
-{
-    IMSA_HILOGI("ImeMirrorTest::RegisterAfterAttach_success start");
-
-    // Step 1: Perform Attach first without registration
-    auto ret = Attach();
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_FALSE(InputMethodEngineListenerImpl::WaitInputStart());
-
-    // Step 2: Register proxy after Attach
-    {
-        UidScope uidScope(agentUid_);
-        ret = InputMethodAbilityInterface::GetInstance().BindImeMirror();
-        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-        EXPECT_TRUE(InputMethodEngineListenerImpl::WaitInputStart());
-    }
-
-    // Step 3: Verify text can be received after post-attach registration
-    ret = imc_->OnSelectionChange(u"register after attach", 0, 0);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_TRUE(KeyboardListenerTestImpl::WaitTextChange("register after attach"));
-
-    // Cleanup
-    {
-        UidScope uidScope(ImeMirrorTest::agentUid_);
-        auto ret = InputMethodAbilityInterface::GetInstance().UnbindImeMirror();
-        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-        EXPECT_TRUE(InputMethodEngineListenerImpl::WaitInputFinish());
-    }
-    Close();
-}
-
-/**
- * @tc.name: BindImeMirror_WillNotChangeClientAndImeBinding
- * @tc.desc: BindImeMirror should not change client and ime binding relationship
- * @tc.type: FUNC
- */
-HWTEST_F(ImeMirrorTest, BindImeMirror_WillNotChangeClientAndImeBinding, TestSize.Level1)
-{
-    IMSA_HILOGI("ImeMirrorTest::BindImeMirror_WillNotChangeClientAndImeBinding start");
-
-    // Step 1: Perform Attach first without bind
-    auto ret = Attach(false);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_FALSE(InputMethodEngineListenerImpl::WaitInputStart());
-
-    // Step 2: bind ime mirror after Attach
-    {
-        UidScope uidScope(agentUid_);
-        ret = InputMethodAbilityInterface::GetInstance().BindImeMirror();
-        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-        EXPECT_TRUE(InputMethodEngineListenerImpl::WaitInputStart());
-    }
-
-    ret = imc_->ShowTextInput();
-    EXPECT_FALSE(InputMethodEngineListenerImpl::WaitKeyboardStatus(true));
-
-    CloseAndUnregisterProxy();
-}
-
-/**
- * @tc.name: multiThreadAttachRegisterTest_001
- * @tc.desc: test ime Attach and Register ime mirror ime in multi-thread
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(ImeMirrorTest, multiThreadAttachRegisterTest_001, TestSize.Level1)
-{
-    IMSA_HILOGI("ImeMirrorTest::multiThreadAttachRegisterTest_001");
-    SET_THREAD_NUM(1);
-    auto attachTask = []() {
-        auto ret = ImeMirrorTest::Attach();
-        std::this_thread::sleep_for(std::chrono::milliseconds(ATTACH_WAIT_TIME));
-        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-        ret = ImeMirrorTest::imc_->OnSelectionChange(u"1234567890", 1, 1);
-        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-        ImeMirrorTest::Close();
-    };
-
-    auto registerTask = []() {
-        UidScope uidScope(ImeMirrorTest::agentUid_);
-        auto ret = InputMethodAbilityInterface::GetInstance().BindImeMirror();
-        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-        EXPECT_TRUE(InputMethodEngineListenerImpl::WaitInputStart());
-        EXPECT_TRUE(KeyboardListenerTestImpl::WaitTextChange("1234567890"));
-        ret = InputMethodAbilityInterface::GetInstance().UnbindImeMirror();
-        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-        EXPECT_TRUE(InputMethodEngineListenerImpl::WaitInputFinish());
-    };
-    MTEST_ADD_TASK(RANDOM_THREAD_ID, attachTask);
-    MTEST_ADD_TASK(RANDOM_THREAD_ID, registerTask);
-}
-
-/**
- * @tc.name: multiThreadAttachRegisterTest_002
- * @tc.desc: test ime Attach and Register ime mirror ime in multi-thread
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(ImeMirrorTest, multiThreadAttachRegisterTest_002, TestSize.Level1)
-{
-    IMSA_HILOGI("ImeMirrorTest::multiThreadAttachRegisterTest_002");
-    MTEST_POST_RUN();
+    EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
+    EXPECT_FALSE(taskCalled);
 }
 } // namespace MiscServices
 } // namespace OHOS
