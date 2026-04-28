@@ -1094,6 +1094,7 @@ int32_t ImeInfoInquirer::GetFullImeInfo(int32_t userId,
     }
     imeInfo.prop.name = extInfos[0].bundleName;
     imeInfo.prop.id = extInfos[0].name;
+    imeInfo.isSystemSpecialIme = IsSystemSpecialIme(extInfos[0]);
     if (needBrief) {
         return ErrorCode::NO_ERROR;
     }
@@ -1102,7 +1103,6 @@ int32_t ImeInfoInquirer::GetFullImeInfo(int32_t userId,
     imeInfo.prop.labelId = extInfos[0].applicationInfo.labelId;
     imeInfo.prop.iconId = extInfos[0].applicationInfo.iconId;
     imeInfo.isNewIme = IsNewExtInfos(extInfos);
-    imeInfo.isSystemSpecialIme = IsSystemSpecialIme(extInfos[0]);
     auto ret = imeInfo.isNewIme ? ListInputMethodSubtype(userId, extInfos[0], imeInfo.subProps)
                                 : ListInputMethodSubtype(userId, extInfos, imeInfo.subProps);
     if (ret != ErrorCode::NO_ERROR) {
