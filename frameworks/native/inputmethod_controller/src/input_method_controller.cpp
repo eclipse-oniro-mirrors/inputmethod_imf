@@ -130,6 +130,13 @@ int32_t InputMethodController::UpdateListenEventFlag(uint32_t finalEventFlag, ui
 {
     auto oldEventFlag = clientInfo_.eventFlag;
     clientInfo_.eventFlag = finalEventFlag;
+    if (!isOn) {
+        auto proxy = TryGetSystemAbilityProxy();
+        if (proxy == nullptr) {
+            IMSA_HILOGE("proxy is nullptr!");
+            return ErrorCode::NO_ERROR;
+        }
+    }
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
         IMSA_HILOGE("proxy is nullptr!");
