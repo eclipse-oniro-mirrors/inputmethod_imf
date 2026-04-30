@@ -1131,6 +1131,7 @@ private:
     void NotifyAttachFailure(int32_t errCode);
     bool SubscribeSaStart(std::function<void()> handler, int32_t saId);
     int32_t GetInputStartInfo(InputStartInfo &info);  // default displayId, foreground user
+    std::shared_ptr<AppExecFwk::EventHandler> GetMainHandler();
 
     struct CtrlEventInfo {
         std::chrono::steady_clock::time_point timestamp;

@@ -1218,6 +1218,7 @@ napi_value JsInputAttribute::Write(napi_env env, const InputAttribute &nativeObj
         ret = ret && JsUtil::Object::WriteProperty(env, jsObject, "fluidLightMode", nativeObject.fluidLightMode);
     }
     ret = ret && JsExtraConfigInfo::Write(env, jsObject, nativeObject.extraConfig);
+    ret = ret && JsUtil::Object::WriteProperty(env, jsObject, "consumeKeyEvents", nativeObject.consumeKeyEvents);
     return ret ? jsObject : JsUtil::Const::Null(env);
 }
 
@@ -1245,6 +1246,7 @@ bool JsInputAttribute::Read(napi_env env, napi_value jsObject, InputAttribute &n
         ret = ret && JsUtil::Object::ReadProperty(env, jsObject, "fluidLightMode", nativeObject.fluidLightMode);
     }
     ret = ret && JsExtraConfigInfo::Read(env, jsObject, nativeObject.extraConfig);
+    JsUtil::Object::ReadProperty(env, jsObject, "consumeKeyEvents", nativeObject.consumeKeyEvents);
     return ret;
 }
 

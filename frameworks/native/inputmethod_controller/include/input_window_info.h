@@ -108,7 +108,7 @@ struct ImeWindowInfo : public Parcelable {
         return info;
     }
     bool ReadFromParcel(Parcel &in)
-    {;
+    {
         std::unique_ptr<PanelInfo> pInfo(in.ReadParcelable<PanelInfo>());
         if (pInfo == nullptr) {
             return false;

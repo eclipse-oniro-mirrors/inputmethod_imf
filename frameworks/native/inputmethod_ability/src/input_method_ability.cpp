@@ -333,12 +333,8 @@ int32_t InputMethodAbility::StartInputInner(const InputClientInfo &clientInfo, b
         isImeTerminating_.store(false);
     };
     uint64_t seqId = Task::GetNextSeqId();
-    if (imeListener_ == nullptr ||
-        !imeListener_->PostTaskToEventHandler(
-            [seqId] {
-                TaskManager::GetInstance().Complete(seqId);
-            },
-            "task_manager_complete")) {
+    if (imeListener_ == nullptr || !imeListener_->PostTaskToEventHandler(
+        [seqId] { TaskManager::GetInstance().Complete(seqId); }, "task_manager_complete")) {
         showPanel();
         return ErrorCode::NO_ERROR;
     }
@@ -495,7 +491,8 @@ void InputMethodAbility::OnAttributeChange(InputAttribute attribute)
         IMSA_HILOGE("kdListener_ is nullptr!");
         return;
     }
-    IMSA_HILOGD("enterKeyType: %{public}d, inputPattern: %{public}d.", attribute.enterKeyType, attribute.inputPattern);
+    IMSA_HILOGD("enterKeyType: %{public}d, inputPattern: %{public}d, consumeKeyEvents: %{public}d.",
+        attribute.enterKeyType, attribute.inputPattern, attribute.consumeKeyEvents);
     attribute.bundleName = GetInputAttribute().bundleName;
     attribute.windowId = GetInputAttribute().windowId;
     attribute.callingDisplayId = GetInputAttribute().callingDisplayId;

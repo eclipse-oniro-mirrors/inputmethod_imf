@@ -175,6 +175,12 @@ HWTEST_F(InputMethodControllerCapiTest, TestTextConfig_001, TestSize.Level0)
     EXPECT_EQ(IME_ERR_OK, OH_TextConfig_IsPreviewTextSupported(config, &isPreviewTextSupported));
     EXPECT_TRUE(isPreviewTextSupported);
 
+    // test set and get consumeKeyEvents
+    EXPECT_EQ(IME_ERR_OK, OH_TextConfig_SetConsumeKeyEvents(config, true));
+    bool consumeKeyEvents = false;
+    EXPECT_EQ(IME_ERR_OK, OH_TextConfig_GetConsumeKeyEvents(config, &consumeKeyEvents));
+    EXPECT_TRUE(consumeKeyEvents);
+
     // test set and get selection
     int32_t expStart = 1;
     int32_t expEnd = 2;
@@ -576,6 +582,19 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetPreviewTextSupport_001,
 }
 
 /**
+ * @tc.name: OH_TextConfig_SetConsumeKeyEvents_001
+ * @tc.desc: input parameters is nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetConsumeKeyEvents_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_SetConsumeKeyEvents_001 START");
+    bool supported = false;
+    auto ret = OH_TextConfig_SetConsumeKeyEvents(nullptr, supported);
+    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
+}
+
+/**
  * @tc.name: OH_TextConfig_SetSelection_001
  * @tc.desc: input parameters is nullptr
  * @tc.type: FUNC
@@ -649,6 +668,23 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_IsPreviewTextSupported_001
     InputMethod_TextConfig *config = OH_TextConfig_Create();
     ASSERT_NE(config, nullptr);
     ret = OH_TextConfig_IsPreviewTextSupported(config, nullptr);
+    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
+    OH_TextConfig_Destroy(config);
+}
+
+/**
+ * @tc.name: OH_TextConfig_GetConsumeKeyEvents_001
+ * @tc.desc: input parameters is nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_GetConsumeKeyEvents_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_GetConsumeKeyEvents_001 START");
+    auto ret = OH_TextConfig_GetConsumeKeyEvents(nullptr, nullptr);
+    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
+    InputMethod_TextConfig *config = OH_TextConfig_Create();
+    ASSERT_NE(config, nullptr);
+    ret = OH_TextConfig_GetConsumeKeyEvents(config, nullptr);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     OH_TextConfig_Destroy(config);
 }

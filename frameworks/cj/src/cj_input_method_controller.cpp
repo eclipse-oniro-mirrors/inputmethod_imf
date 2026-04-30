@@ -73,6 +73,7 @@ int32_t CjInputMethodController::Attach(const CTextConfig &txtCfg, const AttachO
     textCfg.range.start = txtCfg.range.start;
     textCfg.range.end = txtCfg.range.end;
     textCfg.windowId = txtCfg.windowId;
+    textCfg.inputAttribute.consumeKeyEvents = txtCfg.inputAttrbute.consumeKeyEvents;
 
     auto controller = InputMethodController::GetInstance();
     if (controller == nullptr) {
@@ -151,6 +152,7 @@ int32_t CjInputMethodController::UpdateAttribute(const CInputAttribute &inputAtt
     Configuration config = Configuration();
     config.SetTextInputType(static_cast<TextInputType>(inputAttribute.textInputType));
     config.SetEnterKeyType(static_cast<EnterKeyType>(inputAttribute.enterKeyType));
+    config.SetConsumeKeyEvents(inputAttribute.consumeKeyEvents);
     return controller->OnConfigurationChange(config);
 }
 

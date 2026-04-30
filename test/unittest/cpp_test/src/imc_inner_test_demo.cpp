@@ -203,8 +203,8 @@ int main()
 {
     GrantNativePermission();
     int32_t input = 0;
-    // 4: input 4
-    while (input != 4) {
+    // 100: input 100
+    while (input != 100) {
         printf("=====1:RegisterInputStatusChangedListener  2:RegisterSameInputStatusChangedListener  "
                "3:UnRegisterInputStatusChangedListener  4.RegisterSoftKeyboardInfoChangedListener,  5. "
                "RegisterSameSoftKeyboardInfoChangedListener  6:UnRegisterSoftKeyboardInfoChangedListener   "

@@ -84,18 +84,14 @@ int32_t ImeEventMonitorManagerImpl::NotifyInputStartWhenRegister(
         IMSA_HILOGE("failed to get InputMethodController instance!");
         return ErrorCode::ERROR_IMC_NULLPTR;
     }
-    auto task = [listener, instance]() {
-        InputStartInfo info;
-        auto ret = instance->GetInputStartInfo(info);
-        if (ret != ErrorCode::NO_ERROR) {
-            IMSA_HILOGD("failed to GetInputStartInfo:%{public}d!", ret);
-            return;
-        }
-        listener->OnInputStart(info.clientInfo.rawWindowId, info.clientInfo.requestKeyboardReason);
-        listener->OnInputStart(info);
-    };
-    std::thread obj(task);
-    obj.detach();
+    InputStartInfo info;
+    auto ret = instance->GetInputStartInfo(info);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGD("failed to GetInputStartInfo:%{public}d!", ret);
+        return ErrorCode::NO_ERROR;
+    }
+    listener->OnInputStart(info.clientInfo.rawWindowId, info.clientInfo.requestKeyboardReason);
+    listener->OnInputStart(info);
     return ErrorCode::NO_ERROR;
 }
 

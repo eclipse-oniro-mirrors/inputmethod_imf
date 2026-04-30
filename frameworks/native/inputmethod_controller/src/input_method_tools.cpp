@@ -60,6 +60,7 @@ InputAttributeInner InputMethodTools::AttributeToInner(const InputAttribute &att
     inner.capitalizeMode = attribute.capitalizeMode;
     inner.needAutoInputNumkey = attribute.needAutoInputNumkey;
     inner.extraConfig = ExtraConfigToInner(attribute.extraConfig);
+    inner.consumeKeyEvents = attribute.consumeKeyEvents;
     return inner;
 }
 
@@ -85,6 +86,7 @@ InputAttribute InputMethodTools::InnerToAttribute(const InputAttributeInner &inn
     inputAttribute.capitalizeMode = inner.capitalizeMode;
     inputAttribute.needAutoInputNumkey = inner.needAutoInputNumkey;
     inputAttribute.extraConfig = InnerToExtraConfig(inner.extraConfig);
+    inputAttribute.consumeKeyEvents = inner.consumeKeyEvents;
     return inputAttribute;
 }
 

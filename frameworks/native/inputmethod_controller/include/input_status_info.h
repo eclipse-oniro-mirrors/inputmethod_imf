@@ -217,7 +217,7 @@ public:
     int32_t userId{ ImfCommonConst::DEFAULT_USER_ID };
     uint64_t displayId{ ImfCommonConst::DEFAULT_DISPLAY_ID };
     uint64_t displayGroupId{ ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID }; // only used in inner
-    bool isRealIme{ false };                                             // only used in inner
+    bool isRealIme{ true };                                              // only used in inner
 
     bool ReadFromParcel(Parcel &in)
     {

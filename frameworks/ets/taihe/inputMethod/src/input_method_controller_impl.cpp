@@ -508,6 +508,9 @@ void InputMethodControllerImpl::UpdateAttributeSync(InputAttribute_t const& attr
     Configuration cfg;
     cfg.SetEnterKeyType(static_cast<OHOS::MiscServices::EnterKeyType>(attribute.enterKeyType.get_value()));
     cfg.SetTextInputType(static_cast<OHOS::MiscServices::TextInputType>(attribute.textInputType.get_value()));
+    if (attribute.consumeKeyEvents.has_value()) {
+        cfg.SetConsumeKeyEvents(attribute.consumeKeyEvents.value());
+    }
     int32_t errCode = ErrorCode::ERROR_CLIENT_NULL_POINTER;
     auto instance = InputMethodController::GetInstance();
     if (instance != nullptr) {

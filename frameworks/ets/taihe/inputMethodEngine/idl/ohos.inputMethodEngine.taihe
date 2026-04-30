@@ -141,6 +141,7 @@ struct EditorAttribute {
     @readonly gradientMode: Optional<GradientMode>;
     @readonly fluidLightMode: Optional<FluidLightMode>;
     @readonly extraConfig: Optional<InputMethodExtraConfig>;
+    @readonly consumeKeyEvents: bool;
 }
 
 struct WindowInfo {

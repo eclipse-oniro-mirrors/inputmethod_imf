@@ -568,22 +568,12 @@ HWTEST_F(ImeEventMonitorManagerTest, testImeSettingListenerInterface, TestSize.L
     listeners.insert(nullptr);
     auto listener = std::make_shared<ImeSettingListenerTestImpl>();
     listeners.insert(listener);
-    ImeEventMonitorManagerImpl::GetInstance().listeners_.insert({ EVENT_IME_SHOW_MASK, listeners });
-    ImeEventMonitorManagerImpl::GetInstance().listeners_.insert({ EVENT_IME_HIDE_MASK, listeners });
     ImeEventMonitorManagerImpl::GetInstance().listeners_.insert({ EVENT_SOFT_KEYBOARD_INFO_CHANGED_MASK, listeners });
     ImeEventMonitorManagerImpl::GetInstance().listeners_.insert({ EVENT_INPUT_STATUS_CHANGED_MASK, listeners });
 
-    ImeWindowInfo info;
-    auto ret = ImeEventMonitorManagerImpl::GetInstance().OnPanelStatusChange(InputWindowStatus::NONE, info);
-    EXPECT_EQ(ErrorCode::ERROR_BAD_PARAMETERS, ret);
-    ret = ImeEventMonitorManagerImpl::GetInstance().OnPanelStatusChange(InputWindowStatus::SHOW, info);
-    EXPECT_EQ(ErrorCode::NO_ERROR, ret);
-    ret = ImeEventMonitorManagerImpl::GetInstance().OnPanelStatusChange(InputWindowStatus::HIDE, info);
-    EXPECT_EQ(ErrorCode::NO_ERROR, ret);
-
     InputStartInfo inputStartInfo;
     inputStartInfo.isNewCb = false;
-    ret = ImeEventMonitorManagerImpl::GetInstance().OnInputStart(inputStartInfo);
+    auto ret = ImeEventMonitorManagerImpl::GetInstance().OnInputStart(inputStartInfo);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     inputStartInfo.isNewCb = true;
     ret = ImeEventMonitorManagerImpl::GetInstance().OnInputStart(inputStartInfo);

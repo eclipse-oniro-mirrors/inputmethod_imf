@@ -148,7 +148,8 @@ static TextConfig ConstructTextConfig(const InputMethod_TextConfig &config)
         abilityNameLength = abilityNameLength - 1;
     }
     textConfig.inputAttribute.placeholder = std::u16string(config.placeholder, placeholderLength);
-    textConfig.inputAttribute.abilityName =  std::u16string(config.abilityName, abilityNameLength);
+    textConfig.inputAttribute.abilityName = std::u16string(config.abilityName, abilityNameLength);
+    textConfig.inputAttribute.consumeKeyEvents = config.consumeKeyEvents;
     return textConfig;
 }
 

@@ -275,6 +275,9 @@ public:
         if (textConfig.inputAttribute.abilityName.has_value()) {
             config.inputAttribute.abilityName = Str8ToStr16(std::string(textConfig.inputAttribute.abilityName.value()));
         }
+        if (textConfig.inputAttribute.consumeKeyEvents.has_value()) {
+            config.inputAttribute.consumeKeyEvents = textConfig.inputAttribute.consumeKeyEvents.value();
+        }
         if (textConfig.cursorInfo.has_value()) {
             config.cursorInfo.left = textConfig.cursorInfo.value().left;
             config.cursorInfo.top = textConfig.cursorInfo.value().top;

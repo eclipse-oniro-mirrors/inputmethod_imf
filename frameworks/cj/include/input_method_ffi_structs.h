@@ -64,6 +64,7 @@ extern "C" {
     struct CInputAttribute {
         int8_t textInputType;
         int8_t enterKeyType;
+        bool consumeKeyEvents;
     };
 
     struct CCursorInfo {
