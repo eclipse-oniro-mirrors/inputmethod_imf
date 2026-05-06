@@ -600,7 +600,7 @@ bool JsPanel::IsPanelFlagValid(napi_env env, PanelFlag panelFlag, bool isEnhance
     } else {
         isValid = panelFlag == FLG_FIXED || panelFlag == FLG_FLOATING;
     }
-    IMSA_HILOGI("flag: %{public}d, isEnhanced: %{public}d, isValid: %{public}d", panelFlag, isEnhancedCalled, isValid);
+    IMSA_HILOGD("flag: %{public}d, isEnhanced: %{public}d, isValid: %{public}d", panelFlag, isEnhancedCalled, isValid);
     if (!isEnhancedCalled) {
         PARAM_CHECK_RETURN(env, isValid, "param flag type should be FLG_FIXED or FLG_FLOATING", TYPE_NONE, false);
     } else {

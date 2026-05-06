@@ -933,7 +933,7 @@ void InputMethodPanel::CalculateHotArea(const Rosen::Rect &keyboard, const Rosen
 void InputMethodPanel::CalculateEnhancedHotArea(
     const EnhancedLayoutParam &layout, const PanelAdjustInfo &adjustInfo, HotArea &hotArea, uint32_t changeY)
 {
-    IMSA_HILOGI("changeY: %{public}u", changeY);
+    IMSA_HILOGD("changeY: %{public}u", changeY);
     // calculate keyboard hot area
     if (hotArea.keyboardHotArea.empty()) {
         hotArea.keyboardHotArea.push_back({ ORIGIN_POS_X, ORIGIN_POS_Y, layout.rect.width_, layout.rect.height_ });
@@ -1198,6 +1198,7 @@ int32_t InputMethodPanel::GetAdjustInfo(PanelFlag panelFlag, FullPanelAdjustInfo
 {
     if (!IsNeedConfig()) {
         fullPanelAdjustInfo = {};
+        IMSA_HILOGI("isNeedConfig is false.");
         return ErrorCode::NO_ERROR;
     }
     int32_t ret = InitAdjustInfo();
@@ -2344,7 +2345,7 @@ bool InputMethodPanel::IsNeedConfig(bool ignoreIsMainDisplay)
     if (!ignoreIsMainDisplay && !IsInMainDisplay()) {
         needConfig = false;
     }
-    IMSA_HILOGI("isNeedConfig is %{public}d", needConfig);
+    IMSA_HILOGD("isNeedConfig is %{public}d", needConfig);
     return needConfig;
 }
 
@@ -2568,7 +2569,7 @@ int32_t InputMethodPanel::GetSystemPanelCurrentInsets(uint64_t displayId, System
         return ErrorCode::NO_ERROR;
     }
     if (!IsNeedConfig(true)) {
-        IMSA_HILOGD("is special InputType");
+        IMSA_HILOGI("is special InputType");
         systemPanelInsets = { 0, 0, 0 };
         return ErrorCode::NO_ERROR;
     }
@@ -2635,7 +2636,7 @@ bool InputMethodPanel::IsKeyboardBottomElevated(PanelFlag flag)
         return false;
     }
     if (!IsNeedConfig(true)) {
-        IMSA_HILOGD("no elevation when no config");
+        IMSA_HILOGI("no elevation when no config");
         return false;
     }
     FullPanelAdjustInfo adjustInfo;
