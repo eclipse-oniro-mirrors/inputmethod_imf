@@ -16,12 +16,13 @@
 #ifndef FRAMEWORKS_INPUTMETHOD_ABILITY_INCLUDE_INPUT_METHOD_CORE_SERVICE_IMPL_H
 #define FRAMEWORKS_INPUTMETHOD_ABILITY_INCLUDE_INPUT_METHOD_CORE_SERVICE_IMPL_H
 
-#include "system_ability.h"
-
 #include "iinput_method_core.h"
 #include "input_method_core_stub.h"
-#include "iremote_object.h"
+#include "input_method_utils.h"
+#include "input_status_info.h"
 #include "inputmethod_message_handler.h"
+#include "iremote_object.h"
+#include "system_ability.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -45,10 +46,11 @@ public:
     ErrCode OnConnectSystemCmd(const sptr<IRemoteObject> &channel) override;
     ErrCode OnClientInactive(const sptr<IRemoteObject> &channel) override;
     ErrCode OnSetInputType(int32_t inputType) override;
-    ErrCode OnCallingDisplayIdChanged(uint64_t displayId) override;
-    ErrCode OnCallingWindowIdChanged(uint32_t editorWindowId, uint32_t keyboardWindowId) override;
+    ErrCode OnCallingDisplayIdChanged(uint64_t editorDisplayId, uint64_t keyboardDisplayId) override;
+    ErrCode OnCallingWindowIdChanged(uint32_t rawEditorWindowId, const FocusedInfo &focusedInfo) override;
     ErrCode OnSendPrivateData(const Value &Value) override;
     ErrCode NotifyPreemption() override;
+    ErrCode GetSoftKeyboardInfo(BoundImeInfo &imeInfo) override;
 };
 }  // namespace MiscServices
 }  // namespace OHOS

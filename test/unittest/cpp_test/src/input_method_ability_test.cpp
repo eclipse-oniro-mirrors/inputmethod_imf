@@ -1142,7 +1142,8 @@ HWTEST_F(InputMethodAbilityTest, testSetCallingWindow001, TestSize.Level0)
     InputMethodAbilityTest::showKeyboard_ = true;
     inputMethodAbility_.SetImeListener(std::make_shared<InputMethodEngineListenerImpl>());
     uint32_t windowId = 10;
-    inputMethodAbility_.SetCallingWindow(windowId, windowId);
+    FocusedInfo focusedInfo;
+    inputMethodAbility_.SetCallingWindow(windowId, focusedInfo);
     InputMethodAbilityTest::imeListenerCv_.wait_for(lock, std::chrono::seconds(DEALY_TIME), [windowId] {
         return InputMethodAbilityTest::windowId_ == windowId;
     });
@@ -2042,11 +2043,11 @@ HWTEST_F(InputMethodAbilityTest, testOnCallingDisplayIdChanged, TestSize.Level0)
     sptr<IRemoteObject> coreObject = data.ReadRemoteObject();
     sptr<InputMethodCoreProxy> coreProxy = new InputMethodCoreProxy(coreObject);
     ASSERT_NE(coreProxy, nullptr);
-    coreProxy->OnCallingDisplayIdChanged(0);
+    coreProxy->OnCallingDisplayIdChanged(0, 0);
     EXPECT_TRUE(coreProxy != nullptr);
-    inputMethodAbility_.OnCallingDisplayIdChanged(0);
+    inputMethodAbility_.OnCallingDisplayIdChanged(0, 0);
     EXPECT_EQ(inputMethodAbility_.inputAttribute_.callingScreenId, 0);
-    inputMethodAbility_.OnCallingDisplayIdChanged(123);
+    inputMethodAbility_.OnCallingDisplayIdChanged(123, 123);
     EXPECT_EQ(inputMethodAbility_.inputAttribute_.callingScreenId, 0); // invalid displayid
 }
 
@@ -2062,12 +2063,12 @@ HWTEST_F(InputMethodAbilityTest, testOnCallingDisplayIdChanged_002, TestSize.Lev
     uint32_t windowId = 10;
     inputMethodAbility_.inputAttribute_.callingDisplayId = 0;
     // DisplayId same
-    inputMethodAbility_.OnCallingDisplayIdChanged(0);
+    inputMethodAbility_.OnCallingDisplayIdChanged(0, 0);
     EXPECT_EQ(inputMethodAbility_.inputAttribute_.callingDisplayId, 0);
     // DisplayId not same, has no panel
     inputMethodAbility_.panels_.Clear();
     uint64_t displayId = 124;
-    inputMethodAbility_.OnCallingDisplayIdChanged(displayId);
+    inputMethodAbility_.OnCallingDisplayIdChanged(displayId, displayId);
     EXPECT_EQ(inputMethodAbility_.inputAttribute_.callingDisplayId, displayId);
     // has panel, not fix
     uint64_t displayId1 = 128;
@@ -2076,7 +2077,7 @@ HWTEST_F(InputMethodAbilityTest, testOnCallingDisplayIdChanged_002, TestSize.Lev
     panel->panelFlag_ = PanelFlag::FLG_FLOATING;
     panel->windowId_ = windowId;
     inputMethodAbility_.panels_.Insert(PanelType::SOFT_KEYBOARD, panel);
-    inputMethodAbility_.OnCallingDisplayIdChanged(displayId1);
+    inputMethodAbility_.OnCallingDisplayIdChanged(displayId1, displayId1);
     EXPECT_EQ(inputMethodAbility_.inputAttribute_.callingDisplayId, displayId1);
     // has panel. fix
     inputMethodAbility_.panels_.Clear();
@@ -2086,7 +2087,7 @@ HWTEST_F(InputMethodAbilityTest, testOnCallingDisplayIdChanged_002, TestSize.Lev
     panel1->panelFlag_ = PanelFlag::FLG_FIXED;
     panel1->windowId_ = windowId;
     inputMethodAbility_.panels_.Insert(PanelType::SOFT_KEYBOARD, panel1);
-    inputMethodAbility_.OnCallingDisplayIdChanged(displayId2);
+    inputMethodAbility_.OnCallingDisplayIdChanged(displayId2, displayId2);
     EXPECT_EQ(inputMethodAbility_.inputAttribute_.callingDisplayId, displayId2);
 }
 

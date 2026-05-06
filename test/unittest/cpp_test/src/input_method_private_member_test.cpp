@@ -3551,14 +3551,14 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnWindowDisplayIdChanged, 
     userSession->clientGroupMap_.insert_or_assign(ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID, group);
     userSession->OnWindowDisplayIdChanged(windowId, defaultDisplayId);
 
-    auto ret = userSession->NotifyCallingDisplayChanged(defaultDisplayId, nullptr);
+    auto ret = userSession->NotifyCallingDisplayChanged(defaultDisplayId, defaultDisplayId, nullptr);
     EXPECT_EQ(ret, ErrorCode::ERROR_IME_NOT_STARTED);
     auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, callingPid);
     imeData->type = ImeType::PROXY_IME;
-    ret = userSession->NotifyCallingDisplayChanged(defaultDisplayId, imeData);
+    ret = userSession->NotifyCallingDisplayChanged(defaultDisplayId, defaultDisplayId, imeData);
     EXPECT_EQ(ret, ErrorCode::ERROR_IME_NOT_STARTED);
     imeData->type = ImeType::IME;
-    ret = userSession->NotifyCallingDisplayChanged(defaultDisplayId, imeData);
+    ret = userSession->NotifyCallingDisplayChanged(defaultDisplayId, defaultDisplayId, imeData);
     EXPECT_NE(ret, ErrorCode::ERROR_IME_NOT_STARTED);
 }
 
@@ -4984,6 +4984,78 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_GetCursorInfo_DiffPid, Tes
     auto ret = userSession->GetCursorInfo(cursorInfoInner, callingPid);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     EXPECT_EQ(cursorInfoInner.displayId, 100);
+}
+
+/**
+ * @tc.name: PerUserSession_GetInputStartInfo
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_GetInputStartInfo, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_GetInputStartInfo start.");
+    auto session = std::make_shared<PerUserSession>(MAIN_USER_ID);
+
+    // has no current client bound real ime
+    session->clientGroupMap_.clear();
+    InputStartInfo inputStartInfo;
+    auto ret = session->GetInputStartInfo(inputStartInfo);
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_BOUND);
+
+    // has current client bound real ime, but has no real ime process
+    auto group = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    group->currentClient_ = client;
+    auto info = std::make_shared<InputClientInfo>();
+    info->bindImeData = std::make_shared<BindImeData>(10, ImeType::IME);
+    group->mapClients_.insert_or_assign(client->AsObject(), info);
+    session->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
+    session->realImeData_ = nullptr;
+    ret = session->GetInputStartInfo(inputStartInfo);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IME_NOT_STARTED);
+
+    // has real ime process
+    session->realImeData_ = std::make_shared<ImeData>(nullptr, nullptr, nullptr, 12);
+    session->realImeData_->imeStatus = ImeStatus::READY;
+    ret = session->GetInputStartInfo(inputStartInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: PerUserSession_GetSoftKeyboardInfo
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_GetSoftKeyboardInfo, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_GetSoftKeyboardInfo start.");
+    auto session = std::make_shared<PerUserSession>(MAIN_USER_ID);
+
+    // has no current client bound real ime
+    session->clientGroupMap_.clear();
+    BoundImeInfo imeInfo;
+    auto ret = session->GetSoftKeyboardInfo(imeInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    // has current client bound real ime, but has no real ime process
+    auto group = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    group->currentClient_ = client;
+    auto info = std::make_shared<InputClientInfo>();
+    info->bindImeData = std::make_shared<BindImeData>(10, ImeType::IME);
+    group->mapClients_.insert_or_assign(client->AsObject(), info);
+    session->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
+    session->realImeData_ = nullptr;
+    ret = session->GetSoftKeyboardInfo(imeInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    // has real ime process
+    session->realImeData_ = std::make_shared<ImeData>(nullptr, nullptr, nullptr, 12);
+    session->realImeData_->imeStatus = ImeStatus::READY;
+    ret = session->GetSoftKeyboardInfo(imeInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 }
 } // namespace MiscServices
 } // namespace OHOS

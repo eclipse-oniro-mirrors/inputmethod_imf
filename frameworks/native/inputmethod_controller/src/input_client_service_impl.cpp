@@ -83,14 +83,20 @@ ErrCode InputClientServiceImpl::OnPanelStatusChange(const uint32_t status, const
     return ImeEventMonitorManagerImpl::GetInstance().OnPanelStatusChange(static_cast<InputWindowStatus>(status), info);
 }
 
-ErrCode InputClientServiceImpl::NotifyInputStart(uint32_t callingWndId, int32_t requestKeyboardReason)
+ErrCode InputClientServiceImpl::NotifyInputStart(const InputStartInfo &inputStartInfo)
 {
-    return ImeEventMonitorManagerImpl::GetInstance().OnInputStart(callingWndId, requestKeyboardReason);
+    return ImeEventMonitorManagerImpl::GetInstance().OnInputStart(inputStartInfo);
 }
 
-ErrCode InputClientServiceImpl::NotifyInputStop()
+ErrCode InputClientServiceImpl::NotifyInputStop(const InputStopInfo &inputStopInfo)
 {
-    return ImeEventMonitorManagerImpl::GetInstance().OnInputStop();
+    return ImeEventMonitorManagerImpl::GetInstance().OnInputStop(inputStopInfo);
+}
+
+ErrCode InputClientServiceImpl::NotifySoftKeyBoardInfoChanged(
+    int32_t userId, const BoundImeInfo &oldImeInfo, const BoundImeInfo &newImeInfo)
+{
+    return ImeEventMonitorManagerImpl::GetInstance().OnSoftKeyboardInfoChanged(userId, oldImeInfo, newImeInfo);
 }
 
 ErrCode InputClientServiceImpl::DeactivateClient()

@@ -563,25 +563,40 @@ HWTEST_F(ImeEventMonitorManagerTest, testUnRegisterImeEventListener_021, TestSiz
 HWTEST_F(ImeEventMonitorManagerTest, testImeSettingListenerInterface, TestSize.Level0)
 {
     IMSA_HILOGI("testImeSettingListenerInterface start.");
-    InputWindowStatus status = InputWindowStatus::NONE;
-    ImeWindowInfo info;
-    auto listener = std::make_shared<ImeSettingListenerTestImpl>();
-    auto ret = ImeEventMonitorManagerImpl::GetInstance().RegisterImeEventListener(EVENT_IME_CHANGE_MASK, listener);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    ret = ImeEventMonitorManagerImpl::GetInstance().OnPanelStatusChange(status, info);
-    EXPECT_EQ(ErrorCode::ERROR_BAD_PARAMETERS, ret);
-
     ImeEventMonitorManagerImpl::GetInstance().listeners_.clear();
-    uint32_t callingWindowId = 0;
-    int32_t requestKeyboardReason = 0;
-    ret = ImeEventMonitorManagerImpl::GetInstance().OnInputStart(callingWindowId, requestKeyboardReason);
+    std::set<std::shared_ptr<ImeEventListener>> listeners;
+    listeners.insert(nullptr);
+    auto listener = std::make_shared<ImeSettingListenerTestImpl>();
+    listeners.insert(listener);
+    ImeEventMonitorManagerImpl::GetInstance().listeners_.insert({ EVENT_SOFT_KEYBOARD_INFO_CHANGED_MASK, listeners });
+    ImeEventMonitorManagerImpl::GetInstance().listeners_.insert({ EVENT_INPUT_STATUS_CHANGED_MASK, listeners });
+
+    InputStartInfo inputStartInfo;
+    inputStartInfo.isNewCb = false;
+    auto ret = ImeEventMonitorManagerImpl::GetInstance().OnInputStart(inputStartInfo);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    ret = ImeEventMonitorManagerImpl::GetInstance().OnInputStop();
+    inputStartInfo.isNewCb = true;
+    ret = ImeEventMonitorManagerImpl::GetInstance().OnInputStart(inputStartInfo);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 
-    uint32_t invalidEventMask = 100001;
-    auto ret2 = ImeEventMonitorManagerImpl::GetInstance().GetListeners(invalidEventMask);
-    EXPECT_EQ(ret2.size(), 0);
+    InputStopInfo inputStopInfo;
+    inputStopInfo.displayGroupId = ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID;
+    inputStopInfo.isRealIme = false;
+    ret = ImeEventMonitorManagerImpl::GetInstance().OnInputStop(inputStopInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    inputStopInfo.displayGroupId = 100;
+    inputStopInfo.isRealIme = true;
+    ret = ImeEventMonitorManagerImpl::GetInstance().OnInputStop(inputStopInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    BoundImeInfo oldImeInfo;
+    BoundImeInfo newImeInfo;
+    ret = ImeEventMonitorManagerImpl::GetInstance().OnSoftKeyboardInfoChanged(
+        ImfCommonConst::DEFAULT_USER_ID, oldImeInfo, newImeInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    ret = ImeEventMonitorManagerImpl::GetInstance().NotifyInputStartWhenRegister(
+        EVENT_INPUT_STATUS_CHANGED_MASK, nullptr);
+    EXPECT_EQ(ret, ErrorCode::ERROR_BAD_PARAMETERS);
 }
 } // namespace MiscServices
 } // namespace OHOS

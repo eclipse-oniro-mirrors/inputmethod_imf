@@ -42,9 +42,10 @@ struct InputWindowInfo : public Parcelable {
     std::string ToString() const
     {
         std::string info;
-        info.append(name + ", ");
-        info.append("[displayId/left/top/width/height]: " + std::to_string(displayId) + std::to_string(left) + "/" +
-                    std::to_string(top) + "/" + std::to_string(width) + "/" + std::to_string(height));
+        info.append("[name]: " + name + "/");
+        info.append("[displayId/userId/left/top/width/height]: " + std::to_string(displayId) + "/"
+                    + std::to_string(userId) + "/" + std::to_string(left) + "/" + std::to_string(top) + "/"
+                    + std::to_string(width) + "/" + std::to_string(height));
         return info;
     }
 
@@ -98,6 +99,14 @@ struct ImeWindowInfo : public Parcelable {
     PanelInfo panelInfo;
     InputWindowInfo windowInfo;
 
+    std::string ToString() const
+    {
+        std::string info;
+        info.append("[panelType/panelFlag]: " + std::to_string(panelInfo.panelType) + "/"
+                    + std::to_string(panelInfo.panelFlag) + "/");
+        info.append(windowInfo.ToString());
+        return info;
+    }
     bool ReadFromParcel(Parcel &in)
     {
         std::unique_ptr<PanelInfo> pInfo(in.ReadParcelable<PanelInfo>());

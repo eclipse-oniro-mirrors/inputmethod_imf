@@ -24,12 +24,14 @@ namespace MiscServices {
 enum PanelType {
     SOFT_KEYBOARD = 0,
     STATUS_BAR,
+    PANEL_TYPE_NONE,
 };
 
 enum PanelFlag {
     FLG_FIXED = 0,
     FLG_FLOATING,
     FLG_CANDIDATE_COLUMN,
+    FLG_NONE,
 };
 
 enum SetShadowOperation {
@@ -54,6 +56,14 @@ struct Shadow {
 struct PanelInfo : public Parcelable {
     PanelType panelType = SOFT_KEYBOARD;
     PanelFlag panelFlag = FLG_FIXED;
+
+    std::string ToString() const
+    {
+        std::string info;
+        info.append("panelType: " + std::to_string(panelType) + "/");
+        info.append("panelFlag: " + std::to_string(panelFlag));
+        return info;
+    }
 
     bool ReadFromParcel(Parcel &in)
     {

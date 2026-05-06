@@ -132,7 +132,6 @@ public:
     int32_t OnPackageUpdated(const std::string &bundleName);
     int64_t GetCurrentClientPid(uint64_t displayId);
     int64_t GetInactiveClientPid(uint64_t displayId);
-    int32_t OnPanelStatusChange(const InputWindowStatus &status, const ImeWindowInfo &info);
     int32_t OnRegisterProxyIme(uint64_t displayId, const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent,
         int32_t pid, int32_t uid);
     int32_t OnBindImeMirror(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent);
@@ -166,8 +165,7 @@ public:
         const std::string &subName);
     int32_t OnSetCallingWindow(const FocusedInfo &focusedInfo, sptr<IInputClient> client, uint32_t windowId);
     bool IsKeyboardCallingProcess(int32_t pid, uint32_t windowId);
-    int32_t GetInputStartInfo(
-        uint64_t displayId, bool &isInputStart, uint32_t &callingWndId, int32_t &requestKeyboardReason);
+    int32_t GetInputStartInfo(InputStartInfo &inputStartInfo);
     bool IsSaReady(int32_t saId);
     void TryUnloadSystemAbility();
     void OnWindowDisplayIdChanged(int32_t windowId, uint64_t displayId);
@@ -194,6 +192,7 @@ public:
     int32_t OnMakeSysImeImage();
     bool IsImeInUse();
     void SetSwitchInputType(bool isSwitchInputType);
+    int32_t GetSoftKeyboardInfo(BoundImeInfo &imeInfo);
     int32_t NotifyImeChangedToClients();
     int32_t GetCursorInfo(CursorInfoInner &cursorInfo, const pid_t clientPid);
 
@@ -302,9 +301,10 @@ private:
     bool GetInputTypeToStart(std::shared_ptr<ImeNativeCfg> &imeToStart);
     void HandleBindImeChanged(InputClientInfo &newClientInfo, const std::shared_ptr<ImeData> &newImeData,
         const std::shared_ptr<ClientGroup> &clientGroup);
-    int32_t NotifyCallingDisplayChanged(uint64_t displayId, const std::shared_ptr<ImeData> &imeData);
+    int32_t NotifyCallingDisplayChanged(
+        uint64_t editorDisplayId, uint64_t keyboardDisplayId, const std::shared_ptr<ImeData> &imeData);
     int32_t NotifyCallingWindowIdChanged(
-        uint32_t editorWindowId, const std::shared_ptr<ImeData> &imeData, uint32_t keyboardWindowId);
+        uint32_t rawEditorWindowId, const FocusedInfo &focusedInfo, const std::shared_ptr<ImeData> &imeData);
     int32_t SendPrivateData(const std::unordered_map<std::string, PrivateDataValue> &privateCommand);
     void ClearRequestKeyboardReason(std::shared_ptr<InputClientInfo> &clientInfo);
     std::pair<std::string, std::string> GetImeUsedBeforeScreenLocked();

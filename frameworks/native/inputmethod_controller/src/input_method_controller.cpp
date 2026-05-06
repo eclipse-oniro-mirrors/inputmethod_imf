@@ -418,16 +418,16 @@ int32_t InputMethodController::AttachExec(sptr<OnTextChangedListener> listener, 
     }
     ClearEditorCache(clientInfo_.isNotifyInputStart, lastListener);
     SetTextListener(listener);
+    SaveTextConfig(textConfig);
+    GetTextConfig(clientInfo_.config);
+    std::vector<sptr<IRemoteObject>> agents;
+    std::vector<BindImeInfo> imeInfos;
     {
         std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
         clientInfo_.isShowKeyboard = attachOptions.isShowKeyboard;
+        clientInfo_.type = type;
+        clientInfo_.config.requestKeyboardReason = attachOptions.requestKeyboardReason;
     }
-    SaveTextConfig(textConfig);
-    GetTextConfig(clientInfo_.config);
-    clientInfo_.requestKeyboardReason = attachOptions.requestKeyboardReason;
-    clientInfo_.type = type;
-    std::vector<sptr<IRemoteObject>> agents;
-    std::vector<BindImeInfo> imeInfos;
     int32_t ret = StartInput(clientInfo_, agents, imeInfos);
     if (ret != ErrorCode::NO_ERROR) {
         auto evenInfo = HiSysOriginalInfo::Builder()
@@ -615,15 +615,19 @@ bool InputMethodController::WasAttached()
     return isBound_.load();
 }
 
-int32_t InputMethodController::GetInputStartInfo(
-    bool &isInputStart, uint32_t &callingWndId, int32_t &requestKeyboardReason)
+int32_t InputMethodController::GetInputStartInfo(InputStartInfo &inputStartInfo)
 {
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
         IMSA_HILOGE("proxy is nullptr!");
         return false;
     }
-    return proxy->GetInputStartInfo(isInputStart, callingWndId, requestKeyboardReason);
+    return proxy->GetInputStartInfo(inputStartInfo);
+}
+
+std::shared_ptr<AppExecFwk::EventHandler> InputMethodController::GetMainHandler()
+{
+    return handler_;
 }
 
 int32_t InputMethodController::ListInputMethodCommon(InputMethodStatus status, std::vector<Property> &props,
@@ -695,6 +699,16 @@ std::shared_ptr<Property> InputMethodController::GetCurrentInputMethod(int32_t u
     proxy->GetCurrentInputMethod(userId, propertyData);
     auto property = std::make_shared<Property>(propertyData);
     return property;
+}
+
+int32_t InputMethodController::GetSoftKeyboardInfo(int32_t userId, BoundImeInfo &imeInfo)
+{
+    auto proxy = GetSystemAbilityProxy();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("imsa proxy is nullptr!");
+        return ErrorCode::ERROR_SERVICE_START_FAILED;
+    }
+    return proxy->GetSoftKeyboardInfo(userId, imeInfo);
 }
 
 std::shared_ptr<SubProperty> InputMethodController::GetCurrentInputMethodSubtype(int32_t userId)
@@ -803,7 +817,9 @@ void InputMethodController::OnRemoteSaDied(const wptr<IRemoteObject> &remote)
 {
     IMSA_HILOGI("input method service death.");
     // imf sa died, current client callback inputStop
-    ImeEventMonitorManagerImpl::GetInstance().OnInputStop();
+    InputStopInfo info;
+    info.scene = InputStopScene::IMSA_DIED;
+    ImeEventMonitorManagerImpl::GetInstance().OnInputStop(info);
     auto textListener = GetTextListener();
     if (textListener != nullptr && textConfig_.inputAttribute.isTextPreviewSupported) {
         IMSA_HILOGD("finish text preview.");

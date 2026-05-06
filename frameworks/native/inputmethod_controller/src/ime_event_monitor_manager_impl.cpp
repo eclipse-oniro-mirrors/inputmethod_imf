@@ -33,7 +33,7 @@ ImeEventMonitorManagerImpl &ImeEventMonitorManagerImpl::GetInstance()
 }
 
 int32_t ImeEventMonitorManagerImpl::RegisterImeEventListener(
-    uint32_t eventFlag, const std::shared_ptr<ImeEventListener> &listener)
+    uint32_t eventFlag, std::shared_ptr<ImeEventListener> listener)
 {
     std::lock_guard<std::mutex> lock(lock_);
     uint32_t currentEventFlag = 0;
@@ -64,21 +64,39 @@ int32_t ImeEventMonitorManagerImpl::RegisterImeEventListener(
         }
         it->second.insert(listener);
     }
-    // Register inputStart callback when imf bound, need inputStart callback when register finish
-    if (EventStatusManager::IsInputStatusChangedOn(eventFlag)) {
-        bool isInputStart = false;
-        uint32_t callingWindowId = 0;
-        int32_t requestKeyboardReason = 0;
-        auto ret = instance->GetInputStartInfo(isInputStart, callingWindowId, requestKeyboardReason);
-        if (ret == ErrorCode::NO_ERROR && isInputStart && listener != nullptr) {
-            listener->OnInputStart(callingWindowId, requestKeyboardReason);
-        }
+    NotifyInputStartWhenRegister(eventFlag, listener);
+    return ErrorCode::NO_ERROR;
+}
+
+int32_t ImeEventMonitorManagerImpl::NotifyInputStartWhenRegister(
+    uint32_t eventFlag, std::shared_ptr<ImeEventListener> listener)
+{
+    if (!EventStatusManager::IsInputStatusChangedOn(eventFlag)) {
+        IMSA_HILOGD("not register input status change listener:%{public}d!", eventFlag);
+        return ErrorCode::NO_ERROR;
     }
+    if (listener == nullptr) {
+        IMSA_HILOGE("listener is nullptr!");
+        return ErrorCode::ERROR_BAD_PARAMETERS;
+    }
+    auto instance = InputMethodController::GetInstance();
+    if (instance == nullptr) {
+        IMSA_HILOGE("failed to get InputMethodController instance!");
+        return ErrorCode::ERROR_IMC_NULLPTR;
+    }
+    InputStartInfo info;
+    auto ret = instance->GetInputStartInfo(info);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGD("failed to GetInputStartInfo:%{public}d!", ret);
+        return ErrorCode::NO_ERROR;
+    }
+    listener->OnInputStart(info.clientInfo.rawWindowId, info.clientInfo.requestKeyboardReason);
+    listener->OnInputStart(info);
     return ErrorCode::NO_ERROR;
 }
 
 int32_t ImeEventMonitorManagerImpl::UnRegisterImeEventListener(
-    uint32_t eventFlag, const std::shared_ptr<ImeEventListener> &listener)
+    uint32_t eventFlag, std::shared_ptr<ImeEventListener> listener)
 {
     std::lock_guard<std::mutex> lock(lock_);
     bool isAbsentParam = false;
@@ -143,28 +161,37 @@ int32_t ImeEventMonitorManagerImpl::OnPanelStatusChange(const InputWindowStatus 
     return ErrorCode::ERROR_BAD_PARAMETERS;
 }
 
-int32_t ImeEventMonitorManagerImpl::OnInputStart(uint32_t callingWndId, int32_t requestKeyboardReason)
+int32_t ImeEventMonitorManagerImpl::OnInputStart(const InputStartInfo &inputStartInfo)
 {
-    isInputStart_ = true;
-    callingWindow_ = callingWndId;
-    requestKeyboardReason_ = requestKeyboardReason;
+    IMSA_HILOGD("inputStartInfo: %{public}s.", inputStartInfo.ToString().c_str());
     auto listeners = GetListeners(EVENT_INPUT_STATUS_CHANGED_MASK);
     for (const auto &listener : listeners) {
-        if (listener != nullptr) {
-            IMSA_HILOGD("listener start to callback, callingWndId: %{public}u", callingWndId);
-            listener->OnInputStart(callingWndId, requestKeyboardReason);
+        if (listener == nullptr) {
+            continue;
+        }
+        if (inputStartInfo.isNewCb) {
+            listener->OnInputStart(inputStartInfo);
+        } else {
+            listener->OnInputStart(
+                inputStartInfo.clientInfo.rawWindowId, inputStartInfo.clientInfo.requestKeyboardReason);
         }
     }
     return ErrorCode::NO_ERROR;
 }
 
-int32_t ImeEventMonitorManagerImpl::OnInputStop()
+int32_t ImeEventMonitorManagerImpl::OnInputStop(const InputStopInfo &inputStopInfo)
 {
-    isInputStart_ = false;
+    IMSA_HILOGD("inputStopInfo: %{public}s.", inputStopInfo.ToString().c_str());
     auto listeners = GetListeners(EVENT_INPUT_STATUS_CHANGED_MASK);
     for (const auto &listener : listeners) {
-        if (listener != nullptr) {
+        if (listener == nullptr) {
+            continue;
+        }
+        if (inputStopInfo.displayGroupId == ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID) {
             listener->OnInputStop();
+        }
+        if (inputStopInfo.isRealIme) {
+            listener->OnInputStop(inputStopInfo);
         }
     }
     return ErrorCode::NO_ERROR;
@@ -184,6 +211,21 @@ int32_t ImeEventMonitorManagerImpl::OnImeHide(const ImeWindowInfo &info)
     auto listeners = GetListeners(EVENT_IME_HIDE_MASK);
     for (const auto &listener : listeners) {
         listener->OnImeHide(info);
+    }
+    return ErrorCode::NO_ERROR;
+}
+
+int32_t ImeEventMonitorManagerImpl::OnSoftKeyboardInfoChanged(
+    int32_t userId, const BoundImeInfo &oldImeInfo, const BoundImeInfo &newImeInfo)
+{
+    IMSA_HILOGD("userId/oldInfo/newInfo: %{public}d/%{public}s/%{public}s.", userId, oldImeInfo.ToString().c_str(),
+        newImeInfo.ToString().c_str());
+    auto listeners = GetListeners(EVENT_SOFT_KEYBOARD_INFO_CHANGED_MASK);
+    for (const auto &listener : listeners) {
+        if (listener == nullptr) {
+            continue;
+        }
+        listener->OnSoftKeyboardInfoChanged(userId, oldImeInfo, newImeInfo);
     }
     return ErrorCode::NO_ERROR;
 }

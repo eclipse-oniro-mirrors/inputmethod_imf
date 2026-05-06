@@ -144,11 +144,12 @@ struct InputAttribute {
     int32_t immersiveMode = 0;
     int32_t gradientMode { 0 };
     int32_t fluidLightMode { 0 };
-    uint64_t displayId = 0;        // editor in
-    uint32_t windowId = 0;         // keyboard in
-    uint64_t callingDisplayId = 0; // keyboard in
-    uint64_t displayGroupId = 0;   // keyboard in
-    uint64_t callingScreenId = 0;  // keyboard in
+    uint32_t editorWindowId = 0;             // editor in
+    uint64_t editorDisplayId = 0;            // editor in
+    uint32_t windowId = 0;                   // keyboard in
+    uint64_t callingDisplayId = 0;           // keyboard in
+    uint64_t displayGroupId = 0;             // keyboard in, only use in imsa
+    uint64_t callingScreenId = 0;            // keyboard in, only use in ima
     std::u16string placeholder { u"" };
     std::u16string abilityName { u"" };
     CapitalizeMode capitalizeMode = CapitalizeMode::NONE;
@@ -221,9 +222,11 @@ struct InputAttributeInner : public Parcelable {
     int32_t immersiveMode = 0;
     int32_t gradientMode { 0 };
     int32_t fluidLightMode { 0 };
-    uint32_t windowId = 0;         // keyboard in
-    uint64_t callingDisplayId = 0; // keyboard in
-    uint64_t displayGroupId = 0;   // keyboard in
+    uint32_t editorWindowId = 0;             // editor in
+    uint64_t editorDisplayId = 0;            // editor in
+    uint32_t windowId = 0;                   // keyboard in
+    uint64_t callingDisplayId = 0;           // keyboard in
+    uint64_t displayGroupId = 0;             // keyboard in, only use in imsa
     std::u16string placeholder { u"" };
     std::u16string abilityName { u"" };
     CapitalizeMode capitalizeMode = CapitalizeMode::NONE;
@@ -240,6 +243,8 @@ struct InputAttributeInner : public Parcelable {
         isOneTimeCodeNumberFlag = in.ReadBool();
         bundleName = in.ReadString();
         immersiveMode = in.ReadInt32();
+        editorWindowId = in.ReadUint32();
+        editorDisplayId = in.ReadUint64();
         windowId = in.ReadUint32();
         callingDisplayId = in.ReadUint64();
         displayGroupId = in.ReadUint64();
@@ -284,6 +289,12 @@ struct InputAttributeInner : public Parcelable {
             return false;
         }
         if (!out.WriteInt32(immersiveMode)) {
+            return false;
+        }
+        if (!out.WriteUint32(editorWindowId)) {
+            return false;
+        }
+        if (!out.WriteUint64(editorDisplayId)) {
             return false;
         }
         if (!out.WriteUint32(windowId)) {

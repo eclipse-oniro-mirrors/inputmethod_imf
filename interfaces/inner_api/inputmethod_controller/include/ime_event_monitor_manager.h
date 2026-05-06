@@ -16,8 +16,9 @@
 #ifndef FRAMEWORKS_INPUTMETHOD_CONTROLLER_INCLUDE_IME_EVENT_MONITOR_MANAGER_H
 #define FRAMEWORKS_INPUTMETHOD_CONTROLLER_INCLUDE_IME_EVENT_MONITOR_MANAGER_H
 #include <map>
-#include <set>
 #include <memory>
+#include <set>
+
 #include "ime_event_listener.h"
 #include "visibility.h"
 
@@ -46,7 +47,7 @@ public:
      * @return Returns 0 for success, others for failure.
      * @since 12
     */
-    IMF_API int32_t RegisterImeEventListener(uint32_t eventFlag, const std::shared_ptr<ImeEventListener> &listener);
+    IMF_API int32_t RegisterImeEventListener(uint32_t eventFlag, std::shared_ptr<ImeEventListener> listener);
 
     /**
      * @brief UnRegister Ime Event Listener.
@@ -59,14 +60,15 @@ public:
      * @return Returns 0 for success, others for failure.
      * @since 12
     */
-    IMF_API int32_t UnRegisterImeEventListener(uint32_t eventFlag, const std::shared_ptr<ImeEventListener> &listener);
+    IMF_API int32_t UnRegisterImeEventListener(uint32_t eventFlag, std::shared_ptr<ImeEventListener> listener);
 
 private:
     static constexpr uint32_t ALL_EVENT_MASK = EVENT_IME_CHANGE_MASK | EVENT_IME_SHOW_MASK | EVENT_IME_HIDE_MASK |
-        EVENT_INPUT_STATUS_CHANGED_MASK;
+                                               EVENT_INPUT_STATUS_CHANGED_MASK |
+                                               EVENT_SOFT_KEYBOARD_INFO_CHANGED_MASK;
     ImeEventMonitorManager();
     ~ImeEventMonitorManager();
-    bool IsParamValid(uint32_t eventFlag, const std::shared_ptr<ImeEventListener> &listener);
+    bool IsParamValid(uint32_t eventFlag, std::shared_ptr<ImeEventListener> listener);
 };
 } // namespace MiscServices
 } // namespace OHOS
