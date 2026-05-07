@@ -71,7 +71,7 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     [oneway] void NotifyInputStart([in] InputStartInfo inputStartInfo);
     [oneway] void NotifySoftKeyBoardInfoChanged([in] BoundImeInfo oldImeInfo, [in] BoundImeInfo newImeInfo);
     void RegisterProxyIme([in] unsigned long displayId, [in] IInputMethodCore core, [in] IRemoteObject agent);
-    void UnregisterProxyIme([in] unsigned long displayId);
+    void UnregisterProxyIme([in] unsigned long displayId, [in] int type);
     void SendPrivateData([in] Value value);
     void IsRestrictedDefaultImeByDisplay([in] unsigned long displayId, [out] boolean resultValue);
     void IsKeyboardCallingProcess([in] int pid, [in] unsigned int windowId, [out] boolean isKeyboardCallingProcess);

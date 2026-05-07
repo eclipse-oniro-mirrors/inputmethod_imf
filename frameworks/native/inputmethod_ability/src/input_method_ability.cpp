@@ -164,7 +164,7 @@ int32_t InputMethodAbility::RegisterProxyIme(uint64_t displayId)
     return ErrorCode::NO_ERROR;
 }
 
-int32_t InputMethodAbility::UnregisterProxyIme(uint64_t displayId)
+int32_t InputMethodAbility::UnregisterProxyIme(uint64_t displayId, UnRegisteredType type)
 {
     isBound_.store(false);
     isProxyIme_.store(false);
@@ -173,7 +173,7 @@ int32_t InputMethodAbility::UnregisterProxyIme(uint64_t displayId)
         IMSA_HILOGE("imsa proxy is nullptr!");
         return ErrorCode::ERROR_SERVICE_START_FAILED;
     }
-    return proxy->UnregisterProxyIme(displayId);
+    return proxy->UnregisterProxyIme(displayId, static_cast<int32_t>(type));
 }
 
 int32_t InputMethodAbility::BindImeMirror()
