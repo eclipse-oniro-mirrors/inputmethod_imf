@@ -32,6 +32,7 @@ const int32_t PERMISSION_NUM = 1;
 void GrantNativePermission()
 {
     const char **perms = new const char *[PERMISSION_NUM];
+    perms[0] = "ohos.permission.MANAGE_SECURE_SETTINGS";
     TokenInfoParams infoInstance = {
         .dcapsNum = 0,
         .permsNum = PERMISSION_NUM,
@@ -39,7 +40,7 @@ void GrantNativePermission()
         .dcaps = nullptr,
         .perms = perms,
         .acls = nullptr,
-        .processName = "imf_test",
+        .processName = "imf_imc_inner_test",
         .aplStr = "system_core",
     };
     uint64_t tokenId = GetAccessTokenId(&infoInstance);

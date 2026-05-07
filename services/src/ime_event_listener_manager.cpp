@@ -183,7 +183,7 @@ int32_t ImeEventListenerManager::NotifyInputStart(int32_t userId, const InputSta
 }
 
 int32_t ImeEventListenerManager::NotifyInputStart(
-    int32_t userId, int32_t callingWndId, uint64_t displayGroupId, int32_t requestKeyboardReason)
+    int32_t userId, uint32_t callingWndId, uint64_t displayGroupId, int32_t requestKeyboardReason)
 {
     IMSA_HILOGD("enter.");
     if (displayGroupId != ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID) {
