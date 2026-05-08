@@ -144,8 +144,6 @@ int32_t GetAgentUid()
 std::string GetUnRegisteredTypeName(UnRegisteredType type)
 {
     switch (type) {
-        case UnRegisteredType::NONE:
-            return "NONE";
         case UnRegisteredType::REMOVE_PROXY_IME:
             return "REMOVE_PROXY_IME";
         case UnRegisteredType::SWITCH_PROXY_IME_TO_IME:
@@ -161,7 +159,7 @@ void PrintHelp()
     std::cout << "[ImeProxyLog] q  - Quit the demo" << std::endl;
     std::cout << "[ImeProxyLog] on - Register proxy IME (requires displayId)" << std::endl;
     std::cout << "[ImeProxyLog] off- Unregister proxy IME (requires displayId and type)" << std::endl;
-    std::cout << "[ImeProxyLog]     type values: -1=NONE, 0=REMOVE_PROXY_IME, 1=SWITCH_PROXY_IME_TO_IME" << std::endl;
+    std::cout << "[ImeProxyLog]     type values: 0=REMOVE_PROXY_IME, 1=SWITCH_PROXY_IME_TO_IME" << std::endl;
     std::cout << "[ImeProxyLog] i  - Insert text (requires text string)" << std::endl;
     std::cout << "[ImeProxyLog] dl - Delete forward (requires length)" << std::endl;
     std::cout << "[ImeProxyLog] dr - Delete backward (requires length)" << std::endl;
@@ -225,7 +223,7 @@ int main()
             std::cout.flush();
             std::cin >> displayId;
 
-            std::cout << "[ImeProxyLog] Please enter UnRegisteredType (-1=NONE, 0=REMOVE_PROXY_IME, 1=SWITCH_PROXY_IME_TO_IME): ";
+            std::cout << "[ImeProxyLog] Please enter UnRegisteredType (0=REMOVE_PROXY_IME, 1=SWITCH_PROXY_IME_TO_IME): ";
             std::cout.flush();
             std::cin >> typeValue;
             UnRegisteredType type = static_cast<UnRegisteredType>(typeValue);

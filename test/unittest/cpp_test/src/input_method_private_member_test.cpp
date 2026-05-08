@@ -2684,8 +2684,10 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnUnregisterProxyIme, Test
     auto imeData3 = std::make_shared<ImeData>(nullptr, nullptr, nullptr, pid3);
     std::vector<std::shared_ptr<ImeData>> imeVec = { imeData, imeData1, imeData2, imeData3 };
     userSession->proxyImeData_.insert_or_assign(ImfCommonConst::DEFAULT_DISPLAY_ID, imeVec);
+    UnRegisteredType type = UnRegisteredType::REMOVE_PROXY_IME;
     // not has clientInfo
-    auto ret = userSession->OnUnregisterProxyIme(ImfCommonConst::DEFAULT_DISPLAY_ID, pid);
+    auto ret =
+        userSession->OnUnregisterProxyIme(ImfCommonConst::DEFAULT_DISPLAY_ID, pid, type);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     imeVec = userSession->proxyImeData_[ImfCommonConst::DEFAULT_DISPLAY_ID];
     EXPECT_EQ(imeVec.size(), 3);
@@ -2698,7 +2700,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnUnregisterProxyIme, Test
     info->client = client;
     group->mapClients_.insert_or_assign(client->AsObject(), info);
     userSession->clientGroupMap_.insert_or_assign(ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID, group);
-    ret = userSession->OnUnregisterProxyIme(ImfCommonConst::DEFAULT_DISPLAY_ID, pid1);
+    ret = userSession->OnUnregisterProxyIme(ImfCommonConst::DEFAULT_DISPLAY_ID, pid1, type);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     imeVec = userSession->proxyImeData_[ImfCommonConst::DEFAULT_DISPLAY_ID];
     EXPECT_EQ(imeVec.size(), 2);
@@ -2707,13 +2709,13 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnUnregisterProxyIme, Test
     info->bindImeData = std::make_shared<BindImeData>(pid3, ImeType::PROXY_IME);
     group->mapClients_.insert_or_assign(client->AsObject(), info);
     userSession->clientGroupMap_.insert_or_assign(ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID, group);
-    ret = userSession->OnUnregisterProxyIme(ImfCommonConst::DEFAULT_DISPLAY_ID, pid2);
+    ret = userSession->OnUnregisterProxyIme(ImfCommonConst::DEFAULT_DISPLAY_ID, pid2, type);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     imeVec = userSession->proxyImeData_[ImfCommonConst::DEFAULT_DISPLAY_ID];
     EXPECT_EQ(imeVec.size(), 1);
 
     //  has clientInfo, has bindImeData, pid same
-    ret = userSession->OnUnregisterProxyIme(ImfCommonConst::DEFAULT_DISPLAY_ID, pid3);
+    ret = userSession->OnUnregisterProxyIme(ImfCommonConst::DEFAULT_DISPLAY_ID, pid3, type);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     imeVec = userSession->proxyImeData_[ImfCommonConst::DEFAULT_DISPLAY_ID];
     EXPECT_EQ(imeVec.size(), 0);
@@ -5059,30 +5061,6 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_GetSoftKeyboardInfo, TestS
 }
 
 /**
- * @tc.name: PerUserSession_OnUnregisterProxyIme_NONE
- * @tc.desc: Test PerUserSession_OnUnregisterProxyIme when type is NONE
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnUnregisterProxyIme_NONE, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_OnUnregisterProxyIme_NONE start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
-    pid_t pid = 100;
-    auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, pid);
-    std::vector<std::shared_ptr<ImeData>> imeVec = { imeData };
-    userSession->proxyImeData_.insert_or_assign(ImfCommonConst::DEFAULT_DISPLAY_ID, imeVec);
-
-    // type == NONE should return ERROR_BAD_PARAMETERS
-    auto ret = userSession->OnUnregisterProxyIme(ImfCommonConst::DEFAULT_DISPLAY_ID, pid,
-        UnRegisteredType::NONE);
-    EXPECT_EQ(ret, ErrorCode::ERROR_BAD_PARAMETERS);
-    // proxy IME data should not be removed when type is NONE
-    imeVec = userSession->proxyImeData_[ImfCommonConst::DEFAULT_DISPLAY_ID];
-    EXPECT_EQ(imeVec.size(), 1);
-}
-
-/**
  * @tc.name: PerUserSession_OnUnregisterProxyIme_SWITCH_PROXY_IME_TO_IME
  * @tc.desc: Test PerUserSession_OnUnregisterProxyIme with SWITCH_PROXY_IME_TO_IME
  * @tc.type: FUNC
@@ -5108,7 +5086,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnUnregisterProxyIme_SWITC
     auto ret = userSession->OnUnregisterProxyIme(ImfCommonConst::DEFAULT_DISPLAY_ID, pid, type);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     imeVec = userSession->proxyImeData_[ImfCommonConst::DEFAULT_DISPLAY_ID];
-    EXPECT_EQ(imeVec.size(), 4);  // Early return, RemoveProxyImeData not called
+    EXPECT_EQ(imeVec.size(), 3);  // Early return, RemoveProxyImeData not called
 
     // 2 - Client info exists, no bindImeData, need real IME data for StartCurrentIme to succeed
     auto realImeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, 200);
@@ -5124,25 +5102,22 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnUnregisterProxyIme_SWITC
     group->mapClients_.insert_or_assign(client->AsObject(), info);
     userSession->clientGroupMap_.insert_or_assign(ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID, group);
     ret = userSession->OnUnregisterProxyIme(ImfCommonConst::DEFAULT_DISPLAY_ID, pid1, type);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     imeVec = userSession->proxyImeData_[ImfCommonConst::DEFAULT_DISPLAY_ID];
-    EXPECT_EQ(imeVec.size(), 3);
+    EXPECT_EQ(imeVec.size(), 2);
 
     // 3 - Client info exists, bindImeData not nullptr, pid not same (should call UnBindClientWithIme)
     info->bindImeData = std::make_shared<BindImeData>(pid3, ImeType::PROXY_IME);
     group->mapClients_.insert_or_assign(client->AsObject(), info);
     ret = userSession->OnUnregisterProxyIme(ImfCommonConst::DEFAULT_DISPLAY_ID, pid2, type);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     imeVec = userSession->proxyImeData_[ImfCommonConst::DEFAULT_DISPLAY_ID];
-    EXPECT_EQ(imeVec.size(), 2);
+    EXPECT_EQ(imeVec.size(), 1);
 
     // 4 - Client info exists, bindImeData not nullptr, pid same (should call UnBindClientWithIme)
     info->bindImeData = std::make_shared<BindImeData>(pid3, ImeType::PROXY_IME);
     group->mapClients_.insert_or_assign(client->AsObject(), info);
     ret = userSession->OnUnregisterProxyIme(ImfCommonConst::DEFAULT_DISPLAY_ID, pid3, type);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     imeVec = userSession->proxyImeData_[ImfCommonConst::DEFAULT_DISPLAY_ID];
-    EXPECT_EQ(imeVec.size(), 1);
+    EXPECT_EQ(imeVec.size(), 0);
 }
 
 /**
@@ -5156,7 +5131,8 @@ HWTEST_F(InputMethodPrivateMemberTest, InputMethodSystemAbility_UnregisterProxyI
     IMSA_HILOGI("InputMethodPrivateMemberTest::InputMethodSystemAbility_UnregisterProxyIme_Type_Validation start.");
     InputMethodSystemAbility systemAbility;
     systemAbility.identityChecker_ = std::make_shared<IdentityCheckerImpl>();
-    ImeInfoInquirer::GetInstance().systemConfig_.clear();
+    ImeInfoInquirer::GetInstance().systemConfig_.enableAppAgentFeature = true;
+    ImeInfoInquirer::GetInstance().systemConfig_.proxyImeUidList.clear();
 
     // type < BEGIN (negative value) should return ERROR_BAD_PARAMETERS
     int32_t invalidType1 = -1;

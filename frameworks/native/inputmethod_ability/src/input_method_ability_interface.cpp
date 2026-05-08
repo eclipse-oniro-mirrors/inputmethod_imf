@@ -32,7 +32,7 @@ int32_t InputMethodAbilityInterface::RegisteredProxy()
 
 int32_t InputMethodAbilityInterface::UnRegisteredProxy(UnRegisteredType type)
 {
-    return InputMethodAbility::GetInstance().UnregisterProxyIme(0);
+    return InputMethodAbility::GetInstance().UnregisterProxyIme(0, type);
 }
 
 int32_t InputMethodAbilityInterface::RegisterProxyIme(uint64_t displayId)
@@ -40,9 +40,9 @@ int32_t InputMethodAbilityInterface::RegisterProxyIme(uint64_t displayId)
     return InputMethodAbility::GetInstance().RegisterProxyIme(displayId);
 }
 
-int32_t InputMethodAbilityInterface::UnregisterProxyIme(uint64_t displayId)
+int32_t InputMethodAbilityInterface::UnregisterProxyIme(uint64_t displayId, UnRegisteredType type)
 {
-    return InputMethodAbility::GetInstance().UnregisterProxyIme(displayId);
+    return InputMethodAbility::GetInstance().UnregisterProxyIme(displayId, type);
 }
 
 int32_t InputMethodAbilityInterface::BindImeMirror()
