@@ -141,6 +141,16 @@ void TestSetCallingWindow(sptr<InputMethodController> imc, FuzzedDataProvider &p
     auto fuzzedUInt32 = provider.ConsumeIntegral<uint32_t>();
     imc->SetCallingWindow(fuzzedUInt32);
 }
+
+void TestGetSoftKeyboardInfo(sptr<InputMethodController> imc, FuzzedDataProvider &provider)
+{
+    if (imc == nullptr) {
+        return;
+    }
+    BoundImeInfo imeInfo;
+    auto fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
+    imc->GetSoftKeyboardInfo(fuzzedInt32, imeInfo);
+}
 } // namespace OHOS
 
 /* Fuzzer entry point */
@@ -161,5 +171,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     OHOS::TestSwitchInputMethod(imc, provider);
     OHOS::TestSetCallingWindow(imc, provider);
     OHOS::TestDispatchKeyEvent(imc, provider);
+    OHOS::TestGetSoftKeyboardInfo(imc, provider);
     return 0;
 }
