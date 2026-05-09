@@ -2832,5 +2832,26 @@ HWTEST_F(InputMethodControllerTest, testCalibrateInputPatternParam_001, TestSize
     inputMethodController_->CalibrateInputPatternParam(inputAttribute1);
     EXPECT_FALSE(inputAttribute1.isOneTimeCodeNumberFlag);
 }
+
+/**
+ * @tc.name: testGetSoftKeyboardInfo_001
+ * @tc.desc: IMC GetSoftKeyboardInfo
+ * @tc.type: IMC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, testGetSoftKeyboardInfo_001, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testGetSoftKeyboardInfo_001 Test START");
+    int32_t userId = ImfCommonConst::START_USER_ID;
+    BoundImeInfo imeInfo;
+    int32_t ret = ErrorCode::NO_ERROR;
+    std::vector<std::string> permission;
+    {
+        auto tokenId = TddUtil::AllocTestTokenID(false, "testGetSoftKeyboardInfo", permission);
+        TokenScope scope(tokenId);
+        ret = inputMethodController_->GetSoftKeyboardInfo(userId, imeInfo);
+        EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+    }
+}
 } // namespace MiscServices
 } // namespace OHOS
