@@ -711,13 +711,28 @@ napi_value JsPanel::UpdatePanelRectSync(napi_env env, napi_callback_info info)
         if (CheckParam(env, argc, argv, ctxt) != napi_ok) {
             return JsUtil::Const::Null(env);
         }
-        AdjustLayoutParam(ctxt);
+        int32_t ret = panel->AdjustPanelRect(ctxt->panelFlag, ctxt->layoutParams);
+        if (ret == ErrorCode::ERROR_PARAMETER_CHECK_FAILED) {
+            JsUtils::ThrowException(env, JsUtils::Convert(ErrorCode::ERROR_PARAMETER_CHECK_FAILED),
+                "width limit:[0, displayWidth], height limit:[0, 70 percent of displayHeight]!", TYPE_NONE);
+        }
+        RESULT_CHECK_RETURN(env, ret == ErrorCode::NO_ERROR, JsUtils::Convert(ret),
+            "failed to UpdatePanelRectSync!", TYPE_NONE, JsUtil::Const::Null(env));
     } else {
         auto ctxt = std::make_shared<PanelContentContext>(env, info);
         if (CheckEnhancedParam(env, argc, argv, ctxt) != napi_ok) {
             return JsUtil::Const::Null(env);
         }
-        AdjustEnhancedLayoutParam(ctxt);
+        int32_t ret = panel->AdjustPanelRect(ctxt->panelFlag, ctxt->enhancedLayoutParams, ctxt->hotAreas);
+        if (ret == ErrorCode::ERROR_PARAMETER_CHECK_FAILED) {
+            JsUtils::ThrowException(env, JsUtils::Convert(ErrorCode::ERROR_PARAMETER_CHECK_FAILED),
+                "width limit:[0, displayWidth], avoidHeight limit:[0, 70 percent of displayHeight]!", TYPE_NONE);
+        } else if (ret == ErrorCode::ERROR_INVALID_PANEL_TYPE) {
+            JsUtils::ThrowException(env, JsUtils::Convert(ErrorCode::ERROR_INVALID_PANEL_TYPE),
+                "only used for SOFT_KEYBOARD panel!", TYPE_NONE);
+        }
+        RESULT_CHECK_RETURN(env, ret == ErrorCode::NO_ERROR, JsUtils::Convert(ret),
+            "failed to UpdatePanelRectSync!", TYPE_NONE, JsUtil::Const::Null(env));
     }
     return JsUtil::Const::Null(env);
 }
