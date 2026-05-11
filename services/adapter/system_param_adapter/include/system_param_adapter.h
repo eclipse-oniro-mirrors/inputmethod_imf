@@ -22,7 +22,7 @@ namespace MiscServices {
 class SystemParamAdapter {
 public:
     static constexpr const char *SYSTEM_LANGUAGE_KEY = "persist.global.language";
-    static constexpr const char *MEMORY_WATERMARK_KEY = "resourceschedule.memmgr.min.memmory.watermark";
+    static constexpr const char *MEMORY_WATERMARK_KEY = "resourceschedule.memmgr.reclaim.inputmethod.enable";
     static SystemParamAdapter &GetInstance();
     int32_t WatchParam(const std::string &key);
     bool GetBoolParam(const std::string &key);
