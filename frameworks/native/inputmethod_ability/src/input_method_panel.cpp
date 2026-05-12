@@ -2757,8 +2757,12 @@ void InputMethodPanel::WaitSetUIContent()
 
 int32_t InputMethodPanel::RegisterVisibilityChangeListener()
 {
-    visibilityChangeListener_ = new (std::nothrow) VisibilityChangeListener([this](bool isVisible) {
-        OnVisibilityChange(isVisible);
+    if (visibilityChangeListener_ != nullptr) {
+        IMSA_HILOGD("visibilityChangeListener_ already registered.");
+        return ErrorCode::NO_ERROR;
+    }
+    visibilityChangeListener_ = new (std::nothrow) VisibilityChangeListener([this](Rosen::WindowVisibilityState state) {
+        OnVisibilityChange(state);
     });
     if (visibilityChangeListener_ == nullptr) {
         IMSA_HILOGE("failed to new VisibilityChangeListener");
@@ -2768,7 +2772,7 @@ int32_t InputMethodPanel::RegisterVisibilityChangeListener()
         IMSA_HILOGE("window_ is nullptr");
         return ErrorCode::ERROR_OPERATE_PANEL;
     }
-    auto ret = window_->RegisterWindowVisibilityChangeListener(visibilityChangeListener_);
+    auto ret = window_->RegisterOcclusionStateChangeListener(visibilityChangeListener_);
     IMSA_HILOGI("register result: %{public}d", ret);
     return ret == WMError::WM_OK ? ErrorCode::NO_ERROR : ErrorCode::ERROR_WINDOW_MANAGER;
 }
@@ -2779,16 +2783,26 @@ int32_t InputMethodPanel::UnregisterVisibilityChangeListener()
         IMSA_HILOGE("window_ is nullptr");
         return ErrorCode::ERROR_OPERATE_PANEL;
     }
-    auto ret = window_->UnregisterWindowVisibilityChangeListener(visibilityChangeListener_);
+    auto ret = window_->UnregisterOcclusionStateChangeListener(visibilityChangeListener_);
     IMSA_HILOGI("unregister result: %{public}d", ret);
     visibilityChangeListener_ = nullptr;
     isVisible_.store(false);
     return ret == WMError::WM_OK ? ErrorCode::NO_ERROR : ErrorCode::ERROR_WINDOW_MANAGER;
 }
 
-void InputMethodPanel::OnVisibilityChange(bool isVisible)
+void InputMethodPanel::OnVisibilityChange(const Rosen::WindowVisibilityState state)
 {
     std::lock_guard<std::mutex> lock(panelStatusChangeMutex_);
+    bool isVisible = false;
+    if (state == WindowVisibilityState::WINDOW_VISIBILITY_STATE_TOTALLY_OCCUSION ||
+        state == WindowVisibilityState::WINDOW_VISIBILITY_STATE_PARTICALLY_OCCLUSION) {
+        isVisible = false;
+    } else if (state == WindowVisibilityState::WINDOW_VISIBILITY_STATE_NO_OCCLUSION) {
+        isVisible = true;
+    } else {
+        IMSA_HILOGE("isVisible state: %{public}d", state);
+        return;
+    }
     IMSA_HILOGI("isVisible: %{public}d", isVisible);
     isVisible_.store(isVisible);
     InputWindowStatus status = InputWindowStatus::HIDE;

@@ -108,7 +108,8 @@ public:
     static void TriggerPanelStatusChangeToImc(const std::shared_ptr<InputMethodPanel> &panel, InputWindowStatus status);
     static void TriggerKeyboardPanelInfoChange(
         const std::shared_ptr<InputMethodPanel> &panel, const Rosen::KeyboardPanelInfo &info);
-    static void TriggerVisibilityChange(const std::shared_ptr<InputMethodPanel> &panel, bool isVisible);
+    static void TriggerVisibilityChange(const std::shared_ptr<InputMethodPanel> &panel,
+        Rosen::WindowVisibilityState isVisible);
     static void TestAdjust();
     static int32_t GetDisplaySize(DisplaySize &size);
     class PanelStatusListenerImpl : public PanelStatusListener {
@@ -484,7 +485,8 @@ void InputMethodPanelTest::TriggerKeyboardPanelInfoChange(
     }
 }
 
-void InputMethodPanelTest::TriggerVisibilityChange(const std::shared_ptr<InputMethodPanel> &panel, bool isVisible)
+void InputMethodPanelTest::TriggerVisibilityChange(const std::shared_ptr<InputMethodPanel> &panel,
+    Rosen::WindowVisibilityState isVisible)
 {
     ASSERT_NE(panel, nullptr);
     if (isScbEnable_) {
@@ -3719,14 +3721,28 @@ HWTEST_F(InputMethodPanelTest, TestVisibilityChangeListener002, TestSize.Level0)
     // imeShow
     InputMethodPanelTest::ImcPanelListeningTestRestore();
     InputMethodPanelTest::TestShowPanel(panel);
-    bool isVisible = true;
-    InputMethodPanelTest::TriggerVisibilityChange(panel, isVisible);
+    InputMethodPanelTest::TriggerVisibilityChange(panel,
+        WindowVisibilityState::WINDOW_VISIBILITY_STATE_NO_OCCLUSION);
     InputMethodPanelTest::ImcPanelShowNumCheck(1);
     // imeHide
     InputMethodPanelTest::ImcPanelListeningTestRestore();
     InputMethodPanelTest::TestHidePanel(panel);
-    isVisible = false;
-    InputMethodPanelTest::TriggerVisibilityChange(panel, isVisible);
+    InputMethodPanelTest::TriggerVisibilityChange(panel,
+        WindowVisibilityState::WINDOW_VISIBILITY_STATE_TOTALLY_OCCUSION);
+    InputMethodPanelTest::ImcPanelHideNumCheck(1);
+
+    // imeShow
+    InputMethodPanelTest::ImcPanelListeningTestRestore();
+    InputMethodPanelTest::TestShowPanel(panel);
+    InputMethodPanelTest::TriggerVisibilityChange(panel,
+        WindowVisibilityState::WINDOW_VISIBILITY_STATE_NO_OCCLUSION);
+    InputMethodPanelTest::ImcPanelShowNumCheck(1);
+
+    // imeHide
+    InputMethodPanelTest::ImcPanelListeningTestRestore();
+    InputMethodPanelTest::TestHidePanel(panel);
+    InputMethodPanelTest::TriggerVisibilityChange(panel,
+        WindowVisibilityState::WINDOW_VISIBILITY_STATE_PARTICALLY_OCCLUSION);
     InputMethodPanelTest::ImcPanelHideNumCheck(1);
 
     InputMethodPanelTest::DestroyPanel(panel);
