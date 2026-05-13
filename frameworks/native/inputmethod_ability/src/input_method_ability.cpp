@@ -1143,10 +1143,7 @@ int32_t InputMethodAbility::OnConnectSystemCmd(const sptr<IRemoteObject> &channe
     PushPrivateCommand();
     auto panel = GetSoftKeyboardPanel();
     if (panel != nullptr) {
-        auto flag = panel->GetPanelFlag();
-        if (flag != FLG_CANDIDATE_COLUMN) {
-            NotifyPanelStatus(false);
-        }
+        NotifyPanelStatus(false);
     }
     return ErrorCode::NO_ERROR;
 }
