@@ -159,8 +159,14 @@ bool InputTypeManager::Init()
             inputTypeImeList_.insert(cfg.second);
         }
     } else {
-        std::lock_guard<std::mutex> lk(typesLock_);
-        inputTypes_.clear();
+        {
+            std::lock_guard<std::mutex> lk(typesLock_);
+            inputTypes_.clear();
+        }
+        {
+            std::lock_guard<std::mutex> lock(listLock_);
+            inputTypeImeList_.clear();
+        }
     }
     isTypeCfgReady_.store(isSuccess);
     isInitSuccess_.SetValue(isSuccess);
