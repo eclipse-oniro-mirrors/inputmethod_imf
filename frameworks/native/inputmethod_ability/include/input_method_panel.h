@@ -120,15 +120,15 @@ private:
     sptr<Rosen::IKeyboardPanelInfoChangeListener> kbPanelInfoListener_ { nullptr };
 
 private:
-    class VisibilityChangeListener : public Rosen::IWindowVisibilityChangedListener {
+    class VisibilityChangeListener : public Rosen::IOcclusionStateChangedListener {
     public:
-        using ChangeHandler = std::function<void(bool)>;
+        using ChangeHandler = std::function<void(Rosen::WindowVisibilityState)>;
         explicit VisibilityChangeListener(ChangeHandler handler) : handler_(std::move(handler)) { }
         ~VisibilityChangeListener() = default;
-        void OnWindowVisibilityChangedCallback(const bool isVisible) override
+        void OnOcclusionStateChanged(const Rosen::WindowVisibilityState state) override
         {
             if (handler_ != nullptr) {
-                handler_(isVisible);
+                handler_(state);
             }
         }
 
@@ -137,9 +137,9 @@ private:
     };
     int32_t RegisterVisibilityChangeListener();
     int32_t UnregisterVisibilityChangeListener();
-    void OnVisibilityChange(bool isVisible);
+    void OnVisibilityChange(const Rosen::WindowVisibilityState state);
     std::atomic<bool> isVisible_{ false };
-    sptr<Rosen::IWindowVisibilityChangedListener> visibilityChangeListener_{ nullptr };
+    sptr<Rosen::IOcclusionStateChangedListener> visibilityChangeListener_{ nullptr };
 
 private:
     bool IsHidden();

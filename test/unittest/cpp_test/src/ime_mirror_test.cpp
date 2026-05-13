@@ -42,6 +42,11 @@ class IWindowVisibilityChangedListener : virtual public RefBase {
 public:
     virtual void OnWindowVisibilityChangedCallback(const bool isVisible) {}
 };
+
+class IOcclusionStateChangedListener : virtual public RefBase {
+public:
+    virtual void OnOcclusionStateChanged(const WindowVisibilityState state) {}
+};
 } // namespace Rosen
 } // namespace OHOS
 

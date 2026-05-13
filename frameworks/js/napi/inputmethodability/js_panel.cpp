@@ -527,8 +527,10 @@ napi_value JsPanel::UnSubscribe(napi_env env, napi_callback_info info)
     return result;
 }
 
-bool JsPanel::IsEnhancedAdjust(napi_env env, napi_value *argv)
+bool JsPanel::IsEnhancedAdjust(napi_env env, napi_value *argv, size_t argc)
 {
+    PARAM_CHECK_RETURN(env, argv != nullptr, "argv is null", TYPE_NONE, false);
+    PARAM_CHECK_RETURN(env, argc > 1, "at least tow parameter is required!", TYPE_NONE, false);
     PARAM_CHECK_RETURN(
         env, JsUtil::GetType(env, argv[1]) == napi_object, "param rect type must be PanelRect", TYPE_NONE, false);
     std::vector<const char *> properties = { "landscapeAvoidY", "portraitAvoidY", LANDSCAPE_REGION_PARAM_NAME,
@@ -654,7 +656,7 @@ napi_value JsPanel::AdjustPanelRect(napi_env env, napi_callback_info info)
     auto ctxt = std::make_shared<PanelContentContext>(env, info);
     auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
         PARAM_CHECK_RETURN(env, argc > 1, "at least two parameters is required", TYPE_NONE, napi_generic_failure);
-        if (!IsEnhancedAdjust(env, argv)) {
+        if (!IsEnhancedAdjust(env, argv, argc)) {
             CHECK_RETURN(CheckParam(env, argc, argv, ctxt) == napi_ok, "check param", napi_generic_failure);
         } else {
             CHECK_RETURN(CheckEnhancedParam(env, argc, argv, ctxt) == napi_ok, "check param", napi_generic_failure);
@@ -705,7 +707,7 @@ napi_value JsPanel::UpdatePanelRectSync(napi_env env, napi_callback_info info)
         return JsUtil::Const::Null(env);
     }
 
-    bool isEnhancedCall = IsEnhancedAdjust(env, argv);
+    bool isEnhancedCall = IsEnhancedAdjust(env, argv, argc);
     if (!isEnhancedCall) {
         auto ctxt = std::make_shared<PanelContentContext>(env, info);
         if (CheckParam(env, argc, argv, ctxt) != napi_ok) {
