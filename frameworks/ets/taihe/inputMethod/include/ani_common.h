@@ -365,7 +365,7 @@ public:
         result.top = obj.top;
         result.width = obj.width;
         result.height = obj.height;
-        result.displayId = static_cast<int64_t>(obj.displayId);
+        result.displayId = taihe::optional<int64_t>(std::in_place_t{}, static_cast<int64_t>(obj.displayId));
         return result;
     }
 

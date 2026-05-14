@@ -132,7 +132,7 @@ struct CursorInfo {
     top: f64;
     width: f64;
     height: f64;
-    displayId: i64;
+    displayId: Optional<i64>;
 }
 
 enum Direction : i32 {
