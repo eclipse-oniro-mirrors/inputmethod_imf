@@ -57,6 +57,7 @@ struct InputMethod_TextConfig {
     size_t placeholderLength = 1;
     char16_t abilityName[MAX_ABILITY_NAME_INPUT_SIZE];
     size_t abilityNameLength = 1;
+    bool consumeKeyEvents = false;
 };
 
 struct InputMethod_MessageHandlerProxy {

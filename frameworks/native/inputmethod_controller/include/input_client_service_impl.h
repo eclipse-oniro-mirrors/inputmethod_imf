@@ -17,6 +17,8 @@
 #define FRAMEWORKS_INPUTMETHOD_CONTROLLER_INCLUDE_INPUT_CLIENT_IMPL_H
 
 #include "iinput_client.h"
+#include "input_status_info.h"
+#include "input_window_info.h"
 #include "input_client_stub.h"
 #include "input_method_utils.h"
 #include "iremote_object.h"
@@ -38,8 +40,10 @@ public:
     ErrCode OnInputStopAsync(bool isStopInactiveClient, bool isSendKeyboardStatus) override;
     ErrCode OnSwitchInput(const Property& property, const SubProperty& subProperty, int32_t userId) override;
     ErrCode OnPanelStatusChange(const uint32_t status, const ImeWindowInfo& info) override;
-    ErrCode NotifyInputStart(uint32_t callingWndId, int32_t requestKeyboardReason) override;
-    ErrCode NotifyInputStop() override;
+    ErrCode NotifyInputStart(const InputStartInfo &inputStartInfo) override;
+    ErrCode NotifyInputStop(const InputStopInfo &inputStopInfo) override;
+    ErrCode NotifySoftKeyBoardInfoChanged(
+        int32_t userId, const BoundImeInfo &oldImeInfo, const BoundImeInfo &newImeInfo) override;
     ErrCode DeactivateClient() override;
     ErrCode OnImeMirrorStop(const sptr<IRemoteObject> &object) override;
     ErrCode GetCurrentCursorInfo(CursorInfoInner &cursorInfo) override;

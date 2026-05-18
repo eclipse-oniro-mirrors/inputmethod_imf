@@ -191,11 +191,11 @@ void FUZZPrintLogIfAceTimeout(sptr<InputMethodController> imc, FuzzedDataProvide
 void FUZZGetInputStartInfo(sptr<InputMethodController> imc, FuzzedDataProvider &provider)
 {
     auto dataBool = provider.ConsumeBool();
-    auto callingWndId = provider.ConsumeIntegral<uint32_t>();
     auto int32Value = provider.ConsumeIntegral<int32_t>();
     std::string fuzzedString = provider.ConsumeRandomLengthString();
     auto fuzzedUserId = provider.ConsumeIntegral<int32_t>();
-    imc->GetInputStartInfo(dataBool, callingWndId, int32Value);
+    InputStartInfo inputStartInfo;
+    imc->GetInputStartInfo(inputStartInfo);
     imc->EnableIme(fuzzedString);
     imc->IsCurrentImeByPid(int32Value, fuzzedUserId);
     imc->UpdateTextPreviewState(dataBool);

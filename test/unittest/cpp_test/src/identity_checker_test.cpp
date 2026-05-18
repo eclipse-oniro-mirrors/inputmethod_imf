@@ -955,5 +955,34 @@ HWTEST_F(IdentityCheckerTest, testWindowAdapter_GetDisplayIdByToken, TestSize.Le
     EXPECT_EQ(displayId2, DEFAULT_DISPLAY_ID);
 }
 
+/**
+ * @tc.name: testGetSoftKeyboardInfo
+ * @tc.desc:
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.author:
+ */
+HWTEST_F(IdentityCheckerTest, testGetSoftKeyboardInfo, TestSize.Level1)
+{
+    IMSA_HILOGI("IdentityCheckerTest testShowCurrentInput_003 start");
+    int32_t userId = 100;
+    int32_t userId1 = 10000;
+    BoundImeInfo imeInfo;
+
+    IdentityCheckerTest::IdentityCheckerMock::isSystemApp_ = false;
+    IdentityCheckerTest::IdentityCheckerMock::isNativeSa_ = false;
+    int32_t ret = IdentityCheckerTest::service_->GetSoftKeyboardInfo(userId, imeInfo);
+    EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+
+    IdentityCheckerTest::IdentityCheckerMock::isSystemApp_ = false;
+    IdentityCheckerTest::IdentityCheckerMock::isNativeSa_ = true;
+    ret = IdentityCheckerTest::service_->GetSoftKeyboardInfo(userId, imeInfo);
+    EXPECT_NE(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+
+    IdentityCheckerTest::IdentityCheckerMock::isSystemApp_ = true;
+    IdentityCheckerTest::IdentityCheckerMock::isNativeSa_ = false;
+    ret = IdentityCheckerTest::service_->GetSoftKeyboardInfo(userId1, imeInfo);
+    EXPECT_NE(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+}
 } // namespace MiscServices
 } // namespace OHOS

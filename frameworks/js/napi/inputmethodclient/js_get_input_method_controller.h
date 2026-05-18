@@ -156,6 +156,7 @@ struct ChangeSelectionContext : public AsyncCall::Context {
 struct UpdateAttributeContext : public AsyncCall::Context {
     InputAttribute attribute;
     Configuration configuration;
+    bool hasConsumeKeyEvents = false;
     UpdateAttributeContext() : Context(nullptr, nullptr){};
     UpdateAttributeContext(InputAction input, OutputAction output) : Context(std::move(input), std::move(output)){};
 
@@ -239,6 +240,7 @@ private:
     void UpdateTextPreviewState(const std::string &type);
     static bool GetValue(napi_env env, napi_value in, CursorInfo &out);
     static bool GetValue(napi_env env, napi_value in, InputAttribute &out);
+    static bool GetValue(napi_env env, napi_value in, InputAttribute &out, bool &hasConsumeKeyEvents);
     static bool GetValue(napi_env env, napi_value in, TextConfig &out);
     static bool GetValue(napi_env env, napi_value in, Range &out);
     static napi_value GetAttachOptionsValue(napi_env env, napi_callback_info cbinfo, AttachOptions &attachOptions);

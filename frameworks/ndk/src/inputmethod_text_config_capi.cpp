@@ -182,6 +182,16 @@ InputMethod_ErrorCode OH_TextConfig_SetAbilityName(InputMethod_TextConfig *confi
     return IME_ERR_OK;
 }
 
+InputMethod_ErrorCode OH_TextConfig_SetConsumeKeyEvents(InputMethod_TextConfig *config, bool consumeKeyEvents)
+{
+    if (config == nullptr) {
+        IMSA_HILOGE("config is nullptr");
+        return IME_ERR_NULL_POINTER;
+    }
+    config->consumeKeyEvents = consumeKeyEvents;
+    return IME_ERR_OK;
+}
+
 InputMethod_ErrorCode OH_TextConfig_GetInputType(InputMethod_TextConfig *config, InputMethod_TextInputType *inputType)
 {
     if (config == nullptr) {
@@ -358,6 +368,20 @@ InputMethod_ErrorCode OH_TextConfig_GetAbilityName(InputMethod_TextConfig *confi
         IMSA_HILOGE("abilityName content copy error:%{public}d", (int32_t)err);
         return IME_ERR_PARAMCHECK;
     }
+    return IME_ERR_OK;
+}
+
+InputMethod_ErrorCode OH_TextConfig_GetConsumeKeyEvents(InputMethod_TextConfig *config, bool *consumeKeyEvents)
+{
+    if (config == nullptr) {
+        IMSA_HILOGE("config is nullptr");
+        return IME_ERR_NULL_POINTER;
+    }
+    if (consumeKeyEvents == nullptr) {
+        IMSA_HILOGE("supported is nullptr");
+        return IME_ERR_NULL_POINTER;
+    }
+    *consumeKeyEvents = config->consumeKeyEvents;
     return IME_ERR_OK;
 }
 #ifdef __cplusplus

@@ -51,8 +51,6 @@ bool InputClientInfoInner::ReadFromParcel(Parcel &in)
     isNotifyInputStart = in.ReadBool();
     needHide = in.ReadBool();
     uiExtensionTokenId = in.ReadUint32();
-    int32_t requestKeyboardReasonData = in.ReadInt32();
-    requestKeyboardReason = static_cast<RequestKeyboardReason>(requestKeyboardReasonData);
     uint32_t typeData = in.ReadUint32();
     type = static_cast<ClientType>(typeData);
     name = in.ReadString();
@@ -142,9 +140,6 @@ bool InputClientInfoInner::MarshallingOne(Parcel &out) const
         return false;
     }
     if (!out.WriteUint32(uiExtensionTokenId)) {
-        return false;
-    }
-    if (!out.WriteInt32(static_cast<int32_t>(requestKeyboardReason))) {
         return false;
     }
     if (!out.WriteUint32(static_cast<uint32_t>(type))) {

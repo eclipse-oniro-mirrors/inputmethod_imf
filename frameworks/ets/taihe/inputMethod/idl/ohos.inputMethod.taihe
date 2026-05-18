@@ -132,7 +132,7 @@ struct CursorInfo {
     top: f64;
     width: f64;
     height: f64;
-    displayId: i64;
+    displayId: Optional<i64>;
 }
 
 enum Direction : i32 {
@@ -197,6 +197,7 @@ struct InputAttribute {
     enterKeyType: EnterKeyType;
     placeholder: Optional<String>;
     abilityName: Optional<String>;
+    consumeKeyEvents: Optional<bool>;
 }
 
 struct TextConfig {
@@ -384,5 +385,5 @@ enum AttachFailureReason : i32 {
     SERVICE_ABNORMAL = 2
 }
 
-function OnAttachmentDidFail(callback: (data: AttachFailureReason) => void);
-function OffAttachmentDidFail(callback: Optional<(data: AttachFailureReason) => void>);
+function OnAttachmentDidFail(callback: (data: AttachFailureReason) => void): void;
+function OffAttachmentDidFail(callback: Optional<(data: AttachFailureReason) => void>): void;

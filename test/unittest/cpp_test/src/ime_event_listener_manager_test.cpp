@@ -265,18 +265,19 @@ HWTEST_F(ImeEventListenerManagerTest, test_notify, TestSize.Level0)
     int32_t userId = 10;
     int32_t callingWndId = 100;
     uint64_t displayGroupId = 3;
+    uint64_t displayId = 300;
     uint64_t defaultDisplayGroupId = ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID;
     int32_t requestKeyboardReason = 2;
 
     // not default displayGroup
     ImeEventListenerManager::GetInstance().NotifyInputStart(
         userId, callingWndId, displayGroupId, requestKeyboardReason);
-    ImeEventListenerManager::GetInstance().NotifyInputStop(userId, displayGroupId);
+    ImeEventListenerManager::GetInstance().NotifyInputStop(userId, displayId, InputStopScene::CLIENT_TRIGGER, true);
     // default displayGroup
     uint64_t displayGroupId1 = ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID;
     ImeEventListenerManager::GetInstance().NotifyInputStart(
         userId, callingWndId, displayGroupId1, requestKeyboardReason);
-    ImeEventListenerManager::GetInstance().NotifyInputStop(userId, displayGroupId1);
+    ImeEventListenerManager::GetInstance().NotifyInputStop(userId, displayId, InputStopScene::CLIENT_TRIGGER, true);
 
     std::vector<ImeEventListenerInfo> imeListeners;
     ImeEventListenerInfo info;
@@ -295,7 +296,8 @@ HWTEST_F(ImeEventListenerManagerTest, test_notify, TestSize.Level0)
     auto ret = ImeEventListenerManager::GetInstance().NotifyInputStart(
         userId, callingWndId, defaultDisplayGroupId, requestKeyboardReason);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    ret = ImeEventListenerManager::GetInstance().NotifyInputStop(userId, defaultDisplayGroupId);
+    ret = ImeEventListenerManager::GetInstance().NotifyInputStop(
+        userId, displayId, InputStopScene::CLIENT_TRIGGER, false);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     ImeWindowInfo imeWindowInfo;
     ret =

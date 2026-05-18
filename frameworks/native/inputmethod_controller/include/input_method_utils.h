@@ -17,13 +17,15 @@
 #define FRAMEWORKS_INPUTMETHOD_CONTROLLER_INCLUDE_INPUT_METHOD_UTILS_H
 
 #include <stdint.h>
+
 #include <variant>
 
 #include "global.h"
 #include "input_attribute.h"
+#include "input_window_info.h"
 #include "iremote_object.h"
-#include "panel_info.h"
 #include "key_event.h"
+#include "panel_info.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -115,9 +117,27 @@ public:
         textInputType = textType;
     }
 
+    bool GetConsumeKeyEvents() const
+    {
+        return consumeKeyEvents;
+    }
+
+    bool HasConsumeKeyEvents() const
+    {
+        return hasConsumeKeyEvents;
+    }
+
+    void SetConsumeKeyEvents(bool support)
+    {
+        consumeKeyEvents = support;
+        hasConsumeKeyEvents = true;
+    }
+
 private:
     EnterKeyType enterKeyType = EnterKeyType::UNSPECIFIED;
     TextInputType textInputType = TextInputType::TEXT;
+    bool consumeKeyEvents = false;
+    bool hasConsumeKeyEvents = false;
 };
 
 struct CursorInfo {
@@ -203,8 +223,19 @@ enum Trigger : int32_t {
     IMF,
     END
 };
+
+enum class InputType : int32_t {
+    NONE = -1,
+    CAMERA_INPUT = 0,
+    SECURITY_INPUT,
+    VOICE_INPUT,
+    VOICEKB_INPUT,
+    END
+};
+
 struct PanelStatusInfo {
     PanelInfo panelInfo;
+    InputType inputType = InputType::NONE;
     bool visible { false };
     Trigger trigger { END };
     uint32_t sessionId { 0 };
@@ -217,6 +248,7 @@ struct PanelStatusInfo {
 
 struct PanelStatusInfoInner : public Parcelable {
     PanelInfo panelInfo;
+    InputType inputType = InputType::NONE;
     bool visible { false };
     Trigger trigger { END };
     uint32_t sessionId { 0 };
@@ -319,7 +351,7 @@ using PrivateDataValue = std::variant<std::string, bool, int32_t>;
 enum class RequestKeyboardReason : int32_t {
     NONE = 0,          // no event reason
     MOUSE = 1,         // user triggered mouse event
-	TOUCH = 2,         // user triggered touch event
+    TOUCH = 2,         // user triggered touch event
     OTHER = 20         // other reason
 };
 
@@ -347,7 +379,7 @@ public:
     InputAttribute inputAttribute = {};
     CursorInfo cursorInfo = {};
     TextSelection textSelection = {};
-    uint32_t windowId = INVALID_WINDOW_ID;  // editor in
+    uint32_t windowId = INVALID_WINDOW_ID;  // editor in, external Padding, only for transfer from imc->imsa in inner
     double positionY = 0;
     double height = 0;
     std::unordered_map<std::string, PrivateDataValue> privateCommand = {};
@@ -369,6 +401,7 @@ public:
         config.append(" cursor: " + std::to_string(cursorInfo.left) + "/" + std::to_string(cursorInfo.top) + "/" +
             std::to_string(cursorInfo.width) + "/" + std::to_string(cursorInfo.height) + "/" +
             std::to_string(cursorInfo.displayId));
+        config.append(" consumeKeyEvents:" + std::to_string(inputAttribute.consumeKeyEvents));
         return config;
     }
 };
@@ -403,6 +436,7 @@ public:
             " newRange: " + std::to_string(textSelection.newBegin) + "/" + std::to_string(textSelection.newEnd));
         config.append(" cursor: " + std::to_string(cursorInfo.left) + "/" + std::to_string(cursorInfo.top) + "/" +
             std::to_string(cursorInfo.width) + "/" + std::to_string(cursorInfo.height));
+        config.append(" consumeKeyEvents:" + std::to_string(inputAttribute.consumeKeyEvents));
         return config;
     }
 };
@@ -427,6 +461,7 @@ struct TextConfig {
         config.append(" range: " + std::to_string(range.start) + "/" + std::to_string(range.end));
         config.append(" cursor: " + std::to_string(cursorInfo.left) + "/" + std::to_string(cursorInfo.top) + "/" +
             std::to_string(cursorInfo.width) + "/" + std::to_string(cursorInfo.height));
+        config.append(" consumeKeyEvents:" + std::to_string(inputAttribute.consumeKeyEvents));
         return config;
     }
 
@@ -487,15 +522,6 @@ struct TextConfig {
         }
         return false;
     }
-};
-
-enum class InputType : int32_t {
-    NONE = -1,
-    CAMERA_INPUT = 0,
-    SECURITY_INPUT,
-    VOICE_INPUT,
-    VOICEKB_INPUT,
-    END
 };
 
 enum class SwitchTrigger : uint32_t {
@@ -568,7 +594,7 @@ struct ResponseDataInner : public Parcelable {
     ResponseData rspData = std::monostate{};
 };
 
-struct FocusedInfo {
+struct FocusedInfo : public Parcelable {
     uint32_t windowId{ ImfCommonConst::INVALID_WINDOW_ID };                      // editor in
     uint64_t displayId{ ImfCommonConst::DEFAULT_DISPLAY_ID };                    // editor in
     uint64_t displayGroupId{ ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID };         // editor in
@@ -576,6 +602,58 @@ struct FocusedInfo {
     uint64_t keyboardDisplayId{ ImfCommonConst::DEFAULT_DISPLAY_ID };            // keyboard in
     uint64_t keyboardDisplayGroupId{ ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID }; // keyboard in
     pid_t uiExtensionHostPid{ ImfCommonConst::INVALID_PID };
+
+    std::string ToString() const
+    {
+        std::string config;
+        config.append("editorWindowId/editorDisplayId/editorDisplayGroupId: " + std::to_string(windowId) + "/"
+                      + std::to_string(displayId) + "/" + std::to_string(displayGroupId));
+        config.append(" keyboardWindowId/keyboardDisplayId/keyboardDisplayGroupId: " + std::to_string(keyboardWindowId)
+                      + "/" + std::to_string(keyboardDisplayId) + "/" + std::to_string(keyboardDisplayGroupId));
+        config.append(" uiExtensionHostPid: " + std::to_string(uiExtensionHostPid));
+        return config;
+    }
+
+    bool ReadFromParcel(Parcel &in)
+    {
+        windowId = in.ReadUint32();
+        displayId = in.ReadUint64();
+        displayGroupId = in.ReadUint64();
+        keyboardWindowId = in.ReadUint32();
+        keyboardDisplayId = in.ReadUint64();
+        keyboardDisplayGroupId = in.ReadUint64();
+        return true;
+    }
+
+    bool Marshalling(Parcel &out) const
+    {
+        if (!out.WriteUint32(windowId)) {
+            return false;
+        }
+        if (!out.WriteUint64(displayId)) {
+            return false;
+        }
+        if (!out.WriteUint64(displayGroupId)) {
+            return false;
+        }
+        if (!out.WriteUint32(keyboardWindowId)) {
+            return false;
+        }
+        if (!out.WriteUint64(keyboardDisplayId)) {
+            return false;
+        }
+        return out.WriteUint64(keyboardDisplayGroupId);
+    }
+
+    static FocusedInfo *Unmarshalling(Parcel &in)
+    {
+        FocusedInfo *data = new (std::nothrow) FocusedInfo();
+        if (data && !data->ReadFromParcel(in)) {
+            delete data;
+            data = nullptr;
+        }
+        return data;
+    }
 };
 } // namespace MiscServices
 } // namespace OHOS

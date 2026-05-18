@@ -144,16 +144,18 @@ struct InputAttribute {
     int32_t immersiveMode = 0;
     int32_t gradientMode { 0 };
     int32_t fluidLightMode { 0 };
-    uint64_t displayId = 0;        // editor in
-    uint32_t windowId = 0;         // keyboard in
-    uint64_t callingDisplayId = 0; // keyboard in
-    uint64_t displayGroupId = 0;   // keyboard in
-    uint64_t callingScreenId = 0;  // keyboard in
+    uint32_t editorWindowId = 0;             // editor in
+    uint64_t editorDisplayId = 0;            // editor in
+    uint32_t windowId = 0;                   // keyboard in
+    uint64_t callingDisplayId = 0;           // keyboard in
+    uint64_t displayGroupId = 0;             // keyboard in, only use in imsa
+    uint64_t callingScreenId = 0;            // keyboard in, only use in ima
     std::u16string placeholder { u"" };
     std::u16string abilityName { u"" };
     CapitalizeMode capitalizeMode = CapitalizeMode::NONE;
     bool needAutoInputNumkey { false }; // number keys need to be automatically handled by imf
     ExtraConfig extraConfig = {};
+    bool consumeKeyEvents { false };
 
     bool GetSecurityFlag() const
     {
@@ -174,7 +176,8 @@ struct InputAttribute {
     bool operator==(const InputAttribute &info) const
     {
         return inputPattern == info.inputPattern && enterKeyType == info.enterKeyType &&
-            inputOption == info.inputOption && isTextPreviewSupported == info.isTextPreviewSupported;
+            inputOption == info.inputOption && isTextPreviewSupported == info.isTextPreviewSupported &&
+            consumeKeyEvents == info.consumeKeyEvents;
     }
 
     inline std::string ToString() const
@@ -185,7 +188,7 @@ struct InputAttribute {
         << "isTextPreviewSupported:" << isTextPreviewSupported << "bundleName:" << bundleName
         << "immersiveMode:" << immersiveMode << "windowId:" << windowId
         << "callingDisplayId:" << callingDisplayId
-        << "needNumInput: " << needAutoInputNumkey
+        << "needNumInput: " << needAutoInputNumkey << "consumeKeyEvents: " << consumeKeyEvents
         << "extraConfig.customSettings.size: " << extraConfig.customSettings.size()
         << "]";
         return ss.str();
@@ -199,6 +202,7 @@ struct InputAttribute {
                     + std::to_string(callingDisplayId) + "/" + std::to_string(displayGroupId));
         info.append(" textPreview/immersiveMode:" + std::to_string(static_cast<int32_t>(isTextPreviewSupported)) + "/"
                     + std::to_string(immersiveMode));
+        info.append(" consumeKeyEvents:" + std::to_string(static_cast<int32_t>(consumeKeyEvents)));
         return info;
     }
 };
@@ -218,14 +222,17 @@ struct InputAttributeInner : public Parcelable {
     int32_t immersiveMode = 0;
     int32_t gradientMode { 0 };
     int32_t fluidLightMode { 0 };
-    uint32_t windowId = 0;         // keyboard in
-    uint64_t callingDisplayId = 0; // keyboard in
-    uint64_t displayGroupId = 0;   // keyboard in
+    uint32_t editorWindowId = 0;             // editor in
+    uint64_t editorDisplayId = 0;            // editor in
+    uint32_t windowId = 0;                   // keyboard in
+    uint64_t callingDisplayId = 0;           // keyboard in
+    uint64_t displayGroupId = 0;             // keyboard in, only use in imsa
     std::u16string placeholder { u"" };
     std::u16string abilityName { u"" };
     CapitalizeMode capitalizeMode = CapitalizeMode::NONE;
     bool needAutoInputNumkey { false }; // number keys need to be automatically handled by imf
     ExtraConfigInner extraConfig;
+    bool consumeKeyEvents { false };
 
     bool ReadFromParcel(Parcel &in)
     {
@@ -236,6 +243,8 @@ struct InputAttributeInner : public Parcelable {
         isOneTimeCodeNumberFlag = in.ReadBool();
         bundleName = in.ReadString();
         immersiveMode = in.ReadInt32();
+        editorWindowId = in.ReadUint32();
+        editorDisplayId = in.ReadUint64();
         windowId = in.ReadUint32();
         callingDisplayId = in.ReadUint64();
         displayGroupId = in.ReadUint64();
@@ -255,6 +264,7 @@ struct InputAttributeInner : public Parcelable {
             return false;
         }
         extraConfig = *extraConfigInfo;
+        consumeKeyEvents = in.ReadBool();
         return true;
     }
 
@@ -281,6 +291,12 @@ struct InputAttributeInner : public Parcelable {
         if (!out.WriteInt32(immersiveMode)) {
             return false;
         }
+        if (!out.WriteUint32(editorWindowId)) {
+            return false;
+        }
+        if (!out.WriteUint64(editorDisplayId)) {
+            return false;
+        }
         if (!out.WriteUint32(windowId)) {
             return false;
         }
@@ -296,6 +312,9 @@ struct InputAttributeInner : public Parcelable {
         ret = ret && out.WriteInt32(gradientMode);
         ret = ret && out.WriteInt32(fluidLightMode);
         if (!out.WriteParcelable(&extraConfig)) {
+            return false;
+        }
+        if (!out.WriteBool(consumeKeyEvents)) {
             return false;
         }
         return ret;
@@ -314,7 +333,8 @@ struct InputAttributeInner : public Parcelable {
     bool operator==(const InputAttributeInner &info) const
     {
         return inputPattern == info.inputPattern && enterKeyType == info.enterKeyType &&
-            inputOption == info.inputOption && isTextPreviewSupported == info.isTextPreviewSupported;
+            inputOption == info.inputOption && isTextPreviewSupported == info.isTextPreviewSupported &&
+            consumeKeyEvents == info.consumeKeyEvents;
     }
 
     bool GetSecurityFlag() const

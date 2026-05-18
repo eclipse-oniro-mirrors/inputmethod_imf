@@ -59,7 +59,8 @@ napi_value JsPanel::Init(napi_env env)
         DECLARE_NAPI_FUNCTION("on", Subscribe),
         DECLARE_NAPI_FUNCTION("off", UnSubscribe),
         DECLARE_NAPI_FUNCTION("adjustPanelRect", AdjustPanelRect),
-        DECLARE_NAPI_FUNCTION("adjustPanelRectSync", AdjustPanelRectSync),
+        DECLARE_NAPI_FUNCTION("updatePanelRect", UpdatePanelRect),
+        DECLARE_NAPI_FUNCTION("updatePanelRectSync", UpdatePanelRectSync),
         DECLARE_NAPI_FUNCTION("updateRegion", UpdateRegion),
         DECLARE_NAPI_FUNCTION("startMoving", StartMoving),
         DECLARE_NAPI_FUNCTION("getDisplayId", GetDisplayId),
@@ -526,8 +527,10 @@ napi_value JsPanel::UnSubscribe(napi_env env, napi_callback_info info)
     return result;
 }
 
-bool JsPanel::IsEnhancedAdjust(napi_env env, napi_value *argv)
+bool JsPanel::IsEnhancedAdjust(napi_env env, napi_value *argv, size_t argc)
 {
+    PARAM_CHECK_RETURN(env, argv != nullptr, "argv is null", TYPE_NONE, false);
+    PARAM_CHECK_RETURN(env, argc > 1, "at least tow parameter is required!", TYPE_NONE, false);
     PARAM_CHECK_RETURN(
         env, JsUtil::GetType(env, argv[1]) == napi_object, "param rect type must be PanelRect", TYPE_NONE, false);
     std::vector<const char *> properties = { "landscapeAvoidY", "portraitAvoidY", LANDSCAPE_REGION_PARAM_NAME,
@@ -599,7 +602,7 @@ bool JsPanel::IsPanelFlagValid(napi_env env, PanelFlag panelFlag, bool isEnhance
     } else {
         isValid = panelFlag == FLG_FIXED || panelFlag == FLG_FLOATING;
     }
-    IMSA_HILOGI("flag: %{public}d, isEnhanced: %{public}d, isValid: %{public}d", panelFlag, isEnhancedCalled, isValid);
+    IMSA_HILOGD("flag: %{public}d, isEnhanced: %{public}d, isValid: %{public}d", panelFlag, isEnhancedCalled, isValid);
     if (!isEnhancedCalled) {
         PARAM_CHECK_RETURN(env, isValid, "param flag type should be FLG_FIXED or FLG_FLOATING", TYPE_NONE, false);
     } else {
@@ -653,7 +656,7 @@ napi_value JsPanel::AdjustPanelRect(napi_env env, napi_callback_info info)
     auto ctxt = std::make_shared<PanelContentContext>(env, info);
     auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
         PARAM_CHECK_RETURN(env, argc > 1, "at least two parameters is required", TYPE_NONE, napi_generic_failure);
-        if (!IsEnhancedAdjust(env, argv)) {
+        if (!IsEnhancedAdjust(env, argv, argc)) {
             CHECK_RETURN(CheckParam(env, argc, argv, ctxt) == napi_ok, "check param", napi_generic_failure);
         } else {
             CHECK_RETURN(CheckEnhancedParam(env, argc, argv, ctxt) == napi_ok, "check param", napi_generic_failure);
@@ -683,7 +686,13 @@ napi_value JsPanel::AdjustPanelRect(napi_env env, napi_callback_info info)
     return asyncCall.Call(env, exec, "adjustPanelRect");
 }
 
-napi_value JsPanel::AdjustPanelRectSync(napi_env env, napi_callback_info info)
+napi_value JsPanel::UpdatePanelRect(napi_env env, napi_callback_info info)
+{
+    IMSA_HILOGI("JsPanel enter!");
+    return AdjustPanelRect(env, info);
+}
+
+napi_value JsPanel::UpdatePanelRectSync(napi_env env, napi_callback_info info)
 {
     IMSA_HILOGI("JsPanel enter!");
     size_t argc = ARGC_MAX;
@@ -694,23 +703,38 @@ napi_value JsPanel::AdjustPanelRectSync(napi_env env, napi_callback_info info)
 
     auto panel = UnwrapPanel(env, thisVar);
     if (panel == nullptr) {
-        IMSA_HILOGE("inputMethodPanel_ is nullptr!");
+        IMSA_HILOGE("inputMethodPanel is nullptr!");
         return JsUtil::Const::Null(env);
     }
 
-    bool isEnhancedCall = IsEnhancedAdjust(env, argv);
+    bool isEnhancedCall = IsEnhancedAdjust(env, argv, argc);
     if (!isEnhancedCall) {
         auto ctxt = std::make_shared<PanelContentContext>(env, info);
         if (CheckParam(env, argc, argv, ctxt) != napi_ok) {
             return JsUtil::Const::Null(env);
         }
-        AdjustLayoutParam(ctxt);
+        int32_t ret = panel->AdjustPanelRect(ctxt->panelFlag, ctxt->layoutParams);
+        if (ret == ErrorCode::ERROR_PARAMETER_CHECK_FAILED) {
+            JsUtils::ThrowException(env, JsUtils::Convert(ErrorCode::ERROR_PARAMETER_CHECK_FAILED),
+                "width limit:[0, displayWidth], height limit:[0, 70 percent of displayHeight]!", TYPE_NONE);
+        }
+        RESULT_CHECK_RETURN(env, ret == ErrorCode::NO_ERROR, JsUtils::Convert(ret),
+            "failed to UpdatePanelRectSync!", TYPE_NONE, JsUtil::Const::Null(env));
     } else {
         auto ctxt = std::make_shared<PanelContentContext>(env, info);
         if (CheckEnhancedParam(env, argc, argv, ctxt) != napi_ok) {
             return JsUtil::Const::Null(env);
         }
-        AdjustEnhancedLayoutParam(ctxt);
+        int32_t ret = panel->AdjustPanelRect(ctxt->panelFlag, ctxt->enhancedLayoutParams, ctxt->hotAreas);
+        if (ret == ErrorCode::ERROR_PARAMETER_CHECK_FAILED) {
+            JsUtils::ThrowException(env, JsUtils::Convert(ErrorCode::ERROR_PARAMETER_CHECK_FAILED),
+                "width limit:[0, displayWidth], avoidHeight limit:[0, 70 percent of displayHeight]!", TYPE_NONE);
+        } else if (ret == ErrorCode::ERROR_INVALID_PANEL_TYPE) {
+            JsUtils::ThrowException(env, JsUtils::Convert(ErrorCode::ERROR_INVALID_PANEL_TYPE),
+                "only used for SOFT_KEYBOARD panel!", TYPE_NONE);
+        }
+        RESULT_CHECK_RETURN(env, ret == ErrorCode::NO_ERROR, JsUtils::Convert(ret),
+            "failed to UpdatePanelRectSync!", TYPE_NONE, JsUtil::Const::Null(env));
     }
     return JsUtil::Const::Null(env);
 }

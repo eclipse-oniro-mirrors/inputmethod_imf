@@ -15,6 +15,7 @@
 #include "ime_info_inquirer.h"
 
 #include <cinttypes>
+#include <fstream>
 
 #include "app_mgr_adapter.h"
 #include "app_mgr_client.h"
@@ -25,6 +26,7 @@
 #include "iservice_registry.h"
 #include "locale_config.h"
 #include "locale_info.h"
+#include "nlohmann/json.hpp"
 #include "os_account_adapter.h"
 #include "parameter.h"
 #include "parameters.h"
@@ -44,6 +46,8 @@ constexpr uint32_t SUBTYPE_PROFILE_NUM = 1;
 constexpr const char *DEFAULT_IME_KEY = "persist.sys.default_ime";
 constexpr int32_t CONFIG_LEN = 128;
 constexpr uint32_t DEFAULT_BMS_VALUE = 0;
+constexpr const char* PROFILE_FILE_PREFIX = "$profile:";
+constexpr int64_t MAX_FILE_SIZE = 512 * 1024; //521KB limit
 } // namespace
 ImeInfoInquirer &ImeInfoInquirer::GetInstance()
 {
@@ -554,6 +558,128 @@ int32_t ImeInfoInquirer::GetSubProperty(int32_t userId, const std::string &subNa
     return ErrorCode::NO_ERROR;
 }
 
+bool ImeInfoInquirer::GetResConfigFileLite(const OHOS::AppExecFwk::ExtensionAbilityInfo &extensionInfo,
+    const std::string &metadataName, std::vector<std::string> &profileInfos)
+{
+    IMSA_HILOGD("GetResConfigFileLite begin");
+    if (extensionInfo.metadata.empty()) {
+        IMSA_HILOGE("GetResConfigFileLite failed due to empty metadata");
+        return false;
+    }
+    bool isCompressed = !extensionInfo.hapPath.empty();
+    std::string resourcePath = isCompressed ? extensionInfo.hapPath : extensionInfo.resourcePath;
+    if (resourcePath.empty()) {
+        IMSA_HILOGE("GetResConfigFileLite failed due to empty resourcePath");
+        return false;
+    }
+    auto iter = std::find_if(extensionInfo.metadata.begin(), extensionInfo.metadata.end(),
+        [&metadataName](const Metadata &data) { return metadataName.compare(data.name) == 0; });
+    if (iter == extensionInfo.metadata.end()) {
+        IMSA_HILOGE("GetResConfigFileLite failed, metadataName not found");
+        return false;
+    }
+    std::shared_ptr<Global::Resource::ResourceManager> resMgr(CreateResourceManager(false));
+    if (resMgr == nullptr) {
+        IMSA_HILOGE("GetResConfigFileLite CreateResourceManager failed");
+        return false;
+    }
+    constexpr uint32_t SELECT_PROFILE_ONLY = 0x0400;
+    if (!resMgr->AddResource(resourcePath.c_str(), SELECT_PROFILE_ONLY)) {
+        IMSA_HILOGE("GetResConfigFileLite AddResource failed");
+        return false;
+    }
+    if (!GetResFromResMgr(iter->resource, resMgr, isCompressed, profileInfos)) {
+        IMSA_HILOGE("GetResFromResMgr failed");
+        return false;
+    }
+    if (profileInfos.empty()) {
+        IMSA_HILOGE("no valid file can be obtained");
+        return false;
+    }
+    IMSA_HILOGD("GetResConfigFileLite success, size: %{public}zu", profileInfos.size());
+    return true;
+}
+
+bool ImeInfoInquirer::GetResFromResMgr(const std::string &resName,
+    const std::shared_ptr<Global::Resource::ResourceManager> &resMgr, bool isCompressed,
+    std::vector<std::string> &profileInfos) const
+{
+    IMSA_HILOGD("GetResFromResMgr begin");
+    if (resName.empty()) {
+        IMSA_HILOGE("GetResFromResMgr res name is empty");
+        return false;
+    }
+
+    size_t pos = resName.rfind(PROFILE_FILE_PREFIX);
+    if ((pos == std::string::npos) || (pos == resName.length() - strlen(PROFILE_FILE_PREFIX))) {
+        IMSA_HILOGE("GetResFromResMgr res name %{public}s invalid", resName.c_str());
+        return false;
+    }
+    std::string profileName = resName.substr(pos + strlen(PROFILE_FILE_PREFIX));
+    if (isCompressed) {
+        IMSA_HILOGD("compressed status");
+        std::unique_ptr<uint8_t[]> fileContentPtr = nullptr;
+        size_t len = 0;
+        if (resMgr->GetProfileDataByName(profileName.c_str(), len, fileContentPtr) != Global::Resource::SUCCESS) {
+            IMSA_HILOGE("GetProfileDataByName failed");
+            return false;
+        }
+        if (fileContentPtr == nullptr || len == 0) {
+            IMSA_HILOGE("invalid data");
+            return false;
+        }
+        std::string rawData(fileContentPtr.get(), fileContentPtr.get() + len);
+        nlohmann::json profileJson = nlohmann::json::parse(rawData, nullptr, false, true);
+        if (profileJson.is_discarded()) {
+            IMSA_HILOGE("bad profile file");
+            return false;
+        }
+        profileInfos.emplace_back(profileJson.dump());
+        return true;
+    }
+    std::string resPath;
+    if (resMgr->GetProfileByName(profileName.c_str(), resPath) != Global::Resource::SUCCESS) {
+        IMSA_HILOGE("GetResFromResMgr profileName cannot be found");
+        return false;
+    }
+    IMSA_HILOGD("GetResFromResMgr resPath is %{private}s", resPath.c_str());
+    std::string profile;
+    if (!TransformFileToJsonString(resPath, profile)) {
+        return false;
+    }
+    profileInfos.emplace_back(profile);
+    return true;
+}
+
+bool ImeInfoInquirer::TransformFileToJsonString(const std::string &resPath, std::string &profile) const
+{
+    std::fstream in;
+    char errBuf[256];
+    errBuf[0] = '\0';
+    in.open(resPath, std::ios_base::in | std::ios_base::binary);
+    if (!in.is_open()) {
+        strerror_r(errno, errBuf, sizeof(errBuf));
+        IMSA_HILOGE("file open fail due to %{public}s errno:%{public}d", errBuf, errno);
+        return false;
+    }
+    in.seekg(0, std::ios::end);
+    int64_t size = in.tellg();
+    if (size <= 0 || size > MAX_FILE_SIZE) {
+        IMSA_HILOGE("file empty err %{public}d", errno);
+        in.close();
+        return false;
+    }
+    in.seekg(0, std::ios::beg);
+    nlohmann::json profileJson = nlohmann::json::parse(in, nullptr, false, true);
+    if (profileJson.is_discarded()) {
+        IMSA_HILOGE("bad profile file");
+        in.close();
+        return false;
+    }
+    profile = profileJson.dump();
+    in.close();
+    return true;
+}
 int32_t ImeInfoInquirer::ListInputMethodSubtype(const int32_t userId, const ExtensionAbilityInfo &extInfo,
     std::vector<SubProperty> &subProps)
 {
@@ -565,8 +691,8 @@ int32_t ImeInfoInquirer::ListInputMethodSubtype(const int32_t userId, const Exte
         return ret;
     }
 
-    std::string resPath = extInfo.hapPath.empty() ? extInfo.resourcePath : extInfo.hapPath;
-    auto resMgr = GetResMgr(resPath);
+    std::string bundleName = extInfo.bundleName;
+    std::string moduleName = extInfo.moduleName;
     IMSA_HILOGD("subtypes size: %{public}zu.", subtypes.size());
     for (const auto &subtype : subtypes) {
         // subtype which provides a particular input type should not appear in the subtype list
@@ -585,13 +711,7 @@ int32_t ImeInfoInquirer::ListInputMethodSubtype(const int32_t userId, const Exte
             int32_t labelId = atoi(subProp.label.substr(pos + 1).c_str());
             if (labelId > 0) {
                 subProp.labelId = static_cast<uint32_t>(labelId);
-            }
-        }
-        if (resMgr != nullptr) {
-            auto errValue = resMgr->GetStringById(subProp.labelId, subProp.label);
-            if (errValue != RState::SUCCESS) {
-                IMSA_HILOGE("GetStringById failed, bundleName:%{public}s, id:%{public}d.", extInfo.bundleName.c_str(),
-                    subProp.labelId);
+                subProp.label = GetStringById(bundleName, moduleName, subProp.labelId, userId);
             }
         }
         pos = subProp.icon.find(':');
@@ -616,10 +736,9 @@ int32_t ImeInfoInquirer::ParseSubtype(const OHOS::AppExecFwk::ExtensionAbilityIn
         IMSA_HILOGE("find metadata name: SUBTYPE_PROFILE_METADATA_NAME failed!");
         return ErrorCode::ERROR_BAD_PARAMETERS;
     }
-    OHOS::AppExecFwk::BundleMgrClient client;
     std::vector<std::string> profiles;
-    if (!client.GetResConfigFile(extInfo, iter->name, profiles)) {
-        IMSA_HILOGE("failed to GetProfileFromExtension!");
+    if (!GetResConfigFileLite(extInfo, iter->name, profiles)) {
+        IMSA_HILOGE("failed to GetResConfigFileLite!");
         return ErrorCode::ERROR_PACKAGE_MANAGER;
     }
     SubtypeCfg subtypeCfg;
@@ -1094,6 +1213,7 @@ int32_t ImeInfoInquirer::GetFullImeInfo(int32_t userId,
     }
     imeInfo.prop.name = extInfos[0].bundleName;
     imeInfo.prop.id = extInfos[0].name;
+    imeInfo.isSystemSpecialIme = IsSystemSpecialIme(extInfos[0]);
     if (needBrief) {
         return ErrorCode::NO_ERROR;
     }
@@ -1102,7 +1222,6 @@ int32_t ImeInfoInquirer::GetFullImeInfo(int32_t userId,
     imeInfo.prop.labelId = extInfos[0].applicationInfo.labelId;
     imeInfo.prop.iconId = extInfos[0].applicationInfo.iconId;
     imeInfo.isNewIme = IsNewExtInfos(extInfos);
-    imeInfo.isSystemSpecialIme = IsSystemSpecialIme(extInfos[0]);
     auto ret = imeInfo.isNewIme ? ListInputMethodSubtype(userId, extInfos[0], imeInfo.subProps)
                                 : ListInputMethodSubtype(userId, extInfos, imeInfo.subProps);
     if (ret != ErrorCode::NO_ERROR) {

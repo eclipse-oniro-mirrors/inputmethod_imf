@@ -34,6 +34,10 @@ public:
     {
         return (eventFlag & EVENT_IME_HIDE_MASK) == EVENT_IME_HIDE_MASK;
     }
+    inline static bool IsSoftKeyboardInfoChangedOn(uint32_t eventFlag)
+    {
+        return (eventFlag & EVENT_SOFT_KEYBOARD_INFO_CHANGED_MASK) == EVENT_SOFT_KEYBOARD_INFO_CHANGED_MASK;
+    }
     inline static bool IsInputStatusChangedOn(uint32_t eventFlag)
     {
         return (eventFlag & EVENT_INPUT_STATUS_CHANGED_MASK) == EVENT_INPUT_STATUS_CHANGED_MASK;

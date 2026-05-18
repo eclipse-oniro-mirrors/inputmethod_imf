@@ -38,7 +38,13 @@ ErrCode InputMethodAgentServiceImpl::DispatchKeyEvent(
 
 ErrCode InputMethodAgentServiceImpl::SetCallingWindow(uint32_t windowId)
 {
-    InputMethodAbility::GetInstance().SetCallingWindow(windowId, windowId);
+    FocusedInfo focusedInfo;
+    auto attribute = InputMethodAbility::GetInstance().GetInputAttribute();
+    focusedInfo.displayId = attribute.editorDisplayId;
+    focusedInfo.windowId = attribute.editorWindowId;
+    focusedInfo.keyboardWindowId = attribute.windowId;
+    focusedInfo.keyboardDisplayId = attribute.callingDisplayId;
+    InputMethodAbility::GetInstance().SetCallingWindow(windowId, focusedInfo);
     return ERR_OK;
 }
 

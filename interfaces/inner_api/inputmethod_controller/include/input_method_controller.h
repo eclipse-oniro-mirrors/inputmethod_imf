@@ -653,18 +653,6 @@ public:
     IMF_API bool WasAttached();
 
     /**
-     * @brief Query current client bound status, get client windowId
-     *
-     * This function is used to Query current client bound status.
-     *
-     * @param isInputStart 			Indicates imf bound status
-     * @param callingWndId 			Indicates the windows id of calling client.
-	 * @param requestKeyboardReason Indicates requestKeyboardReason for show keyboard
-     * @return Returns true for imf upon bound state, return false for unbound status.
-     */
-    int32_t GetInputStartInfo(bool& isInputStart, uint32_t& callingWndId, int32_t& requestKeyboardReason);
-
-    /**
      * @brief Set agent which will be used to communicate with IMA.
      *
      * This function is used to Set agent.
@@ -1072,8 +1060,24 @@ public:
     IMF_API void SetImcInnerListener(const std::shared_ptr<ImcInnerListener> &imcInnerListener);
 
     int32_t GetCurrentCursorInfo(CursorInfo &cursorInfo);
+
+    /**
+     * @brief Get soft keyboard window info.
+     *
+     * This function is used to query the window info of the real ime.
+     *
+     * @param userId         Indicates the user id.
+     * @param imeInfo  Indicates the soft keyboard info of the real ime。
+     * if has no real ime process, the info is only contain status(InputWindowStatus::HIDE)
+     * if the real ime is not bound, the info is only contain status(InputWindowStatus::HIDE)
+     * if the real ime is bound, but has no soft keyboard, the info is only contain status(InputWindowStatus::HIDE)
+     * @return Returns 0 for success, return others for failed.
+     */
+    IMF_API int32_t GetSoftKeyboardInfo(int32_t userId, BoundImeInfo &imeInfo);
+
 private:
     friend class MockInputMethodSystemAbilityProxy;
+    friend class ImeEventMonitorManagerImpl;
     InputMethodController();
     ~InputMethodController();
 
@@ -1126,6 +1130,8 @@ private:
     int32_t SetCallingWindowByIMSA(uint32_t windowId);
     void NotifyAttachFailure(int32_t errCode);
     bool SubscribeSaStart(std::function<void()> handler, int32_t saId);
+    int32_t GetInputStartInfo(InputStartInfo &info);  // default displayId, foreground user
+    std::shared_ptr<AppExecFwk::EventHandler> GetMainHandler();
 
     struct CtrlEventInfo {
         std::chrono::steady_clock::time_point timestamp;

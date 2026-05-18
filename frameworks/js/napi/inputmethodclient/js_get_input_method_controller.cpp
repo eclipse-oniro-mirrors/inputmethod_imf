@@ -904,6 +904,12 @@ napi_value JsGetInputMethodController::ChangeSelection(napi_env env, napi_callba
 
 bool JsGetInputMethodController::GetValue(napi_env env, napi_value in, InputAttribute &out)
 {
+    bool hasConsumeKeyEvents = false;
+    return GetValue(env, in, out, hasConsumeKeyEvents);
+}
+
+bool JsGetInputMethodController::GetValue(napi_env env, napi_value in, InputAttribute &out, bool &hasConsumeKeyEvents)
+{
     auto ret = JsUtil::Object::ReadProperty(env, in, "textInputType", out.inputPattern);
     ret = ret && JsUtil::Object::ReadProperty(env, in, "enterKeyType", out.enterKeyType);
     // compatibility with older versions may not exist
@@ -912,6 +918,8 @@ bool JsGetInputMethodController::GetValue(napi_env env, napi_value in, InputAttr
     // compatibility with older versions may not exist
     JsUtil::Object::ReadPropertyU16String(env, in, "abilityName", out.abilityName);
     IMSA_HILOGD("abilityName:%{public}s", StringUtils::ToHex(out.abilityName).c_str());
+    hasConsumeKeyEvents = JsUtil::Object::ReadProperty(env, in, "consumeKeyEvents", out.consumeKeyEvents);
+    IMSA_HILOGD("consumeKeyEvents:%{public}d", out.consumeKeyEvents);
     return ret;
 }
 
@@ -920,10 +928,13 @@ napi_value JsGetInputMethodController::UpdateAttribute(napi_env env, napi_callba
     auto ctxt = std::make_shared<UpdateAttributeContext>();
     auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
         PARAM_CHECK_RETURN(env, argc > 0, "at least one parameter is required!", TYPE_NONE, napi_generic_failure);
-        bool ret = JsGetInputMethodController::GetValue(env, argv[0], ctxt->attribute);
+        bool ret = JsGetInputMethodController::GetValue(env, argv[0], ctxt->attribute, ctxt->hasConsumeKeyEvents);
         PARAM_CHECK_RETURN(env, ret, "attribute type must be InputAttribute!", TYPE_NONE, napi_generic_failure);
         ctxt->configuration.SetTextInputType(static_cast<TextInputType>(ctxt->attribute.inputPattern));
         ctxt->configuration.SetEnterKeyType(static_cast<EnterKeyType>(ctxt->attribute.enterKeyType));
+        if (ctxt->hasConsumeKeyEvents) {
+            ctxt->configuration.SetConsumeKeyEvents(ctxt->attribute.consumeKeyEvents);
+        }
         return napi_ok;
     };
     auto exec = [ctxt](AsyncCall::Context *ctx) {

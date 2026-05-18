@@ -89,9 +89,12 @@ public:
 
 class TaskImsaOnCallingDisplayIdChanged : public Task {
 public:
-    explicit TaskImsaOnCallingDisplayIdChanged(uint64_t displayId) : Task(TASK_TYPE_IMSA_DISPLAYID_CHANGED)
+    explicit TaskImsaOnCallingDisplayIdChanged(uint64_t editorDisplayId, uint64_t keyboardDisplayId)
+        : Task(TASK_TYPE_IMSA_DISPLAYID_CHANGED)
     {
-        auto func = [displayId]() { InputMethodAbility::GetInstance().OnCallingDisplayIdChanged(displayId); };
+        auto func = [editorDisplayId, keyboardDisplayId]() {
+            InputMethodAbility::GetInstance().OnCallingDisplayIdChanged(editorDisplayId, keyboardDisplayId);
+        };
         actions_.emplace_back(std::make_unique<Action>(func));
     }
     ~TaskImsaOnCallingDisplayIdChanged() = default;
@@ -99,11 +102,11 @@ public:
 
 class TaskImsaOnCallingWindowIdChanged : public Task {
 public:
-    explicit TaskImsaOnCallingWindowIdChanged(uint32_t editorWindowId, uint32_t keyboardWindowId)
+    explicit TaskImsaOnCallingWindowIdChanged(uint32_t rawEditorWindowId, const FocusedInfo &focusedInfo)
         : Task(TASK_TYPE_IMSA_WINDOWID_CHANGED)
     {
-        auto func = [editorWindowId, keyboardWindowId]() {
-            InputMethodAbility::GetInstance().SetCallingWindow(editorWindowId, keyboardWindowId);
+        auto func = [rawEditorWindowId, focusedInfo]() {
+            InputMethodAbility::GetInstance().SetCallingWindow(rawEditorWindowId, focusedInfo);
         };
         actions_.emplace_back(std::make_unique<Action>(func));
     }

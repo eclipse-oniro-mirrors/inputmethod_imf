@@ -41,7 +41,7 @@ export class SubType implements jsonx.JsonElementDeserializable  {
   public id: string | undefined = '';
   public isCurrent: boolean | undefined = false;
 
-  fromJSON(jsonElem: jsonx.JsonElement) {
+  fromJSON(jsonElem: jsonx.JsonElement): void {
     this.name = jsonElem.getElement('name').tryAsString();
     this.id = jsonElem.getElement('id').tryAsString();
     this.isCurrent = jsonElem.getElement('isCurrent').tryAsBoolean();
@@ -207,7 +207,7 @@ export struct InputMethodListDialog {
 
   @Builder
   InputMethodItem(name: string | undefined, fontColor: ResourceColor, normalColor: ResourceColor,
-    pressedColor: ResourceColor, isDivider: boolean, handleClick: Function) {
+    pressedColor: ResourceColor, isDivider: boolean, handleClick: Function): void {
     Column() {
       Row() {
         Text(name)
@@ -242,7 +242,7 @@ export struct InputMethodListDialog {
     .width('100%')
   }
 
-  build() {
+  build(): void {
     Column() {
       if (this.inputMethodConfig && this.inputMethodConfig!.bundleName.length > 0) {
         Column() {

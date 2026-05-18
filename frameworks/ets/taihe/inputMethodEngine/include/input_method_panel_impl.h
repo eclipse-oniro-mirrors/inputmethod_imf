@@ -44,8 +44,8 @@ public:
     void UpdateRegion(uintptr_t inputRegion);
     void AdjustPanelRect(PanelFlag_t flag, PanelRect_t const& rect);
     void AdjustPanelRectEnhanced(PanelFlag_t flag, EnhancedPanelRect_t const& rect);
-    void AdjustPanelRectSync(PanelFlag_t flag, PanelRect_t const& rect);
-    void AdjustPanelRectSyncEnhanced(PanelFlag_t flag, EnhancedPanelRect_t const& rect);
+    void UpdatePanelRect(PanelFlag_t flag, PanelRect_t const& rect);
+    void UpdatePanelRectEnhanced(PanelFlag_t flag, EnhancedPanelRect_t const& rect);
     int64_t GetDisplayIdSync(int64_t id);
     ImmersiveMode_t GetImmersiveMode();
     void SetImmersiveMode(ImmersiveMode_t mode);
@@ -269,22 +269,40 @@ public:
         panelImpl_->AdjustPanelRectEnhanced(flag, rect);
     }
 
-    void AdjustPanelRectSync(PanelFlag_t flag, PanelRect_t const& rect)
+    void UpdatePanelRect(PanelFlag_t flag, PanelRect_t const& rect)
     {
         if (panelImpl_ == nullptr) {
             IMSA_HILOGE("panelImpl_ is nullptr!");
             return;
         }
-        panelImpl_->AdjustPanelRectSync(flag, rect);
+        panelImpl_->UpdatePanelRect(flag, rect);
     }
 
-    void AdjustPanelRectSyncEnhanced(PanelFlag_t flag, EnhancedPanelRect_t const& rect)
+    void UpdatePanelRectEnhanced(PanelFlag_t flag, EnhancedPanelRect_t const& rect)
     {
         if (panelImpl_ == nullptr) {
             IMSA_HILOGE("panelImpl_ is nullptr!");
             return;
         }
-        panelImpl_->AdjustPanelRectSyncEnhanced(flag, rect);
+        panelImpl_->UpdatePanelRectEnhanced(flag, rect);
+    }
+
+    void UpdatePanelRectSync(PanelFlag_t flag, PanelRect_t const& rect)
+    {
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->UpdatePanelRect(flag, rect);
+    }
+
+    void UpdatePanelRectEnhancedSync(PanelFlag_t flag, EnhancedPanelRect_t const& rect)
+    {
+        if (panelImpl_ == nullptr) {
+            IMSA_HILOGE("panelImpl_ is nullptr!");
+            return;
+        }
+        panelImpl_->UpdatePanelRectEnhanced(flag, rect);
     }
 
     void UpdateRegion(uintptr_t inputRegion)

@@ -45,9 +45,8 @@ void TestCovered(sptr<InputMethodController> imc, FuzzedDataProvider &provider)
     auto isFocusTriggered = provider.ConsumeBool();
     imc->RequestHideInput(callingWndId, isFocusTriggered);
 
-    auto isInputStart = provider.ConsumeBool();
-    auto requestKeyboardReason = provider.ConsumeIntegral<int32_t>();
-    imc->GetInputStartInfo(isInputStart, callingWndId, requestKeyboardReason);
+    InputStartInfo inputStartInfo;
+    imc->GetInputStartInfo(inputStartInfo);
     auto index = provider.ConsumeIntegral<int32_t>();
     imc->GetTextIndexAtCursor(index);
     imc->DeleteBackward(index);

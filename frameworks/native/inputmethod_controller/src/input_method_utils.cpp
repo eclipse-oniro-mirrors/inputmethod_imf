@@ -27,6 +27,13 @@ bool PanelStatusInfoInner::ReadFromParcel(Parcel &in)
     }
     panelInfo = *panelDataInfo;
 
+    int32_t inputTypeData = in.ReadInt32();
+    if (inputTypeData < static_cast<int32_t>(InputType::NONE) ||
+            inputTypeData >= static_cast<int32_t>(InputType::END)) {
+        IMSA_HILOGE("Invalid inputType value: %{public}d", inputTypeData);
+        return false;
+    }
+    inputType = static_cast<InputType>(inputTypeData);
     visible = in.ReadBool();
     int32_t triggerData = in.ReadInt32();
     trigger = static_cast<Trigger>(triggerData);
@@ -197,6 +204,10 @@ ArrayBuffer *ArrayBuffer::Unmarshalling(Parcel &in)
 bool PanelStatusInfoInner::Marshalling(Parcel &out) const
 {
     if (!out.WriteParcelable(&panelInfo)) {
+        return false;
+    }
+
+    if (!out.WriteInt32(static_cast<int32_t>(inputType))) {
         return false;
     }
 

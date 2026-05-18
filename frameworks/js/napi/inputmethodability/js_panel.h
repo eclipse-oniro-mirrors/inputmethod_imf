@@ -91,7 +91,8 @@ public:
     static napi_value Subscribe(napi_env env, napi_callback_info info);
     static napi_value UnSubscribe(napi_env env, napi_callback_info info);
     static napi_value AdjustPanelRect(napi_env env, napi_callback_info info);
-    static napi_value AdjustPanelRectSync(napi_env env, napi_callback_info info);
+    static napi_value UpdatePanelRect(napi_env env, napi_callback_info info);
+    static napi_value UpdatePanelRectSync(napi_env env, napi_callback_info info);
     static napi_value UpdateRegion(napi_env env, napi_callback_info info);
     static napi_value StartMoving(napi_env env, napi_callback_info info);
     static napi_value GetDisplayId(napi_env env, napi_callback_info info);
@@ -155,7 +156,7 @@ private:
     static std::shared_ptr<InputMethodPanel> UnwrapPanel(napi_env env, napi_value thisVar);
     static void PrintEditorQueueInfoIfTimeout(int64_t start, const JsEventInfo &currentInfo);
 
-    static bool IsEnhancedAdjust(napi_env env, napi_value *argv);
+    static bool IsEnhancedAdjust(napi_env env, napi_value *argv, size_t argc);
     static bool IsPanelFlagValid(napi_env env, PanelFlag panelFlag, bool isEnhancedCalled);
     static napi_status ParsePanelFlag(napi_env env, napi_value *argv, PanelFlag &panelFlag, bool isEnhancedCalled);
     static napi_status CheckParam(

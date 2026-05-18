@@ -128,7 +128,7 @@ bool FileOperator::Read(const std::string &path, const std::string &key, std::st
     for (int32_t i = MAX_CFG_POLICY_DIRS_CNT - 1; i >= 0; i--) {
         auto realPath = GetRealPath(cfgFiles->paths[i]);
         if (realPath.empty()) {
-            IMSA_HILOGE("RealPath is empty, path: %{private}s, path index: %{public}d, key: %{public}s",
+            IMSA_HILOGD("RealPath is empty, path: %{private}s, path index: %{public}d, key: %{public}s",
                 realPath.c_str(), i, key.c_str());
             continue;
         }

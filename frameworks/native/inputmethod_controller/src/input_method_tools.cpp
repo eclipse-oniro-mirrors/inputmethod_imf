@@ -50,6 +50,8 @@ InputAttributeInner InputMethodTools::AttributeToInner(const InputAttribute &att
     inner.immersiveMode = attribute.immersiveMode;
     inner.gradientMode = attribute.gradientMode;
     inner.fluidLightMode = attribute.fluidLightMode;
+    inner.editorWindowId = attribute.editorWindowId;
+    inner.editorDisplayId = attribute.editorDisplayId;
     inner.windowId = attribute.windowId;
     inner.callingDisplayId = attribute.callingDisplayId;
     inner.displayGroupId = attribute.displayGroupId;
@@ -58,6 +60,7 @@ InputAttributeInner InputMethodTools::AttributeToInner(const InputAttribute &att
     inner.capitalizeMode = attribute.capitalizeMode;
     inner.needAutoInputNumkey = attribute.needAutoInputNumkey;
     inner.extraConfig = ExtraConfigToInner(attribute.extraConfig);
+    inner.consumeKeyEvents = attribute.consumeKeyEvents;
     return inner;
 }
 
@@ -73,6 +76,8 @@ InputAttribute InputMethodTools::InnerToAttribute(const InputAttributeInner &inn
     inputAttribute.immersiveMode = inner.immersiveMode;
     inputAttribute.gradientMode = inner.gradientMode;
     inputAttribute.fluidLightMode = inner.fluidLightMode;
+    inputAttribute.editorWindowId = inner.editorWindowId;
+    inputAttribute.editorDisplayId = inner.editorDisplayId;
     inputAttribute.windowId = inner.windowId;
     inputAttribute.callingDisplayId = inner.callingDisplayId;
     inputAttribute.displayGroupId = inner.displayGroupId;
@@ -81,6 +86,7 @@ InputAttribute InputMethodTools::InnerToAttribute(const InputAttributeInner &inn
     inputAttribute.capitalizeMode = inner.capitalizeMode;
     inputAttribute.needAutoInputNumkey = inner.needAutoInputNumkey;
     inputAttribute.extraConfig = InnerToExtraConfig(inner.extraConfig);
+    inputAttribute.consumeKeyEvents = inner.consumeKeyEvents;
     return inputAttribute;
 }
 
@@ -191,7 +197,6 @@ InputClientInfoInner InputMethodTools::InputClientInfoToInner(const InputClientI
     inner.isNotifyInputStart = inputClientInfo.isNotifyInputStart;
     inner.needHide = inputClientInfo.needHide;
     inner.uiExtensionTokenId = inputClientInfo.uiExtensionTokenId;
-    inner.requestKeyboardReason = inputClientInfo.requestKeyboardReason;
     inner.type = inputClientInfo.type;
     inner.name = inputClientInfo.name;
     return inner;
@@ -214,7 +219,6 @@ InputClientInfo InputMethodTools::InnerToInputClientInfo(const InputClientInfoIn
     inputClientInfo.isNotifyInputStart = inner.isNotifyInputStart;
     inputClientInfo.needHide = inner.needHide;
     inputClientInfo.uiExtensionTokenId = inner.uiExtensionTokenId;
-    inputClientInfo.requestKeyboardReason = inner.requestKeyboardReason;
     inputClientInfo.type = inner.type;
     inputClientInfo.name = inner.name;
     return inputClientInfo;
@@ -224,6 +228,7 @@ PanelStatusInfoInner InputMethodTools::PanelStatusInfoToInner(const PanelStatusI
 {
     PanelStatusInfoInner inner;
     inner.panelInfo = panelStatusInfo.panelInfo;
+    inner.inputType = panelStatusInfo.inputType;
     inner.visible = panelStatusInfo.visible;
     inner.trigger = panelStatusInfo.trigger;
     inner.sessionId = panelStatusInfo.sessionId;
@@ -234,6 +239,7 @@ PanelStatusInfo InputMethodTools::InnerToPanelStatusInfo(const PanelStatusInfoIn
 {
     PanelStatusInfo panelStatusInfo;
     panelStatusInfo.panelInfo = inner.panelInfo;
+    panelStatusInfo.inputType = inner.inputType;
     panelStatusInfo.visible = inner.visible;
     panelStatusInfo.trigger = inner.trigger;
     panelStatusInfo.sessionId = inner.sessionId;

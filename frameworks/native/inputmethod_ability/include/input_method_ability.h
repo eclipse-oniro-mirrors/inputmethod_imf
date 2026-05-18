@@ -33,6 +33,7 @@
 #include "input_method_panel.h"
 #include "input_method_types.h"
 #include "input_method_utils.h"
+#include "input_status_info.h"
 #include "iremote_object.h"
 #include "keyboard_listener.h"
 #include "key_event_consumer_proxy.h"
@@ -73,7 +74,7 @@ public:
     int32_t SelectByMovement(int32_t direction, const AsyncIpcCallBack &callback = nullptr);
     int32_t DispatchKeyEvent(
         const std::shared_ptr<MMI::KeyEvent> &keyEvent, uint64_t cbId, const sptr<IRemoteObject> &channelObject);
-    void SetCallingWindow(uint32_t editorWindowId, uint32_t keyboardWindowId);
+    void SetCallingWindow(uint32_t rawEditorWindowId, const FocusedInfo &focusedInfo);
     int32_t GetEnterKeyType(int32_t &keyType);
     int32_t GetInputPattern(int32_t &inputPattern);
     int32_t GetTextIndexAtCursor(int32_t &index, const AsyncIpcCallBack &callback = nullptr);
@@ -110,7 +111,7 @@ public:
     int32_t SendMessage(const ArrayBuffer &arrayBuffer);
     int32_t RecvMessage(const ArrayBuffer &arrayBuffer);
     int32_t RegisterMsgHandler(const std::shared_ptr<MsgHandlerCallbackInterface> &msgHandler = nullptr);
-    int32_t OnCallingDisplayIdChanged(uint64_t displayId);
+    int32_t OnCallingDisplayIdChanged(uint64_t editorDisplayId, uint64_t keyboardDisplayId);
     int32_t OnSendPrivateData(const std::unordered_map<std::string, PrivateDataValue> &privateCommand);
     bool HandleUnconsumedKey(const std::shared_ptr<MMI::KeyEvent> &keyEvent);
     int32_t OnResponse(uint64_t msgId, int32_t code, const ResponseData &data);
@@ -139,6 +140,7 @@ public:
 
     int32_t OnStopInputService(bool isTerminateIme);
     HiSysEventClientInfo GetBindClientInfo();
+    int32_t GetSoftKeyboardInfo(BoundImeInfo &imeInfo);
 private:
     std::mutex controlChannelLock_;
     std::shared_ptr<InputControlChannelProxy> controlChannel_ = nullptr;
@@ -192,11 +194,11 @@ private:
         const std::shared_ptr<InputMethodPanel> &inputMethodPanel, PanelFlag flag, Trigger trigger, uint32_t sessionId);
     void SetInputAttribute(const InputAttribute &inputAttribute);
     void ClearInputAttribute();
-    void NotifyPanelStatusInfo(const PanelStatusInfo &info);
+    void NotifyPanelStatusInfo(PanelStatusInfo &info);
     int32_t HideKeyboardImplWithoutLock(int32_t cmdId, uint32_t sessionId);
-    int32_t ShowKeyboardImplWithLock(int32_t cmdId);
+    int32_t ShowKeyboardWithoutLock(int32_t cmdId, InputStartScene scene);
     int32_t ShowKeyboardImplWithoutLock(int32_t cmdId);
-    void NotifyPanelStatusInfo(const PanelStatusInfo &info, std::shared_ptr<InputDataChannelProxy> &channelProxy);
+    void NotifyPanelStatusInfo(PanelStatusInfo &info, std::shared_ptr<InputDataChannelProxy> &channelProxy);
     void ClearInputType();
     std::shared_ptr<MsgHandlerCallbackInterface> GetMsgHandlerCallback();
     int32_t StartInputInner(const InputClientInfo &clientInfo, bool isBindFromClient);
@@ -211,7 +213,8 @@ private:
     void SetSysPanelStatus(const SysPanelStatus &sysPanelStatus);
     bool IsSystemPanelSupported();
     void ConfigurationUpdate(Rosen::DisplayId displayId);
-    
+    void NotifyInputStartToClients(InputStartScene scene, bool isShowKeyboard = true);
+
     ConcurrentMap<PanelType, std::shared_ptr<InputMethodPanel>> panels_ {};
     std::atomic_bool isBound_ { false };
     std::atomic_bool isProxyIme_{ false };

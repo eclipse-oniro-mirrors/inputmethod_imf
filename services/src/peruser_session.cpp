@@ -147,7 +147,8 @@ int32_t PerUserSession::HideKeyboard(
     if (data->IsRealIme()) {
         RestoreCurrentImeSubType();
     }
-    ImeEventListenerManager::GetInstance().NotifyInputStop(userId_, clientGroup->GetDisplayGroupId());
+    ImeEventListenerManager::GetInstance().NotifyInputStop(
+        userId_, clientInfo->config.inputAttribute.editorDisplayId, InputStopScene::CLIENT_TRIGGER, data->IsRealIme());
     return ErrorCode::NO_ERROR;
 }
 
@@ -175,7 +176,9 @@ int32_t PerUserSession::ShowKeyboard(const sptr<IInputClient> &currentClient,
         return ErrorCode::ERROR_KBD_SHOW_FAILED;
     }
     bool isShowKeyboard = true;
-    clientGroup->UpdateClientInfo(currentClient->AsObject(), { { UpdateFlag::ISSHOWKEYBOARD, isShowKeyboard } });
+    clientGroup->UpdateClientInfo(
+        currentClient->AsObject(), { { UpdateFlag::ISSHOWKEYBOARD, isShowKeyboard },
+                                       { UpdateFlag::REQUEST_KEYBOARD_REASON, requestKeyboardReason } });
     ImeEventListenerManager::GetInstance().NotifyInputStart(
         userId_, clientInfo->config.windowId, clientInfo->clientGroupId, requestKeyboardReason);
     return ErrorCode::NO_ERROR;
@@ -194,8 +197,10 @@ void PerUserSession::OnClientDied(sptr<IInputClient> remote)
     if (clientGroup == nullptr) {
         return;
     }
-    if (clientGroup->IsNotifyInputStop(remote)) {
-        ImeEventListenerManager::GetInstance().NotifyInputStop(userId_, clientGroup->GetDisplayGroupId());
+    auto [isNotify, displayId, isRealIme] = clientGroup->IsNotifyInputStop(remote);
+    if (isNotify) {
+        ImeEventListenerManager::GetInstance().NotifyInputStop(
+            userId_, displayId, InputStopScene::CLIENT_TRIGGER, isRealIme);
     }
     auto clientInfo = clientGroup->GetClientInfo(remote->AsObject());
     IMSA_HILOGI("userId: %{public}d.", userId_);
@@ -246,7 +251,8 @@ void PerUserSession::OnImeDied(const sptr<IInputMethodCore> &remote, ImeType typ
     if (clientGroup != nullptr && clientInfo != nullptr) {
         auto currentClient = clientGroup->GetCurrentClient();
         if (IsSameClient(currentClient, clientInfo->client)) {
-            ImeEventListenerManager::GetInstance().NotifyInputStop(userId_, clientGroup->GetDisplayGroupId());
+            ImeEventListenerManager::GetInstance().NotifyInputStop(userId_,
+                clientInfo->config.inputAttribute.editorDisplayId, InputStopScene::IME_DIED, type == ImeType::IME);
             StopClientInput(clientInfo);
             if (type == ImeType::IME) {
                 StartImeInImeDied();
@@ -419,8 +425,6 @@ int32_t PerUserSession::OnRequestHideInput(uint64_t displayId, const std::string
         IMSA_HILOGI("hide proxy ime");
     }
     UpdateClientAfterRequestHide(displayGroupId, callerBundleName);
-
-    ImeEventListenerManager::GetInstance().NotifyInputStop(userId_, displayGroupId);
     return ErrorCode::NO_ERROR;
 }
 
@@ -484,6 +488,7 @@ int32_t PerUserSession::UpdateClientAfterRequestHide(uint64_t displayGroupId, co
     if (clientGroup == nullptr) {
         return ErrorCode::NO_ERROR;
     }
+    std::shared_ptr<InputClientInfo> clientInfo = nullptr;
     auto currentClient = clientGroup->GetCurrentClient();
     if (currentClient != nullptr) {
         auto currentClientInfo = clientGroup->GetClientInfo(currentClient->AsObject());
@@ -495,11 +500,20 @@ int32_t PerUserSession::UpdateClientAfterRequestHide(uint64_t displayGroupId, co
         } else {
             clientGroup->UpdateClientInfo(currentClient->AsObject(), { { UpdateFlag::ISSHOWKEYBOARD, false } });
         }
+        clientInfo = currentClientInfo;
     }
     auto inactiveClient = clientGroup->GetInactiveClient();
     if (inactiveClient != nullptr) {
+        if (clientInfo == nullptr) {
+            clientInfo = clientGroup->GetClientInfo(inactiveClient->AsObject());
+        }
         DetachOptions options = { .sessionId = 0, .isUnbindFromClient = false, .isInactiveClient = true };
         RemoveClient(inactiveClient, clientGroup, options);
+    }
+    if (clientInfo != nullptr) {
+        bool isRealIme = clientInfo->bindImeData != nullptr && clientInfo->bindImeData->IsRealIme();
+        ImeEventListenerManager::GetInstance().NotifyInputStop(
+            userId_, clientInfo->config.inputAttribute.editorDisplayId, InputStopScene::CLIENT_TRIGGER, isRealIme);
     }
     return ErrorCode::NO_ERROR;
 }
@@ -548,7 +562,7 @@ int32_t PerUserSession::OnReleaseInput(const sptr<IInputClient> &client, uint32_
         IMSA_HILOGD("client not found");
         return ErrorCode::NO_ERROR;
     }
-    bool isReady = clientGroup->IsNotifyInputStop(client);
+    auto [isReady, displayId, isRealIme] = clientGroup->IsNotifyInputStop(client);
     DetachOptions options = { .sessionId = sessionId, .isUnbindFromClient = true };
     int32_t ret = RemoveClient(client, clientGroup, options);
     if (ret != ErrorCode::NO_ERROR) {
@@ -556,7 +570,8 @@ int32_t PerUserSession::OnReleaseInput(const sptr<IInputClient> &client, uint32_
         return ret;
     }
     if (isReady) {
-        ImeEventListenerManager::GetInstance().NotifyInputStop(userId_, clientGroup->GetDisplayGroupId());
+        ImeEventListenerManager::GetInstance().NotifyInputStop(
+            userId_, displayId, InputStopScene::CLIENT_TRIGGER, isRealIme);
     }
     return ErrorCode::NO_ERROR;
 }
@@ -617,7 +632,7 @@ int32_t PerUserSession::OnStartInput(
     InputClientInfo &inputClientInfo, std::vector<sptr<IRemoteObject>> &agents, std::vector<BindImeInfo> &imeInfos)
 {
     IMSA_HILOGD("start input with keyboard[%{public}d].", inputClientInfo.isShowKeyboard);
-    auto data = GetReadyImeDataToBind(inputClientInfo.config.inputAttribute.displayId);
+    auto data = GetReadyImeDataToBind(inputClientInfo.config.inputAttribute.editorDisplayId);
     if (data == nullptr || data->agent == nullptr) {
         IMSA_HILOGE("data or agent is nullptr!");
         return ErrorCode::ERROR_IME_NOT_STARTED;
@@ -631,7 +646,6 @@ int32_t PerUserSession::OnStartInput(
         return ErrorCode::ERROR_IMSA_NULLPTR;
     }
     HandleBindImeChanged(inputClientInfo, data, clientGroup);
-    inputClientInfo.config.requestKeyboardReason = inputClientInfo.requestKeyboardReason;
     int32_t ret = BindClientWithIme(std::make_shared<InputClientInfo>(inputClientInfo), data, true);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("bind failed, ret: %{public}d!", ret);
@@ -842,8 +856,8 @@ int32_t PerUserSession::BindClientWithIme(
             { UpdateFlag::BIND_IME_DATA, bindImeData } });
     ReplaceCurrentClient(clientInfo->client, clientGroup);
     if (clientInfo->isShowKeyboard) {
-        ImeEventListenerManager::GetInstance().NotifyInputStart(
-            userId_, clientInfo->config.windowId, groupId, static_cast<int32_t>(clientInfo->requestKeyboardReason));
+        ImeEventListenerManager::GetInstance().NotifyInputStart(userId_, clientInfo->config.windowId, groupId,
+            static_cast<int32_t>(clientInfo->config.requestKeyboardReason));
     }
     return ErrorCode::NO_ERROR;
 }
@@ -1955,11 +1969,6 @@ int64_t PerUserSession::GetInactiveClientPid(uint64_t displayId)
     return clientGroup->GetInactiveClientPid();
 }
 
-int32_t PerUserSession::OnPanelStatusChange(const InputWindowStatus &status, const ImeWindowInfo &info)
-{
-    return ImeEventListenerManager::GetInstance().NotifyPanelStatusChange(userId_, status, info);
-}
-
 int32_t PerUserSession::OnSetCallingWindow(const FocusedInfo &focusedInfo, sptr<IInputClient> client, uint32_t windowId)
 {
     IMSA_HILOGD("OnSetCallingWindow enter");
@@ -1988,8 +1997,8 @@ int32_t PerUserSession::OnSetCallingWindow(const FocusedInfo &focusedInfo, sptr<
             "not same client group:%{public}" PRIu64 "/%{public}" PRIu64 ".", oldClientGroupId, newClientGroupId);
         return ErrorCode::NO_ERROR;
     }
-    ImeEventListenerManager::GetInstance().NotifyInputStart(
-        userId_, focusedInfo.windowId, newClientGroupId, static_cast<int32_t>(clientInfo->requestKeyboardReason));
+    ImeEventListenerManager::GetInstance().NotifyInputStart(userId_, focusedInfo.windowId, newClientGroupId,
+        static_cast<int32_t>(clientInfo->config.requestKeyboardReason));
     IMSA_HILOGD("windowId changed, refresh windowId info and notify clients input start.");
     HandleWindowIdChanged(focusedInfo, clientInfo, windowId);
     return ErrorCode::NO_ERROR;
@@ -2011,30 +2020,41 @@ void PerUserSession::HandleWindowIdChanged(
     }
     clientInfo->config.privateCommand.insert_or_assign(
         "displayId", PrivateDataValue(static_cast<int32_t>(focusedInfo.displayId)));
-
-    auto oldKeyboardDisplayId = clientInfo->config.inputAttribute.callingDisplayId;
-    auto newKeyboardDisplayId = focusedInfo.keyboardDisplayId;
     clientInfo->config.windowId = windowId;
-    clientInfo->config.inputAttribute.displayId = focusedInfo.displayId;
+    clientInfo->config.inputAttribute.editorWindowId = focusedInfo.windowId;
+    clientInfo->config.inputAttribute.editorDisplayId = focusedInfo.displayId;
     clientInfo->config.inputAttribute.windowId = focusedInfo.keyboardWindowId;
-    clientInfo->config.inputAttribute.callingDisplayId = newKeyboardDisplayId;
-    NotifyCallingWindowIdChanged(windowId, GetImeData(clientInfo->bindImeData), focusedInfo.keyboardWindowId);
-    if (oldKeyboardDisplayId != newKeyboardDisplayId) {
-        NotifyCallingDisplayChanged(newKeyboardDisplayId, GetImeData(clientInfo->bindImeData));
-    }
+    clientInfo->config.inputAttribute.callingDisplayId = focusedInfo.keyboardDisplayId;
+    NotifyCallingWindowIdChanged(windowId, focusedInfo, GetImeData(clientInfo->bindImeData));
 }
 
-int32_t PerUserSession::GetInputStartInfo(
-    uint64_t displayId, bool &isInputStart, uint32_t &callingWndId, int32_t &requestKeyboardReason)
+int32_t PerUserSession::GetInputStartInfo(InputStartInfo &inputStartInfo)
 {
-    auto clientInfo = GetCurrentClientInfo(displayId);
+    auto [clientGroup, clientInfo] = GetCurrentClientBoundRealIme();
     if (clientInfo == nullptr) {
-        IMSA_HILOGE("nullptr clientInfo!");
-        return ErrorCode::ERROR_CLIENT_NULL_POINTER;
+        IMSA_HILOGD("has no current client bound real ime.");
+        return ErrorCode::ERROR_CLIENT_NOT_BOUND;
     }
-    isInputStart = true;
-    callingWndId = clientInfo->config.windowId;
-    requestKeyboardReason = static_cast<int32_t>(clientInfo->requestKeyboardReason);
+    inputStartInfo.scene = InputStartScene::ATTACH;
+    inputStartInfo.userId = userId_;
+    inputStartInfo.clientInfo.isShowKeyboard = clientInfo->isShowKeyboard;
+    inputStartInfo.clientInfo.rawWindowId = clientInfo->config.windowId;
+    inputStartInfo.clientInfo.windowId = clientInfo->config.inputAttribute.editorWindowId;
+    inputStartInfo.clientInfo.displayId = clientInfo->config.inputAttribute.editorDisplayId;
+    inputStartInfo.clientInfo.requestKeyboardReason = static_cast<int32_t>(clientInfo->config.requestKeyboardReason);
+    auto imeData = GetRealImeData(true);
+    if (imeData == nullptr) {
+        IMSA_HILOGE("has no ready real ime.");
+        return ErrorCode::ERROR_IME_NOT_STARTED;
+    }
+    BoundImeInfo imeInfo;
+    auto ret = RequestIme(
+        imeData, RequestType::NORMAL, [imeData, &imeInfo] { return imeData->core->GetSoftKeyboardInfo(imeInfo); });
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("failed to get soft keyboard window info:%{public}d.", ret);
+        return ErrorCode::ERROR_EX_ILLEGAL_STATE;
+    }
+    inputStartInfo.imeInfo = imeInfo;
     return ErrorCode::NO_ERROR;
 }
 
@@ -2322,7 +2342,12 @@ int32_t PerUserSession::RemoveAllCurrentClient()
         if (clientGroupObject == nullptr) {
             continue;
         }
-        ImeEventListenerManager::GetInstance().NotifyInputStop(userId_, clientGroupObject->GetDisplayGroupId());
+        auto [isNotify, displayId, isRealIme] =
+            clientGroupObject->IsNotifyInputStop(clientGroupObject->GetCurrentClient());
+        if (isNotify) {
+            ImeEventListenerManager::GetInstance().NotifyInputStop(
+                userId_, displayId, InputStopScene::CLIENT_TRIGGER, isRealIme);
+        }
         DetachOptions options = { .sessionId = 0, .isUnbindFromClient = false };
         RemoveClient(clientGroupObject->GetCurrentClient(), clientGroupObject, options);
     }
@@ -2991,7 +3016,8 @@ void PerUserSession::OnWindowDisplayIdChanged(int32_t windowId, uint64_t display
         return;
     }
     auto oldKeyboardGroupId = clientInfo->config.inputAttribute.displayGroupId;
-    auto newKeyboardDisplayId = displayId;
+    auto newKeyboardDisplayId =
+        DisplayAdapter::IsRestrictedMainDisplayId(displayId) ? ImfCommonConst::DEFAULT_DISPLAY_ID : displayId;
     auto newKeyboardGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(newKeyboardDisplayId, userId_);
     // Cross-group scenarios are handled by the attach.
     if (!IsSameClientGroup(oldKeyboardGroupId, newKeyboardGroupId)) {
@@ -2999,25 +3025,28 @@ void PerUserSession::OnWindowDisplayIdChanged(int32_t windowId, uint64_t display
             newKeyboardGroupId);
         return;
     }
-    clientInfo->config.inputAttribute.displayId = displayId;
+    auto oldEditorDisplayId = clientInfo->config.inputAttribute.editorDisplayId;
+    clientInfo->config.inputAttribute.editorDisplayId = displayId;
     auto oldKeyboardDisplayId = clientInfo->config.inputAttribute.callingDisplayId;
     clientInfo->config.inputAttribute.callingDisplayId = newKeyboardDisplayId;
-    if (newKeyboardDisplayId == oldKeyboardDisplayId) {
+    if (newKeyboardDisplayId == oldKeyboardDisplayId && displayId == oldEditorDisplayId) {
         IMSA_HILOGD("same, no need to deal.");
         return;
     }
-    NotifyCallingDisplayChanged(newKeyboardDisplayId, GetImeData(clientInfo->bindImeData));
+    NotifyCallingDisplayChanged(displayId, newKeyboardDisplayId, GetImeData(clientInfo->bindImeData));
 }
 
-int32_t PerUserSession::NotifyCallingDisplayChanged(uint64_t displayId, const std::shared_ptr<ImeData> &imeData)
+int32_t PerUserSession::NotifyCallingDisplayChanged(
+    uint64_t editorDisplayId, uint64_t keyboardDisplayId, const std::shared_ptr<ImeData> &imeData)
 {
-    IMSA_HILOGD("enter displayId:%{public}" PRIu64 "", displayId);
+    IMSA_HILOGD("enter editorDisplayId/keyboardDisplayId:%{public}" PRIu64 "/%{public}" PRIu64 "", editorDisplayId,
+        keyboardDisplayId);
     if (imeData == nullptr || !imeData->IsRealIme()) {
         IMSA_HILOGD("bind ime not real ime");
         return ErrorCode::ERROR_IME_NOT_STARTED;
     }
-    auto callBack = [&imeData, displayId]() -> int32_t {
-        imeData->core->OnCallingDisplayIdChanged(displayId);
+    auto callBack = [&imeData, editorDisplayId, keyboardDisplayId]() -> int32_t {
+        imeData->core->OnCallingDisplayIdChanged(editorDisplayId, keyboardDisplayId);
         return ErrorCode::NO_ERROR;
     };
     auto ret = RequestIme(imeData, RequestType::NORMAL, callBack);
@@ -3028,15 +3057,16 @@ int32_t PerUserSession::NotifyCallingDisplayChanged(uint64_t displayId, const st
 }
 
 int32_t PerUserSession::NotifyCallingWindowIdChanged(
-    uint32_t editorWindowId, const std::shared_ptr<ImeData> &imeData, uint32_t keyboardWindowId)
+    uint32_t rawEditorWindowId, const FocusedInfo &focusedInfo, const std::shared_ptr<ImeData> &imeData)
 {
-    IMSA_HILOGD("enter editorWindowId/keyboardWindowId:%{public}u/%{public}u.", editorWindowId, keyboardWindowId);
+    IMSA_HILOGD("enter rawEditorWindowId/focusedInfo:%{public}u/%{public}s.", rawEditorWindowId,
+        focusedInfo.ToString().c_str());
     if (imeData == nullptr || !imeData->IsRealIme()) {
         IMSA_HILOGD("bind ime not real ime");
         return ErrorCode::ERROR_IME_NOT_STARTED;
     }
-    auto callBack = [&imeData, editorWindowId, keyboardWindowId]() -> int32_t {
-        imeData->core->OnCallingWindowIdChanged(editorWindowId, keyboardWindowId);
+    auto callBack = [&imeData, rawEditorWindowId, focusedInfo]() -> int32_t {
+        imeData->core->OnCallingWindowIdChanged(rawEditorWindowId, focusedInfo);
         return ErrorCode::NO_ERROR;
     };
     auto ret = RequestIme(imeData, RequestType::NORMAL, callBack);
@@ -3140,7 +3170,7 @@ void PerUserSession::ClearRequestKeyboardReason(std::shared_ptr<InputClientInfo>
         IMSA_HILOGE("clientGroup is nullptr!");
         return;
     }
-    clientInfo->requestKeyboardReason = RequestKeyboardReason::NONE;
+    clientInfo->config.requestKeyboardReason = RequestKeyboardReason::NONE;
 }
 
 bool PerUserSession::IsNumkeyAutoInputApp(const std::string &bundleName)
@@ -3377,6 +3407,24 @@ bool PerUserSession::IsImeInUse()
         return false;
     }
     return data->imeStateManager->IsImeInUse();
+}
+
+int32_t PerUserSession::GetSoftKeyboardInfo(BoundImeInfo &imeInfo)
+{
+    auto [clientGroup, clientInfo] = GetCurrentClientBoundRealIme();
+    if (clientInfo == nullptr) {
+        IMSA_HILOGD("has no bind ime.");
+        imeInfo.status = InputWindowStatus::HIDE;
+        return ErrorCode::NO_ERROR;
+    }
+    auto imeData = GetRealImeData(true);
+    if (imeData == nullptr) {
+        IMSA_HILOGD("has no ready real ime.");
+        imeInfo.status = InputWindowStatus::HIDE;
+        return ErrorCode::NO_ERROR;
+    }
+    return RequestIme(
+        imeData, RequestType::NORMAL, [imeData, &imeInfo] { return imeData->core->GetSoftKeyboardInfo(imeInfo); });
 }
 
 std::pair<bool, ImageFailedReason> PerUserSession::NeedMakeImage(

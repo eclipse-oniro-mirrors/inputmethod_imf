@@ -205,6 +205,10 @@ public:
             IMSA_HILOGE("sysEvent is nullptr.");
             return;
         }
+        if (sysEvent->GetEventName().empty()) {
+            IMSA_HILOGE("EventName is nullptr.");
+            return;
+        }
         ImfHiSysEventReporterTest::eventName_ = sysEvent->GetEventName();
         IMSA_HILOGI("HiSysEventWatcher::OnEvent:%{public}s", ImfHiSysEventReporterTest::eventName_.c_str());
         auto it = TEST_EVENT_MAPPING.find(ImfHiSysEventReporterTest::eventName_);

@@ -173,6 +173,19 @@ InputMethod_ErrorCode OH_TextConfig_SetAbilityName(InputMethod_TextConfig *confi
     size_t length);
 
 /**
+ * @brief Set whether the editor supports consuming key events into TextConfig.
+ *
+ * @param config Represents a pointer to an {@link InputMethod_TextConfig} instance which will be set.
+ * @param consumeKeyEvents Indicates whether the editor supports consuming key events.
+ * @return Returns a specific error code.
+ *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
+ * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
+ * @since 26.0.0
+ */
+InputMethod_ErrorCode OH_TextConfig_SetConsumeKeyEvents(InputMethod_TextConfig *config, bool consumeKeyEvents);
+
+/**
  * @brief Get input type from TextConfig
  *
  * @param config Represents a pointer to an {@link InputMethod_TextConfig} instance which will be get from.
@@ -313,6 +326,19 @@ InputMethod_ErrorCode OH_TextConfig_GetPlaceholder(InputMethod_TextConfig *confi
  */
 InputMethod_ErrorCode OH_TextConfig_GetAbilityName(InputMethod_TextConfig *config, char16_t *abilityName,
     size_t *length);
+
+/**
+ * @brief Get whether the editor supports consuming key events from TextConfig.
+ *
+ * @param config Represents a pointer to an {@link InputMethod_TextConfig} instance which will be get from.
+ * @param consumeKeyEvents Indicates Indicates whether the editor supports consuming key events.
+ * @return Returns a specific error code.
+ *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
+ * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
+ * @since 26.0.0
+ */
+InputMethod_ErrorCode OH_TextConfig_GetConsumeKeyEvents(InputMethod_TextConfig *config, bool *consumeKeyEvents);
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

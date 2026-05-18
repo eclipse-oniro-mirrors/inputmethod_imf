@@ -147,6 +147,8 @@ private:
         const std::vector<OHOS::AppExecFwk::ExtensionAbilityInfo> &extInfos, SubProperty &subProp);
     int32_t GetSubProperty(int32_t userId, const std::string &subName,
         const OHOS::AppExecFwk::ExtensionAbilityInfo &extInfo, SubProperty &subProp);
+    bool GetResConfigFileLite(const OHOS::AppExecFwk::ExtensionAbilityInfo &extensionInfo,
+	     const std::string &metadataName, std::vector<std::string> &profileInfos);
     int32_t ParseSubtype(const OHOS::AppExecFwk::ExtensionAbilityInfo &extInfo, std::vector<Subtype> &subtypes);
     bool ParseSubtypeProfile(const std::vector<std::string> &profiles, SubtypeCfg &subtypeCfg);
     void CovertToLanguage(const std::string &locale, std::string &language);
@@ -154,7 +156,10 @@ private:
     std::shared_ptr<Global::Resource::ResourceManager> GetResMgr(const std::string &resourcePath);
     int32_t GetFullImeInfo(int32_t userId, const std::vector<OHOS::AppExecFwk::ExtensionAbilityInfo> &extInfos,
         FullImeInfo &imeInfo, bool needBrief = false);
-
+    bool GetResFromResMgr(const std::string &resName,
+        const std::shared_ptr<Global::Resource::ResourceManager> &resMgr, bool isCompressed,
+        std::vector<std::string> &profileInfos) const;
+    bool TransformFileToJsonString(const std::string &resPath, std::string &profile) const;
     SystemConfig systemConfig_;
     ProductConfig productConfig_;
     std::vector<DynamicStartImeCfgItem> dynamicStartImeList_;

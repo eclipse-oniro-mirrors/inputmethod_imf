@@ -30,6 +30,8 @@ public:
     MOCK_METHOD1(ShowCurrentInputDeprecated, int32_t(uint32_t));
     MOCK_METHOD4(ShowInput, int32_t(const sptr<IInputClient> &, uint32_t, uint32_t, int32_t));
     MOCK_METHOD1(HideCurrentInputDeprecated, int32_t(uint32_t));
+    MOCK_METHOD2(BindImeMirror, int32_t(const sptr<IInputMethodCore> &, const sptr<IRemoteObject> &));
+    MOCK_METHOD0(UnbindImeMirror, int32_t());
 };
 } // namespace MiscServices
 } // namespace OHOS

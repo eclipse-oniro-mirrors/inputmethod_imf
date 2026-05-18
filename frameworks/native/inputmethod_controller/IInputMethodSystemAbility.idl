@@ -19,6 +19,8 @@ sequenceable input_method_property..OHOS.MiscServices.SubProperty;
 sequenceable input_window_info..OHOS.MiscServices.ImeWindowInfo;
 sequenceable input_method_utils..OHOS.MiscServices.Value;
 sequenceable input_method_utils..OHOS.MiscServices.CursorInfoInner;
+sequenceable input_status_info..OHOS.MiscServices.InputStartInfo;
+sequenceable input_status_info..OHOS.MiscServices.BoundImeInfo;
 sequenceable panel_info..OHOS.MiscServices.PanelInfo;
 sequenceable element_name..OHOS.AppExecFwk.ElementName;
 sequenceable OHOS.IRemoteObject;
@@ -64,8 +66,10 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void HideCurrentInputDeprecated([in] unsigned int windowId);
     void ShowCurrentInputDeprecated([in] unsigned int windowId);
     void SetCallingWindow([in] unsigned int windowId, [in] IInputClient client);
-    void GetInputStartInfo(
-        [out] boolean isInputStart, [out] unsigned int callingWndId, [out] int requestKeyboardReason);
+    void GetInputStartInfo([out] InputStartInfo inputStartInfo);
+    void GetSoftKeyboardInfo([in] int userId, [out] BoundImeInfo imeInfo);
+    [oneway] void NotifyInputStart([in] InputStartInfo inputStartInfo);
+    [oneway] void NotifySoftKeyBoardInfoChanged([in] BoundImeInfo oldImeInfo, [in] BoundImeInfo newImeInfo);
     void RegisterProxyIme([in] unsigned long displayId, [in] IInputMethodCore core, [in] IRemoteObject agent);
     void UnregisterProxyIme([in] unsigned long displayId);
     void SendPrivateData([in] Value value);

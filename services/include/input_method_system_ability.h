@@ -20,6 +20,7 @@
 #include "ime_info_inquirer.h"
 #include "input_method_system_ability_stub.h"
 #include "input_method_types.h"
+#include "input_status_info.h"
 #include "input_type_manager.h"
 #include "inputmethod_dump.h"
 #include "inputmethod_trace.h"
@@ -64,9 +65,12 @@ public:
     ErrCode SetCoreAndAgent(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent) override;
     ErrCode InitConnect() override;
     ErrCode PanelStatusChange(uint32_t status, const ImeWindowInfo &info) override;
+    ErrCode NotifyInputStart(const InputStartInfo &inputStartInfo) override;
+    ErrCode NotifySoftKeyBoardInfoChanged(const BoundImeInfo &oldImeInfo, const BoundImeInfo &newImeInfo) override;
+    ErrCode GetSoftKeyboardInfo(int32_t userId, BoundImeInfo &imeInfo) override;
     ErrCode UpdateListenEventFlag(const InputClientInfoInner &clientInfoInner, uint32_t eventFlag) override;
     ErrCode SetCallingWindow(uint32_t windowId, const sptr<IInputClient> &client) override;
-    ErrCode GetInputStartInfo(bool &isInputStart, uint32_t &callingWndId, int32_t &requestKeyboardReason) override;
+    ErrCode GetInputStartInfo(InputStartInfo &inputStartInfo) override;
     ErrCode SendPrivateData(const Value &value) override;
 
     ErrCode IsCurrentIme(bool &resultValue) override;
