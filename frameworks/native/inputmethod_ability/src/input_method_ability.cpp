@@ -325,8 +325,6 @@ int32_t InputMethodAbility::StartInputInner(const InputClientInfo &clientInfo, b
         int32_t ret = ErrorCode::NO_ERROR;
         if (needShow) {
             ret = ShowKeyboardWithoutLock(cmdId_, InputStartScene::ATTACH);
-        } else {
-            NotifyInputStartToClients(InputStartScene::ATTACH, false);
         }
         ReportImeStartInput(
             static_cast<int32_t>(IInputMethodCoreIpcCode::COMMAND_START_INPUT), ret, needShow, endTime - startTime);
@@ -440,19 +438,10 @@ void InputMethodAbility::SetCallingWindow(uint32_t rawEditorWindowId, const Focu
 {
     IMSA_HILOGD("InputMethodAbility rawEditorWindowId/focusedInfo: %{public}u/%{public}s.", rawEditorWindowId,
         focusedInfo.ToString().c_str());
-    uint64_t oldEditorDisplayId = 0;
-    uint64_t oldKeyboardDisplayId = 0;
     {
         std::lock_guard<std::mutex> lock(inputAttrLock_);
-        oldEditorDisplayId = inputAttribute_.editorDisplayId;
-        oldKeyboardDisplayId = inputAttribute_.callingDisplayId;
         inputAttribute_.windowId = focusedInfo.keyboardWindowId;
         inputAttribute_.editorWindowId = focusedInfo.windowId;
-    }
-    if (focusedInfo.keyboardDisplayId == oldKeyboardDisplayId && focusedInfo.displayId == oldEditorDisplayId) {
-        NotifyInputStartToClients(InputStartScene::WINDOW_CHANGED);
-    } else {
-        OnCallingDisplayIdChanged(focusedInfo.displayId, focusedInfo.keyboardDisplayId);
     }
     panels_.ForEach([keyboardWindowId = focusedInfo.keyboardWindowId](
                         const PanelType &panelType, const std::shared_ptr<InputMethodPanel> &panel) {
@@ -462,6 +451,7 @@ void InputMethodAbility::SetCallingWindow(uint32_t rawEditorWindowId, const Focu
     if (imeListener_ != nullptr) {
         imeListener_->OnSetCallingWindow(rawEditorWindowId);
     }
+    OnCallingDisplayIdChanged(focusedInfo.displayId, focusedInfo.keyboardDisplayId);
 }
 
 void InputMethodAbility::OnCursorUpdate(int32_t positionX, int32_t positionY, int32_t height)
@@ -563,7 +553,6 @@ int32_t InputMethodAbility::ShowKeyboard(int32_t requestKeyboardReason)
 int32_t InputMethodAbility::ShowKeyboardWithoutLock(int32_t cmdId, InputStartScene scene)
 {
     auto ret = ShowKeyboardImplWithoutLock(cmdId);
-    NotifyInputStartToClients(scene);
     return ret;
 }
 
@@ -1880,7 +1869,6 @@ int32_t InputMethodAbility::OnCallingDisplayIdChanged(uint64_t editorDisplayId, 
             inputAttribute_.callingScreenId = 0;
         }
     }
-    NotifyInputStartToClients(InputStartScene::DISPLAY_CHANGED);
     if (oldKeyboardDisplayId == keyboardDisplayId) {
         return ErrorCode::NO_ERROR;
     }

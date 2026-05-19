@@ -24,13 +24,14 @@ namespace MiscServices {
 
 ErrCode OnInputStopNotifyServiceImpl::NotifyOnInputStopFinished()
 {
-    IMSA_HILOGI("NotifyOnInputStopFinished is start!");
+    IMSA_HILOGI("start!");
     if (pid_ != IPCSkeleton::GetCallingPid()) {
         IMSA_HILOGI("pid is invalid!");
         return ErrorCode::ERROR_STATUS_PERMISSION_DENIED;
     }
     auto userId = OsAccountAdapter::GetOsAccountLocalIdFromUid(IPCSkeleton::GetCallingUid());
     if (userId == OsAccountAdapter::INVALID_USER_ID) {
+        IMSA_HILOGI("userId is invalid!");
         return ErrorCode::ERROR_EX_ILLEGAL_STATE;
     }
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
@@ -39,7 +40,6 @@ ErrCode OnInputStopNotifyServiceImpl::NotifyOnInputStopFinished()
         return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
     }
     session->NotifyOnInputStopFinished();
-    IMSA_HILOGI("OnInputStop is finished");
     return ERR_OK;
 }
 } // namespace MiscServices
