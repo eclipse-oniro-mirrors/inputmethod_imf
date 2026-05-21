@@ -1691,7 +1691,12 @@ HWTEST_F(InputMethodAbilityTest, testConnectSystemCmd_001, TestSize.Level0)
     auto systemCmdChannelServiceImpl = new (std::nothrow) SystemCmdChannelServiceImpl();
     sptr<IRemoteObject> agent;
     auto ret = InputMethodAbilityTest::imsa_->ConnectSystemCmd(systemCmdChannelServiceImpl->AsObject(), agent);
-    EXPECT_EQ(ret, ErrorCode::ERROR_SYSTEM_PANEL_ERROR);
+    
+    #ifdef SCENE_BOARD_ENABLE
+        EXPECT_EQ(ret, ErrorCode::ERROR_SYSTEM_PANEL_ERROR);
+    #else
+        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    #endif
     InputMethodAbilityTest::GetIMCDetachIMA();
     IdentityCheckerMock::SetBundleNameValid(false);
     IdentityCheckerMock::SetPermission(false);
