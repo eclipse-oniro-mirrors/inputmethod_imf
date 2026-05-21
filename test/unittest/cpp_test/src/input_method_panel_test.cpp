@@ -343,6 +343,7 @@ bool InputMethodPanelTest::TriggerShowCallback(std::shared_ptr<InputMethodPanel>
             TestShowPanel(inputMethodPanel);
         },
         InputMethodPanelTest::INTERVAL);
+    std::this_thread::sleep_for(std::chrono::milliseconds(InputMethodPanelTest::INTERVAL));
     {
         std::unique_lock<std::mutex> lock(panelListenerLock_);
         return panelListenerCv_.wait_for(lock, std::chrono::milliseconds(InputMethodPanelTest::DELAY_TIME), [] {
@@ -360,6 +361,7 @@ bool InputMethodPanelTest::TriggerHideCallback(std::shared_ptr<InputMethodPanel>
             TestHidePanel(inputMethodPanel);
         },
         InputMethodPanelTest::INTERVAL);
+    std::this_thread::sleep_for(std::chrono::milliseconds(InputMethodPanelTest::INTERVAL));
     {
         std::unique_lock<std::mutex> lock(panelListenerLock_);
         return panelListenerCv_.wait_for(lock, std::chrono::milliseconds(InputMethodPanelTest::DELAY_TIME), [] {
