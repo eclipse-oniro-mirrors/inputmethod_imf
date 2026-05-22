@@ -1723,7 +1723,7 @@ int32_t InputMethodSystemAbility::SwitchInputType(int32_t userId, const SwitchIn
         }
     }
     InputTypeManager::GetInstance().Set(true, { switchInfo.bundleName, switchInfo.subName });
-    session->SetInputType();
+    session->SetInputType(nullptr);
     return ErrorCode::NO_ERROR;
 }
 

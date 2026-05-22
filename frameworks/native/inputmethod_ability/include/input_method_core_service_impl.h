@@ -45,7 +45,7 @@ public:
     ErrCode OnSecurityChange(int32_t security) override;
     ErrCode OnConnectSystemCmd(const sptr<IRemoteObject> &channel) override;
     ErrCode OnClientInactive(const sptr<IRemoteObject> &channel) override;
-    ErrCode OnSetInputType(int32_t inputType) override;
+    ErrCode OnSetInputType(int32_t inputType, uint64_t displayId) override;
     ErrCode OnCallingDisplayIdChanged(uint64_t editorDisplayId, uint64_t keyboardDisplayId) override;
     ErrCode OnCallingWindowIdChanged(uint32_t rawEditorWindowId, const FocusedInfo &focusedInfo) override;
     ErrCode OnSendPrivateData(const Value &Value) override;

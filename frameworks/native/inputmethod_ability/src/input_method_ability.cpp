@@ -359,11 +359,14 @@ void InputMethodAbility::OnSetSubtype(SubProperty subProperty)
     }
 }
 
-void InputMethodAbility::OnSetInputType(InputType inputType)
+void InputMethodAbility::OnSetInputType(InputType inputType, uint64_t displayId)
 {
     inputType_ = inputType;
-    IMSA_HILOGD("OnSetInputType, inputType = %{public}d", static_cast<int32_t>(inputType));
-    NotifyPanelStatus(false);
+    if (displayId == ImfCommonConst::DEFAULT_DISPLAY_ID) {
+        NotifyPanelStatus(false);
+    }
+    IMSA_HILOGD("OnSetInputType, inputType = %{public}d, displayId = %{public}" PRIu64 "",
+        static_cast<int32_t>(inputType), displayId);
 }
 
 InputType InputMethodAbility::GetInputType()

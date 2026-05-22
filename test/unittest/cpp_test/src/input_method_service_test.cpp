@@ -453,5 +453,82 @@ HWTEST_F(InputMethodServiceTest, testConnectSystemCmd005, TestSize.Level1)
         UserSessionManager::GetInstance().userSessions_.clear();
     }
 }
+
+/**
+ * @tc.name: PerUserSession_SetInputType_ImeNotStarted
+ * @tc.desc: Test SetInputType when real IME data is not started
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodServiceTest, PerUserSession_SetInputType_ImeNotStarted, TestSize.Level1)
+{
+    IMSA_HILOGI("PerUserSession_SetInputType_ImeNotStarted TEST START");
+ 
+    int32_t userId = TddUtil::GetCurrentUserId();
+    auto session = std::make_shared<PerUserSession>(userId);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+ 
+    auto clientInfo = std::make_shared<InputClientInfo>();
+    clientInfo->config.inputAttribute.callingDisplayId = 100;
+ 
+    int32_t result = session->SetInputType(clientInfo);
+ 
+    EXPECT_EQ(result, ErrorCode::ERROR_IME_NOT_STARTED);
+    UserSessionManager::GetInstance().userSessions_.clear();
+}
+ 
+/**
+ * @tc.name: PerUserSession_SetInputType_NullClientInfo
+ * @tc.desc: Test SetInputType with nullptr clientInfo
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodServiceTest, PerUserSession_SetInputType_NullClientInfo, TestSize.Level1)
+{
+    IMSA_HILOGI("PerUserSession_SetInputType_NullClientInfo TEST START");
+ 
+    int32_t userId = TddUtil::GetCurrentUserId();
+    auto session = std::make_shared<PerUserSession>(userId);
+ 
+    sptr<IInputMethodCore> mockCore = new (std::nothrow) InputMethodCoreServiceImpl();
+    sptr<IRemoteObject> mockAgent = new (std::nothrow) InputMethodAgentServiceImpl();
+    auto imeData = std::make_shared<ImeData>(mockCore, mockAgent, nullptr, 100);
+    imeData->imeStatus = ImeStatus::READY;
+    session->realImeData_ = imeData;
+ 
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+ 
+    int32_t result = session->SetInputType(nullptr);
+ 
+    EXPECT_EQ(result, ErrorCode::NO_ERROR);
+    UserSessionManager::GetInstance().userSessions_.clear();
+}
+ 
+/**
+ * @tc.name: PerUserSession_SetInputType_NormalCase
+ * @tc.desc: Test SetInputType with valid clientInfo
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodServiceTest, PerUserSession_SetInputType_NormalCase, TestSize.Level1)
+{
+    IMSA_HILOGI("PerUserSession_SetInputType_NormalCase TEST START");
+ 
+    int32_t userId = TddUtil::GetCurrentUserId();
+    auto session = std::make_shared<PerUserSession>(userId);
+ 
+    sptr<IInputMethodCore> mockCore = new (std::nothrow) InputMethodCoreServiceImpl();
+    sptr<IRemoteObject> mockAgent = new (std::nothrow) InputMethodAgentServiceImpl();
+    auto imeData = std::make_shared<ImeData>(mockCore, mockAgent, nullptr, 100);
+    imeData->imeStatus = ImeStatus::READY;
+    session->realImeData_ = imeData;
+ 
+    auto clientInfo = std::make_shared<InputClientInfo>();
+    clientInfo->config.inputAttribute.callingDisplayId = 100;
+ 
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+ 
+    int32_t result = session->SetInputType(clientInfo);
+ 
+    EXPECT_EQ(result, ErrorCode::NO_ERROR);
+    UserSessionManager::GetInstance().userSessions_.clear();
+}
 } // namespace MiscServices
 } // namespace OHOS
