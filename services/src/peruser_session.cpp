@@ -637,9 +637,6 @@ int32_t PerUserSession::OnStartInput(
         IMSA_HILOGE("data or agent is nullptr!");
         return ErrorCode::ERROR_IME_NOT_STARTED;
     }
-    if (data->IsRealIme()) {
-        SetInputType();
-    }
     auto clientGroup = GetClientGroupByGroupId(inputClientInfo.clientGroupId);
     if (clientGroup == nullptr) {
         IMSA_HILOGE("not found group");
@@ -821,6 +818,9 @@ int32_t PerUserSession::BindClientWithIme(
         if (ret != ErrorCode::NO_ERROR) {
             IMSA_HILOGE("before start input notify send private data failed, ret: %{public}d!", ret);
         }
+    }
+    if (imeData->IsRealIme()) {
+        SetInputType(clientInfo);
     }
     InputClientInfoInner inputClientInfoInner = InputMethodTools::GetInstance().InputClientInfoToInner(*clientInfo);
     auto ret = RequestAllIme(
@@ -1084,7 +1084,6 @@ int32_t PerUserSession::OnSetCoreAndAgent(const sptr<IInputMethodCore> &core, co
         if (clientInfo != nullptr) {
             ClearRequestKeyboardReason(clientInfo);
             BindClientWithIme(clientInfo, imeData);
-            SetInputType();
         }
     }
     bool isStarted = true;
@@ -2127,7 +2126,7 @@ int32_t PerUserSession::SwitchSubtypeWithoutStartIme(const SubProperty &subPrope
     });
 }
 
-int32_t PerUserSession::SetInputType()
+int32_t PerUserSession::SetInputType(std::shared_ptr<InputClientInfo> clientInfo)
 {
     InputType inputType = InputTypeManager::GetInstance().GetCurrentInputType();
     auto data = GetRealImeData(true);
@@ -2135,8 +2134,16 @@ int32_t PerUserSession::SetInputType()
         IMSA_HILOGE("ime: %{public}d is not exist!", ImeType::IME);
         return ErrorCode::ERROR_IME_NOT_STARTED;
     }
-    return RequestIme(data, RequestType::NORMAL, [&data, &inputType] {
-        return data->core->OnSetInputType(static_cast<int32_t>(inputType));
+
+    uint64_t displayId = ImfCommonConst::DEFAULT_DISPLAY_ID;
+    if (clientInfo != nullptr) {
+        displayId = clientInfo->config.inputAttribute.callingDisplayId;
+        if (clientInfo->config.inputAttribute.GetSecurityFlag() && inputType == InputType::NONE) {
+            inputType = InputType::SECURITY_INPUT;
+        }
+    }
+    return RequestIme(data, RequestType::NORMAL, [&data, &inputType, displayId] {
+        return data->core->OnSetInputType(static_cast<int32_t>(inputType), displayId);
     });
 }
 

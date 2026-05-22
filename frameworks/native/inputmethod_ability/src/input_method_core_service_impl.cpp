@@ -89,9 +89,9 @@ ErrCode InputMethodCoreServiceImpl::OnSecurityChange(int32_t security)
     return InputMethodAbility::GetInstance().OnSecurityChange(security);
 }
 
-ErrCode InputMethodCoreServiceImpl::OnSetInputType(int32_t inputType)
+ErrCode InputMethodCoreServiceImpl::OnSetInputType(int32_t inputType, uint64_t displayId)
 {
-    InputMethodAbility::GetInstance().OnSetInputType(static_cast<InputType>(inputType));
+    InputMethodAbility::GetInstance().OnSetInputType(static_cast<InputType>(inputType), displayId);
     return ERR_OK;
 }
 // LCOV_EXCL_START

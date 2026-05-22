@@ -107,7 +107,7 @@ public:
     int32_t NotifyPanelStatus(bool isUseParameterFlag = false, PanelFlag panelFlag = FLG_FIXED,
         bool isCheckFuncButton = false);
     InputAttribute GetInputAttribute();
-    void OnSetInputType(InputType inputType);
+    void OnSetInputType(InputType inputType, uint64_t displayId);
     int32_t SendMessage(const ArrayBuffer &arrayBuffer);
     int32_t RecvMessage(const ArrayBuffer &arrayBuffer);
     int32_t RegisterMsgHandler(const std::shared_ptr<MsgHandlerCallbackInterface> &msgHandler = nullptr);

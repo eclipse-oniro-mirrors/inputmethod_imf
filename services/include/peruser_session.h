@@ -160,7 +160,7 @@ public:
     bool IsWmsReady();
     bool CheckPwdInputPatternConv(InputClientInfo &clientInfo, uint64_t displayId);
     int32_t StartUserSpecifiedIme();
-    int32_t SetInputType();
+    int32_t SetInputType(std::shared_ptr<InputClientInfo> clientInfo);
     std::shared_ptr<ImeNativeCfg> GetImeNativeCfg(int32_t userId, const std::string &bundleName,
         const std::string &subName);
     int32_t OnSetCallingWindow(const FocusedInfo &focusedInfo, sptr<IInputClient> client, uint32_t windowId);
