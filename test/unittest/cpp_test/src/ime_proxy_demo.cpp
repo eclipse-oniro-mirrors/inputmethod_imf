@@ -223,7 +223,8 @@ int main()
             std::cout.flush();
             std::cin >> displayId;
 
-            std::cout << "[ImeProxyLog] Please enter UnRegisteredType (0=REMOVE_PROXY_IME, 1=SWITCH_PROXY_IME_TO_IME): ";
+            std::cout << "[ImeProxyLog] Please enter UnRegisteredType (0=REMOVE_PROXY_IME, "
+                         "1=SWITCH_PROXY_IME_TO_IME): ";
             std::cout.flush();
             std::cin >> typeValue;
             UnRegisteredType type = static_cast<UnRegisteredType>(typeValue);

@@ -96,7 +96,7 @@ public:
     ErrCode IsSystemApp(bool &resultValue) override;
     int32_t RegisterProxyIme(
         uint64_t displayId, const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent) override;
-    int32_t UnregisterProxyIme(uint64_t displayId, int32_t type) override;
+    ErrCode UnregisterProxyIme(uint64_t displayId, int32_t type) override;
     ErrCode IsRestrictedDefaultImeByDisplay(uint64_t displayId, bool &resultValue) override;
     ErrCode IsKeyboardCallingProcess(int32_t pid, uint32_t windowId, bool &isKeyboardCallingProcess) override;
     ErrCode IsCapacitySupport(int32_t capacity, bool &isSupport) override;

@@ -1744,7 +1744,8 @@ void InputMethodAbility::NotifyPanelStatusInfo(
     }
 
     auto controlChannel = GetInputControlChannel();
-    if (controlChannel != nullptr && info.trigger == Trigger::IME_APP && !info.visible && !isImeTerminating_.load()) {
+    if (controlChannel != nullptr && info.panelInfo.panelType == PanelType::SOFT_KEYBOARD &&
+        info.trigger == Trigger::IME_APP && !info.visible && !isImeTerminating_.load()) {
         controlChannel->HideKeyboardSelf();
     }
 }
