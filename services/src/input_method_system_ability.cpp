@@ -968,8 +968,12 @@ ErrCode InputMethodSystemAbility::RegisterProxyIme(
     return session->OnRegisterProxyIme(displayId, core, agent, IPCSkeleton::GetCallingPid(), uid);
 }
 
-ErrCode InputMethodSystemAbility::UnregisterProxyIme(uint64_t displayId)
+ErrCode InputMethodSystemAbility::UnregisterProxyIme(uint64_t displayId, int32_t type)
 {
+    if (type < static_cast<int32_t>(UnRegisteredType::BEGIN) || type > static_cast<int32_t>(UnRegisteredType::END)) {
+        IMSA_HILOGE("Invalid type parameter: %{public}d, out of range.", type);
+        return ErrorCode::ERROR_BAD_PARAMETERS;
+    }
     auto uid = IPCSkeleton::GetCallingUid();
     if (uid == ImfCommonConst::AI_PROXY_IME && !ImeInfoInquirer::GetInstance().IsEnableAppAgent()) {
         IMSA_HILOGE("current device does not support app agent");
@@ -985,7 +989,8 @@ ErrCode InputMethodSystemAbility::UnregisterProxyIme(uint64_t displayId)
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_NULL_POINTER;
     }
-    return session->OnUnregisterProxyIme(displayId, IPCSkeleton::GetCallingPid());
+    return session->OnUnregisterProxyIme(displayId, IPCSkeleton::GetCallingPid(),
+        static_cast<UnRegisteredType>(type));
 }
 
 ErrCode InputMethodSystemAbility::BindImeMirror(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent)

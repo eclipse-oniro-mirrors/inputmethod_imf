@@ -1038,6 +1038,43 @@ ohos_unittest("ImeProxyAgentImeTest") {
   }
 }
 
+ohos_executable("ImeProxyDemo") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  sources = [
+    "${inputmethod_path}/services/src/sys_cfg_parser.cpp",
+    "src/ime_proxy_demo.cpp",
+  ]
+  include_dirs =
+      [ "${inputmethod_path}/interfaces/inner_api/inputmethod_ability/include" ]
+
+  deps = [
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability",
+    "${inputmethod_path}/services/file:imf_file_static",
+    "${inputmethod_path}/services/json:imf_json_static",
+  ]
+
+  configs = [ ":module_private_config" ]
+
+  external_deps = [
+    "cJSON:cjson",
+    "c_utils:utils",
+    "config_policy:configpolicy_util",
+    "hilog:libhilog",
+    "input:libmmi-client",
+    "ipc:ipc_single",
+  ]
+
+  install_enable = false
+  subsystem_name = "inputmethod"
+  part_name = "imf"
+}
+
 ohos_unittest("ImeProxyTest") {
   branch_protector_ret = "pac_ret"
   sanitize = {

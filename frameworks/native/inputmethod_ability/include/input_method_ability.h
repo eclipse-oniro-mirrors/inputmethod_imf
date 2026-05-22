@@ -53,7 +53,7 @@ public:
     int32_t SetCoreAndAgent();
     int32_t InitConnect();
     int32_t RegisterProxyIme(uint64_t displayId);
-    int32_t UnregisterProxyIme(uint64_t displayId);
+    int32_t UnregisterProxyIme(uint64_t displayId, UnRegisteredType type = UnRegisteredType::REMOVE_PROXY_IME);
     int32_t BindImeMirror();
     int32_t UnbindImeMirror();
     int32_t InsertText(const std::string &text, const AsyncIpcCallBack &callback = nullptr);

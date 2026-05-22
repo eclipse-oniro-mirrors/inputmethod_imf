@@ -50,7 +50,7 @@ public:
      * @return Returns 0 for success, others for failure.
      * @since 18
      */
-    int32_t UnregisterProxyIme(uint64_t displayId = 0);
+    int32_t UnregisterProxyIme(uint64_t displayId = 0, UnRegisteredType type = UnRegisteredType::REMOVE_PROXY_IME);
     /**
      * @brief Bind the input method mirror to the current input session.
      *

@@ -137,7 +137,7 @@ public:
     int32_t OnBindImeMirror(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent);
     int32_t OnUnbindImeMirror();
     int32_t UpdateLargeMemorySceneState(const int32_t memoryState);
-    int32_t OnUnregisterProxyIme(uint64_t displayId, int32_t pid);
+    int32_t OnUnregisterProxyIme(uint64_t displayId, int32_t pid, UnRegisteredType type);
     int32_t InitConnect(pid_t pid);
 
     int32_t StartCurrentIme(bool isStopCurrentIme = false, StartReason startReason = StartReason::DEFAULT_START);

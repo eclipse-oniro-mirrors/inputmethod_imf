@@ -20,7 +20,12 @@
 #include "key_event.h"
 namespace OHOS {
 namespace MiscServices {
-enum class UnRegisteredType : int32_t { REMOVE_PROXY_IME, NONE };
+enum class UnRegisteredType : int32_t {
+    BEGIN = 0,
+    REMOVE_PROXY_IME = BEGIN,
+    SWITCH_PROXY_IME_TO_IME,
+    END = SWITCH_PROXY_IME_TO_IME
+};
 } // namespace MiscServices
 } // namespace OHOS
 #endif // INPUTMETHOD_IMF_PROXY_IME_UNREGISTERED_TYPE_H
