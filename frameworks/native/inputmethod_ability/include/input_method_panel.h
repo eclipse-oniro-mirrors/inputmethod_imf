@@ -313,6 +313,7 @@ private:
     std::mutex panelStatusChangeMutex_;
 
     std::atomic<bool> hasSetSize_ { false };
+    std::atomic<bool> isExternalAdjusting_ { false };
 
     std::mutex bindImeInfoLock_;
     BoundImeInfo bindImeInfo_;
