@@ -1441,6 +1441,7 @@ HWTEST_F(InputMethodPrivateMemberTest, BranchCoverage004, TestSize.Level0)
     auto startRet = userSession->StartInputService(nullptr);
     EXPECT_EQ(startRet, ErrorCode::ERROR_IMSA_IME_TO_START_NULLPTR);
     startRet = userSession->StartIme(nullptr, false);
+    userSession->NotifyInputStop(0, InputStopScene::IMSA_DIED, false);
     EXPECT_EQ(startRet, ErrorCode::ERROR_IMSA_IME_TO_START_NULLPTR);
 
     auto ret3 = clientGroup->GetClientInfo(nullptr);

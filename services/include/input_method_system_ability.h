@@ -66,6 +66,7 @@ public:
     ErrCode InitConnect() override;
     ErrCode PanelStatusChange(uint32_t status, const ImeWindowInfo &info) override;
     ErrCode NotifyInputStart(const InputStartInfo &inputStartInfo) override;
+    ErrCode NotifyInputStop(const InputStopInfo &inputStopInfo) override;
     ErrCode NotifySoftKeyBoardInfoChanged(const BoundImeInfo &oldImeInfo, const BoundImeInfo &newImeInfo) override;
     ErrCode GetSoftKeyboardInfo(int32_t userId, BoundImeInfo &imeInfo) override;
     ErrCode UpdateListenEventFlag(const InputClientInfoInner &clientInfoInner, uint32_t eventFlag) override;

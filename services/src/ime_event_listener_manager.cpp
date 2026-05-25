@@ -157,18 +157,9 @@ int32_t ImeEventListenerManager::NotifySoftKeyBoardInfoChanged(
     return ErrorCode::NO_ERROR;
 }
 
-bool ImeEventListenerManager::HasInputStatusChangedListener(int32_t userId)
-{
-    auto listenerInfos = GetListenerInfo(userId);
-    auto iter = std::find_of(listenerInfos.begin(), listenerInfos.end(), [](const ImeEventListenerInfo &listenerInfo) {
-        return EventStatusManager::IsInputStatusChangedOn(listenerInfo.eventFlag);
-    });
-    return iter != listenerInfos.end();
-}
-
 int32_t ImeEventListenerManager::NotifyInputStart(int32_t userId, const InputStartInfo &inputStartInfo)
 {
-    IMSA_HILOGD("userId/inputStartInfo: %{public}d/%{public}s.", userId, inputStartInfo.ToString().c_str());
+    IMSA_HILOGD("inputStartInfo: %{public}s.", inputStartInfo.ToString().c_str());
     auto listenerInfos = GetListenerInfo(userId);
     for (const auto &listenerInfo : listenerInfos) {
         if (listenerInfo.client == nullptr || !EventStatusManager::IsInputStatusChangedOn(listenerInfo.eventFlag)) {
@@ -176,9 +167,7 @@ int32_t ImeEventListenerManager::NotifyInputStart(int32_t userId, const InputSta
             continue;
         }
         IMSA_HILOGD("pid/eventFlag: %{public}" PRId64 "/%{public}u", listenerInfo.pid, listenerInfo.eventFlag);
-        auto inputStartInfoNotify = inputStartInfo;
-        inputStartInfoNotify.userId = userId;
-        int32_t ret = listenerInfo.client->NotifyInputStart(inputStartInfoNotify);
+        int32_t ret = listenerInfo.client->NotifyInputStart(inputStartInfo);
         if (ret != ErrorCode::NO_ERROR) {
             IMSA_HILOGE("failed to notify OnInputStart, errorCode: %{public}d", ret);
             continue;
@@ -187,27 +176,17 @@ int32_t ImeEventListenerManager::NotifyInputStart(int32_t userId, const InputSta
     return ErrorCode::NO_ERROR;
 }
 
-int32_t ImeEventListenerManager::NotifyInputStop(
-    int32_t userId, uint64_t displayId, InputStopScene scene, bool isRealIme)
+int32_t ImeEventListenerManager::NotifyInputStop(int32_t userId, const InputStopInfo &inputStopInfo)
 {
-    IMSA_HILOGD("userId/displayId/scene: %{public}d/%{public}" PRIu64 "/%{public}u.", userId, displayId,
-        static_cast<uint32_t>(scene));
-    if (!isRealIme) {
-        IMSA_HILOGD("not real ime, no need to notify.");
-        return ErrorCode::NO_ERROR;
-    }
+    IMSA_HILOGD("inputStopInfo: %{public}s.", inputStopInfo.ToString().c_str());
     auto listenerInfos = GetListenerInfo(userId);
     for (const auto &listenerInfo : listenerInfos) {
         if (listenerInfo.client == nullptr || !EventStatusManager::IsInputStatusChangedOn(listenerInfo.eventFlag)) {
             IMSA_HILOGD("nullptr clientInfo or no need to notify");
             continue;
         }
-        InputStopInfo info;
-        info.userId = userId;
-        info.scene = scene;
-        info.displayId = displayId;
         IMSA_HILOGD("pid/eventFlag: %{public}" PRId64 "/%{public}u", listenerInfo.pid, listenerInfo.eventFlag);
-        int32_t ret = listenerInfo.client->NotifyInputStop(info);
+        int32_t ret = listenerInfo.client->NotifyInputStop(inputStopInfo);
         if (ret != ErrorCode::NO_ERROR) {
             IMSA_HILOGE("failed to notify OnInputStop, errorCode: %{public}d", ret);
             continue;

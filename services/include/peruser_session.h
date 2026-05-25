@@ -351,7 +351,7 @@ private:
     void StartImageTimeoutTask();
     void StopImageTimeoutTask();
     int32_t HandleSysImeInDied(ImeType type, bool disconnectedByRss);
-    void NotifyInputStartToClients(InputStartScene scene, std::shared_ptr<ImeData> imeData);
+    void NotifyInputStop(uint64_t displayId, InputStopScene scene, bool isRealIme);
     std::mutex imeStartLock_;
 
     BlockData<bool> isImeStarted_{ MAX_IME_START_TIME, false };

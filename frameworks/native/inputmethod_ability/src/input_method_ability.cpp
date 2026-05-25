@@ -325,6 +325,8 @@ int32_t InputMethodAbility::StartInputInner(const InputClientInfo &clientInfo, b
         int32_t ret = ErrorCode::NO_ERROR;
         if (needShow) {
             ret = ShowKeyboardWithoutLock(cmdId_, InputStartScene::ATTACH);
+        } else {
+            NotifyInputStartToClients(InputStartScene::ATTACH, false);
         }
         ReportImeStartInput(
             static_cast<int32_t>(IInputMethodCoreIpcCode::COMMAND_START_INPUT), ret, needShow, endTime - startTime);
@@ -451,6 +453,7 @@ void InputMethodAbility::SetCallingWindow(uint32_t rawEditorWindowId, const Focu
     if (imeListener_ != nullptr) {
         imeListener_->OnSetCallingWindow(rawEditorWindowId);
     }
+    NotifyInputStartToClients(InputStartScene::WINDOW_CHANGED);
     OnCallingDisplayIdChanged(focusedInfo.displayId, focusedInfo.keyboardDisplayId);
 }
 
@@ -535,6 +538,7 @@ int32_t InputMethodAbility::HideKeyboard()
 
 int32_t InputMethodAbility::HideKeyboardImplWithoutLock(int32_t cmdId, uint32_t sessionId)
 {
+    NotifyInputStopToClients();
     if (cmdId != cmdId_) {
         IMSA_HILOGE("current is not last cmd cur: %{public}d, cmdId_: %{public}d!", cmdId, cmdId_);
         return ErrorCode::NO_ERROR;
@@ -553,6 +557,7 @@ int32_t InputMethodAbility::ShowKeyboard(int32_t requestKeyboardReason)
 int32_t InputMethodAbility::ShowKeyboardWithoutLock(int32_t cmdId, InputStartScene scene)
 {
     auto ret = ShowKeyboardImplWithoutLock(cmdId);
+    NotifyInputStartToClients(scene);
     return ret;
 }
 
@@ -631,6 +636,23 @@ void InputMethodAbility::NotifyInputStartToClients(InputStartScene scene, bool i
         }
     }
     proxy->NotifyInputStart(info);
+}
+
+void InputMethodAbility::NotifyInputStopToClients()
+{
+    if (isProxyIme_.load()) {
+        IMSA_HILOGD("proxy ime, no need to notify.");
+        return;
+    }
+    auto proxy = GetImsaProxy();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("imsa proxy is nullptr!");
+        return;
+    }
+    InputStopInfo info;
+    info.scene = InputStopScene::CLIENT_TRIGGER;
+    info.displayId = GetInputAttribute().editorDisplayId;
+    proxy->NotifyInputStop(info);
 }
 
 void InputMethodAbility::NotifyPanelStatusInfo(PanelStatusInfo &info)
@@ -1869,6 +1891,7 @@ int32_t InputMethodAbility::OnCallingDisplayIdChanged(uint64_t editorDisplayId, 
             inputAttribute_.callingScreenId = 0;
         }
     }
+    NotifyInputStartToClients(InputStartScene::DISPLAY_CHANGED);
     if (oldKeyboardDisplayId == keyboardDisplayId) {
         return ErrorCode::NO_ERROR;
     }
