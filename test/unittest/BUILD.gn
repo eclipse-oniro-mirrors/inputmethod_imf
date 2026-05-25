@@ -30,6 +30,7 @@ group("unittest") {
       "cpp_test:ImeMirrorDemo",
       "cpp_test:ImeMirrorTest",
       "cpp_test:ImeProxyAgentImeTest",
+      "cpp_test:ImeProxyDemo",
       "cpp_test:ImeProxyTest",
       "cpp_test:ImeSystemChannelTest",
       "cpp_test:ImfExtMockTest",

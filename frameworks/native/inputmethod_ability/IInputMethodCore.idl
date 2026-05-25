@@ -34,7 +34,7 @@ interface OHOS.MiscServices.IInputMethodCore {
     void OnSecurityChange([in] int security);
     void OnConnectSystemCmd([in] IRemoteObject channel);
     [oneway] void OnClientInactive([in] IRemoteObject channel);
-    [oneway] void OnSetInputType([in] int inputType);
+    [oneway] void OnSetInputType([in] int inputType, [in] unsigned long displayId);
     void OnCallingDisplayIdChanged([in] unsigned long editorDisplayId, [in] unsigned long keyboardDisplayId);
     void OnCallingWindowIdChanged([in] unsigned int rawEditorWindowId, [in] FocusedInfo focusedInfo);
     void GetSoftKeyboardInfo([out] BoundImeInfo imeInfo);

@@ -74,8 +74,6 @@ constexpr const char *UNDEFINED = "undefined";
 constexpr int32_t WAIT_ATTACH_FINISH_DELAY = 50;
 constexpr int32_t WAIT_ATTACH_FINISH_MAX_TIMES = 20;
 constexpr uint32_t MAX_SCB_START_COUNT = 2;
-constexpr int32_t PROXY_REGISTERATION_TIME_INTERVAL = 1; // 1s
-constexpr uint32_t MAX_REGISTRATIONS_NUM = 3;
 constexpr const char *MAKE_IMAGE_TIMEOUT_TASK = "imf_imageTimeoutTask";
 constexpr int32_t MAKE_IMAGE_TIMEOUT = 2 * 60 * 1000; // two min
 constexpr int32_t E_IMAGE_CREATING = -2; // same with ForkallErrCode::E_IMAGE_CREATING, never modify
@@ -637,9 +635,6 @@ int32_t PerUserSession::OnStartInput(
         IMSA_HILOGE("data or agent is nullptr!");
         return ErrorCode::ERROR_IME_NOT_STARTED;
     }
-    if (data->IsRealIme()) {
-        SetInputType();
-    }
     auto clientGroup = GetClientGroupByGroupId(inputClientInfo.clientGroupId);
     if (clientGroup == nullptr) {
         IMSA_HILOGE("not found group");
@@ -821,6 +816,9 @@ int32_t PerUserSession::BindClientWithIme(
         if (ret != ErrorCode::NO_ERROR) {
             IMSA_HILOGE("before start input notify send private data failed, ret: %{public}d!", ret);
         }
+    }
+    if (imeData->IsRealIme()) {
+        SetInputType(clientInfo);
     }
     InputClientInfoInner inputClientInfoInner = InputMethodTools::GetInstance().InputClientInfoToInner(*clientInfo);
     auto ret = RequestAllIme(
@@ -1084,7 +1082,6 @@ int32_t PerUserSession::OnSetCoreAndAgent(const sptr<IInputMethodCore> &core, co
         if (clientInfo != nullptr) {
             ClearRequestKeyboardReason(clientInfo);
             BindClientWithIme(clientInfo, imeData);
-            SetInputType();
         }
     }
     bool isStarted = true;
@@ -1212,15 +1209,7 @@ std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> PerUse
 int32_t PerUserSession::OnRegisterProxyIme(
     uint64_t displayId, const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent, int32_t pid, int32_t uid)
 {
-    IMSA_HILOGD("start.");
-    if (displayId == ImfCommonConst::DEFAULT_DISPLAY_ID) {
-        auto result = IsRequestOverLimit(
-            TimeLimitType::PROXY_IME_LIMIT, PROXY_REGISTERATION_TIME_INTERVAL, MAX_REGISTRATIONS_NUM);
-        if (result != ErrorCode::NO_ERROR) {
-            IMSA_HILOGI("frequent calls, service is busy.");
-            return result;
-        }
-    }
+    IMSA_HILOGD("displayId: %{public}" PRIu64 ", pid: %{public}d, uid: %{public}d", displayId, pid, uid);
     auto lastImeData = GetProxyImeData(displayId);
     if (lastImeData != nullptr && lastImeData->core != nullptr && core != nullptr &&
         lastImeData->core->AsObject() != core->AsObject()) {
@@ -1264,15 +1253,45 @@ int32_t PerUserSession::UpdateLargeMemorySceneState(const int32_t memoryState)
     return ErrorCode::NO_ERROR;
 }
 
-int32_t PerUserSession::OnUnregisterProxyIme(uint64_t displayId, int32_t pid)
+int32_t PerUserSession::OnUnregisterProxyIme(uint64_t displayId, int32_t pid, UnRegisteredType type)
 {
-    IMSA_HILOGD("proxy unregister.");
-    auto clientInfo = GetCurrentClientInfo(displayId);
-    if (clientInfo != nullptr && clientInfo->bindImeData != nullptr && clientInfo->bindImeData->pid == pid) {
-        UnBindClientWithIme(clientInfo, { .sessionId = 0 });
+    IMSA_HILOGD("displayId: %{public}" PRIu64 ", pid: %{public}d, type: %{public}d.", displayId, pid,
+        static_cast<int32_t>(type));
+    if (type == UnRegisteredType::REMOVE_PROXY_IME) {
+        // unbind client and remove proxy IME data
+        auto clientInfo = GetCurrentClientInfo(displayId);
+        if (clientInfo != nullptr && clientInfo->bindImeData != nullptr && clientInfo->bindImeData->pid == pid) {
+            UnBindClientWithIme(clientInfo, { .sessionId = 0 });
+        }
+        RemoveProxyImeData(displayId, pid);
+        return ErrorCode::NO_ERROR;
     }
-    RemoveProxyImeData(displayId, pid);
-    return ErrorCode::NO_ERROR;
+    if (type == UnRegisteredType::SWITCH_PROXY_IME_TO_IME) {
+        // switch from proxy IME to real IME
+        auto clientInfo = GetCurrentClientInfo(displayId);
+        if (clientInfo != nullptr && clientInfo->bindImeData != nullptr && clientInfo->bindImeData->pid == pid) {
+            UnBindClientWithIme(clientInfo, { .sessionId = 0 });
+        }
+        RemoveProxyImeData(displayId, pid);
+        // If no client info, no need to start and bind real ime
+        if (clientInfo == nullptr) {
+            IMSA_HILOGD("displayId %{public}" PRIu64 " has no client info.", displayId);
+            return ErrorCode::NO_ERROR;
+        }
+        auto ret = StartCurrentIme();
+        if (ret != ErrorCode::NO_ERROR) {
+            IMSA_HILOGE("failed to start current ime, ret: %{public}d.", ret);
+            return ret;
+        }
+        ret = BindClientWithIme(clientInfo, GetRealImeData(true), false);
+        if (ret != ErrorCode::NO_ERROR) {
+            IMSA_HILOGE("failed to bind client with real ime, ret: %{public}d.", ret);
+            return ret;
+        }
+        return ErrorCode::NO_ERROR;
+    }
+    IMSA_HILOGE("unknown UnRegisteredType: %{public}d.", static_cast<int32_t>(type));
+    return ErrorCode::ERROR_BAD_PARAMETERS;
 }
 
 int32_t PerUserSession::RemoveProxyImeData(uint64_t displayId, pid_t pid)
@@ -2127,7 +2146,7 @@ int32_t PerUserSession::SwitchSubtypeWithoutStartIme(const SubProperty &subPrope
     });
 }
 
-int32_t PerUserSession::SetInputType()
+int32_t PerUserSession::SetInputType(std::shared_ptr<InputClientInfo> clientInfo)
 {
     InputType inputType = InputTypeManager::GetInstance().GetCurrentInputType();
     auto data = GetRealImeData(true);
@@ -2135,8 +2154,16 @@ int32_t PerUserSession::SetInputType()
         IMSA_HILOGE("ime: %{public}d is not exist!", ImeType::IME);
         return ErrorCode::ERROR_IME_NOT_STARTED;
     }
-    return RequestIme(data, RequestType::NORMAL, [&data, &inputType] {
-        return data->core->OnSetInputType(static_cast<int32_t>(inputType));
+
+    uint64_t displayId = ImfCommonConst::DEFAULT_DISPLAY_ID;
+    if (clientInfo != nullptr) {
+        displayId = clientInfo->config.inputAttribute.callingDisplayId;
+        if (clientInfo->config.inputAttribute.GetSecurityFlag() && inputType == InputType::NONE) {
+            inputType = InputType::SECURITY_INPUT;
+        }
+    }
+    return RequestIme(data, RequestType::NORMAL, [&data, &inputType, displayId] {
+        return data->core->OnSetInputType(static_cast<int32_t>(inputType), displayId);
     });
 }
 

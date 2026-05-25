@@ -156,7 +156,7 @@ private:
     static std::shared_ptr<InputMethodPanel> UnwrapPanel(napi_env env, napi_value thisVar);
     static void PrintEditorQueueInfoIfTimeout(int64_t start, const JsEventInfo &currentInfo);
 
-    static bool IsEnhancedAdjust(napi_env env, napi_value *argv);
+    static bool IsEnhancedAdjust(napi_env env, napi_value *argv, size_t argc);
     static bool IsPanelFlagValid(napi_env env, PanelFlag panelFlag, bool isEnhancedCalled);
     static napi_status ParsePanelFlag(napi_env env, napi_value *argv, PanelFlag &panelFlag, bool isEnhancedCalled);
     static napi_status CheckParam(

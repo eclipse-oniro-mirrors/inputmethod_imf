@@ -14,6 +14,7 @@
  */
 #include "refbase.h"
 #include "wm_common.h"
+#include "ime_info_inquirer.h"
 
 struct AniEnv;
 typedef struct AniEnv ani_env;
@@ -41,6 +42,11 @@ public:
 class IWindowVisibilityChangedListener : virtual public RefBase {
 public:
     virtual void OnWindowVisibilityChangedCallback(const bool isVisible) {}
+};
+
+class IOcclusionStateChangedListener : virtual public RefBase {
+public:
+    virtual void OnOcclusionStateChanged(const WindowVisibilityState state) {}
 };
 } // namespace Rosen
 } // namespace OHOS
@@ -228,7 +234,11 @@ HWTEST_F(ImeMirrorAbilityTest, BindImeMirror_NullProxy_ReturnsErrorServiceStartF
     ima_->abilityManager_ = nullptr;
 
     auto ret = ima_->BindImeMirror();
-    EXPECT_EQ(ret, ErrorCode::ERROR_NOT_AI_APP_IME);
+    if (!ImeInfoInquirer::GetInstance().IsCapacitySupport("ime_mirror")) {
+        EXPECT_EQ(ret, ErrorCode::ERROR_DEVICE_UNSUPPORTED);
+    } else {
+        EXPECT_EQ(ret, ErrorCode::ERROR_NOT_AI_APP_IME);
+    }
 }
 
 /**
@@ -328,10 +338,10 @@ HWTEST_F(ImeMirrorAbilityTest, BindUnbindImeMirror_RepeatBothSucceed, TestSize.L
     auto ret = ima_->BindImeMirror();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     EXPECT_TRUE(ima_->isBound_.load());
-
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     ret = ima_->BindImeMirror();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-
+    std::this_thread::sleep_for(std::chrono::milliseconds(100));
     ret = ima_->UnbindImeMirror();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     EXPECT_FALSE(ima_->isBound_.load());

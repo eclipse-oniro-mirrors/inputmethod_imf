@@ -137,7 +137,7 @@ public:
     int32_t OnBindImeMirror(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent);
     int32_t OnUnbindImeMirror();
     int32_t UpdateLargeMemorySceneState(const int32_t memoryState);
-    int32_t OnUnregisterProxyIme(uint64_t displayId, int32_t pid);
+    int32_t OnUnregisterProxyIme(uint64_t displayId, int32_t pid, UnRegisteredType type);
     int32_t InitConnect(pid_t pid);
 
     int32_t StartCurrentIme(bool isStopCurrentIme = false, StartReason startReason = StartReason::DEFAULT_START);
@@ -160,7 +160,7 @@ public:
     bool IsWmsReady();
     bool CheckPwdInputPatternConv(InputClientInfo &clientInfo, uint64_t displayId);
     int32_t StartUserSpecifiedIme();
-    int32_t SetInputType();
+    int32_t SetInputType(std::shared_ptr<InputClientInfo> clientInfo);
     std::shared_ptr<ImeNativeCfg> GetImeNativeCfg(int32_t userId, const std::string &bundleName,
         const std::string &subName);
     int32_t OnSetCallingWindow(const FocusedInfo &focusedInfo, sptr<IInputClient> client, uint32_t windowId);
