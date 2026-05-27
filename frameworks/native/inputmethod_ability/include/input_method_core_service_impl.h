@@ -34,7 +34,7 @@ public:
     InputMethodCoreServiceImpl();
     ~InputMethodCoreServiceImpl();
     ErrCode StartInput(const InputClientInfoInner &clientInfoInner, bool isBindFromClient) override;
-    ErrCode StopInput(const sptr<IRemoteObject> &channel, uint32_t sessionId) override;
+    ErrCode StopInput(const sptr<IRemoteObject> &channel, uint32_t sessionId, int32_t clientSessionId) override;
     ErrCode ShowKeyboard(int32_t requestKeyboardReason) override;
     ErrCode HideKeyboard() override;
     ErrCode InitInputControlChannel(const sptr<IInputControlChannel> &inputControlChannel) override;

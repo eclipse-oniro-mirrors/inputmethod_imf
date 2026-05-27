@@ -95,9 +95,10 @@ ErrCode InputMethodCoreServiceImpl::OnSetInputType(int32_t inputType, uint64_t d
     return ERR_OK;
 }
 // LCOV_EXCL_START
-ErrCode InputMethodCoreServiceImpl::StopInput(const sptr<IRemoteObject> &channel, uint32_t sessionId)
+ErrCode InputMethodCoreServiceImpl::StopInput(
+    const sptr<IRemoteObject> &channel, uint32_t sessionId, int32_t clientSessionId)
 {
-    auto task = std::make_shared<TaskImsaStopInput>(channel, sessionId);
+    auto task = std::make_shared<TaskImsaStopInput>(channel, sessionId, clientSessionId);
     TaskManager::GetInstance().PostTask(task);
     return ERR_OK;
 }

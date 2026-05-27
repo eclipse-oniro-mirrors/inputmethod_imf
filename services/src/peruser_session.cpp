@@ -548,9 +548,10 @@ int32_t PerUserSession::OnPrepareInput(const InputClientInfo &clientInfo)
  * @param the parameters from remote client
  * @return ErrorCode
  */
-int32_t PerUserSession::OnReleaseInput(const sptr<IInputClient> &client, uint32_t sessionId)
+int32_t PerUserSession::OnReleaseInput(
+    const sptr<IInputClient> &client, uint32_t sessionId, int32_t clientSessionId)
 {
-    IMSA_HILOGD("PerUserSession::OnReleaseInput start");
+    IMSA_HILOGD("PerUserSession::OnReleaseInput start with clientSessionId: %{public}d", clientSessionId);
     if (client == nullptr) {
         IMSA_HILOGE("client nullptr");
         return ErrorCode::ERROR_CLIENT_NULL_POINTER;
@@ -561,7 +562,7 @@ int32_t PerUserSession::OnReleaseInput(const sptr<IInputClient> &client, uint32_
         return ErrorCode::NO_ERROR;
     }
     auto [isReady, displayId, isRealIme] = clientGroup->IsNotifyInputStop(client);
-    DetachOptions options = { .sessionId = sessionId, .isUnbindFromClient = true };
+    DetachOptions options = { .sessionId = sessionId, .clientSessionId = clientSessionId, .isUnbindFromClient = true };
     int32_t ret = RemoveClient(client, clientGroup, options);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("remove client failed");
@@ -989,7 +990,8 @@ void PerUserSession::UnBindClientWithIme(
         IMSA_HILOGD("unbind from service.");
         StopClientInput(currentClientInfo, options);
     }
-    StopImeInput(GetImeData(currentClientInfo->bindImeData), currentClientInfo, options.sessionId);
+    StopImeInput(
+        GetImeData(currentClientInfo->bindImeData), currentClientInfo, options.sessionId, options.clientSessionId);
 }
 
 void PerUserSession::SetSwitchInputType(bool isSwitchInputType)
@@ -1027,16 +1029,17 @@ void PerUserSession::StopClientInput(const std::shared_ptr<InputClientInfo> &cli
         clientInfo->pid, ret);
 }
 
-void PerUserSession::StopImeInput(
-    const std::shared_ptr<ImeData> &imeData, const std::shared_ptr<InputClientInfo> &clientInfo, uint32_t sessionId)
+void PerUserSession::StopImeInput(const std::shared_ptr<ImeData> &imeData,
+    const std::shared_ptr<InputClientInfo> &clientInfo, uint32_t sessionId, uint32_t clientSessionId)
 {
     if (imeData == nullptr || clientInfo == nullptr) {
         return;
     }
     auto ret = RequestAllIme(
         imeData, RequestType::STOP_INPUT,
-        [&clientInfo, sessionId](
-            const sptr<IInputMethodCore> &core) { return core->StopInput(clientInfo->channel, sessionId); },
+        [&clientInfo, sessionId, clientSessionId](const sptr<IInputMethodCore> &core) {
+            return core->StopInput(clientInfo->channel, sessionId, clientSessionId);
+        },
         clientInfo->clientGroupId);
     IMSA_HILOGI("stop ime input, ret: %{public}d.", ret);
     if (ret == ErrorCode::NO_ERROR && imeData->IsRealIme()) {

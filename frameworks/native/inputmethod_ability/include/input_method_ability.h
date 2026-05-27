@@ -124,7 +124,7 @@ public:
 public:
     /* called from TaskManager worker thread */
     int32_t StartInput(const InputClientInfo &clientInfo, bool isBindFromClient);
-    int32_t StopInput(sptr<IRemoteObject> channelObj, uint32_t sessionId);
+    int32_t StopInput(sptr<IRemoteObject> channelObj, uint32_t sessionId, int32_t clientSessionId);
     int32_t ShowKeyboard(int32_t requestKeyboardReason);
     int32_t HideKeyboard();
     int32_t OnDiscardTypingText();
@@ -185,17 +185,17 @@ private:
     void InvokeAttachOptionsCallback(const AttachOptions &options, bool isFirstNotify = false);
     void SetAttachOptions(const AttachOptions &options);
     void ClearAttachOptions();
-    int32_t HideKeyboard(Trigger trigger, uint32_t sessionId);
+    int32_t HideKeyboard(Trigger trigger, uint32_t sessionId, int32_t clientSessionId);
     std::shared_ptr<InputMethodPanel> GetSoftKeyboardPanel();
     /* param flag: ShowPanel is async, show/hide softkeyboard in alphabet keyboard attached,
        flag will be changed before finishing show/hide */
     int32_t ShowPanel(const std::shared_ptr<InputMethodPanel> &inputMethodPanel, PanelFlag flag, Trigger trigger);
     int32_t HidePanel(
-        const std::shared_ptr<InputMethodPanel> &inputMethodPanel, PanelFlag flag, Trigger trigger, uint32_t sessionId);
+        const std::shared_ptr<InputMethodPanel> &inputMethodPanel, PanelFlag flag, Trigger trigger, uint32_t sessionId, int32_t clientSessionId);
     void SetInputAttribute(const InputAttribute &inputAttribute);
     void ClearInputAttribute();
     void NotifyPanelStatusInfo(PanelStatusInfo &info);
-    int32_t HideKeyboardImplWithoutLock(int32_t cmdId, uint32_t sessionId);
+    int32_t HideKeyboardImplWithoutLock(int32_t cmdId, uint32_t sessionId, int32_t clientSessionId);
     int32_t ShowKeyboardWithoutLock(int32_t cmdId, InputStartScene scene);
     int32_t ShowKeyboardImplWithoutLock(int32_t cmdId);
     void NotifyPanelStatusInfo(PanelStatusInfo &info, std::shared_ptr<InputDataChannelProxy> &channelProxy);
