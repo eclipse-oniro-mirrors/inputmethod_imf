@@ -441,7 +441,7 @@ HWTEST_F(InputMethodServiceTest, testConnectSystemCmd005, TestSize.Level1)
         IdentityCheckerMock::bundleName_ = "test.app";
         imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
         int32_t userId = TddUtil::GetCurrentUserId();
-        auto session = std::make_shared<PerUserSession>(userId);
+        auto session = std::make_shared<PerUserSession>(userId, nullptr);
         sptr<IInputMethodCore> mockCore = new (std::nothrow) InputMethodCoreServiceImpl();
         sptr<IRemoteObject> mockAgent = new (std::nothrow) InputMethodAgentServiceImpl();
         auto imeData = std::make_shared<ImeData>(mockCore, mockAgent, nullptr, 100);
@@ -464,7 +464,7 @@ HWTEST_F(InputMethodServiceTest, PerUserSession_SetInputType_ImeNotStarted, Test
     IMSA_HILOGI("PerUserSession_SetInputType_ImeNotStarted TEST START");
  
     int32_t userId = TddUtil::GetCurrentUserId();
-    auto session = std::make_shared<PerUserSession>(userId);
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
     UserSessionManager::GetInstance().userSessions_[userId] = session;
  
     auto clientInfo = std::make_shared<InputClientInfo>();
@@ -486,7 +486,7 @@ HWTEST_F(InputMethodServiceTest, PerUserSession_SetInputType_NullClientInfo, Tes
     IMSA_HILOGI("PerUserSession_SetInputType_NullClientInfo TEST START");
  
     int32_t userId = TddUtil::GetCurrentUserId();
-    auto session = std::make_shared<PerUserSession>(userId);
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
  
     sptr<IInputMethodCore> mockCore = new (std::nothrow) InputMethodCoreServiceImpl();
     sptr<IRemoteObject> mockAgent = new (std::nothrow) InputMethodAgentServiceImpl();
@@ -512,7 +512,7 @@ HWTEST_F(InputMethodServiceTest, PerUserSession_SetInputType_NormalCase, TestSiz
     IMSA_HILOGI("PerUserSession_SetInputType_NormalCase TEST START");
  
     int32_t userId = TddUtil::GetCurrentUserId();
-    auto session = std::make_shared<PerUserSession>(userId);
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
  
     sptr<IInputMethodCore> mockCore = new (std::nothrow) InputMethodCoreServiceImpl();
     sptr<IRemoteObject> mockAgent = new (std::nothrow) InputMethodAgentServiceImpl();

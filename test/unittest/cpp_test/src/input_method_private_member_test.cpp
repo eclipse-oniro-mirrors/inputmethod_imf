@@ -289,7 +289,7 @@ HWTEST_F(InputMethodPrivateMemberTest, IMC_ListInputMethodCommonWithErrorStatus,
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSessionCoreOrAgentNullptr, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest PerUserSessionCoreOrAgentNullptr TEST START");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     auto imc = InputMethodController::GetInstance();
     auto clientGroup = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
     int32_t ret = userSession->ShowKeyboard(imc->clientInfo_.client, clientGroup);
@@ -313,7 +313,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSessionCoreOrAgentNullptr, TestSiz
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSessionClientError, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest PerUserSessionClientError TEST START");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     auto clientGroup = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
     auto imc = InputMethodController::GetInstance();
 
@@ -352,7 +352,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSessionClientError, TestSize.Level
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSessionParameterNullptr001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest PerUserSessionParameterNullptr001 TEST START");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     std::vector<sptr<IRemoteObject>> agents;
     InputClientInfo clientInfo;
     clientInfo.client = nullptr;
@@ -840,7 +840,7 @@ HWTEST_F(InputMethodPrivateMemberTest, IMC_testDeactivateClient, TestSize.Level0
 HWTEST_F(InputMethodPrivateMemberTest, testIsPanelShown, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest testIsPanelShown TEST START");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     PanelInfo panelInfo;
     panelInfo.panelType = SOFT_KEYBOARD;
     panelInfo.panelFlag = FLG_FIXED;
@@ -1044,7 +1044,7 @@ HWTEST_F(InputMethodPrivateMemberTest, testGetInputMethodConfig, TestSize.Level0
 HWTEST_F(InputMethodPrivateMemberTest, TestOnSecurityChange, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest TestOnSecurityChange TEST START");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     auto clientGroup = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
     auto imc = InputMethodController::GetInstance();
     int32_t ret = userSession->ShowKeyboard(imc->clientInfo_.client, clientGroup);
@@ -1136,19 +1136,19 @@ HWTEST_F(InputMethodPrivateMemberTest, TestStartInputTypeAsync, TestSize.Level0)
 HWTEST_F(InputMethodPrivateMemberTest, SA_SendVoicePrivateCommand, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::SA_SendVoicePrivateCommand start.");
-    PerUserSession session(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     std::string bundleName = "bundleName";
     std::string extName = "extName";
     auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, 100);
     imeData->imeStatus = ImeStatus::READY;
     imeData->ime = std::make_pair(bundleName, extName);
-    session.realImeData_ = imeData;
+    userSession->realImeData_ = imeData;
     ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = bundleName + "/" + extName;
-    auto ret = session.SendVoicePrivateCommand(true);
+    auto ret = userSession->SendVoicePrivateCommand(true);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 
-    session.realImeData_ = nullptr;
-    ret = session.SendVoicePrivateCommand(true);
+    userSession->realImeData_ = nullptr;
+    ret = userSession->SendVoicePrivateCommand(true);
     EXPECT_NE(ret, ErrorCode::NO_ERROR);
 }
 
@@ -1290,7 +1290,7 @@ HWTEST_F(InputMethodPrivateMemberTest, test_WmsConnectionObserver, TestSize.Leve
 HWTEST_F(InputMethodPrivateMemberTest, BranchCoverage001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest BranchCoverage001 TEST START");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     sptr<IInputMethodCore> core = nullptr;
     sptr<IRemoteObject> agent = nullptr;
     pid_t pid{ -1 };
@@ -1398,7 +1398,7 @@ HWTEST_F(InputMethodPrivateMemberTest, BranchCoverage003, TestSize.Level0)
 HWTEST_F(InputMethodPrivateMemberTest, BranchCoverage004, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest BranchCoverage003 TEST START");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     sptr<SettingsDataObserver> observer;
     std::shared_ptr<DataShare::DataShareHelper> helper;
     std::string invaildString;
@@ -1530,7 +1530,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_OnScreenLock, TestSize.Level0)
 HWTEST_F(InputMethodPrivateMemberTest, SA_TestPerUserSessionOnScreenUnlocked, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::SA_TestPerUserSessionOnScreenUnlocked start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     userSession->realImeData_ = nullptr;
     userSession->OnScreenUnlock();
 
@@ -1554,7 +1554,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_TestPerUserSessionOnScreenUnlocked, Te
 HWTEST_F(InputMethodPrivateMemberTest, SA_TestPerUserSessionOnScreenlocked, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::SA_TestPerUserSessionOnScreenlocked start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     userSession->realImeData_ = nullptr;
     userSession->OnScreenLock();
     ImeIdentification currentIme;
@@ -1571,7 +1571,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_TestPerUserSessionOnScreenlocked, Test
 HWTEST_F(InputMethodPrivateMemberTest, SA_TestPerUserSessionOnScreenUnlocked001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::SA_TestPerUserSessionOnScreenUnlocked001 start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     ImeIdentification currentIme;
     InputTypeManager::GetInstance().Set(false, currentIme);
     EXPECT_FALSE(InputTypeManager::GetInstance().IsStarted());
@@ -1668,10 +1668,10 @@ HWTEST_F(InputMethodPrivateMemberTest, Test_ClientGroup_UpdateClientInfo, TestSi
 HWTEST_F(InputMethodPrivateMemberTest, SA_StartPreconfiguredDefaultIme, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::SA_StartPreconfiguredDefaultIme start.");
-    PerUserSession session(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     // not has running ime
-    session.realImeData_ = nullptr;
-    auto [ret1, status1] = session.StartPreconfiguredDefaultIme();
+    userSession->realImeData_ = nullptr;
+    auto [ret1, status1] = userSession->StartPreconfiguredDefaultIme();
     EXPECT_EQ(status1, StartPreDefaultImeStatus::TO_START);
 
     std::string bundleName = "bundleName";
@@ -1682,21 +1682,21 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_StartPreconfiguredDefaultIme, TestSize
     auto imeData1 = std::make_shared<ImeData>(nullptr, nullptr, nullptr, 100);
     imeData1->imeStatus = ImeStatus::READY;
     imeData1->ime = std::make_pair(bundleName, extName);
-    session.realImeData_ = imeData1;
+    userSession->realImeData_ = imeData1;
     ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = bundleName + "/" + extName;
-    auto [ret2, status2] = session.StartPreconfiguredDefaultIme();
+    auto [ret2, status2] = userSession->StartPreconfiguredDefaultIme();
     EXPECT_EQ(status2, StartPreDefaultImeStatus::HAS_STARTED);
     // running ime extName not same with pre default ime
     ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = bundleName + "/" + extName1;
-    auto [ret3, status3] = session.StartPreconfiguredDefaultIme();
+    auto [ret3, status3] = userSession->StartPreconfiguredDefaultIme();
     EXPECT_EQ(status3, StartPreDefaultImeStatus::TO_START);
     // running ime bundleName not same with pre default ime
     ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = bundleName1 + "/" + extName;
-    auto [ret4, status4] = session.StartPreconfiguredDefaultIme();
+    auto [ret4, status4] = userSession->StartPreconfiguredDefaultIme();
     EXPECT_EQ(status4, StartPreDefaultImeStatus::TO_START);
     // running ime not same with pre default ime
     ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = bundleName1 + "/" + extName1;
-    auto [ret5, status5] = session.StartPreconfiguredDefaultIme();
+    auto [ret5, status5] = userSession->StartPreconfiguredDefaultIme();
     EXPECT_EQ(status5, StartPreDefaultImeStatus::TO_START);
 }
 
@@ -1709,10 +1709,10 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_StartPreconfiguredDefaultIme, TestSize
 HWTEST_F(InputMethodPrivateMemberTest, SA_AllowSwitchImeByCombinationKey, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::SA_AllowSwitchImeByCombinationKey start.");
-    PerUserSession session(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     // not has current client info
-    session.clientGroupMap_.clear();
-    auto ret = session.IsImeSwitchForbidden();
+    userSession->clientGroupMap_.clear();
+    auto ret = userSession->IsImeSwitchForbidden();
     EXPECT_FALSE(ret);
 
     // has current client info
@@ -1724,8 +1724,8 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_AllowSwitchImeByCombinationKey, TestSi
     info->config.isSimpleKeyboardEnabled = true;
     info->bindImeData = std::make_shared<BindImeData>(10, ImeType::IME);
     group->mapClients_.insert_or_assign(client->AsObject(), info);
-    session.clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
-    ret = session.IsImeSwitchForbidden();
+    userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
+    ret = userSession->IsImeSwitchForbidden();
     EXPECT_TRUE(ret);
 }
 
@@ -1738,7 +1738,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_AllowSwitchImeByCombinationKey, TestSi
 HWTEST_F(InputMethodPrivateMemberTest, SA_SpecialScenarioCheck, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::SA_SpecialScenarioCheck start.");
-    PerUserSession session(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     // has current client info
     auto group = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
     sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
@@ -1747,32 +1747,32 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SpecialScenarioCheck, TestSize.Level0)
     info->config.isSimpleKeyboardEnabled = true;
     info->bindImeData = std::make_shared<BindImeData>(10, ImeType::IME);
     group->mapClients_.insert_or_assign(client->AsObject(), info);
-    session.clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
-    auto allow = session.SpecialScenarioCheck();
+    userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
+    auto allow = userSession->SpecialScenarioCheck();
     EXPECT_FALSE(allow);
 
     info->config.isSimpleKeyboardEnabled = false;
     group->mapClients_.insert_or_assign(client->AsObject(), info);
-    session.clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
-    allow = session.SpecialScenarioCheck();
+    userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
+    allow = userSession->SpecialScenarioCheck();
     EXPECT_TRUE(allow);
 
     info->config.inputAttribute.inputPattern = InputAttribute::PATTERN_ONE_TIME_CODE;
     group->mapClients_.insert_or_assign(client->AsObject(), info);
-    session.clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
-    allow = session.SpecialScenarioCheck();
+    userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
+    allow = userSession->SpecialScenarioCheck();
     EXPECT_FALSE(allow);
 
     info->config.inputAttribute.inputPattern = InputAttribute::PATTERN_PASSWORD;
     group->mapClients_.insert_or_assign(client->AsObject(), info);
-    session.clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
-    allow = session.SpecialScenarioCheck();
+    userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
+    allow = userSession->SpecialScenarioCheck();
     EXPECT_FALSE(allow);
 
     info->config.inputAttribute.isOneTimeCodeNumberFlag = true;
     group->mapClients_.insert_or_assign(client->AsObject(), info);
-    session.clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
-    allow = session.SpecialScenarioCheck();
+    userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
+    allow = userSession->SpecialScenarioCheck();
     EXPECT_FALSE(allow);
 }
 
@@ -1785,7 +1785,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SpecialScenarioCheck, TestSize.Level0)
 HWTEST_F(InputMethodPrivateMemberTest, SA_IsScreenLockOrSecurityFlag, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::SA_IsScreenLockOrSecurityFlag start.");
-    PerUserSession session(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     // has current client info
     auto group = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
     sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
@@ -1794,27 +1794,27 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_IsScreenLockOrSecurityFlag, TestSize.L
     info->bindImeData = std::make_shared<BindImeData>(10, ImeType::IME);
     info->config.inputAttribute.inputPattern = InputAttribute::PATTERN_TEXT;
     group->mapClients_.insert_or_assign(client->AsObject(), info);
-    session.clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
-    auto ret = session.IsImeSwitchForbidden();
+    userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
+    auto ret = userSession->IsImeSwitchForbidden();
     EXPECT_FALSE(ret);
 
     info->config.inputAttribute.inputPattern = InputAttribute::PATTERN_ONE_TIME_CODE;
     group->mapClients_.insert_or_assign(client->AsObject(), info);
-    session.clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
-    ret = session.IsImeSwitchForbidden();
+    userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
+    ret = userSession->IsImeSwitchForbidden();
     EXPECT_FALSE(ret);
 
     info->config.inputAttribute.inputPattern = InputAttribute::PATTERN_PASSWORD;
     group->mapClients_.insert_or_assign(client->AsObject(), info);
-    session.clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
-    ret = session.IsImeSwitchForbidden();
+    userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
+    ret = userSession->IsImeSwitchForbidden();
     EXPECT_TRUE(ret);
 
     info->config.inputAttribute.inputPattern = InputAttribute::PATTERN_TEXT;
     info->config.isSimpleKeyboardEnabled = true;
     group->mapClients_.insert_or_assign(client->AsObject(), info);
-    session.clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
-    ret = session.IsImeSwitchForbidden();
+    userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
+    ret = userSession->IsImeSwitchForbidden();
     EXPECT_TRUE(ret);
 }
 
@@ -1827,7 +1827,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_IsScreenLockOrSecurityFlag, TestSize.L
 HWTEST_F(InputMethodPrivateMemberTest, SA_SpecialSendPrivateData, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::SA_SpecialSendPrivateData start.");
-    PerUserSession session(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     std::string bundleName = "bundleName";
     std::string extName = "extName";
     std::string bundleName1 = "bundleName1";
@@ -1835,15 +1835,15 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SpecialSendPrivateData, TestSize.Level
     auto imeData1 = std::make_shared<ImeData>(nullptr, nullptr, nullptr, 100);
     imeData1->imeStatus = ImeStatus::READY;
     imeData1->ime = std::make_pair(bundleName, extName);
-    session.realImeData_ = imeData1;
+    userSession->realImeData_ = imeData1;
     std::unordered_map<std::string, PrivateDataValue> privateCommand;
     // running ime same with pre default ime, send directly
     ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = bundleName + "/" + extName;
-    auto ret = session.SpecialSendPrivateData(privateCommand);
+    auto ret = userSession->SpecialSendPrivateData(privateCommand);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     // running ime extName not same with pre default ime, start pre default ime failed
     ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = bundleName1 + "/" + extName1;
-    ret = session.SpecialSendPrivateData(privateCommand);
+    ret = userSession->SpecialSendPrivateData(privateCommand);
     EXPECT_NE(ret, ErrorCode::NO_ERROR);
 }
 
@@ -1857,7 +1857,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_CheckInputTypeOption, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::SA_CheckInputTypeOption start.");
     InputMethodSystemAbility systemAbility;
-    auto session = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto session = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     std::string bundleName = "bundleName";
     std::string extName = "extName";
     auto imeData1 = std::make_shared<ImeData>(nullptr, nullptr, nullptr, 100);
@@ -1926,7 +1926,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_GetRealCurrentIme_001, TestSize.Level0
     std::string bundleName2 = "bundleName2";
     std::string extName2 = "extName2";
     ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = bundleName2 + "/" + extName2;
-    auto session = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto session = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
 
     // input type start
     InputTypeManager::GetInstance().isStarted_ = true;
@@ -1977,7 +1977,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_GetRealCurrentIme_002, TestSize.Level0
     ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = bundleName2 + "/" + extName2;
 
     InputTypeManager::GetInstance().isStarted_ = false;
-    auto session = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto session = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     auto group = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
     sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
     group->currentClient_ = client;
@@ -2014,7 +2014,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_GetRealCurrentIme_003, TestSize.Level0
     cfg.enabledInfos.push_back(enabledInfo);
     ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(MAIN_USER_ID, cfg);
 
-    auto session = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto session = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     auto group = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
     sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
     group->currentClient_ = client;
@@ -2064,7 +2064,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_NotifySubTypeChangedToIme, TestSize.Le
     std::string subName2 = "subName2";
     InputTypeManager::GetInstance().inputTypeImeList_.clear();
     InputTypeManager::GetInstance().inputTypeImeList_.insert({ bundleName1, subName1 });
-    auto session = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto session = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     auto ret = session->NotifySubTypeChangedToIme(bundleName1, "");
     EXPECT_EQ(ret, ErrorCode::ERROR_IME_NOT_STARTED);
     ret = session->NotifySubTypeChangedToIme(bundleName1, subName1);
@@ -2082,7 +2082,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_NotifySubTypeChangedToIme, TestSize.Le
 HWTEST_F(InputMethodPrivateMemberTest, StartImeTryLock001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::StartImeTryLock001 start.");
-    session_ = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    session_ = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     SET_THREAD_NUM(5);
     GTEST_RUN_TASK(TestImfStartIme);
     IMSA_HILOGI("InputMethodPrivateMemberTest::StartImeTryLock %{public}d.", tryLockFailCount_.load());
@@ -2099,7 +2099,7 @@ HWTEST_F(InputMethodPrivateMemberTest, StartImeTryLock001, TestSize.Level0)
 HWTEST_F(InputMethodPrivateMemberTest, TestCompareExchange_001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest TestCompareExchange_001 TEST START");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     userSession->largeMemoryState_ = 2;
     auto ret = userSession->CompareExchange(2);
     EXPECT_TRUE(ret);
@@ -2117,7 +2117,7 @@ HWTEST_F(InputMethodPrivateMemberTest, TestCompareExchange_001, TestSize.Level0)
 HWTEST_F(InputMethodPrivateMemberTest, TestIsLargeMemoryStateNeed_001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest TestIsLargeMemoryStateNeed_001 TEST START");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     userSession->largeMemoryState_ = 2;
     auto ret = userSession->IsLargeMemoryStateNeed();
     EXPECT_TRUE(ret);
@@ -2136,7 +2136,7 @@ HWTEST_F(InputMethodPrivateMemberTest, TestIsLargeMemoryStateNeed_001, TestSize.
 HWTEST_F(InputMethodPrivateMemberTest, TestIsLargeMemoryStateNeed_002, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest TestIsLargeMemoryStateNeed_002 TEST START");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     auto ret = userSession->UpdateLargeMemorySceneState(2);
     userSession->StartImeInImeDied();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
@@ -2272,7 +2272,7 @@ HWTEST_F(InputMethodPrivateMemberTest, TestGetCompatibleDeviceType, TestSize.Lev
 HWTEST_F(InputMethodPrivateMemberTest, TestAttachCount001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest TestAttachCount001 TEST START");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     userSession->IncreaseAttachCount();
     EXPECT_EQ(userSession->GetAttachCount(), 1);
     userSession->DecreaseAttachCount();
@@ -2287,7 +2287,7 @@ HWTEST_F(InputMethodPrivateMemberTest, TestAttachCount001, TestSize.Level0)
 HWTEST_F(InputMethodPrivateMemberTest, TestAttachCount002, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest TestAttachCount002 TEST START");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     for (uint32_t i = 0; i < MAX_ATTACH_COUNT + 1; i++) {
         userSession->IncreaseAttachCount();
     }
@@ -2410,7 +2410,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_RestoreCurrentImeSubType, TestSize.Lev
     cfg.enabledInfos.push_back(enabledInfo);
     ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(MAIN_USER_ID, cfg);
 
-    auto session = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto session = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     // has no ready ime
     session->realImeData_ = nullptr;
     auto ret = session->RestoreCurrentImeSubType();
@@ -2463,7 +2463,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_TestSysParamChanged_001, TestSize.Leve
     SystemParamAdapter::HandleSysParamChanged("key", "value", "abnormalKey", 0);
     UserSessionManager::GetInstance().userSessions_.clear();
     sysAbility.OnSysMemChanged();
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     UserSessionManager::GetInstance().userSessions_.insert_or_assign(MAIN_USER_ID, userSession);
     sysAbility.OnSysMemChanged();
     ret = SystemParamAdapter::GetInstance().WatchParam(SystemParamAdapter::MEMORY_WATERMARK_KEY);
@@ -2483,7 +2483,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_TestSysParamChanged_001, TestSize.Leve
 HWTEST_F(InputMethodPrivateMemberTest, SA_TryStartIme_001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::SA_TryStartIme_001 start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     userSession->isBlockStartedByLowMem_ = false;
     auto ret = userSession->TryStartIme();
     EXPECT_EQ(ret, ErrorCode::ERROR_OPERATION_NOT_ALLOWED);
@@ -2530,7 +2530,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_TryStartIme_001, TestSize.Level0)
 HWTEST_F(InputMethodPrivateMemberTest, SA_TryDisconnectIme_001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::SA_TryDisconnectIme_001 start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     // has no imeData
     userSession->realImeData_ = nullptr;
     auto ret = userSession->TryDisconnectIme();
@@ -2572,7 +2572,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_TryDisconnectIme_001, TestSize.Level0)
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_AddProxyImeData_001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_AddProxyImeData_001 start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     userSession->proxyImeData_.clear();
     uint64_t displayId = 0;
     pid_t pid1 = 100;
@@ -2614,7 +2614,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_AddProxyImeData_001, TestS
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_AddProxyImeData_002, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_AddProxyImeData_002 start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     uint64_t displayId = 0;
     userSession->proxyImeData_.clear();
     pid_t pid1 = 100;
@@ -2673,7 +2673,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_AddProxyImeData_002, TestS
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnUnregisterProxyIme, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_OnUnregisterProxyIme start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     pid_t pid = 100;
     pid_t pid1 = 170;
     pid_t pid2 = 140;
@@ -2730,7 +2730,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnUnregisterProxyIme, Test
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnRegisterProxyIme, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_OnRegisterProxyIme start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     // displayId not default, not has old proxy ime
     uint64_t displayId = 100;
     int32_t pid = 10;
@@ -2762,7 +2762,7 @@ HWTEST_F(InputMethodPrivateMemberTest, IMSA_IsTmpIme, TestSize.Level0)
     // not has MAIN_USER_ID userSession
     auto ret = systemAbility.IsTmpIme(MAIN_USER_ID, tokenId);
     EXPECT_FALSE(ret);
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     UserSessionManager::GetInstance().userSessions_.insert_or_assign(MAIN_USER_ID, userSession);
     ImeEnabledCfg cfg;
     ImeEnabledInfo enabledInfo{ "", "extName1", EnabledStatus::BASIC_MODE };
@@ -3054,7 +3054,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnImeDied, TestSize.Level0
     sptr<IInputMethodCore> core = new (std::nothrow) InputMethodCoreServiceImpl();
     ASSERT_NE(core, nullptr);
     pid_t pid = 10;
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     // imeData is nullptr
     auto currentIme = ImeEnabledInfoManager::GetInstance().GetCurrentImeCfg(MAIN_USER_ID);
     ASSERT_NE(currentIme, nullptr);
@@ -3111,7 +3111,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_RemoveRealImeData, TestSiz
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_RemoveRealImeData start.");
     pid_t pid = 100;
     pid_t pid1 = 1001;
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     // realImeData_ is nullptr
     userSession->realImeData_ = nullptr;
     userSession->RemoveRealImeData();
@@ -3161,7 +3161,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_RemoveMirrorImeData, TestS
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_RemoveMirrorImeData start.");
     pid_t pid = 100;
     pid_t pid1 = 1001;
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, 100);
     // mirrorImeData_ is nullptr
     userSession->mirrorImeData_ = nullptr;
@@ -3200,7 +3200,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_RemoveProxyImeData, TestSi
     pid_t pid1 = 1001;
     pid_t pid2 = 10001;
     int64_t displayId = 10;
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, pid);
     userSession->proxyImeData_.clear();
     // proxyImeData_ is empty
@@ -3240,7 +3240,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_RemoveProxyImeData_002, Te
     pid_t pid1 = 1001;
     pid_t pid2 = 10001;
     int64_t displayId = 10;
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     userSession->proxyImeData_.clear();
     // proxyImeData_ is empty
     auto ret = userSession->RemoveProxyImeData(displayId, pid);
@@ -3281,7 +3281,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnHideSoftKeyBoardSelf, Te
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_OnHideSoftKeyBoardSelf start.");
     // not has clientInfo
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     userSession->OnHideSoftKeyBoardSelf();
     // has clientInfo, client is nullptr
     auto group = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
@@ -3312,7 +3312,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnHideSoftKeyBoardSelf, Te
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_DeactivateClient, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_DeactivateClient start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     auto group = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
     sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
     auto info = std::make_shared<InputClientInfo>();
@@ -3339,7 +3339,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_DeactivateClient, TestSize
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_GetReadyImeDataToBind, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_GetReadyImeDataToBind start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     int64_t displayId = 100;
     pid_t pid = 100;
     auto realImeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, pid);
@@ -3378,7 +3378,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_GetReadyImeDataToBind, Tes
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_HandleInMultiGroup, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_HandleInMultiGroup start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     userSession->clientGroupMap_.clear();
     auto newImeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, 100);
     newImeData->type = ImeType::IME_MIRROR;
@@ -3434,7 +3434,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_HandleInMultiGroup, TestSi
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_GetProxyImeData, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_GetProxyImeData start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     pid_t pid = 1000;
     pid_t imeDatePid = 100;
     userSession->proxyImeData_.clear();
@@ -3463,7 +3463,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_GetProxyImeData, TestSize.
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_GetClientBoundImeByWindowId, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_GetClientBoundImeByWindowId start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     uint32_t windowId = 100;
     uint32_t windowId1 = 1000;
     // group is nullptr
@@ -3538,7 +3538,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnWindowDisplayIdChanged, 
     int32_t windowId = 10;
     int32_t callingPid = 100;
     uint64_t defaultDisplayId = ImfCommonConst::DEFAULT_DISPLAY_ID;
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     userSession->clientGroupMap_.clear();
     // clientGroup is nullptr
     userSession->OnWindowDisplayIdChanged(windowId, defaultDisplayId);
@@ -3575,7 +3575,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_GetMirrorImeData, TestSize
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_GetMirrorImeData start.");
     pid_t pid = 100;
     pid_t pid1 = 1001;
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, 100);
     // mirrorImeData_ is nullptr
     userSession->mirrorImeData_ = nullptr;
@@ -3603,7 +3603,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_IsSameIme, TestSize.Level0
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_IsSameIme start.");
     pid_t pid = 100;
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, pid);
     imeData->type = ImeType::IME;
     auto bindImeData = std::make_shared<BindImeData>(pid, ImeType::PROXY_IME);
@@ -3635,7 +3635,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_IsSameIme, TestSize.Level0
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_RemoveDeathRecipient, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_RemoveDeathRecipient start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     userSession->RemoveDeathRecipient(nullptr, nullptr);
     auto deathRecipient = new (std::nothrow) InputDeathRecipient();
     EXPECT_TRUE(deathRecipient != nullptr);
@@ -3652,7 +3652,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_GetAllReadyImeData, TestSi
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_GetAllReadyImeData start.");
     uint64_t groupId = 4;
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     auto imeVec = userSession->GetAllReadyImeData(nullptr, groupId);
     EXPECT_TRUE(imeVec.empty());
     // imeData is mirror
@@ -3683,7 +3683,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_GetAllReadyImeData, TestSi
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnBindImeMirror, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_OnBindImeMirror start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     auto pid = IPCSkeleton::GetCallingPid();
     // not has mirror ime
     userSession->mirrorImeData_ = nullptr;
@@ -3732,7 +3732,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnBindImeMirror, TestSize.
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnUnbindImeMirror, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_OnUnbindImeMirror start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     auto pid = IPCSkeleton::GetCallingPid();
 
     // not has mirror ime
@@ -3782,7 +3782,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnUnbindImeMirror, TestSiz
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_IsShowSameRealImeInMainDisplayInMultiGroup, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_IsShowSameRealImeInMainDisplayInMultiGroup start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     InputClientInfo newClientInfo;
     auto oldClientInfo = std::make_shared<InputClientInfo>();
     auto pid = IPCSkeleton::GetCallingPid();
@@ -3869,7 +3869,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_NeedHideRealIme, TestSize.
     uint64_t displayId1 = 1001;
     uint64_t clientGroupId = 1;
     uint64_t keyboardGroupId = 2;
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     // has no client info
     auto need = userSession->NeedHideRealIme(clientGroupIdParam);
     EXPECT_TRUE(need);
@@ -3910,7 +3910,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_NeedHideRealIme, TestSize.
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_RequestHideRealIme_001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_RequestHideRealIme_001 start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     // 1 - real ime data is nullptr
     userSession->realImeData_ = nullptr;
     bool ret = userSession->RequestHideRealIme(DEFAULT_DISPLAY_ID);
@@ -3952,7 +3952,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_RequestHideProxyIme_001, T
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_RequestHideProxyIme_001 start.");
     uint64_t targetDisplayId = 3;
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     sptr<IInputMethodCore> core = new (std::nothrow) InputMethodCoreServiceImpl();
     ASSERT_NE(core, nullptr);
     sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
@@ -4003,7 +4003,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_RequestHideProxyIme_002, T
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_RequestHideProxyIme_002 start.");
     uint64_t targetDisplayId = 3;
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     sptr<IInputMethodCore> core = new (std::nothrow) InputMethodCoreServiceImpl();
     ASSERT_NE(core, nullptr);
     sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
@@ -4060,7 +4060,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_RequestHideProxyIme_002, T
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnRequestHideInput_001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_OnRequestHideInput_001 start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     // 1 - RequestHideRealIme false, RequestHideProxyIme false
     userSession->realImeData_ = nullptr;
     int32_t ret = userSession->OnRequestHideInput(DEFAULT_DISPLAY_ID, "");
@@ -4096,7 +4096,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_UpdateClientAfterRequestHi
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_UpdateClientAfterRequestHide_001 start.");
     uint64_t targetDisplayId = 3;
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     auto clientGroup = std::make_shared<ClientGroup>(targetDisplayId, nullptr);
 
     // 1 - clientGroup == nullptr
@@ -4124,7 +4124,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_UpdateClientAfterRequestHi
     uint64_t targetDisplayId = 3;
     sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
     ASSERT_NE(client, nullptr);
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     std::string newBundleName = "newBundleName";
     std::string oldBundleName = "oldClientBundleName";
     auto info = std::make_shared<InputClientInfo>();
@@ -4166,7 +4166,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_UpdateClientAfterRequestHi
     uint64_t targetDisplayId = 3;
     sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
     ASSERT_NE(client, nullptr);
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     std::string newBundleName = "newBundleName";
     std::string oldBundleName = "oldClientBundleName";
     auto info = std::make_shared<InputClientInfo>();
@@ -4191,7 +4191,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_RemoveClient_001, TestSize
     sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
     ASSERT_NE(client, nullptr);
     auto clientGroup = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     // 1 - needNotifyClient false
     clientGroup->SetCurrentClient(nullptr);
     clientGroup->SetInactiveClient(nullptr);
@@ -4257,7 +4257,7 @@ HWTEST_F(InputMethodPrivateMemberTest, IMSA_HideCurrentInput, TestSize.Level0)
 
     // identityChecker_ is nullptr
     auto userId = TddUtil::GetCurrentUserId();
-    auto userSession = std::make_shared<PerUserSession>(userId);
+    auto userSession = std::make_shared<PerUserSession>(userId, nullptr);
     UserSessionManager::GetInstance().userSessions_.insert_or_assign(userId, userSession);
     WindowAdapter::GetInstance().displayGroupIds_.clear();
     WindowAdapter::GetInstance().displayGroupIds_[100][displayId] = 0;
@@ -4285,7 +4285,7 @@ HWTEST_F(InputMethodPrivateMemberTest, IMSA_ShowCurrentInputInner, TestSize.Leve
 
     // identityChecker_ is nullptr
     auto userId = TddUtil::GetCurrentUserId();
-    auto userSession = std::make_shared<PerUserSession>(userId);
+    auto userSession = std::make_shared<PerUserSession>(userId, nullptr);
     UserSessionManager::GetInstance().userSessions_.insert_or_assign(userId, userSession);
     WindowAdapter::GetInstance().displayGroupIds_.clear();
     WindowAdapter::GetInstance().displayGroupIds_[100][displayId] = 0;
@@ -4304,7 +4304,7 @@ HWTEST_F(InputMethodPrivateMemberTest, IMSA_ShowCurrentInputInner, TestSize.Leve
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_IsPanelShown_001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_IsPanelShown_001 start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     PanelInfo panelInfo;
     bool isShown = false;
     userSession->clientGroupMap_.clear();
@@ -4348,7 +4348,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_IsPanelShown_001, TestSize
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_StartInputService_IsRestartAfterTimeout_001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_StartInputService_IsRestartAfterTimeout_001 start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     auto ime = std::make_shared<ImeNativeCfg>();
     std::shared_ptr<Property> property = InputMethodController::GetInstance()->GetCurrentInputMethod();
     ASSERT_TRUE(property != nullptr);
@@ -4368,7 +4368,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_StartInputService_IsRestar
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_StartInputService_IsRestartAfterTimeout_002, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_StartInputService_IsRestartAfterTimeout_002 start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
 
     auto ret = userSession->StartInputService(nullptr, true);
     EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_IME_TO_START_NULLPTR);
@@ -4390,7 +4390,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_StartInputService_IsRestar
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_FirstStartNeedRetry_001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_FirstStartNeedRetry_001 start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
 
     EXPECT_TRUE(userSession->firstStartNeedRetry_.load());
 
@@ -4410,7 +4410,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_FirstStartNeedRetry_001, T
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_HandleFirstStart_WithRetryNeeded_001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_HandleFirstStart_WithRetryNeeded_001 start.");
-    auto userSession = std::make_shared<PerUserSession>(INVALID_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(INVALID_USER_ID, nullptr);
     auto ime = std::make_shared<ImeNativeCfg>();
     ime->bundleName = "com.example.test";
     ime->extName = "InputMethodExtAbility";
@@ -4436,7 +4436,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_HandleFirstStart_WithRetry
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_HandleFirstStart_StopCurrentImeTrue_001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_HandleFirstStart_StopCurrentImeTrue_001 start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     auto ime = std::make_shared<ImeNativeCfg>();
     ime->bundleName = "com.example.test";
     ime->extName = "InputMethodExtAbility";
@@ -4925,7 +4925,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_NotifyImeChangedToClients_
     ImeEnabledCfg cfg;
     cfg.enabledInfos.push_back(enabledInfo);
     ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(MAIN_USER_ID, cfg);
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     auto ret = userSession->NotifyImeChangedToClients();
     EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_GET_IME_INFO_FAILED);
 }
@@ -4944,7 +4944,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_NotifyImeChangedToClients_
     ImeEnabledCfg cfg;
     cfg.enabledInfos.push_back(enabledInfo);
     ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(MAIN_USER_ID, cfg);
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     auto ret = userSession->NotifyImeChangedToClients();
     EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_GET_IME_INFO_FAILED);
 }
@@ -4958,7 +4958,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_NotifyImeChangedToClients_
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_GetCursorInfo_DiffPid, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_GetCursorInfo_DiffPid start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     pid_t callingPid = IPCSkeleton::GetCallingPid();
     pid_t clientPid = callingPid + 1;
 
@@ -4997,7 +4997,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_GetCursorInfo_DiffPid, Tes
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_GetInputStartInfo, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_GetInputStartInfo start.");
-    auto session = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto session = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
 
     // has no current client bound real ime
     session->clientGroupMap_.clear();
@@ -5033,7 +5033,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_GetInputStartInfo, TestSiz
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_GetSoftKeyboardInfo, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_GetSoftKeyboardInfo start.");
-    auto session = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto session = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
 
     // has no current client bound real ime
     session->clientGroupMap_.clear();
@@ -5069,7 +5069,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_GetSoftKeyboardInfo, TestS
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnUnregisterProxyIme_SWITCH_PROXY_IME_TO_IME, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_OnUnregisterProxyIme_SWITCH_PROXY_IME_TO_IME start.");
-    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     pid_t pid = 100;
     pid_t pid1 = 170;
     pid_t pid2 = 140;
@@ -5168,6 +5168,124 @@ HWTEST_F(InputMethodPrivateMemberTest, InputMethodSystemAbility_UnregisterProxyI
     int32_t invalidType4 = INT32_MAX;
     ret = systemAbility.UnregisterProxyIme(0, invalidType4);
     EXPECT_EQ(ret, ErrorCode::ERROR_BAD_PARAMETERS);
+}
+
+/**
+ * @tc.name: PerUserSession_TaskTest
+ * @tc.desc: Test PerUserSession_TaskTest
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_TaskTest, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_TaskTest start.");
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
+    userSession->RemoveAllTask();
+    EXPECT_EQ(userSession->GetEventHandler(), nullptr);
+    auto ret = userSession->RestartIme();
+    EXPECT_FALSE(ret);
+
+    auto runner = AppExecFwk::EventRunner::Create("test_RemoveAllTask");
+    auto eventHandler = std::make_shared<AppExecFwk::EventHandler>(runner);
+    auto userSession1 = std::make_shared<PerUserSession>(MAIN_USER_ID, eventHandler);
+    userSession1->RemoveAllTask();
+    EXPECT_EQ(userSession1->GetEventHandler(), eventHandler);
+    ret = userSession1->RestartIme();
+    EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.name: PerUserSession_IsImeDisconnected
+ * @tc.desc: Test PerUserSession_IsImeDisconnected
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_IsImeDisconnected, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_IsImeDisconnected start.");
+    pid_t pid = 100;
+    pid_t pid1 = 1000;
+
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
+    userSession->realImeData_ = nullptr;
+    auto ret = userSession->IsImeDisconnected(pid);
+    EXPECT_TRUE(ret);
+
+    userSession->realImeData_ = std::make_shared<ImeData>(nullptr, nullptr, nullptr, pid);
+    ret = userSession->IsImeDisconnected(pid1);
+    EXPECT_TRUE(ret);
+
+    ret = userSession->IsImeDisconnected(pid);
+    EXPECT_FALSE(ret);
+
+    userSession->realImeData_->isDisconnected = true;
+    ret = userSession->IsImeDisconnected(pid);
+    EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.name: PerUserSession_WaitImeExtExit
+ * @tc.desc: Test PerUserSession_WaitImeExtExit
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_WaitImeExtExit, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_WaitImeExtExit start.");
+    pid_t pid = 100;
+
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
+    auto ret = userSession->WaitImeExtExit(ImeType::IME_MIRROR, pid);
+    EXPECT_TRUE(ret);
+
+    ret = userSession->WaitImeExtExit(ImeType::IME, pid);
+    EXPECT_TRUE(ret);
+
+    userSession->realImeData_ = std::make_shared<ImeData>(nullptr, nullptr, nullptr, pid);
+    ret = userSession->WaitImeExtExit(ImeType::IME, pid);
+    EXPECT_FALSE(ret);
+
+    userSession->realImeData_->isDisconnected = true;
+    ret = userSession->WaitImeExtExit(ImeType::IME, pid);
+    EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.name: PerUserSession_UpdateRealImeDataOnDisconnect
+ * @tc.desc: Test PerUserSession_UpdateRealImeDataOnDisconnect
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_UpdateRealImeDataOnDisconnect, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_UpdateRealImeDataOnDisconnect start.");
+    pid_t pid = 100;
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
+
+    userSession->UpdateRealImeDataOnDisconnect(nullptr);
+    EXPECT_EQ(userSession->realImeData_, nullptr);
+
+    sptr<ImeConnection> connection = new (std::nothrow) ImeConnection(MAIN_USER_ID);
+    userSession->UpdateRealImeDataOnDisconnect(connection);
+    EXPECT_EQ(userSession->realImeData_, nullptr);
+
+    auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, pid);
+    imeData->status = ImeStatus::STARTING;
+    userSession->realImeData_ = imeData;
+    userSession->UpdateRealImeDataOnDisconnect(connection);
+    EXPECT_FALSE(userSession->realImeData_->isDisconnected);
+
+    imeData->status = ImeStatus::READY;
+    imeData->connection = nullptr;
+    userSession->UpdateRealImeDataOnDisconnect(connection);
+    EXPECT_FALSE(userSession->realImeData_->isDisconnected);
+
+    imeData->connection = connection;
+    userSession->UpdateRealImeDataOnDisconnect(nullptr);
+    EXPECT_FALSE(userSession->realImeData_->isDisconnected);
+
+    userSession->UpdateRealImeDataOnDisconnect(connection);
+    EXPECT_TRUE(userSession->realImeData_->isDisconnected);
 }
 } // namespace MiscServices
 } // namespace OHOS

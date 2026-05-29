@@ -14,8 +14,7 @@
  */
 
 #include "ime_connection.h"
-
-#include "global.h"
+#include "user_session_manager.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -30,6 +29,12 @@ void ImeConnection::OnAbilityDisconnectDone(const AppExecFwk::ElementName &eleme
 {
     IMSA_HILOGI("ime: %{public}s/%{public}s, ret: %{public}d", element.GetBundleName().c_str(),
         element.GetAbilityName().c_str(), resultCode);
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId_);
+    if (session == nullptr) {
+        IMSA_HILOGE("userId:%{public}d session is nullptr", userId_);
+        return;
+    }
+    session->OnImeDisconnect(this);
 }
 } // namespace MiscServices
 } // namespace OHOS

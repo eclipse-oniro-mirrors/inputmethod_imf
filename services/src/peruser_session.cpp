@@ -74,13 +74,13 @@ constexpr const char *UNDEFINED = "undefined";
 constexpr int32_t WAIT_ATTACH_FINISH_DELAY = 50;
 constexpr int32_t WAIT_ATTACH_FINISH_MAX_TIMES = 20;
 constexpr uint32_t MAX_SCB_START_COUNT = 2;
-constexpr const char *MAKE_IMAGE_TIMEOUT_TASK = "imf_imageTimeoutTask";
 constexpr int32_t MAKE_IMAGE_TIMEOUT = 2 * 60 * 1000; // two min
 constexpr int32_t E_IMAGE_CREATING = -2; // same with ForkallErrCode::E_IMAGE_CREATING, never modify
-PerUserSession::PerUserSession(int userId) : userId_(userId) { }
+constexpr int32_t WAIT_IME_EXT_EXIT_DELAY = 5;
+constexpr int32_t WAIT_IME_EXT_EXIT_MAX_TIMES = 60;
 
 PerUserSession::PerUserSession(int32_t userId, const std::shared_ptr<AppExecFwk::EventHandler> &eventHandler)
-    : userId_(userId), eventHandler_(eventHandler)
+    : userId_(userId), eventHandler_(eventHandler), taskNames_(TaskNames::MakeTaskNames(userId))
 {
     // if bms not start, AppMgrClient::GetProcessRunningInfosByUserId will blocked
     if (IsSaReady(BUNDLE_MGR_SERVICE_SYS_ABILITY_ID)) {
@@ -93,7 +93,7 @@ PerUserSession::PerUserSession(int32_t userId, const std::shared_ptr<AppExecFwk:
 
 PerUserSession::~PerUserSession()
 {
-    StopImageTimeoutTask();
+    RemoveAllTask();
 }
 
 int PerUserSession::AddClientInfo(sptr<IRemoteObject> inputClient, const InputClientInfo &clientInfo)
@@ -228,10 +228,13 @@ void PerUserSession::OnImeDied(const sptr<IInputMethodCore> &remote, ImeType typ
     if (remote == nullptr) {
         return;
     }
+    if (!WaitImeExtExit(type, pid)) {
+        IMSA_HILOGW("userId:%{public}d ime ext not exit.", userId_);
+    }
     isBlockStartedByLowMem_.store(false);
     auto disconnectedByRss = disconnectedByRss_.load();
     disconnectedByRss_.store(false);
-    IMSA_HILOGI("type/disconnectedByRss: %{public}d/%{public}d.", type, disconnectedByRss);
+    IMSA_HILOGI("type/pid/disconnectedByRss: %{public}d/%{public}d/%{public}d.", type, pid, disconnectedByRss);
     auto imeData = GetImeData(pid, type);
     if (imeData != nullptr && imeData->imeStatus == ImeStatus::EXITING) {
         RemoveImeData(pid);
@@ -967,15 +970,16 @@ int32_t PerUserSession::PostCurrentImeInfoReportHook(const std::string &bundleNa
         IMSA_HILOGD("ime dau statistics cap is not enable.");
         return ErrorCode::ERROR_DEVICE_UNSUPPORTED;
     }
-    if (eventHandler_ == nullptr) {
-        IMSA_HILOGE("eventHandler_ is nullptr.");
+    auto handler = GetEventHandler();
+    if (handler == nullptr) {
+        IMSA_HILOGE("userId:%{public}d handler is nullptr.", userId_);
         return ErrorCode::ERROR_IMSA_NULLPTR;
     }
     auto now = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
     auto task = [userId = userId_, bundleName, now]() {
         ImfHookMgr::GetInstance().ExecuteCurrentImeInfoReportHook(userId, bundleName, now);
     };
-    eventHandler_->PostTask(task, "ExecuteCurrentImeInfoReportHook", 0, AppExecFwk::EventQueue::Priority::LOW);
+    handler->PostTask(task, taskNames_.imeInfoReportHook, 0, AppExecFwk::EventQueue::Priority::LOW);
     return ErrorCode::NO_ERROR;
 }
 
@@ -2454,45 +2458,53 @@ void PerUserSession::ResetRestartTasks()
 
 bool PerUserSession::RestartIme()
 {
+    auto handler = GetEventHandler();
+    if (handler == nullptr) {
+        IMSA_HILOGE("userId:%{public}d handler is nullptr.", userId_);
+        return false;
+    }
     static int32_t delayTime = 0;
-    IMSA_HILOGD("enter");
-    auto task = [this]() {
-        // When the attach conflict with the first scb startup event, discard the first scb startup event.
-        if (GetAttachCount() != 0 && GetScbStartCount() <= 1) {
-            IMSA_HILOGI("attach conflict with the first scb startup event, discard the first scb startup event");
-            ResetRestartTasks();
+    IMSA_HILOGD("userId:%{public}d enter.", userId_);
+    std::weak_ptr<PerUserSession> wpSession = shared_from_this();
+    auto task = [userId = userId_, wpSession]() {
+        auto spSession = wpSession.lock();
+        if (spSession == nullptr) {
+            IMSA_HILOGW("userId:%{public}d spSession is nullptr.", userId);
             return;
         }
-        if (!IsAttachFinished()) {
+        // When the attach conflict with the first scb startup event, discard the first scb startup event.
+        if (spSession->GetAttachCount() != 0 && spSession->GetScbStartCount() <= 1) {
+            IMSA_HILOGI("userId:%{public}d attach conflict with the first scb startup event, discard the first scb "
+                        "startup event.",
+                userId);
+            spSession->ResetRestartTasks();
+            return;
+        }
+        if (!spSession->IsAttachFinished()) {
             delayTime = WAIT_ATTACH_FINISH_DELAY;
-            RestartIme();
+            spSession->RestartIme();
             return;
         }
         delayTime = 0;
-        if (CanStartIme()) {
-            IMSA_HILOGI("start ime");
-            ResetRestartTasks();
-            auto ret = StartCurrentIme(true);
+        if (spSession->CanStartIme()) {
+            IMSA_HILOGI("userId:%{public}d start ime", userId);
+            spSession->ResetRestartTasks();
+            auto ret = spSession->StartCurrentIme(true);
             if (ret != ErrorCode::NO_ERROR) {
-                IMSA_HILOGE("start ime failed:%{public}d", ret);
+                IMSA_HILOGE("userId:%{public}d start ime failed:%{public}d.", userId, ret);
             }
         }
-        IMSA_HILOGD("restart again");
+        IMSA_HILOGD("userId:%{public}d restart again.", userId);
         int32_t tasks = 0;
         {
-            std::lock_guard<std::mutex> lock(restartMutex_);
-            tasks = --restartTasks_;
+            std::lock_guard<std::mutex> lock(spSession->restartMutex_);
+            tasks = --spSession->restartTasks_;
         }
-        if (tasks > 0 && !RestartIme()) {
-            ResetRestartTasks();
+        if (tasks > 0 && !spSession->RestartIme()) {
+            spSession->ResetRestartTasks();
         }
     };
-    if (eventHandler_ == nullptr) {
-        IMSA_HILOGE("eventHandler_ is nullptr!");
-        return false;
-    }
-    return eventHandler_->PostTask(
-        task, "RestartCurrentImeTask", delayTime, AppExecFwk::EventQueue::Priority::IMMEDIATE);
+    return handler->PostTask(task, taskNames_.restartIme, delayTime, AppExecFwk::EventQueue::Priority::IMMEDIATE);
 }
 
 BlockQueue<SwitchInfo>& PerUserSession::GetSwitchQueue()
@@ -2520,7 +2532,7 @@ int32_t PerUserSession::InitRealImeData(sptr<AAFwk::IAbilityConnection> &connect
     if (imeNativeCfg != nullptr && !imeNativeCfg->imeExtendInfo.privateCommand.empty()) {
         imeData->imeExtendInfo.privateCommand = imeNativeCfg->imeExtendInfo.privateCommand;
     }
-    connection = new (std::nothrow) ImeConnection();
+    connection = new (std::nothrow) ImeConnection(userId_);
     if (connection == nullptr) {
         IMSA_HILOGE("failed to create connection!");
         return ErrorCode::ERROR_IMSA_MALLOC_FAILED;
@@ -2546,6 +2558,67 @@ std::shared_ptr<ImeData> PerUserSession::UpdateRealImeData(
         return nullptr;
     }
     return realImeData_;
+}
+
+void PerUserSession::RemoveAllTask()
+{
+    auto handler = GetEventHandler();
+    if (handler == nullptr) {
+        IMSA_HILOGE("userId:%{public}d handler is nullptr.", userId_);
+        return;
+    }
+    for (const auto &name : taskNames_.GetAllTaskNames()) {
+        if (!name.empty()) {
+            handler->RemoveTask(name);
+        }
+    }
+}
+
+std::shared_ptr<AppExecFwk::EventHandler> PerUserSession::GetEventHandler()
+{
+    return eventHandler_;
+}
+
+bool PerUserSession::IsImeDisconnected(pid_t pid)
+{
+    std::lock_guard<std::mutex> lock(realImeDataLock_);
+    if (realImeData_ == nullptr || realImeData_->pid != pid) {
+        return true;
+    }
+    return realImeData_->isDisconnected;
+}
+
+bool PerUserSession::WaitImeExtExit(ImeType type, pid_t pid)
+{
+    if (type != ImeType::IME) {
+        return true;
+    }
+    auto func = [=]() { return IsImeDisconnected(pid); };
+    return BlockRetry(WAIT_IME_EXT_EXIT_DELAY, WAIT_IME_EXT_EXIT_MAX_TIMES, func);
+}
+
+void PerUserSession::UpdateRealImeDataOnDisconnect(sptr<ImeConnection> connection)
+{
+    std::lock_guard<std::mutex> lock(realImeDataLock_);
+    if (connection == nullptr || realImeData_ == nullptr || realImeData_->imeStatus == ImeStatus::STARTING
+        || realImeData_->connection == nullptr) {
+        IMSA_HILOGW("userId:%{public}d ime info abnormal.", userId_);
+        return;
+    }
+    auto realObj = realImeData_->connection->AsObject();
+    auto connObj = connection->AsObject();
+    if (realObj == nullptr || connObj == nullptr || realObj != connObj) {
+        IMSA_HILOGW("userId:%{public}d ime info abnormal in imeConnection.", userId_);
+        return;
+    }
+    IMSA_HILOGD("%{public}d ime is disconnected", userId_);
+    realImeData_->isDisconnected = true;
+}
+
+void PerUserSession::OnImeDisconnect(sptr<ImeConnection> connection)
+{
+    IMSA_HILOGD("%{public}d run in", userId_);
+    UpdateRealImeDataOnDisconnect(connection);
 }
 
 std::shared_ptr<ImeData> PerUserSession::GetRealImeData(pid_t pid)
@@ -3510,26 +3583,36 @@ void PerUserSession::StartImageTimeoutTask()
 {
     IMSA_HILOGD("run in.");
     std::lock_guard<std::mutex> lock(imageTimeoutTaskLock_);
-    if (eventHandler_ == nullptr) {
+    auto handler = GetEventHandler();
+    if (handler == nullptr) {
+        IMSA_HILOGE("handler is nullptr.");
         return;
     }
-    eventHandler_->RemoveTask(MAKE_IMAGE_TIMEOUT_TASK);
-    eventHandler_->PostTask(
-        [=] {
-            IMSA_HILOGW("userId:%{public}d make sys ime timeout.", userId_);
-            StartImeInSysImageChanged();
+    handler->RemoveTask(taskNames_.imageTimeout);
+    std::weak_ptr<PerUserSession> wpSession = shared_from_this();
+    handler->PostTask(
+        [wpSession, userId = userId_] {
+            IMSA_HILOGW("userId:%{public}d make sys ime timeout.", userId);
+            auto spSession = wpSession.lock();
+            if (spSession == nullptr) {
+                IMSA_HILOGW("userId:%{public}d spSession is nullptr.", userId);
+                return;
+            }
+            spSession->StartImeInSysImageChanged();
         },
-        MAKE_IMAGE_TIMEOUT_TASK, MAKE_IMAGE_TIMEOUT, AppExecFwk::EventQueue::Priority::VIP);
+        taskNames_.imageTimeout, MAKE_IMAGE_TIMEOUT, AppExecFwk::EventQueue::Priority::VIP);
 }
 
 void PerUserSession::StopImageTimeoutTask()
 {
     IMSA_HILOGD("run in.");
     std::lock_guard<std::mutex> lock(imageTimeoutTaskLock_);
-    if (eventHandler_ == nullptr) {
+    auto handler = GetEventHandler();
+    if (handler == nullptr) {
+        IMSA_HILOGE("handler is nullptr.");
         return;
     }
-    eventHandler_->RemoveTask(MAKE_IMAGE_TIMEOUT_TASK);
+    handler->RemoveTask(taskNames_.imageTimeout);
 }
 
 bool PerUserSession::NeedStartIme(ImeStartScene scene)
