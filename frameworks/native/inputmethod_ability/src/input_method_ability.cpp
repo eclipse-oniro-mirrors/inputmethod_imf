@@ -402,7 +402,7 @@ int32_t InputMethodAbility::StopInput(
 {
     std::lock_guard<std::recursive_mutex> lock(keyboardCmdLock_);
     int32_t cmdCount = ++cmdId_;
-    IMSA_HILOGI("IMA StopInput sessionId: %{public}u, clientSessionId: %{public}d", sessionId, clientSessionId);
+    IMSA_HILOGI("IMA, sessionId: %{public}u, clientSessionId: %{public}d", sessionId, clientSessionId);
     HideKeyboardImplWithoutLock(cmdCount, sessionId, clientSessionId);
     ClearBindInfo(channelObject);
     ClearInputType();

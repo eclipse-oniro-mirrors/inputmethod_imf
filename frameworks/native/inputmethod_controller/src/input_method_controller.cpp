@@ -556,27 +556,8 @@ int32_t InputMethodController::ShowCurrentInput()
 
 int32_t InputMethodController::Close()
 {
-    {
-        QueueGuard guard(__func__);
-    }
-    if (IsBound()) {
-        IMSA_HILOGI("start.");
-    }
-
-    auto listener = GetTextListener();
-    if (listener != nullptr) {
-        listener->OnDetachV2();
-    }
-    OperateIMEInfoCode infoCode = OperateIMEInfoCode::IME_UNBIND;
-    {
-        std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
-        if (clientInfo_.isShowKeyboard) {
-            infoCode = OperateIMEInfoCode::IME_HIDE_UNBIND;
-        }
-    }
-    InputMethodSyncTrace tracer("InputMethodController Close trace.");
-    InputMethodSysEvent::GetInstance().OperateSoftkeyboardBehaviour(infoCode);
-    return ReleaseInput(clientInfo_.client);
+    int32_t defaultSessionId = -1;
+    return Close(defaultSessionId);
 }
 
 int32_t InputMethodController::Close(int32_t clientSessionId)
@@ -585,7 +566,7 @@ int32_t InputMethodController::Close(int32_t clientSessionId)
         QueueGuard guard(__func__);
     }
     if (IsBound()) {
-        IMSA_HILOGI("start with clientSessionId: %{public}d.", clientSessionId);
+        IMSA_HILOGI("start, clientSessionId: %{public}d.", clientSessionId);
     }
 
     auto listener = GetTextListener();
@@ -1733,7 +1714,7 @@ void InputMethodController::SendKeyboardStatus(KeyboardStatus status)
 void InputMethodController::NotifyPanelStatusInfo(const PanelStatusInfo &info)
 {
     IMSA_HILOGD("InputMethodController start, type: %{public}d, flag: %{public}d, visible: %{public}d, trigger: "
-                "%{public}d, sessionId: %{public}u, clientSessionId: %{public}u.",
+                "%{public}d, sessionId: %{public}u, clientSessionId: %{public}d.",
         static_cast<PanelType>(info.panelInfo.panelType), static_cast<PanelFlag>(info.panelInfo.panelFlag),
         info.visible, static_cast<Trigger>(info.trigger), info.sessionId, info.clientSessionId);
     auto listener = GetTextListener();

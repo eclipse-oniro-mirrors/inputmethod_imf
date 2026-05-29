@@ -682,6 +682,65 @@ HWTEST_F(InputMethodControllerTest, testIMCAttach003, TestSize.Level0)
 }
 
 /**
+ * @tc.name: testIMCCloseWithSessionId_001
+ * @tc.desc: Test Close with valid clientSessionId. Branches covered: IsBound
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, testIMCCloseWithSessionId_001, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testIMCCloseWithSessionId_001 Test START");
+    inputMethodController_->clientInfo_.state = ClientState::INACTIVE;
+    inputMethodController_->isBound_.store(false);
+    int32_t sessionId = 1;
+    auto ret = inputMethodController_->Close(sessionId);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    inputMethodController_->clientInfo_.state = ClientState::ACTIVE;
+    inputMethodController_->isBound_.store(true);
+    ret = inputMethodController_->Close(1);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: testIMCCloseWithSessionId_002
+ * @tc.desc: Test Close with valid clientSessionId. Branches covered: GetTextListener
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, testIMCCloseWithSessionId_002, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testIMCCloseWithSessionId_002 Test START");
+    inputMethodController_->textListener_ = nullptr;
+    int32_t sessionId = 1;
+    auto ret = inputMethodController_->Close(sessionId);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    inputMethodController_->textListener_ = InputMethodControllerTest::textListener_;
+    ret = inputMethodController_->Close(1);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: testIMCCloseWithSessionId_003
+ * @tc.desc: Test Close with valid clientSessionId. Branches covered: clientInfo_.isShowKeyboard
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, testIMCCloseWithSessionId_003, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testIMCCloseWithSessionId_003 Test START");
+    inputMethodController_->clientInfo_.isShowKeyboard = false;
+    int32_t sessionId = 1;
+    auto ret = inputMethodController_->Close(sessionId);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    inputMethodController_->clientInfo_.isShowKeyboard = true;
+    ret = inputMethodController_->Close(1);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
  * @tc.name: testIsKeyboardCallingProcess_001
  * @tc.desc: IMC IsKeyboardCallingProcess.
  * @tc.type: FUNC

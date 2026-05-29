@@ -551,7 +551,7 @@ int32_t PerUserSession::OnPrepareInput(const InputClientInfo &clientInfo)
 int32_t PerUserSession::OnReleaseInput(
     const sptr<IInputClient> &client, uint32_t sessionId, int32_t clientSessionId)
 {
-    IMSA_HILOGD("PerUserSession::OnReleaseInput start with clientSessionId: %{public}d", clientSessionId);
+    IMSA_HILOGD("PerUserSession, sessionId: %{public}u clientSessionId: %{public}d", sessionId, clientSessionId);
     if (client == nullptr) {
         IMSA_HILOGE("client nullptr");
         return ErrorCode::ERROR_CLIENT_NULL_POINTER;
@@ -1030,7 +1030,7 @@ void PerUserSession::StopClientInput(const std::shared_ptr<InputClientInfo> &cli
 }
 
 void PerUserSession::StopImeInput(const std::shared_ptr<ImeData> &imeData,
-    const std::shared_ptr<InputClientInfo> &clientInfo, uint32_t sessionId, uint32_t clientSessionId)
+    const std::shared_ptr<InputClientInfo> &clientInfo, uint32_t sessionId, int32_t clientSessionId)
 {
     if (imeData == nullptr || clientInfo == nullptr) {
         return;

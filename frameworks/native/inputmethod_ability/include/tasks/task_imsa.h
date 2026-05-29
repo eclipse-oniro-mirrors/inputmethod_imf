@@ -41,7 +41,7 @@ public:
 
 class TaskImsaStopInput : public Task {
 public:
-    explicit TaskImsaStopInput(sptr<IRemoteObject> channel, uint32_t sessionId, uint32_t clientSessionId)
+    explicit TaskImsaStopInput(sptr<IRemoteObject> channel, uint32_t sessionId, int32_t clientSessionId)
         : Task(TASK_TYPE_IMSA_STOP_INPUT)
     {
         auto func = [channel, sessionId, clientSessionId]() {
