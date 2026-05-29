@@ -84,7 +84,6 @@ struct BoundImeInfo : public Parcelable {
 
 struct BoundClientInfo : public Parcelable {
     uint64_t displayId{ ImfCommonConst::DEFAULT_DISPLAY_ID };
-    uint32_t rawWindowId{ ImfCommonConst::INVALID_WINDOW_ID };  // only used in inner
     uint32_t windowId{ ImfCommonConst::INVALID_WINDOW_ID };
     int32_t requestKeyboardReason = 0;
     bool isShowKeyboard{ true }; // only valid in InputStartScene::ATTACH
@@ -92,7 +91,6 @@ struct BoundClientInfo : public Parcelable {
     {
         std::string info;
         info.append("[displayId]: " + std::to_string(displayId) + "/");
-        info.append("[rawWindowId]: " + std::to_string(rawWindowId) + "/");
         info.append("[windowId]: " + std::to_string(windowId) + "/");
         info.append("[requestKeyboardReason]: " + std::to_string(requestKeyboardReason) + "/");
         info.append("[isShowKeyboard]: " + std::to_string(isShowKeyboard));
@@ -102,7 +100,6 @@ struct BoundClientInfo : public Parcelable {
     bool ReadFromParcel(Parcel &in)
     {
         displayId = in.ReadUint64();
-        rawWindowId = in.ReadUint32();
         windowId = in.ReadUint32();
         requestKeyboardReason = in.ReadInt32();
         isShowKeyboard = in.ReadBool();
@@ -112,9 +109,6 @@ struct BoundClientInfo : public Parcelable {
     bool Marshalling(Parcel &out) const
     {
         if (!out.WriteUint64(displayId)) {
-            return false;
-        }
-        if (!out.WriteUint32(rawWindowId)) {
             return false;
         }
         if (!out.WriteUint32(windowId)) {
@@ -143,14 +137,12 @@ public:
     InputStartScene scene{ InputStartScene::NONE };
     BoundClientInfo clientInfo;
     BoundImeInfo imeInfo;
-    bool isNewCb = false;  // only used in inner
 
     bool ReadFromParcel(Parcel &in)
     {
         userId = in.ReadInt32();
         auto sceneTmp = in.ReadUint32();
         scene = static_cast<InputStartScene>(sceneTmp);
-        isNewCb = in.ReadBool();
         std::unique_ptr<BoundClientInfo> clientInfoTmp(in.ReadParcelable<BoundClientInfo>());
         if (clientInfoTmp == nullptr) {
             return false;
@@ -170,9 +162,6 @@ public:
             return false;
         }
         if (!out.WriteUint32(static_cast<uint32_t>(scene))) {
-            return false;
-        }
-        if (!out.WriteBool(isNewCb)) {
             return false;
         }
         if (!out.WriteParcelable(&clientInfo)) {
@@ -196,7 +185,6 @@ public:
         std::string info;
         info.append("[userId]: " + std::to_string(userId) + "/");
         info.append("[scene]: " + std::to_string(static_cast<uint32_t>(scene)) + "/");
-        info.append("[isNewCb]: " + std::to_string(isNewCb) + "/");
         info.append("[clientInfo]: " + clientInfo.ToString() + "/");
         info.append("[imeInfo]: " + imeInfo.ToString());
         return info;
@@ -216,8 +204,6 @@ public:
     // if scene is IMSA_DIED, the below param is invalid
     int32_t userId{ ImfCommonConst::DEFAULT_USER_ID };
     uint64_t displayId{ ImfCommonConst::DEFAULT_DISPLAY_ID };
-    uint64_t displayGroupId{ ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID }; // only used in inner
-    bool isRealIme{ true };                                              // only used in inner
 
     bool ReadFromParcel(Parcel &in)
     {
@@ -225,8 +211,6 @@ public:
         scene = static_cast<InputStopScene>(sceneTmp);
         userId = in.ReadInt32();
         displayId = in.ReadUint64();
-        displayGroupId = in.ReadUint64();
-        isRealIme = in.ReadBool();
         return true;
     }
 
@@ -241,10 +225,7 @@ public:
         if (!out.WriteUint64(displayId)) {
             return false;
         }
-        if (!out.WriteUint64(displayGroupId)) {
-            return false;
-        }
-        return out.WriteBool(isRealIme);
+        return out.WriteUint64(displayId);
     }
 
     static InputStopInfo *Unmarshalling(Parcel &in)
@@ -262,9 +243,7 @@ public:
         std::string info;
         info.append("[scene]: " + std::to_string(static_cast<uint32_t>(scene)) + "/");
         info.append("[userId]: " + std::to_string(userId) + "/");
-        info.append("[displayId]: " + std::to_string(displayId) + "/");
-        info.append("[displayGroupId]: " + std::to_string(displayGroupId) + "/");
-        info.append("[isRealIme]: " + std::to_string(isRealIme));
+        info.append("[displayId]: " + std::to_string(displayId));
         return info;
     }
 };

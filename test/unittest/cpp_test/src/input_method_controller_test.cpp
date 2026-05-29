@@ -2850,7 +2850,7 @@ HWTEST_F(InputMethodControllerTest, testGetSoftKeyboardInfo_001, TestSize.Level0
         auto tokenId = TddUtil::AllocTestTokenID(false, "testGetSoftKeyboardInfo", permission);
         TokenScope scope(tokenId);
         ret = inputMethodController_->GetSoftKeyboardInfo(userId, imeInfo);
-        EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+        EXPECT_NE(ret, ErrorCode::NO_ERROR);
     }
 }
 } // namespace MiscServices

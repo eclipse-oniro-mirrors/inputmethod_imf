@@ -90,7 +90,6 @@ int32_t ImeEventMonitorManagerImpl::NotifyInputStartWhenRegister(
         IMSA_HILOGD("failed to GetInputStartInfo:%{public}d!", ret);
         return ErrorCode::NO_ERROR;
     }
-    listener->OnInputStart(info.clientInfo.rawWindowId, info.clientInfo.requestKeyboardReason);
     listener->OnInputStart(info);
     return ErrorCode::NO_ERROR;
 }
@@ -169,12 +168,7 @@ int32_t ImeEventMonitorManagerImpl::OnInputStart(const InputStartInfo &inputStar
         if (listener == nullptr) {
             continue;
         }
-        if (inputStartInfo.isNewCb) {
-            listener->OnInputStart(inputStartInfo);
-        } else {
-            listener->OnInputStart(
-                inputStartInfo.clientInfo.rawWindowId, inputStartInfo.clientInfo.requestKeyboardReason);
-        }
+        listener->OnInputStart(inputStartInfo);
     }
     return ErrorCode::NO_ERROR;
 }
@@ -187,12 +181,7 @@ int32_t ImeEventMonitorManagerImpl::OnInputStop(const InputStopInfo &inputStopIn
         if (listener == nullptr) {
             continue;
         }
-        if (inputStopInfo.displayGroupId == ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID) {
-            listener->OnInputStop();
-        }
-        if (inputStopInfo.isRealIme) {
-            listener->OnInputStop(inputStopInfo);
-        }
+        listener->OnInputStop(inputStopInfo);
     }
     return ErrorCode::NO_ERROR;
 }

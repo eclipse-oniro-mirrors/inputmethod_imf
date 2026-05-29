@@ -214,6 +214,7 @@ private:
     bool IsSystemPanelSupported();
     void ConfigurationUpdate(Rosen::DisplayId displayId);
     void NotifyInputStartToClients(InputStartScene scene, bool isShowKeyboard = true);
+    void NotifyInputStopToClients();
 
     ConcurrentMap<PanelType, std::shared_ptr<InputMethodPanel>> panels_ {};
     std::atomic_bool isBound_ { false };

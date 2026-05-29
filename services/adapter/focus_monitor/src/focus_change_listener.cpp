@@ -28,10 +28,10 @@ void FocusChangedListener::OnFocused(const sptr<Rosen::FocusChangeInfo> &focusCh
         IMSA_HILOGE("error nullptr");
         return;
     }
-    IMSA_HILOGD("displayId: %{public}" PRIu64 " pid: %{public}d, uid: %{public}d", focusChangeInfo->displayId_,
+    IMSA_HILOGD("displayId: %{public}" PRIu64 " pid: %{public}d, uid: %{public}d", focusChangeInfo->realDisplayId_,
         focusChangeInfo->pid_, focusChangeInfo->uid_);
     if (focusHandle_ != nullptr) {
-        focusHandle_(true, focusChangeInfo->displayId_, focusChangeInfo->pid_, focusChangeInfo->uid_);
+        focusHandle_(true, focusChangeInfo->realDisplayId_, focusChangeInfo->pid_, focusChangeInfo->uid_);
     }
 }
 
@@ -41,10 +41,10 @@ void FocusChangedListener::OnUnfocused(const sptr<Rosen::FocusChangeInfo> &focus
         IMSA_HILOGE("error nullptr");
         return;
     }
-    IMSA_HILOGD("displayId: %{public}" PRIu64 " pid: %{public}d, uid: %{public}d", focusChangeInfo->displayId_,
+    IMSA_HILOGD("displayId: %{public}" PRIu64 " pid: %{public}d, uid: %{public}d", focusChangeInfo->realDisplayId_,
         focusChangeInfo->pid_, focusChangeInfo->uid_);
     if (focusHandle_ != nullptr) {
-        focusHandle_(false, focusChangeInfo->displayId_, focusChangeInfo->pid_, focusChangeInfo->uid_);
+        focusHandle_(false, focusChangeInfo->realDisplayId_, focusChangeInfo->pid_, focusChangeInfo->uid_);
     }
 }
 } // namespace MiscServices

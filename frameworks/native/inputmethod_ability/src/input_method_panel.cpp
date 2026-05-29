@@ -1900,8 +1900,9 @@ void InputMethodPanel::RegisterKeyboardPanelInfoChangeListener()
 void InputMethodPanel::OnKeyboardPanelInfoChange(const Rosen::KeyboardPanelInfo &keyboardPanelInfo)
 {
     std::lock_guard<std::mutex> lock(panelStatusChangeMutex_);
+    IMSA_HILOGI("isShowing/isVisible_: %{public}d/%{public}d", keyboardPanelInfo.isShowing_, isVisible_.load());
     if (keyboardPanelInfo.isShowing_ && !isVisible_.load()) {
-        IMSA_HILOGE("window invisible now, cancel this showing notification");
+        IMSA_HILOGD("window invisible now, cancel this showing notification");
         return;
     }
     OnPanelHeightChange(keyboardPanelInfo);

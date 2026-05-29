@@ -65,16 +65,12 @@ public:
         imeHideCalled_ = true;
     }
 
-    void OnInputStart(uint32_t callingWndId, int32_t requestKeyboardReason) override
+    void OnInputStart(const InputStartInfo &inputStartInfo) override
     {
-        inputStartCallingWndId_ = callingWndId;
-        inputStartKeyboardReason_ = requestKeyboardReason;
-        inputStartCalled_ = true;
     }
 
-    void OnInputStop() override
+    void OnInputStop(const InputStopInfo &inputStopInfo) override
     {
-        inputStopCalled_ = true;
     }
 
     bool GetImeChangeCalled() const
@@ -110,8 +106,6 @@ private:
     bool imeShowCalled_ = false;
     ImeWindowInfo imeHideInfo_;
     bool imeHideCalled_ = false;
-    uint32_t inputStartCallingWndId_ = 0;
-    int32_t inputStartKeyboardReason_ = 0;
     bool inputStartCalled_ = false;
     bool inputStopCalled_ = false;
 };
@@ -172,14 +166,6 @@ void FuzzOnImeHide(FuzzedDataProvider &provider)
     listener->OnImeHide(info);
 }
 
-void FuzzOnInputStart(FuzzedDataProvider &provider)
-{
-    auto listener = std::make_shared<FuzzImeEventListener>();
-    uint32_t fuzzedCallingWndId = provider.ConsumeIntegral<uint32_t>();
-    int32_t fuzzedKeyboardReason = provider.ConsumeIntegral<int32_t>();
-    listener->OnInputStart(fuzzedCallingWndId, fuzzedKeyboardReason);
-}
-
 void FuzzImeEventListenerCycle(FuzzedDataProvider &provider)
 {
     auto imeListener = std::make_shared<FuzzImeEventListener>();
@@ -193,10 +179,19 @@ void FuzzImeEventListenerCycle(FuzzedDataProvider &provider)
     windowInfo.windowInfo.width = provider.ConsumeIntegral<uint32_t>();
     windowInfo.windowInfo.height = provider.ConsumeIntegral<uint32_t>();
 
-    imeListener->OnInputStart(provider.ConsumeIntegral<uint32_t>(), provider.ConsumeIntegral<int32_t>());
+    InputStartInfo startInfo;
+    startInfo.clientInfo.displayId = provider.ConsumeIntegral<uint64_t>();
+    startInfo.clientInfo.windowId = provider.ConsumeIntegral<uint32_t>();
+    startInfo.clientInfo.requestKeyboardReason = provider.ConsumeIntegral<int32_t>();
+    startInfo.imeInfo.displayId = provider.ConsumeIntegral<uint64_t>();
+    startInfo.userId = provider.ConsumeIntegral<int32_t>();
+    imeListener->OnInputStart(startInfo);
     imeListener->OnImeShow(windowInfo);
     imeListener->OnImeHide(windowInfo);
-    imeListener->OnInputStop();
+    InputStopInfo stopInfo;
+    stopInfo.displayId = provider.ConsumeIntegral<uint64_t>();
+    stopInfo.userId = provider.ConsumeIntegral<int32_t>();
+    imeListener->OnInputStop(stopInfo);
 }
 
 } // namespace MiscServices
@@ -217,7 +212,6 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     OHOS::MiscServices::FuzzOnImeChange(provider);
     OHOS::MiscServices::FuzzOnImeShow(provider);
     OHOS::MiscServices::FuzzOnImeHide(provider);
-    OHOS::MiscServices::FuzzOnInputStart(provider);
     OHOS::MiscServices::FuzzImeEventListenerCycle(provider);
 
     return 0;

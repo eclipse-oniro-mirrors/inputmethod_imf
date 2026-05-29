@@ -553,6 +553,25 @@ HWTEST_F(InputMethodAbilityTest, testHideKeyboardWithoutImeListener, TestSize.Le
 }
 
 /**
+ * @tc.name: testHideKeyboard
+ * @tc.desc: InputMethodAbility HideKeyboard
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodAbilityTest, testHideKeyboard, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbilityTest testHideKeyboard start.");
+    auto isProxyIme = inputMethodAbility_.isProxyIme_.load();
+    inputMethodAbility_.isProxyIme_.store(true);
+    auto ret = inputMethodAbility_.HideKeyboard();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    inputMethodAbility_.isProxyIme_.store(false);
+    ret = inputMethodAbility_.HideKeyboard();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    inputMethodAbility_.isProxyIme_.store(isProxyIme);
+}
+
+/**
  * @tc.name: testDiscardTypingTextWithoutImeListener
  * @tc.desc: InputMethodAbility DiscardTypingText without imeListener
  * @tc.type: FUNC

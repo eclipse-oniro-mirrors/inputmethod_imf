@@ -443,19 +443,10 @@ void InputMethodAbility::SetCallingWindow(uint32_t rawEditorWindowId, const Focu
 {
     IMSA_HILOGD("InputMethodAbility rawEditorWindowId/focusedInfo: %{public}u/%{public}s.", rawEditorWindowId,
         focusedInfo.ToString().c_str());
-    uint64_t oldEditorDisplayId = 0;
-    uint64_t oldKeyboardDisplayId = 0;
     {
         std::lock_guard<std::mutex> lock(inputAttrLock_);
-        oldEditorDisplayId = inputAttribute_.editorDisplayId;
-        oldKeyboardDisplayId = inputAttribute_.callingDisplayId;
         inputAttribute_.windowId = focusedInfo.keyboardWindowId;
         inputAttribute_.editorWindowId = focusedInfo.windowId;
-    }
-    if (focusedInfo.keyboardDisplayId == oldKeyboardDisplayId && focusedInfo.displayId == oldEditorDisplayId) {
-        NotifyInputStartToClients(InputStartScene::WINDOW_CHANGED);
-    } else {
-        OnCallingDisplayIdChanged(focusedInfo.displayId, focusedInfo.keyboardDisplayId);
     }
     panels_.ForEach([keyboardWindowId = focusedInfo.keyboardWindowId](
                         const PanelType &panelType, const std::shared_ptr<InputMethodPanel> &panel) {
@@ -465,6 +456,8 @@ void InputMethodAbility::SetCallingWindow(uint32_t rawEditorWindowId, const Focu
     if (imeListener_ != nullptr) {
         imeListener_->OnSetCallingWindow(rawEditorWindowId);
     }
+    NotifyInputStartToClients(InputStartScene::WINDOW_CHANGED);
+    OnCallingDisplayIdChanged(focusedInfo.displayId, focusedInfo.keyboardDisplayId);
 }
 
 void InputMethodAbility::OnCursorUpdate(int32_t positionX, int32_t positionY, int32_t height)
@@ -548,6 +541,7 @@ int32_t InputMethodAbility::HideKeyboard()
 
 int32_t InputMethodAbility::HideKeyboardImplWithoutLock(int32_t cmdId, uint32_t sessionId)
 {
+    NotifyInputStopToClients();
     if (cmdId != cmdId_) {
         IMSA_HILOGE("current is not last cmd cur: %{public}d, cmdId_: %{public}d!", cmdId, cmdId_);
         return ErrorCode::NO_ERROR;
@@ -645,6 +639,23 @@ void InputMethodAbility::NotifyInputStartToClients(InputStartScene scene, bool i
         }
     }
     proxy->NotifyInputStart(info);
+}
+
+void InputMethodAbility::NotifyInputStopToClients()
+{
+    if (isProxyIme_.load()) {
+        IMSA_HILOGD("proxy ime, no need to notify.");
+        return;
+    }
+    auto proxy = GetImsaProxy();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("imsa proxy is nullptr!");
+        return;
+    }
+    InputStopInfo info;
+    info.scene = InputStopScene::CLIENT_TRIGGER;
+    info.displayId = GetInputAttribute().editorDisplayId;
+    proxy->NotifyInputStop(info);
 }
 
 void InputMethodAbility::NotifyPanelStatusInfo(PanelStatusInfo &info)
