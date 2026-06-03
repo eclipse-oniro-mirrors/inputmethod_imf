@@ -1326,7 +1326,7 @@ int32_t InputMethodPanel::ChangePanelFlag(PanelFlag panelFlag)
         PanelStatusChangeToImc(InputWindowStatus::HIDE, { 0, 0, 0, 0 }, true);
     }
     auto result = UpdatePanelFLagToWindow(panelFlag);
-    if (result == ErrorCode::NO_ERROR) {
+    if (result != ErrorCode::NO_ERROR) {
         return result;
     }
     auto enhancedParams = GetEnhancedLayoutParams();
