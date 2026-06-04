@@ -35,7 +35,7 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void StopInputSession([in] unsigned int windowId);
     void ShowInput([in] IInputClient client, [in] unsigned int windowId, [in] unsigned int type, [in] int requestKeyboardReason);
     void HideInput([in] IInputClient client, [in] unsigned int windowId);
-    void ReleaseInput([in] IInputClient client, [in] unsigned int sessionId);
+    void ReleaseInput([in] IInputClient client, [in] unsigned int sessionId, [in] int clientSessionId);
     void RequestHideInput([in] unsigned int windowId, [in]unsigned long displayId, [in] boolean isFocusTriggered, [in] int userId);
     void GetDefaultInputMethod([out] Property prop, [in] boolean isBrief, [in] int userId);
     void GetInputMethodConfig([out] ElementName inputMethodConfig, [in] int userId);

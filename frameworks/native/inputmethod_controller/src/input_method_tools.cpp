@@ -232,6 +232,7 @@ PanelStatusInfoInner InputMethodTools::PanelStatusInfoToInner(const PanelStatusI
     inner.visible = panelStatusInfo.visible;
     inner.trigger = panelStatusInfo.trigger;
     inner.sessionId = panelStatusInfo.sessionId;
+    inner.clientSessionId = panelStatusInfo.clientSessionId;
     return inner;
 }
 // LCOV_EXCL_STOP
@@ -243,6 +244,7 @@ PanelStatusInfo InputMethodTools::InnerToPanelStatusInfo(const PanelStatusInfoIn
     panelStatusInfo.visible = inner.visible;
     panelStatusInfo.trigger = inner.trigger;
     panelStatusInfo.sessionId = inner.sessionId;
+    panelStatusInfo.clientSessionId = inner.clientSessionId;
     return panelStatusInfo;
 }
 } // namespace MiscServices
