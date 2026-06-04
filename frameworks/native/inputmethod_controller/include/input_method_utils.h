@@ -238,7 +238,8 @@ struct PanelStatusInfo {
     InputType inputType = InputType::NONE;
     bool visible { false };
     Trigger trigger { END };
-    uint32_t sessionId { 0 };
+    uint32_t sessionId { 0 };           // inner sessionId
+    int32_t clientSessionId { -1 };     // external session ID
     bool operator==(const PanelStatusInfo &info) const
     {
         return info.panelInfo.panelFlag == panelInfo.panelFlag && info.panelInfo.panelType == panelInfo.panelType &&
@@ -252,6 +253,7 @@ struct PanelStatusInfoInner : public Parcelable {
     bool visible { false };
     Trigger trigger { END };
     uint32_t sessionId { 0 };
+    int32_t clientSessionId { -1 };     // external session ID
     bool operator==(const PanelStatusInfoInner &info) const
     {
         return info.panelInfo.panelFlag == panelInfo.panelFlag && info.panelInfo.panelType == panelInfo.panelType &&
@@ -568,6 +570,7 @@ struct ImfCallingWindowInfo {
 
 struct DetachOptions {
     uint32_t sessionId{ 0 };
+    int32_t clientSessionId{ -1 };      // external session ID
     bool isUnbindFromClient{ false };
     bool isInactiveClient{ false };
     bool isNotifyClientAsync{ false };

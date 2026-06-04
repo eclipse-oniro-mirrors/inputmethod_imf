@@ -556,11 +556,17 @@ int32_t InputMethodController::ShowCurrentInput()
 
 int32_t InputMethodController::Close()
 {
+    int32_t defaultSessionId = -1;
+    return Close(defaultSessionId);
+}
+
+int32_t InputMethodController::Close(int32_t clientSessionId)
+{
     {
         QueueGuard guard(__func__);
     }
     if (IsBound()) {
-        IMSA_HILOGI("start.");
+        IMSA_HILOGI("start, clientSessionId: %{public}d.", clientSessionId);
     }
 
     auto listener = GetTextListener();
@@ -576,7 +582,7 @@ int32_t InputMethodController::Close()
     }
     InputMethodSyncTrace tracer("InputMethodController Close trace.");
     InputMethodSysEvent::GetInstance().OperateSoftkeyboardBehaviour(infoCode);
-    return ReleaseInput(clientInfo_.client);
+    return ReleaseInput(clientInfo_.client, clientSessionId);
 }
 
 void InputMethodController::Reset()
@@ -765,15 +771,15 @@ int32_t InputMethodController::StartInput(
     return ret;
 }
 // LCOV_EXCL_START
-int32_t InputMethodController::ReleaseInput(sptr<IInputClient> &client)
+int32_t InputMethodController::ReleaseInput(sptr<IInputClient> &client, int32_t clientSessionId)
 {
-    IMSA_HILOGD("InputMethodController::ReleaseInput start.");
+    IMSA_HILOGD("InputMethodController::ReleaseInput start with clientSessionId: %{public}d.", clientSessionId);
     auto proxy = TryGetSystemAbilityProxy();
     if (proxy == nullptr) {
         IMSA_HILOGE("proxy is nullptr!");
         return ErrorCode::ERROR_SERVICE_START_FAILED;
     }
-    int32_t ret = proxy->ReleaseInput(client, sessionId_.load());
+    int32_t ret = proxy->ReleaseInput(client, sessionId_.load(), clientSessionId);
     if (ret == ErrorCode::NO_ERROR) {
         OnInputStop();
     }
@@ -1708,9 +1714,9 @@ void InputMethodController::SendKeyboardStatus(KeyboardStatus status)
 void InputMethodController::NotifyPanelStatusInfo(const PanelStatusInfo &info)
 {
     IMSA_HILOGD("InputMethodController start, type: %{public}d, flag: %{public}d, visible: %{public}d, trigger: "
-                "%{public}d, sessionId: %{public}u.",
+                "%{public}d, sessionId: %{public}u, clientSessionId: %{public}d.",
         static_cast<PanelType>(info.panelInfo.panelType), static_cast<PanelFlag>(info.panelInfo.panelFlag),
-        info.visible, static_cast<Trigger>(info.trigger), info.sessionId);
+        info.visible, static_cast<Trigger>(info.trigger), info.sessionId, info.clientSessionId);
     auto listener = GetTextListener();
     if (listener == nullptr) {
         IMSA_HILOGE("listener is nullptr!");
