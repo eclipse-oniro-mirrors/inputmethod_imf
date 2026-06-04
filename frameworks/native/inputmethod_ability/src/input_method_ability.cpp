@@ -40,6 +40,9 @@
 #include "tasks/task.h"
 #include "tasks/task_imsa.h"
 #include "variant_util.h"
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+#include "histogram_plugin_macros.h"
+#endif
 
 namespace OHOS {
 namespace MiscServices {
@@ -824,6 +827,9 @@ int32_t InputMethodAbility::SendFunctionKey(int32_t funcKey, const AsyncIpcCallB
 
 int32_t InputMethodAbility::HideKeyboardSelf()
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethodEngine.KeyboardController.hide", 1);
+#endif
     // Current Ime is exiting, hide softkeyboard will cause the TextFiled to lose focus.
     if (isImeTerminating_.load()) {
         IMSA_HILOGI("Current Ime is terminating, no need to hide keyboard.");
@@ -1197,6 +1203,9 @@ int32_t InputMethodAbility::CreatePanel(const std::shared_ptr<AbilityRuntime::Co
     const PanelInfo &panelInfo, std::shared_ptr<InputMethodPanel> &inputMethodPanel)
 {
     IMSA_HILOGI("InputMethodAbility start.");
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethodEngine.createPanel", 1);
+#endif
     auto panelHeightCallback = [this](uint32_t panelHeight, PanelFlag panelFlag) {
         NotifyKeyboardHeight(panelHeight, panelFlag);
     };
@@ -1225,6 +1234,9 @@ int32_t InputMethodAbility::CreatePanel(const std::shared_ptr<AbilityRuntime::Co
 int32_t InputMethodAbility::DestroyPanel(const std::shared_ptr<InputMethodPanel> &inputMethodPanel)
 {
     IMSA_HILOGI("InputMethodAbility start.");
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethodEngine.destroyPanel", 1);
+#endif
     if (inputMethodPanel == nullptr) {
         IMSA_HILOGE("panel is nullptr!");
         return ErrorCode::ERROR_BAD_PARAMETERS;
@@ -1239,6 +1251,9 @@ int32_t InputMethodAbility::DestroyPanel(const std::shared_ptr<InputMethodPanel>
 
 int32_t InputMethodAbility::ShowPanel(const std::shared_ptr<InputMethodPanel> &inputMethodPanel)
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethodEngine.panel.show", 1);
+#endif
     std::lock_guard<std::recursive_mutex> lock(keyboardCmdLock_);
     if (inputMethodPanel == nullptr) {
         return ErrorCode::ERROR_BAD_PARAMETERS;
@@ -1248,6 +1263,9 @@ int32_t InputMethodAbility::ShowPanel(const std::shared_ptr<InputMethodPanel> &i
 
 int32_t InputMethodAbility::HidePanel(const std::shared_ptr<InputMethodPanel> &inputMethodPanel)
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethodEngine.panel.hide", 1);
+#endif
     if (inputMethodPanel == nullptr) {
         return ErrorCode::ERROR_BAD_PARAMETERS;
     }
@@ -1514,6 +1532,9 @@ bool InputMethodAbility::IsSystemApp()
 int32_t InputMethodAbility::ExitCurrentInputType()
 {
     IMSA_HILOGD("InputMethodAbility start.");
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethodEngine.exitCurrentInputType", 1);
+#endif
     ClearInputType();
     auto proxy = GetImsaProxy();
     if (proxy == nullptr) {
@@ -1697,6 +1718,9 @@ int32_t InputMethodAbility::ReceivePrivateCommand(
 int32_t InputMethodAbility::SetPreviewText(
     const std::string &text, const Range &range, const AsyncIpcCallBack &callback)
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethodEngine.setPreviewText", 1);
+#endif
     InputMethodSyncTrace tracer("IMA_SetPreviewText");
     auto dataChannel = GetInputDataChannelProxyWrap();
     if (dataChannel == nullptr) {
@@ -1709,6 +1733,9 @@ int32_t InputMethodAbility::SetPreviewText(
 
 int32_t InputMethodAbility::FinishTextPreview(const AsyncIpcCallBack &callback)
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethodEngine.finishTextPreview", 1);
+#endif
     InputMethodSyncTrace tracer("IMA_FinishTextPreview");
     auto dataChannel = GetInputDataChannelProxyWrap();
     if (dataChannel == nullptr) {

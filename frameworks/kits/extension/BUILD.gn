@@ -111,6 +111,14 @@ ohos_shared_library("inputmethod_extension") {
     "window_manager:libdm",
   ]
 
+  if (imf_hiviewdfx_api_metrics_ext_enable) {
+    external_deps += [ "api_metrics:histogrammanager" ]
+    if (defined(defines)) {
+      defines += [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
+    } else {
+      defines = [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
+    }
+  }
   subsystem_name = "inputmethod"
   part_name = "imf"
 }
