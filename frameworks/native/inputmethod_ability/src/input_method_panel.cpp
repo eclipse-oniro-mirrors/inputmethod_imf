@@ -1456,7 +1456,9 @@ int32_t InputMethodPanel::ShowKeyboardToWms(uint32_t windowId)
         IMSA_HILOGE("window_ is nullptr!");
         return ErrorCode::ERROR_IMA_NULLPTR;
     }
-    KeyboardEffectOption option = ConvertToWmEffect(GetImmersiveMode(), LoadImmersiveEffect());
+    auto showKeyboardMode = GetImmersiveMode();
+    auto effect = LoadImmersiveEffect();
+    auto option = ConvertToWmEffect(showKeyboardMode, effect);
     const auto screenId = InputMethodAbility::GetInstance().GetInputAttribute().callingScreenId;
     IMSA_HILOGI("ShowPanel windowId: %{public}u screenId: %{public}" PRIu64 ".", windowId, screenId);
     InputMethodSyncTrace tracer("InputMethodPanel_ShowPanel");
@@ -1464,6 +1466,17 @@ int32_t InputMethodPanel::ShowKeyboardToWms(uint32_t windowId)
     if (ret != WMError::WM_OK) {
         IMSA_HILOGE("ShowPanel error, err = %{public}d", ret);
         return ErrorCode::ERROR_OPERATE_PANEL;
+    }
+
+    auto currentMode = GetImmersiveMode();
+    if (currentMode != showKeyboardMode) {
+        auto newOption = ConvertToWmEffect(currentMode, effect);
+        auto wmRet = window_->ChangeKeyboardEffectOption(newOption);
+        if (wmRet == WMError::WM_OK) {
+            IMSA_HILOGW("update mode after show, new: %{public}d, old:%{public}d", currentMode, showKeyboardMode);
+        } else {
+            IMSA_HILOGE("ChangeKeyboardEffectOption error, wmRet = %{public}d", wmRet);
+        }
     }
     return ErrorCode::NO_ERROR;
 }
