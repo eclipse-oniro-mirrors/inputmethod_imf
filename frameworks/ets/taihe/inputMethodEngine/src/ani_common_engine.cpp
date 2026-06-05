@@ -112,7 +112,7 @@ EditorAttribute_t CommonConvert::NativeAttributeToAni(const InputAttribute &inpu
         ConvertFLMode(static_cast<FluidLightMode>(inputAttribute.fluidLightMode)));
     result.extraConfig = taihe::optional<InputMethodExtraConfig_t>(
         std::in_place_t{}, NativeCommandToAni(inputAttribute.extraConfig.customSettings));
-    result.consumeKeyEvents = taihe::optional<taihe::bool>(std::in_place_t{}, inputAttribute.consumeKeyEvents);
+    result.consumeKeyEvents = taihe::optional<bool>(std::in_place_t{}, inputAttribute.consumeKeyEvents);
     return result;
 }
 
