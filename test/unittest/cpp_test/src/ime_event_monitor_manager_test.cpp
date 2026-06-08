@@ -572,22 +572,13 @@ HWTEST_F(ImeEventMonitorManagerTest, testImeSettingListenerInterface, TestSize.L
     ImeEventMonitorManagerImpl::GetInstance().listeners_.insert({ EVENT_INPUT_STATUS_CHANGED_MASK, listeners });
 
     InputStartInfo inputStartInfo;
-    inputStartInfo.isNewCb = false;
     auto ret = ImeEventMonitorManagerImpl::GetInstance().OnInputStart(inputStartInfo);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    inputStartInfo.isNewCb = true;
-    ret = ImeEventMonitorManagerImpl::GetInstance().OnInputStart(inputStartInfo);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 
     InputStopInfo inputStopInfo;
-    inputStopInfo.displayGroupId = ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID;
-    inputStopInfo.isRealIme = false;
     ret = ImeEventMonitorManagerImpl::GetInstance().OnInputStop(inputStopInfo);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    inputStopInfo.displayGroupId = 100;
-    inputStopInfo.isRealIme = true;
-    ret = ImeEventMonitorManagerImpl::GetInstance().OnInputStop(inputStopInfo);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
     BoundImeInfo oldImeInfo;
     BoundImeInfo newImeInfo;
     ret = ImeEventMonitorManagerImpl::GetInstance().OnSoftKeyboardInfoChanged(

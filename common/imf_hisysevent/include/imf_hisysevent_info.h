@@ -23,6 +23,16 @@
 namespace OHOS {
 namespace MiscServices {
 
+enum ImfHidumperType : int32_t {
+    PERMISSION_CHECK_FAILED = 0,
+    NOT_SYSTEM_APPLICATION,
+    CONFIG_PERSISTENCE_ERROR,
+    IME_MANAGER_SERVICE_ERROR,
+    USER_NOT_EXIST,
+    USER_NOT_FOREGROUND,
+    CROSS_USER_OPERATION_DENIED,
+};
+
 enum ImfEventType : uint32_t {
     CLIENT_ATTACH,
     CLIENT_SHOW,

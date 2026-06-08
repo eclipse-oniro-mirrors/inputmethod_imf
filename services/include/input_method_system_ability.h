@@ -49,7 +49,7 @@ public:
         uint32_t type = static_cast<uint32_t>(ClientType::INNER_KIT), int32_t requestKeyboardReason = 0) override;
     ErrCode HideInput(const sptr<IInputClient> &client, uint32_t windowId) override;
     ErrCode StopInputSession(uint32_t windowId) override;
-    ErrCode ReleaseInput(const sptr<IInputClient> &client, uint32_t sessionId) override;
+    ErrCode ReleaseInput(const sptr<IInputClient> &client, uint32_t sessionId, int32_t clientSessionId) override;
     ErrCode RequestHideInput(uint32_t windowId, uint64_t displayId, bool isFocusTriggered, int32_t userId) override;
     ErrCode GetDefaultInputMethod(Property &prop, bool isBrief, int32_t userId) override;
     ErrCode GetInputMethodConfig(ElementName &inputMethodConfig, int32_t userId) override;
@@ -66,6 +66,7 @@ public:
     ErrCode InitConnect() override;
     ErrCode PanelStatusChange(uint32_t status, const ImeWindowInfo &info) override;
     ErrCode NotifyInputStart(const InputStartInfo &inputStartInfo) override;
+    ErrCode NotifyInputStop(const InputStopInfo &inputStopInfo) override;
     ErrCode NotifySoftKeyBoardInfoChanged(const BoundImeInfo &oldImeInfo, const BoundImeInfo &newImeInfo) override;
     ErrCode GetSoftKeyboardInfo(int32_t userId, BoundImeInfo &imeInfo) override;
     ErrCode UpdateListenEventFlag(const InputClientInfoInner &clientInfoInner, uint32_t eventFlag) override;

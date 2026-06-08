@@ -61,7 +61,8 @@ bool InitializeClientInfo(InputClientInfo &clientInfo)
 void SystemAbility(FuzzedDataProvider &provider)
 {
     auto fuzzedUint32 = provider.ConsumeIntegral<uint32_t>();
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->ReleaseInput(nullptr, fuzzedUint32);
+    auto fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
+    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->ReleaseInput(nullptr, fuzzedUint32, fuzzedInt32);
     InputClientInfo inputClientInfo;
     if (!OHOS::InitializeClientInfo(inputClientInfo)) {
         return;

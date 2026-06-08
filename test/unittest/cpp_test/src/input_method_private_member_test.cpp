@@ -359,7 +359,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSessionParameterNullptr001, TestSi
     std::vector<BindImeInfo> imeInfo;
     int32_t ret = userSession->OnStartInput(clientInfo, agents, imeInfo);
     EXPECT_NE(ret, ErrorCode::NO_ERROR);
-    ret = userSession->OnReleaseInput(nullptr, 0);
+    ret = userSession->OnReleaseInput(nullptr, 0, -1);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
     auto clientGroup = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
     auto client = clientGroup->GetClientInfo(nullptr);
@@ -621,7 +621,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchByCombinationKey_Handler, TestSi
 HWTEST_F(InputMethodPrivateMemberTest, SA_testReleaseInput_001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest SA_testReleaseInput_001 TEST START");
-    auto ret = service_->ReleaseInput(nullptr, 0);
+    auto ret = service_->ReleaseInput(nullptr, 0, -1);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
 }
 
@@ -1441,6 +1441,7 @@ HWTEST_F(InputMethodPrivateMemberTest, BranchCoverage004, TestSize.Level0)
     auto startRet = userSession->StartInputService(nullptr);
     EXPECT_EQ(startRet, ErrorCode::ERROR_IMSA_IME_TO_START_NULLPTR);
     startRet = userSession->StartIme(nullptr, false);
+    userSession->NotifyInputStop(0, InputStopScene::IMSA_DIED, false);
     EXPECT_EQ(startRet, ErrorCode::ERROR_IMSA_IME_TO_START_NULLPTR);
 
     auto ret3 = clientGroup->GetClientInfo(nullptr);

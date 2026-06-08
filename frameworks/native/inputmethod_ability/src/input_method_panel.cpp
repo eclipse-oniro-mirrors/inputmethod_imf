@@ -28,7 +28,9 @@
 #include "sys_cfg_parser.h"
 #include "ui/rs_surface_node.h"
 #include "ui/rs_ui_context.h"
-#include "color_parser.h"
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+#include "histogram_plugin_macros.h"
+#endif
 
 namespace OHOS {
 namespace MiscServices {
@@ -445,6 +447,9 @@ int32_t InputMethodPanel::ResizePanel(uint32_t width, uint32_t height)
 
 int32_t InputMethodPanel::Resize(uint32_t width, uint32_t height)
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethodEngine.panel.resize", 1);
+#endif
     if (window_ == nullptr) {
         IMSA_HILOGE("window is nullptr!");
         return ErrorCode::ERROR_NULL_POINTER;
@@ -523,6 +528,9 @@ int32_t InputMethodPanel::MoveTo(int32_t x, int32_t y)
 
 int32_t InputMethodPanel::StartMoving()
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethodEngine.panel.startMoving", 1);
+#endif
     if (window_ == nullptr) {
         IMSA_HILOGE("window_ is nullptr!");
         return ErrorCode::ERROR_IME;
@@ -593,6 +601,10 @@ int32_t InputMethodPanel::AdjustKeyboard()
 int32_t InputMethodPanel::AdjustPanelRect(
     const PanelFlag panelFlag, const LayoutParams &layoutParams, bool needUpdateRegion, bool needConfig)
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethodEngine.panel.adjustPanelRect", 1);
+    HISTOGRAM_ENUMERATION("imekit.inputMethodEngine.panelFlag", panelFlag, PanelFlag::FLG_CANDIDATE_COLUMN);
+#endif
     if (window_ == nullptr) {
         IMSA_HILOGE("window_ is nullptr!");
         return ErrorCode::ERROR_WINDOW_MANAGER;
@@ -680,8 +692,29 @@ int32_t InputMethodPanel::IsEnhancedParamValid(PanelFlag panelFlag, EnhancedLayo
     return ErrorCode::NO_ERROR;
 }
 
+int32_t InputMethodPanel::SetHotAreasOnAdjust(HotAreas hotAreas)
+{
+    if (window_ == nullptr) {
+        IMSA_HILOGE("window_ is nullptr!");
+        return ErrorCode::ERROR_WINDOW_MANAGER;
+    }
+    auto wmsHotAreas = ConvertToWMSHotArea(hotAreas);
+    auto result = window_->SetKeyboardTouchHotAreas(wmsHotAreas);
+    if (result != WMError::WM_OK) {
+        IMSA_HILOGE("SetKeyboardTouchHotAreas error, err: %{public}d!", result);
+        isExternalAdjusting_.store(false);
+        return ErrorCode::ERROR_WINDOW_MANAGER;
+    }
+    SetHotAreas(hotAreas);
+    return ErrorCode::NO_ERROR;
+}
+
 int32_t InputMethodPanel::AdjustPanelRect(PanelFlag panelFlag, EnhancedLayoutParams params, HotAreas hotAreas)
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethodEngine.panel.adjustFullScreen", 1);
+    HISTOGRAM_ENUMERATION("imekit.inputMethodEngine.panelFlag", panelFlag, PanelFlag::FLG_CANDIDATE_COLUMN);
+#endif
     if (window_ == nullptr) {
         IMSA_HILOGE("window_ is nullptr!");
         return ErrorCode::ERROR_WINDOW_MANAGER;
@@ -720,14 +753,10 @@ int32_t InputMethodPanel::AdjustPanelRect(PanelFlag panelFlag, EnhancedLayoutPar
     }
     // set hot area
     CalculateHotAreas(params, wmsParams, adjustInfo, hotAreas);
-    auto wmsHotAreas = ConvertToWMSHotArea(hotAreas);
-    auto result = window_->SetKeyboardTouchHotAreas(wmsHotAreas);
-    if (result != WMError::WM_OK) {
-        IMSA_HILOGE("SetKeyboardTouchHotAreas error, err: %{public}d!", result);
-        isExternalAdjusting_.store(false);
-        return ErrorCode::ERROR_WINDOW_MANAGER;
+    ret = SetHotAreasOnAdjust(hotAreas);
+    if (ret != ErrorCode::NO_ERROR) {
+        return ret;
     }
-    SetHotAreas(hotAreas);
     IMSA_HILOGI("success, type/flag: %{public}d/%{public}d.", static_cast<int32_t>(panelType_),
         static_cast<int32_t>(panelFlag_));
     isExternalAdjusting_.store(false);
@@ -1041,6 +1070,9 @@ uint32_t InputMethodPanel::SafeSubtract(uint32_t minuend, uint32_t subtrahend)
 
 int32_t InputMethodPanel::UpdateRegion(std::vector<Rosen::Rect> region)
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethodEngine.panel.updateRegion", 1);
+#endif
     if (window_ == nullptr) {
         IMSA_HILOGE("window_ is nullptr!");
         return ErrorCode::ERROR_WINDOW_MANAGER;
@@ -1240,21 +1272,11 @@ int32_t InputMethodPanel::GetAdjustInfo(PanelFlag panelFlag, FullPanelAdjustInfo
     return ErrorCode::NO_ERROR;
 }
 
-int32_t InputMethodPanel::ChangePanelFlag(PanelFlag panelFlag)
+int32_t InputMethodPanel::UpdatePanelFLagToWindow(PanelFlag panelFlag)
 {
     if (window_ == nullptr) {
         IMSA_HILOGE("window_ is nullptr!");
         return ErrorCode::ERROR_NULL_POINTER;
-    }
-    if (panelFlag_ == panelFlag) {
-        return ErrorCode::NO_ERROR;
-    }
-    if (panelType_ == STATUS_BAR) {
-        IMSA_HILOGE("STATUS_BAR cannot ChangePanelFlag!");
-        return ErrorCode::ERROR_BAD_PARAMETERS;
-    }
-    if (panelType_ == SOFT_KEYBOARD && panelFlag == FLG_CANDIDATE_COLUMN) {
-        PanelStatusChangeToImc(InputWindowStatus::HIDE, { 0, 0, 0, 0 }, true);
     }
     WindowGravity gravity = WindowGravity::WINDOW_GRAVITY_FLOAT;
     if (panelFlag == FLG_FIXED) {
@@ -1279,6 +1301,33 @@ int32_t InputMethodPanel::ChangePanelFlag(PanelFlag panelFlag)
         }
         IMSA_HILOGI("flag: %{public}d, ret: %{public}d.", panelFlag, ret);
         return ret == WMError::WM_OK ? ErrorCode::NO_ERROR : ErrorCode::ERROR_OPERATE_PANEL;
+    }
+    return ErrorCode::NO_ERROR;
+}
+
+int32_t InputMethodPanel::ChangePanelFlag(PanelFlag panelFlag)
+{
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethodEngine.panel.changeFlag", 1);
+    HISTOGRAM_ENUMERATION("imekit.inputMethodEngine.panelFlag", panelFlag, PanelFlag::FLG_CANDIDATE_COLUMN);
+#endif
+    if (window_ == nullptr) {
+        IMSA_HILOGE("window_ is nullptr!");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    if (panelFlag_ == panelFlag) {
+        return ErrorCode::NO_ERROR;
+    }
+    if (panelType_ == STATUS_BAR) {
+        IMSA_HILOGE("STATUS_BAR cannot ChangePanelFlag!");
+        return ErrorCode::ERROR_BAD_PARAMETERS;
+    }
+    if (panelType_ == SOFT_KEYBOARD && panelFlag == FLG_CANDIDATE_COLUMN) {
+        PanelStatusChangeToImc(InputWindowStatus::HIDE, { 0, 0, 0, 0 }, true);
+    }
+    auto result = UpdatePanelFLagToWindow(panelFlag);
+    if (result != ErrorCode::NO_ERROR) {
+        return result;
     }
     auto enhancedParams = GetEnhancedLayoutParams();
     LayoutParams layoutParams = { enhancedParams.landscape.rect, enhancedParams.portrait.rect };
@@ -1407,7 +1456,9 @@ int32_t InputMethodPanel::ShowKeyboardToWms(uint32_t windowId)
         IMSA_HILOGE("window_ is nullptr!");
         return ErrorCode::ERROR_IMA_NULLPTR;
     }
-    KeyboardEffectOption option = ConvertToWmEffect(GetImmersiveMode(), LoadImmersiveEffect());
+    auto showKeyboardMode = GetImmersiveMode();
+    auto effect = LoadImmersiveEffect();
+    auto option = ConvertToWmEffect(showKeyboardMode, effect);
     const auto screenId = InputMethodAbility::GetInstance().GetInputAttribute().callingScreenId;
     IMSA_HILOGI("ShowPanel windowId: %{public}u screenId: %{public}" PRIu64 ".", windowId, screenId);
     InputMethodSyncTrace tracer("InputMethodPanel_ShowPanel");
@@ -1415,6 +1466,17 @@ int32_t InputMethodPanel::ShowKeyboardToWms(uint32_t windowId)
     if (ret != WMError::WM_OK) {
         IMSA_HILOGE("ShowPanel error, err = %{public}d", ret);
         return ErrorCode::ERROR_OPERATE_PANEL;
+    }
+
+    auto currentMode = GetImmersiveMode();
+    if (currentMode != showKeyboardMode) {
+        auto newOption = ConvertToWmEffect(currentMode, effect);
+        auto wmRet = window_->ChangeKeyboardEffectOption(newOption);
+        if (wmRet == WMError::WM_OK) {
+            IMSA_HILOGW("update mode after show, new: %{public}d, old:%{public}d", currentMode, showKeyboardMode);
+        } else {
+            IMSA_HILOGE("ChangeKeyboardEffectOption error, wmRet = %{public}d", wmRet);
+        }
     }
     return ErrorCode::NO_ERROR;
 }
@@ -1510,6 +1572,9 @@ int32_t InputMethodPanel::GetCallingWindowInfo(CallingWindowInfo &windowInfo)
 
 int32_t InputMethodPanel::SetPrivacyMode(bool isPrivacyMode)
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethodEngine.panel.setPrivacyMode", 1);
+#endif
     IMSA_HILOGD("isPrivacyMode: %{public}d.", isPrivacyMode);
     if (window_ == nullptr) {
         IMSA_HILOGE("window_ is nullptr!");
@@ -1900,8 +1965,9 @@ void InputMethodPanel::RegisterKeyboardPanelInfoChangeListener()
 void InputMethodPanel::OnKeyboardPanelInfoChange(const Rosen::KeyboardPanelInfo &keyboardPanelInfo)
 {
     std::lock_guard<std::mutex> lock(panelStatusChangeMutex_);
+    IMSA_HILOGI("isShowing/isVisible_: %{public}d/%{public}d", keyboardPanelInfo.isShowing_, isVisible_.load());
     if (keyboardPanelInfo.isShowing_ && !isVisible_.load()) {
-        IMSA_HILOGE("window invisible now, cancel this showing notification");
+        IMSA_HILOGD("window invisible now, cancel this showing notification");
         return;
     }
     OnPanelHeightChange(keyboardPanelInfo);
@@ -2091,6 +2157,10 @@ void InputMethodPanel::SetImmersiveEffectToNone()
 
 int32_t InputMethodPanel::SetImmersiveMode(ImmersiveMode mode)
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_ENUMERATION("imekit.inputMethodEngine.panel.setImmersiveMode",
+        static_cast<uint32_t>(mode), static_cast<uint32_t>(ImmersiveMode::END));
+#endif
     if ((mode != ImmersiveMode::NONE_IMMERSIVE && mode != ImmersiveMode::LIGHT_IMMERSIVE &&
         mode != ImmersiveMode::DARK_IMMERSIVE)) {
         IMSA_HILOGE("invalid mode: %{public}d", mode);
@@ -2272,6 +2342,9 @@ void InputMethodPanel::UpdateImmersiveHotArea()
 
 int32_t InputMethodPanel::SetImmersiveEffect(const ImmersiveEffect &effect)
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethodEngine.panel.setImmersiveEffect", 1);
+#endif
     if (!IsImmersiveEffectSupported()) {
         IMSA_HILOGE("immersive effect is not supported");
         return ErrorCode::ERROR_DEVICE_UNSUPPORTED;
@@ -2425,6 +2498,9 @@ bool InputMethodPanel::IsNeedConfig(bool ignoreIsMainDisplay)
 
 int32_t InputMethodPanel::SetShadow(const Shadow &shadow)
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethodEngine.panel.setShadow", 1);
+#endif
     if (!InputMethodAbility::GetInstance().IsSystemApp()) {
         return ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION;
     }
@@ -2494,6 +2570,9 @@ int32_t InputMethodPanel::CovertSetShadowResult(const Rosen::WMError ret, const 
 
 int32_t InputMethodPanel::SetKeepScreenOn(bool isKeepScreenOn)
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethodEngine.panel.setKeepScreenOn", 1);
+#endif
     if (window_ == nullptr) {
         IMSA_HILOGE("window_ is nullptr!");
         return ErrorCode::ERROR_WINDOW_MANAGER;
@@ -2664,6 +2743,9 @@ bool InputMethodPanel::IsKeyboardRectAtBottom()
 
 int32_t InputMethodPanel::SetSystemPanelButtonColor(const std::string &fillColor, const std::string &backgroundColor)
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethodEngine.panel.setSystemPanelButtonColor", 1);
+#endif
     uint32_t colorValue = 0;
     uint32_t backgroundColorValue = 0;
     if (!fillColor.empty()) {

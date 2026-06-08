@@ -676,7 +676,8 @@ int32_t InputMethodSystemAbility::GenerateClientInfo(
     return ErrorCode::NO_ERROR;
 }
 // LCOV_EXCL_STOP
-ErrCode InputMethodSystemAbility::ReleaseInput(const sptr<IInputClient>& client, uint32_t sessionId)
+ErrCode InputMethodSystemAbility::ReleaseInput(
+    const sptr<IInputClient> &client, uint32_t sessionId, int32_t clientSessionId)
 {
     if (client == nullptr) {
         IMSA_HILOGE("client is nullptr!");
@@ -688,7 +689,7 @@ ErrCode InputMethodSystemAbility::ReleaseInput(const sptr<IInputClient>& client,
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_NULL_POINTER;
     }
-    return session->OnReleaseInput(client, sessionId);
+    return session->OnReleaseInput(client, sessionId, clientSessionId);
 }
 
 void InputMethodSystemAbility::IncreaseAttachCount()
@@ -1179,13 +1180,30 @@ ErrCode InputMethodSystemAbility::PanelStatusChange(uint32_t status, const ImeWi
 
 ErrCode InputMethodSystemAbility::NotifyInputStart(const InputStartInfo &inputStartInfo)
 {
+    IMSA_HILOGD("IMSA enter!");
     auto userId = GetCallingUserId();
     auto tokenId = IPCSkeleton::GetCallingTokenID();
     if (!IsCurrentIme(userId, tokenId)) {
         IMSA_HILOGE("not current ime!");
         return ErrorCode::ERROR_NOT_CURRENT_IME;
     }
-    return ImeEventListenerManager::GetInstance().NotifyInputStart(userId, inputStartInfo);
+    auto finalInfo = inputStartInfo;
+    finalInfo.userId = userId;
+    return ImeEventListenerManager::GetInstance().NotifyInputStart(userId, finalInfo);
+}
+
+ErrCode InputMethodSystemAbility::NotifyInputStop(const InputStopInfo &inputStopInfo)
+{
+    IMSA_HILOGD("IMSA enter!");
+    auto userId = GetCallingUserId();
+    auto tokenId = IPCSkeleton::GetCallingTokenID();
+    if (!IsCurrentIme(userId, tokenId)) {
+        IMSA_HILOGE("not current ime!");
+        return ErrorCode::ERROR_NOT_CURRENT_IME;
+    }
+    auto finalInfo = inputStopInfo;
+    finalInfo.userId = userId;
+    return ImeEventListenerManager::GetInstance().NotifyInputStop(userId, finalInfo);
 }
 
 ErrCode InputMethodSystemAbility::NotifySoftKeyBoardInfoChanged(

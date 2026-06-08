@@ -17,7 +17,6 @@
 #define INPUTMETHOD_IMF_IME_CONNECTION_H
 
 #include "ability_connect_callback_stub.h"
-#include "global.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -31,7 +30,7 @@ public:
     void OnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int32_t resultCode) override;
 
 private:
-    int32_t userId_ = ImfCommonConst::DEFAULT_USER_ID;
+    int32_t userId_;
 };
 } // namespace MiscServices
 } // namespace OHOS

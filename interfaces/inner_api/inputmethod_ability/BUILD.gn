@@ -381,6 +381,15 @@ ohos_shared_library("inputmethod_ability") {
     "window_manager:libwsutils",
   ]
 
+  if (imf_hiviewdfx_api_metrics_ext_enable) {
+    external_deps += [ "api_metrics:histogrammanager" ]
+    if (defined(defines)) {
+      defines += [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
+    } else {
+      defines = [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
+    }
+  }
+
   deps = [
     ":input_control_channel_interface",
     ":input_data_channel_interface",
@@ -509,6 +518,15 @@ ohos_static_library("inputmethod_ability_static") {
     "window_manager:libwsutils",
   ]
 
+  if (imf_hiviewdfx_api_metrics_ext_enable) {
+    external_deps += [ "api_metrics:histogrammanager" ]
+    if (defined(defines)) {
+      defines += [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
+    } else {
+      defines = [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
+    }
+  }
+
   deps = [
     ":input_control_channel_interface",
     ":input_data_channel_interface",
@@ -620,6 +638,15 @@ ohos_static_library("inputmethod_ability_fuzz_static") {
     "window_manager:libdm",
     "window_manager:libwsutils",
   ]
+
+  if (imf_hiviewdfx_api_metrics_ext_enable) {
+    external_deps += [ "api_metrics:histogrammanager" ]
+    if (defined(defines)) {
+      defines += [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
+    } else {
+      defines = [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
+    }
+  }
 
   deps = [
     ":input_control_channel_interface",

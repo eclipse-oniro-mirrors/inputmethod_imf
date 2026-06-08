@@ -73,15 +73,6 @@ void GetSoftKeyboardWithInvalidUserId()
 
 class ImeEventListenerImplListener : public ImeEventListener {
 public:
-    void OnInputStart(uint32_t callingWndId, int32_t requestKeyboardReason) override
-    {
-        printf(
-            "=====OnInputStart callingWndId/requestKeyboardReason:%u/%d.=====\n", callingWndId, requestKeyboardReason);
-    }
-    void OnInputStop() override
-    {
-        printf("=====OnInputStop run in.=====\n.");
-    }
     void OnInputStart(const InputStartInfo &inputStartInfo) override
     {
         printf("=====inputStartInfo:%s.=====\n", inputStartInfo.ToString().c_str());

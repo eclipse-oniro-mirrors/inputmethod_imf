@@ -110,7 +110,7 @@ public:
     int32_t OnPrepareInput(const InputClientInfo &clientInfo);
     int32_t OnStartInput(InputClientInfo &inputClientInfo, std::vector<sptr<IRemoteObject>> &agents,
         std::vector<BindImeInfo> &imeInfos);
-    int32_t OnReleaseInput(const sptr<IInputClient> &client, uint32_t sessionId);
+    int32_t OnReleaseInput(const sptr<IInputClient> &client, uint32_t sessionId, int32_t clientSessionId);
     int32_t OnSetCoreAndAgent(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent);
     int32_t OnHideCurrentInput(uint64_t displayGroupId);
     int32_t OnHideCurrentInputInTargetDisplay(uint64_t displayId);
@@ -228,7 +228,6 @@ private:
 
     void OnClientDied(sptr<IInputClient> remote);
     void OnImeDied(const sptr<IInputMethodCore> &remote, ImeType type, pid_t pid);
-
     int AddClientInfo(sptr<IRemoteObject> inputClient, const InputClientInfo &clientInfo);
     int32_t RemoveClient(const sptr<IInputClient> &client, const std::shared_ptr<ClientGroup> &clientGroup,
         const DetachOptions &options);
@@ -266,7 +265,7 @@ private:
     void UnBindClientWithIme(const std::shared_ptr<InputClientInfo> &currentClientInfo, const DetachOptions &options);
     void StopClientInput(const std::shared_ptr<InputClientInfo> &clientInfo, DetachOptions options = {});
     void StopImeInput(const std::shared_ptr<ImeData> &imeData, const std::shared_ptr<InputClientInfo> &clientInfo,
-        uint32_t sessionId);
+        uint32_t sessionId, int32_t clientSessionId = -1);
 
     int32_t HideKeyboard(const sptr<IInputClient> &currentClient, const std::shared_ptr<ClientGroup> &clientGroup);
     int32_t ShowKeyboard(const sptr<IInputClient> &currentClient, const std::shared_ptr<ClientGroup> &clientGroup,
@@ -374,6 +373,7 @@ private:
             };
         }
     };
+    void NotifyInputStop(uint64_t displayId, InputStopScene scene, bool isRealIme);
     std::mutex imeStartLock_;
 
     BlockData<bool> isImeStarted_{ MAX_IME_START_TIME, false };

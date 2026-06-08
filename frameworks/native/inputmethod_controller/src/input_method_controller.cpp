@@ -21,6 +21,9 @@
 
 #include "block_data.h"
 #include "global.h"
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+#include "histogram_plugin_macros.h"
+#endif
 #include "imc_hisysevent_reporter.h"
 #include "ime_event_monitor_manager_impl.h"
 #include "input_client_service_impl.h"
@@ -386,6 +389,12 @@ int32_t InputMethodController::IsValidTextConfig(const TextConfig &textConfig)
 int32_t InputMethodController::Attach(sptr<OnTextChangedListener> listener, const AttachOptions &attachOptions,
     const TextConfig &textConfig, ClientType type)
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethod.attach", 1);
+    HISTOGRAM_ENUMERATION("imekit.inputMethod.attach.request_keyboard_reason",
+        static_cast<uint32_t>(attachOptions.requestKeyboardReason),
+        static_cast<uint32_t>(RequestKeyboardReason::OTHER));
+#endif
     auto task = [listener, attachOptions, textConfig, type, this](int32_t &ret) {
         ret = AttachExec(listener, attachOptions, textConfig, type);
         return ret != ErrorCode::ERROR_TRY_IME_START_FAILED;
@@ -497,6 +506,9 @@ int32_t InputMethodController::HideTextInput()
         return ErrorCode::ERROR_CLIENT_NOT_BOUND;
     }
     IMSA_HILOGI("start.");
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethod.hideTextInput", 1);
+#endif
     isEditable_.store(false);
     InputMethodSysEvent::GetInstance().OperateSoftkeyboardBehaviour(OperateIMEInfoCode::IME_HIDE_UNEDITABLE);
     return HideInput(clientInfo_.client);
@@ -556,11 +568,20 @@ int32_t InputMethodController::ShowCurrentInput()
 
 int32_t InputMethodController::Close()
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethod.detach", 1);
+#endif
+    int32_t defaultSessionId = -1;
+    return Close(defaultSessionId);
+}
+
+int32_t InputMethodController::Close(int32_t clientSessionId)
+{
     {
         QueueGuard guard(__func__);
     }
     if (IsBound()) {
-        IMSA_HILOGI("start.");
+        IMSA_HILOGI("start, clientSessionId: %{public}d.", clientSessionId);
     }
 
     auto listener = GetTextListener();
@@ -576,7 +597,7 @@ int32_t InputMethodController::Close()
     }
     InputMethodSyncTrace tracer("InputMethodController Close trace.");
     InputMethodSysEvent::GetInstance().OperateSoftkeyboardBehaviour(infoCode);
-    return ReleaseInput(clientInfo_.client);
+    return ReleaseInput(clientInfo_.client, clientSessionId);
 }
 
 void InputMethodController::Reset()
@@ -743,6 +764,9 @@ int32_t InputMethodController::EnableIme(
     const std::string &bundleName, const std::string &extensionName, EnabledStatus status, int32_t userId)
 {
     IMSA_HILOGI("enter.");
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethod.enableInputMethod", 1);
+#endif
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
         IMSA_HILOGE("proxy is nullptr!");
@@ -765,15 +789,15 @@ int32_t InputMethodController::StartInput(
     return ret;
 }
 // LCOV_EXCL_START
-int32_t InputMethodController::ReleaseInput(sptr<IInputClient> &client)
+int32_t InputMethodController::ReleaseInput(sptr<IInputClient> &client, int32_t clientSessionId)
 {
-    IMSA_HILOGD("InputMethodController::ReleaseInput start.");
+    IMSA_HILOGD("InputMethodController::ReleaseInput start with clientSessionId: %{public}d.", clientSessionId);
     auto proxy = TryGetSystemAbilityProxy();
     if (proxy == nullptr) {
         IMSA_HILOGE("proxy is nullptr!");
         return ErrorCode::ERROR_SERVICE_START_FAILED;
     }
-    int32_t ret = proxy->ReleaseInput(client, sessionId_.load());
+    int32_t ret = proxy->ReleaseInput(client, sessionId_.load(), clientSessionId);
     if (ret == ErrorCode::NO_ERROR) {
         OnInputStop();
     }
@@ -907,6 +931,9 @@ void InputMethodController::RestoreClientInfoInSaDied()
 
 int32_t InputMethodController::DiscardTypingText()
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethod.discardTypingText", 1);
+#endif
     if (!IsBound()) {
         IMSA_HILOGE("not bound.");
         return ErrorCode::ERROR_CLIENT_NOT_BOUND;
@@ -993,6 +1020,9 @@ int32_t InputMethodController::OnSelectionChange(std::u16string text, int start,
 
 int32_t InputMethodController::OnConfigurationChange(Configuration info)
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethod.updateAttribute", 1);
+#endif
     if (!IsBound()) {
         IMSA_HILOGD("not bound.");
         return ErrorCode::ERROR_CLIENT_NOT_BOUND;
@@ -1241,6 +1271,9 @@ int32_t InputMethodController::GetCursorInfo(CursorInfo &cursorInfo, int32_t use
 
 int32_t InputMethodController::SetCallingWindow(uint32_t windowId)
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethod.setCallingWindow", 1);
+#endif
     if (!IsBound()) {
         IMSA_HILOGD("not bound.");
         return ErrorCode::ERROR_CLIENT_NOT_BOUND;
@@ -1312,6 +1345,9 @@ int32_t InputMethodController::ShowSoftKeyboardInner(uint64_t displayId, ClientT
 
 int32_t InputMethodController::HideSoftKeyboard()
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethod.hideSoftKeyboard", 1);
+#endif
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
         IMSA_HILOGE("proxy is nullptr!");
@@ -1328,6 +1364,9 @@ int32_t InputMethodController::HideSoftKeyboard()
 
 int32_t InputMethodController::HideSoftKeyboard(uint64_t displayId)
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethod.hideSoftKeyboard", 1);
+#endif
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
         IMSA_HILOGE("proxy is nullptr!");
@@ -1341,6 +1380,9 @@ int32_t InputMethodController::HideSoftKeyboard(uint64_t displayId)
 int32_t InputMethodController::StopInputSession()
 {
     IMSA_HILOGI("start.");
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethod.stopInputSession", 1);
+#endif
     isEditable_.store(false);
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
@@ -1392,6 +1434,9 @@ int32_t InputMethodController::ListCurrentInputMethodSubtype(std::vector<SubProp
 int32_t InputMethodController::SwitchInputMethod(
     SwitchTrigger trigger, const std::string &name, const std::string &subName, int32_t userId)
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethod.switchInputMethod", 1);
+#endif
     InputMethodSyncTrace tracer("IMC_SwitchInputMethod");
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
@@ -1400,11 +1445,21 @@ int32_t InputMethodController::SwitchInputMethod(
     }
     IMSA_HILOGI("name: %{public}s, subName: %{public}s, trigger: %{public}d.", name.c_str(), subName.c_str(),
         static_cast<uint32_t>(trigger));
-    return proxy->SwitchInputMethod(name, subName, static_cast<uint32_t>(trigger), userId);
+    auto ret = proxy->SwitchInputMethod(name, subName, static_cast<uint32_t>(trigger), userId);
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    if (ret != ErrorCode::NO_ERROR) {
+        int32_t errcode = ImfHiSysEventUtil::ConvertErrorCode(ret);
+        HISTOGRAM_ENUMERATION("imekit.inputMethod.switchInputMethod.error_code", errcode, ErrorCode::ERROR_IMSA_END);
+    }
+#endif
+    return ret;
 }
 
 int32_t InputMethodController::SetSimpleKeyboardEnabled(bool enable)
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethod.setSimpleKeyboardEnabled", 1);
+#endif
     InputMethodSyncTrace tracer("IMC_SetSimpleKeyboardEnabled");
     std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
     clientInfo_.config.isSimpleKeyboardEnabled = enable;
@@ -1708,9 +1763,9 @@ void InputMethodController::SendKeyboardStatus(KeyboardStatus status)
 void InputMethodController::NotifyPanelStatusInfo(const PanelStatusInfo &info)
 {
     IMSA_HILOGD("InputMethodController start, type: %{public}d, flag: %{public}d, visible: %{public}d, trigger: "
-                "%{public}d, sessionId: %{public}u.",
+                "%{public}d, sessionId: %{public}u, clientSessionId: %{public}d.",
         static_cast<PanelType>(info.panelInfo.panelType), static_cast<PanelFlag>(info.panelInfo.panelFlag),
-        info.visible, static_cast<Trigger>(info.trigger), info.sessionId);
+        info.visible, static_cast<Trigger>(info.trigger), info.sessionId, info.clientSessionId);
     auto listener = GetTextListener();
     if (listener == nullptr) {
         IMSA_HILOGE("listener is nullptr!");
@@ -2083,6 +2138,12 @@ int32_t InputMethodController::ShowTextInput(ClientType type)
 
 int32_t InputMethodController::ShowTextInput(const AttachOptions &attachOptions, ClientType type)
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethod.showTextInput", 1);
+    HISTOGRAM_ENUMERATION("imekit.inputMethod.attach.request_keyboard_reason",
+        static_cast<uint32_t>(attachOptions.requestKeyboardReason),
+        static_cast<uint32_t>(RequestKeyboardReason::OTHER));
+#endif
     auto ret = ShowTextInputInner(attachOptions, type);
     ReportClientShow(static_cast<int32_t>(IInputMethodSystemAbilityIpcCode::COMMAND_SHOW_INPUT), ret, type);
     return ret;
@@ -2090,6 +2151,9 @@ int32_t InputMethodController::ShowTextInput(const AttachOptions &attachOptions,
 
 int32_t InputMethodController::ShowSoftKeyboard(ClientType type)
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethod.showSoftKeyboard", 1);
+#endif
     auto ret = ShowSoftKeyboardInner(type);
     ReportClientShow(static_cast<int32_t>(IInputMethodSystemAbilityIpcCode::COMMAND_SHOW_CURRENT_INPUT), ret, type);
     return ret;
@@ -2097,6 +2161,9 @@ int32_t InputMethodController::ShowSoftKeyboard(ClientType type)
 
 int32_t InputMethodController::ShowSoftKeyboard(uint64_t displayId, ClientType type)
 {
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethod.showSoftKeyboard", 1);
+#endif
     auto ret = ShowSoftKeyboardInner(displayId, type);
     ReportClientShow(static_cast<int32_t>(IInputMethodSystemAbilityIpcCode::COMMAND_SHOW_CURRENT_INPUT), ret, type);
     return ret;

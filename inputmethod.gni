@@ -21,9 +21,14 @@ adapter_path = "${inputmethod_path}/adapter"
 
 declare_args() {
   imf_screenlock_mgr_enable = false
+  imf_hiviewdfx_api_metrics_ext_enable = true
   if (defined(global_parts_info) &&
       defined(global_parts_info.theme_screenlock_mgr)) {
     imf_screenlock_mgr_enable = true
+  }
+  if (defined(global_parts_info) &&
+      !defined(global_parts_info.hiviewdfx_api_metrics_ext)) {
+    imf_hiviewdfx_api_metrics_ext_enable = false
   }
   imf_on_demand_start_stop_sa_enable = false
   imf_restore_in_high_cpu_usage = false

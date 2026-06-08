@@ -18,6 +18,9 @@
 #include "ability_connection.h"
 #include "ability_manager_client.h"
 #include "global.h"
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+#include "histogram_plugin_macros.h"
+#endif
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -27,6 +30,9 @@ int InputMethodExtensionContext::ILLEGAL_REQUEST_CODE(-1);
 ErrCode InputMethodExtensionContext::StartAbility(const AAFwk::Want &want) const
 {
     IMSA_HILOGD("%{public}s begin.", __func__);
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.InputMethodExtensionContext.startAbility", 1);
+#endif
     auto client = AAFwk::AbilityManagerClient::GetInstance();
     if (client == nullptr) {
         IMSA_HILOGE("client is nullptr.");
@@ -44,6 +50,9 @@ ErrCode InputMethodExtensionContext::StartAbility(const AAFwk::Want &want,
     const AAFwk::StartOptions &startOptions) const
 {
     IMSA_HILOGD("%{public}s start.", __func__);
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.InputMethodExtensionContext.startAbility", 1);
+#endif
     auto client = AAFwk::AbilityManagerClient::GetInstance();
     if (client == nullptr) {
         IMSA_HILOGE("client is nullptr.");
@@ -124,6 +133,9 @@ ErrCode InputMethodExtensionContext::DisconnectAbility(const AAFwk::Want &want,
 ErrCode InputMethodExtensionContext::TerminateAbility()
 {
     IMSA_HILOGI("%{public}s start.", __func__);
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.InputMethodExtensionContext.destroy", 1);
+#endif
     auto client = AAFwk::AbilityManagerClient::GetInstance();
     if (client == nullptr) {
         IMSA_HILOGE("client is nullptr.");
