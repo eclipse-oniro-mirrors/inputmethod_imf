@@ -275,6 +275,15 @@ ohos_shared_library("inputmethod_client") {
     "samgr:samgr_proxy",
   ]
 
+  if (imf_hiviewdfx_api_metrics_ext_enable) {
+    external_deps += [ "api_metrics:histogrammanager" ]
+    if (defined(defines)) {
+      defines += [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
+    } else {
+      defines = [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
+    }
+  }
+
   if (imf_on_demand_start_stop_sa_enable) {
     if (defined(defines)) {
       defines += [ "IMF_ON_DEMAND_START_STOP_SA_ENABLE" ]
@@ -349,6 +358,15 @@ ohos_static_library("inputmethod_client_static") {
     "samgr:samgr_proxy",
   ]
 
+  if (imf_hiviewdfx_api_metrics_ext_enable) {
+    external_deps += [ "api_metrics:histogrammanager" ]
+    if (defined(defines)) {
+      defines += [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
+    } else {
+      defines = [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
+    }
+  }
+
   client_output_values = get_target_outputs(":input_client_interface")
   sources += filter_include(client_output_values,
                             [
@@ -420,6 +438,15 @@ ohos_static_library("inputmethod_client_fuzz_static") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
   ]
+
+  if (imf_hiviewdfx_api_metrics_ext_enable) {
+    external_deps += [ "api_metrics:histogrammanager" ]
+    if (defined(defines)) {
+      defines += [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
+    } else {
+      defines = [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
+    }
+  }
 
   client_output_values = get_target_outputs(":input_client_interface")
   sources += filter_include(client_output_values,

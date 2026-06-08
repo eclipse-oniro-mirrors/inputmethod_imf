@@ -20,6 +20,7 @@ sequenceable input_window_info..OHOS.MiscServices.ImeWindowInfo;
 sequenceable input_method_utils..OHOS.MiscServices.Value;
 sequenceable input_method_utils..OHOS.MiscServices.CursorInfoInner;
 sequenceable input_status_info..OHOS.MiscServices.InputStartInfo;
+sequenceable input_status_info..OHOS.MiscServices.InputStopInfo;
 sequenceable input_status_info..OHOS.MiscServices.BoundImeInfo;
 sequenceable panel_info..OHOS.MiscServices.PanelInfo;
 sequenceable element_name..OHOS.AppExecFwk.ElementName;
@@ -34,7 +35,7 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void StopInputSession([in] unsigned int windowId);
     void ShowInput([in] IInputClient client, [in] unsigned int windowId, [in] unsigned int type, [in] int requestKeyboardReason);
     void HideInput([in] IInputClient client, [in] unsigned int windowId);
-    void ReleaseInput([in] IInputClient client, [in] unsigned int sessionId);
+    void ReleaseInput([in] IInputClient client, [in] unsigned int sessionId, [in] int clientSessionId);
     void RequestHideInput([in] unsigned int windowId, [in]unsigned long displayId, [in] boolean isFocusTriggered, [in] int userId);
     void GetDefaultInputMethod([out] Property prop, [in] boolean isBrief, [in] int userId);
     void GetInputMethodConfig([out] ElementName inputMethodConfig, [in] int userId);
@@ -69,6 +70,7 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void GetInputStartInfo([out] InputStartInfo inputStartInfo);
     void GetSoftKeyboardInfo([in] int userId, [out] BoundImeInfo imeInfo);
     [oneway] void NotifyInputStart([in] InputStartInfo inputStartInfo);
+    [oneway] void NotifyInputStop([in] InputStopInfo inputStopInfo);
     [oneway] void NotifySoftKeyBoardInfoChanged([in] BoundImeInfo oldImeInfo, [in] BoundImeInfo newImeInfo);
     void RegisterProxyIme([in] unsigned long displayId, [in] IInputMethodCore core, [in] IRemoteObject agent);
     void UnregisterProxyIme([in] unsigned long displayId, [in] int type);

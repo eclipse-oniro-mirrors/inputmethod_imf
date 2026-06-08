@@ -348,6 +348,11 @@ int32_t ImeEnabledInfoManager::GetEnabledCacheWithCorrect(
     if (iter != enabledCfg.enabledInfos.end()) {
         return ErrorCode::NO_ERROR;
     }
+    if (!ImeInfoInquirer::GetInstance().IsInputMethod(userId, bundleName)) {
+        IMSA_HILOGE(
+            "[%{public}d, %{public}s, %{public}s] not an ime.", userId, bundleName.c_str(), extensionName.c_str());
+        return ErrorCode::ERROR_IME_NOT_FOUND;
+    }
     auto ret = UpdateEnabledCfgCache(userId);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("%{public}d update enable info failed:%{public}d.", userId, ret);

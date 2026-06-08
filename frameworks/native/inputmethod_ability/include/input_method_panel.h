@@ -248,6 +248,8 @@ private:
     bool IsValidParamWithConfig();
     void UpdatePanelFlag(PanelFlag newPanelFlag);
     void NotifySoftKeyBoardInfoChanged(PanelFlag panelFlag, InputWindowStatus status);
+    int32_t SetHotAreasOnAdjust(HotAreas hotAreas);
+    int32_t UpdatePanelFLagToWindow(PanelFlag panelFlag);
 
     sptr<OHOS::Rosen::Window> window_ = nullptr;
     sptr<OHOS::Rosen::WindowOption> winOption_ = nullptr;

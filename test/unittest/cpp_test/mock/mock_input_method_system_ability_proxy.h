@@ -26,7 +26,7 @@ public:
     static void SetImsaProxyForTest(sptr<InputMethodController> controller, sptr<IInputMethodSystemAbility> proxy);
     MOCK_METHOD3(StartInput,
         int32_t(const InputClientInfoInner &, std::vector<sptr<IRemoteObject>> &, std::vector<BindImeInfo> &));
-    MOCK_METHOD2(ReleaseInput, int32_t(const sptr<IInputClient> &, uint32_t));
+    MOCK_METHOD3(ReleaseInput, int32_t(const sptr<IInputClient> &, uint32_t, int32_t));
     MOCK_METHOD1(ShowCurrentInputDeprecated, int32_t(uint32_t));
     MOCK_METHOD4(ShowInput, int32_t(const sptr<IInputClient> &, uint32_t, uint32_t, int32_t));
     MOCK_METHOD1(HideCurrentInputDeprecated, int32_t(uint32_t));

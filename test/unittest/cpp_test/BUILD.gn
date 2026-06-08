@@ -2141,6 +2141,15 @@ ohos_unittest("InputMethodDisplayAttributeListenerTest") {
     "safwk:system_ability_fwk",
     "window_manager:libdm",
   ]
+
+  if (imf_hiviewdfx_api_metrics_ext_enable) {
+    external_deps += [ "api_metrics:histogrammanager" ]
+    if (defined(defines)) {
+      defines += [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
+    } else {
+      defines = [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
+    }
+  }
 }
 
 ohos_unittest("ImeEventListenerManagerTest") {

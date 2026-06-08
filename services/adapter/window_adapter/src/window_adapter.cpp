@@ -313,7 +313,7 @@ int32_t WindowAdapter::GetAllDisplayGroupInfos(std::unordered_map<uint64_t, uint
         }
     }
     std::sort(focusWindowInfos.begin(), focusWindowInfos.end(),
-        [](const FocusChangeInfo &a, const FocusChangeInfo &b) { return a.displayId_ < b.displayId_; });
+        [](const FocusChangeInfo &a, const FocusChangeInfo &b) { return a.realDisplayId_ < b.realDisplayId_; });
 
     GetInstance().SetDisplayGroupIds(displayGroupIds, userId);
     return ErrorCode::NO_ERROR;

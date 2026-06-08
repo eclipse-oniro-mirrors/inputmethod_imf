@@ -3687,6 +3687,38 @@ HWTEST_F(InputMethodPanelTest, TestKeyboardPanelInfoChangeListener002, TestSize.
 }
 
 /**
+ * @tc.name: TestShowKeyboardToWms_ModeChanged
+ * @tc.desc: Test ShowKeyboardToWms when immersive mode changes between ShowPanel calls.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testShowKeyboardToWms_ModeChanged, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testShowKeyboardToWms_ModeChanged start.");
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FIXED;
+
+    auto ret = inputMethodPanel->CreatePanel(nullptr, panelInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    ret = inputMethodPanel->SetImmersiveMode(ImmersiveMode::LIGHT_IMMERSIVE);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    ret = inputMethodPanel->SetImmersiveMode(ImmersiveMode::DARK_IMMERSIVE);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    ret = inputMethodPanel->ShowPanel();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    ret = inputMethodPanel->HidePanel();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ret = inputMethodPanel->DestroyPanel();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
  * @tc.name: TestVisibilityChangeListener001
  * @tc.desc: Test visibility change listener when window_ nullptr.
  * @tc.type: FUNC

@@ -280,6 +280,18 @@ public:
     IMF_API int32_t Close();
 
     /**
+     * @brief Hide current input method, clear text listener and unbind IMSA.
+     *
+     * This function is used to stop input, whick will set listener to nullptr,
+     * hide current soft keyboard and unbind IMSA.
+     *
+     * @param clientSessionId Indicates the client session ID for tracking, -1 means not specified.
+     * @return Returns 0 for success, others for failure.
+     * @since 26
+     */
+    IMF_API int32_t Close(int32_t clientSessionId);
+
+    /**
      * @brief A callback function when the cursor changes.
      *
      * This function is the callback when the cursor changes.
@@ -1090,7 +1102,7 @@ private:
     int32_t ShowInput(
         sptr<IInputClient> &client, ClientType type = ClientType::INNER_KIT, int32_t requestKeyboardReason = 0);
     int32_t HideInput(sptr<IInputClient> &client);
-    int32_t ReleaseInput(sptr<IInputClient> &client);
+    int32_t ReleaseInput(sptr<IInputClient> &client, int32_t clientSessionId = -1);
     int32_t ListInputMethodCommon(InputMethodStatus status, std::vector<Property> &props,
         int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
     int32_t AttachExec(sptr<OnTextChangedListener> listener, const AttachOptions &attachOptions,

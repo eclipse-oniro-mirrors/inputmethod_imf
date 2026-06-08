@@ -38,6 +38,7 @@ bool PanelStatusInfoInner::ReadFromParcel(Parcel &in)
     int32_t triggerData = in.ReadInt32();
     trigger = static_cast<Trigger>(triggerData);
     sessionId = in.ReadUint32();
+    clientSessionId = in.ReadInt32();
     return true;
 }
 
@@ -220,6 +221,9 @@ bool PanelStatusInfoInner::Marshalling(Parcel &out) const
     }
 
     if (!out.WriteUint32(sessionId)) {
+        return false;
+    }
+    if (!out.WriteInt32(clientSessionId)) {
         return false;
     }
     return true;

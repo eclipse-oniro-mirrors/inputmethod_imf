@@ -34,8 +34,6 @@ public:
     virtual void OnImeChangeWithUserId(const Property &property, const SubProperty &subProperty, int32_t userId){};
     virtual void OnImeShow(const ImeWindowInfo &info){};
     virtual void OnImeHide(const ImeWindowInfo &info){};
-    virtual void OnInputStart(uint32_t callingWndId, int32_t requestKeyboardReason){}; // deprecated
-    virtual void OnInputStop(){};                                                      // deprecated
     virtual void OnInputStart(const InputStartInfo &inputStartInfo){};
     virtual void OnInputStop(const InputStopInfo &inputStopInfo){};
     virtual void OnSoftKeyboardInfoChanged(

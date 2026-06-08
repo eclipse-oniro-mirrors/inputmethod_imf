@@ -94,7 +94,7 @@ bool FuzzPerUserSession(FuzzedDataProvider &provider)
     userSessions->NotifyImeChangedToClients();
     userSessions->OnHideCurrentInput(DEFAULT_DISPLAY_ID);
     userSessions->OnHideInput(client);
-    userSessions->OnReleaseInput(client, 0);
+    userSessions->OnReleaseInput(client, 0, -1);
     return true;
 }
 } // namespace OHOS
