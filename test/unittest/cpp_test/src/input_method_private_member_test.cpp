@@ -5270,12 +5270,12 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_UpdateRealImeDataOnDisconn
     EXPECT_EQ(userSession->realImeData_, nullptr);
 
     auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, pid);
-    imeData->status = ImeStatus::STARTING;
+    imeData->imeStatus = ImeStatus::STARTING;
     userSession->realImeData_ = imeData;
     userSession->UpdateRealImeDataOnDisconnect(connection);
     EXPECT_FALSE(userSession->realImeData_->isDisconnected);
 
-    imeData->status = ImeStatus::READY;
+    imeData->imeStatus = ImeStatus::READY;
     imeData->connection = nullptr;
     userSession->UpdateRealImeDataOnDisconnect(connection);
     EXPECT_FALSE(userSession->realImeData_->isDisconnected);

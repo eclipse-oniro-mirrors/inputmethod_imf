@@ -23,7 +23,7 @@ namespace OHOS {
 namespace MiscServices {
 class ImeConnection : public AAFwk::AbilityConnectionStub {
 public:
-    explicit ImeConnection(int32_t userId) : userId_(userId){}
+    explicit ImeConnection(int32_t userId) : userId_(userId) {}
     virtual ~ImeConnection() override = default;
 
     void OnAbilityConnectDone(
