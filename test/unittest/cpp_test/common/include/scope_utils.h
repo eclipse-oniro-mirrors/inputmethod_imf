@@ -30,7 +30,7 @@ public:
         IMSA_HILOGI("enter");
         if (tokenId > 0) {
             originalTokenId_ = TddUtil::GetCurrentTokenID();
-            IMSA_HILOGI("originalTokenId_: %{public}lu", originalTokenId_);
+            IMSA_HILOGI("originalTokenId_: %{public}" PRIu64, originalTokenId_);
             TddUtil::SetTestTokenID(tokenId);
         }
         if (uid > 0) {
@@ -39,7 +39,7 @@ public:
     }
     ~AccessScope()
     {
-        IMSA_HILOGI("originalTokenId_: %{public}lu", originalTokenId_);
+        IMSA_HILOGI("originalTokenId_: %{public}" PRIu64, originalTokenId_);
         if (originalTokenId_ > 0) {
             TddUtil::SetTestTokenID(originalTokenId_);
         }
@@ -57,12 +57,12 @@ public:
     {
         IMSA_HILOGI("enter");
         originalTokenId_ = TddUtil::GetCurrentTokenID();
-        IMSA_HILOGI("originalTokenId_: %{public}lu", originalTokenId_);
+        IMSA_HILOGI("originalTokenId_: %{public}" PRIu64, originalTokenId_);
         TddUtil::SetTestTokenID(tokenId);
     }
     ~TokenScope()
     {
-        IMSA_HILOGI("originalTokenId_: %{public}lu", originalTokenId_);
+        IMSA_HILOGI("originalTokenId_: %{public}" PRIu64, originalTokenId_);
         TddUtil::SetTestTokenID(originalTokenId_);
         IMSA_HILOGI("exit");
     }
