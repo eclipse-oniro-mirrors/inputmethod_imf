@@ -22,12 +22,15 @@ namespace OHOS {
 namespace MiscServices {
 class ImeConnection : public AAFwk::AbilityConnectionStub {
 public:
-    ImeConnection() = default;
-    virtual ~ImeConnection() = default;
+    explicit ImeConnection(int32_t userId) : userId_(userId) {}
+    virtual ~ImeConnection() override = default;
 
-    void OnAbilityConnectDone(const AppExecFwk::ElementName &element, const sptr<IRemoteObject> &remoteObject,
-        int32_t resultCode) override;
+    void OnAbilityConnectDone(
+        const AppExecFwk::ElementName &element, const sptr<IRemoteObject> &remoteObject, int32_t resultCode) override;
     void OnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int32_t resultCode) override;
+
+private:
+    int32_t userId_;
 };
 } // namespace MiscServices
 } // namespace OHOS

@@ -92,6 +92,7 @@ struct ImeData {
         return type == ImeType::IME;
     }
     ImeExtendInfo imeExtendInfo;
+    bool isDisconnected = false;
 };
 
 enum class StartPreDefaultImeStatus : uint32_t { NO_NEED, HAS_STARTED, TO_START };
@@ -101,9 +102,8 @@ enum class StartPreDefaultImeStatus : uint32_t { NO_NEED, HAS_STARTED, TO_START 
  *
  * This class manages the sessions between input clients and input method engines for each unlocked user.
  */
-class PerUserSession {
+class PerUserSession : public std::enable_shared_from_this<PerUserSession> {
 public:
-    explicit PerUserSession(int userId); // only use in tdd
     PerUserSession(int32_t userId, const std::shared_ptr<AppExecFwk::EventHandler> &eventHandler);
     ~PerUserSession();
 
@@ -195,7 +195,7 @@ public:
     int32_t GetSoftKeyboardInfo(BoundImeInfo &imeInfo);
     int32_t NotifyImeChangedToClients();
     int32_t GetCursorInfo(CursorInfoInner &cursorInfo, const pid_t clientPid);
-
+    void OnImeDisconnect(sptr<ImeConnection> connection);
 private:
     struct ResetManager {
         uint32_t num{ 0 };
@@ -228,7 +228,6 @@ private:
 
     void OnClientDied(sptr<IInputClient> remote);
     void OnImeDied(const sptr<IInputMethodCore> &remote, ImeType type, pid_t pid);
-
     int AddClientInfo(sptr<IRemoteObject> inputClient, const InputClientInfo &clientInfo);
     int32_t RemoveClient(const sptr<IInputClient> &client, const std::shared_ptr<ClientGroup> &clientGroup,
         const DetachOptions &options);
@@ -351,6 +350,29 @@ private:
     void StartImageTimeoutTask();
     void StopImageTimeoutTask();
     int32_t HandleSysImeInDied(ImeType type, bool disconnectedByRss);
+    void UpdateRealImeDataOnDisconnect(sptr<ImeConnection> connection);
+    bool IsImeDisconnected(pid_t pid);
+    bool WaitImeExtExit(ImeType type, pid_t pid);
+    std::shared_ptr<AppExecFwk::EventHandler> GetEventHandler();
+    void RemoveAllTask();
+    struct TaskNames {
+        std::string imageTimeout;
+        std::string imeInfoReportHook;
+        std::string restartIme;
+        std::vector<std::string> GetAllTaskNames() const
+        {
+            return { imageTimeout, imeInfoReportHook, restartIme };
+        }
+        static TaskNames MakeTaskNames(int32_t userId)
+        {
+            auto make = [userId](const char *name) { return std::string(name) + "_" + std::to_string(userId); };
+            return {
+                .imageTimeout = make("imf_imageTimeoutTask"),
+                .imeInfoReportHook = make("imf_executeCurrentImeInfoReportHook"),
+                .restartIme = make("imf_restartCurrentIme"),
+            };
+        }
+    };
     void NotifyInputStop(uint64_t displayId, InputStopScene scene, bool isRealIme);
     std::mutex imeStartLock_;
 
@@ -364,6 +386,7 @@ private:
     std::mutex restartMutex_;
     int32_t restartTasks_ = 0;
     std::shared_ptr<AppExecFwk::EventHandler> eventHandler_{ nullptr };
+    const TaskNames taskNames_;
     ImeAction GetImeAction(ImeEvent action);
     static inline const std::map<std::pair<ImeStatus, ImeEvent>, std::pair<ImeStatus, ImeAction>> imeEventConverter_ = {
         { { ImeStatus::READY, ImeEvent::START_IME }, { ImeStatus::READY, ImeAction::DO_NOTHING } },

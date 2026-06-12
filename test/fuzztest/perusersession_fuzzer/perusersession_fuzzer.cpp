@@ -82,7 +82,7 @@ bool FuzzPerUserSession(FuzzedDataProvider &provider)
         return false;
     }
     auto agent = iface_cast<IInputMethodAgent>(agentStub);
-    static std::shared_ptr<PerUserSession> userSessions = std::make_shared<PerUserSession>(MAIN_USER_ID);
+    static std::shared_ptr<PerUserSession> userSessions = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
 
     userSessions->OnPrepareInput(clientInfo);
     userSessions->OnSetCoreAndAgent(core, agent->AsObject());
