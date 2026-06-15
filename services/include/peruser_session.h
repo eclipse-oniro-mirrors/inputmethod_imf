@@ -191,7 +191,6 @@ public:
     void OnSysImeImageCreated();
     int32_t OnMakeSysImeImage();
     bool IsImeInUse();
-    void SetSwitchInputType(bool isSwitchInputType);
     int32_t GetSoftKeyboardInfo(BoundImeInfo &imeInfo);
     int32_t NotifyImeChangedToClients();
     int32_t GetCursorInfo(CursorInfoInner &cursorInfo, const pid_t clientPid);
@@ -427,7 +426,6 @@ private:
     std::mutex realImeDataLock_;
     std::shared_ptr<ImeData> realImeData_{ nullptr };
     std::atomic<bool> firstStartNeedRetry_ { true };
-    std::atomic<bool> isSwitchInputType_{ false };
 
     std::mutex imageTimeoutTaskLock_;
     std::atomic<bool> disconnectedByRss_{ false };
