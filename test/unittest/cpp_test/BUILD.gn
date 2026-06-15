@@ -638,6 +638,11 @@ ohos_unittest("InputMethodPrivateMemberTest") {
   } else {
     external_deps += [ "window_manager:libwm" ]
   }
+
+  if (build_selinux) {
+    external_deps += [ "selinux_adapter:librestorecon" ]
+    cflags = [ "-DWITH_SELINUX" ]
+  }
 }
 
 ohos_unittest("InputMethodEditorTest") {
