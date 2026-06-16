@@ -2896,10 +2896,10 @@ void InputMethodPanel::OnVisibilityChange(const Rosen::WindowVisibilityState sta
 {
     std::lock_guard<std::mutex> lock(panelStatusChangeMutex_);
     bool isVisible = false;
-    if (state == WindowVisibilityState::WINDOW_VISIBILITY_STATE_TOTALLY_OCCUSION ||
-        state == WindowVisibilityState::WINDOW_VISIBILITY_STATE_PARTICALLY_OCCLUSION) {
+    if (state == WindowVisibilityState::WINDOW_VISIBILITY_STATE_TOTALLY_OCCUSION) {
         isVisible = false;
-    } else if (state == WindowVisibilityState::WINDOW_VISIBILITY_STATE_NO_OCCLUSION) {
+    } else if (state == WindowVisibilityState::WINDOW_VISIBILITY_STATE_NO_OCCLUSION ||
+        state == WindowVisibilityState::WINDOW_VISIBILITY_STATE_PARTICALLY_OCCLUSION) {
         isVisible = true;
     } else {
         IMSA_HILOGE("isVisible state: %{public}d", state);
