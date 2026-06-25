@@ -49,7 +49,9 @@ ohos_shared_library("panel") {
     "ability_runtime:runtime", 
     "c_utils:utils",
     "hilog:libhilog",
+    "libuv:uv",
     "napi:ace_napi",
+    "node:node_header_notice",
   ]
 
   relative_install_dir = "module/inputmethod"
