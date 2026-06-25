@@ -58,7 +58,9 @@ ohos_static_library("inputmethod_js_common") {
     "c_utils:utils",
     "eventhandler:libeventhandler",
     "hilog:libhilog",
+    "libuv:uv",
     "napi:ace_napi",
+    "node:node_header_notice",
   ]
   subsystem_name = "inputmethod"
   part_name = "imf"

@@ -74,6 +74,7 @@ ohos_shared_library("inputmethod") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "node:node_header_notice",
   ]
 
   public_configs = [ ":imf_public_config" ]
