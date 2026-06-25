@@ -1232,10 +1232,10 @@ int32_t InputMethodController::GetCurrentCursorInfo(CursorInfo &cursorInfo)
 {
     IMSA_HILOGD("InputMethodController::GetCurrentCursorInfo start.");
     std::lock_guard<std::mutex> lock(cursorInfoMutex_);
-    cursorInfo.left = cursorInfo_.left;
-    cursorInfo.top = cursorInfo_.top;
-    cursorInfo.width = cursorInfo_.width;
-    cursorInfo.height = cursorInfo_.height;
+    cursorInfo.left = textConfig_.cursorInfo.left;
+    cursorInfo.top = textConfig_.cursorInfo.top;
+    cursorInfo.width = textConfig_.cursorInfo.width;
+    cursorInfo.height = textConfig_.cursorInfo.height;
     IMSA_HILOGD("GetCurrentCursorInfo: left=%{public}f, top=%{public}f, width=%{public}f, height=%{public}f.",
         cursorInfo.left, cursorInfo.top, cursorInfo.width, cursorInfo.height);
     return ErrorCode::NO_ERROR;
