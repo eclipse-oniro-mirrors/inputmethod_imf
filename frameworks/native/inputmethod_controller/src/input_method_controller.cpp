@@ -1263,7 +1263,8 @@ int32_t InputMethodController::GetCursorInfo(CursorInfo &cursorInfo, int32_t use
     if (cursorInfo == invalidCursor) {
         cursorInfo = { 0, 0, 0, 0, 0 };
     }
-    IMSA_HILOGD("cursorInfo: left=%{public}f, top=%{public}f, width=%{public}f, height=%{public}f, displayId=%{public}" PRIu64 "",
+    IMSA_HILOGD(
+        "cursorInfo:left=%{public}f,top=%{public}f,width=%{public}f,height=%{public}f,displayId=%{public}" PRIu64 "",
         cursorInfo.left, cursorInfo.top, cursorInfo.width, cursorInfo.height, cursorInfo.displayId);
     return ErrorCode::NO_ERROR;
 }
