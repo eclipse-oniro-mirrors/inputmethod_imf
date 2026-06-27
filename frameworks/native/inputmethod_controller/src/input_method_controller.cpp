@@ -1231,7 +1231,7 @@ int32_t InputMethodController::GetTextConfig(TextTotalConfig &config)
 int32_t InputMethodController::GetCurrentCursorInfo(CursorInfo &cursorInfo)
 {
     IMSA_HILOGD("InputMethodController::GetCurrentCursorInfo start.");
-    std::lock_guard<std::mutex> lock(cursorInfoMutex_);
+    std::lock_guard<std::mutex> lock(textConfigLock_);
     cursorInfo.left = textConfig_.cursorInfo.left;
     cursorInfo.top = textConfig_.cursorInfo.top;
     cursorInfo.width = textConfig_.cursorInfo.width;
