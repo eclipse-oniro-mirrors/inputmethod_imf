@@ -1753,7 +1753,6 @@ HWTEST_F(InputMethodAbilityTest, testGetCallingWindowInfo_004, TestSize.Level0)
 HWTEST_F(InputMethodAbilityTest, testGetCallingWindowInfo_005, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbility testGetCallingWindowInfo_005 Test START");
-    // AccessScope accessScope(InputMethodAbilityTest::currentImeTokenId_, InputMethodAbilityTest::currentImeUid_);
     // SOFT_KEYBOARD window is created
     InputMethodAbilityTest::inputMethodAbility_.panels_.Clear();
     auto inputMethodPanel = std::make_shared<InputMethodPanel>();
@@ -2456,7 +2455,6 @@ HWTEST_F(InputMethodAbilityTest, testHidePanel, TestSize.Level0)
     PanelInfo info1;
     info1.panelType = SOFT_KEYBOARD;
     info1.panelFlag = FLG_FLOATING;
-    // AccessScope scope(currentImeTokenId_, currentImeUid_);
     auto panel = std::make_shared<InputMethodPanel>();
     auto ret = inputMethodAbility_.CreatePanel(nullptr, info1, panel);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
