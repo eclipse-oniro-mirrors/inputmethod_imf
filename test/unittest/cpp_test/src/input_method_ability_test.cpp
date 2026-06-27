@@ -643,7 +643,6 @@ HWTEST_F(InputMethodAbilityTest, testStartInputBeforeCreatePanel, TestSize.Level
     InputMethodAbilityTest::showKeyboard_ = false;
     std::shared_ptr<InputMethodPanel> softKeyboardPanel = nullptr;
     {
-        // AccessScope scope(currentImeTokenId_, currentImeUid_);
         PanelInfo panelInfo = {};
         panelInfo.panelType = SOFT_KEYBOARD;
         panelInfo.panelFlag = FLG_FIXED;
@@ -935,7 +934,6 @@ HWTEST_F(InputMethodAbilityTest, testGetTextIndexAtCursor, TestSize.Level0)
 HWTEST_F(InputMethodAbilityTest, testCreatePanel001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbilityTest testCreatePanel001 START. You can not create two SOFT_KEYBOARD panel.");
-    // AccessScope scope(currentImeTokenId_, currentImeUid_);
     std::shared_ptr<InputMethodPanel> softKeyboardPanel1 = nullptr;
     PanelInfo panelInfo = {};
     panelInfo.panelType = SOFT_KEYBOARD;
@@ -965,7 +963,6 @@ HWTEST_F(InputMethodAbilityTest, testCreatePanel001, TestSize.Level0)
 HWTEST_F(InputMethodAbilityTest, testCreatePanel002, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbilityTest testCreatePanel002 START. You can not create two STATUS_BAR panel.");
-    // AccessScope scope(currentImeTokenId_, currentImeUid_);
     std::shared_ptr<InputMethodPanel> statusBar1 = nullptr;
     PanelInfo panelInfo = {};
     panelInfo.panelType = STATUS_BAR;
@@ -995,7 +992,6 @@ HWTEST_F(InputMethodAbilityTest, testCreatePanel003, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbilityTest testCreatePanel006 START. Allowed to create one SOFT_KEYBOARD panel and "
                 "one STATUS_BAR panel.");
-    // AccessScope scope(currentImeTokenId_, currentImeUid_);
     std::shared_ptr<InputMethodPanel> softKeyboardPanel = nullptr;
     PanelInfo panelInfo1;
     panelInfo1.panelType = SOFT_KEYBOARD;
@@ -1028,7 +1024,6 @@ HWTEST_F(InputMethodAbilityTest, testCreatePanel004, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbilityTest testCreatePanel006 START. Allowed to create one SOFT_KEYBOARD panel and "
                 "one STATUS_BAR panel.");
-    // AccessScope scope(currentImeTokenId_, currentImeUid_);
     std::shared_ptr<InputMethodPanel> inputMethodPanel = nullptr;
     PanelInfo panelInfo = {};
     panelInfo.panelType = SOFT_KEYBOARD;
@@ -1068,7 +1063,6 @@ HWTEST_F(InputMethodAbilityTest, testCreatePanel004, TestSize.Level0)
 HWTEST_F(InputMethodAbilityTest, testCreatePanel005, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbilityTest testCreatePanel005 START.");
-    // AccessScope scope(currentImeTokenId_, currentImeUid_);
     std::shared_ptr<InputMethodPanel> softKeyboardPanel1 = nullptr;
     PanelInfo panelInfo = {};
     panelInfo.panelType = SOFT_KEYBOARD;
@@ -1098,7 +1092,6 @@ HWTEST_F(InputMethodAbilityTest, testCreatePanel005, TestSize.Level0)
 HWTEST_F(InputMethodAbilityTest, testCreatePanel006, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbilityTest testCreatePanel006 START.");
-    // AccessScope scope(currentImeTokenId_, currentImeUid_);
     std::shared_ptr<InputMethodPanel> softKeyboardPanel1 = nullptr;
     PanelInfo panelInfo = {};
     panelInfo.panelType = SOFT_KEYBOARD;
@@ -1164,7 +1157,6 @@ HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatusInfo_001, TestSize.Level0)
     PanelInfo info;
     info.panelType = STATUS_BAR;
     auto panel = std::make_shared<InputMethodPanel>();
-    // AccessScope scope(currentImeTokenId_, currentImeUid_);
     auto ret = inputMethodAbility_.CreatePanel(nullptr, info, panel);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     auto panel1 = std::make_shared<InputMethodPanel>();
@@ -1215,7 +1207,6 @@ HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatusInfo_002, TestSize.Level0)
     PanelInfo info1;
     info1.panelType = SOFT_KEYBOARD;
     info1.panelFlag = FLG_FLOATING;
-    // AccessScope scope(currentImeTokenId_, currentImeUid_);
     auto panel = std::make_shared<InputMethodPanel>();
     auto ret = inputMethodAbility_.CreatePanel(nullptr, info1, panel);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
@@ -1251,7 +1242,6 @@ HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatusInfo_003, TestSize.Level0)
     PanelInfo panelInfo = {};
     panelInfo.panelType = STATUS_BAR;
     auto panel = std::make_shared<InputMethodPanel>();
-    // AccessScope scope(currentImeTokenId_, currentImeUid_);
     auto ret = inputMethodAbility_.CreatePanel(nullptr, panelInfo, panel);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     PanelStatusInfo statusInfo;
@@ -1286,7 +1276,6 @@ HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatusInfo_004, TestSize.Level0)
     info.panelType = SOFT_KEYBOARD;
     info.panelFlag = FLG_CANDIDATE_COLUMN;
     auto panel = std::make_shared<InputMethodPanel>();
-    // AccessScope scope(currentImeTokenId_, currentImeUid_);
     auto ret = inputMethodAbility_.CreatePanel(nullptr, info, panel);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     PanelStatusInfo statusInfo;
@@ -1364,7 +1353,6 @@ HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatusInfo_006, TestSize.Level0)
     info.panelType = SOFT_KEYBOARD;
     info.panelFlag = FLG_CANDIDATE_COLUMN;
     auto panel = std::make_shared<InputMethodPanel>();
-    // AccessScope scope(currentImeTokenId_, currentImeUid_);
     auto ret = inputMethodAbility_.CreatePanel(nullptr, info, panel);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     PanelStatusInfo statusInfo;
@@ -1430,7 +1418,6 @@ HWTEST_F(InputMethodAbilityTest, testNotifyKeyboardHeight_003, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbility testNotifyKeyboardHeight_003 START");
     TextListener::ResetParam();
-    // AccessScope scope(currentImeTokenId_, currentImeUid_);
     PanelInfo info;
     info.panelType = SOFT_KEYBOARD;
     info.panelFlag = FLG_CANDIDATE_COLUMN;
@@ -1454,7 +1441,6 @@ HWTEST_F(InputMethodAbilityTest, testNotifyKeyboardHeight_003, TestSize.Level0)
 HWTEST_F(InputMethodAbilityTest, testAdjustKeyboard_001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbility testAdjustKeyboard_001 START");
-    // AccessScope scope(currentImeTokenId_, currentImeUid_);
     PanelInfo panelInfo = {};
     panelInfo.panelType = SOFT_KEYBOARD;
     panelInfo.panelFlag = FLG_FIXED;
@@ -1700,7 +1686,6 @@ HWTEST_F(InputMethodAbilityTest, testGetCallingWindowInfo_002, TestSize.Level0)
 HWTEST_F(InputMethodAbilityTest, testGetCallingWindowInfo_003, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbility testGetCallingWindowInfo_003 Test START");
-    // AccessScope accessScope(InputMethodAbilityTest::currentImeTokenId_, InputMethodAbilityTest::currentImeUid_);
     // bind IMC
     InputMethodAbilityTest::GetIMCAttachIMA();
     // only STATUS_BAR panel in IMA
@@ -1725,7 +1710,6 @@ HWTEST_F(InputMethodAbilityTest, testGetCallingWindowInfo_003, TestSize.Level0)
 HWTEST_F(InputMethodAbilityTest, testGetCallingWindowInfo_004, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbility testGetCallingWindowInfo_004 Test START");
-    // AccessScope accessScope(InputMethodAbilityTest::currentImeTokenId_, InputMethodAbilityTest::currentImeUid_);
     // bind imc
     InputMethodAbilityTest::GetIMCAttachIMA();
     // SOFT_KEYBOARD panel exists
