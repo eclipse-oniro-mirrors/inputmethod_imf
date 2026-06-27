@@ -2048,7 +2048,8 @@ bool InputMethodPanel::IsDisplayUnfolded()
         Rosen::FoldStatus foldStatus = Rosen::DisplayManager::GetInstance().GetFoldStatus();
         IMSA_HILOGI("DMS foldStatus: %{public}u", static_cast<uint32_t>(foldStatus));
         return !(foldStatus == Rosen::FoldStatus::FOLDED ||
-            foldStatus == Rosen::FoldStatus::FOLD_STATE_FOLDED_WITH_SECOND_HALF_FOLDED);
+            foldStatus == Rosen::FoldStatus::FOLD_STATE_FOLDED_WITH_SECOND_HALF_FOLDED ||
+                foldStatus == Rosen::FoldStatus::FOLD_STATE_FOLDED_WITH_SECOND_EXPAND);
     }
     return false;
 }
