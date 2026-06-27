@@ -98,6 +98,7 @@ taihe_shared_library("inputmethod_taihe_native") {
     "bundle_framework:bms_ani_common",
     "ffrt:libffrt",
     "ipc:ipc_single",
+    "samgr:samgr_proxy",
   ]
 }
 

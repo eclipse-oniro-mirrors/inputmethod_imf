@@ -95,6 +95,7 @@ ohos_shared_library("inputmethodengine") {
     "ipc:ipc_core",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "samgr:samgr_proxy",
     "window_manager:libwm_lite",
     "resource_management:global_resmgr",
     "ability_runtime:app_context",

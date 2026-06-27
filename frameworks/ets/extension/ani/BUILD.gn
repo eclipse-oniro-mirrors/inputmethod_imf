@@ -86,6 +86,7 @@ ohos_shared_library("inputmethod_extension_ani") {
     "ipc:ipc_single",
     "runtime_core:ani",
     "runtime_core:ani_helpers",
+    "samgr:samgr_proxy",
     "window_manager:libdm",
   ]
 

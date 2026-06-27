@@ -185,6 +185,8 @@ ohos_source_set("oninputstop_notify_proxy") {
   external_deps = [
     "c_utils:utils",
     "ipc:ipc_single",
+    "samgr:samgr_proxy",
+    "safwk:system_ability_fwk",
   ]
   subsystem_name = "inputmethod"
   part_name = "imf"
