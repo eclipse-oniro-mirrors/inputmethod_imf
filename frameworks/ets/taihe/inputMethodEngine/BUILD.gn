@@ -106,6 +106,7 @@ taihe_shared_library("inputmethod_engine_taihe_native") {
     "icu:shared_icuuc",
     "ipc:ipc_core",
     "ipc:ipc_single",
+    "samgr:samgr_proxy",
   ]
   defines = []
   if (window_manager_use_sceneboard) {

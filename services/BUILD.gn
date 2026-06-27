@@ -139,6 +139,7 @@ ohos_shared_library("inputmethod_service") {
     "memmgr:memmgrclient",
     "os_account:os_account_innerkits",
     "resource_schedule_service:ressched_client",
+    "samgr:samgr_proxy",
     "safwk:system_ability_fwk",
     "window_manager:libdm_lite",
     "window_manager:libwsutils",
