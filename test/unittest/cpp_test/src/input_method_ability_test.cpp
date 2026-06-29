@@ -171,9 +171,9 @@ public:
         currentImeTokenId_ = TddUtil::GetTestTokenID(currentIme);
         currentImeUid_ = TddUtil::GetUid(currentIme);
         {
- 	        TokenScope scope(currentImeTokenId_);
- 	        inputMethodAbility_.InitConnect();
- 	    }
+            TokenScope scope(currentImeTokenId_);
+            inputMethodAbility_.InitConnect();
+        }
         inputMethodAbility_.abilityManager_ = imsaProxy_;
         TddUtil::InitCurrentImePermissionInfo();
         IdentityCheckerMock::SetBundleName(TddUtil::currentBundleNameMock_);
