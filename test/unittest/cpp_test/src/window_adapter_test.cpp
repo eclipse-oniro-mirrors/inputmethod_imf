@@ -74,7 +74,11 @@ HWTEST_F(WindowAdapterTest, WindowAdapter_GetDisplayId, TestSize.Level0)
     int64_t callingPid = -1000;
     uint64_t displayId = 0;
     auto ret = WindowAdapter::GetInstance().GetDisplayId(callingPid, displayId);
-    EXPECT_TRUE(ret);
+    #ifdef SCENE_BOARD_ENABLE
+        EXPECT_FALSE(ret);
+    #else
+        EXPECT_TRUE(ret);
+    #endif
 }
 
 /**
