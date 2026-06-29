@@ -1231,11 +1231,11 @@ int32_t InputMethodController::GetTextConfig(TextTotalConfig &config)
 int32_t InputMethodController::GetCurrentCursorInfo(CursorInfo &cursorInfo)
 {
     IMSA_HILOGD("InputMethodController::GetCurrentCursorInfo start.");
-    std::lock_guard<std::mutex> lock(cursorInfoMutex_);
-    cursorInfo.left = cursorInfo_.left;
-    cursorInfo.top = cursorInfo_.top;
-    cursorInfo.width = cursorInfo_.width;
-    cursorInfo.height = cursorInfo_.height;
+    std::lock_guard<std::mutex> lock(textConfigLock_);
+    cursorInfo.left = textConfig_.cursorInfo.left;
+    cursorInfo.top = textConfig_.cursorInfo.top;
+    cursorInfo.width = textConfig_.cursorInfo.width;
+    cursorInfo.height = textConfig_.cursorInfo.height;
     IMSA_HILOGD("GetCurrentCursorInfo: left=%{public}f, top=%{public}f, width=%{public}f, height=%{public}f.",
         cursorInfo.left, cursorInfo.top, cursorInfo.width, cursorInfo.height);
     return ErrorCode::NO_ERROR;
@@ -1255,17 +1255,17 @@ int32_t InputMethodController::GetCursorInfo(CursorInfo &cursorInfo, int32_t use
         IMSA_HILOGE("GetCursorInfo failed: %{public}d", ret);
         return ret;
     }
+    cursorInfo = InputMethodTools::GetInstance().InnerToCursorInfo(cursorInfoInner);
     if (IsEditable()) {
         GetCurrentCursorInfo(cursorInfo);
-    } else {
-        cursorInfo = InputMethodTools::GetInstance().InnerToCursorInfo(cursorInfoInner);
     }
     CursorInfo invalidCursor = { -1.0, -1.0, -1.0, -1.0, 0 };
     if (cursorInfo == invalidCursor) {
         cursorInfo = { 0, 0, 0, 0, 0 };
     }
-    IMSA_HILOGD("cursorInfo: left=%{public}f, top=%{public}f, width=%{public}f, height=%{public}f.",
-        cursorInfo.left, cursorInfo.top, cursorInfo.width, cursorInfo.height);
+    IMSA_HILOGD(
+        "cursorInfo:left=%{public}f,top=%{public}f,width=%{public}f,height=%{public}f,displayId=%{public}" PRIu64 "",
+        cursorInfo.left, cursorInfo.top, cursorInfo.width, cursorInfo.height, cursorInfo.displayId);
     return ErrorCode::NO_ERROR;
 }
 
