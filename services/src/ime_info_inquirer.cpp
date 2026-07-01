@@ -694,34 +694,26 @@ int32_t ImeInfoInquirer::ListInputMethodSubtype(const int32_t userId, const Exte
     std::string bundleName = extInfo.bundleName;
     std::string moduleName = extInfo.moduleName;
     IMSA_HILOGD("subtypes size: %{public}zu.", subtypes.size());
+
+    std::vector<uint32_t> labelIdList;
+    CollectLabelIds(subtypes, bundleName, labelIdList);
+
+    std::vector<std::string> labelList;
+    if (!labelIdList.empty()) {
+        ret = GetStringByIdList(bundleName, moduleName, labelIdList, labelList, userId);
+        if (ret != ErrorCode::NO_ERROR) {
+            IMSA_HILOGE("GetStringByIdList failed! Error code: %{public}d.", ret);
+            return ret;
+        }
+    }
+
+    size_t labelIdx = 0;
     for (const auto &subtype : subtypes) {
-        // subtype which provides a particular input type should not appear in the subtype list
         if (InputTypeManager::GetInstance().IsInputType({ extInfo.bundleName, subtype.id })) {
             continue;
         }
         SubProperty subProp;
-        subProp.label = subtype.label;
-        subProp.name = extInfo.bundleName;
-        subProp.id = subtype.id;
-        subProp.mode = subtype.mode;
-        subProp.locale = subtype.locale;
-        subProp.icon = subtype.icon;
-        auto pos = subProp.label.find(':');
-        if (pos != std::string::npos && pos + 1 < subProp.label.size()) {
-            int32_t labelId = atoi(subProp.label.substr(pos + 1).c_str());
-            if (labelId > 0) {
-                subProp.labelId = static_cast<uint32_t>(labelId);
-                subProp.label = GetStringById(bundleName, moduleName, subProp.labelId, userId);
-            }
-        }
-        pos = subProp.icon.find(':');
-        if (pos != std::string::npos && pos + 1 < subProp.icon.size()) {
-            int32_t iconId = atoi(subProp.icon.substr(pos + 1).c_str());
-            if (iconId > 0) {
-                subProp.iconId = static_cast<uint32_t>(iconId);
-            }
-        }
-        CovertToLanguage(subProp.locale, subProp.language);
+        FillSubProperty(subtype, bundleName, labelList, labelIdx, subProp);
         subProps.emplace_back(subProp);
     }
     return ErrorCode::NO_ERROR;
@@ -771,11 +763,87 @@ void ImeInfoInquirer::CovertToLanguage(const std::string &locale, std::string &l
     }
 }
 
+void ImeInfoInquirer::CollectLabelIds(const std::vector<Subtype> &subtypes, const std::string &bundleName,
+    std::vector<uint32_t> &labelIdList)
+{
+    for (size_t i = 0; i < subtypes.size(); ++i) {
+        const auto &subtype = subtypes[i];
+        if (InputTypeManager::GetInstance().IsInputType({ bundleName, subtype.id })) {
+            continue;
+        }
+        auto pos = subtype.label.find(':');
+        if (pos == std::string::npos || pos + 1 >= subtype.label.size()) {
+            continue;
+        }
+        int32_t labelId = atoi(subtype.label.substr(pos + 1).c_str());
+        if (labelId > 0) {
+            labelIdList.emplace_back(static_cast<uint32_t>(labelId));
+        }
+    }
+}
+
+void ImeInfoInquirer::FillSubProperty(const Subtype &subtype, const std::string &bundleName,
+    const std::vector<std::string> &labelList, size_t &labelIdx, SubProperty &subProp)
+{
+    subProp.label = subtype.label;
+    subProp.name = bundleName;
+    subProp.id = subtype.id;
+    subProp.mode = subtype.mode;
+    subProp.locale = subtype.locale;
+    subProp.icon = subtype.icon;
+
+    ParseLabelId(subProp.label, labelList, labelIdx, subProp);
+    ParseIconId(subProp.icon, subProp);
+
+    CovertToLanguage(subProp.locale, subProp.language);
+}
+
+void ImeInfoInquirer::ParseLabelId(const std::string &label, const std::vector<std::string> &labelList,
+    size_t &labelIdx, SubProperty &subProp)
+{
+    auto pos = label.find(':');
+    if (pos == std::string::npos || pos + 1 >= label.size()) {
+        return;
+    }
+    int32_t labelId = atoi(label.substr(pos + 1).c_str());
+    if (labelId <= 0) {
+        return;
+    }
+    subProp.labelId = static_cast<uint32_t>(labelId);
+    if (labelIdx < labelList.size()) {
+        subProp.label = labelList[labelIdx];
+        ++labelIdx;
+    }
+}
+
+void ImeInfoInquirer::ParseIconId(const std::string &icon, SubProperty &subProp)
+{
+    auto pos = icon.find(':');
+    if (pos == std::string::npos || pos + 1 >= icon.size()) {
+        return;
+    }
+    int32_t iconId = atoi(icon.substr(pos + 1).c_str());
+    if (iconId > 0) {
+        subProp.iconId = static_cast<uint32_t>(iconId);
+    }
+}
+
 std::string ImeInfoInquirer::GetStringById(const std::string &bundleName, const std::string &moduleName,
     uint32_t labelId, int32_t userId)
 {
     auto bundleMgr = GetBundleMgr();
     return bundleMgr == nullptr ? "" : bundleMgr->GetStringById(bundleName, moduleName, labelId, userId);
+}
+
+int32_t ImeInfoInquirer::GetStringByIdList(const std::string &bundleName, const std::string &moduleName,
+    std::vector<uint32_t> &labelIdList, std::vector<std::string> &labelList, int32_t userId)
+{
+    auto bundleMgr = GetBundleMgr();
+    std::vector<std::string> stringByIdList;
+    if (bundleMgr == nullptr) {
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    return bundleMgr->GetStringByIdList(bundleName, moduleName, labelIdList, labelList, userId);
 }
 
 SubProperty ImeInfoInquirer::GetExtends(const std::vector<Metadata> &metaData)
