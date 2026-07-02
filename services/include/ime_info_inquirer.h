@@ -127,6 +127,8 @@ private:
         const AppExecFwk::ExtensionAbilityInfo &extension, ImeTargetString target, int32_t userId);
     std::string GetStringById(const std::string &bundleName, const std::string &moduleName, const uint32_t labelId,
         const int32_t userId);
+    int32_t GetStringByIdList(const std::string &bundleName, const std::string &moduleName,
+        std::vector<uint32_t> &labelIdList, std::vector<std::string> &labelList, int32_t userId);
     std::shared_ptr<ImeInfo> GetImeInfoFromCache(const int32_t userId, const std::string &bundleName,
         const std::string &subName);
     std::shared_ptr<ImeInfo> GetImeInfoFromBundleMgr(
@@ -152,6 +154,13 @@ private:
     int32_t ParseSubtype(const OHOS::AppExecFwk::ExtensionAbilityInfo &extInfo, std::vector<Subtype> &subtypes);
     bool ParseSubtypeProfile(const std::vector<std::string> &profiles, SubtypeCfg &subtypeCfg);
     void CovertToLanguage(const std::string &locale, std::string &language);
+    void CollectLabelIds(const std::vector<Subtype> &subtypes, const std::string &bundleName,
+        std::vector<uint32_t> &labelIdList);
+    void FillSubProperty(const Subtype &subtype, const std::string &bundleName,
+        const std::vector<std::string> &labelList, size_t &labelIdx, SubProperty &subProp);
+    void ParseLabelId(const std::string &label, const std::vector<std::string> &labelList,
+        size_t &labelIdx, SubProperty &subProp);
+    void ParseIconId(const std::string &icon, SubProperty &subProp);
     bool QueryImeExtInfos(const int32_t userId, std::vector<OHOS::AppExecFwk::ExtensionAbilityInfo> &infos);
     std::shared_ptr<Global::Resource::ResourceManager> GetResMgr(const std::string &resourcePath);
     int32_t GetFullImeInfo(int32_t userId, const std::vector<OHOS::AppExecFwk::ExtensionAbilityInfo> &extInfos,
