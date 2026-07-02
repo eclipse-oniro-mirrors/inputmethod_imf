@@ -1619,8 +1619,14 @@ void PerUserSession::OnFocused(uint64_t displayId, int32_t pid, int32_t uid)
     if (client == nullptr) {
         return;
     }
-    if (clientGroup->IsCurClientFocused(pid, uid)) {
-        IMSA_HILOGD("current client focused, focusedPid: %{public}d", pid);
+    FocusChangeInfo focusInfo;
+    WindowAdapter::GetFocusInfo(focusInfo, userId_, displayId);
+    if (focusInfo.pid_ <= 0 || focusInfo.uid_ <= 0) {
+        IMSA_HILOGE("GetFocusInfo failed, invalid pid: %{public}d", focusInfo.pid_);
+        return;
+    }
+    if (clientGroup->IsCurClientFocused(focusInfo.pid_, focusInfo.uid_)) {
+        IMSA_HILOGD("current client focused, focusedPid: %{public}d", focusInfo.pid_);
         return;
     }
     if (!OHOS::Rosen::SceneBoardJudgement::IsSceneBoardEnabled()) {

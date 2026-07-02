@@ -5288,5 +5288,119 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_UpdateRealImeDataOnDisconn
     userSession->UpdateRealImeDataOnDisconnect(connection);
     EXPECT_TRUE(userSession->realImeData_->isDisconnected);
 }
+
+/**
+ * @tc.name: PerUserSession_InvalidFocusPid
+ * @tc.desc: Test OnFocused when GetFocusInfo returns invalid pid
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_InvalidFocusPid, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_InvalidFocusPid start.");
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
+    auto clientGroup = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+    clientGroup->SetCurrentClient(client);
+    userSession->clientGroupMap_[DEFAULT_DISPLAY_ID] = clientGroup;
+    userSession->OnFocused(DEFAULT_DISPLAY_ID, 0, 0);
+}
+
+/**
+ * @tc.name: PerUserSession_FocusPidNonPositive
+ * @tc.desc: Test OnFocused when focusInfo.pid_ <= 0
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_FocusPidNonPositive, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_FocusPidNonPositive start.");
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
+    auto clientGroup = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+    clientGroup->SetCurrentClient(client);
+
+    InputClientInfo clientInfo;
+    clientInfo.client = client;
+    clientInfo.pid = 12345;
+    clientInfo.uid = 12345;
+    clientInfo.clientGroupId = DEFAULT_DISPLAY_ID;
+    clientGroup->mapClients_[client->AsObject()] = std::make_shared<InputClientInfo>(clientInfo);
+    userSession->clientGroupMap_[DEFAULT_DISPLAY_ID] = clientGroup;
+    userSession->OnFocused(DEFAULT_DISPLAY_ID, 0, 0);
+}
+
+/**
+ * @tc.name: PerUserSession_OnFocused_SceneBoardDisabled
+ * @tc.desc: Test OnFocused when sceneBoard disabled
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnFocused_SceneBoardDisabled, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_OnFocused_SceneBoardDisabled start.");
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
+    auto clientGroup = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+    clientGroup->SetCurrentClient(client);
+    InputClientInfo clientInfo;
+    clientInfo.client = client;
+    clientInfo.pid = 12345;
+    clientInfo.clientGroupId = DEFAULT_DISPLAY_ID;
+    clientGroup->mapClients_[client->AsObject()] = std::make_shared<InputClientInfo>(clientInfo);
+    userSession->clientGroupMap_[DEFAULT_DISPLAY_ID] = clientGroup;
+    userSession->OnFocused(DEFAULT_DISPLAY_ID, 12345, 1000);
+}
+
+/**
+ * @tc.name: PerUserSession_OnFocused_IsCurClientFocusedTrue
+ * @tc.desc: Test OnFocused when IsCurClientFocused returns true, causing early return
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnFocused_IsCurClientFocusedTrue, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_OnFocused_IsCurClientFocusedTrue start.");
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
+    auto clientGroup = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+    clientGroup->SetCurrentClient(client);
+    InputClientInfo clientInfo;
+    clientInfo.client = client;
+    clientInfo.pid = 77777;
+    clientInfo.uid = 77777;
+    clientInfo.clientGroupId = DEFAULT_DISPLAY_ID;
+    clientGroup->mapClients_[client->AsObject()] = std::make_shared<InputClientInfo>(clientInfo);
+    userSession->clientGroupMap_[DEFAULT_DISPLAY_ID] = clientGroup;
+    userSession->OnFocused(DEFAULT_DISPLAY_ID, 77777, 77777);
+}
+
+/**
+ * @tc.name: PerUserSession_OnFocused_FocusPidPositiveUidNonPositive
+ * @tc.desc: Test OnFocused when focusInfo.pid_ > 0 and focusInfo.uid_ <= 0
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnFocused_FocusPidPositiveUidNonPositive, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_OnFocused_FocusPidPositiveUidNonPositive start.");
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
+    auto clientGroup = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+    clientGroup->SetCurrentClient(client);
+    InputClientInfo clientInfo;
+    clientInfo.client = client;
+    clientInfo.pid = 88888;
+    clientInfo.uid = 88888;
+    clientInfo.clientGroupId = DEFAULT_DISPLAY_ID;
+    clientGroup->mapClients_[client->AsObject()] = std::make_shared<InputClientInfo>(clientInfo);
+    userSession->clientGroupMap_[DEFAULT_DISPLAY_ID] = clientGroup;
+    userSession->OnFocused(DEFAULT_DISPLAY_ID, 123456, 0);
+}
 } // namespace MiscServices
 } // namespace OHOS

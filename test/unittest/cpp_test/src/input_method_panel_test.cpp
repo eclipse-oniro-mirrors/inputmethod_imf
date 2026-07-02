@@ -3785,5 +3785,102 @@ HWTEST_F(InputMethodPanelTest, TestVisibilityChangeListener002, TestSize.Level0)
     IdentityCheckerMock::SetSystemApp(false);
     IdentityCheckerMock::SetBundleNameValid(false);
 }
+
+/**
+ * @tc.name: TestOnVisibilityChange_TotallyOcclusion
+ * @tc.desc: Test visibility change with WINDOW_VISIBILITY_STATE_TOTALLY_OCCUSION.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, TestOnVisibilityChange_TotallyOcclusion, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::TestOnVisibilityChange_TotallyOcclusion start.");
+    if (!isScbEnable_) {
+        return;
+    }
+    auto panel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FIXED;
+    InputMethodPanelTest::ImaCreatePanel(panelInfo, panel);
+    ASSERT_NE(panel, nullptr);
+    TriggerVisibilityChange(panel, WindowVisibilityState::WINDOW_VISIBILITY_STATE_TOTALLY_OCCUSION);
+    EXPECT_FALSE(panel->isVisible_.load());
+    InputMethodPanelTest::ImaDestroyPanel(panel);
+    InputMethodPanelTest::imc_->Close();
+    TddUtil::DestroyWindow();
+}
+
+/**
+ * @tc.name: TestOnVisibilityChange_NoOcclusion
+ * @tc.desc: Test visibility change with WINDOW_VISIBILITY_STATE_NO_OCCLUSION.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, TestOnVisibilityChange_NoOcclusion, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testOnVisibilityChange_NoOcclusion start.");
+    if (!isScbEnable_) {
+        return;
+    }
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FIXED;
+    auto panel = std::make_shared<InputMethodPanel>();
+    InputMethodPanelTest::ImaCreatePanel(panelInfo, panel);
+    ASSERT_NE(panel, nullptr);
+    TriggerVisibilityChange(panel, WindowVisibilityState::WINDOW_VISIBILITY_STATE_NO_OCCLUSION);
+    EXPECT_TRUE(panel->isVisible_.load());
+    InputMethodPanelTest::ImaDestroyPanel(panel);
+    InputMethodPanelTest::imc_->Close();
+    TddUtil::DestroyWindow();
+}
+
+/**
+ * @tc.name: TestOnVisibilityChange_PartiallyOcclusion
+ * @tc.desc: Test visibility change with WINDOW_VISIBILITY_STATE_PARTICALLY_OCCLUSION.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, TestOnVisibilityChange_PartiallyOcclusion, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::TestOnVisibilityChange_PartiallyOcclusion start.");
+    if (!isScbEnable_) {
+        return;
+    }
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FIXED;
+    auto panel = std::make_shared<InputMethodPanel>();
+    InputMethodPanelTest::ImaCreatePanel(panelInfo, panel);
+    ASSERT_NE(panel, nullptr);
+    TriggerVisibilityChange(panel, WindowVisibilityState::WINDOW_VISIBILITY_STATE_PARTICALLY_OCCLUSION);
+    EXPECT_TRUE(panel->isVisible_.load());
+    InputMethodPanelTest::ImaDestroyPanel(panel);
+    InputMethodPanelTest::imc_->Close();
+    TddUtil::DestroyWindow();
+}
+
+/**
+ * @tc.name: TestOnVisibilityChange_InvalidState
+ * @tc.desc: Test visibility change with invalid state (early return).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, TestOnVisibilityChange_InvalidState, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::TestOnVisibilityChange_InvalidState start.");
+    if (!isScbEnable_) {
+        return;
+    }
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FIXED;
+    auto panel = std::make_shared<InputMethodPanel>();
+    InputMethodPanelTest::ImaCreatePanel(panelInfo, panel);
+    ASSERT_NE(panel, nullptr);
+    bool originalVisible = panel->isVisible_.load();
+    TriggerVisibilityChange(panel, static_cast<WindowVisibilityState>(999));
+    EXPECT_EQ(panel->isVisible_.load(), originalVisible);
+    InputMethodPanelTest::ImaDestroyPanel(panel);
+    InputMethodPanelTest::imc_->Close();
+    TddUtil::DestroyWindow();
+}
 } // namespace MiscServices
 } // namespace OHOS
