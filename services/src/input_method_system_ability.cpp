@@ -398,6 +398,7 @@ int32_t InputMethodSystemAbility::Init()
         return -1;
     }
     state_ = ServiceRunningState::STATE_RUNNING;
+    ResetDelayUnloadTask(static_cast<uint32_t>(IInputMethodSystemAbilityIpcCode::COMMAND_RELEASE_INPUT));
     IMSA_HILOGI("publish success");
 #else
     bool isSuccess = Publish(this);
