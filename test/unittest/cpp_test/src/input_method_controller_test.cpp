@@ -2912,5 +2912,50 @@ HWTEST_F(InputMethodControllerTest, testGetSoftKeyboardInfo_001, TestSize.Level0
         EXPECT_NE(ret, ErrorCode::NO_ERROR);
     }
 }
+
+/**
+ * @tc.name: testSetEDCDefaultInputMethod_001
+ * @tc.desc: IMC SetEDCDefaultInputMethod with empty parameter
+ * @tc.type: IMC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, testSetEDCDefaultInputMethod_001, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testSetEDCDefaultInputMethod_001 Test START");
+    std::string emptyImeName = "";
+    int32_t ret = inputMethodController_->SetEDCDefaultInputMethod(emptyImeName);
+    EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+}
+
+/**
+ * @tc.name: testSetEDCDefaultInputMethod_002
+ * @tc.desc: IMC SetEDCDefaultInputMethod with null proxy
+ * @tc.type: IMC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, testSetEDCDefaultInputMethod_002, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testSetEDCDefaultInputMethod_002 Test START");
+    std::string edcBackupImeName = "test.ime";
+    sptr<IInputMethodSystemAbility> originalProxy = inputMethodController_->abilityManager_;
+    inputMethodController_->abilityManager_ = nullptr;
+    int32_t ret = inputMethodController_->SetEDCDefaultInputMethod(edcBackupImeName);
+    inputMethodController_->abilityManager_ = originalProxy;
+    EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
+}
+
+/**
+ * @tc.name: testSetEDCDefaultInputMethod_003
+ * @tc.desc: IMC SetEDCDefaultInputMethod with valid parameter
+ * @tc.type: IMC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, testSetEDCDefaultInputMethod_003, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testSetEDCDefaultInputMethod_003 Test START");
+    std::string edcBackupImeName = "com.ohos.hypium_input";
+    int32_t ret = inputMethodController_->SetEDCDefaultInputMethod(edcBackupImeName);
+    EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
+}
 } // namespace MiscServices
 } // namespace OHOS

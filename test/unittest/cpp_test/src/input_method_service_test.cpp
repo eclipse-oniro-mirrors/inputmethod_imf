@@ -39,6 +39,7 @@
 #include "peruser_session.h"
 #include "input_method_core_service_impl.h"
 #include "input_method_agent_service_impl.h"
+#include "window_adapter.h"
 #include "tdd_util.h"
 #undef private
 
@@ -530,5 +531,159 @@ HWTEST_F(InputMethodServiceTest, PerUserSession_SetInputType_NormalCase, TestSiz
     EXPECT_EQ(result, ErrorCode::NO_ERROR);
     UserSessionManager::GetInstance().userSessions_.clear();
 }
+
+/**
+ * @tc.name: PerUserSession_OnRequestHideInput_GetDisplayGroupIdFailed
+ * @tc.desc: Test OnRequestHideInput when GetDisplayGroupIdWithRetry fails
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodServiceTest, PerUserSession_OnRequestHideInput_GetDisplayGroupIdFailed, TestSize.Level1)
+{
+    IMSA_HILOGI("PerUserSession_OnRequestHideInput_GetDisplayGroupIdFailed TEST START");
+
+    // Clear displayGroupIds to simulate failure scenario
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+
+    int32_t userId = TddUtil::GetCurrentUserId();
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+
+    // Call with invalid displayId that should fail
+    uint64_t invalidDisplayId = 999;
+    std::string callerBundleName = "";
+
+    int32_t result = session->OnRequestHideInput(invalidDisplayId, callerBundleName);
+
+    // Should return error when GetDisplayGroupIdWithRetry fails
+    EXPECT_EQ(result, ErrorCode::ERROR_INVALID_DISPLAYID);
+
+    UserSessionManager::GetInstance().userSessions_.clear();
+}
+
+/**
+ * @tc.name: PerUserSession_GetClientGroup_GetDisplayGroupIdFailed
+ * @tc.desc: Test GetClientGroup when GetDisplayGroupIdWithRetry fails
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodServiceTest, PerUserSession_GetClientGroup_GetDisplayGroupIdFailed, TestSize.Level1)
+{
+    IMSA_HILOGI("PerUserSession_GetClientGroup_GetDisplayGroupIdFailed TEST START");
+
+    // Clear displayGroupIds to simulate failure scenario
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+
+    int32_t userId = TddUtil::GetCurrentUserId();
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+
+    // Call with invalid displayId that should fail
+    uint64_t invalidDisplayId = 888;
+
+    auto clientGroup = session->GetClientGroup(invalidDisplayId);
+
+    // Should return nullptr when GetDisplayGroupIdWithRetry fails
+    EXPECT_EQ(clientGroup, nullptr);
+
+    UserSessionManager::GetInstance().userSessions_.clear();
+}
+
+/**
+ * @tc.name: PerUserSession_OnWindowDisplayIdChanged_GetDisplayGroupIdFailed
+ * @tc.desc: Test OnWindowDisplayIdChanged when GetDisplayGroupIdWithRetry fails
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodServiceTest, PerUserSession_OnWindowDisplayIdChanged_GetDisplayGroupIdFailed, TestSize.Level1)
+{
+    IMSA_HILOGI("PerUserSession_OnWindowDisplayIdChanged_GetDisplayGroupIdFailed TEST START");
+
+    // Clear displayGroupIds to simulate failure scenario
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+
+    int32_t userId = TddUtil::GetCurrentUserId();
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+
+    // Setup a mock client with bindImeData
+    uint64_t displayGroupId = 200;
+    auto clientGroup = std::make_shared<ClientGroup>(displayGroupId, nullptr);
+    session->clientGroupMap_[displayGroupId] = clientGroup;
+
+    // Create a clientInfo with necessary fields
+    auto clientInfo = std::make_shared<InputClientInfo>();
+    clientInfo->clientGroupId = displayGroupId;
+    clientInfo->pid = 1000;
+    clientInfo->uid = 1000;
+    clientInfo->userID = userId;
+    clientInfo->state = ClientState::ACTIVE;
+    session->clientGroupMap_[displayGroupId]->mapClients_[nullptr] = clientInfo;
+
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+
+    // Call with invalid displayId that should fail in GetDisplayGroupIdWithRetry
+    int32_t windowId = 1;
+    uint64_t invalidDisplayId = 777;
+
+    // Verify session is properly set up
+    EXPECT_NE(session, nullptr);
+    EXPECT_EQ(session->clientGroupMap_.size(), 1);
+
+    // This should return early due to GetDisplayGroupIdWithRetry failure
+    session->OnWindowDisplayIdChanged(windowId, invalidDisplayId);
+
+    // Verify session state remains consistent after error handling
+    EXPECT_NE(session, nullptr);
+    UserSessionManager::GetInstance().userSessions_.clear();
+}
+
+/**
+ * @tc.name: PerUserSession_MultipleGetDisplayGroupIdWithRetryFailures
+ * @tc.desc: Test multiple GetDisplayGroupIdWithRetry calls in OnWindowDisplayIdChanged
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodServiceTest, PerUserSession_MultipleGetDisplayGroupIdWithRetryFailures, TestSize.Level1)
+{
+    IMSA_HILOGI("PerUserSession_MultipleGetDisplayGroupIdWithRetryFailures TEST START");
+
+    // Clear displayGroupIds to simulate failure scenario
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+
+    int32_t userId = TddUtil::GetCurrentUserId();
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+
+    // Setup a mock client with bindImeData and multiple displayIds
+    uint64_t validDisplayGroupId = 200;
+    auto clientGroup = std::make_shared<ClientGroup>(validDisplayGroupId, nullptr);
+    session->clientGroupMap_[validDisplayGroupId] = clientGroup;
+
+    // Create a clientInfo with necessary fields
+    auto clientInfo = std::make_shared<InputClientInfo>();
+    clientInfo->clientGroupId = validDisplayGroupId;
+    clientInfo->pid = 1000;
+    clientInfo->uid = 1000;
+    clientInfo->userID = userId;
+    clientInfo->state = ClientState::ACTIVE;
+    clientInfo->config.inputAttribute.editorDisplayId = 100;
+    clientInfo->config.inputAttribute.displayGroupId = validDisplayGroupId;
+    session->clientGroupMap_[validDisplayGroupId]->mapClients_[nullptr] = clientInfo;
+
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+
+    // Call with invalid displayId that should fail in multiple GetDisplayGroupIdWithRetry calls
+    int32_t windowId = 1;
+    uint64_t invalidDisplayId = 999;
+
+    // Verify session and client are properly set up
+    EXPECT_NE(session, nullptr);
+    EXPECT_EQ(session->clientGroupMap_.size(), 1);
+    EXPECT_NE(session->clientGroupMap_[validDisplayGroupId], nullptr);
+
+    // This should test both GetDisplayGroupIdWithRetry calls in OnWindowDisplayIdChanged
+    session->OnWindowDisplayIdChanged(windowId, invalidDisplayId);
+
+    // Verify session state remains consistent after handling multiple errors
+    EXPECT_NE(session, nullptr);
+    EXPECT_EQ(session->clientGroupMap_.size(), 1);
+    UserSessionManager::GetInstance().userSessions_.clear();
+}
+
 } // namespace MiscServices
 } // namespace OHOS

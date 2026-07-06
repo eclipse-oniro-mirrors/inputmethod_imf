@@ -1455,6 +1455,22 @@ int32_t InputMethodController::SwitchInputMethod(
     return ret;
 }
 
+int32_t InputMethodController::SetEDCDefaultInputMethod(const std::string &edcBackupImeName)
+{
+    if (edcBackupImeName.empty()) {
+        IMSA_HILOGE("Invalid parameter: edcBackupImeName is empty");
+        return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+    }
+
+    auto proxy = GetSystemAbilityProxy();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("Proxy is nullptr");
+        return ErrorCode::ERROR_EX_NULL_POINTER;
+    }
+
+    return proxy->SetEDCDefaultInputMethod(edcBackupImeName);
+}
+
 int32_t InputMethodController::SetSimpleKeyboardEnabled(bool enable)
 {
 #ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE

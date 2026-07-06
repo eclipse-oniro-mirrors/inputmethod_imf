@@ -1682,6 +1682,7 @@ ohos_unittest("WindowAdapterTest") {
   sources = [
     "${inputmethod_path}/services/adapter/os_account_adapter/src/os_account_adapter.cpp",
     "${inputmethod_path}/services/adapter/window_adapter/src/window_adapter.cpp",
+    "${inputmethod_path}/services/adapter/window_adapter/src/window_monitors_manager.cpp",
     "src/window_adapter_test.cpp",
   ]
   configs = [ ":module_private_config" ]

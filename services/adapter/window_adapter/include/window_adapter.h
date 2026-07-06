@@ -50,13 +50,15 @@ public:
     static int32_t GetAllFocusWindowInfos(std::vector<Rosen::FocusChangeInfo> &focusWindowInfos, int32_t userId);
     uint64_t GetDisplayGroupId(uint64_t displayId, int32_t userId);
     bool IsDefaultDisplayGroup(uint64_t displayId, int32_t userId);
-    uint64_t GetDisplayGroupId(uint32_t windowId, int32_t userId);
+    int32_t GetDisplayGroupId(uint32_t windowId, int32_t userId);
     bool IsDisplayGroupIdExist(uint64_t displayGroupId, int32_t userId);
     bool IsDisplayIdExist(uint64_t displayId, int32_t userId);
     int32_t StoreAllDisplayGroupInfos(int32_t userId);
     void OnDisplayGroupInfoChanged(uint64_t displayId, uint64_t displayGroupId, bool isAdd, int32_t userId);
     int32_t RegisterAllGroupInfoChangedListener(int32_t userId);
     int32_t RegisterWindowDisplayIdChangedListener(const WindowDisplayChangeHandler &handler, int32_t userId);
+
+    int32_t GetDisplayGroupIdWithRetry(uint64_t displayId, int32_t userId, uint64_t &displayGroupId);
 
     class WindowDisplayChangedListenerImpl : public OHOS::Rosen::IWindowInfoChangedListener {
     public:
@@ -89,6 +91,7 @@ private:
     static int32_t GetAllDisplayGroupInfos(std::unordered_map<uint64_t, uint64_t> &displayGroupIds,
         std::vector<Rosen::FocusChangeInfo> &focusWindowInfos, int32_t userId);
     void SetDisplayGroupIds(const std::unordered_map<uint64_t, uint64_t> &displayGroupIds, int32_t userId);
+    int32_t GetDisplayGroupId(uint64_t displayId, int32_t userId, uint64_t &displayGroupId);
 
     // { key: userId, value: { key: displayId, value: displayGroupId }}
     std::mutex displayGroupIdsLock_;

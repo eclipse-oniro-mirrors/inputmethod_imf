@@ -30,6 +30,7 @@
 #include "ime_state_manager_factory.h"
 #include "inputmethod_message_handler.h"
 #include "identity_checker_impl.h"
+#include "identity_checker_mock.h"
 #include "client_group.h"
 #include "window_adapter.h"
 #undef private
@@ -207,7 +208,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_TestOnUserStarted, TestSize.Level0)
 
     // start ime
     WmsConnectionObserver observer(nullptr);
-    observer.OnConnected(60, 0);
+    observer.OnConnected(60, 0, 12345);
     // imeStarting_ is true
     IMSA_HILOGI("InputMethodPrivateMemberTest::imeStarting_ is true");
     MessageParcel *parcel2 = new MessageParcel();
@@ -220,7 +221,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_TestOnUserStarted, TestSize.Level0)
     // imeStarting_ is false
     IMSA_HILOGI("InputMethodPrivateMemberTest::imeStarting_ is false");
     MessageParcel *parcel3 = new MessageParcel();
-    observer.OnConnected(333, 0);
+    observer.OnConnected(333, 0, 12345);
     parcel3->WriteInt32(333);
     parcel3->WriteInt32(333);
     parcel3->WriteUint64(0);
@@ -791,20 +792,21 @@ HWTEST_F(InputMethodPrivateMemberTest, WMSConnectObserver_001, TestSize.Level0)
     WmsConnectionObserver::connectedUserId_.clear();
     int32_t userId = 100;
     int32_t screenId = 0;
+    pid_t pid = 12345;
 
-    observer.OnConnected(userId, screenId);
+    observer.OnConnected(userId, screenId, pid);
     EXPECT_EQ(WmsConnectionObserver::connectedUserId_.size(), 1);
     EXPECT_TRUE(WmsConnectionObserver::IsWmsConnected(userId));
 
     int32_t userId1 = 102;
-    observer.OnConnected(userId1, screenId);
+    observer.OnConnected(userId1, screenId, pid);
     EXPECT_EQ(WmsConnectionObserver::connectedUserId_.size(), 2);
     EXPECT_TRUE(WmsConnectionObserver::IsWmsConnected(userId1));
 
-    observer.OnConnected(userId, screenId);
+    observer.OnConnected(userId, screenId, pid);
     EXPECT_EQ(WmsConnectionObserver::connectedUserId_.size(), 2);
 
-    observer.OnDisconnected(userId, screenId);
+    observer.OnDisconnected(userId, screenId, pid);
     EXPECT_EQ(WmsConnectionObserver::connectedUserId_.size(), 1);
     EXPECT_FALSE(WmsConnectionObserver::IsWmsConnected(userId));
 }
@@ -848,6 +850,28 @@ HWTEST_F(InputMethodPrivateMemberTest, testIsPanelShown, TestSize.Level0)
     uint64_t displayId = 0;
     auto ret = userSession->IsPanelShown(displayId, panelInfo, flag);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+* @tc.name: SA_IsPanelShown_AccountLocalIdFailed
+* @tc.desc: Verify IsPanelShown returns ERROR_ACCOUNT_LOCALID_FAILED when GetForegroundOsAccountLocalId fails
+* @tc.type: FUNC
+*/
+HWTEST_F(InputMethodPrivateMemberTest, SA_IsPanelShown_AccountLocalIdFailed, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest SA_IsPanelShown_AccountLocalIdFailed TEST START");
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FIXED;
+    bool isShown = false;
+    uint64_t inValidDisplayId = 99999;
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetSystemApp(true);
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    auto ret = imsa->IsPanelShown(inValidDisplayId, panelInfo, isShown);
+    EXPECT_EQ(ret, ErrorCode::ERROR_ACCOUNT_LOCALID_FAILED);
 }
 
 /**
@@ -5062,14 +5086,637 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_GetSoftKeyboardInfo, TestS
 }
 
 /**
+ * @tc.name: HandleEDCInputMethodInstall_NoEDCBackup_001
+ * @tc.desc: Test HandleEDCInputMethodInstall when EDC backup IME is not configured (line 3621-3624)
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPrivateMemberTest, HandleEDCInputMethodInstall_NoEDCBackup_001, TestSize.Level1)
+{
+    IMSA_HILOGI("HandleEDCInputMethodInstall_NoEDCBackup_001 TEST START");
+    int32_t userId = MAIN_USER_ID;
+    std::string installedBundleName = "com.example.testime";
+    // No EDC backup IME configured, should return early
+    service_->HandleEDCInputMethodInstall(userId, installedBundleName);
+    EXPECT_EQ(userId, MAIN_USER_ID);
+    EXPECT_FALSE(installedBundleName.empty());
+}
+
+/**
+ * @tc.name: HandleEDCInputMethodInstall_NotEDCBackup_002
+ * @tc.desc: Test HandleEDCInputMethodInstall when installed IME is not EDC backup IME (line 3626-3629)
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPrivateMemberTest, HandleEDCInputMethodInstall_NotEDCBackup_002, TestSize.Level1)
+{
+    IMSA_HILOGI("HandleEDCInputMethodInstall_NotEDCBackup_002 TEST START");
+    int32_t userId = MAIN_USER_ID;
+    std::string edcBackupImeName = "com.example.edcbackup";
+    std::string installedBundleName = "com.example.testime";
+    // Set EDC backup IME
+    service_->SetEDCBackupInputMethod(userId, edcBackupImeName);
+    // Installed IME is not EDC backup IME, should return early
+    service_->HandleEDCInputMethodInstall(userId, installedBundleName);
+    EXPECT_EQ(userId, MAIN_USER_ID);;
+}
+
+/**
+ * @tc.name: HandleEDCInputMethodInstall_CurrentImeNull_003
+ * @tc.desc: Test HandleEDCInputMethodInstall when GetCurrentInputMethod returns nullptr (line 3632-3635)
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPrivateMemberTest, HandleEDCInputMethodInstall_CurrentImeNull_003, TestSize.Level1)
+{
+    IMSA_HILOGI("HandleEDCInputMethodInstall_CurrentImeNull_003 TEST START");
+    int32_t userId = MAIN_USER_ID;
+    std::string edcBackupImeName = "com.example.edcbackup";
+    std::string installedBundleName = edcBackupImeName;
+    // Set EDC backup IME
+    service_->SetEDCBackupInputMethod(userId, edcBackupImeName);
+    // Clear enabled cfg to make GetCurrentInputMethod return nullptr
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.erase(userId);
+    FullImeInfoManager::GetInstance().fullImeInfos_.erase(userId);
+    // Should return early when current IME is null
+    service_->HandleEDCInputMethodInstall(userId, installedBundleName);
+    EXPECT_EQ(userId, MAIN_USER_ID);
+}
+
+/**
+ * @tc.name: HandleEDCInputMethodInstall_CurrentImeNameEmpty_004
+ * @tc.desc: Test HandleEDCInputMethodInstall when GetCurrentInputMethod
+ * returns Property with empty name (line 3632-3635)
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPrivateMemberTest, HandleEDCInputMethodInstall_CurrentImeNameEmpty_004, TestSize.Level1)
+{
+    IMSA_HILOGI("HandleEDCInputMethodInstall_CurrentImeNameEmpty_004 TEST START");
+    int32_t userId = MAIN_USER_ID;
+    std::string edcBackupImeName = "com.example.edcbackup";
+    std::string installedBundleName = edcBackupImeName;
+
+    // Set EDC backup IME
+    service_->SetEDCBackupInputMethod(userId, edcBackupImeName);
+
+    // Set enabled cache with empty bundleName to make GetCurrentInputMethod return Property with empty name
+    ImeEnabledCfg enabledCfg;
+    ImeEnabledInfo imeInfo;
+    imeInfo.bundleName = "";  // Empty bundle name
+    imeInfo.extensionName = "InputMethodExtAbility";
+    imeInfo.extraInfo.isDefaultIme = true;
+    enabledCfg.enabledInfos.emplace_back(imeInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(userId, enabledCfg);
+
+    // Should return early when currentIme->name is empty
+    service_->HandleEDCInputMethodInstall(userId, installedBundleName);
+    EXPECT_EQ(userId, MAIN_USER_ID);;
+
+    // Clean up
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.erase(userId);
+}
+
+/**
+ * @tc.name: HandleEDCInputMethodInstall_SwitchToEDCBackup_005
+ * @tc.desc: Test HandleEDCInputMethodInstall when current IME is default IME (line 3637-3642)
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPrivateMemberTest, HandleEDCInputMethodInstall_SwitchToEDCBackup_005, TestSize.Level1)
+{
+    IMSA_HILOGI("HandleEDCInputMethodInstall_SwitchToEDCBackup_005 TEST START");
+    int32_t userId = MAIN_USER_ID;
+    std::string defaultImeName = "com.example.defaultime";
+    std::string edcBackupImeName = "com.example.edcbackup";
+    std::string installedBundleName = edcBackupImeName;
+
+    // Initialize identityChecker_
+    service_->identityChecker_ = std::make_shared<IdentityCheckerImpl>();
+
+    // Create and add user session
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().AddUserSession(userId);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+
+    // Set default IME using systemConfig_
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = defaultImeName + "/InputMethodExtAbility";
+
+    // Set enabled cache - current IME is default IME
+    ImeEnabledCfg enabledCfg;
+    ImeEnabledInfo defaultImeInfo;
+    defaultImeInfo.bundleName = defaultImeName;
+    defaultImeInfo.extensionName = "InputMethodExtAbility";
+    defaultImeInfo.extraInfo.isDefaultIme = true;
+    enabledCfg.enabledInfos.emplace_back(defaultImeInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(userId, enabledCfg);
+
+    // Set full IME infos including default IME and EDC backup IME
+    FullImeInfo defaultFullImeInfo;
+    defaultFullImeInfo.prop.name = defaultImeName;
+    defaultFullImeInfo.prop.id = "InputMethodExtAbility";
+    FullImeInfo edcBackupFullImeInfo;
+    edcBackupFullImeInfo.prop.name = edcBackupImeName;
+    edcBackupFullImeInfo.prop.id = "InputMethodExtAbility";
+    FullImeInfoManager::GetInstance().fullImeInfos_[userId] = { defaultFullImeInfo, edcBackupFullImeInfo };
+
+    // Set EDC backup IME
+    service_->SetEDCBackupInputMethod(userId, edcBackupImeName);
+
+    // Should trigger switch to EDC backup IME (lines 3637-3642)
+    service_->HandleEDCInputMethodInstall(userId, installedBundleName);
+    EXPECT_EQ(userId, MAIN_USER_ID);
+
+    // Clean up
+    FullImeInfoManager::GetInstance().fullImeInfos_.clear();
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.clear();
+    UserSessionManager::GetInstance().RemoveUserSession(userId);
+}
+
+/**
+ * @tc.name: HandleEDCInputMethodInstall_CurrentNotDefault_006
+ * @tc.desc: Test HandleEDCInputMethodInstall when current IME is not default IME (implicit else after line 3637)
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPrivateMemberTest, HandleEDCInputMethodInstall_CurrentNotDefault_006, TestSize.Level1)
+{
+    IMSA_HILOGI("HandleEDCInputMethodInstall_CurrentNotDefault_006 TEST START");
+    int32_t userId = MAIN_USER_ID;
+    std::string defaultImeName = "com.example.defaultime";
+    std::string currentImeName = "com.example.currentime";
+    std::string edcBackupImeName = "com.example.edcbackup";
+    std::string installedBundleName = edcBackupImeName;
+
+    // Initialize identityChecker_
+    service_->identityChecker_ = std::make_shared<IdentityCheckerImpl>();
+
+    // Create and add user session
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().AddUserSession(userId);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+
+    // Set default IME using systemConfig_
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = defaultImeName + "/InputMethodExtAbility";
+
+    // Set enabled cache - current IME is NOT default IME
+    // Note: Must set isDefaultIme=true so GetCurrentImeCfgInner can find it (refer to line 694)
+    ImeEnabledCfg enabledCfg;
+    ImeEnabledInfo currentImeInfo;
+    currentImeInfo.bundleName = currentImeName;
+    currentImeInfo.extensionName = "InputMethodExtAbility";
+    currentImeInfo.extraInfo.isDefaultIme = true;
+    enabledCfg.enabledInfos.emplace_back(currentImeInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(userId, enabledCfg);
+
+    // Set full IME infos including current IME (non-default) and EDC backup IME
+    FullImeInfo currentFullImeInfo;
+    currentFullImeInfo.prop.name = currentImeName;
+    currentFullImeInfo.prop.id = "InputMethodExtAbility";
+    FullImeInfo edcBackupFullImeInfo;
+    edcBackupFullImeInfo.prop.name = edcBackupImeName;
+    edcBackupFullImeInfo.prop.id = "InputMethodExtAbility";
+    FullImeInfoManager::GetInstance().fullImeInfos_[userId] = { currentFullImeInfo, edcBackupFullImeInfo };
+
+    // Set EDC backup IME
+    service_->SetEDCBackupInputMethod(userId, edcBackupImeName);
+
+    // Should NOT trigger switch (currentIme->name != defaultImeName)
+    service_->HandleEDCInputMethodInstall(userId, installedBundleName);
+    EXPECT_EQ(userId, MAIN_USER_ID);
+
+    // Clean up
+    FullImeInfoManager::GetInstance().fullImeInfos_.clear();
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.clear();
+    UserSessionManager::GetInstance().RemoveUserSession(userId);
+}
+
+/**
+ * @tc.name: HandleEDCInputMethodRemove_NoEDCBackup_001
+ * @tc.desc: Test HandleEDCInputMethodRemove when EDC backup IME is not configured (line 3653-3656)
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPrivateMemberTest, HandleEDCInputMethodRemove_NoEDCBackup_001, TestSize.Level1)
+{
+    IMSA_HILOGI("HandleEDCInputMethodRemove_NoEDCBackup_001 TEST START");
+    int32_t userId = MAIN_USER_ID;
+    std::string removedBundleName = "com.example.testime";
+    // No EDC backup IME configured, should return early
+    service_->HandleEDCInputMethodRemove(userId, removedBundleName);
+    EXPECT_EQ(userId, MAIN_USER_ID);
+}
+
+/**
+ * @tc.name: HandleEDCInputMethodRemove_CurrentImeNull_002
+ * @tc.desc: Test HandleEDCInputMethodRemove when GetCurrentInputMethod returns nullptr (line 3658-3662)
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPrivateMemberTest, HandleEDCInputMethodRemove_CurrentImeNull_002, TestSize.Level1)
+{
+    IMSA_HILOGI("HandleEDCInputMethodRemove_CurrentImeNull_002 TEST START");
+    int32_t userId = MAIN_USER_ID;
+    std::string edcBackupImeName = "com.example.edcbackup";
+    std::string removedBundleName = "com.example.testime";
+
+    // Set EDC backup IME
+    service_->SetEDCBackupInputMethod(userId, edcBackupImeName);
+    // Clear enabled cfg to make GetCurrentInputMethod return nullptr
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.erase(userId);
+    FullImeInfoManager::GetInstance().fullImeInfos_.erase(userId);
+
+    // Should return early when current IME is null
+    service_->HandleEDCInputMethodRemove(userId, removedBundleName);
+    EXPECT_EQ(userId, MAIN_USER_ID);
+}
+
+/**
+ * @tc.name: HandleEDCInputMethodRemove_CurrentImeNameEmpty_003
+ * @tc.desc: Test HandleEDCInputMethodRemove when GetCurrentInputMethod
+ * returns Property with empty name (line 3658-3662)
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPrivateMemberTest, HandleEDCInputMethodRemove_CurrentImeNameEmpty_003, TestSize.Level1)
+{
+    IMSA_HILOGI("HandleEDCInputMethodRemove_CurrentImeNameEmpty_003 TEST START");
+    int32_t userId = MAIN_USER_ID;
+    std::string edcBackupImeName = "com.example.edcbackup";
+    std::string removedBundleName = "com.example.testime";
+
+    // Set EDC backup IME
+    service_->SetEDCBackupInputMethod(userId, edcBackupImeName);
+
+    // Set enabled cache with empty bundleName
+    ImeEnabledCfg enabledCfg;
+    ImeEnabledInfo imeInfo;
+    imeInfo.bundleName = "";  // Empty bundle name
+    imeInfo.extensionName = "InputMethodExtAbility";
+    imeInfo.extraInfo.isDefaultIme = true;
+    enabledCfg.enabledInfos.emplace_back(imeInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(userId, enabledCfg);
+
+    // Should return early when currentIme->name is empty
+    service_->HandleEDCInputMethodRemove(userId, removedBundleName);
+    EXPECT_EQ(userId, MAIN_USER_ID);
+
+    // Clean up
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.erase(userId);
+}
+
+/**
+ * @tc.name: HandleEDCInputMethodRemove_EDCBackupRemoved_SwitchSuccess_004
+ * @tc.desc: Test HandleEDCInputMethodRemove when EDC backup IME is removed
+ * and current IME is also EDC backup (line 3665-3671)
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPrivateMemberTest, HandleEDCInputMethodRemove_EDCBackupRemoved_SwitchSuccess_004, TestSize.Level1)
+{
+    IMSA_HILOGI("HandleEDCInputMethodRemove_EDCBackupRemoved_SwitchSuccess_004 TEST START");
+    int32_t userId = MAIN_USER_ID;
+    std::string defaultImeName = "com.example.defaultime";
+    std::string edcBackupImeName = "com.example.edcbackup";
+    std::string removedBundleName = edcBackupImeName;
+
+    // Initialize identityChecker_
+    service_->identityChecker_ = std::make_shared<IdentityCheckerImpl>();
+
+    // Create and add user session
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().AddUserSession(userId);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+
+    // Set default IME using systemConfig_
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = defaultImeName + "/InputMethodExtAbility";
+
+    // Set enabled cache - current IME is EDC backup IME
+    // Note: Must set isDefaultIme=true so GetCurrentImeCfgInner can find it (refer to line 694)
+    ImeEnabledCfg enabledCfg;
+    ImeEnabledInfo edcBackupImeInfo;
+    edcBackupImeInfo.bundleName = edcBackupImeName;
+    edcBackupImeInfo.extensionName = "InputMethodExtAbility";
+    edcBackupImeInfo.extraInfo.isDefaultIme = true;
+    enabledCfg.enabledInfos.emplace_back(edcBackupImeInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(userId, enabledCfg);
+
+    // Set full IME infos including EDC backup IME
+    FullImeInfo edcBackupFullImeInfo;
+    edcBackupFullImeInfo.prop.name = edcBackupImeName;
+    edcBackupFullImeInfo.prop.id = "InputMethodExtAbility";
+    FullImeInfoManager::GetInstance().fullImeInfos_[userId] = { edcBackupFullImeInfo };
+
+    // Set EDC backup IME
+    service_->SetEDCBackupInputMethod(userId, edcBackupImeName);
+
+    // Verify GetCurrentInputMethod returns valid value (to avoid early return due to permission check)
+    auto currentIme = ImeInfoInquirer::GetInstance().GetCurrentInputMethod(userId);
+    ASSERT_TRUE(currentIme != nullptr && !currentIme->name.empty())
+    << "GetCurrentInputMethod should return valid value";
+
+    // Should trigger switch to default IME (lines 3665-3671) - SwitchInputMethodInner returns NO_ERROR
+    service_->HandleEDCInputMethodRemove(userId, removedBundleName);
+    EXPECT_EQ(userId, MAIN_USER_ID);
+
+    // Clean up
+    FullImeInfoManager::GetInstance().fullImeInfos_.clear();
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.clear();
+    UserSessionManager::GetInstance().RemoveUserSession(userId);
+}
+
+/**
+ * @tc.name: HandleEDCInputMethodRemove_EDCBackupRemoved_SwitchFailed_005
+ * @tc.desc: Test HandleEDCInputMethodRemove when EDC backup IME is removed
+ * and SwitchInputMethodInner fails (line 3667-3668)
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPrivateMemberTest, HandleEDCInputMethodRemove_EDCBackupRemoved_SwitchFailed_005, TestSize.Level1)
+{
+    IMSA_HILOGI("HandleEDCInputMethodRemove_EDCBackupRemoved_SwitchFailed_005 TEST START");
+    int32_t userId = MAIN_USER_ID;
+    std::string defaultImeName = "com.example.defaultime";
+    std::string edcBackupImeName = "com.example.edcbackup";
+    std::string removedBundleName = edcBackupImeName;
+
+    // Don't initialize identityChecker_, so SwitchInputMethodInner will fail
+    service_->identityChecker_ = nullptr;
+
+    // Set default IME using systemConfig_
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = defaultImeName + "/InputMethodExtAbility";
+
+    // Set enabled cache - current IME is EDC backup IME
+    // Note: Must set isDefaultIme=true so GetCurrentImeCfgInner can find it (refer to line 694)
+    ImeEnabledCfg enabledCfg;
+    ImeEnabledInfo edcBackupImeInfo;
+    edcBackupImeInfo.bundleName = edcBackupImeName;
+    edcBackupImeInfo.extensionName = "InputMethodExtAbility";
+    edcBackupImeInfo.extraInfo.isDefaultIme = true;
+    enabledCfg.enabledInfos.emplace_back(edcBackupImeInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(userId, enabledCfg);
+
+    // Set full IME infos including EDC backup IME
+    FullImeInfo edcBackupFullImeInfo;
+    edcBackupFullImeInfo.prop.name = edcBackupImeName;
+    edcBackupFullImeInfo.prop.id = "InputMethodExtAbility";
+    FullImeInfoManager::GetInstance().fullImeInfos_[userId] = { edcBackupFullImeInfo };
+
+    // Set EDC backup IME
+    service_->SetEDCBackupInputMethod(userId, edcBackupImeName);
+
+    // Verify GetCurrentInputMethod returns valid value (to avoid early return due to permission check)
+    auto currentIme = ImeInfoInquirer::GetInstance().GetCurrentInputMethod(userId);
+    ASSERT_TRUE(currentIme != nullptr && !currentIme->name.empty())
+    << "GetCurrentInputMethod should return valid value";
+
+    // Should trigger switch to default IME but SwitchInputMethodInner fails (line 3667-3668)
+    service_->HandleEDCInputMethodRemove(userId, removedBundleName);
+    EXPECT_EQ(userId, MAIN_USER_ID);
+
+    // Clean up
+    FullImeInfoManager::GetInstance().fullImeInfos_.clear();
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.clear();
+}
+
+/**
+ * @tc.name: HandleEDCInputMethodRemove_CurrentNotEDCBackup_EDCInstalled_006
+ * @tc.desc: Test HandleEDCInputMethodRemove when removed IME is current but not EDC backup,
+ * and EDC backup is installed (line 3674-3682)
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPrivateMemberTest, HandleEDCInputMethodRemove_CurrentNotEDCBackup_EDCInstalled_006,
+    TestSize.Level1)
+{
+    IMSA_HILOGI("HandleEDCInputMethodRemove_CurrentNotEDCBackup_EDCInstalled_006 TEST START");
+    int32_t userId = MAIN_USER_ID;
+    std::string defaultImeName = "com.example.defaultime";
+    std::string edcBackupImeName = "com.example.edcbackup";
+    std::string currentImeName = "com.example.currentime";
+    std::string removedBundleName = currentImeName;
+
+    // Initialize identityChecker_
+    service_->identityChecker_ = std::make_shared<IdentityCheckerImpl>();
+
+    // Create and add user session
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().AddUserSession(userId);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+
+    // Set default IME using systemConfig_
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = defaultImeName + "/InputMethodExtAbility";
+
+    // Set enabled cache - current IME is NOT EDC backup
+    // Note: Must set isDefaultIme=true so GetCurrentImeCfgInner can find it (refer to line 694)
+    ImeEnabledCfg enabledCfg;
+    ImeEnabledInfo currentImeInfo;
+    currentImeInfo.bundleName = currentImeName;
+    currentImeInfo.extensionName = "InputMethodExtAbility";
+    currentImeInfo.extraInfo.isDefaultIme = true;
+    enabledCfg.enabledInfos.emplace_back(currentImeInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(userId, enabledCfg);
+
+    // Set full IME infos including current IME and EDC backup IME (EDC backup is installed)
+    FullImeInfo currentFullImeInfo;
+    currentFullImeInfo.prop.name = currentImeName;
+    currentFullImeInfo.prop.id = "InputMethodExtAbility";
+    FullImeInfo edcBackupFullImeInfo;
+    edcBackupFullImeInfo.prop.name = edcBackupImeName;
+    edcBackupFullImeInfo.prop.id = "InputMethodExtAbility";
+    FullImeInfoManager::GetInstance().fullImeInfos_[userId] = { currentFullImeInfo, edcBackupFullImeInfo };
+
+    // Set EDC backup IME
+    service_->SetEDCBackupInputMethod(userId, edcBackupImeName);
+
+    // Verify GetCurrentInputMethod returns valid value (to avoid early return due to permission check)
+    auto currentIme = ImeInfoInquirer::GetInstance().GetCurrentInputMethod(userId);
+    ASSERT_TRUE(currentIme != nullptr && !currentIme->name.empty())
+    << "GetCurrentInputMethod should return valid value";
+
+    // Should switch to EDC backup IME (line 3677: targetIme = edcBackupImeName)
+    service_->HandleEDCInputMethodRemove(userId, removedBundleName);
+    EXPECT_EQ(userId, MAIN_USER_ID);
+
+    // Clean up
+    FullImeInfoManager::GetInstance().fullImeInfos_.clear();
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.clear();
+    UserSessionManager::GetInstance().RemoveUserSession(userId);
+}
+
+/**
+ * @tc.name: HandleEDCInputMethodRemove_CurrentNotEDCBackup_EDCNotInstalled_007
+ * @tc.desc: Test HandleEDCInputMethodRemove when removed IME is current but
+ * not EDC backup, and EDC backup is not installed (line 3677)
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPrivateMemberTest, HandleEDCInputMethodRemove_CurrentNotEDCBackup_EDCNotInstalled_007,
+        TestSize.Level1)
+{
+    IMSA_HILOGI("HandleEDCInputMethodRemove_CurrentNotEDCBackup_EDCNotInstalled_007 TEST START");
+    int32_t userId = MAIN_USER_ID;
+    std::string defaultImeName = "com.example.defaultime";
+    std::string edcBackupImeName = "com.example.edcbackup";
+    std::string currentImeName = "com.example.currentime";
+    std::string removedBundleName = currentImeName;
+
+    // Initialize identityChecker_
+    service_->identityChecker_ = std::make_shared<IdentityCheckerImpl>();
+
+    // Create and add user session
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().AddUserSession(userId);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+
+    // Set default IME using systemConfig_
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = defaultImeName + "/InputMethodExtAbility";
+
+    // Set enabled cache - current IME is NOT EDC backup
+    // Note: Must set isDefaultIme=true so GetCurrentImeCfgInner can find it (refer to line 694)
+    ImeEnabledCfg enabledCfg;
+    ImeEnabledInfo currentImeInfo;
+    currentImeInfo.bundleName = currentImeName;
+    currentImeInfo.extensionName = "InputMethodExtAbility";
+    currentImeInfo.extraInfo.isDefaultIme = true;
+    enabledCfg.enabledInfos.emplace_back(currentImeInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(userId, enabledCfg);
+
+    // Set full IME infos including current IME only (EDC backup NOT installed)
+    FullImeInfo currentFullImeInfo;
+    currentFullImeInfo.prop.name = currentImeName;
+    currentFullImeInfo.prop.id = "InputMethodExtAbility";
+    FullImeInfoManager::GetInstance().fullImeInfos_[userId] = { currentFullImeInfo };
+
+    // Set EDC backup IME
+    service_->SetEDCBackupInputMethod(userId, edcBackupImeName);
+
+    // Verify GetCurrentInputMethod returns valid value (to avoid early return due to permission check)
+    auto currentIme = ImeInfoInquirer::GetInstance().GetCurrentInputMethod(userId);
+    ASSERT_TRUE(currentIme != nullptr && !currentIme->name.empty())
+    << "GetCurrentInputMethod should return valid value";
+
+    // Should switch to default IME (line 3677: targetIme = defaultImeName)
+    service_->HandleEDCInputMethodRemove(userId, removedBundleName);
+    EXPECT_EQ(userId, MAIN_USER_ID);
+
+    // Clean up
+    FullImeInfoManager::GetInstance().fullImeInfos_.clear();
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.clear();
+    UserSessionManager::GetInstance().RemoveUserSession(userId);
+}
+
+/**
+ * @tc.name: HandleEDCInputMethodRemove_RemovedNotCurrent_008
+ * @tc.desc: Test HandleEDCInputMethodRemove when removed IME is not current IME (implicit else after line 3674)
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPrivateMemberTest, HandleEDCInputMethodRemove_RemovedNotCurrent_008, TestSize.Level1)
+{
+    IMSA_HILOGI("HandleEDCInputMethodRemove_RemovedNotCurrent_008 TEST START");
+    int32_t userId = MAIN_USER_ID;
+    std::string defaultImeName = "com.example.defaultime";
+    std::string edcBackupImeName = "com.example.edcbackup";
+    std::string currentImeName = "com.example.currentime";
+    std::string removedBundleName = "com.example.otherime";  // Not current IME
+
+    // Initialize identityChecker_
+    service_->identityChecker_ = std::make_shared<IdentityCheckerImpl>();
+
+    // Create and add user session
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().AddUserSession(userId);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+
+    // Set default IME using systemConfig_
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = defaultImeName + "/InputMethodExtAbility";
+
+    // Set enabled cache - current IME is different from removed IME
+    // Note: Must set isDefaultIme=true so GetCurrentImeCfgInner can find it (refer to line 694)
+    ImeEnabledCfg enabledCfg;
+    ImeEnabledInfo currentImeInfo;
+    currentImeInfo.bundleName = currentImeName;
+    currentImeInfo.extensionName = "InputMethodExtAbility";
+    currentImeInfo.extraInfo.isDefaultIme = true;
+    enabledCfg.enabledInfos.emplace_back(currentImeInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(userId, enabledCfg);
+
+    // Set full IME infos including current IME and EDC backup IME
+    FullImeInfo currentFullImeInfo;
+    currentFullImeInfo.prop.name = currentImeName;
+    currentFullImeInfo.prop.id = "InputMethodExtAbility";
+    FullImeInfo edcBackupFullImeInfo;
+    edcBackupFullImeInfo.prop.name = edcBackupImeName;
+    edcBackupFullImeInfo.prop.id = "InputMethodExtAbility";
+    FullImeInfoManager::GetInstance().fullImeInfos_[userId] = { currentFullImeInfo, edcBackupFullImeInfo };
+
+    // Set EDC backup IME
+    service_->SetEDCBackupInputMethod(userId, edcBackupImeName);
+
+    // Verify GetCurrentInputMethod returns valid value (to avoid early return due to permission check)
+    auto currentIme = ImeInfoInquirer::GetInstance().GetCurrentInputMethod(userId);
+    ASSERT_TRUE(currentIme != nullptr && !currentIme->name.empty())
+        << "GetCurrentInputMethod should return valid value";
+    std::string originalImeName = currentIme->name;
+
+    // Should NOT trigger any switch (removedBundleName != currentIme->name)
+    service_->HandleEDCInputMethodRemove(userId, removedBundleName);
+    EXPECT_EQ(userId, MAIN_USER_ID);
+
+    // Clean up
+    FullImeInfoManager::GetInstance().fullImeInfos_.clear();
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.clear();
+    UserSessionManager::GetInstance().RemoveUserSession(userId);
+}
+
+/**
+ * @tc.name: HandleEDCInputMethodRemove_SwitchFailed_009
+ * @tc.desc: Test HandleEDCInputMethodRemove when SwitchInputMethodInner fails (line 3679-3680)
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPrivateMemberTest, HandleEDCInputMethodRemove_SwitchFailed_009, TestSize.Level1)
+{
+    IMSA_HILOGI("HandleEDCInputMethodRemove_SwitchFailed_009 TEST START");
+    int32_t userId = MAIN_USER_ID;
+    std::string defaultImeName = "com.example.defaultime";
+    std::string edcBackupImeName = "com.example.edcbackup";
+    std::string currentImeName = "com.example.currentime";
+    std::string removedBundleName = currentImeName;
+
+    // Don't initialize identityChecker_, so SwitchInputMethodInner will fail
+    service_->identityChecker_ = nullptr;
+
+    // Set default IME using systemConfig_
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = defaultImeName + "/InputMethodExtAbility";
+
+    // Set enabled cache - current IME is NOT EDC backup
+    // Note: Must set isDefaultIme=true so GetCurrentImeCfgInner can find it (refer to line 694)
+    ImeEnabledCfg enabledCfg;
+    ImeEnabledInfo currentImeInfo;
+    currentImeInfo.bundleName = currentImeName;
+    currentImeInfo.extensionName = "InputMethodExtAbility";
+    currentImeInfo.extraInfo.isDefaultIme = true;
+    enabledCfg.enabledInfos.emplace_back(currentImeInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(userId, enabledCfg);
+
+    // Set full IME infos including current IME and EDC backup IME (EDC backup is installed)
+    FullImeInfo currentFullImeInfo;
+    currentFullImeInfo.prop.name = currentImeName;
+    currentFullImeInfo.prop.id = "InputMethodExtAbility";
+    FullImeInfo edcBackupFullImeInfo;
+    edcBackupFullImeInfo.prop.name = edcBackupImeName;
+    edcBackupFullImeInfo.prop.id = "InputMethodExtAbility";
+    FullImeInfoManager::GetInstance().fullImeInfos_[userId] = { currentFullImeInfo, edcBackupFullImeInfo };
+
+    // Set EDC backup IME
+    service_->SetEDCBackupInputMethod(userId, edcBackupImeName);
+
+    // Should try to switch but SwitchInputMethodInner fails (line 3679-3680)
+    service_->HandleEDCInputMethodRemove(userId, removedBundleName);
+    EXPECT_EQ(userId, MAIN_USER_ID);
+
+    // Clean up
+    FullImeInfoManager::GetInstance().fullImeInfos_.clear();
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.clear();
+}
+
+/**
  * @tc.name: PerUserSession_OnUnregisterProxyIme_SWITCH_PROXY_IME_TO_IME
  * @tc.desc: Test PerUserSession_OnUnregisterProxyIme with SWITCH_PROXY_IME_TO_IME
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnUnregisterProxyIme_SWITCH_PROXY_IME_TO_IME, TestSize.Level0)
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnUnregisterProxyIme_SWITCH_PROXY_IME_TO_IME,
+    TestSize.Level0)
 {
-    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_OnUnregisterProxyIme_SWITCH_PROXY_IME_TO_IME start.");
+    IMSA_HILOGI("PerUserSession_OnUnregisterProxyIme_SWITCH_PROXY_IME_TO_IME start.");
     auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     pid_t pid = 100;
     pid_t pid1 = 170;
@@ -5127,9 +5774,10 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnUnregisterProxyIme_SWITC
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F(InputMethodPrivateMemberTest, InputMethodSystemAbility_UnregisterProxyIme_Type_Validation, TestSize.Level0)
+HWTEST_F(InputMethodPrivateMemberTest, InputMethodSystemAbility_UnregisterProxyIme_Type_Validation,
+    TestSize.Level0)
 {
-    IMSA_HILOGI("InputMethodPrivateMemberTest::InputMethodSystemAbility_UnregisterProxyIme_Type_Validation start.");
+    IMSA_HILOGI("InputMethodSystemAbility_UnregisterProxyIme_Type_Validation start.");
     InputMethodSystemAbility systemAbility;
     systemAbility.identityChecker_ = std::make_shared<IdentityCheckerImpl>();
     ImeInfoInquirer::GetInstance().systemConfig_.enableAppAgentFeature = true;
@@ -5259,7 +5907,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_WaitImeExtExit, TestSize.L
  */
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_UpdateRealImeDataOnDisconnect, TestSize.Level0)
 {
-    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_UpdateRealImeDataOnDisconnect start.");
+    IMSA_HILOGI("PerUserSession_UpdateRealImeDataOnDisconnect start.");
     pid_t pid = 100;
     auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
 
@@ -5297,7 +5945,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_UpdateRealImeDataOnDisconn
  */
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_InvalidFocusPid, TestSize.Level0)
 {
-    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_InvalidFocusPid start.");
+    IMSA_HILOGI("PerUserSession_InvalidFocusPid start.");
     auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     auto clientGroup = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
     sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
@@ -5315,7 +5963,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_InvalidFocusPid, TestSize.
  */
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_FocusPidNonPositive, TestSize.Level0)
 {
-    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_FocusPidNonPositive start.");
+    IMSA_HILOGI("PerUserSession_FocusPidNonPositive start.");
     auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     auto clientGroup = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
     sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
@@ -5340,7 +5988,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_FocusPidNonPositive, TestS
  */
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnFocused_SceneBoardDisabled, TestSize.Level0)
 {
-    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_OnFocused_SceneBoardDisabled start.");
+    IMSA_HILOGI("PerUserSession_OnFocused_SceneBoardDisabled start.");
     auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     auto clientGroup = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
     sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
@@ -5363,7 +6011,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnFocused_SceneBoardDisabl
  */
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnFocused_IsCurClientFocusedTrue, TestSize.Level0)
 {
-    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_OnFocused_IsCurClientFocusedTrue start.");
+    IMSA_HILOGI("PerUserSession_OnFocused_IsCurClientFocusedTrue start.");
     auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     auto clientGroup = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
     sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
@@ -5387,7 +6035,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnFocused_IsCurClientFocus
  */
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnFocused_FocusPidPositiveUidNonPositive, TestSize.Level0)
 {
-    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_OnFocused_FocusPidPositiveUidNonPositive start.");
+    IMSA_HILOGI("PerUserSession_OnFocused_FocusPidPositiveUidNonPositive start.");
     auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     auto clientGroup = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
     sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();

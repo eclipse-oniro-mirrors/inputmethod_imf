@@ -16,6 +16,7 @@
 #define private public
 #define protected public
 #include "window_adapter.h"
+#include "window_monitors_manager.h"
 #undef private
 
 #include <gtest/gtest.h>
@@ -94,6 +95,7 @@ HWTEST_F(WindowAdapterTest, WindowAdapter_GetDisplayId, TestSize.Level0)
 HWTEST_F(WindowAdapterTest, WindowAdapter_OnDisplayGroupInfoChanged, TestSize.Level0)
 {
     IMSA_HILOGI("WindowAdapterTest::WindowAdapter_OnDisplayGroupInfoChanged START");
+    auto originalDisplayGroupIds = WindowAdapter::GetInstance().displayGroupIds_;
     WindowAdapter::GetInstance().displayGroupIds_.clear();
     uint64_t displayId = 100;
     uint64_t displayGroupId = 2;
@@ -125,6 +127,8 @@ HWTEST_F(WindowAdapterTest, WindowAdapter_OnDisplayGroupInfoChanged, TestSize.Le
     displayGroupIds = userIter->second;
     iter = displayGroupIds.find(displayId);
     EXPECT_TRUE(iter == displayGroupIds.end());
+    // Restore original state
+    WindowAdapter::GetInstance().displayGroupIds_ = originalDisplayGroupIds;
 }
 #ifdef SCENE_BOARD_ENABLE
 /**
@@ -183,8 +187,75 @@ HWTEST_F(WindowAdapterTest, WindowAdapter_OnWindowInfoChanged, TestSize.Level0)
     info[WindowInfoKey::WINDOW_ID] = windowId2;
     winInfoList.push_back(info);
     listener->OnWindowInfoChanged(winInfoList);
-    EXPECT_TRUE(hasHandled_);
+EXPECT_TRUE(hasHandled_);
 }
 #endif
+
+/**
+ * @tc.name: WindowAdapter_GetDisplayGroupIdWithRetry_DefaultDisplayId
+ * @tc.desc: Test GetDisplayGroupIdWithRetry with DEFAULT_DISPLAY_ID
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(WindowAdapterTest, WindowAdapter_GetDisplayGroupIdWithRetry_DefaultDisplayId, TestSize.Level1)
+{
+    IMSA_HILOGI("WindowAdapterTest::WindowAdapter_GetDisplayGroupIdWithRetry_DefaultDisplayId START");
+    auto originalDisplayGroupIds = WindowAdapter::GetInstance().displayGroupIds_;
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+    uint64_t displayId = DEFAULT_DISPLAY_ID;
+    int32_t userId = 999;
+    uint64_t displayGroupId = 0;
+
+    auto ret = WindowAdapter::GetInstance().GetDisplayGroupIdWithRetry(displayId, userId, displayGroupId);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_EQ(displayGroupId, ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID);
+    WindowAdapter::GetInstance().displayGroupIds_ = originalDisplayGroupIds;
+}
+
+/**
+ * @tc.name: WindowAdapter_GetDisplayGroupIdWithRetry_Success
+ * @tc.desc: Test GetDisplayGroupIdWithRetry success case
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(WindowAdapterTest, WindowAdapter_GetDisplayGroupIdWithRetry_Success, TestSize.Level1)
+{
+    IMSA_HILOGI("WindowAdapterTest::WindowAdapter_GetDisplayGroupIdWithRetry_Success START");
+    int32_t userId = TddUtil::GetCurrentUserId();
+    uint64_t displayId = 100;
+    uint64_t expectedGroupId = 200;
+    uint64_t displayGroupId = 0;
+
+    // Setup test data
+    WindowAdapter::GetInstance().displayGroupIds_[userId][displayId] = expectedGroupId;
+
+    auto ret = WindowAdapter::GetInstance().GetDisplayGroupIdWithRetry(displayId, userId, displayGroupId);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_EQ(displayGroupId, expectedGroupId);
+}
+
+/**
+ * @tc.name: WindowAdapter_GetDisplayGroupId_WithInvalidDisplayId
+ * @tc.desc: Test GetDisplayGroupIdWithRetry with invalid displayId and retry
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(WindowAdapterTest, WindowAdapter_GetDisplayGroupId_WithInvalidDisplayId, TestSize.Level1)
+{
+    IMSA_HILOGI("WindowAdapterTest::WindowAdapter_GetDisplayGroupId_WithInvalidDisplayId START");
+    int32_t userId = TddUtil::GetCurrentUserId();
+    uint64_t invalidDisplayId = 777;
+    uint64_t displayGroupId = 0;
+
+    // Setup test data with different displayId
+    uint64_t validDisplayId = 100;
+    uint64_t expectedGroupId = 200;
+    WindowAdapter::GetInstance().displayGroupIds_[userId][validDisplayId] = expectedGroupId;
+
+    // Try to get invalid displayId, should fail
+    auto ret = WindowAdapter::GetInstance().GetDisplayGroupIdWithRetry(invalidDisplayId, userId, displayGroupId);
+    EXPECT_NE(ret, ErrorCode::NO_ERROR);
+}
+
 } // namespace MiscServices
 } // namespace OHOS
