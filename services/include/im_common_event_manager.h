@@ -56,6 +56,7 @@ public:
         void HandleLargeMemoryStateUpdate(const EventFwk::CommonEventData &data);
         void OnBundleResChanged(const EventFwk::CommonEventData &data);
         void HandleNotifyMakeImage(const EventFwk::CommonEventData &data);
+        void OnHybridModeSwitch(const EventFwk::CommonEventData &data);
 
     private:
         using EventListenerFunc = std::function<void(EventSubscriber *that, const EventFwk::CommonEventData &data)>;
@@ -81,6 +82,12 @@ private:
 private:
     static std::mutex instanceLock_;
     static sptr<ImCommonEventManager> instance_;
+};
+
+enum class HybridMode : int32_t {
+    PHONE_MODE = 0,
+    PC_MODE = 1,
+    SWITCHING = 2,
 };
 
 enum class ImfBundleResourceChangeType {

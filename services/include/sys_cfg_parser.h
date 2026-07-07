@@ -50,6 +50,7 @@ struct SystemConfig : public Serializable {
     std::unordered_set<std::string> supportedCapacityList;
     std::vector<SaInfo> dependentSaList;
     std::string systemPanelAppIdentifier;
+    bool disableImmersiveMode = false;
 
     bool Unmarshal(cJSON *node) override
     {
@@ -70,6 +71,7 @@ struct SystemConfig : public Serializable {
         GetValue(node, GET_NAME(supportedCapacityList), supportedCapacityList);
         GetValue(node, GET_NAME(dependentSaList), dependentSaList);
         GetValue(node, GET_NAME(systemPanelAppIdentifier), systemPanelAppIdentifier);
+        GetValue(node, GET_NAME(disableImmersiveMode), disableImmersiveMode);
         return true;
     }
 };
@@ -195,9 +197,13 @@ struct IgnoreSysPanelAdjustCfg : public Serializable {
 
 struct ProductConfig : public Serializable {
     bool disabledMemoryWatermark = false;
+    bool isSupportPcMode = false;
+    bool disablePcModeImmersiveMode = false;
     bool Unmarshal(cJSON *node) override
     {
         GetValue(node, GET_NAME(disabledMemoryWatermark), disabledMemoryWatermark);
+        GetValue(node, GET_NAME(isSupportPcMode), isSupportPcMode);
+        GetValue(node, GET_NAME(disablePcModeImmersiveMode), disablePcModeImmersiveMode);
         return true;
     }
 };

@@ -2912,5 +2912,247 @@ HWTEST_F(InputMethodControllerTest, testGetSoftKeyboardInfo_001, TestSize.Level0
         EXPECT_NE(ret, ErrorCode::NO_ERROR);
     }
 }
+
+/**
+ * @tc.name: testShouldOverrideImmersiveMode_001
+ * @tc.desc: ShouldOverrideImmersiveMode returns false when immersiveMode is 0
+ * @tc.type: IMC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, testShouldOverrideImmersiveMode_001, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testShouldOverrideImmersiveMode_001 Test START");
+    TextConfig textConfig;
+    textConfig.inputAttribute.immersiveMode = 0;
+    auto result = inputMethodController_->ShouldOverrideImmersiveMode(textConfig);
+    EXPECT_FALSE(result);
+}
+
+/**
+ * @tc.name: testShouldOverrideImmersiveMode_002
+ * @tc.desc: ShouldOverrideImmersiveMode returns true when not supportPcMode and disableImmersiveMode
+ * @tc.type: IMC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, testShouldOverrideImmersiveMode_002, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testShouldOverrideImmersiveMode_002 Test START");
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    bool origSupportPcMode = inquirer.productConfig_.isSupportPcMode;
+    bool origDisableImmersiveMode = inquirer.systemConfig_.disableImmersiveMode;
+    bool origQueried = inputMethodController_->immersiveCache_.isDisableImmersiveModeQueried.load();
+    inquirer.productConfig_.isSupportPcMode = false;
+    inquirer.systemConfig_.disableImmersiveMode = true;
+    inputMethodController_->immersiveCache_.isDisableImmersiveModeQueried.store(false);
+    TextConfig textConfig;
+    textConfig.inputAttribute.immersiveMode = 1;
+    auto result = inputMethodController_->ShouldOverrideImmersiveMode(textConfig);
+    EXPECT_TRUE(result);
+    inquirer.productConfig_.isSupportPcMode = origSupportPcMode;
+    inquirer.systemConfig_.disableImmersiveMode = origDisableImmersiveMode;
+    inputMethodController_->immersiveCache_.isDisableImmersiveModeQueried.store(origQueried);
+}
+
+/**
+ * @tc.name: testShouldOverrideImmersiveMode_003
+ * @tc.desc: ShouldOverrideImmersiveMode returns false when not supportPcMode and not disableImmersiveMode
+ * @tc.type: IMC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, testShouldOverrideImmersiveMode_003, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testShouldOverrideImmersiveMode_003 Test START");
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    bool origSupportPcMode = inquirer.productConfig_.isSupportPcMode;
+    bool origDisableImmersiveMode = inquirer.systemConfig_.disableImmersiveMode;
+    bool origQueried = inputMethodController_->immersiveCache_.isDisableImmersiveModeQueried.load();
+    inquirer.productConfig_.isSupportPcMode = false;
+    inquirer.systemConfig_.disableImmersiveMode = false;
+    inputMethodController_->immersiveCache_.isDisableImmersiveModeQueried.store(false);
+    TextConfig textConfig;
+    textConfig.inputAttribute.immersiveMode = 1;
+    auto result = inputMethodController_->ShouldOverrideImmersiveMode(textConfig);
+    EXPECT_FALSE(result);
+    inquirer.productConfig_.isSupportPcMode = origSupportPcMode;
+    inquirer.systemConfig_.disableImmersiveMode = origDisableImmersiveMode;
+    inputMethodController_->immersiveCache_.isDisableImmersiveModeQueried.store(origQueried);
+}
+
+/**
+ * @tc.name: testShouldOverrideImmersiveMode_004
+ * @tc.desc: ShouldOverrideImmersiveMode returns true when supportPcMode, isPcMode, disablePcModeImmersiveMode
+ * @tc.type: IMC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, testShouldOverrideImmersiveMode_004, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testShouldOverrideImmersiveMode_004 Test START");
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    bool origSupportPcMode = inquirer.productConfig_.isSupportPcMode;
+    bool origPcMode = inquirer.IsPcMode();
+    bool origDisablePcImmersive = inquirer.productConfig_.disablePcModeImmersiveMode;
+    bool origSupportQueried = inputMethodController_->immersiveCache_.isSupportPcModeQueried.load();
+    bool origDisablePcQueried = inputMethodController_->immersiveCache_.isDisablePcModeImmersiveModeQueried.load();
+    inquirer.productConfig_.isSupportPcMode = true;
+    inquirer.SetPcMode(true);
+    inquirer.productConfig_.disablePcModeImmersiveMode = true;
+    inputMethodController_->immersiveCache_.isSupportPcModeQueried.store(false);
+    inputMethodController_->immersiveCache_.isDisablePcModeImmersiveModeQueried.store(false);
+    TextConfig textConfig;
+    textConfig.inputAttribute.immersiveMode = 1;
+    auto result = inputMethodController_->ShouldOverrideImmersiveMode(textConfig);
+    EXPECT_TRUE(result);
+    inquirer.productConfig_.isSupportPcMode = origSupportPcMode;
+    inquirer.SetPcMode(origPcMode);
+    inquirer.productConfig_.disablePcModeImmersiveMode = origDisablePcImmersive;
+    inputMethodController_->immersiveCache_.isSupportPcModeQueried.store(origSupportQueried);
+    inputMethodController_->immersiveCache_.isDisablePcModeImmersiveModeQueried.store(origDisablePcQueried);
+}
+
+/**
+ * @tc.name: testShouldOverrideImmersiveMode_005
+ * @tc.desc: ShouldOverrideImmersiveMode returns false when supportPcMode, isPcMode, not disablePcModeImmersiveMode
+ * @tc.type: IMC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, testShouldOverrideImmersiveMode_005, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testShouldOverrideImmersiveMode_005 Test START");
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    bool origSupportPcMode = inquirer.productConfig_.isSupportPcMode;
+    bool origPcMode = inquirer.IsPcMode();
+    bool origDisablePcImmersive = inquirer.productConfig_.disablePcModeImmersiveMode;
+    bool origSupportQueried = inputMethodController_->immersiveCache_.isSupportPcModeQueried.load();
+    bool origDisablePcQueried = inputMethodController_->immersiveCache_.isDisablePcModeImmersiveModeQueried.load();
+    inquirer.productConfig_.isSupportPcMode = true;
+    inquirer.SetPcMode(true);
+    inquirer.productConfig_.disablePcModeImmersiveMode = false;
+    inputMethodController_->immersiveCache_.isSupportPcModeQueried.store(false);
+    inputMethodController_->immersiveCache_.isDisablePcModeImmersiveModeQueried.store(false);
+    TextConfig textConfig;
+    textConfig.inputAttribute.immersiveMode = 1;
+    auto result = inputMethodController_->ShouldOverrideImmersiveMode(textConfig);
+    EXPECT_FALSE(result);
+    inquirer.productConfig_.isSupportPcMode = origSupportPcMode;
+    inquirer.SetPcMode(origPcMode);
+    inquirer.productConfig_.disablePcModeImmersiveMode = origDisablePcImmersive;
+    inputMethodController_->immersiveCache_.isSupportPcModeQueried.store(origSupportQueried);
+    inputMethodController_->immersiveCache_.isDisablePcModeImmersiveModeQueried.store(origDisablePcQueried);
+}
+
+/**
+ * @tc.name: testShouldOverrideImmersiveMode_006
+ * @tc.desc: ShouldOverrideImmersiveMode returns true when supportPcMode, not isPcMode, disableImmersiveMode
+ * @tc.type: IMC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, testShouldOverrideImmersiveMode_006, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testShouldOverrideImmersiveMode_006 Test START");
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    bool origSupportPcMode = inquirer.productConfig_.isSupportPcMode;
+    bool origPcMode = inquirer.IsPcMode();
+    bool origDisableImmersiveMode = inquirer.systemConfig_.disableImmersiveMode;
+    bool origSupportQueried = inputMethodController_->immersiveCache_.isSupportPcModeQueried.load();
+    bool origDisableQueried = inputMethodController_->immersiveCache_.isDisableImmersiveModeQueried.load();
+    inquirer.productConfig_.isSupportPcMode = true;
+    inquirer.SetPcMode(false);
+    inquirer.systemConfig_.disableImmersiveMode = true;
+    inputMethodController_->immersiveCache_.isSupportPcModeQueried.store(false);
+    inputMethodController_->immersiveCache_.isDisableImmersiveModeQueried.store(false);
+    TextConfig textConfig;
+    textConfig.inputAttribute.immersiveMode = 1;
+    auto result = inputMethodController_->ShouldOverrideImmersiveMode(textConfig);
+    EXPECT_TRUE(result);
+    inquirer.productConfig_.isSupportPcMode = origSupportPcMode;
+    inquirer.SetPcMode(origPcMode);
+    inquirer.systemConfig_.disableImmersiveMode = origDisableImmersiveMode;
+    inputMethodController_->immersiveCache_.isSupportPcModeQueried.store(origSupportQueried);
+    inputMethodController_->immersiveCache_.isDisableImmersiveModeQueried.store(origDisableQueried);
+}
+
+/**
+ * @tc.name: testCalibrateImmersiveParam_001
+ * @tc.desc: CalibrateImmersiveParam overrides immersiveMode to 0 when shouldOverride is true
+ * @tc.type: IMC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, testCalibrateImmersiveParam_001, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testCalibrateImmersiveParam_001 Test START");
+    InputAttribute attr;
+    attr.immersiveMode = 1;
+    inputMethodController_->CalibrateImmersiveParam(attr, true);
+    EXPECT_EQ(attr.immersiveMode, 0);
+}
+
+/**
+ * @tc.name: testCalibrateImmersiveParam_002
+ * @tc.desc: CalibrateImmersiveParam keeps immersiveMode when shouldOverride is false
+ * @tc.type: IMC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, testCalibrateImmersiveParam_002, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testCalibrateImmersiveParam_002 Test START");
+    InputAttribute attr;
+    attr.immersiveMode = 1;
+    inputMethodController_->CalibrateImmersiveParam(attr, false);
+    EXPECT_EQ(attr.immersiveMode, 1);
+}
+
+/**
+ * @tc.name: testIsDisableImmersiveMode_Cached_001
+ * @tc.desc: IsDisableImmersiveMode returns cached value when queried flag is true
+ * @tc.type: IMC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, testIsDisableImmersiveMode_Cached_001, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testIsDisableImmersiveMode_Cached_001 Test START");
+    bool origQueried = inputMethodController_->immersiveCache_.isDisableImmersiveModeQueried.load();
+    bool origCached = inputMethodController_->immersiveCache_.isDisableImmersiveModeCached.load();
+    inputMethodController_->immersiveCache_.isDisableImmersiveModeQueried.store(true);
+    inputMethodController_->immersiveCache_.isDisableImmersiveModeCached.store(true);
+    EXPECT_TRUE(inputMethodController_->IsDisableImmersiveMode());
+    inputMethodController_->immersiveCache_.isDisableImmersiveModeQueried.store(origQueried);
+    inputMethodController_->immersiveCache_.isDisableImmersiveModeCached.store(origCached);
+}
+
+/**
+ * @tc.name: testIsSupportPcMode_Cached_001
+ * @tc.desc: IsSupportPcMode returns cached value when queried flag is true
+ * @tc.type: IMC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, testIsSupportPcMode_Cached_001, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testIsSupportPcMode_Cached_001 Test START");
+    bool origQueried = inputMethodController_->immersiveCache_.isSupportPcModeQueried.load();
+    bool origCached = inputMethodController_->immersiveCache_.isSupportPcModeCached.load();
+    inputMethodController_->immersiveCache_.isSupportPcModeQueried.store(true);
+    inputMethodController_->immersiveCache_.isSupportPcModeCached.store(true);
+    EXPECT_TRUE(inputMethodController_->IsSupportPcMode());
+    inputMethodController_->immersiveCache_.isSupportPcModeQueried.store(origQueried);
+    inputMethodController_->immersiveCache_.isSupportPcModeCached.store(origCached);
+}
+
+/**
+ * @tc.name: testIsDisablePcModeImmersiveMode_Cached_001
+ * @tc.desc: IsDisablePcModeImmersiveMode returns cached value when queried flag is true
+ * @tc.type: IMC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, testIsDisablePcModeImmersiveMode_Cached_001, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testIsDisablePcModeImmersiveMode_Cached_001 Test START");
+    bool origQueried = inputMethodController_->immersiveCache_.isDisablePcModeImmersiveModeQueried.load();
+    bool origCached = inputMethodController_->immersiveCache_.isDisablePcModeImmersiveModeCached.load();
+    inputMethodController_->immersiveCache_.isDisablePcModeImmersiveModeQueried.store(true);
+    inputMethodController_->immersiveCache_.isDisablePcModeImmersiveModeCached.store(true);
+    EXPECT_TRUE(inputMethodController_->IsDisablePcModeImmersiveMode());
+    inputMethodController_->immersiveCache_.isDisablePcModeImmersiveModeQueried.store(origQueried);
+    inputMethodController_->immersiveCache_.isDisablePcModeImmersiveModeCached.store(origCached);
+}
 } // namespace MiscServices
 } // namespace OHOS
