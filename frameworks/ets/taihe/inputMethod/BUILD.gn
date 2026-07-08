@@ -96,8 +96,12 @@ taihe_shared_library("inputmethod_taihe_native") {
     "ability_runtime:napi_common",
     "ace_engine:ace_uicontent",
     "bundle_framework:bms_ani_common",
+    "icu:shared_icui18n",
+    "icu:shared_icuuc",
     "ffrt:libffrt",
     "ipc:ipc_single",
+    "napi:ace_napi",
+    "node:node_header_notice",
     "samgr:samgr_proxy",
   ]
 }

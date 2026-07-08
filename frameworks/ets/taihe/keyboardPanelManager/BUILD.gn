@@ -71,6 +71,8 @@ taihe_shared_library("imf_syspanel_mgr_taihe_native") {
     "ability_runtime:abilitykit_native",
     "hilog:libhilog",
     "ipc:ipc_core",
+    "napi:ace_napi",
+    "node:node_header_notice",
   ]
   shlib_type = "ani"
 }

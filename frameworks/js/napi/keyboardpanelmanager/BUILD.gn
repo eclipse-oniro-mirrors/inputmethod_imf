@@ -58,6 +58,8 @@ ohos_shared_library("inputmethodsystempanelmanager") {
     "ability_runtime:napi_common",
     "ffrt:libffrt",
     "hilog:libhilog",
+    "napi:ace_napi",
+    "node:node_header_notice",
   ]
 
   public_configs = [ ":keyboard_panel_manager_public_config" ]
