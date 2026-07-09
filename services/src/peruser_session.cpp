@@ -1948,18 +1948,21 @@ int32_t PerUserSession::StartInputService(const std::shared_ptr<ImeNativeCfg> &i
         return ret;
     }
     sptr<AAFwk::IAbilityConnection> connection = nullptr;
-    ret = InitRealImeData(connection, { imeToStart->bundleName, imeToStart->extName }, ime);
+    bool isFirstStart = false;
+    ret = InitRealImeData(connection, isFirstStart, { imeToStart->bundleName, imeToStart->extName }, ime);
     if (ret != ErrorCode::NO_ERROR) {
         return ret;
     }
     isImeStarted_.Clear(false);
     auto want = GetWant(imeToStart);
-    IMSA_HILOGI("connect %{public}s start!", imeToStart->imeId.c_str());
     ret = AAFwk::AbilityManagerClient::GetInstance()->ConnectExtensionAbility(want, connection, userId_);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("connect %{public}s failed, ret: %{public}d!", imeToStart->imeId.c_str(), ret);
         InputMethodSysEvent::GetInstance().InputmethodFaultReporter(
             ErrorCode::ERROR_IMSA_IME_CONNECT_FAILED, imeToStart->imeId, "failed to start ability.");
+        if (isFirstStart) {
+            RemoveRealImeData();
+        }
         return ErrorCode::ERROR_IMSA_IME_CONNECT_FAILED;
     }
     if (!skipWaitAfterTimeout) {
@@ -2514,10 +2517,11 @@ BlockQueue<SwitchInfo>& PerUserSession::GetSwitchQueue()
     return switchQueue_;
 }
 
-int32_t PerUserSession::InitRealImeData(sptr<AAFwk::IAbilityConnection> &connection,
+int32_t PerUserSession::InitRealImeData(sptr<AAFwk::IAbilityConnection> &connection, bool &isFirstStart,
     const std::pair<std::string, std::string> &ime, const std::shared_ptr<ImeNativeCfg> &imeNativeCfg)
 {
     std::lock_guard<std::mutex> lock(realImeDataLock_);
+    isFirstStart = false;
     if (realImeData_ != nullptr) {
         connection = realImeData_->connection;
         return ErrorCode::NO_ERROR;
@@ -2541,6 +2545,7 @@ int32_t PerUserSession::InitRealImeData(sptr<AAFwk::IAbilityConnection> &connect
     }
     imeData->connection = connection;
     realImeData_ = imeData;
+    isFirstStart = true;
     return ErrorCode::NO_ERROR;
 }
 

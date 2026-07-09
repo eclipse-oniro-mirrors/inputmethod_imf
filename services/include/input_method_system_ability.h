@@ -189,7 +189,7 @@ private:
     int32_t SwitchType(int32_t userId);
     int32_t GenerateClientInfo(int32_t userId, InputClientInfo &clientInfo, const FocusedInfo &focusedInfo = {});
     void RegisterSecurityModeObserver();
-    int32_t CheckInputTypeOption(int32_t userId, InputClientInfo &inputClientInfo);
+    int32_t EnsureImeAvailable(int32_t userId, InputClientInfo &inputClientInfo);
     int32_t IsDefaultImeFromTokenId(int32_t userId, uint32_t tokenId);
     void DealSwitchRequest(int32_t userId);
     bool IsCurrentIme(int32_t userId, uint32_t tokenId);

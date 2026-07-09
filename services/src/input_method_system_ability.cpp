@@ -778,9 +778,12 @@ int32_t InputMethodSystemAbility::StartInputInner(
     }
     auto imeToBind = session->GetReadyImeDataToBind(displayId);
     if (imeToBind == nullptr || imeToBind->IsRealIme()) {
-        ret = CheckInputTypeOption(userId, inputClientInfo);
+        if (imeToBind == nullptr) {
+            InputTypeManager::GetInstance().Set(false);
+        }
+        ret = EnsureImeAvailable(userId, inputClientInfo);
         if (ret != ErrorCode::NO_ERROR) {
-            IMSA_HILOGE("%{public}d failed to CheckInputTypeOption!", userId);
+            IMSA_HILOGE("%{public}d failed to EnsureImeAvailable!", userId);
             return ret;
         }
     }
@@ -797,7 +800,7 @@ std::pair<bool, FocusedInfo> InputMethodSystemAbility::IsFocusedOrBroker(int64_t
     return identityChecker_->CheckBroker(callingTokenId, userId);
 }
 // LCOV_EXCL_START
-int32_t InputMethodSystemAbility::CheckInputTypeOption(int32_t userId, InputClientInfo &inputClientInfo)
+int32_t InputMethodSystemAbility::EnsureImeAvailable(int32_t userId, InputClientInfo &inputClientInfo)
 {
     IMSA_HILOGI("SecurityImeFlag: %{public}d, IsSameTextInput: %{public}d, IsStarted: %{public}d.",
         inputClientInfo.config.inputAttribute.IsSecurityImeFlag(),
