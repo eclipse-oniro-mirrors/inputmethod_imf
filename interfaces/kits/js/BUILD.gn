@@ -51,6 +51,8 @@ ohos_shared_library("extra_config_napi") {
     "ability_runtime:napi_common",
     "c_utils:utils",
     "hilog:libhilog",
+    "napi:ace_napi",
+    "node:node_header_notice",
   ]
 
   public_configs = [ ":extra_config" ]
