@@ -1364,6 +1364,18 @@ ErrCode InputMethodSystemAbility::IsCapacitySupport(int32_t capacity, bool &isSu
     if (capacity == static_cast<int32_t>(CapacityType::SYSTEM_PANEL)) {
         isSupport = ImeInfoInquirer::GetInstance().IsCapacitySupport(SYSTEM_PANEL_CAP_NAME);
     }
+    if (capacity == static_cast<int32_t>(CapacityType::DISABLE_IMMERSIVE_MODE)) {
+        isSupport = ImeInfoInquirer::GetInstance().IsDisableImmersiveMode();
+    }
+    if (capacity == static_cast<int32_t>(CapacityType::SUPPORT_PC_MODE)) {
+        isSupport = ImeInfoInquirer::GetInstance().IsSupportPcMode();
+    }
+    if (capacity == static_cast<int32_t>(CapacityType::DISABLE_PC_MODE_IMMERSIVE_MODE)) {
+        isSupport = ImeInfoInquirer::GetInstance().IsDisablePcModeImmersiveMode();
+    }
+    if (capacity == static_cast<int32_t>(CapacityType::IS_PC_MODE)) {
+        isSupport = ImeInfoInquirer::GetInstance().IsPcMode();
+    }
     return ERR_OK;
 }
 

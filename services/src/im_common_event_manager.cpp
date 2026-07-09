@@ -38,6 +38,7 @@ constexpr const char *EVENT_LARGE_MEMORY_STATUS_CHANGED = "usual.event.memmgr.la
 constexpr const char *EVENT_MEMORY_STATE = "memory_state";
 constexpr const char *EVENT_PARAM_UID = "uid";
 constexpr const char *COMMON_EVENT_NOTIFY_SA_MAKE_IMAGE = "NOTIFY_SA_MAKE_IMAGE";
+constexpr const char *EVENT_HYBRID_MODE_SWITCH = "HYBRID_MODE_SWITCH";
 ImCommonEventManager::ImCommonEventManager()
 {
 }
@@ -80,6 +81,9 @@ bool ImCommonEventManager::SubscribeEvent()
     matchingSkills.AddEvent(CommonEventSupport::COMMON_EVENT_SCREEN_LOCKED);
     matchingSkills.AddEvent(CommonEventSupport::COMMON_EVENT_BUNDLE_RESOURCES_CHANGED);
     matchingSkills.AddEvent(COMMON_EVENT_NOTIFY_SA_MAKE_IMAGE);
+    if (ImeInfoInquirer::GetInstance().IsSupportPcMode()) {
+        matchingSkills.AddEvent(EVENT_HYBRID_MODE_SWITCH);
+    }
 
     EventFwk::CommonEventSubscribeInfo subscriberInfo(matchingSkills);
 
@@ -196,6 +200,8 @@ ImCommonEventManager::EventSubscriber::EventSubscriber(const EventFwk::CommonEve
         [](EventSubscriber *that, const CommonEventData &data) { return that->HandleLargeMemoryStateUpdate(data); };
     EventManagerFunc_[COMMON_EVENT_NOTIFY_SA_MAKE_IMAGE] =
         [](EventSubscriber *that, const CommonEventData &data) { return that->HandleNotifyMakeImage(data); };
+    EventManagerFunc_[EVENT_HYBRID_MODE_SWITCH] =
+        [](EventSubscriber *that, const CommonEventData &data) { return that->OnHybridModeSwitch(data); };
 }
 
 void ImCommonEventManager::EventSubscriber::OnBundleResChanged(const CommonEventData &data)
@@ -283,6 +289,15 @@ void ImCommonEventManager::EventSubscriber::HandleLargeMemoryStateUpdate(const E
         return;
     }
     msgHandle->SendMessage(msg);
+}
+
+void ImCommonEventManager::EventSubscriber::OnHybridModeSwitch(const EventFwk::CommonEventData &data)
+{
+    auto const &want = data.GetWant();
+    auto targetMode = want.GetIntParam("targetMode", static_cast<int32_t>(HybridMode::PHONE_MODE));
+    bool isPcMode = (targetMode == static_cast<int32_t>(HybridMode::PC_MODE));
+    ImeInfoInquirer::GetInstance().SetPcMode(isPcMode);
+    IMSA_HILOGI("OnHybridModeSwitch targetMode: %{public}d, isPcMode: %{public}d", targetMode, isPcMode);
 }
 
 void ImCommonEventManager::EventSubscriber::HandleNotifyMakeImage(const EventFwk::CommonEventData &data)
