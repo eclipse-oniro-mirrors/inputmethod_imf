@@ -65,6 +65,7 @@ config("inputmethod_client_native_public_config") {
 }
 
 ohos_source_set("input_client_proxy") {
+  branch_protector_ret = "pac_ret"
   sanitize = {
     cfi = true
     cfi_cross_dso = true
@@ -86,6 +87,7 @@ ohos_source_set("input_client_proxy") {
 }
 
 ohos_source_set("input_client_stub") {
+  branch_protector_ret = "pac_ret"
   sanitize = {
     cfi = true
     cfi_cross_dso = true
@@ -107,6 +109,7 @@ ohos_source_set("input_client_stub") {
 }
 
 ohos_source_set("input_method_agent_stub") {
+  branch_protector_ret = "pac_ret"
   sanitize = {
     cfi = true
     cfi_cross_dso = true
@@ -131,6 +134,7 @@ ohos_source_set("input_method_agent_stub") {
 }
 
 ohos_source_set("input_method_agent_proxy") {
+  branch_protector_ret = "pac_ret"
   sanitize = {
     cfi = true
     cfi_cross_dso = true
@@ -155,6 +159,7 @@ ohos_source_set("input_method_agent_proxy") {
 }
 
 ohos_source_set("oninputstop_notify_stub") {
+  branch_protector_ret = "pac_ret"
   sanitize = {
     cfi = true
     cfi_cross_dso = true
@@ -173,6 +178,7 @@ ohos_source_set("oninputstop_notify_stub") {
 }
 
 ohos_source_set("oninputstop_notify_proxy") {
+  branch_protector_ret = "pac_ret"
   sanitize = {
     cfi = true
     cfi_cross_dso = true
@@ -394,6 +400,8 @@ ohos_static_library("inputmethod_client_fuzz_static") {
   testonly = true
   branch_protector_ret = "pac_ret"
   sanitize = {
+    cfi = true
+    cfi_cross_dso = true
     boundary_sanitize = true
     integer_overflow = true
     ubsan = true
