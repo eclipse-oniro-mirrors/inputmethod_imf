@@ -122,6 +122,7 @@ public:
     bool IsSysIme(const std::string &bundleName);
     bool GetBundleInfoByBundleName(int32_t userId, const std::string &bundleName, AppExecFwk::BundleInfo &bundleInfo);
     std::string GetSystemPanelAppIdentifier();
+    bool IsSupperFold();
 
 private:
     ImeInfoInquirer() = default;
@@ -179,6 +180,10 @@ private:
     bool isPcMode_{ false };
     std::vector<DynamicStartImeCfgItem> dynamicStartImeList_;
     bool IsSystemSpecialIme(const OHOS::AppExecFwk::ExtensionAbilityInfo &extInfo);
+
+    bool isSupperFold_{ false };
+    std::atomic<bool> isInitSupperFold_{ false };
+    std::mutex initSupperFoldLock_;
 };
 } // namespace MiscServices
 } // namespace OHOS

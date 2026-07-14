@@ -349,7 +349,7 @@ HWTEST_F(JsonOperateTest, testGetResMgr, TestSize.Level1)
 HWTEST_F(JsonOperateTest, IsDynamicStartIme_EmptyDynamicList_ReturnFalse, TestSize.Level0)
 {
     // Preparation: Set empty dynamic start configuration list
-    auto instance = ImeInfoInquirer::GetInstance();
+    auto &instance = ImeInfoInquirer::GetInstance();
     instance.dynamicStartImeList_ = {};
 
     // Execution
@@ -368,7 +368,7 @@ HWTEST_F(JsonOperateTest, IsDynamicStartIme_EmptyDynamicList_ReturnFalse, TestSi
 HWTEST_F(JsonOperateTest, IsDynamicStartIme_NoMatchingParameter_ReturnFalse, TestSize.Level0)
 {
     // Preparation: Configuration list contains one rule
-    auto instance = ImeInfoInquirer::GetInstance();
+    auto &instance = ImeInfoInquirer::GetInstance();
     instance.InitDynamicStartImeCfg();
     std::vector<DynamicStartImeCfgItem> testList = {
         { "ime.dynamic.start", "true" }
@@ -394,7 +394,7 @@ HWTEST_F(JsonOperateTest, IsDynamicStartIme_NoMatchingParameter_ReturnFalse, Tes
 HWTEST_F(JsonOperateTest, IsDynamicStartIme_OneMatchingParameter_ReturnTrue, TestSize.Level0)
 {
     // Preparation: Configuration list contains one matching rule
-    auto instance = ImeInfoInquirer::GetInstance();
+    auto &instance = ImeInfoInquirer::GetInstance();
     instance.dynamicStartImeList_ = {
         { "ime.enable.dynamic", "1" }
     };
@@ -418,7 +418,7 @@ HWTEST_F(JsonOperateTest, IsDynamicStartIme_OneMatchingParameter_ReturnTrue, Tes
 HWTEST_F(JsonOperateTest, IsDynamicStartIme_MultiRulesOneMatching_ReturnTrue, TestSize.Level0)
 {
     // Preparation: Configuration list contains multiple rules
-    auto instance = ImeInfoInquirer::GetInstance();
+    auto &instance = ImeInfoInquirer::GetInstance();
     instance.dynamicStartImeList_ = {
         { "ime.condition1", "ok"  }, // No match
         { "ime.condition2", "yes" }  // Match
@@ -444,7 +444,7 @@ HWTEST_F(JsonOperateTest, IsDynamicStartIme_MultiRulesOneMatching_ReturnTrue, Te
 HWTEST_F(JsonOperateTest, IsDynamicStartIme_EmptyValueMatch_ReturnTrue, TestSize.Level0)
 {
     // Preparation: Configuration rule contains empty value
-    auto instance = ImeInfoInquirer::GetInstance();
+    auto &instance = ImeInfoInquirer::GetInstance();
     instance.dynamicStartImeList_ = {
         { "ime.empty.value", "" }
     };

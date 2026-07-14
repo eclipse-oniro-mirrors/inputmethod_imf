@@ -89,6 +89,23 @@ void ImeInfoInquirer::InitDynamicStartImeCfg()
     }
 }
 
+bool ImeInfoInquirer::IsSupperFold()
+{
+    if (isInitSupperFold_.load()) {
+        return isSupperFold_;
+    }
+    std::string product = system::GetParameter("const.window.foldscreen.type", "0,0,0,0");
+    std::string value;
+    size_t pos = product.find(',');
+    if (pos != std::string::npos) {
+        value = product.substr(0, pos);
+    }
+    std::lock_guard<std::mutex> lock(initSupperFoldLock_);
+    isSupperFold_ = value == "5";
+    isInitSupperFold_.store(true);
+    return isSupperFold_;
+}
+
 bool ImeInfoInquirer::IsEnableAppAgent()
 {
     return systemConfig_.enableAppAgentFeature;

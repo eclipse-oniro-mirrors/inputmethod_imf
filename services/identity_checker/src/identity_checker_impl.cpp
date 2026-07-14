@@ -91,7 +91,14 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIAbility(int64_t cal
     if (iter == focusWindowInfos.end()) {
         return { false, {} };
     }
-    return GenerateFocusCheckRet(*iter, focusWindowInfos);
+    std::pair<bool, FocusedInfo> rectInfo = GenerateFocusCheckRet(*iter, focusWindowInfos);
+    if (rectInfo.second.displayId == 0 && ImeInfoInquirer::GetInstance().IsSupperFold()) {
+        auto callingDisplayId = WindowAdapter::GetDisplayIdByWindowId(rectInfo.second.windowId, userId);
+        rectInfo.second.displayId = callingDisplayId;
+        rectInfo.second.keyboardDisplayId = callingDisplayId;
+        IMSA_HILOGD("IsSupperFold, displayId:%{public}" PRIu64 "", callingDisplayId);
+    }
+    return rectInfo;
 }
 // LCOV_EXCL_START
 std::pair<bool, FocusedInfo> IdentityCheckerImpl::GenerateFocusCheckRet(
