@@ -1305,11 +1305,11 @@ HWTEST_F(InputMethodPrivateMemberTest, BranchCoverage001, TestSize.Level0)
 
     clientInfo.config.inputAttribute.inputPattern = 7;
     clientInfo.isNotifyInputStart = false;
-    ret2 = service_->CheckInputTypeOption(INVALID_USER_ID, clientInfo);
+    ret2 = service_->EnsureImeAvailable(INVALID_USER_ID, clientInfo);
     EXPECT_NE(ret2, ErrorCode::NO_ERROR);
 
     clientInfo.isNotifyInputStart = true;
-    ret2 = service_->CheckInputTypeOption(INVALID_USER_ID, clientInfo);
+    ret2 = service_->EnsureImeAvailable(INVALID_USER_ID, clientInfo);
     EXPECT_EQ(ret2, ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND);
 
     const std::string bundleName;
@@ -1536,13 +1536,14 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_TestPerUserSessionOnScreenUnlocked, Te
     userSession->OnScreenUnlock();
 
     sptr<AAFwk::IAbilityConnection> connection = nullptr;
-    userSession->InitRealImeData(connection, { "", "" });
+    bool isFirstStart = false;
+    userSession->InitRealImeData(connection, isFirstStart, { "", "" });
     userSession->OnScreenUnlock();
 
     auto imeCfg = ImeEnabledInfoManager::GetInstance().GetCurrentImeCfg(MAIN_USER_ID);
     EXPECT_NE(imeCfg, nullptr);
     userSession->realImeData_ = nullptr;
-    userSession->InitRealImeData(connection, { imeCfg->bundleName, imeCfg->extName });
+    userSession->InitRealImeData(connection, isFirstStart, { imeCfg->bundleName, imeCfg->extName });
     userSession->OnScreenUnlock();
 }
 
@@ -1849,14 +1850,14 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SpecialSendPrivateData, TestSize.Level
 }
 
 /**
- * @tc.name: SA_CheckInputTypeOption
- * @tc.desc: SA_CheckInputTypeOption
+ * @tc.name: SA_EnsureImeAvailable
+ * @tc.desc: SA_EnsureImeAvailable
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F(InputMethodPrivateMemberTest, SA_CheckInputTypeOption, TestSize.Level0)
+HWTEST_F(InputMethodPrivateMemberTest, SA_EnsureImeAvailable, TestSize.Level0)
 {
-    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_CheckInputTypeOption start.");
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_EnsureImeAvailable start.");
     InputMethodSystemAbility systemAbility;
     auto session = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     std::string bundleName = "bundleName";
@@ -1870,7 +1871,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_CheckInputTypeOption, TestSize.Level0)
     // same textField, input type started
     info.isNotifyInputStart = false;
     InputTypeManager::GetInstance().isStarted_ = true;
-    auto ret = systemAbility.CheckInputTypeOption(MAIN_USER_ID, info);
+    auto ret = systemAbility.EnsureImeAvailable(MAIN_USER_ID, info);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 
     std::string bundleName1 = "bundleName1";
@@ -1886,17 +1887,17 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_CheckInputTypeOption, TestSize.Level0)
 
     info.isNotifyInputStart = true;
     InputTypeManager::GetInstance().isStarted_ = true;
-    ret = systemAbility.CheckInputTypeOption(MAIN_USER_ID, info);
+    ret = systemAbility.EnsureImeAvailable(MAIN_USER_ID, info);
     EXPECT_NE(ret, ErrorCode::NO_ERROR);
 
     info.isNotifyInputStart = false;
     InputTypeManager::GetInstance().isStarted_ = false;
-    ret = systemAbility.CheckInputTypeOption(MAIN_USER_ID, info);
+    ret = systemAbility.EnsureImeAvailable(MAIN_USER_ID, info);
     EXPECT_NE(ret, ErrorCode::NO_ERROR);
 
     info.isNotifyInputStart = true;
     InputTypeManager::GetInstance().isStarted_ = false;
-    ret = systemAbility.CheckInputTypeOption(MAIN_USER_ID, info);
+    ret = systemAbility.EnsureImeAvailable(MAIN_USER_ID, info);
     EXPECT_NE(ret, ErrorCode::NO_ERROR);
 }
 
