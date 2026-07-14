@@ -92,6 +92,10 @@ enum class ExtendAction {
 enum class CapacityType: int32_t {
     IMMERSIVE_EFFECT,
     SYSTEM_PANEL,
+    DISABLE_IMMERSIVE_MODE,
+    SUPPORT_PC_MODE,
+    DISABLE_PC_MODE_IMMERSIVE_MODE,
+    IS_PC_MODE,
     END,
 };
 

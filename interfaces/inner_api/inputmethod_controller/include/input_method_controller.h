@@ -27,6 +27,7 @@
 #include "block_queue.h"
 #include "controller_listener.h"
 #include "element_name.h"
+#include "want.h"
 #include "event_handler.h"
 #include "global.h"
 #include "iinput_method_agent.h"
@@ -1144,8 +1145,13 @@ private:
     int32_t ShowSoftKeyboardInner(uint64_t displayId, ClientType type);
     void ReportClientShow(int32_t eventCode, int32_t errCode, ClientType type);
     void GetWindowScaleCoordinate(uint32_t windowId, CursorInfo &cursorInfo);
-    void CalibrateImmersiveParam(InputAttribute &inputAttribute);
+    void CalibrateImmersiveParam(InputAttribute &inputAttribute, bool shouldOverrideImmersiveMode = false);
     void CalibrateInputPatternParam(InputAttribute &inputAttribute);
+    bool IsDisableImmersiveMode();
+    bool IsPcMode();
+    bool IsSupportPcMode();
+    bool IsDisablePcModeImmersiveMode();
+    bool ShouldOverrideImmersiveMode(const TextConfig &textConfig);
     void ClearAgentInfo();
     int32_t SendRequestToAllAgents(std::function<int32_t(std::shared_ptr<IInputMethodAgent>)> task);
     int32_t SendRequestToImeMirrorAgent(std::function<int32_t(std::shared_ptr<IInputMethodAgent>)> task);
@@ -1228,6 +1234,22 @@ private:
 
     std::mutex textConfigLock_;
     TextConfig textConfig_;
+    
+    struct ImmersiveCache {
+        std::atomic_bool isSupportPcModeCached{ false };
+        std::atomic_bool isSupportPcModeQueried{ false };
+        std::atomic_bool isDisablePcModeImmersiveModeCached{ false };
+        std::atomic_bool isDisablePcModeImmersiveModeQueried{ false };
+        std::atomic_bool isDisableImmersiveModeCached{ false };
+        std::atomic_bool isDisableImmersiveModeQueried{ false };
+        void ResetQueried()
+        {
+            isDisableImmersiveModeQueried.store(false);
+            isSupportPcModeQueried.store(false);
+            isDisablePcModeImmersiveModeQueried.store(false);
+        }
+    };
+    ImmersiveCache immersiveCache_;
 
     struct KeyEventInfo {
         std::chrono::system_clock::time_point timestamp{};

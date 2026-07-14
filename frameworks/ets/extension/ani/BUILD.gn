@@ -81,6 +81,8 @@ ohos_shared_library("inputmethod_extension_ani") {
     "c_utils:utils",
     "eventhandler:libeventhandler",
     "hilog:libhilog",
+    "napi:ace_napi",
+    "node:node_header_notice",
     "input:libmmi-client",
     "ipc:ipc_napi",
     "ipc:ipc_single",

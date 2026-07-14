@@ -461,7 +461,8 @@ void TddUtil::InitCurrentImePermissionInfo()
     }
     currentBundleNameMock_ = property->name;
     sptr<AAFwk::IAbilityConnection> connection = nullptr;
-    session->InitRealImeData(connection, { property->name, property->id });
+    bool isFirstStart = false;
+    session->InitRealImeData(connection, isFirstStart, { property->name, property->id });
 }
 
 void TddUtil::EnabledAllIme()

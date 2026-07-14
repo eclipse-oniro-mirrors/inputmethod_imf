@@ -399,6 +399,7 @@ int32_t InputMethodSystemAbility::Init()
         return -1;
     }
     state_ = ServiceRunningState::STATE_RUNNING;
+    ResetDelayUnloadTask(static_cast<uint32_t>(IInputMethodSystemAbilityIpcCode::COMMAND_RELEASE_INPUT));
     IMSA_HILOGI("publish success");
 #else
     bool isSuccess = Publish(this);
@@ -788,9 +789,12 @@ int32_t InputMethodSystemAbility::StartInputInner(
     }
     auto imeToBind = session->GetReadyImeDataToBind(displayId);
     if (imeToBind == nullptr || imeToBind->IsRealIme()) {
-        ret = CheckInputTypeOption(userId, inputClientInfo);
+        if (imeToBind == nullptr) {
+            InputTypeManager::GetInstance().Set(false);
+        }
+        ret = EnsureImeAvailable(userId, inputClientInfo);
         if (ret != ErrorCode::NO_ERROR) {
-            IMSA_HILOGE("%{public}d failed to CheckInputTypeOption!", userId);
+            IMSA_HILOGE("%{public}d failed to EnsureImeAvailable!", userId);
             return ret;
         }
     }
@@ -807,7 +811,7 @@ std::pair<bool, FocusedInfo> InputMethodSystemAbility::IsFocusedOrBroker(int64_t
     return identityChecker_->CheckBroker(callingTokenId, userId);
 }
 // LCOV_EXCL_START
-int32_t InputMethodSystemAbility::CheckInputTypeOption(int32_t userId, InputClientInfo &inputClientInfo)
+int32_t InputMethodSystemAbility::EnsureImeAvailable(int32_t userId, InputClientInfo &inputClientInfo)
 {
     IMSA_HILOGI("SecurityImeFlag: %{public}d, IsSameTextInput: %{public}d, IsStarted: %{public}d.",
         inputClientInfo.config.inputAttribute.IsSecurityImeFlag(),
@@ -1373,6 +1377,18 @@ ErrCode InputMethodSystemAbility::IsCapacitySupport(int32_t capacity, bool &isSu
     }
     if (capacity == static_cast<int32_t>(CapacityType::SYSTEM_PANEL)) {
         isSupport = ImeInfoInquirer::GetInstance().IsCapacitySupport(SYSTEM_PANEL_CAP_NAME);
+    }
+    if (capacity == static_cast<int32_t>(CapacityType::DISABLE_IMMERSIVE_MODE)) {
+        isSupport = ImeInfoInquirer::GetInstance().IsDisableImmersiveMode();
+    }
+    if (capacity == static_cast<int32_t>(CapacityType::SUPPORT_PC_MODE)) {
+        isSupport = ImeInfoInquirer::GetInstance().IsSupportPcMode();
+    }
+    if (capacity == static_cast<int32_t>(CapacityType::DISABLE_PC_MODE_IMMERSIVE_MODE)) {
+        isSupport = ImeInfoInquirer::GetInstance().IsDisablePcModeImmersiveMode();
+    }
+    if (capacity == static_cast<int32_t>(CapacityType::IS_PC_MODE)) {
+        isSupport = ImeInfoInquirer::GetInstance().IsPcMode();
     }
     return ERR_OK;
 }
