@@ -44,6 +44,13 @@ ohos_shared_library("cj_inputmethod_ffi") {
     integer_overflow = true
     ubsan = true
   }
+  cflags_cc = [
+    "-fvisibility=hidden",
+    "-fvisibility-inlines-hidden",
+    "-fdata-sections",
+    "-ffunction-sections",
+    "-Os",
+  ]
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_method_utils.cpp",
     "src/cj_input_method_controller.cpp",

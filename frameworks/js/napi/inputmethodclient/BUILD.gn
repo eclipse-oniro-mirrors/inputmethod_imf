@@ -55,6 +55,14 @@ ohos_shared_library("inputmethod") {
     "js_utils.cpp",
   ]
 
+  cflags_cc = [
+    "-fvisibility=hidden",
+    "-fvisibility-inlines-hidden",
+    "-fdata-sections",
+    "-ffunction-sections",
+    "-Os",
+  ]
+
   configs = [ ":imf_config" ]
 
   deps = [

@@ -70,6 +70,14 @@ ohos_shared_library("inputmethodengine") {
     "panel_listener_impl.cpp",
   ]
 
+  cflags_cc = [
+    "-fvisibility=hidden",
+    "-fvisibility-inlines-hidden",
+    "-fdata-sections",
+    "-ffunction-sections",
+    "-Os",
+  ]
+
   configs = [ ":inputmethodengine_native_config" ]
 
   deps = [

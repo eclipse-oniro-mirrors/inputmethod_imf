@@ -38,6 +38,8 @@ ohos_shared_library("inputmethod_extension_ani") {
     ubsan = true
   }
   cflags_cc = [
+    "-fvisibility=hidden",
+    "-fvisibility-inlines-hidden",
     "-fdata-sections",
     "-ffunction-sections",
     "-Os",

@@ -43,6 +43,8 @@ ohos_shared_library("cj_inputmethod_extension_ffi") {
     ubsan = true
   }
   cflags_cc = [
+    "-fvisibility=hidden",
+    "-fvisibility-inlines-hidden",
     "-fdata-sections",
     "-ffunction-sections",
     "-Os",
