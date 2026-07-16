@@ -34,6 +34,11 @@ ohos_shared_library("extra_config_napi") {
     integer_overflow = true
     ubsan = true
   }
+  cflags_cc = [
+    "-fdata-sections",
+    "-ffunction-sections",
+    "-Os",
+  ]
   sources = [
     "${inputmethod_path}/frameworks/js/napi/inputmethodclient/js_utils.cpp",
     "${inputmethod_path}/frameworks/kits/extra_config/extra_config_napi.cpp",
@@ -81,6 +86,11 @@ ohos_shared_library("extra_config_ani") {
     integer_overflow = true
     ubsan = true
   }
+  cflags_cc = [
+    "-fdata-sections",
+    "-ffunction-sections",
+    "-Os",
+  ]
   sources = [
     "${inputmethod_path}/frameworks/kits/extra_config/extra_config_ani.cpp",
   ]

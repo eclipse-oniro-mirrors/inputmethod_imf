@@ -39,6 +39,13 @@ ohos_shared_library("inputmethodsystempanelmanager") {
     integer_overflow = true
     ubsan = true
   }
+  cflags_cc = [
+    "-fvisibility=hidden",
+    "-fvisibility-inlines-hidden",
+    "-fdata-sections",
+    "-ffunction-sections",
+    "-Os",
+  ]
   sources = [
     "${inputmethod_path}/frameworks/js/napi/inputmethodclient/async_call.cpp",
     "${inputmethod_path}/frameworks/js/napi/inputmethodclient/js_utils.cpp",
