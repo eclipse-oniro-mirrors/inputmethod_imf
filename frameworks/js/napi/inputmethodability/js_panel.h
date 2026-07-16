@@ -28,36 +28,10 @@
 #include "napi/native_node_api.h"
 #include "native_engine/native_engine.h"
 #include "native_engine/native_value.h"
+#include "panel_deal_queue.h"
 
 namespace OHOS {
 namespace MiscServices {
-
-enum class JsEvent : uint32_t {
-    RESIZE = 0,
-    MOVE_TO,
-    ADJUST_PANEL_RECT,
-    UPDATE_REGION,
-    SHOW,
-    HIDE,
-    SET_UI_CONTENT,
-    GET_DISPLAYID,
-    SET_IMMERSIVE_MODE,
-    GET_IMMERSIVE_MODE,
-    SET_IMMERSIVE_EFFECT,
-    SET_SYSTEM_PANEL_BUTTON_COLOR,
-    GET_SYSTEM_PANEL_CURRENT_INSETS,
-    SET_SHADOW,
-    EVENT_END,
-};
-
-struct JsEventInfo {
-    std::chrono::system_clock::time_point timestamp{};
-    JsEvent event{ JsEvent::EVENT_END };
-    bool operator==(const JsEventInfo &info) const
-    {
-        return (timestamp == info.timestamp && event == info.event);
-    }
-};
 
 struct JsPanelRect {
     static napi_value Write(napi_env env, const LayoutParams &layoutParams);
@@ -154,7 +128,6 @@ private:
     };
     static napi_value JsNew(napi_env env, napi_callback_info info);
     static std::shared_ptr<InputMethodPanel> UnwrapPanel(napi_env env, napi_value thisVar);
-    static void PrintEditorQueueInfoIfTimeout(int64_t start, const JsEventInfo &currentInfo);
 
     static bool IsEnhancedAdjust(napi_env env, napi_value *argv, size_t argc);
     static bool IsPanelFlagValid(napi_env env, PanelFlag panelFlag, bool isEnhancedCalled);
@@ -176,8 +149,6 @@ private:
 
     static std::mutex panelConstructorMutex_;
     static thread_local napi_ref panelConstructorRef_;
-
-    static FFRTBlockQueue<JsEventInfo> jsQueue_;
 };
 } // namespace MiscServices
 } // namespace OHOS

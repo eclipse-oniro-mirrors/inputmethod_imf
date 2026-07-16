@@ -23,6 +23,7 @@
 
 #include "calling_window_info.h"
 #include "display_manager.h"
+#include "input_method_utils.h"
 #include "input_status_info.h"
 #include "input_window_info.h"
 #include "native_engine/native_engine.h"
@@ -59,15 +60,15 @@ public:
     int32_t StartMoving();
     int32_t GetDisplayId(uint64_t &displayId);
     int32_t AdjustKeyboard();
-    int32_t AdjustPanelRect(const PanelFlag panelFlag, const LayoutParams &layoutParams, bool needUpdateRegion = true,
-        bool needConfig = true);
-    int32_t AdjustPanelRect(PanelFlag panelFlag, EnhancedLayoutParams params, HotAreas hotAreas);
+    int32_t AdjustPanelRect(const PanelFlag panelFlag, const LayoutParams &layoutParams, bool needUpdateRegion,
+        bool needConfig, Trigger trigger);
+    int32_t AdjustPanelRect(PanelFlag panelFlag, EnhancedLayoutParams params, HotAreas hotAreas, Trigger trigger);
     int32_t UpdateRegion(std::vector<Rosen::Rect> region);
     std::tuple<std::vector<std::string>, std::vector<std::string>> GetScreenStatus(const PanelFlag panelFlag);
     int32_t ChangePanelFlag(PanelFlag panelFlag);
     PanelType GetPanelType();
     PanelFlag GetPanelFlag();
-    int32_t ShowPanel(uint32_t windowId = 0);
+    int32_t ShowPanel(Trigger trigger, uint32_t windowId = 0);
     int32_t HidePanel();
     int32_t SizeChange(const WindowSize &size);
     WindowSize GetKeyboardSize();
@@ -211,8 +212,8 @@ private:
     uint64_t GetCurDisplayId();
     bool IsNeedConfig(bool ignoreIsMainDisplay = false);
     int32_t IsValidParam(const ImmersiveEffect &effect, const Rosen::KeyboardLayoutParams &layoutParams);
-    int32_t AdjustLayout(const Rosen::KeyboardLayoutParams &param);
-    int32_t AdjustLayout(const Rosen::KeyboardLayoutParams &param, const ImmersiveEffect &effect);
+    int32_t AdjustLayout(const Rosen::KeyboardLayoutParams &param, Trigger trigger);
+    int32_t AdjustLayout(const Rosen::KeyboardLayoutParams &param, const ImmersiveEffect &effect, Trigger trigger);
     int32_t FullScreenPrepare(Rosen::KeyboardLayoutParams &param, const ImmersiveEffect &effect);
     int32_t NormalImePrepare(Rosen::KeyboardLayoutParams &param, const ImmersiveEffect &effect);
     int32_t PrepareAdjustLayout(Rosen::KeyboardLayoutParams &param, const ImmersiveEffect &effect);
@@ -245,11 +246,12 @@ private:
     bool IsNeedNotify(PanelFlag panelFlag);
     void WaitSetUIContent();
     int32_t ShowKeyboardToWms(uint32_t windowId);
-    bool IsValidParamWithConfig();
     void UpdatePanelFlag(PanelFlag newPanelFlag);
     void NotifySoftKeyBoardInfoChanged(PanelFlag panelFlag, InputWindowStatus status);
     int32_t SetHotAreasOnAdjust(HotAreas hotAreas);
     int32_t UpdatePanelFLagToWindow(PanelFlag panelFlag);
+    bool NeedAdjustPanelRect();
+    void AddAdjustPanelRect();
 
     sptr<OHOS::Rosen::Window> window_ = nullptr;
     sptr<OHOS::Rosen::WindowOption> winOption_ = nullptr;
@@ -319,6 +321,15 @@ private:
 
     std::mutex bindImeInfoLock_;
     BoundImeInfo bindImeInfo_;
+
+    std::mutex adjustLayoutMutex_;
+    std::chrono::steady_clock::time_point adjustLayoutTime_;
+    std::atomic<bool> hasImfAdjust_ { false };
+    std::atomic<bool> hasJsAdjust_ { false };
+
+    std::atomic<bool> parseAdjustSuccess_ { true };
+
+    friend class JsPanel;
 };
 } // namespace MiscServices
 } // namespace OHOS
