@@ -806,6 +806,7 @@ ohos_unittest("NumKeyAppsManagerTest") {
 
   external_deps = [
     "ability_base:want",
+    "ability_runtime:dataobs_manager",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "cJSON:cjson",
@@ -1274,6 +1275,7 @@ ohos_unittest("JsonOperateTest") {
   ]
 
   external_deps = [
+    "ability_runtime:dataobs_manager",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "cJSON:cjson",
@@ -1873,6 +1875,7 @@ ohos_unittest("ImeEnabledInfoManagerTest") {
 
   external_deps = [
     "ability_base:want",
+    "ability_runtime:dataobs_manager",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "cJSON:cjson",
