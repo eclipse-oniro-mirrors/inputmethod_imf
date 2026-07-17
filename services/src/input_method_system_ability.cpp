@@ -741,7 +741,7 @@ ErrCode InputMethodSystemAbility::StartInput(const InputClientInfoInner &inputCl
                         .SetErrCode(ret)
                         .Build();
     ImsaHiSysEventReporter::GetInstance().ReportEvent(ImfEventType::CLIENT_ATTACH, *evenInfo);
-    IMSA_HILOGD("HiSysEvent report end!");
+    IMSA_HILOGD("HiSysEvent report end, errCode: %{public}d", ret);
     return ret;
 }
 
@@ -3275,6 +3275,7 @@ ErrCode InputMethodSystemAbility::ShowCurrentInput(uint64_t displayId, uint32_t 
     auto userId = GetCallingUserId();
     auto imeInfo = GetCurrentImeInfoForHiSysEvent(userId);
     auto ret = ShowCurrentInputInner(displayId);
+    IMSA_HILOGD("HiSysEvent report start!");
     auto evenInfo = HiSysOriginalInfo::Builder()
                         .SetPeerName(name)
                         .SetPeerPid(pid)
@@ -3286,6 +3287,7 @@ ErrCode InputMethodSystemAbility::ShowCurrentInput(uint64_t displayId, uint32_t 
                         .SetErrCode(ret)
                         .Build();
     ImsaHiSysEventReporter::GetInstance().ReportEvent(ImfEventType::CLIENT_SHOW, *evenInfo);
+    IMSA_HILOGD("HiSysEvent report end, errCode: %{public}d", ret);
     return ret;
 }
 
@@ -3296,6 +3298,7 @@ ErrCode InputMethodSystemAbility::ShowCurrentInput(uint32_t type)
     auto userId = GetCallingUserId();
     auto imeInfo = GetCurrentImeInfoForHiSysEvent(userId);
     auto ret = ShowCurrentInputInner();
+    IMSA_HILOGD("HiSysEvent report start!");
     auto evenInfo =
         HiSysOriginalInfo::Builder()
             .SetPeerName(name)
@@ -3307,6 +3310,7 @@ ErrCode InputMethodSystemAbility::ShowCurrentInput(uint32_t type)
             .SetErrCode(ret)
             .Build();
     ImsaHiSysEventReporter::GetInstance().ReportEvent(ImfEventType::CLIENT_SHOW, *evenInfo);
+    IMSA_HILOGD("HiSysEvent report end, errCode: %{public}d", ret);
     return ret;
 }
 
@@ -3318,6 +3322,7 @@ ErrCode InputMethodSystemAbility::ShowInput(
     auto userId = GetCallingUserId();
     auto imeInfo = GetCurrentImeInfoForHiSysEvent(userId);
     auto ret = ShowInputInner(client, windowId, requestKeyboardReason);
+    IMSA_HILOGD("HiSysEvent report start!");
     auto evenInfo = HiSysOriginalInfo::Builder()
                         .SetPeerName(name)
                         .SetPeerPid(pid)
@@ -3328,6 +3333,7 @@ ErrCode InputMethodSystemAbility::ShowInput(
                         .SetErrCode(ret)
                         .Build();
     ImsaHiSysEventReporter::GetInstance().ReportEvent(ImfEventType::CLIENT_SHOW, *evenInfo);
+    IMSA_HILOGD("HiSysEvent report end, errCode: %{public}d", ret);
     return ret;
 }
 

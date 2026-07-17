@@ -2226,7 +2226,7 @@ bool PerUserSession::IsCurrentImeByPid(int32_t pid)
         IMSA_HILOGE("ime not started!");
         return false;
     }
-    IMSA_HILOGD("userId: %{public}d, pid: %{public}d, current pid: %{public}d.", userId_, pid, imeData->pid);
+    IMSA_HILOGW("userId: %{public}d, pid: %{public}d, current pid: %{public}d.", userId_, pid, imeData->pid);
     return imeData->pid == pid;
 }
 
