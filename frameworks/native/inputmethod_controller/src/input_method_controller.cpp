@@ -537,14 +537,13 @@ int32_t InputMethodController::AttachExec(sptr<OnTextChangedListener> listener, 
     int32_t ret = StartInput(clientInfo_, agents, imeInfos);
     if (ret != ErrorCode::NO_ERROR) {
         auto evenInfo = HiSysOriginalInfo::Builder()
-                            .SetErrCode(ret)
                             .SetInputPattern(textConfig.inputAttribute.inputPattern)
                             .SetIsShowKeyboard(attachOptions.isShowKeyboard)
-                            .SetClientType(type)
-                            .Build();
+                            .SetClientType(type).SetErrCode(ret).Build();
         ImcHiSysEventReporter::GetInstance().ReportEvent(ImfEventType::CLIENT_ATTACH, *evenInfo);
         SetTextListener(nullptr);
         NotifyAttachFailure(ret);
+        IMSA_HILOGI("bind imf failed: %{public}d.", ret);
         return ret;
     }
     clientInfo_.state = ClientState::ACTIVE;
@@ -2268,22 +2267,29 @@ int32_t InputMethodController::ShowSoftKeyboard(uint64_t displayId, ClientType t
 // LCOV_EXCL_START
 void InputMethodController::ReportClientShow(int32_t eventCode, int32_t errCode, ClientType type)
 {
-    auto evenInfo =
-        HiSysOriginalInfo::Builder().SetClientType(type).SetEventCode(eventCode).SetErrCode(errCode).Build();
+    IMSA_HILOGD("HiSysEvent report start!");
+    auto evenInfo = HiSysOriginalInfo::Builder()
+                        .SetClientType(type)
+                        .SetEventCode(eventCode)
+                        .SetErrCode(errCode)
+                        .Build();
     ImcHiSysEventReporter::GetInstance().ReportEvent(ImfEventType::CLIENT_SHOW, *evenInfo);
+    IMSA_HILOGD("HiSysEvent report end, errCode: %{public}d", errCode);
 }
 // LCOV_EXCL_STOP
 void InputMethodController::ReportBaseTextOperation(int32_t eventCode, int32_t errCode)
 {
+    IMSA_HILOGD("HiSysEvent report start!");
     auto imeInfo = GetBindImeInfo();
     auto evenInfo = HiSysOriginalInfo::Builder()
                         .SetEventCode(eventCode)
-                        .SetErrCode(errCode)
                         .SetPeerName(imeInfo.second)
                         .SetPeerPid(imeInfo.first)
                         .SetClientType(clientInfo_.type)
+                        .SetErrCode(errCode)
                         .Build();
     ImcHiSysEventReporter::GetInstance().ReportEvent(ImfEventType::BASE_TEXT_OPERATOR, *evenInfo);
+    IMSA_HILOGD("HiSysEvent report end, errCode: %{public}d", errCode);
 }
 
 void InputMethodController::UpdateTextPreviewState(bool isSupport)
