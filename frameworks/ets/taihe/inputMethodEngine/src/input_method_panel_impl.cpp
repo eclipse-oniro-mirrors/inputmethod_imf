@@ -268,7 +268,7 @@ void PanelImpl::AdjustPanelRect(PanelFlag_t flag, PanelRect_t const& rect)
         if (self == nullptr || self->inputMethodPanel_ == nullptr) {
             return;
         }
-        int32_t ret = self->inputMethodPanel_->AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+        int32_t ret = self->inputMethodPanel_->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
         self->jobQueue_.Pop();
         self->HandleAdjustPanelRectResult(ret);
     };
@@ -292,7 +292,7 @@ void PanelImpl::AdjustPanelRectEnhanced(PanelFlag_t flag, EnhancedPanelRect_t co
             return;
         }
         int32_t ret = self->inputMethodPanel_->AdjustPanelRect(panelFlag, enhancedLayoutParams, hotAreas,
-            Trigger::IME_APP);
+            false);
         self->jobQueue_.Pop();
         self->HandleAdjustPanelRectResult(ret);
     };
@@ -313,7 +313,7 @@ void PanelImpl::UpdatePanelRect(PanelFlag_t flag, PanelRect_t const& rect)
         return;
     }
     int32_t ret = inputMethodPanel_->AdjustPanelRect(static_cast<PanelFlag>(flag.get_value()), layoutParams, true,
-        true, Trigger::IME_APP);
+        true, false);
     jobQueue_.Pop();
     HandleAdjustPanelRectResult(ret);
 }
@@ -327,7 +327,7 @@ void PanelImpl::UpdatePanelRectEnhanced(PanelFlag_t flag, EnhancedPanelRect_t co
         return;
     }
     int32_t ret = inputMethodPanel_->AdjustPanelRect(static_cast<PanelFlag>(flag.get_value()), enhancedLayoutParams,
-        hotAreas, Trigger::IME_APP);
+        hotAreas, false);
     jobQueue_.Pop();
     HandleAdjustPanelRectResult(ret);
 }

@@ -187,13 +187,13 @@ int32_t InputMethodPanel::PrepareAdjustLayout(Rosen::KeyboardLayoutParams &param
     return ErrorCode::NO_ERROR;
 }
 
-int32_t InputMethodPanel::AdjustLayout(const Rosen::KeyboardLayoutParams &param, Trigger trigger)
+int32_t InputMethodPanel::AdjustLayout(const Rosen::KeyboardLayoutParams &param, bool isColdStartRequest)
 {
-    return AdjustLayout(param, LoadImmersiveEffect(), trigger);
+    return AdjustLayout(param, LoadImmersiveEffect(), isColdStartRequest);
 }
 
 int32_t InputMethodPanel::AdjustLayout(const Rosen::KeyboardLayoutParams &param, const ImmersiveEffect &effect,
-    Trigger trigger)
+    bool isColdStartRequest)
 {
     if (window_ == nullptr) {
         IMSA_HILOGE("window is nullptr!");
@@ -214,19 +214,15 @@ int32_t InputMethodPanel::AdjustLayout(const Rosen::KeyboardLayoutParams &param,
     {
         std::lock_guard<std::mutex> lock(adjustLayoutMutex_);
         auto lastTime = adjustLayoutTime_;
-        if (trigger == Trigger::IMF) {
+        if (isColdStartRequest) {
             hasImfAdjust_ = true;
-            bool lastJsAdjust = hasJsAdjust_.load();
-            hasJsAdjust_ = false;
-            if (lastJsAdjust) {
+            if (hasJsAdjust_.exchange(false)) {
                 return ErrorCode::NO_ERROR;
             }
         } else {
             hasJsAdjust_ = true;
-            bool lastImfAdjust = hasImfAdjust_.load();
-            hasImfAdjust_ = false;
-            if (lastImfAdjust &&
-                std::chrono::duration_cast<std::chrono::milliseconds>(adjustLayoutTime_ - lastTime).count() < 1) {
+            if (hasImfAdjust_.exchange(false) &&
+                adjustLayoutTime_ - lastTime < std::chrono::milliseconds(1)) {
                 usleep(WAIT_IMF_ADJUST);
             }
         }
@@ -292,7 +288,7 @@ int32_t InputMethodPanel::SetPanelProperties()
     }
     auto params = GetKeyboardLayoutParams();
     params.gravity_ = gravity;
-    auto ret = AdjustLayout(params, Trigger::IME_APP);
+    auto ret = AdjustLayout(params, false);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("SetWindowGravity failed, ret is %{public}d, start destroy window!", ret);
         return ErrorCode::ERROR_OPERATE_PANEL;
@@ -415,7 +411,7 @@ int32_t InputMethodPanel::ResizeEnhancedPanel(uint32_t width, uint32_t height)
         return ret;
     }
     auto hotAreas = GetHotAreas();
-    ret = AdjustPanelRect(panelFlag_, layoutParam, hotAreas, Trigger::IME_APP);
+    ret = AdjustPanelRect(panelFlag_, layoutParam, hotAreas, false);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("failed to AdjustPanelRect, ret: %{public}d!", ret);
         return ErrorCode::ERROR_OPERATE_PANEL;
@@ -457,7 +453,7 @@ int32_t InputMethodPanel::ResizePanel(uint32_t width, uint32_t height)
         IMSA_HILOGE("failed to GetResizeParams, ret: %{public}d!", ret);
         return ret;
     }
-    ret = AdjustPanelRect(panelFlag_, targetParams, true, true, Trigger::IME_APP);
+    ret = AdjustPanelRect(panelFlag_, targetParams, true, true, false);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("failed to resize, ret: %{public}d!", ret);
         return ErrorCode::ERROR_OPERATE_PANEL;
@@ -503,7 +499,7 @@ int32_t InputMethodPanel::MovePanelRect(int32_t x, int32_t y)
         params.landscapeRect.posY_ = y;
         IMSA_HILOGI("isLandscapeRect now, updata landscape size.");
     }
-    auto ret = AdjustPanelRect(panelFlag_, params, false, true, Trigger::IME_APP);
+    auto ret = AdjustPanelRect(panelFlag_, params, false, true, false);
     IMSA_HILOGI("x/y: %{public}d/%{public}d, ret = %{public}d", x, y, ret);
     return ret == ErrorCode::NO_ERROR ? ErrorCode::NO_ERROR : ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
 }
@@ -519,7 +515,7 @@ int32_t InputMethodPanel::MoveEnhancedPanelRect(int32_t x, int32_t y)
         params.landscape.rect.posY_ = y;
     }
     auto hotAreas = GetHotAreas();
-    auto ret = AdjustPanelRect(panelFlag_, params, hotAreas, Trigger::IME_APP);
+    auto ret = AdjustPanelRect(panelFlag_, params, hotAreas, false);
     IMSA_HILOGI("x/y: %{public}d/%{public}d, ret = %{public}d", x, y, ret);
     return ret == ErrorCode::NO_ERROR ? ErrorCode::NO_ERROR : ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
 }
@@ -605,10 +601,10 @@ int32_t InputMethodPanel::AdjustKeyboard()
             return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
         }
         auto hotAreas = GetHotAreas();
-        ret = AdjustPanelRect(panelFlag_, params, hotAreas, Trigger::IME_APP);
+        ret = AdjustPanelRect(panelFlag_, params, hotAreas, false);
     } else {
         LayoutParams layoutParams = { params.landscape.rect, params.portrait.rect };
-        ret = AdjustPanelRect(panelFlag_, layoutParams, true, true, Trigger::IME_APP);
+        ret = AdjustPanelRect(panelFlag_, layoutParams, true, true, false);
     }
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("failed to adjust keyboard, ret: %{public}d!", ret);
@@ -618,7 +614,7 @@ int32_t InputMethodPanel::AdjustKeyboard()
 }
 
 int32_t InputMethodPanel::AdjustPanelRect(const PanelFlag panelFlag, const LayoutParams &layoutParams,
-    bool needUpdateRegion, bool needConfig, Trigger trigger)
+    bool needUpdateRegion, bool needConfig, bool isColdStartRequest)
 {
 #ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
     HISTOGRAM_BOOLEAN("imekit.inputMethodEngine.panel.adjustPanelRect", 1);
@@ -639,7 +635,7 @@ int32_t InputMethodPanel::AdjustPanelRect(const PanelFlag panelFlag, const Layou
         UpdateLayoutInfo(panelFlag, layoutParams, {}, resultParams, false);
         UpdateResizeParams();
     }
-    auto ret = AdjustLayout(resultParams, trigger);
+    auto ret = AdjustLayout(resultParams, isColdStartRequest);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("AdjustPanelRect error, err: %{public}d!", ret);
         return ErrorCode::ERROR_WINDOW_MANAGER;
@@ -723,7 +719,7 @@ int32_t InputMethodPanel::SetHotAreasOnAdjust(HotAreas hotAreas)
 }
 
 int32_t InputMethodPanel::AdjustPanelRect(PanelFlag panelFlag, EnhancedLayoutParams params, HotAreas hotAreas,
-    Trigger trigger)
+    bool isColdStartRequest)
 {
 #ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
     HISTOGRAM_BOOLEAN("imekit.inputMethodEngine.panel.adjustFullScreen", 1);
@@ -755,7 +751,7 @@ int32_t InputMethodPanel::AdjustPanelRect(PanelFlag panelFlag, EnhancedLayoutPar
         UpdateResizeParams();
     }
     // adjust rect
-    ret = AdjustLayout(wmsParams, trigger);
+    ret = AdjustLayout(wmsParams, isColdStartRequest);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("AdjustKeyboardLayout error, err: %{public}d!", ret);
         return ErrorCode::ERROR_WINDOW_MANAGER;
@@ -1340,7 +1336,7 @@ int32_t InputMethodPanel::ChangePanelFlag(PanelFlag panelFlag)
     }
     auto enhancedParams = GetEnhancedLayoutParams();
     LayoutParams layoutParams = { enhancedParams.landscape.rect, enhancedParams.portrait.rect };
-    auto ret = AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+    auto ret = AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     if (ret == ErrorCode::NO_ERROR) {
         UpdatePanelFlag(panelFlag);
     }
@@ -1464,7 +1460,7 @@ void InputMethodPanel::AddAdjustPanelRect()
             layoutParams.landscapeRect.height_ = 1;
             layoutParams.portraitRect.height_ = 1;
         }
-        auto result = AdjustPanelRect(panelFlag_, layoutParams, true, false, Trigger::IMF);
+        auto result = AdjustPanelRect(panelFlag_, layoutParams, true, false, true);
         IMSA_HILOGI("AdjustPanelRect result: %{public}d", result);
     }
 }
@@ -2165,7 +2161,7 @@ void InputMethodPanel::SetImmersiveEffectToNone()
     currentEffect.gradientHeight = 0;
     currentEffect.gradientMode = GradientMode::NONE;
     currentEffect.fluidLightMode = FluidLightMode::NONE;
-    auto ret = AdjustLayout(layoutParams, currentEffect, Trigger::IME_APP);
+    auto ret = AdjustLayout(layoutParams, currentEffect, false);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("adjust failed, ret: %{public}d", ret);
         return;
@@ -2387,7 +2383,7 @@ int32_t InputMethodPanel::SetImmersiveEffect(const ImmersiveEffect &effect)
         targetEffect =
             { .gradientHeight = 0, .gradientMode = GradientMode::NONE, .fluidLightMode = FluidLightMode::NONE };
     }
-    ret = AdjustLayout(layoutParams, targetEffect, Trigger::IME_APP);
+    ret = AdjustLayout(layoutParams, targetEffect, false);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("AdjustLayout failed, ret:%{public}d", ret);
         return ret;
