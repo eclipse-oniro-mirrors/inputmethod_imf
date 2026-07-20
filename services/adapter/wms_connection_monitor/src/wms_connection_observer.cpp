@@ -21,22 +21,30 @@ namespace MiscServices {
 // LCOV_EXCL_START
 std::mutex WmsConnectionObserver::lock_;
 std::set<int32_t> WmsConnectionObserver::connectedUserId_;
-void WmsConnectionObserver::OnConnected(int32_t userId, int32_t screenId)
+void WmsConnectionObserver::OnConnected(int32_t userId, int32_t screenId, pid_t pid)
 {
     IMSA_HILOGI("WMS connect, userId: %{public}d, screenId: %{public}d.", userId, screenId);
     Add(userId);
     if (changeHandler_ != nullptr) {
-        changeHandler_(true, userId, screenId);
+        changeHandler_(true, userId, screenId, pid);
+    }
+}
+
+void WmsConnectionObserver::OnConnected(int32_t userId, int32_t screenId)
+{
+}
+
+void WmsConnectionObserver::OnDisconnected(int32_t userId, int32_t screenId, pid_t pid)
+{
+    IMSA_HILOGI("WMS disconnect, userId: %{public}d, screenId: %{public}d.", userId, screenId);
+    Remove(userId);
+    if (changeHandler_ != nullptr) {
+        changeHandler_(false, userId, screenId, pid);
     }
 }
 
 void WmsConnectionObserver::OnDisconnected(int32_t userId, int32_t screenId)
 {
-    IMSA_HILOGI("WMS disconnect, userId: %{public}d, screenId: %{public}d.", userId, screenId);
-    Remove(userId);
-    if (changeHandler_ != nullptr) {
-        changeHandler_(false, userId, screenId);
-    }
 }
 
 void WmsConnectionObserver::Add(int32_t userId)

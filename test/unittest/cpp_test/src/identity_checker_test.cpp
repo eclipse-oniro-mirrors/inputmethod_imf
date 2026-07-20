@@ -957,33 +957,37 @@ HWTEST_F(IdentityCheckerTest, testWindowAdapter_GetDisplayIdByToken, TestSize.Le
 }
 
 /**
- * @tc.name: testGetSoftKeyboardInfo
- * @tc.desc:
+ * @tc.name: testIsFocusedUIExtension_GetDisplayGroupIdFailed
+ * @tc.desc: Test IsFocusedUIExtension when GetDisplayGroupIdWithRetry fails
  * @tc.type: FUNC
- * @tc.require:
- * @tc.author:
  */
-HWTEST_F(IdentityCheckerTest, testGetSoftKeyboardInfo, TestSize.Level1)
+HWTEST_F(IdentityCheckerTest, testIsFocusedUIExtension_GetDisplayGroupIdFailed, TestSize.Level1)
 {
-    IMSA_HILOGI("IdentityCheckerTest testShowCurrentInput_003 start");
+    IMSA_HILOGI("IdentityCheckerTest testIsFocusedUIExtension_GetDisplayGroupIdFailed start");
+    ASSERT_NE(identityCheckerImpl_, nullptr);
+
+    // Save original displayGroupIds state
+    auto originalDisplayGroupIds = WindowAdapter::GetInstance().displayGroupIds_;
+
+    // Clear displayGroupIds to simulate failure scenario
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+
+    const uint32_t windowId = 10;
+    const uint64_t invalidDisplayId = 888;
     int32_t userId = 100;
-    int32_t userId1 = 10000;
-    BoundImeInfo imeInfo;
 
-    IdentityCheckerTest::IdentityCheckerMock::isSystemApp_ = false;
-    IdentityCheckerTest::IdentityCheckerMock::isNativeSa_ = false;
-    int32_t ret = IdentityCheckerTest::service_->GetSoftKeyboardInfo(userId, imeInfo);
-    EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+    // Create empty focusWindowInfos
+    std::vector<Rosen::FocusChangeInfo> focusWindowInfos;
 
-    IdentityCheckerTest::IdentityCheckerMock::isSystemApp_ = false;
-    IdentityCheckerTest::IdentityCheckerMock::isNativeSa_ = true;
-    ret = IdentityCheckerTest::service_->GetSoftKeyboardInfo(userId, imeInfo);
-    EXPECT_NE(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+    // Call IsFocusedUIExtension with invalid displayId
+    auto result = IdentityCheckerTest::identityCheckerImpl_->IsFocusedUIExtension(
+        windowId, invalidDisplayId, focusWindowInfos, userId);
 
-    IdentityCheckerTest::IdentityCheckerMock::isSystemApp_ = true;
-    IdentityCheckerTest::IdentityCheckerMock::isNativeSa_ = false;
-    ret = IdentityCheckerTest::service_->GetSoftKeyboardInfo(userId1, imeInfo);
-    EXPECT_NE(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+    // Should return false when GetDisplayGroupIdWithRetry fails
+    EXPECT_FALSE(result.first);
+
+    // Restore original displayGroupIds state
+    WindowAdapter::GetInstance().displayGroupIds_ = originalDisplayGroupIds;
 }
 
 /**

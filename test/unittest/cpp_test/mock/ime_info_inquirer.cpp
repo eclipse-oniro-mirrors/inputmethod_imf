@@ -472,6 +472,14 @@ void ImeInfoInquirer::SetFullImeInfo(
 ImeNativeCfg ImeInfoInquirer::GetDefaultIme()
 {
     ImeNativeCfg imeCfg;
+    if (!sysCfg_.defaultInputMethod.empty()) {
+        imeCfg.imeId = sysCfg_.defaultInputMethod;
+        auto pos = imeCfg.imeId.find('/');
+        if (pos != std::string::npos && pos + 1 < imeCfg.imeId.size()) {
+            imeCfg.bundleName = imeCfg.imeId.substr(0, pos);
+            imeCfg.extName = imeCfg.imeId.substr(pos + 1);
+        }
+    }
     return imeCfg;
 }
 

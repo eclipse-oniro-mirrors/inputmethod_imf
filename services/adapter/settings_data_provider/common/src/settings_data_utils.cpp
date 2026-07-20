@@ -247,6 +247,24 @@ bool SettingsDataUtils::IsDataShareReady()
     return isDataShareReady_.load();
 }
 
+bool SettingsDataUtils::SetEDCBackupInputMethod(int32_t userId, const std::string &backupIme)
+{
+    IMSA_HILOGI("SetEDCBackupInputMethod: userId=%{public}d, backup=%{public}s", userId, backupIme.c_str());
+    std::string key = SettingsDataUtils::EDC_BACKUP_INPUT_METHOD + std::to_string(userId);
+    return SetStringValue(SETTING_URI_PROXY, key, backupIme);
+}
+
+bool SettingsDataUtils::GetEDCBackupInputMethod(int32_t userId, std::string &backupIme)
+{
+    std::string key = SettingsDataUtils::EDC_BACKUP_INPUT_METHOD + std::to_string(userId);
+    auto ret = GetStringValue(SETTING_URI_PROXY, key, backupIme);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGW("EDC backup IME not configured for userId=%{public}d", userId);
+        return false;
+    }
+    return true;
+}
+
 EnabledStatus SettingsDataUtils::ComputeEnabledStatus(
     const std::string &bundleName, bool isSystemSpecialIme, EnabledStatus initStatus)
 {

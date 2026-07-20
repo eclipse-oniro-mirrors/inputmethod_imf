@@ -104,6 +104,7 @@ public:
     ErrCode BindImeMirror(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent) override;
     ErrCode UnbindImeMirror() override;
     ErrCode GetCursorInfo(int32_t userId, CursorInfoInner &cursorInfo) override;
+    int32_t SetEDCDefaultInputMethod(const std::string &edcBackupImeName) override;
     int32_t GetCallingUserId();
     int32_t GetCallingUserId(int32_t &outputUserId, int32_t inputUserId = -1);
 
@@ -136,10 +137,19 @@ private:
     int32_t CheckEnableAndSwitchPermission();
     int32_t CheckSwitchPermission(int32_t userId, const SwitchInfo &switchInfo, SwitchTrigger trigger);
     bool IsStartInputTypePermitted(int32_t userId);
+    int32_t SwitchInputMethodInner(int32_t userId, const std::string &bundleName, const std::string &subName,
+        SwitchTrigger trigger);
     int32_t OnSwitchInputMethod(int32_t userId, const SwitchInfo &switchInfo, SwitchTrigger trigger);
     int32_t StartSwitch(int32_t userId, const SwitchInfo &switchInfo, const std::shared_ptr<PerUserSession> &session);
     int32_t OnStartInputType(int32_t userId, const SwitchInfo &switchInfo,
         bool isCheckPermission, bool isPersistence = true);
+    int32_t SwitchToEDCBackupInputMethod(int32_t userId, const std::string &edcBackupImeName,
+        const std::shared_ptr<ImeInfo> &imeInfo);
+    int32_t HandleEDCInputMethodAutoSwitch(int32_t userId, const std::string &edcBackupImeName);
+    bool SetEDCBackupInputMethod(int32_t userId, const std::string &backupIme);
+    bool GetEDCBackupInputMethod(int32_t userId, std::string &backupIme);
+    void HandleEDCInputMethodInstall(int32_t userId, const std::string &installedBundleName);
+    void HandleEDCInputMethodRemove(int32_t userId, const std::string &removedBundleName);
     int32_t HandlePackageEvent(const Message *msg);
     int32_t HandleUpdateLargeMemoryState(const Message *msg);
     int32_t OnPackageRemoved(int32_t userId, const std::string &packageName);
@@ -155,8 +165,8 @@ private:
     void InitServiceHandler();
 
     void HandleFocusChanged(bool isFocused, uint64_t displayId, int32_t pid, int32_t uid);
-    void HandleWmsConnected(int32_t userId, int32_t screenId);
-    void HandleWmsDisconnected(int32_t userId, int32_t screenId);
+    void HandleWmsConnected(int32_t userId, int32_t screenId, pid_t pid);
+    void HandleWmsDisconnected(int32_t userId, int32_t screenId, pid_t pid);
 
     void HandleWmsStarted();
     void HandleMemStarted();

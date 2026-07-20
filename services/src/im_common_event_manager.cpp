@@ -14,6 +14,8 @@
  */
 
 #include "im_common_event_manager.h"
+#include "ime_enabled_info_manager.h"
+#include "input_method_property.h"
 #include "full_ime_info_manager.h"
 #include "ime_info_inquirer.h"
 #include "iservice_registry.h"
@@ -21,7 +23,9 @@
 #include "inputmethod_message_handler.h"
 #include "os_account_adapter.h"
 #include "peruser_session.h"
+#include "settings_data_utils.h"
 #include "system_ability_definition.h"
+#include "user_session_manager.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -413,6 +417,7 @@ void ImCommonEventManager::EventSubscriber::HandlePackageEvent(int32_t messageId
     if (!needToBeProcessed) {
         return;
     }
+
     MessageParcel *parcel = new (std::nothrow) MessageParcel();
     if (parcel == nullptr) {
         IMSA_HILOGE("parcel is nullptr!");

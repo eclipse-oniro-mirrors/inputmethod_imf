@@ -40,6 +40,7 @@
 #include "samgr_adapter.h"
 #include "scene_board_judgement.h"
 #include "securec.h"
+#include "settings_data_utils.h"
 #include "system_ability_definition.h"
 #include "unordered_map"
 #include "variant"
@@ -420,7 +421,12 @@ int32_t InputMethodSystemAbility::Init()
 void InputMethodSystemAbility::InitUserInfo(int32_t userId, uint64_t displayId)
 {
     UserSessionManager::GetInstance().AddUserSession(userId);
-    if (WindowAdapter::GetInstance().GetDisplayGroupId(displayId, userId) == DEFAULT_DISPLAY_ID) {
+    uint64_t displayGroupId = ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID;
+    int32_t ret = WindowAdapter::GetInstance().GetDisplayGroupIdWithRetry(displayId, userId, displayGroupId);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetDisplayGroupIdWithRetry failed, ret: %{public}d", ret);
+    }
+    if (ret == ErrorCode::NO_ERROR && displayGroupId == ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID) {
         NumkeyAppsManager::GetInstance().OnUserSwitched(userId);
     }
 }
@@ -431,7 +437,12 @@ void InputMethodSystemAbility::UpdateUserInfo(int32_t userId, uint64_t displayId
     // update user-separated data
     FullImeInfoManager::GetInstance().Switch(userId, displayId);
     UserSessionManager::GetInstance().AddUserSession(userId);
-    if (WindowAdapter::GetInstance().GetDisplayGroupId(displayId, userId) == DEFAULT_DISPLAY_ID) {
+    uint64_t displayGroupId = ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID;
+    int32_t ret = WindowAdapter::GetInstance().GetDisplayGroupIdWithRetry(displayId, userId, displayGroupId);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetDisplayGroupIdWithRetry failed, ret: %{public}d", ret);
+    }
+    if (ret == ErrorCode::NO_ERROR && displayGroupId == ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID) {
         NumkeyAppsManager::GetInstance().OnUserSwitched(userId);
     }
 }
@@ -1431,10 +1442,11 @@ int32_t InputMethodSystemAbility::IsPanelShown(uint64_t displayId, const PanelIn
         return ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION;
     }
     int32_t outputUserId = -1;
-    auto errorCode = AccountSA::OsAccountManager::GetForegroundOsAccountDisplayId(outputUserId, displayId);
+    auto errorCode = AccountSA::OsAccountManager::GetForegroundOsAccountLocalId(displayId, outputUserId);
     if (errorCode != 0) {
-        IMSA_HILOGE("GetForegroundOsAccountDisplayId failed, errorCode:%{public}d", errorCode);
-        return ErrorCode::ERROR_USER_NOT_IN_FOREGROUND;
+        IMSA_HILOGE("GetForegroundOsAccountLocalId failed, displayId:%{public}" PRIu64 ", errorCode:%{public}d",
+            displayId, errorCode);
+        return ErrorCode::ERROR_ACCOUNT_LOCALID_FAILED;
     }
     auto session = UserSessionManager::GetInstance().GetUserSession(outputUserId);
     if (session == nullptr) {
@@ -1487,33 +1499,7 @@ ErrCode InputMethodSystemAbility::SwitchInputMethod(const std::string &bundleNam
         IMSA_HILOGE("GetCallingUserId failed, result:%{public}d", result);
         return result;
     }
-    auto tokenId = GetCallingTokenID();
-    SwitchInfo switchInfo = { std::chrono::system_clock::now(), bundleName, subName };
-    auto session = UserSessionManager::GetInstance().GetUserSession(outputUserId);
-    if (session == nullptr) {
-        IMSA_HILOGE("%{public}d session is nullptr!", outputUserId);
-        return ErrorCode::ERROR_NULL_POINTER;
-    }
-    EnabledStatus status = EnabledStatus::DISABLED;
-    auto ret = ImeEnabledInfoManager::GetInstance().GetEnabledState(outputUserId, bundleName, status);
-    if (ret != ErrorCode::NO_ERROR || status == EnabledStatus::DISABLED) {
-        IMSA_HILOGW("ime %{public}s not enable, stopped!", bundleName.c_str());
-        return ErrorCode::ERROR_ENABLE_IME;
-    }
-    auto currentImeCfg = ImeEnabledInfoManager::GetInstance().GetCurrentImeCfg(outputUserId);
-    if (currentImeCfg == nullptr) {
-        IMSA_HILOGE("Failed to get current ime config");
-        return ErrorCode::ERROR_IMSA_GET_IME_INFO_FAILED;
-    }
-    if (switchInfo.subName.empty() && switchInfo.bundleName == currentImeCfg->bundleName) {
-        switchInfo.subName = currentImeCfg->subName;
-    }
-    switchInfo.timestamp = std::chrono::system_clock::now();
-    switchInfo.isTmpImeSwitchSubtype = IsTmpImeSwitchSubtype(outputUserId, tokenId, switchInfo);
-    session->GetSwitchQueue().Push(switchInfo);
-    return InputTypeManager::GetInstance().IsInputType({ bundleName, subName })
-               ? OnStartInputType(outputUserId, switchInfo, true)
-               : OnSwitchInputMethod(outputUserId, switchInfo, static_cast<SwitchTrigger>(trigger));
+    return SwitchInputMethodInner(outputUserId, bundleName, subName, static_cast<SwitchTrigger>(trigger));
 }
 // LCOV_EXCL_START
 ErrCode InputMethodSystemAbility::EnableIme(
@@ -1633,6 +1619,42 @@ bool InputMethodSystemAbility::IsTmpImeSwitchSubtype(int32_t userId, uint32_t to
     bool ret = !bundleName.empty() && bundleName == switchInfo.bundleName;
     IMSA_HILOGD("%{public}s/%{public}d switch.", switchInfo.bundleName.c_str(), ret);
     return ret;
+}
+
+int32_t InputMethodSystemAbility::SwitchInputMethodInner(int32_t userId, const std::string &bundleName,
+    const std::string &subName, SwitchTrigger trigger)
+{
+    if (identityChecker_ == nullptr) {
+        IMSA_HILOGE("identityChecker_ is nullptr!");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    auto tokenId = GetCallingTokenID();
+    SwitchInfo switchInfo = { std::chrono::system_clock::now(), bundleName, subName };
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+    if (session == nullptr) {
+        IMSA_HILOGE("%{public}d session is nullptr!", userId);
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    EnabledStatus status = EnabledStatus::DISABLED;
+    auto ret = ImeEnabledInfoManager::GetInstance().GetEnabledState(userId, bundleName, status);
+    if (ret != ErrorCode::NO_ERROR || status == EnabledStatus::DISABLED) {
+        IMSA_HILOGW("ime %{public}s not enable, stopped!", bundleName.c_str());
+        return ErrorCode::ERROR_ENABLE_IME;
+    }
+    auto currentImeCfg = ImeEnabledInfoManager::GetInstance().GetCurrentImeCfg(userId);
+    if (currentImeCfg == nullptr) {
+        IMSA_HILOGE("Failed to get current ime config");
+        return ErrorCode::ERROR_IMSA_GET_IME_INFO_FAILED;
+    }
+    if (switchInfo.subName.empty() && switchInfo.bundleName == currentImeCfg->bundleName) {
+        switchInfo.subName = currentImeCfg->subName;
+    }
+    switchInfo.timestamp = std::chrono::system_clock::now();
+    switchInfo.isTmpImeSwitchSubtype = IsTmpImeSwitchSubtype(userId, tokenId, switchInfo);
+    session->GetSwitchQueue().Push(switchInfo);
+    return InputTypeManager::GetInstance().IsInputType({ bundleName, subName })
+               ? OnStartInputType(userId, switchInfo, true)
+               : OnSwitchInputMethod(userId, switchInfo, trigger);
 }
 
 int32_t InputMethodSystemAbility::OnSwitchInputMethod(int32_t userId, const SwitchInfo &switchInfo,
@@ -2163,7 +2185,11 @@ int32_t InputMethodSystemAbility::HandlePackageEvent(const Message *msg)
         return OnPackageUpdated(userId, packageName);
     }
     if (msg->msgId_ == MSG_ID_PACKAGE_ADDED) {
-        return FullImeInfoManager::GetInstance().Add(userId, packageName);
+        auto ret = FullImeInfoManager::GetInstance().Add(userId, packageName);
+        if (ret == ErrorCode::NO_ERROR) {
+            HandleEDCInputMethodInstall(userId, packageName);
+        }
+        return ret;
     }
     if (msg->msgId_ == MSG_ID_PACKAGE_REMOVED) {
         return OnPackageRemoved(userId, packageName);
@@ -2204,6 +2230,7 @@ int32_t InputMethodSystemAbility::OnPackageUpdated(int32_t userId, const std::st
  */
 int32_t InputMethodSystemAbility::OnPackageRemoved(int32_t userId, const std::string &packageName)
 {
+    HandleEDCInputMethodRemove(userId, packageName);
     FullImeInfoManager::GetInstance().Delete(userId, packageName);
     return ErrorCode::NO_ERROR;
 }
@@ -2596,8 +2623,8 @@ bool InputMethodSystemAbility::InitFocusChangedMonitor(int32_t userId)
 bool InputMethodSystemAbility::InitWmsConnectionMonitor(int32_t userId)
 {
     auto initFunc = [this, userId]() {
-        auto callback = [this](bool isConnected, int32_t userId, int32_t screenId) {
-            isConnected ? HandleWmsConnected(userId, screenId) : HandleWmsDisconnected(userId, screenId);
+        auto callback = [this](bool isConnected, int32_t userId, int32_t screenId, pid_t pid) {
+            isConnected ? HandleWmsConnected(userId, screenId, pid) : HandleWmsDisconnected(userId, screenId, pid);
         };
         return WmsConnectionMonitorManager::GetInstance().RegisterWMSConnectionChangedListener(callback, userId);
     };
@@ -2849,17 +2876,23 @@ int32_t InputMethodSystemAbility::ConnectSystemCmd(const sptr<IRemoteObject> &ch
     return session->OnConnectSystemCmd(channel, agent);
 }
 
-void InputMethodSystemAbility::HandleWmsConnected(int32_t userId, int32_t screenId)
+void InputMethodSystemAbility::HandleWmsConnected(int32_t userId, int32_t screenId, pid_t pid)
 {
     IMSA_HILOGD("in, userId: %{public}d, screenId: %{public}d", userId, screenId);
     if (!OsAccountAdapter::IsOsAccountForeground(userId)) {
         IMSA_HILOGW("userId: %{public}d not foreground", userId);
         return;
     }
-    int32_t currentUserId = WindowMonitorsManager::GetInstance().GetForegroundUser(screenId);
+    ScbInfo info = WindowMonitorsManager::GetInstance().GetForegroundUser(screenId);
+    int32_t currentUserId = info.userId;
+    int32_t currentpid = info.pid;
+    if ((currentUserId == userId) && (currentpid == pid)) {
+        IMSA_HILOGW("currentUserId: %{public}d not pid: %{public}d", currentUserId, pid);
+        return;
+    }
     bool isScbReboot = currentUserId == userId;
     if (!isScbReboot) {
-        WindowMonitorsManager::GetInstance().UpdateForegroundUser(userId, screenId);
+        WindowMonitorsManager::GetInstance().UpdateForegroundUser(userId, screenId, pid);
     }
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
@@ -2890,9 +2923,9 @@ void InputMethodSystemAbility::StartNewUserIme(int32_t userId)
     }
 }
 // LCOV_EXCL_STOP
-void InputMethodSystemAbility::HandleWmsDisconnected(int32_t userId, int32_t screenId)
+void InputMethodSystemAbility::HandleWmsDisconnected(int32_t userId, int32_t screenId, pid_t pid)
 {
-    IMSA_HILOGD("in, userId: %{public}d, screenId: %{public}d", userId, screenId);
+    IMSA_HILOGD("in, userId: %{public}d, screenId: %{public}d, pid: %{public}d", userId, screenId, pid);
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session != nullptr) {
         session->OnScbStopped();
@@ -3267,6 +3300,78 @@ ErrCode InputMethodSystemAbility::GetCursorInfo(int32_t userId, CursorInfoInner 
     pid_t clientPid = IPCSkeleton::GetCallingPid();
     return session->GetCursorInfo(cursorInfo, clientPid);
 }
+
+int32_t InputMethodSystemAbility::SetEDCDefaultInputMethod(const std::string &edcBackupImeName)
+{
+    IMSA_HILOGI("SetEDCDefaultInputMethod called, backupIme: %{public}s", edcBackupImeName.c_str());
+
+    if (edcBackupImeName.empty()) {
+        IMSA_HILOGE("Invalid parameter: edcBackupImeName is empty");
+        return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+    }
+
+    if (identityChecker_ == nullptr) {
+        IMSA_HILOGE("identityChecker_ is nullptr!");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+
+    if (!identityChecker_->IsNativeSa(IPCSkeleton::GetCallingTokenID())) {
+        IMSA_HILOGE("SetEDCDefaultInputMethod: caller is not native SA");
+        return ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION;
+    }
+
+    int32_t userId = GetCallingUserId();
+    if (userId < 0) {
+        IMSA_HILOGE("GetCallingUserId failed");
+        return ErrorCode::ERROR_IME_NOT_FOUND;
+    }
+
+    if (!SetEDCBackupInputMethod(userId, edcBackupImeName)) {
+        IMSA_HILOGE("Failed to set EDC backup input method");
+        return ErrorCode::ERROR_EX_SERVICE_SPECIFIC;
+    }
+    IMSA_HILOGI("EDC backup IME saved to database: %{public}s", edcBackupImeName.c_str());
+
+    return HandleEDCInputMethodAutoSwitch(userId, edcBackupImeName);
+}
+
+int32_t InputMethodSystemAbility::HandleEDCInputMethodAutoSwitch(int32_t userId,
+    const std::string &edcBackupImeName)
+{
+    // Get default IME dynamically instead of hardcoding
+    std::string defaultImeName = ImeInfoInquirer::GetInstance().GetDefaultIme().bundleName;
+
+    auto imeInfo = ImeInfoInquirer::GetInstance().GetImeInfo(userId, edcBackupImeName, "");
+    if (imeInfo == nullptr) {
+        IMSA_HILOGI("EDC backup IME %{public}s is not installed yet, skip auto-switch", edcBackupImeName.c_str());
+        return ErrorCode::NO_ERROR;
+    }
+    IMSA_HILOGI("EDC backup IME is installed: %{public}s/%{public}s",
+        imeInfo->prop.name.c_str(), imeInfo->prop.id.c_str());
+
+    auto currentIme = ImeInfoInquirer::GetInstance().GetCurrentInputMethod(userId);
+    if (currentIme == nullptr || currentIme->name.empty()) {
+        IMSA_HILOGE("Failed to get current input method");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    IMSA_HILOGI("Current IME: %{public}s", currentIme->name.c_str());
+
+    if (currentIme->name == defaultImeName) {
+        return SwitchToEDCBackupInputMethod(userId, edcBackupImeName, imeInfo);
+    }
+
+    IMSA_HILOGI("Current IME is not default IME (current: %{public}s), skip auto-switch", currentIme->name.c_str());
+    return ErrorCode::NO_ERROR;
+}
+
+int32_t InputMethodSystemAbility::SwitchToEDCBackupInputMethod(int32_t userId, const std::string &edcBackupImeName,
+    const std::shared_ptr<ImeInfo> &imeInfo)
+{
+    IMSA_HILOGI("Switching to EDC backup IME: %{public}s", edcBackupImeName.c_str());
+    // imeInfo is already validated by caller, just use bundleName
+    return SwitchInputMethodInner(userId, edcBackupImeName, "", SwitchTrigger::IMSA);
+}
+
 // LCOV_EXCL_STOP
 ErrCode InputMethodSystemAbility::ShowCurrentInput(uint64_t displayId, uint32_t type)
 {
@@ -3552,5 +3657,94 @@ int32_t InputMethodSystemAbility::GetCpuUsage()
     return cpuUsage;
 }
 #endif
+
+bool InputMethodSystemAbility::SetEDCBackupInputMethod(int32_t userId, const std::string &backupIme)
+{
+    return SettingsDataUtils::GetInstance().SetEDCBackupInputMethod(userId, backupIme);
+}
+
+bool InputMethodSystemAbility::GetEDCBackupInputMethod(int32_t userId, std::string &backupIme)
+{
+    return SettingsDataUtils::GetInstance().GetEDCBackupInputMethod(userId, backupIme);
+}
+
+void InputMethodSystemAbility::HandleEDCInputMethodInstall(int32_t userId, const std::string &installedBundleName)
+{
+    IMSA_HILOGD("HandleEDCInputMethodInstall called, bundleName: %{public}s", installedBundleName.c_str());
+
+    std::string defaultImeName = ImeInfoInquirer::GetInstance().GetDefaultIme().bundleName;
+    if (defaultImeName.empty()) {
+        IMSA_HILOGE("Failed to get default IME");
+        return;
+    }
+
+    std::string edcBackupImeName;
+    if (!GetEDCBackupInputMethod(userId, edcBackupImeName)) {
+        IMSA_HILOGD("EDC backup IME not configured, skip EDC install handling");
+        return;
+    }
+
+    if (installedBundleName != edcBackupImeName) {
+        IMSA_HILOGD("Installed IME is not EDC backup IME, skip handling");
+        return;
+    }
+
+    auto currentIme = ImeInfoInquirer::GetInstance().GetCurrentInputMethod(userId);
+    if (currentIme == nullptr || currentIme->name.empty()) {
+        IMSA_HILOGW("Failed to get current input method");
+        return;
+    }
+
+    if (currentIme->name == defaultImeName) {
+        IMSA_HILOGI("Switching from default IME to EDC backup IME on install");
+        if (SwitchInputMethodInner(userId, edcBackupImeName, "", SwitchTrigger::IMSA) != ErrorCode::NO_ERROR) {
+            IMSA_HILOGE("Failed to switch to EDC backup IME");
+        }
+    }
+}
+
+void InputMethodSystemAbility::HandleEDCInputMethodRemove(int32_t userId, const std::string &removedBundleName)
+{
+    IMSA_HILOGD("HandleEDCInputMethodRemove called, bundleName: %{public}s", removedBundleName.c_str());
+
+    std::string defaultImeName = ImeInfoInquirer::GetInstance().GetDefaultIme().bundleName;
+    if (defaultImeName.empty()) {
+        IMSA_HILOGE("Failed to get default IME");
+        return;
+    }
+
+    std::string edcBackupImeName;
+    if (!GetEDCBackupInputMethod(userId, edcBackupImeName)) {
+        IMSA_HILOGD("EDC backup IME not configured, skip EDC remove handling");
+        return;
+    }
+
+    auto currentIme = ImeInfoInquirer::GetInstance().GetCurrentInputMethod(userId);
+    if (currentIme == nullptr || currentIme->name.empty()) {
+        IMSA_HILOGW("Failed to get current input method");
+        return;
+    }
+
+    // Case 1: Uninstalled IME is EDC backup IME B, and current IME is also B
+    if (removedBundleName == edcBackupImeName && currentIme->name == edcBackupImeName) {
+        IMSA_HILOGI("EDC backup IME removed, switching to default IME");
+        if (SwitchInputMethodInner(userId, defaultImeName, "", SwitchTrigger::IMSA) != ErrorCode::NO_ERROR) {
+            IMSA_HILOGE("Failed to switch to default IME");
+        }
+        return;
+    }
+
+    // Case 2: Uninstalled IME is current IME, and is not B
+    if (removedBundleName == currentIme->name && removedBundleName != edcBackupImeName) {
+        IMSA_HILOGI("Current IME removed, trying to switch to EDC backup IME first");
+        auto info = ImeInfoInquirer::GetInstance().GetImeInfo(userId, edcBackupImeName, "");
+        std::string targetIme = (info != nullptr) ? edcBackupImeName : defaultImeName;
+        IMSA_HILOGI("Switching to %{public}s", targetIme.c_str());
+        if (SwitchInputMethodInner(userId, targetIme, "", SwitchTrigger::IMSA) != ErrorCode::NO_ERROR) {
+            IMSA_HILOGE("Failed to switch IME after removal");
+        }
+    }
+}
+
 } // namespace MiscServices
 } // namespace OHOS

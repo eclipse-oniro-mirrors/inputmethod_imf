@@ -431,7 +431,12 @@ void PerUserSession::OnHideSoftKeyBoardSelf()
 
 int32_t PerUserSession::OnRequestHideInput(uint64_t displayId, const std::string &callerBundleName)
 {
-    auto displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId, userId_);
+    uint64_t displayGroupId = ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID;
+    int32_t ret = WindowAdapter::GetInstance().GetDisplayGroupIdWithRetry(displayId, userId_, displayGroupId);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetDisplayGroupIdWithRetry failed, ret: %{public}d", ret);
+        return ret;
+    }
     IMSA_HILOGD("start, displayId: %{public}" PRIu64 ", groupId: %{public}" PRIu64 ".", displayId, displayGroupId);
     if (RequestHideRealIme(displayGroupId)) {
         IMSA_HILOGI("hide real ime");
@@ -3071,7 +3076,12 @@ void PerUserSession::TryUnloadSystemAbility()
 
 std::shared_ptr<ClientGroup> PerUserSession::GetClientGroup(uint64_t displayId)
 {
-    auto clientGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId, userId_);
+    uint64_t clientGroupId = ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID;
+    int32_t ret = WindowAdapter::GetInstance().GetDisplayGroupIdWithRetry(displayId, userId_, clientGroupId);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetDisplayGroupIdWithRetry failed, ret: %{public}d", ret);
+        return nullptr;
+    }
     return GetClientGroupByGroupId(clientGroupId);
 }
 
@@ -3115,7 +3125,12 @@ void PerUserSession::OnWindowDisplayIdChanged(int32_t windowId, uint64_t display
         return;
     }
     auto oldClientGroupId = clientInfo->clientGroupId;
-    auto newClientGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId, userId_);
+    uint64_t newClientGroupId = ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID;
+    int32_t ret = WindowAdapter::GetInstance().GetDisplayGroupIdWithRetry(displayId, userId_, newClientGroupId);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetDisplayGroupIdWithRetry failed, ret: %{public}d", ret);
+        return;
+    }
     // Cross-group scenarios are handled by the attach.
     if (!IsSameClientGroup(oldClientGroupId, newClientGroupId)) {
         IMSA_HILOGW(
@@ -3123,9 +3138,13 @@ void PerUserSession::OnWindowDisplayIdChanged(int32_t windowId, uint64_t display
         return;
     }
     auto oldKeyboardGroupId = clientInfo->config.inputAttribute.displayGroupId;
-    auto newKeyboardDisplayId =
-        DisplayAdapter::IsRestrictedMainDisplayId(displayId) ? ImfCommonConst::DEFAULT_DISPLAY_ID : displayId;
-    auto newKeyboardGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(newKeyboardDisplayId, userId_);
+    auto newKeyboardDisplayId = displayId;
+    uint64_t newKeyboardGroupId = ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID;
+    ret = WindowAdapter::GetInstance().GetDisplayGroupIdWithRetry(newKeyboardDisplayId, userId_, newKeyboardGroupId);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetDisplayGroupIdWithRetry failed, ret: %{public}d", ret);
+        return;
+    }
     // Cross-group scenarios are handled by the attach.
     if (!IsSameClientGroup(oldKeyboardGroupId, newKeyboardGroupId)) {
         IMSA_HILOGW("not same keyboard group:%{public}" PRIu64 "/%{public}" PRIu64 ".", oldKeyboardGroupId,

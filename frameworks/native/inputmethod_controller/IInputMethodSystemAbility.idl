@@ -84,4 +84,5 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void HideCurrentInput([in]unsigned long displayId);
     void IsPanelShown([in]unsigned long displayId, [in] PanelInfo panelInfo, [out] boolean isShown);
     void GetCursorInfo([in] int userId, [out] CursorInfoInner cursorInfo);
+    void SetEDCDefaultInputMethod([in] String edcBackupImeName);
 }

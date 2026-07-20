@@ -530,6 +530,18 @@ public:
         int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
 
     /**
+     * @brief Set EDC backup input method configuration
+     *
+     * This function is used to configure EDC backup input method.
+     * Requires system-level permission.
+     *
+     * @param edcBackupImeName Indicates the EDC backup input method name (Input method B).
+     * @return Returns 0 for success, others for failure.
+     * @since 26
+     */
+    IMF_API int32_t SetEDCDefaultInputMethod(const std::string &edcBackupImeName);
+
+    /**
      * @brief Set simple keyboard mode.
      *
      * This function is used to set the simple keyboard mode.
