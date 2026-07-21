@@ -694,7 +694,7 @@ public:
      * @since 10
      */
     void OnInputStop(bool isStopInactiveClient = false, const sptr<IRemoteObject> &proxy = nullptr,
-        bool isSendKeyboardStatus = true);
+        bool isSendKeyboardStatus = true, bool isStopByMultiPreemptInProc = false);
     void OnImeMirrorStop(sptr<IRemoteObject> object);
 
     /**
@@ -1162,6 +1162,7 @@ private:
     bool SubscribeSaStart(std::function<void()> handler, int32_t saId);
     int32_t GetInputStartInfo(InputStartInfo &info);  // default displayId, foreground user
     std::shared_ptr<AppExecFwk::EventHandler> GetMainHandler();
+    void OnTmpInputStop(const sptr<IRemoteObject> &proxy);
 
     struct CtrlEventInfo {
         std::chrono::steady_clock::time_point timestamp;

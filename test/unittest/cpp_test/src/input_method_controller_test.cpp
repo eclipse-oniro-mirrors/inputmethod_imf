@@ -1897,27 +1897,75 @@ HWTEST_F(InputMethodControllerTest, testIMCOnInputStop_002, TestSize.Level0)
     TextListener::ResetParam();
     // 1 - isSendKeyboardStatus false
     TextListener::keyboardStatus_ = KeyboardStatus::SHOW;
-    InputMethodControllerTest::inputMethodController_->OnInputStop(false, nullptr, false);
+    InputMethodControllerTest::inputMethodController_->OnInputStop(false, nullptr, false, false);
     EXPECT_FALSE(TextListener::WaitSendKeyboardStatusCallback(KeyboardStatus::HIDE));
     // 2 - isSendKeyboardStatus true, isStopInactiveClient false
     TextListener::keyboardStatus_ = KeyboardStatus::SHOW;
-    InputMethodControllerTest::inputMethodController_->OnInputStop(false, nullptr, true);
+    InputMethodControllerTest::inputMethodController_->OnInputStop(false, nullptr, true, false);
     EXPECT_TRUE(TextListener::WaitSendKeyboardStatusCallback(KeyboardStatus::HIDE));
     // 3 - isSendKeyboardStatus true, isStopInactiveClient true, IsFromTs true
     TextListener::keyboardStatus_ = KeyboardStatus::SHOW;
     TextListener::isFromTs_ = true;
     InputMethodControllerTest::inputMethodController_->textListener_ = InputMethodControllerTest::textListener_;
-    InputMethodControllerTest::inputMethodController_->OnInputStop(true, nullptr, true);
+    InputMethodControllerTest::inputMethodController_->OnInputStop(true, nullptr, true, false);
     EXPECT_FALSE(TextListener::WaitSendKeyboardStatusCallback(KeyboardStatus::HIDE));
     // 4 - isSendKeyboardStatus true, isStopInactiveClient true, IsFromTs false
     TextListener::keyboardStatus_ = KeyboardStatus::SHOW;
     TextListener::isFromTs_ = false;
     InputMethodControllerTest::inputMethodController_->textListener_ = InputMethodControllerTest::textListener_;
-    InputMethodControllerTest::inputMethodController_->OnInputStop(true, nullptr, true);
+    InputMethodControllerTest::inputMethodController_->OnInputStop(true, nullptr, true, false);
     EXPECT_TRUE(TextListener::WaitSendKeyboardStatusCallback(KeyboardStatus::HIDE));
+    // 5 isStopByMultiPreemptInProc is true
+    TextListener::keyboardStatus_ = KeyboardStatus::SHOW;
+    InputMethodControllerTest::inputMethodController_->OnInputStop(true, nullptr, true, true);
+    EXPECT_TRUE(TextListener::keyboardStatus_ == KeyboardStatus::SHOW);
 
     TextListener::ResetParam();
     InputMethodController::GetInstance()->textListener_ = nullptr;
+}
+
+/**
+ * @tc.name: test_OnTmpInputStop.
+ * @tc.desc: test_OnTmpInputStop
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, test_OnTmpInputStop, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC test_OnTmpInputStop Test START");
+    pid_t pid = 1000;
+    sptr<OnInputStopNotifyStub> onInputStopObject = new (std::nothrow) OnInputStopNotifyServiceImpl(pid);
+
+    // new editor, proxy is nullptr
+    TextListener::ResetParam();
+    inputMethodController_->clientInfo_.isNotifyInputStart = true;
+    inputMethodController_->textConfig_.inputAttribute.isTextPreviewSupported = true;
+    InputMethodControllerTest::inputMethodController_->textListener_ = InputMethodControllerTest::textListener_;
+    InputMethodControllerTest::inputMethodController_->OnTmpInputStop(nullptr);
+    EXPECT_FALSE(TextListener::isFinishTextPreviewCalled_);
+
+    // not new editor,listener is not nullptr, isTextPreviewSupported is false
+    TextListener::ResetParam();
+    inputMethodController_->clientInfo_.isNotifyInputStart = false;
+    InputMethodControllerTest::inputMethodController_->textListener_ = InputMethodControllerTest::textListener_;
+    inputMethodController_->textConfig_.inputAttribute.isTextPreviewSupported = false;
+    InputMethodControllerTest::inputMethodController_->OnTmpInputStop(onInputStopObject->AsObject());
+    EXPECT_FALSE(TextListener::isFinishTextPreviewCalled_);
+
+    // not new editor,listener is not nullptr, isTextPreviewSupported is true
+    TextListener::ResetParam();
+    inputMethodController_->clientInfo_.isNotifyInputStart = false;
+    inputMethodController_->textConfig_.inputAttribute.isTextPreviewSupported = true;
+    InputMethodControllerTest::inputMethodController_->textListener_ = InputMethodControllerTest::textListener_;
+    InputMethodControllerTest::inputMethodController_->OnTmpInputStop(onInputStopObject->AsObject());
+    EXPECT_TRUE(TextListener::isFinishTextPreviewCalled_);
+
+    // not new editor, listener is nullptr
+    TextListener::ResetParam();
+    inputMethodController_->clientInfo_.isNotifyInputStart = false;
+    inputMethodController_->textConfig_.inputAttribute.isTextPreviewSupported = true;
+    InputMethodControllerTest::inputMethodController_->textListener_ = nullptr;
+    InputMethodControllerTest::inputMethodController_->OnTmpInputStop(onInputStopObject->AsObject());
+    EXPECT_FALSE(TextListener::isFinishTextPreviewCalled_);
 }
 
 /**

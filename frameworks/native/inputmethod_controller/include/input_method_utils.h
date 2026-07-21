@@ -580,6 +580,7 @@ struct DetachOptions {
     bool isNotifyClientAsync{ false };
     bool needNotifyClient{ false };
     bool isSendKeyboardStatus{ true };
+    bool isStopByMultiPreemptInProc{ false };
 };
 
 enum class ResponseDataType : uint64_t { NONE_TYPE = 0, STRING_TYPE, INT32_TYPE };

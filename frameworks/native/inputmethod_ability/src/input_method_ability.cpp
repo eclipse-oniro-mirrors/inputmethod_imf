@@ -470,7 +470,7 @@ void InputMethodAbility::OnCursorUpdate(int32_t positionX, int32_t positionY, in
         IMSA_HILOGE("kdListener_ is nullptr!");
         return;
     }
-    IMSA_HILOGD("x: %{public}d, y: %{public}d, height: %{public}d.", positionX, positionY, height);
+    IMSA_HILOGD("IMA, x: %{public}d, y: %{public}d, height: %{public}d.", positionX, positionY, height);
     kdListener_->OnCursorUpdate(positionX, positionY, height);
 }
 

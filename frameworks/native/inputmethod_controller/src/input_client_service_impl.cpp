@@ -39,23 +39,24 @@ ErrCode InputClientServiceImpl::OnInputReady(const sptr<IRemoteObject> &agent, c
     return ERR_OK;
 }
 // LCOV_EXCL_START
-ErrCode InputClientServiceImpl::OnInputStop(
-    bool isStopInactiveClient, const sptr<IRemoteObject> &object, bool isSendKeyboardStatus)
+ErrCode InputClientServiceImpl::OnInputStop(bool isStopInactiveClient, const sptr<IRemoteObject> &object,
+    bool isSendKeyboardStatus, bool isStopByMultiPreemptInProc)
 {
     auto instance = InputMethodController::GetInstance();
     if (instance != nullptr) {
-        instance->OnInputStop(isStopInactiveClient, object, isSendKeyboardStatus);
+        instance->OnInputStop(isStopInactiveClient, object, isSendKeyboardStatus, isStopByMultiPreemptInProc);
     } else {
         IMSA_HILOGW("failed to get InputMethodController instance!");
     }
     return ERR_OK;
 }
 // LCOV_EXCL_STOP
-ErrCode InputClientServiceImpl::OnInputStopAsync(bool isStopInactiveClient, bool isSendKeyboardStatus)
+ErrCode InputClientServiceImpl::OnInputStopAsync(
+    bool isStopInactiveClient, bool isSendKeyboardStatus, bool isStopByMultiPreemptInProc)
 {
     auto instance = InputMethodController::GetInstance();
     if (instance != nullptr) {
-        instance->OnInputStop(isStopInactiveClient, nullptr, isSendKeyboardStatus);
+        instance->OnInputStop(isStopInactiveClient, nullptr, isSendKeyboardStatus, isStopByMultiPreemptInProc);
     } else {
         IMSA_HILOGW("failed to get InputMethodController instance!");
     }

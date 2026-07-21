@@ -899,6 +899,10 @@ void PerUserSession::HandleRealImeInMultiGroup(
 void PerUserSession::HandleSameClientInMultiGroup(const InputClientInfo &newClientInfo)
 {
     auto [oldClientGroup, oldClientInfo] = GetClientBySelfPidOrHostPid(newClientInfo.pid);
+    if (oldClientInfo != nullptr && !IsSameClientGroup(oldClientInfo->clientGroupId, newClientInfo.clientGroupId)
+        && oldClientInfo->pid == newClientInfo.pid) {
+        StopClientInput(oldClientInfo, { .isStopByMultiPreemptInProc = true });
+    }
     HandleInMultiGroup(newClientInfo, oldClientGroup, oldClientInfo, true);
 }
 
@@ -1017,7 +1021,8 @@ void PerUserSession::StopClientInput(const std::shared_ptr<InputClientInfo> &cli
     }
     int32_t ret;
     if (options.isNotifyClientAsync) {
-        ret = clientInfo->client->OnInputStopAsync(options.isInactiveClient, options.isSendKeyboardStatus);
+        ret = clientInfo->client->OnInputStopAsync(
+            options.isInactiveClient, options.isSendKeyboardStatus, options.isStopByMultiPreemptInProc);
     } else {
         auto onInputStopObject = new (std::nothrow) OnInputStopNotifyServiceImpl(clientInfo->pid);
         if (onInputStopObject == nullptr) {
@@ -1026,8 +1031,8 @@ void PerUserSession::StopClientInput(const std::shared_ptr<InputClientInfo> &cli
         }
         std::lock_guard<std::mutex> lock(isNotifyFinishedLock_);
         isNotifyFinished_.Clear(false);
-        ret =
-            clientInfo->client->OnInputStop(options.isInactiveClient, onInputStopObject, options.isSendKeyboardStatus);
+        ret = clientInfo->client->OnInputStop(options.isInactiveClient, onInputStopObject,
+            options.isSendKeyboardStatus, options.isStopByMultiPreemptInProc);
         if (!isNotifyFinished_.GetValue()) {
             IMSA_HILOGE("OnInputStop is not finished!");
         }

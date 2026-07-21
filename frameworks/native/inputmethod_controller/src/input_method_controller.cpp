@@ -1607,10 +1607,43 @@ void InputMethodController::SetInputReady(
         OnInputReady(agentObjects[i], imeInfos[i]);
     }
 }
-// LCOV_EXCL_STOP
-void InputMethodController::OnInputStop(
-    bool isStopInactiveClient, const sptr<IRemoteObject> &proxy, bool isSendKeyboardStatus)
+
+void InputMethodController::OnTmpInputStop(const sptr<IRemoteObject> &proxy)
 {
+    ClearAgentInfo();
+    bool isNewEditor = false;
+    {
+        std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
+        isNewEditor = clientInfo_.isNotifyInputStart;
+    }
+    auto listener = GetTextListener();
+    if (!isNewEditor && listener != nullptr) {
+        IMSA_HILOGD("listener is not nullptr!");
+        if (textConfig_.inputAttribute.isTextPreviewSupported) {
+            IMSA_HILOGD("finish text preview.");
+            listener->FinishTextPreviewV2();
+        }
+    }
+    isBound_.store(false);
+    isEditable_.store(false);
+    isTextNotified_.store(false);
+    keyEventRetHandler_.ClearKeyEventCbInfo();
+    if (proxy == nullptr) {
+        IMSA_HILOGD("proxy is nullptr!");
+        return;
+    }
+    auto channelProxy = std::make_shared<OnInputStopNotifyProxy>(proxy);
+    channelProxy->NotifyOnInputStopFinished();
+}
+
+// LCOV_EXCL_STOP
+void InputMethodController::OnInputStop(bool isStopInactiveClient, const sptr<IRemoteObject> &proxy,
+    bool isSendKeyboardStatus, bool isStopByMultiPreemptInProc)
+{
+    if (isStopByMultiPreemptInProc) {
+        OnTmpInputStop(proxy);
+        return;
+    }
     ClearAgentInfo();
     auto listener = GetTextListener();
     if (listener != nullptr) {

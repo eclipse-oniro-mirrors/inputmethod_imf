@@ -3452,6 +3452,51 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_HandleInMultiGroup, TestSi
 }
 
 /**
+ * @tc.name: PerUserSession_HandleSameClientInMultiGroup
+ * @tc.desc: PerUserSession_HandleSameClientInMultiGroup
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_HandleSameClientInMultiGroup, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_HandleSameClientInMultiGroup start.");
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
+    pid_t pid = 100;
+    pid_t pid1 = 1000;
+    int64_t displayGroupId = 0;
+    int64_t displayGroupId1 = 8;
+    InputClientInfo newClientInfo;
+    newClientInfo.clientGroupId = displayGroupId;
+    newClientInfo.pid = pid;
+
+    // oldClientInfo is nullptr
+    userSession->HandleSameClientInMultiGroup(newClientInfo);
+    // same clientGroup
+    auto clientGroup = std::make_shared<ClientGroup>(displayGroupId, nullptr);
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    auto info = std::make_shared<InputClientInfo>();
+    info->pid = pid;
+    info->clientGroupId = displayGroupId;
+    info->client = client;
+    clientGroup->mapClients_.insert_or_assign(client->AsObject(), info);
+    userSession->clientGroupMap_.emplace(displayGroupId, clientGroup);
+    userSession->HandleSameClientInMultiGroup(newClientInfo);
+    EXPECT_FALSE(clientGroup->mapClients_.empty());
+
+    // not same clientGroup, same pid
+    newClientInfo.clientGroupId = displayGroupId1;
+    userSession->HandleSameClientInMultiGroup(newClientInfo);
+    EXPECT_TRUE(clientGroup->mapClients_.empty());
+
+    // not same clientGroup, not same pid
+    info->pid = pid1;
+    info->uiExtensionHostPid = pid;
+    clientGroup->mapClients_.insert_or_assign(client->AsObject(), info);
+    userSession->HandleSameClientInMultiGroup(newClientInfo);
+    EXPECT_TRUE(clientGroup->mapClients_.empty());
+}
+
+/**
  * @tc.name: PerUserSession_GetProxyImeData
  * @tc.desc: PerUserSession_GetProxyImeData
  * @tc.type: FUNC
