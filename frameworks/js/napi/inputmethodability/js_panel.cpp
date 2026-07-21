@@ -617,7 +617,7 @@ napi_status JsPanel::ParsePanelFlag(napi_env env, napi_value *argv, PanelFlag &p
 void JsPanel::AdjustLayoutParam(std::shared_ptr<PanelContentContext> ctxt)
 {
     int32_t ret = ctxt->inputMethodPanel->AdjustPanelRect(ctxt->panelFlag, ctxt->layoutParams, true, true,
-        Trigger::IME_APP);
+        false);
     if (ret == ErrorCode::NO_ERROR) {
         ctxt->SetState(napi_ok);
         return;
@@ -630,7 +630,7 @@ void JsPanel::AdjustLayoutParam(std::shared_ptr<PanelContentContext> ctxt)
 void JsPanel::AdjustEnhancedLayoutParam(std::shared_ptr<PanelContentContext> ctxt)
 {
     int32_t ret = ctxt->inputMethodPanel->AdjustPanelRect(ctxt->panelFlag, ctxt->enhancedLayoutParams, ctxt->hotAreas,
-        Trigger::IME_APP);
+        false);
     if (ret == ErrorCode::NO_ERROR) {
         ctxt->SetState(napi_ok);
         return;
@@ -716,8 +716,8 @@ napi_value JsPanel::UpdatePanelRectSync(napi_env env, napi_callback_info info)
     PanelDealQueue::Wait(eventInfo);
     panel->hasSetSize_.store(true);
     int32_t ret = isEnhancedCall
-        ? panel->AdjustPanelRect(ctxt->panelFlag, ctxt->enhancedLayoutParams, ctxt->hotAreas, Trigger::IME_APP)
-        : panel->AdjustPanelRect(ctxt->panelFlag, ctxt->layoutParams, true, true, Trigger::IME_APP);
+        ? panel->AdjustPanelRect(ctxt->panelFlag, ctxt->enhancedLayoutParams, ctxt->hotAreas, false)
+        : panel->AdjustPanelRect(ctxt->panelFlag, ctxt->layoutParams, true, true, false);
     PanelDealQueue::Pop();
     if (ret == ErrorCode::ERROR_PARAMETER_CHECK_FAILED) {
         JsUtils::ThrowException(env, JsUtils::Convert(ErrorCode::ERROR_PARAMETER_CHECK_FAILED),

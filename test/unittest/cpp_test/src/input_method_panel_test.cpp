@@ -527,7 +527,7 @@ void InputMethodPanelTest::TestAdjust()
     for (int i = 0;i <= 1; i++) {
         layoutParams.landscapeRect = { 0, 0, displaySize.landscape.width, i};
         layoutParams.portraitRect = { 0, 0, displaySize.portrait.width, i};
-        auto ret = panel_->AdjustPanelRect(panelFlag, layoutParams, true, false, Trigger::IME_APP);
+        auto ret = panel_->AdjustPanelRect(panelFlag, layoutParams, true, false, false);
         EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     }
 }
@@ -1313,7 +1313,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_001, TestSize.Level0)
     LayoutParams layoutParams;
     layoutParams.landscapeRect = { 0, 0, 0, 0 };
     layoutParams.portraitRect = { 0, 0, 0, 0 };
-    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
     InputMethodPanelTest::imc_->Close();
@@ -1338,7 +1338,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_002, TestSize.Level0)
     LayoutParams layoutParams;
     layoutParams.landscapeRect = { -1, 0, 0, 0 };
     layoutParams.portraitRect = { -1, 0, 0, 0 };
-    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
     InputMethodPanelTest::imc_->Close();
@@ -1363,7 +1363,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_003, TestSize.Level0)
     LayoutParams layoutParams;
     layoutParams.landscapeRect = { 0, -1, 0, 0 };
     layoutParams.portraitRect = { 0, -1, 0, 0 };
-    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
     InputMethodPanelTest::imc_->Close();
@@ -1388,7 +1388,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_004, TestSize.Level0)
     LayoutParams layoutParams;
     layoutParams.landscapeRect = { 0, 0, -1, 0 };
     layoutParams.portraitRect = { 0, 0, -1, 0 };
-    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
     InputMethodPanelTest::imc_->Close();
@@ -1413,7 +1413,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_005, TestSize.Level0)
     LayoutParams layoutParams;
     layoutParams.landscapeRect = { 0, 0, 0, -1 };
     layoutParams.portraitRect = { 0, 0, 0, -1 };
-    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
     InputMethodPanelTest::imc_->Close();
@@ -1440,10 +1440,10 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_006, TestSize.Level0)
     LayoutParams layoutParams;
     layoutParams.landscapeRect = { 0, 0, displaySize.landscape.width, 0 };
     layoutParams.portraitRect = { 0, 0, displaySize.portrait.width, 0 };
-    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     ima_.inputType_ = InputType::SECURITY_INPUT;
-    ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+    ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     ima_.inputType_ = InputType::NONE;
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
@@ -1471,7 +1471,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_007, TestSize.Level0)
     LayoutParams layoutParams;
     layoutParams.landscapeRect = { 0, 0, displaySize.landscape.width + 1, 0 };
     layoutParams.portraitRect = { 0, 0, displaySize.portrait.width + 1, 0 };
-    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
     InputMethodPanelTest::imc_->Close();
@@ -1500,7 +1500,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_008, TestSize.Level0)
         static_cast<uint32_t>(static_cast<float>(displaySize.landscape.height) * 0.7) + 1 };
     layoutParams.portraitRect = { 0, 0, displaySize.portrait.width,
         static_cast<uint32_t>(static_cast<float>(displaySize.portrait.height) * 0.7) + 1 };
-    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
     InputMethodPanelTest::imc_->Close();
@@ -1529,7 +1529,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_009, TestSize.Level0)
         static_cast<uint32_t>(static_cast<float>(displaySize.landscape.height) * 0.7) };
     layoutParams.portraitRect = { 0, 0, displaySize.portrait.width,
         static_cast<uint32_t>(static_cast<float>(displaySize.portrait.height) * 0.7) };
-    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
     InputMethodPanelTest::imc_->Close();
@@ -1554,7 +1554,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_010, TestSize.Level0)
     LayoutParams layoutParams;
     layoutParams.landscapeRect = { 0, 0, 0, 0 };
     layoutParams.portraitRect = { 0, 0, 0, 0 };
-    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
     InputMethodPanelTest::imc_->Close();
@@ -1579,7 +1579,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_011, TestSize.Level0)
     LayoutParams layoutParams;
     layoutParams.landscapeRect = { -1, 0, 0, 0 };
     layoutParams.portraitRect = { -1, 0, 0, 0 };
-    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
     InputMethodPanelTest::imc_->Close();
@@ -1604,7 +1604,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_012, TestSize.Level0)
     LayoutParams layoutParams;
     layoutParams.landscapeRect = { 0, -1, 0, 0 };
     layoutParams.portraitRect = { 0, -1, 0, 0 };
-    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
     InputMethodPanelTest::imc_->Close();
@@ -1629,7 +1629,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_013, TestSize.Level0)
     LayoutParams layoutParams;
     layoutParams.landscapeRect = { 0, 0, -1, 0 };
     layoutParams.portraitRect = { 0, 0, -1, 0 };
-    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
     InputMethodPanelTest::imc_->Close();
@@ -1656,7 +1656,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_014, TestSize.Level0)
     LayoutParams layoutParams;
     layoutParams.landscapeRect = { 0, 0, displaySize.landscape.width, 0 };
     layoutParams.portraitRect = { 0, 0, displaySize.portrait.width, 0 };
-    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
     InputMethodPanelTest::imc_->Close();
@@ -1683,7 +1683,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_015, TestSize.Level0)
     LayoutParams layoutParams;
     layoutParams.landscapeRect = { 0, 0, displaySize.landscape.width + 1, 0 };
     layoutParams.portraitRect = { 0, 0, displaySize.portrait.width + 1, 0 };
-    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
     InputMethodPanelTest::imc_->Close();
@@ -1712,7 +1712,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_016, TestSize.Level0)
         static_cast<uint32_t>(static_cast<float>(displaySize.landscape.height) * 0.7) + 1 };
     layoutParams.portraitRect = { 0, 0, displaySize.portrait.width,
         static_cast<uint32_t>(static_cast<float>(displaySize.portrait.height) * 0.7) + 1 };
-    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
     InputMethodPanelTest::imc_->Close();
@@ -1738,7 +1738,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_017, TestSize.Level0)
     PanelFlag panelFlag = PanelFlag::FLG_FLOATING;
     LayoutParams layoutParams = { .landscapeRect = { 0, 0, displaySize.landscape.width, displaySize.landscape.height },
         .portraitRect = { 0, 0, displaySize.portrait.width, displaySize.portrait.height } };
-    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
     InputMethodPanelTest::imc_->Close();
@@ -1765,7 +1765,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_018, TestSize.Level0)
     LayoutParams layoutParams;
     layoutParams.landscapeRect = { 0, 0, displaySize.landscape.width, displaySize.landscape.height + 1 };
     layoutParams.portraitRect = { 0, 0, displaySize.portrait.width, displaySize.portrait.height + 1 };
-    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
     InputMethodPanelTest::imc_->Close();
@@ -1848,7 +1848,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustKeyboard_002, TestSize.Level0)
         .portrait = { portraitRect, {}, static_cast<int32_t>(portraitAvoidY), 0 },
         .landscape = { landscapeRect, {}, static_cast<int32_t>(landscapeAvoidY), 0 },
     };
-    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, params, {}, Trigger::IME_APP);
+    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, params, {}, false);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     std::this_thread::sleep_for(std::chrono::seconds(1));
     ret = inputMethodPanel->AdjustKeyboard();

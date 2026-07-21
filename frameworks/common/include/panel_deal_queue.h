@@ -52,7 +52,7 @@ struct JsEventInfo {
 
 class PanelDealQueue {
 public:
-    static constexpr int32_t MAX_WAIT_TIME = 10;    //ms
+    static constexpr int64_t MAX_WAIT_TIME = 10;    //ms
     static void Pop();
 
     static void Push(const JsEventInfo &info);

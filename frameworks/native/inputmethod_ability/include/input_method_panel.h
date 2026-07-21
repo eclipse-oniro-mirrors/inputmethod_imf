@@ -61,8 +61,9 @@ public:
     int32_t GetDisplayId(uint64_t &displayId);
     int32_t AdjustKeyboard();
     int32_t AdjustPanelRect(const PanelFlag panelFlag, const LayoutParams &layoutParams, bool needUpdateRegion,
-        bool needConfig, Trigger trigger);
-    int32_t AdjustPanelRect(PanelFlag panelFlag, EnhancedLayoutParams params, HotAreas hotAreas, Trigger trigger);
+        bool needConfig, bool isColdStartRequest);
+    int32_t AdjustPanelRect(PanelFlag panelFlag, EnhancedLayoutParams params, HotAreas hotAreas,
+        bool isColdStartRequest);
     int32_t UpdateRegion(std::vector<Rosen::Rect> region);
     std::tuple<std::vector<std::string>, std::vector<std::string>> GetScreenStatus(const PanelFlag panelFlag);
     int32_t ChangePanelFlag(PanelFlag panelFlag);
@@ -212,8 +213,9 @@ private:
     uint64_t GetCurDisplayId();
     bool IsNeedConfig(bool ignoreIsMainDisplay = false);
     int32_t IsValidParam(const ImmersiveEffect &effect, const Rosen::KeyboardLayoutParams &layoutParams);
-    int32_t AdjustLayout(const Rosen::KeyboardLayoutParams &param, Trigger trigger);
-    int32_t AdjustLayout(const Rosen::KeyboardLayoutParams &param, const ImmersiveEffect &effect, Trigger trigger);
+    int32_t AdjustLayout(const Rosen::KeyboardLayoutParams &param, bool isColdStartRequest);
+    int32_t AdjustLayout(const Rosen::KeyboardLayoutParams &param, const ImmersiveEffect &effect,
+        bool isColdStartRequest);
     int32_t FullScreenPrepare(Rosen::KeyboardLayoutParams &param, const ImmersiveEffect &effect);
     int32_t NormalImePrepare(Rosen::KeyboardLayoutParams &param, const ImmersiveEffect &effect);
     int32_t PrepareAdjustLayout(Rosen::KeyboardLayoutParams &param, const ImmersiveEffect &effect);
