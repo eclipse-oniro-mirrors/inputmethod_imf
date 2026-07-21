@@ -67,6 +67,10 @@ group("unittest") {
       "resource/ohos_test:copy_ohos_test",
       "cpp_test:ImeMultiUserTest",
       "cpp_test:ImeInfoInquirerTest",
+      "cpp_test:WmsConnectionMonitorTest",
+      "cpp_test:KeyboardEventTest",
+      "cpp_test:InputEventCallbackTest",
+      "cpp_test:EnableUpgradeManagerTest",
     ]
   }
 }
