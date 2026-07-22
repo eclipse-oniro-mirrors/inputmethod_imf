@@ -732,8 +732,14 @@ ErrCode InputMethodSystemAbility::StartInput(const InputClientInfoInner &inputCl
     std::vector<sptr<IRemoteObject>> &agents, std::vector<BindImeInfo> &imeInfos)
 {
     AttachStateGuard guard(*this);
+    auto userId = GetCallingUserId();
     InputClientInfo inputClientInfo = InputMethodTools::GetInstance().InnerToInputClientInfo(inputClientInfoInner);
-    auto ret = StartInputInner(inputClientInfo, agents, imeInfos);
+    bool failedByUnavailableIme = false;
+    auto ret = StartInputInner(inputClientInfo, agents, imeInfos, failedByUnavailableIme);
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+    if (session != nullptr) {
+        session->SetAttachFailedByUnavailableImeFlag(failedByUnavailableIme);
+    }
     std::string bundleName = "";
     if (!imeInfos.empty()) {
         bundleName = imeInfos[0].bundleName;
@@ -744,7 +750,7 @@ ErrCode InputMethodSystemAbility::StartInput(const InputClientInfoInner &inputCl
     auto evenInfo = HiSysOriginalInfo::Builder()
                         .SetPeerName(ImfHiSysEventUtil::GetAppName(IPCSkeleton::GetCallingTokenID()))
                         .SetPeerPid(IPCSkeleton::GetCallingPid())
-                        .SetPeerUserId(GetCallingUserId())
+                        .SetPeerUserId(userId)
                         .SetClientType(inputClientInfo.type)
                         .SetInputPattern(inputClientInfo.attribute.inputPattern)
                         .SetIsShowKeyboard(inputClientInfo.isShowKeyboard)
@@ -756,9 +762,10 @@ ErrCode InputMethodSystemAbility::StartInput(const InputClientInfoInner &inputCl
     return ret;
 }
 
-int32_t InputMethodSystemAbility::StartInputInner(
-    InputClientInfo &inputClientInfo, std::vector<sptr<IRemoteObject>> &agents, std::vector<BindImeInfo> &imeInfos)
+int32_t InputMethodSystemAbility::StartInputInner(InputClientInfo &inputClientInfo,
+    std::vector<sptr<IRemoteObject>> &agents, std::vector<BindImeInfo> &imeInfos, bool &failedByUnavailableIme)
 {
+    failedByUnavailableIme = false;
     auto userId = GetCallingUserId();
     auto pid = IPCSkeleton::GetCallingPid();
     AccessTokenID tokenId = IPCSkeleton::GetCallingTokenID();
@@ -795,6 +802,7 @@ int32_t InputMethodSystemAbility::StartInputInner(
         ret = EnsureImeAvailable(userId, inputClientInfo);
         if (ret != ErrorCode::NO_ERROR) {
             IMSA_HILOGE("%{public}d failed to EnsureImeAvailable!", userId);
+            failedByUnavailableIme = true;
             return ret;
         }
     }
