@@ -661,16 +661,12 @@ int32_t InputMethodPanel::AdjustPanelRect(const PanelFlag panelFlag, const Layou
         UpdateLayoutInfo(panelFlag, layoutParams, {}, resultParams, false);
         UpdateResizeParams();
     }
-<<<<<<< master
     int32_t ret;
     if (!isScbEnable_) {
         ret = AdjustLayoutWithoutScb(resultParams);
     } else {
-        ret = AdjustLayout(resultParams);
+        ret = AdjustLayout(resultParams, isColdStartRequest);
     }
-=======
-    auto ret = AdjustLayout(resultParams, isColdStartRequest);
->>>>>>> master
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("AdjustPanelRect error, err: %{public}d!", ret);
         return ErrorCode::ERROR_WINDOW_MANAGER;
