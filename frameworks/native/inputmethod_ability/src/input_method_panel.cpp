@@ -185,6 +185,31 @@ int32_t InputMethodPanel::PrepareAdjustLayout(Rosen::KeyboardLayoutParams &param
     return ErrorCode::NO_ERROR;
 }
 
+int32_t InputMethodPanel::AdjustLayoutWithoutScb(const Rosen::KeyboardLayoutParams &param)
+{
+    isPortrait_ = IsDisplayPortrait();
+    auto rect = isPortrait_ ? param.PortraitKeyboardRect_ : param.LandscapeKeyboardRect_;
+    IMSA_HILOGI("isPortrait: %{public}d, rect[%{public}d, %{public}d, %{public}u, %{public}u]", isPortrait_, rect.posX_,
+        rect.posY_, rect.width_, rect.height_);
+    auto wmError = window_->SetWindowGravity(param.gravity_, invalidGravityPercent);
+    if (wmError != WMError::WM_OK) {
+        IMSA_HILOGE("SetWindowGravity failed, wmError is %{public}d!", wmError);
+        return ErrorCode::ERROR_OPERATE_PANEL;
+    }
+    auto ret = ResizeWithoutAdjust(rect.width_, rect.height_);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("ResizeWithoutAdjust failed, ret: %{public}d", ret);
+        return ret;
+    }
+    ret = MoveTo(rect.posX_, rect.posY_);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("MoveTo failed, ret: %{public}d", ret);
+        return ret;
+    }
+    hasAdjustWithoutScb_ = true;
+    return ErrorCode::NO_ERROR;
+}
+
 int32_t InputMethodPanel::AdjustLayout(const Rosen::KeyboardLayoutParams &param)
 {
     return AdjustLayout(param, LoadImmersiveEffect());
@@ -623,7 +648,12 @@ int32_t InputMethodPanel::AdjustPanelRect(
         UpdateLayoutInfo(panelFlag, layoutParams, {}, resultParams, false);
         UpdateResizeParams();
     }
-    auto ret = AdjustLayout(resultParams);
+    int32_t ret;
+    if (!isScbEnable_) {
+        ret = AdjustLayoutWithoutScb(resultParams);
+    } else {
+        ret = AdjustLayout(resultParams);
+    }
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("AdjustPanelRect error, err: %{public}d!", ret);
         isExternalAdjusting_.store(false);
@@ -1400,6 +1430,15 @@ PanelFlag InputMethodPanel::GetPanelFlag()
     return panelFlag_;
 }
 
+void InputMethodPanel::AdjustWithoutScb()
+{
+    bool isPortrait = IsDisplayPortrait();
+    if (!isScbEnable_ && hasAdjustWithoutScb_ && isPortrait != isPortrait_) {
+        auto layoutParams = GetKeyboardLayoutParams();
+        AdjustLayoutWithoutScb(layoutParams);
+    }
+}
+
 int32_t InputMethodPanel::ShowPanel(uint32_t windowId)
 {
     IMSA_HILOGD("InputMethodPanel start.");
@@ -1415,7 +1454,6 @@ int32_t InputMethodPanel::ShowPanel(uint32_t windowId)
         IMSA_HILOGI("panel already shown.");
         return ErrorCode::NO_ERROR;
     }
-
     bool needAdjust = false;
     bool isExternalAdjusting = isExternalAdjusting_.load();
     {
@@ -1436,6 +1474,7 @@ int32_t InputMethodPanel::ShowPanel(uint32_t windowId)
             IMSA_HILOGI("AdjustPanelRect result: %{public}d", result);
         }
     }
+    AdjustWithoutScb();
     auto ret = ShowKeyboardToWms(windowId);
     if (ret != ErrorCode::NO_ERROR) {
         return ret;

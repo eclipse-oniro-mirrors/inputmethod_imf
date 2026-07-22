@@ -1380,5 +1380,242 @@ HWTEST_F(InputMethodPanelAdjustTest, testAdjustPanelRect_003, TestSize.Level0)
     EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
     InputMethodPanelAdjustTest::ImaDestroyPanel(inputMethodPanel);
 }
+/**
+ * @tc.name: testAdjustLayoutWithoutScb_001
+ * @tc.desc: Test AdjustPanelRect calls AdjustLayoutWithoutScb when isScbEnable_ is false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelAdjustTest, testAdjustLayoutWithoutScb_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelAdjustTest testAdjustLayoutWithoutScb_001 Test START");
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    InputMethodPanelAdjustTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    inputMethodPanel->isScbEnable_ = false;
+    DisplaySize display;
+    ASSERT_EQ(InputMethodPanelAdjustTest::GetDisplaySize(display), ErrorCode::NO_ERROR);
+    PanelFlag panelFlag = PanelFlag::FLG_FIXED;
+    Rosen::Rect portraitRect = { 0, 0, display.portrait.width, static_cast<uint32_t>(display.portrait.height * 0.4) };
+    Rosen::Rect landscapeRect = { 0, 0, display.landscape.width,
+        static_cast<uint32_t>(display.landscape.height * 0.4) };
+    LayoutParams layoutParams = { .landscapeRect = landscapeRect, .portraitRect = portraitRect };
+    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_TRUE(inputMethodPanel->hasAdjustWithoutScb_);
+    InputMethodPanelAdjustTest::ImaDestroyPanel(inputMethodPanel);
+}
+
+/**
+ * @tc.name: testAdjustLayoutWithoutScb_002
+ * @tc.desc: Test AdjustPanelRect calls AdjustLayout when isScbEnable_ is true, hasAdjustWithoutScb_ stays false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelAdjustTest, testAdjustLayoutWithoutScb_002, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelAdjustTest testAdjustLayoutWithoutScb_002 Test START");
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    InputMethodPanelAdjustTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    inputMethodPanel->isScbEnable_ = true;
+    DisplaySize display;
+    ASSERT_EQ(InputMethodPanelAdjustTest::GetDisplaySize(display), ErrorCode::NO_ERROR);
+    PanelFlag panelFlag = PanelFlag::FLG_FIXED;
+    Rosen::Rect portraitRect = { 0, 0, display.portrait.width, static_cast<uint32_t>(display.portrait.height * 0.4) };
+    Rosen::Rect landscapeRect = { 0, 0, display.landscape.width,
+        static_cast<uint32_t>(display.landscape.height * 0.4) };
+    LayoutParams layoutParams = { .landscapeRect = landscapeRect, .portraitRect = portraitRect };
+    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_FALSE(inputMethodPanel->hasAdjustWithoutScb_);
+    InputMethodPanelAdjustTest::ImaDestroyPanel(inputMethodPanel);
+}
+
+/**
+ * @tc.name: testAdjustLayoutWithoutScb_003
+ * @tc.desc: Test AdjustLayoutWithoutScb directly with null window returns ERROR_NULL_POINTER.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelAdjustTest, testAdjustLayoutWithoutScb_003, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelAdjustTest testAdjustLayoutWithoutScb_003 Test START");
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    inputMethodPanel->window_ = nullptr;
+    Rosen::KeyboardLayoutParams params;
+    auto ret = inputMethodPanel->AdjustLayoutWithoutScb(params);
+    EXPECT_EQ(ret, ErrorCode::ERROR_OPERATE_PANEL);
+}
+
+/**
+ * @tc.name: testAdjustLayoutWithoutScb_004
+ * @tc.desc: Test AdjustLayoutWithoutScb updates isPortrait_ correctly.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelAdjustTest, testAdjustLayoutWithoutScb_004, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelAdjustTest testAdjustLayoutWithoutScb_004 Test START");
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    InputMethodPanelAdjustTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    inputMethodPanel->isScbEnable_ = false;
+    bool expectedPortrait = inputMethodPanel->IsDisplayPortrait();
+    DisplaySize display;
+    ASSERT_EQ(InputMethodPanelAdjustTest::GetDisplaySize(display), ErrorCode::NO_ERROR);
+    PanelFlag panelFlag = PanelFlag::FLG_FIXED;
+    Rosen::Rect portraitRect = { 0, 0, display.portrait.width, static_cast<uint32_t>(display.portrait.height * 0.4) };
+    Rosen::Rect landscapeRect = { 0, 0, display.landscape.width,
+        static_cast<uint32_t>(display.landscape.height * 0.4) };
+    LayoutParams layoutParams = { .landscapeRect = landscapeRect, .portraitRect = portraitRect };
+    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_EQ(inputMethodPanel->isPortrait_, expectedPortrait);
+    InputMethodPanelAdjustTest::ImaDestroyPanel(inputMethodPanel);
+}
+
+/**
+ * @tc.name: testShowPanelWithAdjustWithoutScb_001
+ * @tc.desc: Test ShowPanel re-adjusts layout when orientation changes after AdjustLayoutWithoutScb.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelAdjustTest, testShowPanelWithAdjustWithoutScb_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelAdjustTest testShowPanelWithAdjustWithoutScb_001 Test START");
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FIXED;
+    InputMethodPanelAdjustTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    inputMethodPanel->isScbEnable_ = false;
+    DisplaySize display;
+    ASSERT_EQ(InputMethodPanelAdjustTest::GetDisplaySize(display), ErrorCode::NO_ERROR);
+    PanelFlag panelFlag = PanelFlag::FLG_FIXED;
+    Rosen::Rect portraitRect = { 0, 0, display.portrait.width, static_cast<uint32_t>(display.portrait.height * 0.4) };
+    Rosen::Rect landscapeRect = { 0, 0, display.landscape.width,
+        static_cast<uint32_t>(display.landscape.height * 0.4) };
+    LayoutParams layoutParams = { .landscapeRect = landscapeRect, .portraitRect = portraitRect };
+    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_TRUE(inputMethodPanel->hasAdjustWithoutScb_);
+    // Simulate orientation change: set isPortrait_ to opposite of current state
+    bool currentPortrait = inputMethodPanel->IsDisplayPortrait();
+    inputMethodPanel->isPortrait_ = !currentPortrait;
+    // ShowPanel should detect orientation mismatch and re-adjust
+    ret = inputMethodPanel->ShowPanel(Trigger::IME_APP);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    // After ShowPanel, isPortrait_ should be updated to current display orientation
+    EXPECT_EQ(inputMethodPanel->isPortrait_, currentPortrait);
+    InputMethodPanelAdjustTest::ImaDestroyPanel(inputMethodPanel);
+}
+
+/**
+ * @tc.name: testShowPanelWithAdjustWithoutScb_002
+ * @tc.desc: Test ShowPanel does not re-adjust when hasAdjustWithoutScb_ is false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelAdjustTest, testShowPanelWithAdjustWithoutScb_002, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelAdjustTest testShowPanelWithAdjustWithoutScb_002 Test START");
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FIXED;
+    InputMethodPanelAdjustTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    inputMethodPanel->isScbEnable_ = false;
+    // hasAdjustWithoutScb_ is false by default, ShowPanel should not trigger AdjustLayoutWithoutScb
+    bool originalPortrait = inputMethodPanel->isPortrait_;
+    auto ret = inputMethodPanel->ShowPanel(Trigger::IME_APP);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    // isPortrait_ should remain unchanged since hasAdjustWithoutScb_ is false
+    EXPECT_EQ(inputMethodPanel->isPortrait_, originalPortrait);
+    InputMethodPanelAdjustTest::ImaDestroyPanel(inputMethodPanel);
+}
+
+/**
+ * @tc.name: testShowPanelWithAdjustWithoutScb_003
+ * @tc.desc: Test ShowPanel does not re-adjust when isScbEnable_ is true.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelAdjustTest, testShowPanelWithAdjustWithoutScb_003, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelAdjustTest testShowPanelWithAdjustWithoutScb_003 Test START");
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FIXED;
+    InputMethodPanelAdjustTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    inputMethodPanel->isScbEnable_ = true;
+    inputMethodPanel->hasAdjustWithoutScb_ = true;
+    // When isScbEnable_ is true, ShowPanel should not call AdjustLayoutWithoutScb even if
+    // hasAdjustWithoutScb_ is true and orientation changes
+    bool originalPortrait = inputMethodPanel->isPortrait_;
+    auto ret = inputMethodPanel->ShowPanel(Trigger::IME_APP);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    // isPortrait_ should remain unchanged since isScbEnable_ is true
+    EXPECT_EQ(inputMethodPanel->isPortrait_, originalPortrait);
+    InputMethodPanelAdjustTest::ImaDestroyPanel(inputMethodPanel);
+}
+
+/**
+ * @tc.name: testAdjustLayoutWithoutScb_005
+ * @tc.desc: Test AdjustLayoutWithoutScb selects portrait rect when isPortrait_ is true.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelAdjustTest, testAdjustLayoutWithoutScb_005, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelAdjustTest testAdjustLayoutWithoutScb_005 Test START");
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    InputMethodPanelAdjustTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    inputMethodPanel->isScbEnable_ = false;
+    DisplaySize display;
+    ASSERT_EQ(InputMethodPanelAdjustTest::GetDisplaySize(display), ErrorCode::NO_ERROR);
+    PanelFlag panelFlag = PanelFlag::FLG_FIXED;
+    Rosen::Rect portraitRect = { 0, 0, display.portrait.width, static_cast<uint32_t>(display.portrait.height * 0.4) };
+    Rosen::Rect landscapeRect = { 0, 0, display.landscape.width,
+        static_cast<uint32_t>(display.landscape.height * 0.4) };
+    LayoutParams layoutParams = { .landscapeRect = landscapeRect, .portraitRect = portraitRect };
+    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    // Verify that the keyboard size matches the expected rect based on orientation
+    WindowSize kbSize = inputMethodPanel->GetKeyboardSize();
+    bool isPortrait = inputMethodPanel->IsDisplayPortrait();
+    if (isPortrait) {
+        EXPECT_EQ(kbSize.width, portraitRect.width_);
+        EXPECT_EQ(kbSize.height, portraitRect.height_);
+    } else {
+        EXPECT_EQ(kbSize.width, landscapeRect.width_);
+        EXPECT_EQ(kbSize.height, landscapeRect.height_);
+    }
+    InputMethodPanelAdjustTest::ImaDestroyPanel(inputMethodPanel);
+}
+
+/**
+ * @tc.name: testAdjustPanelRectWithoutScb_Floating
+ * @tc.desc: Test AdjustPanelRect with FLG_FLOATING and isScbEnable_ false.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelAdjustTest, testAdjustPanelRectWithoutScb_Floating, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelAdjustTest testAdjustPanelRectWithoutScb_Floating Test START");
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    InputMethodPanelAdjustTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    inputMethodPanel->isScbEnable_ = false;
+    DisplaySize display;
+    ASSERT_EQ(InputMethodPanelAdjustTest::GetDisplaySize(display), ErrorCode::NO_ERROR);
+    PanelFlag panelFlag = PanelFlag::FLG_FLOATING;
+    Rosen::Rect portraitRect = { 0, 0, display.portrait.width, static_cast<uint32_t>(display.portrait.height * 0.5) };
+    Rosen::Rect landscapeRect = { 0, 0, display.landscape.width,
+        static_cast<uint32_t>(display.landscape.height * 0.5) };
+    LayoutParams layoutParams = { .landscapeRect = landscapeRect, .portraitRect = portraitRect };
+    auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, Trigger::IME_APP);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_TRUE(inputMethodPanel->hasAdjustWithoutScb_);
+    InputMethodPanelAdjustTest::ImaDestroyPanel(inputMethodPanel);
+}
 } // namespace MiscServices
 } // namespace OHOS
