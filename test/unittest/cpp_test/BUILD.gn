@@ -2322,3 +2322,205 @@ ohos_unittest("ImeInfoInquirerTest") {
     "window_manager:libdm",
   ]
 }
+
+ohos_unittest("WmsConnectionMonitorTest") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+  module_out_path = module_output_path
+
+  include_dirs = [
+    "${inputmethod_path}/common/include",
+    "${inputmethod_path}/services/adapter/wms_connection_monitor/include",
+  ]
+  sources = [
+    "${inputmethod_path}/services/adapter/wms_connection_monitor/src/wms_connection_monitor_manager.cpp",
+    "${inputmethod_path}/services/adapter/wms_connection_monitor/src/wms_connection_observer.cpp",
+    "src/wms_connection_monitor_test.cpp",
+  ]
+  configs = [ ":module_private_config" ]
+  configs += [ "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_native_public_config" ]
+  deps = [
+    "${inputmethod_path}/common:inputmethod_common",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
+    "${inputmethod_path}/services:inputmethod_service_static",
+    "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
+  ]
+  external_deps = [
+    "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "input:libmmi-client",
+    "ipc:ipc_single",
+    "window_manager:libdm",
+    "window_manager:libwm",
+  ]
+  if (window_manager_use_sceneboard) {
+    external_deps += [ "window_manager:libwm_lite" ]
+  } else {
+    external_deps += [ "window_manager:libwm" ]
+  }
+
+  cflags = [
+    "-fno-access-control",
+  ]
+}
+
+ohos_unittest("KeyboardEventTest") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+  module_out_path = module_output_path
+
+  include_dirs = [
+    "${inputmethod_path}/common/include",
+    "${inputmethod_path}/services/adapter/keyboard/include",
+  ]
+
+  sources = [ "src/keyboard_event_test.cpp" ]
+
+  configs = [
+    ":module_private_config",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_native_public_config",
+  ]
+
+  deps = [
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_static",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
+    "${inputmethod_path}/services:inputmethod_service_static",
+    "${inputmethod_path}/services/adapter/keyboard:keboard_event_static",
+    "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
+  ]
+
+  external_deps = [
+    "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "input:libmmi-client",
+    "ipc:ipc_single",
+    "napi:ace_napi",
+  ]
+
+  cflags = [
+    "-fno-access-control",
+  ]
+}
+
+ohos_unittest("InputEventCallbackTest") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+  module_out_path = module_output_path
+
+  include_dirs = [
+    "${inputmethod_path}/common/include",
+    "${inputmethod_path}/services/adapter/keyboard/include",
+  ]
+
+  sources = [ "src/input_event_callback_test.cpp" ]
+
+  configs = [
+    ":module_private_config",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_native_public_config",
+  ]
+
+  deps = [
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_static",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
+    "${inputmethod_path}/services:inputmethod_service_static",
+    "${inputmethod_path}/services/adapter/keyboard:keboard_event_static",
+    "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
+  ]
+
+  external_deps = [
+    "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "hisysevent:libhisysevent",
+    "input:libmmi-client",
+    "ipc:ipc_single",
+    "napi:ace_napi",
+  ]
+
+  cflags = [
+    "-fno-access-control",
+  ]
+}
+
+ohos_unittest("EnableUpgradeManagerTest") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+  module_out_path = module_output_path
+
+  include_dirs = [
+    "${inputmethod_path}/common/include",
+    "${inputmethod_path}/services/include",
+    "${inputmethod_path}/services/adapter/settings_data_provider/include",
+    "${inputmethod_path}/services/adapter/settings_data_provider/common/include",
+    "${inputmethod_path}/services/adapter/os_account_adapter/include",
+    "${inputmethod_path}/services/json/include",
+    "${inputmethod_path}/frameworks/native/inputmethod_controller/include",
+    "${inputmethod_path}/frameworks/native/inputmethod_ability/include",
+  ]
+
+  sources = [ "src/enable_upgrade_manager_test.cpp" ]
+
+  configs = [ ":module_private_config" ]
+
+  deps = [
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
+    "${inputmethod_path}/services:inputmethod_service_static",
+    "${inputmethod_path}/services/adapter/settings_data_provider:settings_data_static",
+    "${inputmethod_path}/services/file:imf_file_static",
+    "${inputmethod_path}/services/json:imf_json_static",
+    "${inputmethod_path}/test/common:inputmethod_test_common",
+    "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
+  ]
+
+  external_deps = [
+    "ability_base:want",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "bundle_framework:appexecfwk_core",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "config_policy:configpolicy_util",
+    "data_share:datashare_common",
+    "data_share:datashare_consumer",
+    "eventhandler:libeventhandler",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "init:libbegetutil",
+    "input:libmmi-client",
+    "ipc:ipc_single",
+    "os_account:os_account_innerkits",
+    "resource_management:global_resmgr",
+    "samgr:samgr_proxy",
+  ]
+  if (window_manager_use_sceneboard) {
+    external_deps += [ "window_manager:libwm_lite" ]
+  } else {
+    external_deps += [ "window_manager:libwm" ]
+  }
+
+  cflags = [
+    "-fno-access-control",
+  ]
+}
