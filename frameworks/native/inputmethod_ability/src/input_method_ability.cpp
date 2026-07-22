@@ -470,7 +470,7 @@ void InputMethodAbility::OnCursorUpdate(int32_t positionX, int32_t positionY, in
         IMSA_HILOGE("kdListener_ is nullptr!");
         return;
     }
-    IMSA_HILOGD("x: %{public}d, y: %{public}d, height: %{public}d.", positionX, positionY, height);
+    IMSA_HILOGD("IMA, x: %{public}d, y: %{public}d, height: %{public}d.", positionX, positionY, height);
     kdListener_->OnCursorUpdate(positionX, positionY, height);
 }
 
@@ -1298,7 +1298,7 @@ int32_t InputMethodAbility::ShowPanel(
             IMSA_HILOGE("failed to set keyBoard, ret: %{public}d!", ret);
         }
     }
-    auto ret = inputMethodPanel->ShowPanel(GetInputAttribute().windowId);
+    auto ret = inputMethodPanel->ShowPanel(trigger, GetInputAttribute().windowId);
     if (ret == ErrorCode::NO_ERROR) {
         NotifyPanelStatus(false, FLG_FIXED, true);
         PanelStatusInfo info;

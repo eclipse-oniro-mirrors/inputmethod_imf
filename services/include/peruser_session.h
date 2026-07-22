@@ -235,7 +235,7 @@ private:
     std::shared_ptr<ClientGroup> GetClientGroup(uint64_t displayId);
     std::shared_ptr<ClientGroup> GetClientGroup(sptr<IRemoteObject> client);
     std::shared_ptr<ClientGroup> GetClientGroupByGroupId(uint64_t displayGroupId);
-    int32_t InitRealImeData(sptr<AAFwk::IAbilityConnection> &connection,
+    int32_t InitRealImeData(sptr<AAFwk::IAbilityConnection> &connection, bool &isFirstStart,
         const std::pair<std::string, std::string> &ime, const std::shared_ptr<ImeNativeCfg> &imeNativeCfg = nullptr);
     std::shared_ptr<ImeData> UpdateRealImeData(sptr<IInputMethodCore> core, sptr<IRemoteObject> agent, pid_t pid,
         pid_t uid);

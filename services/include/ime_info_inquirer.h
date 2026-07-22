@@ -111,12 +111,18 @@ public:
     bool IsDynamicStartIme();
     std::unordered_set<std::string> GetDisableNumKeyAppDeviceTypes();
     bool IsCapacitySupport(const std::string &capacityName);
+    bool IsSupportPcMode();
+    bool IsDisableImmersiveMode();
+    bool IsDisablePcModeImmersiveMode();
+    bool IsPcMode();
+    void SetPcMode(bool isPcMode);
     bool GetCompatibleDeviceType(const std::string &bundleName, std::string &compatibleDeviceType);
     bool GetSaInfo(const std::string &saName, SaInfo &saInfo);
     bool IsUIExtension(int64_t pid);
     bool IsSysIme(const std::string &bundleName);
     bool GetBundleInfoByBundleName(int32_t userId, const std::string &bundleName, AppExecFwk::BundleInfo &bundleInfo);
     std::string GetSystemPanelAppIdentifier();
+    bool IsSupperFold();
 
 private:
     ImeInfoInquirer() = default;
@@ -171,8 +177,13 @@ private:
     bool TransformFileToJsonString(const std::string &resPath, std::string &profile) const;
     SystemConfig systemConfig_;
     ProductConfig productConfig_;
+    bool isPcMode_{ false };
     std::vector<DynamicStartImeCfgItem> dynamicStartImeList_;
     bool IsSystemSpecialIme(const OHOS::AppExecFwk::ExtensionAbilityInfo &extInfo);
+
+    bool isSupperFold_{ false };
+    std::atomic<bool> isInitSupperFold_{ false };
+    std::mutex initSupperFoldLock_;
 };
 } // namespace MiscServices
 } // namespace OHOS

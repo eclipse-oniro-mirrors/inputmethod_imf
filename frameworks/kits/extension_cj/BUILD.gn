@@ -43,6 +43,8 @@ ohos_shared_library("cj_inputmethod_extension_ffi") {
     ubsan = true
   }
   cflags_cc = [
+    "-fvisibility=hidden",
+    "-fvisibility-inlines-hidden",
     "-fdata-sections",
     "-ffunction-sections",
     "-Os",
@@ -93,8 +95,10 @@ ohos_shared_library("cj_inputmethod_extension_ffi") {
     "hilog:libhilog",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "napi:ace_napi",
     "napi:cj_bind_ffi",
     "napi:cj_bind_native",
+    "node:node_header_notice",
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "samgr:samgr_proxy",

@@ -224,7 +224,7 @@ public:
             IMSA_HILOGE("null env");
             return aniObject;
         }
-        ani_status retCode = env->FindClass("std.core.Uint8Array", &arrayClass);
+        ani_status retCode = env->FindClass("escompat.Uint8Array", &arrayClass);
         if (retCode != ANI_OK) {
             IMSA_HILOGE("Failed: env->FindClass()");
             return aniObject;

@@ -31,6 +31,7 @@
 #include "parameter.h"
 #include "parameters.h"
 #include "singleton.h"
+#include "settings_data_utils.h"
 #include "system_ability_definition.h"
 #include "ui_extension_utils.h"
 
@@ -71,6 +72,13 @@ void ImeInfoInquirer::InitProductConfig()
         IMSA_HILOGE("parse productConfig failed!");
         return;
     }
+    if (productConfig_.isSupportPcMode) {
+        std::string value;
+        auto err = SettingsDataUtils::GetInstance().GetStringValue(
+            SETTING_URI_PROXY, "settings.sceneboard.ispcmode", value);
+        isPcMode_ = (err == ErrorCode::NO_ERROR && value == "1");
+        IMSA_HILOGI("isSupportPcMode=true, initial isPcMode: %{public}d", isPcMode_);
+    }
 }
 
 void ImeInfoInquirer::InitDynamicStartImeCfg()
@@ -81,6 +89,23 @@ void ImeInfoInquirer::InitDynamicStartImeCfg()
     }
 }
 
+bool ImeInfoInquirer::IsSupperFold()
+{
+    if (isInitSupperFold_.load()) {
+        return isSupperFold_;
+    }
+    std::string product = system::GetParameter("const.window.foldscreen.type", "0,0,0,0");
+    std::string value;
+    size_t pos = product.find(',');
+    if (pos != std::string::npos) {
+        value = product.substr(0, pos);
+    }
+    std::lock_guard<std::mutex> lock(initSupperFoldLock_);
+    isSupperFold_ = value == "5";
+    isInitSupperFold_.store(true);
+    return isSupperFold_;
+}
+
 bool ImeInfoInquirer::IsEnableAppAgent()
 {
     return systemConfig_.enableAppAgentFeature;
@@ -89,6 +114,31 @@ bool ImeInfoInquirer::IsEnableAppAgent()
 bool ImeInfoInquirer::IsCapacitySupport(const std::string &capacityName)
 {
     return systemConfig_.supportedCapacityList.find(capacityName) != systemConfig_.supportedCapacityList.end();
+}
+
+bool ImeInfoInquirer::IsSupportPcMode()
+{
+    return productConfig_.isSupportPcMode;
+}
+
+bool ImeInfoInquirer::IsDisableImmersiveMode()
+{
+    return systemConfig_.disableImmersiveMode;
+}
+
+bool ImeInfoInquirer::IsDisablePcModeImmersiveMode()
+{
+    return productConfig_.disablePcModeImmersiveMode;
+}
+
+bool ImeInfoInquirer::IsPcMode()
+{
+    return isPcMode_;
+}
+
+void ImeInfoInquirer::SetPcMode(bool isPcMode)
+{
+    isPcMode_ = isPcMode;
 }
 
 bool ImeInfoInquirer::IsEnableNumKey()

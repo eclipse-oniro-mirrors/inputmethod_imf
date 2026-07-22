@@ -32,6 +32,8 @@ public:
     ~WmsConnectionObserver() = default;
     void OnConnected(int32_t userId, int32_t screenId) override;
     void OnDisconnected(int32_t userId, int32_t screenId) override;
+    void OnConnected(int32_t userId, int32_t screenId, pid_t pid) override;
+    void OnDisconnected(int32_t userId, int32_t screenId, pid_t pid) override;
     static bool IsWmsConnected(int32_t userId);
 
 private:

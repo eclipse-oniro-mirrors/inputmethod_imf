@@ -17,7 +17,6 @@
 #define OHOS_INPUTMETHOD_FFRT_BLOCK_QUEUE_H
 #include <queue>
 
-#include "cpp/mutex.h"
 #include "ffrt.h"
 
 namespace OHOS {

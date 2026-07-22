@@ -27,6 +27,7 @@
 #include "block_queue.h"
 #include "controller_listener.h"
 #include "element_name.h"
+#include "want.h"
 #include "event_handler.h"
 #include "global.h"
 #include "iinput_method_agent.h"
@@ -529,6 +530,18 @@ public:
         int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
 
     /**
+     * @brief Set EDC backup input method configuration
+     *
+     * This function is used to configure EDC backup input method.
+     * Requires system-level permission.
+     *
+     * @param edcBackupImeName Indicates the EDC backup input method name (Input method B).
+     * @return Returns 0 for success, others for failure.
+     * @since 26
+     */
+    IMF_API int32_t SetEDCDefaultInputMethod(const std::string &edcBackupImeName);
+
+    /**
      * @brief Set simple keyboard mode.
      *
      * This function is used to set the simple keyboard mode.
@@ -681,7 +694,7 @@ public:
      * @since 10
      */
     void OnInputStop(bool isStopInactiveClient = false, const sptr<IRemoteObject> &proxy = nullptr,
-        bool isSendKeyboardStatus = true);
+        bool isSendKeyboardStatus = true, bool isStopByMultiPreemptInProc = false);
     void OnImeMirrorStop(sptr<IRemoteObject> object);
 
     /**
@@ -1132,8 +1145,13 @@ private:
     int32_t ShowSoftKeyboardInner(uint64_t displayId, ClientType type);
     void ReportClientShow(int32_t eventCode, int32_t errCode, ClientType type);
     void GetWindowScaleCoordinate(uint32_t windowId, CursorInfo &cursorInfo);
-    void CalibrateImmersiveParam(InputAttribute &inputAttribute);
+    void CalibrateImmersiveParam(InputAttribute &inputAttribute, bool shouldOverrideImmersiveMode = false);
     void CalibrateInputPatternParam(InputAttribute &inputAttribute);
+    bool IsDisableImmersiveMode();
+    bool IsPcMode();
+    bool IsSupportPcMode();
+    bool IsDisablePcModeImmersiveMode();
+    bool ShouldOverrideImmersiveMode(const TextConfig &textConfig);
     void ClearAgentInfo();
     int32_t SendRequestToAllAgents(std::function<int32_t(std::shared_ptr<IInputMethodAgent>)> task);
     int32_t SendRequestToImeMirrorAgent(std::function<int32_t(std::shared_ptr<IInputMethodAgent>)> task);
@@ -1144,6 +1162,7 @@ private:
     bool SubscribeSaStart(std::function<void()> handler, int32_t saId);
     int32_t GetInputStartInfo(InputStartInfo &info);  // default displayId, foreground user
     std::shared_ptr<AppExecFwk::EventHandler> GetMainHandler();
+    void OnTmpInputStop(const sptr<IRemoteObject> &proxy);
 
     struct CtrlEventInfo {
         std::chrono::steady_clock::time_point timestamp;
@@ -1216,6 +1235,22 @@ private:
 
     std::mutex textConfigLock_;
     TextConfig textConfig_;
+    
+    struct ImmersiveCache {
+        std::atomic_bool isSupportPcModeCached{ false };
+        std::atomic_bool isSupportPcModeQueried{ false };
+        std::atomic_bool isDisablePcModeImmersiveModeCached{ false };
+        std::atomic_bool isDisablePcModeImmersiveModeQueried{ false };
+        std::atomic_bool isDisableImmersiveModeCached{ false };
+        std::atomic_bool isDisableImmersiveModeQueried{ false };
+        void ResetQueried()
+        {
+            isDisableImmersiveModeQueried.store(false);
+            isSupportPcModeQueried.store(false);
+            isDisablePcModeImmersiveModeQueried.store(false);
+        }
+    };
+    ImmersiveCache immersiveCache_;
 
     struct KeyEventInfo {
         std::chrono::system_clock::time_point timestamp{};

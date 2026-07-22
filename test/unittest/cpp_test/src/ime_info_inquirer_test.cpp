@@ -25,8 +25,12 @@
 #include <string>
 #include <vector>
 
+#include "common_event_data.h"
+#include "common_event_subscribe_info.h"
 #include "global.h"
+#include "im_common_event_manager.h"
 #include "input_method_property.h"
+#include "want.h"
 
 using namespace testing::ext;
 namespace OHOS {
@@ -304,5 +308,166 @@ HWTEST_F(ImeInfoInquirerTest, ListInputMethodSubtype_002, TestSize.Level0)
     EXPECT_EQ(result, ErrorCode::ERROR_BAD_PARAMETERS);
 }
 
+/**
+ * @tc.name: IsSupportPcMode_001
+ * @tc.desc: IsSupportPcMode returns false by default
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(ImeInfoInquirerTest, IsSupportPcMode_001, TestSize.Level0)
+{
+    IMSA_HILOGI("IsSupportPcMode_001 start");
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    bool origValue = inquirer.productConfig_.isSupportPcMode;
+    inquirer.productConfig_.isSupportPcMode = false;
+    EXPECT_FALSE(inquirer.IsSupportPcMode());
+    inquirer.productConfig_.isSupportPcMode = origValue;
+}
+
+/**
+ * @tc.name: IsSupportPcMode_002
+ * @tc.desc: IsSupportPcMode returns true when configured
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(ImeInfoInquirerTest, IsSupportPcMode_002, TestSize.Level0)
+{
+    IMSA_HILOGI("IsSupportPcMode_002 start");
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    bool origValue = inquirer.productConfig_.isSupportPcMode;
+    inquirer.productConfig_.isSupportPcMode = true;
+    EXPECT_TRUE(inquirer.IsSupportPcMode());
+    inquirer.productConfig_.isSupportPcMode = origValue;
+}
+
+/**
+ * @tc.name: IsDisablePcModeImmersiveMode_001
+ * @tc.desc: IsDisablePcModeImmersiveMode returns false by default
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(ImeInfoInquirerTest, IsDisablePcModeImmersiveMode_001, TestSize.Level0)
+{
+    IMSA_HILOGI("IsDisablePcModeImmersiveMode_001 start");
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    bool origValue = inquirer.productConfig_.disablePcModeImmersiveMode;
+    inquirer.productConfig_.disablePcModeImmersiveMode = false;
+    EXPECT_FALSE(inquirer.IsDisablePcModeImmersiveMode());
+    inquirer.productConfig_.disablePcModeImmersiveMode = origValue;
+}
+
+/**
+ * @tc.name: IsDisablePcModeImmersiveMode_002
+ * @tc.desc: IsDisablePcModeImmersiveMode returns true when configured
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(ImeInfoInquirerTest, IsDisablePcModeImmersiveMode_002, TestSize.Level0)
+{
+    IMSA_HILOGI("IsDisablePcModeImmersiveMode_002 start");
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    bool origValue = inquirer.productConfig_.disablePcModeImmersiveMode;
+    inquirer.productConfig_.disablePcModeImmersiveMode = true;
+    EXPECT_TRUE(inquirer.IsDisablePcModeImmersiveMode());
+    inquirer.productConfig_.disablePcModeImmersiveMode = origValue;
+}
+
+/**
+ * @tc.name: IsPcMode_001
+ * @tc.desc: IsPcMode returns false by default
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(ImeInfoInquirerTest, IsPcMode_001, TestSize.Level0)
+{
+    IMSA_HILOGI("IsPcMode_001 start");
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    bool origValue = inquirer.IsPcMode();
+    inquirer.SetPcMode(false);
+    EXPECT_FALSE(inquirer.IsPcMode());
+    inquirer.SetPcMode(origValue);
+}
+
+/**
+ * @tc.name: SetPcMode_001
+ * @tc.desc: SetPcMode sets isPcMode to true
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(ImeInfoInquirerTest, SetPcMode_001, TestSize.Level0)
+{
+    IMSA_HILOGI("SetPcMode_001 start");
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    bool origValue = inquirer.IsPcMode();
+    inquirer.SetPcMode(true);
+    EXPECT_TRUE(inquirer.IsPcMode());
+    inquirer.SetPcMode(origValue);
+}
+
+/**
+ * @tc.name: IsDisableImmersiveMode_001
+ * @tc.desc: IsDisableImmersiveMode returns false/true based on systemConfig_.disableImmersiveMode
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(ImeInfoInquirerTest, IsDisableImmersiveMode_001, TestSize.Level0)
+{
+    IMSA_HILOGI("IsDisableImmersiveMode_001 start");
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    bool origDisableImmersiveMode = inquirer.systemConfig_.disableImmersiveMode;
+    inquirer.systemConfig_.disableImmersiveMode = false;
+    EXPECT_FALSE(inquirer.IsDisableImmersiveMode());
+    inquirer.systemConfig_.disableImmersiveMode = true;
+    EXPECT_TRUE(inquirer.IsDisableImmersiveMode());
+    inquirer.systemConfig_.disableImmersiveMode = origDisableImmersiveMode;
+}
+
+/**
+ * @tc.name: OnHybridModeSwitch_001
+ * @tc.desc: OnHybridModeSwitch with HybridMode::PC_MODE sets isPcMode to true
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(ImeInfoInquirerTest, OnHybridModeSwitch_001, TestSize.Level0)
+{
+    IMSA_HILOGI("OnHybridModeSwitch_001 start");
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    bool origPcMode = inquirer.IsPcMode();
+    // Construct CommonEventData with HybridMode::PC_MODE
+    EventFwk::MatchingSkills matchingSkills;
+    EventFwk::CommonEventSubscribeInfo subscribeInfo(matchingSkills);
+    auto subscriber = std::make_shared<ImCommonEventManager::EventSubscriber>(subscribeInfo);
+    AAFwk::Want want;
+    want.SetParam("targetMode", static_cast<int32_t>(HybridMode::PC_MODE));
+    EventFwk::CommonEventData data;
+    data.SetWant(want);
+    subscriber->OnHybridModeSwitch(data);
+    EXPECT_TRUE(inquirer.IsPcMode());
+    inquirer.SetPcMode(origPcMode);
+}
+
+/**
+ * @tc.name: OnHybridModeSwitch_002
+ * @tc.desc: OnHybridModeSwitch with HybridMode::PHONE_MODE sets isPcMode to false
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(ImeInfoInquirerTest, OnHybridModeSwitch_002, TestSize.Level0)
+{
+    IMSA_HILOGI("OnHybridModeSwitch_002 start");
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    bool origPcMode = inquirer.IsPcMode();
+    inquirer.SetPcMode(true);
+    EventFwk::MatchingSkills matchingSkills;
+    EventFwk::CommonEventSubscribeInfo subscribeInfo(matchingSkills);
+    auto subscriber = std::make_shared<ImCommonEventManager::EventSubscriber>(subscribeInfo);
+    AAFwk::Want want;
+    want.SetParam("targetMode", static_cast<int32_t>(HybridMode::PHONE_MODE));
+    EventFwk::CommonEventData data;
+    data.SetWant(want);
+    subscriber->OnHybridModeSwitch(data);
+    EXPECT_FALSE(inquirer.IsPcMode());
+    inquirer.SetPcMode(origPcMode);
+}
 } // namespace MiscServices
 } // namespace OHOS

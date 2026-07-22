@@ -15,6 +15,7 @@
 
 #define private public
 #define protected public
+#include "ime_info_inquirer.h"
 #include "input_method_system_ability.h"
 #include "window_adapter.h"
 #undef private
@@ -956,33 +957,177 @@ HWTEST_F(IdentityCheckerTest, testWindowAdapter_GetDisplayIdByToken, TestSize.Le
 }
 
 /**
- * @tc.name: testGetSoftKeyboardInfo
- * @tc.desc:
+ * @tc.name: testIsFocusedUIExtension_GetDisplayGroupIdFailed
+ * @tc.desc: Test IsFocusedUIExtension when GetDisplayGroupIdWithRetry fails
  * @tc.type: FUNC
- * @tc.require:
- * @tc.author:
  */
-HWTEST_F(IdentityCheckerTest, testGetSoftKeyboardInfo, TestSize.Level1)
+HWTEST_F(IdentityCheckerTest, testIsFocusedUIExtension_GetDisplayGroupIdFailed, TestSize.Level1)
 {
-    IMSA_HILOGI("IdentityCheckerTest testShowCurrentInput_003 start");
+    IMSA_HILOGI("IdentityCheckerTest testIsFocusedUIExtension_GetDisplayGroupIdFailed start");
+    ASSERT_NE(identityCheckerImpl_, nullptr);
+
+    // Save original displayGroupIds state
+    auto originalDisplayGroupIds = WindowAdapter::GetInstance().displayGroupIds_;
+
+    // Clear displayGroupIds to simulate failure scenario
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+
+    const uint32_t windowId = 10;
+    const uint64_t invalidDisplayId = 888;
     int32_t userId = 100;
-    int32_t userId1 = 10000;
-    BoundImeInfo imeInfo;
 
-    IdentityCheckerTest::IdentityCheckerMock::isSystemApp_ = false;
-    IdentityCheckerTest::IdentityCheckerMock::isNativeSa_ = false;
-    int32_t ret = IdentityCheckerTest::service_->GetSoftKeyboardInfo(userId, imeInfo);
-    EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+    // Create empty focusWindowInfos
+    std::vector<Rosen::FocusChangeInfo> focusWindowInfos;
 
-    IdentityCheckerTest::IdentityCheckerMock::isSystemApp_ = false;
-    IdentityCheckerTest::IdentityCheckerMock::isNativeSa_ = true;
-    ret = IdentityCheckerTest::service_->GetSoftKeyboardInfo(userId, imeInfo);
-    EXPECT_NE(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+    // Call IsFocusedUIExtension with invalid displayId
+    auto result = IdentityCheckerTest::identityCheckerImpl_->IsFocusedUIExtension(
+        windowId, invalidDisplayId, focusWindowInfos, userId);
 
-    IdentityCheckerTest::IdentityCheckerMock::isSystemApp_ = true;
-    IdentityCheckerTest::IdentityCheckerMock::isNativeSa_ = false;
-    ret = IdentityCheckerTest::service_->GetSoftKeyboardInfo(userId1, imeInfo);
-    EXPECT_NE(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+    // Should return false when GetDisplayGroupIdWithRetry fails
+    EXPECT_FALSE(result.first);
+
+    // Restore original displayGroupIds state
+    WindowAdapter::GetInstance().displayGroupIds_ = originalDisplayGroupIds;
+}
+
+/**
+ * @tc.name: testIsFocusedUIAbility_SupperFold_DisplayIdZero_IsSupperFoldTrue
+ * @tc.desc: Test IsFocusedUIAbility when displayId==0 and IsSupperFold() is true, enters the if block
+ * @tc.type: FUNC
+ */
+HWTEST_F(IdentityCheckerTest, testIsFocusedUIAbility_SupperFold_DisplayIdZero_IsSupperFoldTrue, TestSize.Level1)
+{
+    IMSA_HILOGI("IdentityCheckerTest testIsFocusedUIAbility_SupperFold_DisplayIdZero_IsSupperFoldTrue start");
+    ASSERT_NE(identityCheckerImpl_, nullptr);
+
+    // Save original state
+    auto originalDisplayGroupIds = WindowAdapter::GetInstance().displayGroupIds_;
+    auto originalIsSupperFold = ImeInfoInquirer::GetInstance().isSupperFold_;
+    auto originalIsInitSupperFold = ImeInfoInquirer::GetInstance().isInitSupperFold_.load();
+
+    // Set up displayGroupIds_ for userId=100 with displayId=0 mapping to displayGroupId=0
+    WindowAdapter::GetInstance().displayGroupIds_[100] = { { 0, 0 } };
+
+    // Set IsSupperFold to return true
+    ImeInfoInquirer::GetInstance().isSupperFold_ = true;
+    ImeInfoInquirer::GetInstance().isInitSupperFold_.store(true);
+
+    // Construct focusWindowInfos with matching entry
+    const int64_t callingPid = 9999;
+    const uint64_t displayId = 0; // DEFAULT_DISPLAY_ID
+    const int32_t userId = 100;
+    Rosen::FocusChangeInfo focusInfo;
+    focusInfo.pid_ = static_cast<int32_t>(callingPid);
+    focusInfo.displayGroupId_ = 0; // DEFAULT_DISPLAY_GROUP_ID
+    focusInfo.realDisplayId_ = 0;  // so GenerateFocusCheckRet returns displayId==0
+    focusInfo.windowId_ = 12345;
+    std::vector<Rosen::FocusChangeInfo> focusWindowInfos = { focusInfo };
+
+    // Call private IsFocusedUIAbility(callingPid, displayId, focusWindowInfos, userId)
+    auto result =
+        identityCheckerImpl_->IsFocusedUIAbility(callingPid, displayId, focusWindowInfos, userId);
+
+    // Should enter the if block: rectInfo.second.displayId and keyboardDisplayId updated by GetDisplayIdByWindowId
+    EXPECT_TRUE(result.first);
+    // displayId and keyboardDisplayId should be set by GetDisplayIdByWindowId (returns DEFAULT_DISPLAY_ID in test)
+    EXPECT_EQ(result.second.displayId, DEFAULT_DISPLAY_ID);
+    EXPECT_EQ(result.second.keyboardDisplayId, DEFAULT_DISPLAY_ID);
+
+    // Restore original state
+    WindowAdapter::GetInstance().displayGroupIds_ = originalDisplayGroupIds;
+    ImeInfoInquirer::GetInstance().isSupperFold_ = originalIsSupperFold;
+    ImeInfoInquirer::GetInstance().isInitSupperFold_.store(originalIsInitSupperFold);
+}
+
+/**
+ * @tc.name: testIsFocusedUIAbility_SupperFold_DisplayIdZero_IsSupperFoldFalse
+ * @tc.desc: Test IsFocusedUIAbility when displayId==0 and IsSupperFold() is false, skips the if block
+ * @tc.type: FUNC
+ */
+HWTEST_F(IdentityCheckerTest, testIsFocusedUIAbility_SupperFold_DisplayIdZero_IsSupperFoldFalse, TestSize.Level1)
+{
+    IMSA_HILOGI("IdentityCheckerTest testIsFocusedUIAbility_SupperFold_DisplayIdZero_IsSupperFoldFalse start");
+    ASSERT_NE(identityCheckerImpl_, nullptr);
+
+    // Save original state
+    auto originalDisplayGroupIds = WindowAdapter::GetInstance().displayGroupIds_;
+    auto originalIsSupperFold = ImeInfoInquirer::GetInstance().isSupperFold_;
+    auto originalIsInitSupperFold = ImeInfoInquirer::GetInstance().isInitSupperFold_.load();
+
+    // Set up displayGroupIds_ for userId=100
+    WindowAdapter::GetInstance().displayGroupIds_[100] = { { 0, 0 } };
+
+    // Set IsSupperFold to return false
+    ImeInfoInquirer::GetInstance().isSupperFold_ = false;
+    ImeInfoInquirer::GetInstance().isInitSupperFold_.store(true);
+
+    // Construct focusWindowInfos with matching entry, realDisplayId_==0 so displayId==0
+    const int64_t callingPid = 9999;
+    const uint64_t displayId = 0;
+    const int32_t userId = 100;
+    Rosen::FocusChangeInfo focusInfo;
+    focusInfo.pid_ = static_cast<int32_t>(callingPid);
+    focusInfo.displayGroupId_ = 0;
+    focusInfo.realDisplayId_ = 0;
+    focusInfo.windowId_ = 12345;
+    std::vector<Rosen::FocusChangeInfo> focusWindowInfos = { focusInfo };
+
+    auto result =
+        identityCheckerImpl_->IsFocusedUIAbility(callingPid, displayId, focusWindowInfos, userId);
+
+    // Should skip the if block: displayId stays 0
+    EXPECT_TRUE(result.first);
+    EXPECT_EQ(result.second.displayId, static_cast<uint64_t>(0));
+    EXPECT_EQ(result.second.keyboardDisplayId, static_cast<uint64_t>(0));
+
+    // Restore original state
+    WindowAdapter::GetInstance().displayGroupIds_ = originalDisplayGroupIds;
+    ImeInfoInquirer::GetInstance().isSupperFold_ = originalIsSupperFold;
+    ImeInfoInquirer::GetInstance().isInitSupperFold_.store(originalIsInitSupperFold);
+}
+
+/**
+ * @tc.name: testIsFocusedUIAbility_SupperFold_DisplayIdNonZero
+ * @tc.desc: Test IsFocusedUIAbility when displayId!=0, short-circuits the if condition
+ * @tc.type: FUNC
+ */
+HWTEST_F(IdentityCheckerTest, testIsFocusedUIAbility_SupperFold_DisplayIdNonZero, TestSize.Level1)
+{
+    IMSA_HILOGI("IdentityCheckerTest testIsFocusedUIAbility_SupperFold_DisplayIdNonZero start");
+    ASSERT_NE(identityCheckerImpl_, nullptr);
+
+    // Save original state
+    auto originalDisplayGroupIds = WindowAdapter::GetInstance().displayGroupIds_;
+    auto originalIsSupperFold = ImeInfoInquirer::GetInstance().isSupperFold_;
+    auto originalIsInitSupperFold = ImeInfoInquirer::GetInstance().isInitSupperFold_.load();
+
+    // Set up displayGroupIds_ for userId=100 with non-default displayId
+    const uint64_t nonDefaultDisplayId = 100;
+    const uint64_t displayGroupId = 200;
+    WindowAdapter::GetInstance().displayGroupIds_[100] = { { nonDefaultDisplayId, displayGroupId } };
+
+    // Construct focusWindowInfos with matching entry, realDisplayId_!=0 so displayId!=0
+    const int64_t callingPid = 9999;
+    const int32_t userId = 100;
+    Rosen::FocusChangeInfo focusInfo;
+    focusInfo.pid_ = static_cast<int32_t>(callingPid);
+    focusInfo.displayGroupId_ = displayGroupId;
+    focusInfo.realDisplayId_ = nonDefaultDisplayId; // non-zero displayId
+    focusInfo.windowId_ = 12345;
+    std::vector<Rosen::FocusChangeInfo> focusWindowInfos = { focusInfo };
+
+    auto result =
+        identityCheckerImpl_->IsFocusedUIAbility(callingPid, nonDefaultDisplayId, focusWindowInfos, userId);
+
+    // Should skip the if block because displayId!=0: displayId and keyboardDisplayId remain unchanged
+    EXPECT_TRUE(result.first);
+    EXPECT_EQ(result.second.displayId, nonDefaultDisplayId);
+    EXPECT_EQ(result.second.keyboardDisplayId, nonDefaultDisplayId);
+
+    // Restore original state
+    WindowAdapter::GetInstance().displayGroupIds_ = originalDisplayGroupIds;
+    ImeInfoInquirer::GetInstance().isSupperFold_ = originalIsSupperFold;
+    ImeInfoInquirer::GetInstance().isInitSupperFold_.store(originalIsInitSupperFold);
 }
 } // namespace MiscServices
 } // namespace OHOS

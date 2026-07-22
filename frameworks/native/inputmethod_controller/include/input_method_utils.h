@@ -92,6 +92,10 @@ enum class ExtendAction {
 enum class CapacityType: int32_t {
     IMMERSIVE_EFFECT,
     SYSTEM_PANEL,
+    DISABLE_IMMERSIVE_MODE,
+    SUPPORT_PC_MODE,
+    DISABLE_PC_MODE_IMMERSIVE_MODE,
+    IS_PC_MODE,
     END,
 };
 
@@ -576,6 +580,7 @@ struct DetachOptions {
     bool isNotifyClientAsync{ false };
     bool needNotifyClient{ false };
     bool isSendKeyboardStatus{ true };
+    bool isStopByMultiPreemptInProc{ false };
 };
 
 enum class ResponseDataType : uint64_t { NONE_TYPE = 0, STRING_TYPE, INT32_TYPE };

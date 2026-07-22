@@ -431,7 +431,12 @@ void PerUserSession::OnHideSoftKeyBoardSelf()
 
 int32_t PerUserSession::OnRequestHideInput(uint64_t displayId, const std::string &callerBundleName)
 {
-    auto displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId, userId_);
+    uint64_t displayGroupId = ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID;
+    int32_t ret = WindowAdapter::GetInstance().GetDisplayGroupIdWithRetry(displayId, userId_, displayGroupId);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetDisplayGroupIdWithRetry failed, ret: %{public}d", ret);
+        return ret;
+    }
     IMSA_HILOGD("start, displayId: %{public}" PRIu64 ", groupId: %{public}" PRIu64 ".", displayId, displayGroupId);
     if (RequestHideRealIme(displayGroupId)) {
         IMSA_HILOGI("hide real ime");
@@ -894,6 +899,10 @@ void PerUserSession::HandleRealImeInMultiGroup(
 void PerUserSession::HandleSameClientInMultiGroup(const InputClientInfo &newClientInfo)
 {
     auto [oldClientGroup, oldClientInfo] = GetClientBySelfPidOrHostPid(newClientInfo.pid);
+    if (oldClientInfo != nullptr && !IsSameClientGroup(oldClientInfo->clientGroupId, newClientInfo.clientGroupId)
+        && oldClientInfo->pid == newClientInfo.pid) {
+        StopClientInput(oldClientInfo, { .isStopByMultiPreemptInProc = true });
+    }
     HandleInMultiGroup(newClientInfo, oldClientGroup, oldClientInfo, true);
 }
 
@@ -1012,7 +1021,8 @@ void PerUserSession::StopClientInput(const std::shared_ptr<InputClientInfo> &cli
     }
     int32_t ret;
     if (options.isNotifyClientAsync) {
-        ret = clientInfo->client->OnInputStopAsync(options.isInactiveClient, options.isSendKeyboardStatus);
+        ret = clientInfo->client->OnInputStopAsync(
+            options.isInactiveClient, options.isSendKeyboardStatus, options.isStopByMultiPreemptInProc);
     } else {
         auto onInputStopObject = new (std::nothrow) OnInputStopNotifyServiceImpl(clientInfo->pid);
         if (onInputStopObject == nullptr) {
@@ -1021,8 +1031,8 @@ void PerUserSession::StopClientInput(const std::shared_ptr<InputClientInfo> &cli
         }
         std::lock_guard<std::mutex> lock(isNotifyFinishedLock_);
         isNotifyFinished_.Clear(false);
-        ret =
-            clientInfo->client->OnInputStop(options.isInactiveClient, onInputStopObject, options.isSendKeyboardStatus);
+        ret = clientInfo->client->OnInputStop(options.isInactiveClient, onInputStopObject,
+            options.isSendKeyboardStatus, options.isStopByMultiPreemptInProc);
         if (!isNotifyFinished_.GetValue()) {
             IMSA_HILOGE("OnInputStop is not finished!");
         }
@@ -1948,18 +1958,21 @@ int32_t PerUserSession::StartInputService(const std::shared_ptr<ImeNativeCfg> &i
         return ret;
     }
     sptr<AAFwk::IAbilityConnection> connection = nullptr;
-    ret = InitRealImeData(connection, { imeToStart->bundleName, imeToStart->extName }, ime);
+    bool isFirstStart = false;
+    ret = InitRealImeData(connection, isFirstStart, { imeToStart->bundleName, imeToStart->extName }, ime);
     if (ret != ErrorCode::NO_ERROR) {
         return ret;
     }
     isImeStarted_.Clear(false);
     auto want = GetWant(imeToStart);
-    IMSA_HILOGI("connect %{public}s start!", imeToStart->imeId.c_str());
     ret = AAFwk::AbilityManagerClient::GetInstance()->ConnectExtensionAbility(want, connection, userId_);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("connect %{public}s failed, ret: %{public}d!", imeToStart->imeId.c_str(), ret);
         InputMethodSysEvent::GetInstance().InputmethodFaultReporter(
             ErrorCode::ERROR_IMSA_IME_CONNECT_FAILED, imeToStart->imeId, "failed to start ability.");
+        if (isFirstStart) {
+            RemoveRealImeData();
+        }
         return ErrorCode::ERROR_IMSA_IME_CONNECT_FAILED;
     }
     if (!skipWaitAfterTimeout) {
@@ -2223,7 +2236,7 @@ bool PerUserSession::IsCurrentImeByPid(int32_t pid)
         IMSA_HILOGE("ime not started!");
         return false;
     }
-    IMSA_HILOGD("userId: %{public}d, pid: %{public}d, current pid: %{public}d.", userId_, pid, imeData->pid);
+    IMSA_HILOGW("userId: %{public}d, pid: %{public}d, current pid: %{public}d.", userId_, pid, imeData->pid);
     return imeData->pid == pid;
 }
 
@@ -2514,10 +2527,11 @@ BlockQueue<SwitchInfo>& PerUserSession::GetSwitchQueue()
     return switchQueue_;
 }
 
-int32_t PerUserSession::InitRealImeData(sptr<AAFwk::IAbilityConnection> &connection,
+int32_t PerUserSession::InitRealImeData(sptr<AAFwk::IAbilityConnection> &connection, bool &isFirstStart,
     const std::pair<std::string, std::string> &ime, const std::shared_ptr<ImeNativeCfg> &imeNativeCfg)
 {
     std::lock_guard<std::mutex> lock(realImeDataLock_);
+    isFirstStart = false;
     if (realImeData_ != nullptr) {
         connection = realImeData_->connection;
         return ErrorCode::NO_ERROR;
@@ -2541,6 +2555,7 @@ int32_t PerUserSession::InitRealImeData(sptr<AAFwk::IAbilityConnection> &connect
     }
     imeData->connection = connection;
     realImeData_ = imeData;
+    isFirstStart = true;
     return ErrorCode::NO_ERROR;
 }
 
@@ -3066,7 +3081,12 @@ void PerUserSession::TryUnloadSystemAbility()
 
 std::shared_ptr<ClientGroup> PerUserSession::GetClientGroup(uint64_t displayId)
 {
-    auto clientGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId, userId_);
+    uint64_t clientGroupId = ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID;
+    int32_t ret = WindowAdapter::GetInstance().GetDisplayGroupIdWithRetry(displayId, userId_, clientGroupId);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetDisplayGroupIdWithRetry failed, ret: %{public}d", ret);
+        return nullptr;
+    }
     return GetClientGroupByGroupId(clientGroupId);
 }
 
@@ -3110,7 +3130,12 @@ void PerUserSession::OnWindowDisplayIdChanged(int32_t windowId, uint64_t display
         return;
     }
     auto oldClientGroupId = clientInfo->clientGroupId;
-    auto newClientGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId, userId_);
+    uint64_t newClientGroupId = ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID;
+    int32_t ret = WindowAdapter::GetInstance().GetDisplayGroupIdWithRetry(displayId, userId_, newClientGroupId);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetDisplayGroupIdWithRetry failed, ret: %{public}d", ret);
+        return;
+    }
     // Cross-group scenarios are handled by the attach.
     if (!IsSameClientGroup(oldClientGroupId, newClientGroupId)) {
         IMSA_HILOGW(
@@ -3118,9 +3143,13 @@ void PerUserSession::OnWindowDisplayIdChanged(int32_t windowId, uint64_t display
         return;
     }
     auto oldKeyboardGroupId = clientInfo->config.inputAttribute.displayGroupId;
-    auto newKeyboardDisplayId =
-        DisplayAdapter::IsRestrictedMainDisplayId(displayId) ? ImfCommonConst::DEFAULT_DISPLAY_ID : displayId;
-    auto newKeyboardGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(newKeyboardDisplayId, userId_);
+    auto newKeyboardDisplayId = displayId;
+    uint64_t newKeyboardGroupId = ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID;
+    ret = WindowAdapter::GetInstance().GetDisplayGroupIdWithRetry(newKeyboardDisplayId, userId_, newKeyboardGroupId);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetDisplayGroupIdWithRetry failed, ret: %{public}d", ret);
+        return;
+    }
     // Cross-group scenarios are handled by the attach.
     if (!IsSameClientGroup(oldKeyboardGroupId, newKeyboardGroupId)) {
         IMSA_HILOGW("not same keyboard group:%{public}" PRIu64 "/%{public}" PRIu64 ".", oldKeyboardGroupId,

@@ -177,6 +177,7 @@ int32_t InputMethodController::Initialize()
 
     SubscribeSaStart([this]() {
         this->RestoreListenInfoInSaDied();
+        this->immersiveCache_.ResetQueried();
         }, INPUT_METHOD_SYSTEM_ABILITY_ID);
 
     InputAttribute attribute;
@@ -249,8 +250,13 @@ void InputMethodController::DeactivateClient()
     SendKeyboardStatus(KeyboardStatus::NONE);
 }
 
-void InputMethodController::CalibrateImmersiveParam(InputAttribute &inputAttribute)
+void InputMethodController::CalibrateImmersiveParam(InputAttribute &inputAttribute, bool shouldOverrideImmersiveMode)
 {
+    // 0.Override immersiveMode to NONE if config requires it.
+    if (shouldOverrideImmersiveMode) {
+        IMSA_HILOGI("immersiveMode overridden to 0, original: %{public}d", inputAttribute.immersiveMode);
+        inputAttribute.immersiveMode = 0;
+    }
     // 1.The gradient mode and the fluid light mode can only be used when the immersive mode is enabled.
     if (inputAttribute.immersiveMode == 0) {
         if (inputAttribute.gradientMode != 0 || inputAttribute.fluidLightMode != 0) {
@@ -281,6 +287,96 @@ void InputMethodController::CalibrateInputPatternParam(InputAttribute &inputAttr
     IMSA_HILOGW("isOneTimeCodeNumberFlag = %{public}d", inputAttribute.isOneTimeCodeNumberFlag);
 }
 
+bool InputMethodController::ShouldOverrideImmersiveMode(const TextConfig &textConfig)
+{
+    if (textConfig.inputAttribute.immersiveMode == 0) {
+        return false;
+    }
+    if (IsSupportPcMode()) {
+        return IsPcMode() ? IsDisablePcModeImmersiveMode() : IsDisableImmersiveMode();
+    }
+    return IsDisableImmersiveMode();
+}
+
+bool InputMethodController::IsDisableImmersiveMode()
+{
+    if (immersiveCache_.isDisableImmersiveModeQueried.load()) {
+        return immersiveCache_.isDisableImmersiveModeCached.load();
+    }
+    auto proxy = TryGetSystemAbilityProxy();
+    if (proxy == nullptr) {
+        return false;
+    }
+    bool isDisable = false;
+    auto ret = proxy->IsCapacitySupport(static_cast<int32_t>(CapacityType::DISABLE_IMMERSIVE_MODE), isDisable);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGD("IsCapacitySupport failed, ret: %{public}d", ret);
+        return false;
+    }
+    IMSA_HILOGD("isDisableImmersiveMode: %{public}d", isDisable);
+    immersiveCache_.isDisableImmersiveModeCached.store(isDisable);
+    immersiveCache_.isDisableImmersiveModeQueried.store(true);
+    return isDisable;
+}
+
+bool InputMethodController::IsSupportPcMode()
+{
+    if (immersiveCache_.isSupportPcModeQueried.load()) {
+        return immersiveCache_.isSupportPcModeCached.load();
+    }
+    auto proxy = TryGetSystemAbilityProxy();
+    if (proxy == nullptr) {
+        return false;
+    }
+    bool isSupport = false;
+    auto ret = proxy->IsCapacitySupport(static_cast<int32_t>(CapacityType::SUPPORT_PC_MODE), isSupport);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGD("IsCapacitySupport SUPPORT_PC_MODE failed, ret: %{public}d", ret);
+        return false;
+    }
+    IMSA_HILOGD("isSupportPcMode: %{public}d", isSupport);
+    immersiveCache_.isSupportPcModeCached.store(isSupport);
+    immersiveCache_.isSupportPcModeQueried.store(true);
+    return isSupport;
+}
+
+bool InputMethodController::IsDisablePcModeImmersiveMode()
+{
+    if (immersiveCache_.isDisablePcModeImmersiveModeQueried.load()) {
+        return immersiveCache_.isDisablePcModeImmersiveModeCached.load();
+    }
+    auto proxy = TryGetSystemAbilityProxy();
+    if (proxy == nullptr) {
+        return false;
+    }
+    bool isDisable = false;
+    auto ret = proxy->IsCapacitySupport(static_cast<int32_t>(CapacityType::DISABLE_PC_MODE_IMMERSIVE_MODE), isDisable);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGD("IsCapacitySupport DISABLE_PC_MODE_IMMERSIVE_MODE failed, ret: %{public}d", ret);
+        return false;
+    }
+    IMSA_HILOGD("isDisablePcModeImmersiveMode: %{public}d", isDisable);
+    immersiveCache_.isDisablePcModeImmersiveModeCached.store(isDisable);
+    immersiveCache_.isDisablePcModeImmersiveModeQueried.store(true);
+    return isDisable;
+}
+
+bool InputMethodController::IsPcMode()
+{
+    auto proxy = TryGetSystemAbilityProxy();
+    if (proxy == nullptr) {
+        return false;
+    }
+    bool isPcMode = false;
+    auto ret = proxy->IsCapacitySupport(static_cast<int32_t>(CapacityType::IS_PC_MODE), isPcMode);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGD("IsCapacitySupport IS_PC_MODE failed, ret: %{public}d", ret);
+        return false;
+    }
+    IMSA_HILOGD("isPcMode: %{public}d", isPcMode);
+    return isPcMode;
+}
+
 void InputMethodController::SaveTextConfig(const TextConfig &textConfig)
 {
     IMSA_HILOGD("textConfig: %{public}s.", textConfig.ToString().c_str());
@@ -290,7 +386,8 @@ void InputMethodController::SaveTextConfig(const TextConfig &textConfig)
     {
         std::lock_guard<std::mutex> lock(textConfigLock_);
         textConfig_ = textConfig;
-        CalibrateImmersiveParam(textConfig_.inputAttribute);
+        bool shouldOverride = ShouldOverrideImmersiveMode(textConfig);
+        CalibrateImmersiveParam(textConfig_.inputAttribute, shouldOverride);
         CalibrateInputPatternParam(textConfig_.inputAttribute);
         textConfig_.cursorInfo = cursorInfo;
         StringUtils::TruncateUtf16String(textConfig_.inputAttribute.placeholder, MAX_PLACEHOLDER_SIZE);
@@ -440,14 +537,13 @@ int32_t InputMethodController::AttachExec(sptr<OnTextChangedListener> listener, 
     int32_t ret = StartInput(clientInfo_, agents, imeInfos);
     if (ret != ErrorCode::NO_ERROR) {
         auto evenInfo = HiSysOriginalInfo::Builder()
-                            .SetErrCode(ret)
                             .SetInputPattern(textConfig.inputAttribute.inputPattern)
                             .SetIsShowKeyboard(attachOptions.isShowKeyboard)
-                            .SetClientType(type)
-                            .Build();
+                            .SetClientType(type).SetErrCode(ret).Build();
         ImcHiSysEventReporter::GetInstance().ReportEvent(ImfEventType::CLIENT_ATTACH, *evenInfo);
         SetTextListener(nullptr);
         NotifyAttachFailure(ret);
+        IMSA_HILOGI("bind imf failed: %{public}d.", ret);
         return ret;
     }
     clientInfo_.state = ClientState::ACTIVE;
@@ -1455,6 +1551,22 @@ int32_t InputMethodController::SwitchInputMethod(
     return ret;
 }
 
+int32_t InputMethodController::SetEDCDefaultInputMethod(const std::string &edcBackupImeName)
+{
+    if (edcBackupImeName.empty()) {
+        IMSA_HILOGE("Invalid parameter: edcBackupImeName is empty");
+        return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+    }
+
+    auto proxy = GetSystemAbilityProxy();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("Proxy is nullptr");
+        return ErrorCode::ERROR_EX_NULL_POINTER;
+    }
+
+    return proxy->SetEDCDefaultInputMethod(edcBackupImeName);
+}
+
 int32_t InputMethodController::SetSimpleKeyboardEnabled(bool enable)
 {
 #ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
@@ -1495,10 +1607,43 @@ void InputMethodController::SetInputReady(
         OnInputReady(agentObjects[i], imeInfos[i]);
     }
 }
-// LCOV_EXCL_STOP
-void InputMethodController::OnInputStop(
-    bool isStopInactiveClient, const sptr<IRemoteObject> &proxy, bool isSendKeyboardStatus)
+
+void InputMethodController::OnTmpInputStop(const sptr<IRemoteObject> &proxy)
 {
+    ClearAgentInfo();
+    bool isNewEditor = false;
+    {
+        std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
+        isNewEditor = clientInfo_.isNotifyInputStart;
+    }
+    auto listener = GetTextListener();
+    if (!isNewEditor && listener != nullptr) {
+        IMSA_HILOGD("listener is not nullptr!");
+        if (textConfig_.inputAttribute.isTextPreviewSupported) {
+            IMSA_HILOGD("finish text preview.");
+            listener->FinishTextPreviewV2();
+        }
+    }
+    isBound_.store(false);
+    isEditable_.store(false);
+    isTextNotified_.store(false);
+    keyEventRetHandler_.ClearKeyEventCbInfo();
+    if (proxy == nullptr) {
+        IMSA_HILOGD("proxy is nullptr!");
+        return;
+    }
+    auto channelProxy = std::make_shared<OnInputStopNotifyProxy>(proxy);
+    channelProxy->NotifyOnInputStopFinished();
+}
+
+// LCOV_EXCL_STOP
+void InputMethodController::OnInputStop(bool isStopInactiveClient, const sptr<IRemoteObject> &proxy,
+    bool isSendKeyboardStatus, bool isStopByMultiPreemptInProc)
+{
+    if (isStopByMultiPreemptInProc) {
+        OnTmpInputStop(proxy);
+        return;
+    }
     ClearAgentInfo();
     auto listener = GetTextListener();
     if (listener != nullptr) {
@@ -2171,22 +2316,29 @@ int32_t InputMethodController::ShowSoftKeyboard(uint64_t displayId, ClientType t
 // LCOV_EXCL_START
 void InputMethodController::ReportClientShow(int32_t eventCode, int32_t errCode, ClientType type)
 {
-    auto evenInfo =
-        HiSysOriginalInfo::Builder().SetClientType(type).SetEventCode(eventCode).SetErrCode(errCode).Build();
+    IMSA_HILOGD("HiSysEvent report start!");
+    auto evenInfo = HiSysOriginalInfo::Builder()
+                        .SetClientType(type)
+                        .SetEventCode(eventCode)
+                        .SetErrCode(errCode)
+                        .Build();
     ImcHiSysEventReporter::GetInstance().ReportEvent(ImfEventType::CLIENT_SHOW, *evenInfo);
+    IMSA_HILOGD("HiSysEvent report end, errCode: %{public}d", errCode);
 }
 // LCOV_EXCL_STOP
 void InputMethodController::ReportBaseTextOperation(int32_t eventCode, int32_t errCode)
 {
+    IMSA_HILOGD("HiSysEvent report start!");
     auto imeInfo = GetBindImeInfo();
     auto evenInfo = HiSysOriginalInfo::Builder()
                         .SetEventCode(eventCode)
-                        .SetErrCode(errCode)
                         .SetPeerName(imeInfo.second)
                         .SetPeerPid(imeInfo.first)
                         .SetClientType(clientInfo_.type)
+                        .SetErrCode(errCode)
                         .Build();
     ImcHiSysEventReporter::GetInstance().ReportEvent(ImfEventType::BASE_TEXT_OPERATOR, *evenInfo);
+    IMSA_HILOGD("HiSysEvent report end, errCode: %{public}d", errCode);
 }
 
 void InputMethodController::UpdateTextPreviewState(bool isSupport)

@@ -33,8 +33,9 @@ struct ListInputContext : public AsyncCall::Context {
     Property property;
     napi_status status = napi_generic_failure;
     int32_t userId;
-    ListInputContext() : Context(nullptr, nullptr){};
-    ListInputContext(InputAction input, OutputAction output) : Context(std::move(input), std::move(output)){};
+    ListInputContext() : Context(nullptr, nullptr), userId(0){};
+    ListInputContext(InputAction input, OutputAction output)
+        : Context(std::move(input), std::move(output)), userId(0){};
 
     napi_status operator()(napi_env env, size_t argc, napi_value *argv, napi_value self) override
     {
@@ -184,7 +185,7 @@ private:
         std::int32_t userId;
         std::vector<InputWindowInfo> windowInfo;
         UvEntry(const std::vector<std::shared_ptr<JSCallbackObject>> &cbVec, const std::string &type)
-            : vecCopy(cbVec), type(type)
+            : vecCopy(cbVec), type(type), userId(0)
         {
         }
     };

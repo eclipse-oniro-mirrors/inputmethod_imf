@@ -234,25 +234,43 @@ int32_t WindowAdapter::GetAllFocusWindowInfos(std::vector<FocusChangeInfo> &focu
     return ErrorCode::NO_ERROR;
 }
 
-uint64_t WindowAdapter::GetDisplayGroupId(uint64_t displayId, int32_t userId)
+int32_t WindowAdapter::GetDisplayGroupId(uint64_t displayId, int32_t userId, uint64_t &displayGroupId)
 {
     IMSA_HILOGD("userId %{public}d, by displayId run in:%{public}" PRIu64 ".", userId, displayId);
     std::lock_guard<std::mutex> lock(displayGroupIdsLock_);
     auto userIter = displayGroupIds_.find(userId);
     if (userIter == displayGroupIds_.end()) {
         IMSA_HILOGE("user %{public}d not found", userId);
-        return DEFAULT_DISPLAY_GROUP_ID;
+        return ErrorCode::ERROR_USER_NOT_EXIST;
     }
     auto userDisplayGroupIds = userIter->second;
     auto groupIter = userDisplayGroupIds.find(displayId);
     if (groupIter == userDisplayGroupIds.end()) {
         IMSA_HILOGE("display %{public}" PRIu64 " not found", displayId);
-        return DEFAULT_DISPLAY_GROUP_ID;
+        return ErrorCode::ERROR_INVALID_DISPLAYID;
     }
-    uint64_t displayGroupId = groupIter->second;
+    displayGroupId = groupIter->second;
     IMSA_HILOGD(
         "userId %{public}d, by displayId:%{public}" PRIu64 "/%{public}" PRIu64 ".", userId, displayId, displayGroupId);
-    return displayGroupId;
+    return ErrorCode::NO_ERROR;
+}
+
+int32_t WindowAdapter::GetDisplayGroupIdWithRetry(uint64_t displayId, int32_t userId, uint64_t &displayGroupId)
+{
+    int32_t ret = GetDisplayGroupId(displayId, userId, displayGroupId);
+    if (ret != ErrorCode::NO_ERROR) {
+        if (displayId == DEFAULT_DISPLAY_ID) {
+            displayGroupId = DEFAULT_DISPLAY_GROUP_ID;
+            return ErrorCode::NO_ERROR;
+        }
+        std::unordered_map<uint64_t, uint64_t> displayGroupIds;
+        std::vector<FocusChangeInfo> focusWindowInfos;
+        GetAllDisplayGroupInfos(displayGroupIds, focusWindowInfos, userId);
+        ret = GetDisplayGroupId(displayId, userId, displayGroupId);
+    }
+    IMSA_HILOGD("GetDisplayGroupIdWithRetry returning, ret: %{public}d, displayId: %{public}" PRIu64 \
+        ", userId: %{public}d, displayGroupId: %{public}" PRIu64 "", ret, displayId, userId, displayGroupId);
+    return ret;
 }
 // LCOV_EXCL_START
 bool WindowAdapter::IsDisplayGroupIdExist(uint64_t displayGroupId, int32_t userId)
@@ -291,14 +309,24 @@ bool WindowAdapter::IsDisplayIdExist(uint64_t displayId, int32_t userId)
 
 bool WindowAdapter::IsDefaultDisplayGroup(uint64_t displayId, int32_t userId)
 {
-    return GetDisplayGroupId(displayId, userId) == DEFAULT_DISPLAY_GROUP_ID;
+    uint64_t displayGroupId = DEFAULT_DISPLAY_GROUP_ID;
+    int32_t ret = GetDisplayGroupIdWithRetry(displayId, userId, displayGroupId);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetDisplayGroupIdWithRetry failed, ret: %{public}d", ret);
+        return false;
+    }
+    return displayGroupId == DEFAULT_DISPLAY_GROUP_ID;
 }
 
-uint64_t WindowAdapter::GetDisplayGroupId(uint32_t windowId, int32_t userId)
+int32_t WindowAdapter::GetDisplayGroupId(uint32_t windowId, int32_t userId)
 {
     IMSA_HILOGD("by windowId run in:%{public}d.", windowId);
     auto displayId = GetDisplayIdByWindowId(windowId, userId);
-    return GetDisplayGroupId(displayId, userId);
+    uint64_t displayGroupId = DEFAULT_DISPLAY_GROUP_ID;
+    int32_t ret = GetDisplayGroupIdWithRetry(displayId, userId, displayGroupId);
+    IMSA_HILOGD("GetDisplayGroupId by windowId: %{public}d, ret: %{public}d, displayGroupId: %{public}" PRIu64 "",
+        windowId, ret, displayGroupId);
+    return ret;
 }
 // LCOV_EXCL_STOP
 int32_t WindowAdapter::GetAllDisplayGroupInfos(std::unordered_map<uint64_t, uint64_t> &displayGroupIds,

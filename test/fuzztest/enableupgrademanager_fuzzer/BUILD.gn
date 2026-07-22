@@ -51,6 +51,7 @@ ohos_fuzztest("EnableUpgradeManagerFuzzTest") {
   ]
 
   external_deps = [
+    "ability_runtime:dataobs_manager",
     "cJSON:cjson",
     "c_utils:utils",
     "data_share:datashare_common",
