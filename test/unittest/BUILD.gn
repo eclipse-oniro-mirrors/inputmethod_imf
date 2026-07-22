@@ -71,6 +71,8 @@ group("unittest") {
       "cpp_test:KeyboardEventTest",
       "cpp_test:InputEventCallbackTest",
       "cpp_test:EnableUpgradeManagerTest",
+      "cpp_test:PerUserSessionTest",
+      "cpp_test:SystemCmdChannelServiceImplTest",
     ]
   }
 }
