@@ -212,8 +212,9 @@ private:
     sptr<Rosen::Display> GetCurDisplay();
     uint64_t GetCurDisplayId();
     bool IsNeedConfig(bool ignoreIsMainDisplay = false);
+    int32_t IsValidParam(const ImmersiveEffect &effect, const Rosen::KeyboardLayoutParams &layoutParams);	 
     int32_t AdjustLayout(const Rosen::KeyboardLayoutParams &param, bool isColdStartRequest);	 
-    int32_t AdjustLayout(const Rosen::KeyboardLayoutParams &param, const ImmersiveEffect &effect,	 
+    int32_t AdjustLayout(const Rosen::KeyboardLayoutParams &param, const ImmersiveEffect &effect, 
         bool isColdStartRequest);
     int32_t AdjustLayoutWithoutScb(const Rosen::KeyboardLayoutParams &param);
     int32_t FullScreenPrepare(Rosen::KeyboardLayoutParams &param, const ImmersiveEffect &effect);
