@@ -2628,3 +2628,130 @@ ohos_unittest("EnableUpgradeManagerTest") {
     "-fno-access-control",
   ]
 }
+
+ohos_unittest("PerUserSessionTest") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+  module_out_path = module_output_path
+
+  sources = [
+    "${inputmethod_path}/frameworks/native/inputmethod_ability/src/input_method_agent_service_impl.cpp",
+    "${inputmethod_path}/frameworks/native/inputmethod_ability/src/input_method_core_service_impl.cpp",
+    "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_client_info.cpp",
+    "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_client_service_impl.cpp",
+    "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_data_channel_service_impl.cpp",
+    "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_method_tools.cpp",
+    "${inputmethod_path}/frameworks/native/inputmethod_controller/src/keyevent_consumer_service_impl.cpp",
+    "${inputmethod_path}/services/src/input_control_channel_service_impl.cpp",
+    "${inputmethod_path}/services/src/input_type_manager.cpp",
+    "src/peruser_session_test.cpp",
+  ]
+
+  configs = [
+    ":module_private_config",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_native_public_config",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_native_public_config",
+  ]
+
+  deps = [
+    "${inputmethod_path}/common/imf_hisysevent",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:input_control_channel_proxy",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:input_method_core_stub",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_static",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_client_stub",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_method_agent_proxy",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
+    "${inputmethod_path}/services:inputmethod_service_static",
+    "${inputmethod_path}/services/adapter/settings_data_provider:settings_data_static",
+    "${inputmethod_path}/services/json:imf_json_static",
+    "${inputmethod_path}/test/common:inputmethod_test_common",
+    "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
+  ]
+
+  external_deps = [
+    "ability_base:want",
+    "ability_runtime:ability_context_native",
+    "ability_runtime:ability_manager",
+    "ability_runtime:runtime",
+    "access_token:libaccesstoken_sdk",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "bundle_framework:appexecfwk_core",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "config_policy:configpolicy_util",
+    "data_share:datashare_common",
+    "data_share:datashare_consumer",
+    "eventhandler:libeventhandler",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "input:libmmi-client",
+    "ipc:ipc_single",
+    "napi:ace_napi",
+    "os_account:os_account_innerkits",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+    "window_manager:libdm",
+  ]
+
+  if (window_manager_use_sceneboard) {
+    external_deps += [ "window_manager:libwm_lite" ]
+  } else {
+    external_deps += [ "window_manager:libwm" ]
+  }
+
+  cflags = [
+    "-fno-access-control",
+  ]
+}
+
+ohos_unittest("SystemCmdChannelServiceImplTest") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+    blocklist = "./inputmethod_blocklist.txt"
+  }
+  module_out_path = module_output_path
+
+  sources = [
+    "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_method_tools.cpp",
+    "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_method_utils.cpp",
+    "${inputmethod_path}/frameworks/native/inputmethod_controller/src/system_cmd_channel_service_impl.cpp",
+    "src/system_cmd_channel_service_impl_test.cpp",
+  ]
+
+  configs = [
+    ":module_private_config",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_native_public_config",
+  ]
+
+  deps = [
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_static",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
+  ]
+
+  external_deps = [
+    "ability_base:want",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "bundle_framework:appexecfwk_core",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "eventhandler:libeventhandler",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "input:libmmi-client",
+    "ipc:ipc_single",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+  ]
+
+  cflags = [
+    "-fno-access-control",
+  ]
+}
