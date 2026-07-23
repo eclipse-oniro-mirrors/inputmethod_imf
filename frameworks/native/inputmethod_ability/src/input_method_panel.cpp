@@ -228,14 +228,9 @@ int32_t InputMethodPanel::AdjustLayout(const Rosen::KeyboardLayoutParams &param,
         }
         adjustLayoutTime_ = std::chrono::steady_clock::now();
     }
-    auto wmRet = WMError::WM_OK;
-    {
-        InputMethodSyncTrace tracer("InputMethodPanel_AdjustKeyboardLayout");
-        wmRet = window_->AdjustKeyboardLayout(paramTmp);
-    }
-    if (wmRet != WMError::WM_OK) {
-        IMSA_HILOGE("AdjustKeyboardLayout failed, wmError is %{public}d!", wmRet);
-        return ErrorCode::ERROR_WINDOW_MANAGER;
+    auto ret = ExecuteAdjustLayout(param);
+    if (ret != ErrorCode::NO_ERROR) {
+        return ret;
     }
     if (paramTmp.gravity_ == WindowGravity::WINDOW_GRAVITY_BOTTOM) {
         SetWindowShadow({ 0, "", 0, 0 });
@@ -243,28 +238,53 @@ int32_t InputMethodPanel::AdjustLayout(const Rosen::KeyboardLayoutParams &param,
     return ErrorCode::NO_ERROR;
 }
 
+int32_t InputMethodPanel::ExecuteAdjustLayout(const Rosen::KeyboardLayoutParams &param)
+{
+    if (!isScbEnable_) {
+        auto ret = AdjustLayoutWithoutScb(param);
+        if (ret != ErrorCode::NO_ERROR) {
+            IMSA_HILOGE("AdjustLayoutWithoutScb failed, ret is %{public}d!", ret);
+            return ErrorCode::ERROR_WINDOW_MANAGER;
+        }
+    } else {
+        InputMethodSyncTrace tracer("InputMethodPanel_AdjustKeyboardLayout");
+        auto wmRet = window_->AdjustKeyboardLayout(param);
+        if (wmRet != WMError::WM_OK) {
+            IMSA_HILOGE("AdjustKeyboardLayout failed, wmError is %{public}d!", wmRet);
+            return ErrorCode::ERROR_WINDOW_MANAGER;
+        }
+    }
+    return ErrorCode::NO_ERROR;
+}
+
 int32_t InputMethodPanel::AdjustLayoutWithoutScb(const Rosen::KeyboardLayoutParams &param)
 {
+    if (window_ == nullptr) {
+        IMSA_HILOGE("window is nullptr!");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
     isPortrait_ = IsDisplayPortrait();
     auto rect = isPortrait_ ? param.PortraitKeyboardRect_ : param.LandscapeKeyboardRect_;
-    IMSA_HILOGI("isPortrait: %{public}d, rect[%{public}d, %{public}d, %{public}u, %{public}u]",
-        isPortrait_, rect.posX_, rect.posY_, rect.width_, rect.height_);
+    IMSA_HILOGI("isPortrait: %{public}d, rect[%{public}d, %{public}d, %{public}u, %{public}u]", isPortrait_, rect.posX_,
+        rect.posY_, rect.width_, rect.height_);
     auto wmError = window_->SetWindowGravity(param.gravity_, invalidGravityPercent);
     if (wmError != WMError::WM_OK) {
         IMSA_HILOGE("SetWindowGravity failed, wmError is %{public}d!", wmError);
-        return ErrorCode::ERROR_OPERATE_PANEL;
+        return ErrorCode::ERROR_WINDOW_MANAGER;
     }
-    auto ret = ResizeWithoutAdjust(rect.width_, rect.height_);
-    if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("ResizeWithoutAdjust failed, ret: %{public}d", ret);
-        return ret;
+    wmError = window_->Resize(rect.width_, rect.height_);
+    if (wmError != WMError::WM_OK) {
+        IMSA_HILOGE("Resize failed, wmError: %{public}d", wmError);
+        return ErrorCode::ERROR_WINDOW_MANAGER;
     }
-    ret = MoveTo(rect.posX_, rect.posY_);
-    if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("MoveTo failed, ret: %{public}d", ret);
-        return ret;
+    wmError = window_->MoveTo(rect.posX_, rect.posY_);
+    if (wmError != WMError::WM_OK) {
+        IMSA_HILOGE("MoveTo failed, wmError: %{public}d", wmError);
+        return ErrorCode::ERROR_WINDOW_MANAGER;
     }
     hasAdjustWithoutScb_ = true;
+    std::lock_guard<std::mutex> lock(keyboardSizeLock_);
+    keyboardSize_ = { rect.width_, rect.height_ };
     return ErrorCode::NO_ERROR;
 }
 
@@ -660,12 +680,7 @@ int32_t InputMethodPanel::AdjustPanelRect(const PanelFlag panelFlag, const Layou
         UpdateLayoutInfo(panelFlag, layoutParams, {}, resultParams, false);
         UpdateResizeParams();
     }
-    int32_t ret;
-    if (!isScbEnable_) {
-        ret = AdjustLayoutWithoutScb(resultParams);
-    } else {
-        ret = AdjustLayout(resultParams, isColdStartRequest);
-    }
+    auto ret = AdjustLayout(resultParams, isColdStartRequest);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("AdjustPanelRect error, err: %{public}d!", ret);
         return ErrorCode::ERROR_WINDOW_MANAGER;
