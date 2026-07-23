@@ -2277,6 +2277,110 @@ ohos_executable("PublishCommonEventDemo") {
   part_name = "imf"
 }
 
+ohos_unittest("SamgrAdapterTest") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+  module_out_path = module_output_path
+
+  include_dirs = [
+    "${inputmethod_path}/common/include",
+    "${inputmethod_path}/services/adapter/samgr/include",
+  ]
+  sources = [
+    "${inputmethod_path}/services/adapter/samgr/src/samgr_adapter.cpp",
+    "src/samgr_adapter_test.cpp",
+  ]
+  configs = [ ":module_private_config" ]
+  deps = [ "${inputmethod_path}/common:inputmethod_common" ]
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+    "samgr:samgr_proxy",
+  ]
+
+  cflags = [
+    "-fno-access-control",
+  ]
+}
+
+ohos_unittest("DisplayAdapterTest") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+  module_out_path = module_output_path
+
+  include_dirs = [
+    "${inputmethod_path}/common/include",
+    "${inputmethod_path}/services/adapter/display_adapter/include",
+    "${inputmethod_path}/services/include",
+  ]
+  sources = [ "src/display_adapter_test.cpp" ]
+  configs = [ ":module_private_config" ]
+  deps = [
+    "${inputmethod_path}/common:inputmethod_common",
+    "${inputmethod_path}/services:inputmethod_service_static",
+  ]
+  external_deps = [
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_single",
+    "window_manager:libdm_lite",
+  ]
+
+  cflags = [
+    "-fno-access-control",
+  ]
+}
+
+ohos_unittest("OsAccountListenerTest") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+  module_out_path = module_output_path
+
+  include_dirs = [
+    "${inputmethod_path}/common/include",
+    "${inputmethod_path}/services/adapter/os_account_adapter/include",
+    "${inputmethod_path}/services/include",
+  ]
+  sources = [
+    "${inputmethod_path}/services/adapter/os_account_adapter/src/os_account_listener.cpp",
+    "src/os_account_listener_test.cpp",
+  ]
+  configs = [ ":module_private_config" ]
+  configs += [ "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_native_public_config" ]
+  deps = [
+    "${inputmethod_path}/common:inputmethod_common",
+    "${inputmethod_path}/services:inputmethod_service_static",
+  ]
+  external_deps = [
+    "ability_base:want",
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "input:libmmi-client",
+    "ipc:ipc_single",
+    "os_account:os_account_innerkits",
+  ]
+
+  cflags = [
+    "-fno-access-control",
+  ]
+}
+
 ohos_unittest("ImeInfoInquirerTest") {
   sanitize = {
     cfi = true
