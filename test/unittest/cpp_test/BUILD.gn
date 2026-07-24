@@ -295,6 +295,7 @@ ohos_unittest("InputMethodServiceTest") {
     "node:node_header_notice",
     "safwk:system_ability_fwk",
     "window_manager:libdm",
+    "window_manager:libwsutils",
     "data_share:datashare_common",
     "data_share:datashare_consumer",
   ]
@@ -653,6 +654,11 @@ ohos_unittest("InputMethodPrivateMemberTest") {
     defines += [ "SCENE_BOARD_ENABLE" ]
   } else {
     external_deps += [ "window_manager:libwm" ]
+  }
+
+  if (build_selinux) {
+    external_deps += [ "selinux_adapter:librestorecon" ]
+    cflags = [ "-DWITH_SELINUX" ]
   }
 }
 

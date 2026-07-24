@@ -41,12 +41,14 @@
 #include "input_method_agent_service_impl.h"
 #include "window_adapter.h"
 #include "tdd_util.h"
+#include "scene_board_judgement.h"
 #undef private
 
 namespace OHOS {
 namespace MiscServices {
 using namespace testing::ext;
 using namespace MMI;
+using namespace OHOS::Rosen;
 namespace {
 constexpr int32_t TIME_WAIT_FOR_HANDLE_KEY_EVENT = 10000;
 constexpr int32_t MAIN_USER_ID = 100;
@@ -58,11 +60,15 @@ public:
     static void TearDownTestCase(void);
     void SetUp();
     void TearDown();
+    static bool isScbEnable_;
 };
+
+bool InputMethodServiceTest::isScbEnable_ { false };
 
 void InputMethodServiceTest::SetUpTestCase(void)
 {
     IMSA_HILOGI("InputMethodServiceTest::SetUpTestCase");
+    isScbEnable_ = SceneBoardJudgement::IsSceneBoardEnabled();
 }
 
 void InputMethodServiceTest::TearDownTestCase(void)
@@ -555,7 +561,11 @@ HWTEST_F(InputMethodServiceTest, PerUserSession_OnRequestHideInput_GetDisplayGro
     int32_t result = session->OnRequestHideInput(invalidDisplayId, callerBundleName);
 
     // Should return error when GetDisplayGroupIdWithRetry fails
-    EXPECT_EQ(result, ErrorCode::ERROR_INVALID_DISPLAYID);
+    if (isScbEnable_) {
+        EXPECT_EQ(result, ErrorCode::ERROR_INVALID_DISPLAYID);
+    } else {
+        EXPECT_EQ(result, ErrorCode::ERROR_USER_NOT_EXIST);
+    }
 
     UserSessionManager::GetInstance().userSessions_.clear();
 }
