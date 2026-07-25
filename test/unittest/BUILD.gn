@@ -60,6 +60,8 @@ group("unittest") {
       "cpp_test:WindowAdapterTest",
       "cpp_test:InputMethodDisplayAttributeListenerTest",
       "cpp_test/common:inputmethod_tdd_util",
+      "cpp_test:NotifyServiceImplTest",
+      "cpp_test:InputMethodToolsTest",
       "napi_test/src:GetInputMethodJsTest",
       "resource/bundle_dependencies/editorBox:editorBox",
       "resource/bundle_dependencies/extImfBundle:extImf",
