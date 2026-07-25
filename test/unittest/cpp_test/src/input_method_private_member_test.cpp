@@ -5890,6 +5890,55 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_TaskTest, TestSize.Level0)
 }
 
 /**
+ * @tc.name: PerUserSession_OnSetCoreAndAgent_001
+ * @tc.desc: PerUserSession_OnSetCoreAndAgent_001
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnSetCoreAndAgent_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_OnSetCoreAndAgent_001 start.");
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
+    auto ret = userSession->OnSetCoreAndAgent(nullptr, nullptr);
+    EXPECT_EQ(ret, ErrorCode::ERROR_BAD_PARAMETERS);
+    sptr<IInputMethodCore> core = new (std::nothrow) InputMethodCoreServiceImpl();
+    ret = userSession->OnSetCoreAndAgent(core, nullptr);
+    EXPECT_EQ(ret, ErrorCode::ERROR_BAD_PARAMETERS);
+    sptr<IInputMethodAgent> agent = new (std::nothrow) InputMethodAgentServiceImpl();
+    ret = userSession->OnSetCoreAndAgent(nullptr, agent->AsObject());
+    EXPECT_EQ(ret, ErrorCode::ERROR_BAD_PARAMETERS);
+    ret = userSession->OnSetCoreAndAgent(core, agent->AsObject());
+    EXPECT_EQ(ret, ErrorCode::ERROR_BAD_PARAMETERS);
+
+    // has realImeData, DO NOTHING
+    userSession->isImeStarted_.SetValue(false);
+    auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, 200);
+    imeData->imeStatus = ImeStatus::READY;
+    userSession->realImeData_ = imeData;
+    ret = userSession->OnSetCoreAndAgent(core, agent->AsObject());
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_FALSE(userSession->isImeStarted_.GetValue());
+    // SUCCESS, need to bind
+    userSession->isImeStarted_.SetValue(false);
+    imeData->imeStatus = ImeStatus::STARTING;
+    userSession->realImeData_ = imeData;
+    userSession->attachingCount_ = 0;
+    userSession->attachFailedByUnavailableIme_.store(false);
+    ret = userSession->OnSetCoreAndAgent(core, agent->AsObject());
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_TRUE(userSession->isImeStarted_.GetValue());
+    // SUCCESS, no need to bind
+    userSession->isImeStarted_.SetValue(false);
+    imeData->imeStatus = ImeStatus::STARTING;
+    userSession->realImeData_ = imeData;
+    userSession->attachingCount_ = 0;
+    userSession->attachFailedByUnavailableIme_.store(true);
+    ret = userSession->OnSetCoreAndAgent(core, agent->AsObject());
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_TRUE(userSession->isImeStarted_.GetValue());
+}
+
+/**
  * @tc.name: PerUserSession_IsImeDisconnected
  * @tc.desc: Test PerUserSession_IsImeDisconnected
  * @tc.type: FUNC

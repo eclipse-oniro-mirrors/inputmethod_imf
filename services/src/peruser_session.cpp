@@ -1092,9 +1092,11 @@ int32_t PerUserSession::OnSetCoreAndAgent(const sptr<IInputMethodCore> &core, co
     }
     auto ret = InitInputControlChannel();
     IMSA_HILOGI("init input control channel ret: %{public}d.", ret);
-    if (GetAttachCount() == 0) {
+    bool needBind = GetAttachCount() == 0 && !attachFailedByUnavailableIme_.load();
+    if (needBind) {
         auto [clientGroup, clientInfo] = GetCurrentClientBoundRealIme();
         if (clientInfo != nullptr) {
+            IMSA_HILOGI("%{public}d start bind %{public}d.", imeData->pid, clientInfo->pid);
             ClearRequestKeyboardReason(clientInfo);
             BindClientWithIme(clientInfo, imeData);
         }
@@ -3722,6 +3724,11 @@ int32_t PerUserSession::OnMakeSysImeImage()
         IMSA_HILOGI("userId:%{public}d disconnect ime:%{public}d.", userId_, ret);
     }
     return ErrorCode::NO_ERROR;
+}
+
+void PerUserSession::SetAttachFailedByUnavailableImeFlag(bool flag)
+{
+    attachFailedByUnavailableIme_.store(flag);
 }
 } // namespace MiscServices
 } // namespace OHOS

@@ -195,6 +195,7 @@ public:
     int32_t NotifyImeChangedToClients();
     int32_t GetCursorInfo(CursorInfoInner &cursorInfo, const pid_t clientPid);
     void OnImeDisconnect(sptr<ImeConnection> connection);
+    void SetAttachFailedByUnavailableImeFlag(bool flag);
 private:
     struct ResetManager {
         uint32_t num{ 0 };
@@ -429,6 +430,7 @@ private:
 
     std::mutex imageTimeoutTaskLock_;
     std::atomic<bool> disconnectedByRss_{ false };
+    std::atomic<bool> attachFailedByUnavailableIme_{ false };
 };
 } // namespace MiscServices
 } // namespace OHOS
