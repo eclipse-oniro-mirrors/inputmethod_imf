@@ -18,6 +18,7 @@
 #include <gtest/gtest.h>
 
 #include "global.h"
+#include "runtime.h"
 
 #undef LOG_TAG
 #define LOG_TAG "ImeExtLoaderTest"
@@ -66,7 +67,7 @@ void InputmethodExtensionModuleLoaderTest::TearDown(void)
 HWTEST_F(InputmethodExtensionModuleLoaderTest, InputmethodExtensionModuleLoaderTest_GetParams001, TestSize.Level0)
 {
     IMSA_HILOGI("InputmethodExtensionModuleLoaderTest_GetParams001 start.");
-    auto &loader = InputmethodExtensionModuleLoader::GetInstance();
+    auto &loader = InputMethodExtensionModuleLoader::GetInstance();
     auto params = loader.GetParams();
     EXPECT_EQ(params.size(), 2u);
     EXPECT_EQ(params["type"], "2");
@@ -82,7 +83,7 @@ HWTEST_F(InputmethodExtensionModuleLoaderTest, InputmethodExtensionModuleLoaderT
 HWTEST_F(InputmethodExtensionModuleLoaderTest, InputmethodExtensionModuleLoaderTest_Create001, TestSize.Level0)
 {
     IMSA_HILOGI("InputmethodExtensionModuleLoaderTest_Create001 start.");
-    auto &loader = InputmethodExtensionModuleLoader::GetInstance();
+    auto &loader = InputMethodExtensionModuleLoader::GetInstance();
     std::unique_ptr<Runtime> runtime = nullptr;
     auto *ext = loader.Create(runtime);
     ASSERT_NE(ext, nullptr);
@@ -101,7 +102,7 @@ HWTEST_F(InputmethodExtensionModuleLoaderTest,
     IMSA_HILOGI("InputmethodExtensionModuleLoaderTest_GetExtensionModule001 start.");
     void *module = OHOS_EXTENSION_GetExtensionModule();
     ASSERT_NE(module, nullptr);
-    auto loader = static_cast<InputmethodExtensionModuleLoader *>(module);
+    auto loader = static_cast<InputMethodExtensionModuleLoader *>(module);
     auto params = loader->GetParams();
     EXPECT_EQ(params["type"], "2");
 }
