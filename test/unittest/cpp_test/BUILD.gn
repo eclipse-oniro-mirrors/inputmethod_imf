@@ -2433,6 +2433,217 @@ ohos_unittest("ImeInfoInquirerTest") {
   ]
 }
 
+ohos_unittest("InputMethodExtensionContextTest") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+    blocklist = "./inputmethod_blocklist.txt"
+  }
+  module_out_path = module_output_path
+
+  sources = [
+    "src/inputmethod_extension_context_test.cpp",
+  ]
+
+  include_dirs = [
+    "${inputmethod_path}/common/include",
+    "${inputmethod_path}/frameworks/common/include",
+    "${inputmethod_path}/frameworks/kits/extension/include",
+    "${inputmethod_path}/frameworks/kits/extension_cj/include",
+  ]
+
+  deps = [
+    "${inputmethod_path}/frameworks/kits/extension:inputmethod_extension",
+    "${inputmethod_path}/common:inputmethod_common",
+    "${inputmethod_path}/test/common:inputmethod_test_common",
+    "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
+  ]
+
+  cflags = [
+    "-fno-access-control",
+  ]
+
+  external_deps = [
+    "ability_base:configuration",
+    "ability_base:want",
+    "ability_runtime:ability_context_native",
+    "ability_runtime:ability_manager",
+    "ability_runtime:ability_start_options",
+    "ability_runtime:abilitykit_native",
+    "ability_runtime:abilitykit_utils",
+    "ability_runtime:app_context",
+    "ability_runtime:extensionkit_native",
+    "ability_runtime:napi_common",
+    "ability_runtime:runtime",
+    "bundle_framework:appexecfwk_base",
+    "c_utils:utils",
+    "eventhandler:libeventhandler",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_napi",
+    "ipc:ipc_single",
+    "napi:ace_napi",
+    "napi:cj_bind_ffi",
+    "node:node_header_notice",
+    "window_manager:libdm",
+  ]
+
+  if (imf_hiviewdfx_api_metrics_ext_enable) {
+    external_deps += [ "api_metrics:histogrammanager" ]
+    if (defined(defines)) {
+      defines += [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
+    } else {
+      defines = [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
+    }
+  }
+
+  install_enable = false
+  subsystem_name = "inputmethod"
+  part_name = "imf"
+}
+
+ohos_unittest("InputMethodExtensionTest") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+    blocklist = "./inputmethod_blocklist.txt"
+  }
+  module_out_path = module_output_path
+
+  sources = [
+    "src/inputmethod_extension_test.cpp",
+  ]
+
+  include_dirs = [
+    "${inputmethod_path}/common/include",
+    "${inputmethod_path}/frameworks/common/include",
+    "${inputmethod_path}/frameworks/kits/extension/include",
+    "${inputmethod_path}/frameworks/kits/extension_cj/include",
+  ]
+
+  deps = [
+    "${inputmethod_path}/frameworks/kits/extension:inputmethod_extension",
+    "${inputmethod_path}/common:inputmethod_common",
+    "${inputmethod_path}/test/common:inputmethod_test_common",
+    "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
+  ]
+
+  cflags = [
+    "-fno-access-control",
+  ]
+
+  external_deps = [
+    "ability_base:configuration",
+    "ability_base:want",
+    "ability_runtime:ability_context_native",
+    "ability_runtime:ability_manager",
+    "ability_runtime:ability_start_options",
+    "ability_runtime:abilitykit_native",
+    "ability_runtime:abilitykit_utils",
+    "ability_runtime:app_context",
+    "ability_runtime:extensionkit_native",
+    "ability_runtime:napi_common",
+    "ability_runtime:runtime",
+    "bundle_framework:appexecfwk_base",
+    "c_utils:utils",
+    "eventhandler:libeventhandler",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_napi",
+    "ipc:ipc_single",
+    "napi:ace_napi",
+    "napi:cj_bind_ffi",
+    "node:node_header_notice",
+    "window_manager:libdm",
+  ]
+
+  if (imf_hiviewdfx_api_metrics_ext_enable) {
+    external_deps += [ "api_metrics:histogrammanager" ]
+    if (defined(defines)) {
+      defines += [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
+    } else {
+      defines = [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
+    }
+  }
+
+  install_enable = false
+  subsystem_name = "inputmethod"
+  part_name = "imf"
+}
+
+ohos_unittest("InputMethodExtensionModuleLoaderTest") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+    blocklist = "./inputmethod_blocklist.txt"
+  }
+  module_out_path = module_output_path
+
+  sources = [
+    "${inputmethod_path}/frameworks/kits/extension/src/inputmethod_extension_module_loader.cpp",
+    "src/inputmethod_extension_module_loader_test.cpp",
+  ]
+
+  include_dirs = [
+    "${inputmethod_path}/common/include",
+    "${inputmethod_path}/frameworks/common/include",
+    "${inputmethod_path}/frameworks/kits/extension/include",
+    "${inputmethod_path}/frameworks/kits/extension_cj/include",
+  ]
+
+  deps = [
+    "${inputmethod_path}/frameworks/kits/extension:inputmethod_extension",
+    "${inputmethod_path}/common:inputmethod_common",
+    "${inputmethod_path}/test/common:inputmethod_test_common",
+    "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
+  ]
+
+  cflags = [
+    "-fno-access-control",
+  ]
+
+  external_deps = [
+    "ability_base:configuration",
+    "ability_base:want",
+    "ability_runtime:ability_context_native",
+    "ability_runtime:ability_manager",
+    "ability_runtime:ability_start_options",
+    "ability_runtime:abilitykit_native",
+    "ability_runtime:abilitykit_utils",
+    "ability_runtime:app_context",
+    "ability_runtime:extensionkit_native",
+    "ability_runtime:napi_common",
+    "ability_runtime:runtime",
+    "bundle_framework:appexecfwk_base",
+    "c_utils:utils",
+    "eventhandler:libeventhandler",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "ipc:ipc_napi",
+    "ipc:ipc_single",
+    "napi:ace_napi",
+    "napi:cj_bind_ffi",
+    "node:node_header_notice",
+    "window_manager:libdm",
+  ]
+
+  if (imf_hiviewdfx_api_metrics_ext_enable) {
+    external_deps += [ "api_metrics:histogrammanager" ]
+    if (defined(defines)) {
+      defines += [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
+    } else {
+      defines = [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
+    }
+  }
+
+  install_enable = false
+  subsystem_name = "inputmethod"
+  part_name = "imf"
+}
+
 ohos_unittest("WmsConnectionMonitorTest") {
   branch_protector_ret = "pac_ret"
   sanitize = {
