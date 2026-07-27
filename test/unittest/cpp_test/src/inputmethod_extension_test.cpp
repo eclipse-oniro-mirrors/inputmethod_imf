@@ -65,7 +65,7 @@ void InputmethodExtensionTest::TearDown(void)
 HWTEST_F(InputmethodExtensionTest, InputmethodExtensionTest_Create001, TestSize.Level1)
 {
     IMSA_HILOGI("InputmethodExtensionTest_Create001 start.");
-    const std::unique_ptr<Runtime> runtime = nullptr;
+    std::unique_ptr<Runtime> runtime = nullptr;
     auto *ext = InputMethodExtension::Create(runtime);
     ASSERT_EQ(ext, nullptr);
     delete ext;
