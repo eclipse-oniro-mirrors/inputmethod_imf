@@ -122,7 +122,7 @@ HWTEST_F(InputMethodExtensionContextTest, InputMethodExtensionContextTest_StartA
     auto context = std::make_shared<InputMethodExtensionContext>();
     AAFwk::Want want;
     ErrCode ret = context->StartAbility(want);
-    // In test environment, result depends on whether AbilityManagerServer is available
+    // In test environment, result depends on whether AbilityManagerService is available
     EXPECT_NE(ret, ERR_OK);
 }
 
@@ -251,7 +251,7 @@ HWTEST_F(InputMethodExtensionContextTest, InputMethodExtensionContextTest_Termin
  */
 HWTEST_F(InputMethodExtensionContextTest, InputMethodExtensionContextTest_GetAbilityInfoType002, TestSize.Level0)
 {
-    IMSA_HILOGI("InputMethodExtensionContextTest_GetAbilityInfoType002 start");
+    IMSA_HILOGI("InputMethodExtensionContextTest_GetAbilityInfoType002 start.");
     auto context = std::make_shared<InputMethodExtensionContext>();
     auto info = std::make_shared<AppExecFwk::AbilityInfo>();
     info->type = AppExecFwk::AbilityType::EXTENSION;

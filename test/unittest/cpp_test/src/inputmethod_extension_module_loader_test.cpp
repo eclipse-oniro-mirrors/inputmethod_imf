@@ -30,7 +30,7 @@ using namespace testing::ext;
 namespace OHOS {
 namespace AbilityRuntime {
 
-class InputmethodExtensionModuleLoaderTest : public testing::Test {
+class InputMethodExtensionModuleLoaderTest : public testing::Test {
 public:
     static void SetUpTestCase(void);
     static void TearDownTestCase(void);
@@ -38,35 +38,35 @@ public:
     void TearDown();
 };
 
-void InputmethodExtensionModuleLoaderTest::SetUpTestCase(void)
+void InputMethodExtensionModuleLoaderTest::SetUpTestCase(void)
 {
-    IMSA_HILOGI("InputmethodExtensionModuleLoaderTest::SetUpTestCase");
+    IMSA_HILOGI("InputMethodExtensionModuleLoaderTest::SetUpTestCase");
 }
 
-void InputmethodExtensionModuleLoaderTest::TearDownTestCase(void)
+void InputMethodExtensionModuleLoaderTest::TearDownTestCase(void)
 {
-    IMSA_HILOGI("InputmethodExtensionModuleLoaderTest::TearDownTestCase");
+    IMSA_HILOGI("InputMethodExtensionModuleLoaderTest::TearDownTestCase");
 }
 
-void InputmethodExtensionModuleLoaderTest::SetUp(void)
+void InputMethodExtensionModuleLoaderTest::SetUp(void)
 {
-    IMSA_HILOGI("InputmethodExtensionModuleLoaderTest::SetUp");
+    IMSA_HILOGI("InputMethodExtensionModuleLoaderTest::SetUp");
 }
 
-void InputmethodExtensionModuleLoaderTest::TearDown(void)
+void InputMethodExtensionModuleLoaderTest::TearDown(void)
 {
-    IMSA_HILOGI("InputmethodExtensionModuleLoaderTest::TearDown");
+    IMSA_HILOGI("InputMethodExtensionModuleLoaderTest::TearDown");
 }
 
 /**
- * @tc.name: InputmethodExtensionModuleLoaderTest_GetParams001
+ * @tc.name: InputMethodExtensionModuleLoaderTest_GetParams001
  * @tc.desc: Verify GetParams returns correct map with type and name
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F(InputmethodExtensionModuleLoaderTest, InputmethodExtensionModuleLoaderTest_GetParams001, TestSize.Level0)
+HWTEST_F(InputMethodExtensionModuleLoaderTest, InputMethodExtensionModuleLoaderTest_GetParams001, TestSize.Level0)
 {
-    IMSA_HILOGI("InputmethodExtensionModuleLoaderTest_GetParams001 start.");
+    IMSA_HILOGI("InputMethodExtensionModuleLoaderTest_GetParams001 start.");
     auto &loader = InputMethodExtensionModuleLoader::GetInstance();
     auto params = loader.GetParams();
     EXPECT_EQ(params.size(), 2u);
@@ -75,14 +75,14 @@ HWTEST_F(InputmethodExtensionModuleLoaderTest, InputmethodExtensionModuleLoaderT
 }
 
 /**
- * @tc.name: InputmethodExtensionModuleLoaderTest_Create001
+ * @tc.name: InputMethodExtensionModuleLoaderTest_Create001
  * @tc.desc: Verify Create with nullptr runtime returns valid extension
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F(InputmethodExtensionModuleLoaderTest, InputmethodExtensionModuleLoaderTest_Create001, TestSize.Level0)
+HWTEST_F(InputMethodExtensionModuleLoaderTest, InputMethodExtensionModuleLoaderTest_Create001, TestSize.Level0)
 {
-    IMSA_HILOGI("InputmethodExtensionModuleLoaderTest_Create001 start.");
+    IMSA_HILOGI("InputMethodExtensionModuleLoaderTest_Create001 start.");
     auto &loader = InputMethodExtensionModuleLoader::GetInstance();
     std::unique_ptr<Runtime> runtime = nullptr;
     auto *ext = loader.Create(runtime);
@@ -91,18 +91,18 @@ HWTEST_F(InputmethodExtensionModuleLoaderTest, InputmethodExtensionModuleLoaderT
 }
 
 /**
- * @tc.name: InputmethodExtensionModuleLoaderTest_GetExtensionModule001
+ * @tc.name: InputMethodExtensionModuleLoaderTest_GetExtensionModule001
  * @tc.desc: Verify OHOS_EXTENSION_GetExtensionModule returns valid singleton address
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F(InputmethodExtensionModuleLoaderTest,
-    InputmethodExtensionModuleLoaderTest_GetExtensionModule001, TestSize.Level0)
+HWTEST_F(InputMethodExtensionModuleLoaderTest,
+    InputMethodExtensionModuleLoaderTest_GetExtensionModule001, TestSize.Level0)
 {
-    IMSA_HILOGI("InputmethodExtensionModuleLoaderTest_GetExtensionModule001 start.");
+    IMSA_HILOGI("InputMethodExtensionModuleLoaderTest_GetExtensionModule001 start.");
     void *module = OHOS_EXTENSION_GetExtensionModule();
     ASSERT_NE(module, nullptr);
-    auto loader = static_cast<InputMethodExtensionModuleLoader *>(module);
+    auto *loader = static_cast<InputMethodExtensionModuleLoader *>(module);
     auto params = loader->GetParams();
     EXPECT_EQ(params["type"], "2");
 }

@@ -13,7 +13,7 @@
  * limitations under the License.
  */
 
-#include "inputmethod_extension_context.h"
+#include "inputmethod_extension.h"
 
 #include <gtest/gtest.h>
 
@@ -28,7 +28,7 @@ using namespace testing::ext;
 namespace OHOS {
 namespace AbilityRuntime {
 
-class InputmethodExtensionTest : public testing::Test {
+class InputMethodExtensionTest : public testing::Test {
 public:
     static void SetUpTestCase(void);
     static void TearDownTestCase(void);
@@ -36,50 +36,50 @@ public:
     void TearDown();
 };
 
-void InputmethodExtensionTest::SetUpTestCase(void)
+void InputMethodExtensionTest::SetUpTestCase(void)
 {
-    IMSA_HILOGI("InputmethodExtensionTest::SetUpTestCase");
+    IMSA_HILOGI("InputMethodExtensionTest::SetUpTestCase");
 }
 
-void InputmethodExtensionTest::TearDownTestCase(void)
+void InputMethodExtensionTest::TearDownTestCase(void)
 {
-    IMSA_HILOGI("InputmethodExtensionTest::TearDownTestCase");
+    IMSA_HILOGI("InputMethodExtensionTest::TearDownTestCase");
 }
 
-void InputmethodExtensionTest::SetUp(void)
+void InputMethodExtensionTest::SetUp(void)
 {
-    IMSA_HILOGI("InputmethodExtensionTest::SetUp");
+    IMSA_HILOGI("InputMethodExtensionTest::SetUp");
 }
 
-void InputmethodExtensionTest::TearDown(void)
+void InputMethodExtensionTest::TearDown(void)
 {
-    IMSA_HILOGI("InputmethodExtensionTest::TearDown");
+    IMSA_HILOGI("InputMethodExtensionTest::TearDown");
 }
 
 /**
- * @tc.name: InputmethodExtensionTest_Create001
+ * @tc.name: InputMethodExtensionTest_Create001
  * @tc.desc: Verify Create with nullptr runtime returns default InputMethodExtension
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F(InputmethodExtensionTest, InputmethodExtensionTest_Create001, TestSize.Level1)
+HWTEST_F(InputMethodExtensionTest, InputMethodExtensionTest_Create001, TestSize.Level0)
 {
-    IMSA_HILOGI("InputmethodExtensionTest_Create001 start.");
+    IMSA_HILOGI("InputMethodExtensionTest_Create001 start.");
     std::unique_ptr<Runtime> runtime = nullptr;
     auto *ext = InputMethodExtension::Create(runtime);
-    ASSERT_EQ(ext, nullptr);
+    ASSERT_NE(ext, nullptr);
     delete ext;
 }
 
 /**
- * @tc.name: InputmethodExtensionTest_Create002
+ * @tc.name: InputMethodExtensionTest_Create002
  * @tc.desc: Verify Create with CJ runtime returns CjInputMethodExtension
  * @tc.type: FUNC
  * @tc.require:
  */
-HWTEST_F(InputmethodExtensionTest, InputmethodExtensionTest_Create002, TestSize.Level1)
+HWTEST_F(InputMethodExtensionTest, InputMethodExtensionTest_Create002, TestSize.Level0)
 {
-    IMSA_HILOGI("InputmethodExtensionTest_Create002 start.");
+    IMSA_HILOGI("InputMethodExtensionTest_Create002 start.");
     Runtime::Options opts;
     auto runtime = Runtime::Create(opts);
     ASSERT_NE(runtime, nullptr);
