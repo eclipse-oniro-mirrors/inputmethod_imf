@@ -121,6 +121,7 @@ taihe_shared_library("inputmethod_engine_taihe_native") {
   if (window_manager_use_sceneboard) {
     defines += [ "SCENE_BOARD_ENABLE" ]
   }
+  shlib_type = "ani"
 }
 
 generate_static_abc("inputmethod_engine_abc") {

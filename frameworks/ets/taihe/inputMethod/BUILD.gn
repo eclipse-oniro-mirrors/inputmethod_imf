@@ -111,6 +111,7 @@ taihe_shared_library("inputmethod_taihe_native") {
     "node:node_header_notice",
     "samgr:samgr_proxy",
   ]
+  shlib_type = "ani"
 }
 
 generate_static_abc("inputmethod_abc") {
