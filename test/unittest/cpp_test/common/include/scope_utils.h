@@ -16,6 +16,8 @@
 #ifndef INPUTMETHOD_IMF_TEST_UNITTEST_COMMON_SCOPE_UTILS_H
 #define INPUTMETHOD_IMF_TEST_UNITTEST_COMMON_SCOPE_UTILS_H
 
+#include <cinttypes>
+#include <inttypes.h>
 #include "global.h"
 #include "tdd_util.h"
 namespace OHOS {
@@ -28,6 +30,7 @@ public:
         IMSA_HILOGI("enter");
         if (tokenId > 0) {
             originalTokenId_ = TddUtil::GetCurrentTokenID();
+            IMSA_HILOGI("originalTokenId_: %{public}" PRIu64, originalTokenId_);
             TddUtil::SetTestTokenID(tokenId);
         }
         if (uid > 0) {
@@ -36,6 +39,7 @@ public:
     }
     ~AccessScope()
     {
+        IMSA_HILOGI("originalTokenId_: %{public}" PRIu64, originalTokenId_);
         if (originalTokenId_ > 0) {
             TddUtil::SetTestTokenID(originalTokenId_);
         }
@@ -53,10 +57,12 @@ public:
     {
         IMSA_HILOGI("enter");
         originalTokenId_ = TddUtil::GetCurrentTokenID();
+        IMSA_HILOGI("originalTokenId_: %{public}" PRIu64, originalTokenId_);
         TddUtil::SetTestTokenID(tokenId);
     }
     ~TokenScope()
     {
+        IMSA_HILOGI("originalTokenId_: %{public}" PRIu64, originalTokenId_);
         TddUtil::SetTestTokenID(originalTokenId_);
         IMSA_HILOGI("exit");
     }

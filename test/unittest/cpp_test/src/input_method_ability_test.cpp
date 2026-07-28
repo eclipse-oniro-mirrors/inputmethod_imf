@@ -77,6 +77,14 @@ public:
     static constexpr int32_t THREAD_NUM = 5;
     static void TestOnConnectSystemCmd();
     static std::atomic<int32_t> multiThreadExecTotalNum_;
+    static constexpr int32_t waitTaskEmptyTimes_ = 100;
+    static constexpr int32_t waitTaskEmptyInterval_ = 20;
+    static bool IsTaskEmpty()
+    {
+        return TaskManager::GetInstance().curTask_ == nullptr && TaskManager::GetInstance().amsTasks_.empty() &&
+               TaskManager::GetInstance().imaTasks_.empty() && TaskManager::GetInstance().imsaTasks_.empty() &&
+               TaskManager::GetInstance().innerTasks_.empty();
+    }
 
     class InputMethodEngineListenerImpl : public InputMethodEngineListener {
     public:
@@ -657,6 +665,7 @@ HWTEST_F(InputMethodAbilityTest, testStartInputBeforeCreatePanel, TestSize.Level
     inputMethodAbility_.SetImeListener(std::make_shared<InputMethodEngineListenerImpl>());
     auto ret = imc_->Attach(textListener_);
     EXPECT_EQ(ErrorCode::NO_ERROR, ret);
+    BlockRetry(waitTaskEmptyInterval_, waitTaskEmptyTimes_, IsTaskEmpty);
     {
         std::unique_lock<std::mutex> lock(InputMethodAbilityTest::imeListenerCallbackLock_);
         InputMethodAbilityTest::imeListenerCv_.wait_for(lock, std::chrono::seconds(DEALY_TIME), [] {
@@ -695,6 +704,7 @@ HWTEST_F(InputMethodAbilityTest, testHideKeyboardSelf, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbility testHideKeyboardSelf START");
     imc_->Attach(textListener_);
+    BlockRetry(waitTaskEmptyInterval_, waitTaskEmptyTimes_, IsTaskEmpty);
     std::unique_lock<std::mutex> lock(InputMethodAbilityTest::imeListenerCallbackLock_);
     InputMethodAbilityTest::showKeyboard_ = true;
     inputMethodAbility_.SetImeListener(std::make_shared<InputMethodEngineListenerImpl>());
@@ -836,6 +846,7 @@ HWTEST_F(InputMethodAbilityTest, testGetTextConfig, TestSize.Level0)
     TextConfig textConfig;
     textConfig.inputAttribute = { .inputPattern = 0, .enterKeyType = 1 };
     auto ret = imc_->Attach(textListener_, false, textConfig);
+    BlockRetry(waitTaskEmptyInterval_, waitTaskEmptyTimes_, IsTaskEmpty);
     TextTotalConfig textTotalConfig;
     ret = inputMethodAbility_.GetTextConfig(textTotalConfig);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
@@ -1185,6 +1196,7 @@ HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatusInfo_001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbility testNotifyPanelStatusInfo_001 START");
     imc_->Attach(textListener_);
+    BlockRetry(waitTaskEmptyInterval_, waitTaskEmptyTimes_, IsTaskEmpty);
     PanelInfo info;
     info.panelType = STATUS_BAR;
     auto panel = std::make_shared<InputMethodPanel>();
@@ -1236,6 +1248,7 @@ HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatusInfo_002, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbility testNotifyPanelStatusInfo_002 START");
     imc_->Attach(textListener_);
+    BlockRetry(waitTaskEmptyInterval_, waitTaskEmptyTimes_, IsTaskEmpty);
     PanelInfo info1;
     info1.panelType = SOFT_KEYBOARD;
     info1.panelFlag = FLG_FLOATING;
@@ -1272,6 +1285,7 @@ HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatusInfo_003, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbility testNotifyPanelStatusInfo_003 START");
     imc_->Attach(textListener_, false);
+    BlockRetry(waitTaskEmptyInterval_, waitTaskEmptyTimes_, IsTaskEmpty);
     PanelInfo panelInfo = {};
     panelInfo.panelType = STATUS_BAR;
     auto panel = std::make_shared<InputMethodPanel>();
@@ -1306,6 +1320,7 @@ HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatusInfo_004, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbility testNotifyPanelStatusInfo_004 START");
     imc_->Attach(textListener_);
+    BlockRetry(waitTaskEmptyInterval_, waitTaskEmptyTimes_, IsTaskEmpty);
     PanelInfo info;
     info.panelType = SOFT_KEYBOARD;
     info.panelFlag = FLG_CANDIDATE_COLUMN;
@@ -1344,6 +1359,7 @@ HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatusInfo_005, TestSize.Level0)
     info.panelType = SOFT_KEYBOARD;
     info.panelFlag = FLG_FLOATING;
     imc_->Attach(textListener_);
+    BlockRetry(waitTaskEmptyInterval_, waitTaskEmptyTimes_, IsTaskEmpty);
 
     // has no panel
     TextListener::ResetParam();
@@ -1384,6 +1400,7 @@ HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatusInfo_006, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbility testNotifyPanelStatusInfo_006 START");
     imc_->Attach(textListener_);
+    BlockRetry(waitTaskEmptyInterval_, waitTaskEmptyTimes_, IsTaskEmpty);
     PanelInfo info;
     info.panelType = SOFT_KEYBOARD;
     info.panelFlag = FLG_CANDIDATE_COLUMN;
@@ -1420,6 +1437,7 @@ HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatusInfo_007, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbility testNotifyPanelStatusInfo_007 START");
     imc_->Attach(textListener_);
+    BlockRetry(waitTaskEmptyInterval_, waitTaskEmptyTimes_, IsTaskEmpty);
 
     PanelInfo info;
     info.panelType = SOFT_KEYBOARD;
@@ -1462,6 +1480,7 @@ HWTEST_F(InputMethodAbilityTest, testNotifyKeyboardHeight_001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbility testNotifyKeyboardHeight_001 START");
     imc_->Attach(textListener_);
+    BlockRetry(waitTaskEmptyInterval_, waitTaskEmptyTimes_, IsTaskEmpty);
     AccessScope scope(currentImeTokenId_, currentImeUid_);
     TextListener::ResetParam();
     inputMethodAbility_.NotifyKeyboardHeight(1, FLG_FIXED);
@@ -1479,6 +1498,7 @@ HWTEST_F(InputMethodAbilityTest, testNotifyKeyboardHeight_002, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbility testNotifyKeyboardHeight_002 START");
     imc_->Attach(textListener_);
+    BlockRetry(waitTaskEmptyInterval_, waitTaskEmptyTimes_, IsTaskEmpty);
     AccessScope scope(currentImeTokenId_, currentImeUid_);
     TextListener::ResetParam();
     inputMethodAbility_.NotifyKeyboardHeight(1, FLG_CANDIDATE_COLUMN);
@@ -1505,6 +1525,7 @@ HWTEST_F(InputMethodAbilityTest, testNotifyKeyboardHeight_003, TestSize.Level0)
     ASSERT_EQ(ret, ErrorCode::NO_ERROR);
     panel->Resize(1, 1);
     imc_->Attach(textListener_);
+    BlockRetry(waitTaskEmptyInterval_, waitTaskEmptyTimes_, IsTaskEmpty);
     EXPECT_TRUE(TextListener::WaitNotifyKeyboardHeightCallback(0));
     ret = inputMethodAbility_.DestroyPanel(panel);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
@@ -1546,6 +1567,7 @@ HWTEST_F(InputMethodAbilityTest, testGetInputType_001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbility testGetInputType_001 START");
     imc_->Attach(textListener_);
+    BlockRetry(waitTaskEmptyInterval_, waitTaskEmptyTimes_, IsTaskEmpty);
 
     InputType inputType = inputMethodAbility_.GetInputType();
     EXPECT_EQ(inputType, InputType::NONE);
@@ -1975,6 +1997,8 @@ HWTEST_F(InputMethodAbilityTest, testFinishTextPreview_003, TestSize.Level0)
 HWTEST_F(InputMethodAbilityTest, testGetInputMethodState_001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbilityTest GetInputMethodState_001 Test START");
+    IMSA_HILOGI("currentImeTokenId_: %{public}" PRIu64 ", GetCurrentTokenID: %{public}" PRIu64,
+        currentImeTokenId_, TddUtil::GetCurrentTokenID());
     int32_t status = 0;
     auto ret = InputMethodAbilityTest::imsa_->GetInputMethodState(status);
     EXPECT_EQ(ret, ErrorCode::ERROR_NOT_IME);
@@ -2554,6 +2578,7 @@ HWTEST_F(InputMethodAbilityTest, testHidePanel, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbility testHidePanel START");
     imc_->Attach(textListener_);
+    BlockRetry(waitTaskEmptyInterval_, waitTaskEmptyTimes_, IsTaskEmpty);
     AccessScope scope(currentImeTokenId_, currentImeUid_);
     auto panel = std::make_shared<InputMethodPanel>();
     auto ret = InputMethodAbilityTest::inputMethodAbility_.HidePanel(nullptr);
