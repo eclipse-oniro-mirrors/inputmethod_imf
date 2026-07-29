@@ -12,13 +12,13 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-
+ 
 #ifndef INPUTMETHOD_IMF_RES_SCHED_ADAPTER_H
 #define INPUTMETHOD_IMF_RES_SCHED_ADAPTER_H
-
+ 
 #include <cstdint>
-#include <map>
 #include <mutex>
+#include <map>
 #include <string>
 
 #include "want.h"
@@ -36,4 +36,5 @@ private:
 };
 } // namespace MiscServices
 } // namespace OHOS
+ 
 #endif // INPUTMETHOD_IMF_RES_SCHED_ADAPTER_H

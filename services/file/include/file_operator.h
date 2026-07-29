@@ -30,10 +30,10 @@ public:
     static bool Write(const std::string &path, const std::string &content, uint32_t flags,
         mode_t mode = S_IRUSR | S_IWUSR);
     static std::string GetRealPath(const char *path);
+    static bool IsValidPath(const std::string &filePath);
 
 private:
     static std::string Read(const std::string &path, const std::string &key);
-    static bool IsValidPath(const std::string &filePath);
     static bool CheckImeCfgFilePath(const std::string &path);
 };
 } // namespace MiscServices

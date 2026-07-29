@@ -50,7 +50,7 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void SwitchInputMethod([in] String bundleName, [in] String name, [in] unsigned int trigger, [in] int userId);
     [oneway] void PanelStatusChange([in] unsigned int status, [in] ImeWindowInfo info);
     void UpdateListenEventFlag([in] InputClientInfoInner clientInfoInner, [in] unsigned int eventFlag);
-    void IsCurrentIme([out] boolean resultValue);
+    [customMsgOption flags=MessageOption::TF_IMAGE] void IsCurrentIme([out] boolean resultValue);
     void IsInputTypeSupported([in] int type, [out] boolean resultValue);
     void IsCurrentImeByPid([in] int pid, [out] boolean resultValue, [in] int userId);
     void StartInputType([in] int type, [in] boolean isPersistence);
@@ -84,4 +84,5 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void HideCurrentInput([in]unsigned long displayId);
     void IsPanelShown([in]unsigned long displayId, [in] PanelInfo panelInfo, [out] boolean isShown);
     void GetCursorInfo([in] int userId, [out] CursorInfoInner cursorInfo);
+    void SetEDCDefaultInputMethod([in] String edcBackupImeName);
 }

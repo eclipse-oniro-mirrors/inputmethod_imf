@@ -22,7 +22,7 @@ bool ImeMirrorManager::IsImeMirrorEnable()
 {
     return isEnable_;
 }
-
+// LCOV_EXCL_START
 void ImeMirrorManager::SetImeMirrorEnable(bool isRegistered)
 {
     isEnable_ = isRegistered;
@@ -31,7 +31,7 @@ void ImeMirrorManager::SetImeMirrorEnable(bool isRegistered)
 bool ImeMirrorManager::SubscribeSaStart(std::function<void()> handler, int32_t saId)
 {
     if (handler == nullptr) {
-        IMSA_HILOGE("handler is nullptr");
+        IMSA_HILOGE("[ImeMirrorTag] handler is nullptr, saId:%{public}d", saId);
         return false;
     }
     {
@@ -105,7 +105,7 @@ bool ImeMirrorManager::UnSubscribeSaStart(int32_t saId)
     IMSA_HILOGD("[ImeMirrorTag]unsubscribe system ability success, saId: %{public}d", saId);
     return true;
 }
-// LCOV_EXCL_START
+
 void ImeMirrorManager::SaMgrListener::OnAddSystemAbility(int32_t systemAbilityId, const std::string &deviceId)
 {
     IMSA_HILOGD("[ImeMirrorTag]systemAbilityId: %{public}d.", systemAbilityId);

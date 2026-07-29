@@ -33,8 +33,9 @@ struct ListInputContext : public AsyncCall::Context {
     Property property;
     napi_status status = napi_generic_failure;
     int32_t userId;
-    ListInputContext() : Context(nullptr, nullptr){};
-    ListInputContext(InputAction input, OutputAction output) : Context(std::move(input), std::move(output)){};
+    ListInputContext() : Context(nullptr, nullptr), userId(0){};
+    ListInputContext(InputAction input, OutputAction output)
+        : Context(std::move(input), std::move(output)), userId(0){};
 
     napi_status operator()(napi_env env, size_t argc, napi_value *argv, napi_value self) override
     {
@@ -98,7 +99,7 @@ struct GetInputMethodControllerContext : public AsyncCall::Context {
 struct EnableInputContext : public AsyncCall::Context {
     std::string bundleName;
     std::string extName;
-    int32_t userId;
+    int32_t userId{ ImfCommonConst::DEFAULT_USER_ID };
     EnabledStatus enabledStatus{ EnabledStatus::DISABLED };
     napi_status status = napi_generic_failure;
     EnableInputContext() : Context(nullptr, nullptr){};
@@ -184,7 +185,7 @@ private:
         std::int32_t userId;
         std::vector<InputWindowInfo> windowInfo;
         UvEntry(const std::vector<std::shared_ptr<JSCallbackObject>> &cbVec, const std::string &type)
-            : vecCopy(cbVec), type(type)
+            : vecCopy(cbVec), type(type), userId(0)
         {
         }
     };
@@ -198,7 +199,7 @@ private:
     std::map<std::string, std::vector<std::shared_ptr<JSCallbackObject>>> jsCbMap_;
     static std::mutex msMutex_;
     static std::shared_ptr<JsGetInputMethodSetting> inputMethod_;
-
+    
     PanelFlag softKbShowingFlag_{ FLG_CANDIDATE_COLUMN };
     PanelFlag GetSoftKbShowingFlag();
     void SetSoftKbShowingFlag(PanelFlag flag);

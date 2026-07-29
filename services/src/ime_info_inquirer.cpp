@@ -21,7 +21,9 @@
 #include "app_mgr_client.h"
 #include "bundle_mgr_client.h"
 #include "display_adapter.h"
+#include "file_operator.h"
 #include "full_ime_info_manager.h"
+#include "ime_enabled_info_manager.h"
 #include "input_type_manager.h"
 #include "iservice_registry.h"
 #include "locale_config.h"
@@ -47,7 +49,7 @@ constexpr const char *DEFAULT_IME_KEY = "persist.sys.default_ime";
 constexpr int32_t CONFIG_LEN = 128;
 constexpr uint32_t DEFAULT_BMS_VALUE = 0;
 constexpr const char* PROFILE_FILE_PREFIX = "$profile:";
-constexpr int64_t MAX_FILE_SIZE = 512 * 1024; //521KB limit
+constexpr int64_t MAX_FILE_SIZE = 512 * 1024; //512KB
 } // namespace
 ImeInfoInquirer &ImeInfoInquirer::GetInstance()
 {
@@ -249,7 +251,7 @@ std::string ImeInfoInquirer::GetDumpInfo(int32_t userId)
     if (properties.empty()) {
         return "";
     }
-    auto currentImeCfg = ImeEnabledInfoManager::GetInstance().GetCurrentImeCfg(userId);
+    auto currentImeCfg = ImeCfgManager::GetInstance().GetCurrentImeCfg(userId);
     bool isBegin = true;
     std::string params = "{\"imeList\":[";
     for (const auto &property : properties) {
@@ -260,10 +262,7 @@ std::string ImeInfoInquirer::GetDumpInfo(int32_t userId)
         params += "{\"ime\": \"" + imeId + "\",";
         params += "\"labelId\": \"" + std::to_string(property.labelId) + "\",";
         params += "\"descriptionId\": \"" + std::to_string(property.descriptionId) + "\",";
-        std::string isCurrentIme = "false";
-        if (currentImeCfg != nullptr && currentImeCfg->imeId == imeId) {
-            isCurrentIme = "true";
-        }
+        std::string isCurrentIme = currentImeCfg->imeId == imeId ? "true" : "false";
         params += "\"isCurrentIme\": \"" + isCurrentIme + "\",";
         params += "\"label\": \"" + property.label + "\",";
         params += "\"description\": \"" + property.description + "\"";
@@ -340,7 +339,7 @@ int32_t ImeInfoInquirer::ListInputMethod(const int32_t userId, std::vector<Prope
         if (it != props.end()) {
             continue;
         }
-        if (IsSystemSpecialIme(extension)) {
+        if (IsTempInputMethod(extension)) {
             continue;
         }
         Property prop;
@@ -443,11 +442,7 @@ int32_t ImeInfoInquirer::ListInputMethodSubtype(int32_t userId, const std::strin
 
 int32_t ImeInfoInquirer::ListCurrentInputMethodSubtype(int32_t userId, std::vector<SubProperty> &subProps)
 {
-    subProps = {};
-    auto currentImeCfg = ImeEnabledInfoManager::GetInstance().GetCurrentImeCfg(userId);
-    if (currentImeCfg == nullptr) {
-        return ErrorCode::ERROR_IME_NOT_STARTED;
-    }
+    auto currentImeCfg = ImeCfgManager::GetInstance().GetCurrentImeCfg(userId);
     IMSA_HILOGD("currentIme: %{public}s.", currentImeCfg->imeId.c_str());
     return ListInputMethodSubtype(userId, currentImeCfg->bundleName, subProps);
 }
@@ -653,31 +648,36 @@ bool ImeInfoInquirer::GetResFromResMgr(const std::string &resName,
 
 bool ImeInfoInquirer::TransformFileToJsonString(const std::string &resPath, std::string &profile) const
 {
-    std::fstream in;
+    if (!FileOperator::IsValidPath(resPath)) {
+        IMSA_HILOGE("resPath is IsValidPath");
+        return false;
+    }
+
+    std::fstream file;
     char errBuf[256];
     errBuf[0] = '\0';
-    in.open(resPath, std::ios_base::in | std::ios_base::binary);
-    if (!in.is_open()) {
+    file.open(resPath, std::ios_base::in | std::ios_base::binary);
+    if (!file.is_open()) {
         strerror_r(errno, errBuf, sizeof(errBuf));
         IMSA_HILOGE("file open fail due to %{public}s errno:%{public}d", errBuf, errno);
         return false;
     }
-    in.seekg(0, std::ios::end);
-    int64_t size = in.tellg();
+    file.seekg(0, std::ios::end);
+    int64_t size = file.tellg();
     if (size <= 0 || size > MAX_FILE_SIZE) {
         IMSA_HILOGE("file empty err %{public}d", errno);
-        in.close();
+        file.close();
         return false;
     }
-    in.seekg(0, std::ios::beg);
-    nlohmann::json profileJson = nlohmann::json::parse(in, nullptr, false, true);
+    file.seekg(0, std::ios::beg);
+    nlohmann::json profileJson = nlohmann::json::parse(file, nullptr, false, true);
     if (profileJson.is_discarded()) {
         IMSA_HILOGE("bad profile file");
-        in.close();
+        file.close();
         return false;
     }
     profile = profileJson.dump();
-    in.close();
+    file.close();
     return true;
 }
 int32_t ImeInfoInquirer::ListInputMethodSubtype(const int32_t userId, const ExtensionAbilityInfo &extInfo,
@@ -696,7 +696,8 @@ int32_t ImeInfoInquirer::ListInputMethodSubtype(const int32_t userId, const Exte
     IMSA_HILOGD("subtypes size: %{public}zu.", subtypes.size());
 
     std::vector<uint32_t> labelIdList;
-    CollectLabelIds(subtypes, bundleName, labelIdList);
+    std::vector<size_t> labelIdIndexList;
+    CollectLabelIds(subtypes, bundleName, labelIdList, labelIdIndexList);
 
     std::vector<std::string> labelList;
     if (!labelIdList.empty()) {
@@ -709,6 +710,7 @@ int32_t ImeInfoInquirer::ListInputMethodSubtype(const int32_t userId, const Exte
 
     size_t labelIdx = 0;
     for (const auto &subtype : subtypes) {
+        // subtype which provides a particular input type should not appear in the subtype list
         if (InputTypeManager::GetInstance().IsInputType({ extInfo.bundleName, subtype.id })) {
             continue;
         }
@@ -729,7 +731,9 @@ int32_t ImeInfoInquirer::ParseSubtype(const OHOS::AppExecFwk::ExtensionAbilityIn
         return ErrorCode::ERROR_BAD_PARAMETERS;
     }
     std::vector<std::string> profiles;
-    if (!GetResConfigFileLite(extInfo, iter->name, profiles)) {
+    std::string name = iter->name;
+    const OHOS::AppExecFwk::ExtensionAbilityInfo extInfoCopy = extInfo;
+    if (!GetResConfigFileLite(extInfoCopy, name, profiles)) {
         IMSA_HILOGE("failed to GetResConfigFileLite!");
         return ErrorCode::ERROR_PACKAGE_MANAGER;
     }
@@ -764,7 +768,7 @@ void ImeInfoInquirer::CovertToLanguage(const std::string &locale, std::string &l
 }
 
 void ImeInfoInquirer::CollectLabelIds(const std::vector<Subtype> &subtypes, const std::string &bundleName,
-    std::vector<uint32_t> &labelIdList)
+    std::vector<uint32_t> &labelIdList, std::vector<size_t> &labelIdIndexList)
 {
     for (size_t i = 0; i < subtypes.size(); ++i) {
         const auto &subtype = subtypes[i];
@@ -778,6 +782,7 @@ void ImeInfoInquirer::CollectLabelIds(const std::vector<Subtype> &subtypes, cons
         int32_t labelId = atoi(subtype.label.substr(pos + 1).c_str());
         if (labelId > 0) {
             labelIdList.emplace_back(static_cast<uint32_t>(labelId));
+            labelIdIndexList.emplace_back(i);
         }
     }
 }
@@ -969,15 +974,16 @@ bool ImeInfoInquirer::IsImeInstalled(const int32_t userId, const std::string &bu
 
 std::shared_ptr<ImeNativeCfg> ImeInfoInquirer::GetImeToStart(int32_t userId)
 {
-    auto currentImeCfg = ImeEnabledInfoManager::GetInstance().GetCurrentImeCfg(userId);
-    if (currentImeCfg == nullptr || currentImeCfg->imeId.empty() ||
-        !IsImeInstalled(userId, currentImeCfg->bundleName, currentImeCfg->extName)) {
+    auto currentImeCfg = ImeCfgManager::GetInstance().GetCurrentImeCfg(userId);
+    IMSA_HILOGD("userId: %{public}d, currentIme: %{public}s.", userId, currentImeCfg->imeId.c_str());
+    if (currentImeCfg->imeId.empty() || !IsImeInstalled(userId, currentImeCfg->bundleName, currentImeCfg->extName)) {
         auto newIme = GetDefaultIme();
         newIme.subName = "";
-        ImeEnabledInfoManager::GetInstance().SetCurrentIme(userId, newIme.imeId, "", false);
+        currentImeCfg->imeId.empty()
+            ? ImeCfgManager::GetInstance().AddImeCfg({ userId, newIme.imeId, "", false })
+            : ImeCfgManager::GetInstance().ModifyImeCfg({ userId, newIme.imeId, "", false});
         return std::make_shared<ImeNativeCfg>(newIme);
     }
-    IMSA_HILOGD("userId: %{public}d, currentIme: %{public}s.", userId, currentImeCfg->imeId.c_str());
     return currentImeCfg;
 }
 
@@ -1065,6 +1071,15 @@ std::shared_ptr<ImeInfo> ImeInfoInquirer::GetDefaultImeInfo(int32_t userId)
         }
     }
     return info;
+}
+
+std::string ImeInfoInquirer::GetSystemSpecialIme()
+{
+    if (!systemConfig_.systemSpecialInputMethod.empty()) {
+        IMSA_HILOGD("systemSpecialInputMethod: %{public}s.", systemConfig_.systemSpecialInputMethod.c_str());
+        return systemConfig_.systemSpecialInputMethod;
+    }
+    return "";
 }
 
 std::string ImeInfoInquirer::GetSystemPanelAppIdentifier()
@@ -1196,7 +1211,8 @@ std::shared_ptr<ResourceManager> ImeInfoInquirer::GetResMgr(const std::string &r
         IMSA_HILOGE("resMgr is nullptr!");
         return nullptr;
     }
-    resMgr->AddResource(resourcePath.c_str());
+    std::string resourcePathCopy = resourcePath;
+    resMgr->AddResource(resourcePathCopy.c_str());
     std::unique_ptr<ResConfig> resConfig(CreateResConfig());
     if (resConfig == nullptr) {
         IMSA_HILOGE("resConfig is nullptr!");
@@ -1239,6 +1255,9 @@ int32_t ImeInfoInquirer::QueryFullImeInfo(int32_t userId, std::vector<FullImeInf
     }
     std::map<std::string, std::vector<ExtensionAbilityInfo>> tempExtInfos;
     for (const auto &extInfo : extInfos) {
+        if (IsTempInputMethod(extInfo)) {
+            continue;
+        }
         auto it = tempExtInfos.find(extInfo.bundleName);
         if (it != tempExtInfos.end()) {
             it->second.push_back(extInfo);
@@ -1246,6 +1265,7 @@ int32_t ImeInfoInquirer::QueryFullImeInfo(int32_t userId, std::vector<FullImeInf
         }
         tempExtInfos.insert({ extInfo.bundleName, { extInfo } });
     }
+
     for (const auto &extInfo : tempExtInfos) {
         FullImeInfo info;
         auto errNo = GetFullImeInfo(userId, extInfo.second, info, needBrief);
@@ -1266,6 +1286,9 @@ int32_t ImeInfoInquirer::GetFullImeInfo(int32_t userId, const std::string &bundl
     }
     std::vector<ExtensionAbilityInfo> tempExtInfos;
     for (const auto &extInfo : extInfos) {
+        if (IsTempInputMethod(extInfo)) {
+            continue;
+        }
         if (extInfo.bundleName == bundleName) {
             tempExtInfos.push_back(extInfo);
         }
@@ -1281,7 +1304,7 @@ int32_t ImeInfoInquirer::GetFullImeInfo(int32_t userId,
     }
     imeInfo.prop.name = extInfos[0].bundleName;
     imeInfo.prop.id = extInfos[0].name;
-    imeInfo.isSystemSpecialIme = IsSystemSpecialIme(extInfos[0]);
+    imeInfo.isSystemSpecialIme = IsTempInputMethod(extInfos[0]);
     if (needBrief) {
         return ErrorCode::NO_ERROR;
     }
@@ -1327,7 +1350,7 @@ bool ImeInfoInquirer::IsInputMethod(int32_t userId, const std::string &bundleNam
     return false;
 }
 
-bool ImeInfoInquirer::IsSystemSpecialIme(const ExtensionAbilityInfo &extInfo)
+bool ImeInfoInquirer::IsTempInputMethod(const ExtensionAbilityInfo &extInfo)
 {
     auto iter = std::find_if(extInfo.metadata.begin(), extInfo.metadata.end(),
         [](const Metadata &metadata) {
@@ -1367,7 +1390,7 @@ bool ImeInfoInquirer::IsUIExtension(int64_t pid)
 
 bool ImeInfoInquirer::IsDefaultImeSet(int32_t userId)
 {
-    return ImeEnabledInfoManager::GetInstance().IsDefaultImeSet(userId);
+    return ImeCfgManager::GetInstance().IsDefaultImeSet(userId);
 }
 
 bool ImeInfoInquirer::IsRunningIme(int32_t userId, const std::string &bundleName)

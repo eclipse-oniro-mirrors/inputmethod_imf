@@ -118,12 +118,13 @@ interface InputMethodSetting {
     @overload("getInputMethodsSync")
     GetInputMethodsSyncByUserId(enable: bool, userId: Optional<i32>): Array<InputMethodProperty>;
 
+    GetCursorInfo(userId: Optional<i32>): CursorInfo;
+    
     @overload("getAllInputMethodsSync")
     GetAllInputMethodsSync(): Array<InputMethodProperty>;
     @overload("getAllInputMethodsSync")
     GetAllInputMethodsSyncByUserId(userId: Optional<i32>): Array<InputMethodProperty>;
 
-    GetCursorInfo(userId: Optional<i32>): CursorInfo;
     GetDefaultInputMethodAbility(): InputMethodProperty;
 }
 

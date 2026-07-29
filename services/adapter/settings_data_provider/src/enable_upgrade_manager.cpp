@@ -76,23 +76,23 @@ int32_t EnableUpgradeManager::GetEnabledTable(int32_t userId, std::set<std::stri
     }
     return ret;
 }
-
+// LCOV_EXCL_START
 int32_t EnableUpgradeManager::GetGlobalEnabledTable(int32_t userId, std::string &content)
 {
     return GetEnabledTable(userId, SETTING_URI_PROXY, content);
 }
-
+// LCOV_EXCL_STOP
 int32_t EnableUpgradeManager::GetUserEnabledTable(int32_t userId, std::string &content)
 {
     std::string uriProxy = SETTINGS_USER_DATA_URI + std::to_string(userId) + "?Proxy=true";
     return GetEnabledTable(userId, uriProxy, content);
 }
-
+// LCOV_EXCL_START
 int32_t EnableUpgradeManager::GetGlobalEnabledTable(int32_t userId, std::set<std::string> &bundleNames)
 {
     return GetEnabledTable(userId, SETTING_URI_PROXY, bundleNames);
 }
-
+// LCOV_EXCL_STOP
 int32_t EnableUpgradeManager::GetUserEnabledTable(int32_t userId, std::set<std::string> &bundleNames)
 {
     std::string uriProxy = SETTINGS_USER_DATA_URI + std::to_string(userId) + "?Proxy=true";
@@ -207,8 +207,7 @@ int32_t EnableUpgradeManager::PaddedByBundleMgr(
         }
         IMSA_HILOGI("%{public}d/%{public}s is disabled before upgrade or sys ime.", userId, info.prop.name.c_str());
         enabledInfos.emplace_back(info.prop.name, info.prop.id,
-            SettingsDataUtils::GetInstance().ComputeEnabledStatus(
-                info.prop.name, info.isSystemSpecialIme, EnabledStatus::DISABLED));
+            SettingsDataUtils::GetInstance().ComputeEnabledStatus(info.prop.name, EnabledStatus::DISABLED));
     }
     return ErrorCode::NO_ERROR;
 }

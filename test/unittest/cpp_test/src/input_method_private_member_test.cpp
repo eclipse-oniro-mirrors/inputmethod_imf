@@ -573,7 +573,6 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchByCombinationKey_008, TestSize.L
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest SA_SwitchByCombinationKey_008 TEST START");
     auto userId = TddUtil::GetCurrentUserId();
-    service_->userId_ = userId;
     auto prop = InputMethodController::GetInstance()->GetCurrentInputMethod();
     auto subProp = InputMethodController::GetInstance()->GetCurrentInputMethodSubtype();
     ImeEnabledCfg cfg;
@@ -791,20 +790,21 @@ HWTEST_F(InputMethodPrivateMemberTest, WMSConnectObserver_001, TestSize.Level0)
     WmsConnectionObserver::connectedUserId_.clear();
     int32_t userId = 100;
     int32_t screenId = 0;
+    pid_t pid = 12345;
 
-    observer.OnConnected(userId, screenId);
+    observer.OnConnected(userId, screenId, pid);
     EXPECT_EQ(WmsConnectionObserver::connectedUserId_.size(), 1);
     EXPECT_TRUE(WmsConnectionObserver::IsWmsConnected(userId));
 
     int32_t userId1 = 102;
-    observer.OnConnected(userId1, screenId);
+    observer.OnConnected(userId1, screenId, pid);
     EXPECT_EQ(WmsConnectionObserver::connectedUserId_.size(), 2);
     EXPECT_TRUE(WmsConnectionObserver::IsWmsConnected(userId1));
 
-    observer.OnConnected(userId, screenId);
+    observer.OnConnected(userId, screenId, pid);
     EXPECT_EQ(WmsConnectionObserver::connectedUserId_.size(), 2);
 
-    observer.OnDisconnected(userId, screenId);
+    observer.OnDisconnected(userId, screenId, pid);
     EXPECT_EQ(WmsConnectionObserver::connectedUserId_.size(), 1);
     EXPECT_FALSE(WmsConnectionObserver::IsWmsConnected(userId));
 }

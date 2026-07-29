@@ -59,6 +59,13 @@ taihe_shared_library("inputmethod_engine_taihe_native") {
     integer_overflow = true
     ubsan = true
   }
+  cflags_cc = [
+    "-fvisibility=hidden",
+    "-fvisibility-inlines-hidden",
+    "-fdata-sections",
+    "-ffunction-sections",
+    "-Os",
+  ]
   taihe_generated_file_path = "$taihe_generated_file_path"
   subsystem_name = "$subsystem_name"
   part_name = "$part_name"

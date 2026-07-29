@@ -83,7 +83,12 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIAbility(
 std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIAbility(int64_t callingPid, uint64_t displayId,
     const std::vector<FocusChangeInfo> &focusWindowInfos, int32_t userId)
 {
-    auto displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId, userId);
+    uint64_t displayGroupId = ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID;
+    int32_t ret = WindowAdapter::GetInstance().GetDisplayGroupIdWithRetry(displayId, userId, displayGroupId);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetDisplayGroupIdWithRetry failed, ret: %{public}d", ret);
+        return { false, {} };
+    }
     auto iter = std::find_if(
         focusWindowInfos.begin(), focusWindowInfos.end(), [callingPid, displayGroupId](const auto focusWindowInfo) {
             return focusWindowInfo.pid_ == callingPid && focusWindowInfo.displayGroupId_ == displayGroupId;
@@ -249,7 +254,12 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(uint32_t 
 std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(
     uint32_t windowId, uint64_t displayId, const std::vector<FocusChangeInfo> &focusWindowInfos, int32_t userId)
 {
-    auto displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId, userId);
+    uint64_t displayGroupId = ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID;
+    int32_t ret = WindowAdapter::GetInstance().GetDisplayGroupIdWithRetry(displayId, userId, displayGroupId);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetDisplayGroupIdWithRetry failed, ret: %{public}d", ret);
+        return { false, {} };
+    }
     auto iter = std::find_if(
         focusWindowInfos.begin(), focusWindowInfos.end(), [displayGroupId, windowId](const auto focusWindowInfo) {
             return focusWindowInfo.displayGroupId_ == displayGroupId
@@ -282,7 +292,12 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(
     if (!isFocused) {
         return retInfo;
     }
-    auto displayGroupId = WindowAdapter::GetInstance().GetDisplayGroupId(displayId, userId);
+    uint64_t displayGroupId = ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID;
+    ret = WindowAdapter::GetInstance().GetDisplayGroupIdWithRetry(displayId, userId, displayGroupId);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetDisplayGroupIdWithRetry failed, ret: %{public}d", ret);
+        return retInfo;
+    }
     auto iter = std::find_if(focusWindowInfos.begin(), focusWindowInfos.end(),
         [displayGroupId](const auto &focusWindowInfo) { return focusWindowInfo.displayGroupId_ == displayGroupId; });
     if (iter == focusWindowInfos.end()) {

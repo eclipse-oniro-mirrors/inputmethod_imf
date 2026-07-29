@@ -25,7 +25,6 @@
 #include "input_method_agent_service_impl.h"
 #include "input_method_core_service_impl.h"
 #include "input_method_system_ability_proxy.h"
-#include "input_method_tools.h"
 #include "input_method_utils.h"
 #include "inputmethod_sysevent.h"
 #include "inputmethod_trace.h"
@@ -39,6 +38,7 @@
 #include "task_manager.h"
 #include "tasks/task.h"
 #include "tasks/task_imsa.h"
+#include "input_method_tools.h"
 #include "variant_util.h"
 #ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
 #include "histogram_plugin_macros.h"
@@ -306,7 +306,6 @@ int32_t InputMethodAbility::StartInputInner(const InputClientInfo &clientInfo, b
     IMSA_HILOGI("IMA showKeyboard:%{public}d,bindFromClient:%{public}d.", clientInfo.isShowKeyboard, isBindFromClient);
     SetInputDataChannel(clientInfo.channel);
     auto attribute = GetInputAttribute();
-    ConfigurationUpdate(attribute.callingDisplayId);
     if ((clientInfo.needHide && !isProxyIme_.load()) ||
         IsDisplayChanged(attribute.callingDisplayId, clientInfo.config.inputAttribute.callingDisplayId)) {
         IMSA_HILOGD("pwd or normal input pattern changed, need hide panel first.");
@@ -351,7 +350,6 @@ bool InputMethodAbility::IsDisplayChanged(uint64_t oldDisplayId, uint64_t newDis
         IMSA_HILOGD("screen not changed!");
         return false;
     }
-    IMSA_HILOGD("screen changed!");
     return true;
 }
 
@@ -709,6 +707,7 @@ int32_t InputMethodAbility::InvokeStartInputCallback(const TextTotalConfig &text
     if (kdListener_ != nullptr) {
         kdListener_->OnEditorAttributeChange(textConfig.inputAttribute);
     }
+    ConfigurationUpdate(textConfig.inputAttribute.callingDisplayId);
     AttachOptions options;
     options.requestKeyboardReason = textConfig.requestKeyboardReason;
     options.isSimpleKeyboardEnabled = textConfig.isSimpleKeyboardEnabled;
@@ -719,6 +718,7 @@ int32_t InputMethodAbility::InvokeStartInputCallback(const TextTotalConfig &text
         imeListener_->OnInputStart();
     }
     if (TextConfig::IsPrivateCommandValid(textConfig.privateCommand) && IsDefaultIme()) {
+        IMSA_HILOGD("notify privateCommand.");
         imeListener_->ReceivePrivateCommand(textConfig.privateCommand);
     }
     if (kdListener_ != nullptr) {
@@ -957,7 +957,7 @@ int32_t InputMethodAbility::GetTextIndexAtCursor(int32_t &index, const AsyncIpcC
 
 int32_t InputMethodAbility::GetTextConfig(TextTotalConfig &textConfig)
 {
-    IMSA_HILOGI("InputMethodAbility start.");
+    IMSA_HILOGD("InputMethodAbility start.");
     auto channel = GetInputDataChannelProxy();
     if (channel == nullptr) {
         IMSA_HILOGE("channel is nullptr!");
@@ -1222,8 +1222,8 @@ int32_t InputMethodAbility::CreatePanel(const std::shared_ptr<AbilityRuntime::Co
             inputMethodPanel = nullptr;
             return false;
         });
-    if (flag && isShowAfterCreate_.load() && panelInfo.panelType == SOFT_KEYBOARD &&
-        panelInfo.panelFlag != FLG_CANDIDATE_COLUMN) {
+    if (flag && isShowAfterCreate_.load() && panelInfo.panelType == SOFT_KEYBOARD
+        && panelInfo.panelFlag != FLG_CANDIDATE_COLUMN) {
         isShowAfterCreate_.store(false);
         auto task = std::make_shared<TaskImsaShowKeyboard>();
         TaskManager::GetInstance().PostTask(task);
@@ -1274,8 +1274,8 @@ int32_t InputMethodAbility::HidePanel(const std::shared_ptr<InputMethodPanel> &i
         IMSA_HILOGI("Current Ime is terminating, no need to hide keyboard.");
         return ErrorCode::NO_ERROR;
     }
-    if (isShowAfterCreate_.load() && inputMethodPanel->GetPanelType() == PanelType::SOFT_KEYBOARD &&
-        inputMethodPanel->GetPanelFlag() != PanelFlag::FLG_CANDIDATE_COLUMN) {
+    if (isShowAfterCreate_.load() && inputMethodPanel->GetPanelType() == PanelType::SOFT_KEYBOARD
+        && inputMethodPanel->GetPanelFlag() != PanelFlag::FLG_CANDIDATE_COLUMN) {
         isShowAfterCreate_.store(false);
     }
     std::lock_guard<std::recursive_mutex> lock(keyboardCmdLock_);
@@ -1616,7 +1616,7 @@ void InputMethodAbility::OnClientInactive(const sptr<IRemoteObject> &channel)
         }
         return false;
     });
-    // cannot clear inputAttribute，otherwise it will affect hicar
+    // cannot clear inputAttribute, otherwise it will affect hicar
     ClearDataChannel(channel);
     ClearAttachOptions();
     ClearBindClientInfo();
@@ -1862,8 +1862,8 @@ int32_t InputMethodAbility::StartInput(const InputClientInfo &clientInfo, bool i
     if (ret == ErrorCode::NO_ERROR) {
         return ret;
     }
-    ReportImeStartInput(
-        static_cast<int32_t>(IInputMethodCoreIpcCode::COMMAND_START_INPUT), ret, clientInfo.isShowKeyboard);
+    ReportImeStartInput(static_cast<int32_t>(IInputMethodCoreIpcCode::COMMAND_START_INPUT),
+        ret, clientInfo.isShowKeyboard);
     return ret;
 }
 
@@ -1882,7 +1882,7 @@ HiSysEventClientInfo InputMethodAbility::GetBindClientInfo()
 void InputMethodAbility::ClearBindClientInfo()
 {
     std::lock_guard<std::mutex> lock(bindClientInfoLock_);
-    bindClientInfo_ = { };
+    bindClientInfo_ = {};
 }
 
 void InputMethodAbility::ReportImeStartInput(
@@ -2032,6 +2032,18 @@ bool InputMethodAbility::IsSystemPanelSupported()
     return isSupportTemp;
 }
 
+int32_t InputMethodAbility::HandleKeyEventResult(
+    uint64_t cbId, bool consumeResult, const sptr<IRemoteObject> &channelObject)
+{
+    IMSA_HILOGD("run in:%{public}" PRIu64 "/%{public}d.", cbId, consumeResult);
+    if (channelObject == nullptr) {
+        IMSA_HILOGE("channelObject is nullptr:%{public}" PRIu64 ".", cbId);
+        return ErrorCode::ERROR_IMA_CHANNEL_NULLPTR;
+    }
+    auto channel = std::make_shared<InputDataChannelProxy>(channelObject);
+    return channel->HandleKeyEventResult(cbId, consumeResult);
+}
+
 int32_t InputMethodAbility::OnNotifyPreemption()
 {
     IMSA_HILOGD("start.");
@@ -2044,18 +2056,6 @@ int32_t InputMethodAbility::OnNotifyPreemption()
     IMSA_HILOGD("notifyPreemption begin.");
     imeListener->NotifyPreemption();
     return ErrorCode::NO_ERROR;
-}
-
-int32_t InputMethodAbility::HandleKeyEventResult(
-    uint64_t cbId, bool consumeResult, const sptr<IRemoteObject> &channelObject)
-{
-    IMSA_HILOGD("run in:%{public}" PRIu64 "/%{public}d.", cbId, consumeResult);
-    if (channelObject == nullptr) {
-        IMSA_HILOGE("channelObject is nullptr:%{public}" PRIu64 ".", cbId);
-        return ErrorCode::ERROR_IMA_CHANNEL_NULLPTR;
-    }
-    auto channel = std::make_shared<InputDataChannelProxy>(channelObject);
-    return channel->HandleKeyEventResult(cbId, consumeResult);
 }
 
 void InputMethodAbility::RemoveDeathRecipient()

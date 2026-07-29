@@ -308,7 +308,7 @@ int32_t InputDataChannelProxyWrap::WaitResponse(
     }
     ResponseInfo rspInfo;
     if (!handler->syncBlockData->GetValue(rspInfo)) {
-        IMSA_HILOGW("eventCode:%{public}d msgId:%{public}" PRIu64 " rsp timeout.", handler->eventCode, handler->msgId);
+        IMSA_HILOGW("msgId:%{public}" PRIu64 " rsp timeout.", handler->msgId);
         return ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL;
     }
     IMSA_HILOGD("rsp info id: %{public}" PRIu64 " ret: %{public}d", handler->msgId, rspInfo.dealRet_);

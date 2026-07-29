@@ -145,7 +145,6 @@ ohos_source_set("input_method_agent_proxy") {
   deps = [ ":input_method_agent_interface" ]
   external_deps = [
     "c_utils:utils",
-    "hilog:libhilog",
     "input:libmmi-client",
     "ipc:ipc_single",
     "samgr:samgr_proxy",
@@ -353,7 +352,6 @@ ohos_static_library("inputmethod_client_static") {
     "cJSON:cjson",
     "c_utils:utils",
     "eventhandler:libeventhandler",
-    "hilog:libhilog",
     "input:libmmi-client",
     "ipc:ipc_single",
     "safwk:system_ability_fwk",
@@ -434,7 +432,6 @@ ohos_static_library("inputmethod_client_fuzz_static") {
     "cJSON:cjson",
     "c_utils:utils",
     "eventhandler:libeventhandler",
-    "hilog:libhilog",
     "input:libmmi-client",
     "ipc:ipc_single",
     "safwk:system_ability_fwk",

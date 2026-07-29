@@ -22,8 +22,8 @@
 #include "client_group.h"
 #include "event_status_manager.h"
 #include "iinput_method_core.h"
+#include "ime_cfg_manager.h"
 #include "ime_connection.h"
-#include "ime_enabled_info_manager.h"
 #include "ime_state_manager.h"
 #include "input_method_client_types.h"
 #include "input_method_types.h"
@@ -121,6 +121,7 @@ public:
     int32_t OnRequestHideInput(uint64_t displayId, const std::string &callerBundleName);
     void OnSecurityChange(int32_t security);
     void OnHideSoftKeyBoardSelf();
+    void NotifyImeChangeToClients(const Property &property, const SubProperty &subProperty);
     int32_t SwitchSubtype(const SubProperty &subProperty);
     int32_t SwitchSubtypeWithoutStartIme(const SubProperty &subProperty);
     void OnScbStarted(bool isScbReboot);
@@ -192,7 +193,6 @@ public:
     int32_t OnMakeSysImeImage();
     bool IsImeInUse();
     int32_t GetSoftKeyboardInfo(BoundImeInfo &imeInfo);
-    int32_t NotifyImeChangedToClients();
     int32_t GetCursorInfo(CursorInfoInner &cursorInfo, const pid_t clientPid);
     void OnImeDisconnect(sptr<ImeConnection> connection);
 private:
@@ -200,11 +200,11 @@ private:
         uint32_t num{ 0 };
         time_t last{};
     };
+    using CoreMethod = std::function<int32_t(const sptr<IInputMethodCore> &)>;
     enum TimeLimitType : uint32_t {
         IME_LIMIT,
         PROXY_IME_LIMIT,
     };
-    using CoreMethod = std::function<int32_t(const sptr<IInputMethodCore> &)>;
 
     int32_t userId_; // the id of the user to whom the object is linking
 #ifdef IMF_ON_DEMAND_START_STOP_SA_ENABLE
@@ -308,6 +308,7 @@ private:
     std::pair<std::string, std::string> GetImeUsedBeforeScreenLocked();
     void SetImeUsedBeforeScreenLocked(const std::pair<std::string, std::string> &ime);
     std::shared_ptr<ImeNativeCfg> GetRealCurrentIme(bool needMinGuarantee);
+    int32_t NotifyImeChangedToClients();
     int32_t NotifySubTypeChangedToIme(const std::string &bundleName, const std::string &subName);
     bool CompareExchange(const int32_t value);
     bool IsLargeMemoryStateNeed();
@@ -328,9 +329,9 @@ private:
         uint32_t windowId);
     std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> GetClientBoundRealIme();
     bool IsSameIme(const std::shared_ptr<BindImeData> &oldIme, const std::shared_ptr<ImeData> &newIme);
+    bool IsSameImeType(const std::shared_ptr<BindImeData> &oldIme, const std::shared_ptr<ImeData> &newIme);
     bool IsShowSameRealImeInMainDisplayInMultiGroup(
         InputClientInfo &newClientInfo, const std::shared_ptr<InputClientInfo> &oldClientInfo);
-    bool IsSameImeType(const std::shared_ptr<BindImeData> &oldIme, const std::shared_ptr<ImeData> &newIme);
     bool IsSameClientGroup(uint64_t oldGroupId, uint64_t newGroupId);
     void HandleSameClientInMultiGroup(const InputClientInfo &newClientInfo);
     void HandleRealImeInMultiGroup(const InputClientInfo &newClientInfo, const std::shared_ptr<ImeData> &newImeData);
@@ -405,6 +406,7 @@ private:
         { { ImeStatus::EXITING, ImeEvent::SET_CORE_AND_AGENT }, { ImeStatus::EXITING, ImeAction::DO_NOTHING } }
     };
     std::string runningIme_;
+    std::atomic<bool> isUserUnlocked_{ false };
     std::mutex imeUsedLock_;
     std::pair<std::string, std::string> imeUsedBeforeScreenLocked_;
     std::mutex largeMemoryStateMutex_{};

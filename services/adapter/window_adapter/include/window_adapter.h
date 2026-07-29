@@ -48,9 +48,9 @@ public:
     static uint64_t GetDisplayIdByToken(sptr<IRemoteObject> abilityToken, int32_t userId);
     static bool ListWindowInfo(std::vector<sptr<OHOS::Rosen::WindowInfo>> &windowInfos, int32_t userId);
     static int32_t GetAllFocusWindowInfos(std::vector<Rosen::FocusChangeInfo> &focusWindowInfos, int32_t userId);
-    uint64_t GetDisplayGroupId(uint64_t displayId, int32_t userId);
+    int32_t GetDisplayGroupIdWithRetry(uint64_t displayId, int32_t userId, uint64_t &displayGroupId);
     bool IsDefaultDisplayGroup(uint64_t displayId, int32_t userId);
-    uint64_t GetDisplayGroupId(uint32_t windowId, int32_t userId);
+    int32_t GetDisplayGroupId(uint32_t windowId, int32_t userId, uint64_t &displayGroupId);
     bool IsDisplayGroupIdExist(uint64_t displayGroupId, int32_t userId);
     bool IsDisplayIdExist(uint64_t displayId, int32_t userId);
     int32_t StoreAllDisplayGroupInfos(int32_t userId);
@@ -89,6 +89,7 @@ private:
     static int32_t GetAllDisplayGroupInfos(std::unordered_map<uint64_t, uint64_t> &displayGroupIds,
         std::vector<Rosen::FocusChangeInfo> &focusWindowInfos, int32_t userId);
     void SetDisplayGroupIds(const std::unordered_map<uint64_t, uint64_t> &displayGroupIds, int32_t userId);
+    int32_t GetDisplayGroupId(uint64_t displayId, int32_t userId, uint64_t &displayGroupId);
 
     // { key: userId, value: { key: displayId, value: displayGroupId }}
     std::mutex displayGroupIdsLock_;

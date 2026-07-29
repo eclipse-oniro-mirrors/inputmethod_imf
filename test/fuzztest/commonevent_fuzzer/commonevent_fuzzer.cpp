@@ -89,7 +89,7 @@ void FuzzHandleOperation(FuzzedDataProvider &provider)
     bool fuzzedBool = provider.ConsumeBool();
     std::string fuzzedString = provider.ConsumeRandomLengthString();
  
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->HandleWmsDisconnected(fuzzedInt32, fuzzedInt32);
+    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->HandleWmsDisconnected(fuzzedInt32, fuzzedInt32, 0);
     DelayedSingleton<InputMethodSystemAbility>::GetInstance()->NeedHideWhenSwitchInputType(fuzzedInt32, inputType,
         fuzzedBool);
 }

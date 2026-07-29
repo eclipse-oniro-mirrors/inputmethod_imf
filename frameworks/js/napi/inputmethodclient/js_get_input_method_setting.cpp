@@ -280,11 +280,22 @@ napi_value JsGetInputMethodSetting::GetInputMethodsSync(napi_env env, napi_callb
     PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[0], enable) == napi_ok, "enable type must be boolean!",
         TYPE_NONE, JsUtil::Const::Null(env));
 
+    int32_t userId = ImfCommonConst::DEFAULT_USER_ID;
+    if (argc > 1) {
+        auto type = JsUtil::GetType(env, argv[1]);
+        if (type != napi_undefined && type != napi_null) {
+            PARAM_CHECK_RETURN(env, type == napi_number, "userId", TYPE_NUMBER, JsUtil::Const::Null(env));
+            PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[1], userId) == napi_ok, "userId must be int",
+                TYPE_NONE, JsUtil::Const::Null(env));
+            PARAM_CHECK_RETURN(env, userId >= 0, "userId invalid!", TYPE_NONE, JsUtil::Const::Null(env));
+        }
+    }
+
     std::vector<Property> properties;
     int32_t ret = ErrorCode::ERROR_EX_NULL_POINTER;
     auto instance = InputMethodController::GetInstance();
     if (instance != nullptr) {
-        ret = instance->ListInputMethod(enable, properties);
+        ret = instance->ListInputMethod(enable, properties, userId);
     }
     if (ret != ErrorCode::NO_ERROR) {
         JsUtils::ThrowException(env, JsUtils::Convert(ret), "failed to get input methods!", TYPE_NONE);
@@ -330,16 +341,16 @@ napi_value JsGetInputMethodSetting::GetAllInputMethodsSync(napi_env env, napi_ca
     size_t argc = ARGC_ONE;
     napi_value argv[1] = { nullptr };
     IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
-
     int32_t userId = ImfCommonConst::DEFAULT_USER_ID;
     PARAM_CHECK_RETURN(env, argc < ARGC_TWO, "too many parameters!", TYPE_NONE, JsUtil::Const::Null(env));
     if (argc > 0) {
-        PARAM_CHECK_RETURN(env,
-            JsUtils::GetValue(env, argv[0], userId) == napi_ok,
-            "enable type must be int32_t!",
-            TYPE_NONE,
-            JsUtil::Const::Null(env));
-        PARAM_CHECK_RETURN(env, userId >= 0, "userId invaild!", TYPE_NONE, JsUtil::Const::Null(env));
+        auto type = JsUtil::GetType(env, argv[0]);
+        if (type != napi_undefined && type != napi_null) {
+            PARAM_CHECK_RETURN(env, type == napi_number, "userId", TYPE_NUMBER, JsUtil::Const::Null(env));
+            PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[0], userId) == napi_ok, "userId must be int",
+                TYPE_NONE, JsUtil::Const::Null(env));
+            PARAM_CHECK_RETURN(env, userId >= 0, "userId invalid!", TYPE_NONE, JsUtil::Const::Null(env));
+        }
     }
     std::vector<Property> properties;
     int32_t ret = ErrorCode::ERROR_EX_NULL_POINTER;
@@ -458,23 +469,25 @@ napi_value JsGetInputMethodSetting::GetInputMethodSubtype(napi_env env, napi_cal
     IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
     PARAM_CHECK_RETURN(env, argc >= 1, "number of parameters does not match!",
         TYPE_NONE, JsUtil::Const::Null(env));
-
     std::string bundleName;
-    PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[0], bundleName) == napi_ok, "enable type must be std::string!",
+    PARAM_CHECK_RETURN(
+        env, JsUtil::GetType(env, argv[0]) == napi_string, "bundleName", TYPE_STRING, JsUtil::Const::Null(env));
+    PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[0], bundleName) == napi_ok, "bundleName must be string!",
         TYPE_NONE, JsUtil::Const::Null(env));
 
     int32_t userId = ImfCommonConst::DEFAULT_USER_ID;
     if (argc > 1) {
-        PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[1], userId) == napi_ok, "enable type must be int32_t!",
-            TYPE_NONE, JsUtil::Const::Null(env));
-        PARAM_CHECK_RETURN(env, userId >= 0, "userId must be greater than or equal to 0!", TYPE_NONE,
-            JsUtil::Const::Null(env));
+        auto type = JsUtil::GetType(env, argv[1]);
+        if (type != napi_undefined && type != napi_null) {
+            PARAM_CHECK_RETURN(env, type == napi_number, "userId", TYPE_NUMBER, JsUtil::Const::Null(env));
+            PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[1], userId) == napi_ok, "userId must be int",
+                TYPE_NONE, JsUtil::Const::Null(env));
+            PARAM_CHECK_RETURN(env, userId >= 0, "userId invalid!", TYPE_NONE, JsUtil::Const::Null(env));
+        }
     }
-
     Property property;
     property.name = bundleName;
     std::vector<SubProperty> subProperties;
-
     int32_t errCode = ErrorCode::ERROR_EX_NULL_POINTER;
     auto instance = InputMethodController::GetInstance();
     if (instance != nullptr) {
@@ -524,6 +537,7 @@ napi_value JsGetInputMethodSetting::IsPanelShown(napi_env env, napi_callback_inf
     size_t argc = 2;
     napi_value argv[2] = { nullptr };
     IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+
     // 1 means least param num
     PARAM_CHECK_RETURN(env, argc >= 1, "at least one parameter is required!", TYPE_NONE, JsUtil::Const::Null(env));
     // 0 means parameter of info<PanelInfo>
@@ -583,13 +597,12 @@ napi_value JsGetInputMethodSetting::EnableInputMethod(napi_env env, napi_callbac
             "enabledState type must be EnabledState!", TYPE_NONE, napi_invalid_arg);
         ctxt->enabledStatus = static_cast<EnabledStatus>(status);
         if (argc > 3) {
-            PARAM_CHECK_RETURN(env,
-                JsUtil::GetType(env, argv[3]) == napi_number && JsUtil::GetValue(env, argv[3], ctxt->userId),
-                "userId type must be int32_t!",
-                TYPE_NONE,
-                napi_invalid_arg);
-        } else {
-            ctxt->userId = -1;
+            auto type = JsUtil::GetType(env, argv[3]);
+            if (type != napi_undefined && type != napi_null) {
+                PARAM_CHECK_RETURN(env, type == napi_number && JsUtil::GetValue(env, argv[3], ctxt->userId), "userId",
+                    TYPE_NUMBER, napi_invalid_arg);
+                PARAM_CHECK_RETURN(env, ctxt->userId >= 0, "userId invalid!", TYPE_NONE, napi_invalid_arg);
+            }
         }
         return napi_ok;
     };
@@ -828,7 +841,6 @@ napi_value JsGetInputMethodSetting::UnSubscribeImechange(napi_env env, napi_call
     size_t argc = ARGC_ONE;
     napi_value argv[ARGC_ONE] = { nullptr };
     IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
-
     // if the first param is not napi_function/napi_null/napi_undefined, return
     if (argc > 0) {
         auto paramType = JsUtil::GetType(env, argv[0]);
@@ -1047,23 +1059,6 @@ std::shared_ptr<JsGetInputMethodSetting::UvEntry> JsGetInputMethodSetting::GetEn
     return entry;
 }
 
-void JsGetInputMethodSetting::GetIsUpdateFlag(const std::string &type, bool &isUpdateFlag)
-{
-    std::lock_guard<std::recursive_mutex> lock(mutex_);
-    isUpdateFlag = true;
-    auto targetType = EVENT_TYPE.find(type);
-    if (targetType == EVENT_TYPE.end()) {
-        return;
-    }
-    for (auto eventType : EVENT_TYPE) {
-        if (eventType.first != targetType->first && eventType.second == targetType->second &&
-            jsCbMap_.find(eventType.first) != jsCbMap_.end()) {
-            isUpdateFlag = false;
-            break;
-        }
-    }
-}
-
 napi_value JsGetInputMethodSetting::GetCursorInfo(napi_env env, napi_callback_info info)
 {
     IMSA_HILOGD("run in GetCursorInfo");
@@ -1092,6 +1087,23 @@ napi_value JsGetInputMethodSetting::GetCursorInfo(napi_env env, napi_callback_in
         return JsUtil::Const::Null(env);
     }
     return JsUtils::GetValue(env, cursorInfo);
+}
+
+void JsGetInputMethodSetting::GetIsUpdateFlag(const std::string &type, bool &isUpdateFlag)
+{
+    std::lock_guard<std::recursive_mutex> lock(mutex_);
+    isUpdateFlag = true;
+    auto targetType = EVENT_TYPE.find(type);
+    if (targetType == EVENT_TYPE.end()) {
+        return;
+    }
+    for (auto eventType : EVENT_TYPE) {
+        if (eventType.first != targetType->first && eventType.second == targetType->second &&
+            jsCbMap_.find(eventType.first) != jsCbMap_.end()) {
+            isUpdateFlag = false;
+            break;
+        }
+    }
 }
 
 napi_value JsGetInputMethodSetting::GetDefaultInputMethodAbility(napi_env env, napi_callback_info info)
