@@ -34,7 +34,7 @@ void WindowMonitorsManager::Reset()
     }
     {
         std::lock_guard<std::mutex> lock(foregroundUserMtx_);
-        foregroundUsers_.clear();
+        foregroundScbs_.clear();
     }
     IMSA_HILOGI("end");
 }
@@ -54,24 +54,24 @@ bool WindowMonitorsManager::IsInited(int32_t userId)
     return isInited;
 }
 
-void WindowMonitorsManager::UpdateForegroundUser(int32_t userId, int32_t screenId)
+void WindowMonitorsManager::UpdateForegroundUser(int32_t userId, int32_t screenId, pid_t pid)
 {
     std::lock_guard<std::mutex> lock(foregroundUserMtx_);
-    foregroundUsers_[screenId] = userId;
+    foregroundScbs_[screenId] = {userId, pid};
     IMSA_HILOGI("userId %{public}d, screenId: %{public}d", userId, screenId);
 }
 
-int32_t WindowMonitorsManager::GetForegroundUser(int32_t screenId)
+ScbInfo WindowMonitorsManager::GetForegroundUser(int32_t screenId)
 {
     std::lock_guard<std::mutex> lock(foregroundUserMtx_);
-    auto iter = foregroundUsers_.find(screenId);
-    if (iter == foregroundUsers_.end()) {
+    auto iter = foregroundScbs_.find(screenId);
+    if (iter == foregroundScbs_.end()) {
         IMSA_HILOGE("display %{public}d user not found", screenId);
-        return -1;
+        return {};
     }
-    auto userId = iter->second;
-    IMSA_HILOGD("screenId: %{public}d, userId: %{public}d", screenId, userId);
-    return userId;
+    auto scbInfo = iter->second;
+    IMSA_HILOGD("screenId: %{public}d, userId: %{public}d", screenId, scbInfo.userId);
+    return scbInfo;
 }
 } // namespace MiscServices
 } // namespace OHOS

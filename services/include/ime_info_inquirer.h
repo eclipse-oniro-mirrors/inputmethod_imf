@@ -17,7 +17,7 @@
 #define SERVICES_INCLUDE_IME_INFO_ENQUIRER_H
 
 #include "bundle_mgr_proxy.h"
-#include "ime_enabled_info_manager.h"
+#include "ime_cfg_manager.h"
 #include "input_method_info.h"
 #include "input_method_property.h"
 #include "resource_manager.h"
@@ -98,6 +98,7 @@ public:
     void InitDynamicStartImeCfg();
     SystemConfig GetSystemConfig();
     ImeNativeCfg GetDefaultIme();
+    std::string GetSystemSpecialIme();
     int32_t QueryFullImeInfo(std::vector<std::pair<int32_t, std::vector<FullImeInfo>>> &imeInfos);
     int32_t QueryFullImeInfo(int32_t userId, std::vector<FullImeInfo> &imeInfos, bool needBrief = false);
     int32_t GetFullImeInfo(int32_t userId, const std::string &bundleName, FullImeInfo &imeInfo);
@@ -155,7 +156,7 @@ private:
     bool ParseSubtypeProfile(const std::vector<std::string> &profiles, SubtypeCfg &subtypeCfg);
     void CovertToLanguage(const std::string &locale, std::string &language);
     void CollectLabelIds(const std::vector<Subtype> &subtypes, const std::string &bundleName,
-        std::vector<uint32_t> &labelIdList);
+        std::vector<uint32_t> &labelIdList, std::vector<size_t> &labelIdIndexList);
     void FillSubProperty(const Subtype &subtype, const std::string &bundleName,
         const std::vector<std::string> &labelList, size_t &labelIdx, SubProperty &subProp);
     void ParseLabelId(const std::string &label, const std::vector<std::string> &labelList,
@@ -172,7 +173,7 @@ private:
     SystemConfig systemConfig_;
     ProductConfig productConfig_;
     std::vector<DynamicStartImeCfgItem> dynamicStartImeList_;
-    bool IsSystemSpecialIme(const OHOS::AppExecFwk::ExtensionAbilityInfo &extInfo);
+    bool IsTempInputMethod(const OHOS::AppExecFwk::ExtensionAbilityInfo &extInfo);
 };
 } // namespace MiscServices
 } // namespace OHOS

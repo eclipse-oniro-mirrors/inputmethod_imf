@@ -236,27 +236,37 @@ sptr<IRemoteObject> SettingsDataUtils::GetToken()
     remoteObj_ = remoteObj;
     return remoteObj_;
 }
-
+// LCOV_EXCL_START
 void SettingsDataUtils::NotifyDataShareReady()
 {
     isDataShareReady_.store(true);
 }
-
+// LCOV_EXCL_STOP
 bool SettingsDataUtils::IsDataShareReady()
 {
     return isDataShareReady_.load();
 }
 
-EnabledStatus SettingsDataUtils::ComputeEnabledStatus(
-    const std::string &bundleName, bool isSystemSpecialIme, EnabledStatus initStatus)
+bool SettingsDataUtils::SetEDCBackupInputMethod(int32_t userId, const std::string &backupIme)
 {
-    if (bundleName.empty()) {
-        return EnabledStatus::DISABLED;
+    IMSA_HILOGI("SetEDCBackupInputMethod: userId=%{public}d, backup=%{public}s", userId, backupIme.c_str());
+    std::string key = SettingsDataUtils::EDC_BACKUP_INPUT_METHOD + std::to_string(userId);
+    return SetStringValue(SETTING_URI_PROXY, key, backupIme);
+}
+
+bool SettingsDataUtils::GetEDCBackupInputMethod(int32_t userId, std::string &backupIme)
+{
+    std::string key = SettingsDataUtils::EDC_BACKUP_INPUT_METHOD + std::to_string(userId);
+    auto ret = GetStringValue(SETTING_URI_PROXY, key, backupIme);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGW("EDC backup IME not configured for userId=%{public}d", userId);
+        return false;
     }
-    if (isSystemSpecialIme) {
-        IMSA_HILOGI("%{public}s is sys special ime!", bundleName.c_str());
-        return EnabledStatus::FULL_EXPERIENCE_MODE;
-    }
+    return true;
+}
+
+EnabledStatus SettingsDataUtils::ComputeEnabledStatus(const std::string &bundleName, EnabledStatus initStatus)
+{
     auto status = ComputeSysCfgEnabledStatus(initStatus);
     auto sysIme = ImeInfoInquirer::GetInstance().GetDefaultIme();
     if (sysIme.bundleName.empty()) {

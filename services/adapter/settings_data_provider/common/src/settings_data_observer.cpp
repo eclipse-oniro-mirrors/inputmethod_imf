@@ -17,13 +17,14 @@
 
 namespace OHOS {
 namespace MiscServices {
+// LCOV_EXCL_START
 void SettingsDataObserver::OnChange()
 {
     if (func_ != nullptr) {
         func_();
     }
 }
-
+// LCOV_EXCL_STOP
 const std::string &SettingsDataObserver::GetUriProxy()
 {
     return uriProxy_;

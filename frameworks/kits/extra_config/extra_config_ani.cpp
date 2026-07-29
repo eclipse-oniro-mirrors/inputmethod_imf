@@ -166,11 +166,11 @@ bool AniExtraConfig::ParseRecordItem(ani_env* env, ani_object entryIterator,
         if (ret != ANI_OK || iter_done) {
             break;
         }
-        ani_object temp_ani_item = {};
+        ani_tuple_value temp_ani_item = {};
         fieldTmp = AniFindClassField(env, iterResultClass, "value");
         env->Object_GetField_Ref(iteratorNextResult, fieldTmp, reinterpret_cast<ani_ref *>(&temp_ani_item));
         ani_ref temp_ani_key = {};
-        env->Object_GetFieldByName_Ref(temp_ani_item, "$0", &temp_ani_key);
+        env->TupleValue_GetItem_Ref(temp_ani_item, 0, &temp_ani_key);
         ani_object keyObj = reinterpret_cast<ani_object>(temp_ani_key);
         std::string stdKey = ConvertString(env, keyObj);
         if (stdKey.size() == 0) {
@@ -178,7 +178,7 @@ bool AniExtraConfig::ParseRecordItem(ani_env* env, ani_object entryIterator,
         }
         uint32_t keySize = stdKey.size();
         ani_ref temp_ani_val = {};
-        env->Object_GetFieldByName_Ref(temp_ani_item, "$1", &temp_ani_val);
+        env->TupleValue_GetItem_Ref(temp_ani_item, 1, &temp_ani_val);
         CustomValueType parseResult {};
         uint32_t valueSize = 0;
         ParseValue(env, static_cast<ani_object>(temp_ani_val), parseResult, valueSize);

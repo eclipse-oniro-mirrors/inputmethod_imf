@@ -119,6 +119,7 @@ ohos_shared_library("inputmethod_extension") {
       defines = [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
     }
   }
+
   subsystem_name = "inputmethod"
   part_name = "imf"
 }
@@ -133,6 +134,13 @@ ohos_shared_library("inputmethod_extension_module") {
     integer_overflow = true
     ubsan = true
   }
+  cflags_cc = [
+    "-fvisibility=hidden",
+    "-fvisibility-inlines-hidden",
+    "-fdata-sections",
+    "-ffunction-sections",
+    "-Os",
+  ]
   include_dirs = [ "${inputmethod_path}/common/include" ]
 
   sources = [ "${inputmethod_path}/frameworks/kits/extension/src/inputmethod_extension_module_loader.cpp" ]

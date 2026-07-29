@@ -466,6 +466,33 @@ void InputMethodSettingImpl::EnableInputMethodSync(::taihe::string_view bundleNa
     IMSA_HILOGI("EnableIme success!");
 }
 
+CursorInfo_t InputMethodSettingImpl::GetCursorInfo(taihe::optional_view<int32_t> userId)
+{
+    int32_t nativeUserId = ImfCommonConst::DEFAULT_USER_ID;
+    CursorInfo cursorInfo;
+    if (userId.has_value()) {
+        nativeUserId = userId.value();
+        if (nativeUserId < 0) {
+            int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+            set_business_error(JsUtils::Convert(errCode), "userId must be greater than or equal to 0");
+            return PropertyConverter::ConvertCursorInfo(cursorInfo);
+        }
+    }
+
+    int32_t errCode = ErrorCode::ERROR_EX_NULL_POINTER;
+    auto instance = InputMethodController::GetInstance();
+    if (instance != nullptr) {
+        errCode = instance->GetCursorInfo(cursorInfo, nativeUserId);
+    }
+    if (errCode != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetCursorInfo failed, errCode:%{public}d!", errCode);
+        set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
+        return PropertyConverter::ConvertCursorInfo(cursorInfo);
+    }
+    IMSA_HILOGI("GetCursorInfo success!");
+    return PropertyConverter::ConvertCursorInfo(cursorInfo);
+}
+
 void InputMethodSettingImpl::EnableInputMethodByUserId(::taihe::string_view bundleName,
     ::taihe::string_view extensionName, ::ohos::inputMethod::EnabledState enabledState, optional_view<int32_t> userId)
 {
@@ -493,33 +520,6 @@ void InputMethodSettingImpl::EnableInputMethodByUserId(::taihe::string_view bund
         return;
     }
     IMSA_HILOGI("EnableImeByUserId success!");
-}
-
-CursorInfo_t InputMethodSettingImpl::GetCursorInfo(taihe::optional_view<int32_t> userId)
-{
-    int32_t nativeUserId = ImfCommonConst::DEFAULT_USER_ID;
-    CursorInfo cursorInfo;
-    if (userId.has_value()) {
-        nativeUserId = userId.value();
-        if (nativeUserId < 0) {
-            int32_t errCode = ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
-            set_business_error(JsUtils::Convert(errCode), "userId must be greater than or equal to 0");
-            return PropertyConverter::ConvertCursorInfo(cursorInfo);
-        }
-    }
-
-    int32_t errCode = ErrorCode::ERROR_EX_NULL_POINTER;
-    auto instance = InputMethodController::GetInstance();
-    if (instance != nullptr) {
-        errCode = instance->GetCursorInfo(cursorInfo, nativeUserId);
-    }
-    if (errCode != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("GetCursorInfo failed, errCode:%{public}d!", errCode);
-        set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
-        return PropertyConverter::ConvertCursorInfo(cursorInfo);
-    }
-    IMSA_HILOGI("GetCursorInfo success!");
-    return PropertyConverter::ConvertCursorInfo(cursorInfo);
 }
 
 InputMethodProperty_t InputMethodSettingImpl::GetDefaultInputMethodAbility()

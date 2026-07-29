@@ -1,14 +1,14 @@
 {
-  "name": "@ohos/imf",
-  "description": "Provide input capability to ime app",
-  "version": "3.1",
-  "license": "Apache License 2.0",
-  "publishAs": "code-segment",
+  "name": "@ohos/imf", 
+  "description": "Provide input capability to ime app", 
+  "version": "3.1", 
+  "license": "Apache License 2.0", 
+  "publishAs": "code-segment", 
   "segment": {
-    "destPath": "base/inputmethod/imf"
-  },
-  "dirs": {},
-  "scripts": {},
+      "destPath": "base/inputmethod/imf"
+  }, 
+  "dirs": { }, 
+  "scripts": { }, 
   "component": {
       "name": "imf", 
       "subsystem": "inputmethod", 
@@ -67,6 +67,7 @@
               "hiview",
               "api_metrics",
               "ets_frontend",
+              "taihe_ffi_gen",
               "node",
               "libuv"
           ]

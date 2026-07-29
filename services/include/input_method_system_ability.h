@@ -16,6 +16,7 @@
 #ifndef SERVICES_INCLUDE_INPUT_METHOD_SYSTEM_ABILITY_H
 #define SERVICES_INCLUDE_INPUT_METHOD_SYSTEM_ABILITY_H
 
+#include "ability_manager_interface.h"
 #include "identity_checker_impl.h"
 #include "ime_info_inquirer.h"
 #include "input_method_system_ability_stub.h"
@@ -104,6 +105,7 @@ public:
     ErrCode BindImeMirror(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent) override;
     ErrCode UnbindImeMirror() override;
     ErrCode GetCursorInfo(int32_t userId, CursorInfoInner &cursorInfo) override;
+    int32_t SetEDCDefaultInputMethod(const std::string &edcBackupImeName) override;
     int32_t GetCallingUserId();
     int32_t GetCallingUserId(int32_t &outputUserId, int32_t inputUserId = -1);
 
@@ -136,10 +138,19 @@ private:
     int32_t CheckEnableAndSwitchPermission();
     int32_t CheckSwitchPermission(int32_t userId, const SwitchInfo &switchInfo, SwitchTrigger trigger);
     bool IsStartInputTypePermitted(int32_t userId);
+    int32_t SwitchInputMethodInner(int32_t userId, const std::string &bundleName, const std::string &subName,
+        SwitchTrigger trigger);
     int32_t OnSwitchInputMethod(int32_t userId, const SwitchInfo &switchInfo, SwitchTrigger trigger);
     int32_t StartSwitch(int32_t userId, const SwitchInfo &switchInfo, const std::shared_ptr<PerUserSession> &session);
     int32_t OnStartInputType(int32_t userId, const SwitchInfo &switchInfo,
         bool isCheckPermission, bool isPersistence = true);
+    int32_t SwitchToEDCBackupInputMethod(int32_t userId, const std::string &edcBackupImeName,
+        const std::shared_ptr<ImeInfo> &imeInfo);
+    int32_t HandleEDCInputMethodAutoSwitch(int32_t userId, const std::string &edcBackupImeName);
+    bool SetEDCBackupInputMethod(int32_t userId, const std::string &backupIme);
+    bool GetEDCBackupInputMethod(int32_t userId, std::string &backupIme);
+    void HandleEDCInputMethodInstall(int32_t userId, const std::string &installedBundleName);
+    void HandleEDCInputMethodRemove(int32_t userId, const std::string &removedBundleName);
     int32_t HandlePackageEvent(const Message *msg);
     int32_t HandleUpdateLargeMemoryState(const Message *msg);
     int32_t OnPackageRemoved(int32_t userId, const std::string &packageName);
@@ -147,7 +158,11 @@ private:
     void OnScreenUnlock(const Message *msg);
     void OnScreenLock(const Message *msg);
     int32_t OnDisplayOptionalInputMethod();
+    static sptr<AAFwk::IAbilityManager> GetAbilityManagerService();
     void SubscribeCommonEvent();
+    int32_t Switch(int32_t userId, const std::string &bundleName, const std::shared_ptr<ImeInfo> &info);
+    int32_t SwitchExtension(int32_t userId, const std::shared_ptr<ImeInfo> &info);
+    int32_t SwitchSubType(int32_t userId, const std::shared_ptr<ImeInfo> &info);
     int32_t SwitchInputType(int32_t userId, const SwitchInfo &switchInfo, bool isPersistence = true);
     void StartNewUserIme(int32_t userId);
     void GetValidSubtype(const std::string &subName, const std::shared_ptr<ImeInfo> &info);
@@ -155,8 +170,8 @@ private:
     void InitServiceHandler();
 
     void HandleFocusChanged(bool isFocused, uint64_t displayId, int32_t pid, int32_t uid);
-    void HandleWmsConnected(int32_t userId, int32_t screenId);
-    void HandleWmsDisconnected(int32_t userId, int32_t screenId);
+    void HandleWmsConnected(int32_t userId, int32_t screenId, pid_t pid);
+    void HandleWmsDisconnected(int32_t userId, int32_t screenId, pid_t pid);
 
     void HandleWmsStarted();
     void HandleMemStarted();
@@ -167,7 +182,6 @@ private:
 
     int32_t InitAccountMonitor();
     static std::shared_ptr<AppExecFwk::EventHandler> serviceHandler_;
-    std::atomic<int32_t> userId_;
     bool stop_ = false;
     void InitMonitors();
     int32_t InitKeyEventMonitor();
@@ -207,10 +221,10 @@ private:
     int32_t ShowCurrentInputInner();
     int32_t ShowCurrentInputInner(uint64_t displayId);
     std::pair<int64_t, std::string> GetCurrentImeInfoForHiSysEvent(int32_t userId);
-    int32_t GetScreenLockIme(int32_t userId, std::string &ime);
-    int32_t GetAlternativeIme(int32_t userId, std::string &ime);
     static InputType GetSecurityInputType(const InputClientInfo &inputClientInfo);
     int32_t StartSecurityIme(int32_t &userId, InputClientInfo &inputClientInfo);
+    int32_t GetScreenLockIme(int32_t userId, std::string &ime);
+    int32_t GetAlternativeIme(int32_t userId, std::string &ime);
 #ifdef IMF_ON_DEMAND_START_STOP_SA_ENABLE
     int64_t GetTickCount();
     void ResetDelayUnloadTask(uint32_t code = 0);

@@ -1120,22 +1120,6 @@ HWTEST_F(ImeEnabledInfoManagerTest, testBundleAdd_004, TestSize.Level0)
 }
 
 /**
- * @tc.name: testBundleAdd_005
- * @tc.desc: test：sys special ime not deal
- * @tc.type: FUNC
- * @tc.require:
- * @tc.author: chenyu
- */
-HWTEST_F(ImeEnabledInfoManagerTest, testBundleAdd_005, TestSize.Level0)
-{
-    IMSA_HILOGI("ImeEnabledInfoManagerTest testBundleAdd_005 START");
-    auto imeInfo = ImeEnabledInfoManagerTest::GenerateFullImeInfo(ImeEnabledInfoManagerTest::SYS_SPECIAL_IME_KEY);
-    auto ret = ImeEnabledInfoManager::GetInstance().Add(ImeEnabledInfoManagerTest::currentUserId_, imeInfo);
-    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    EXPECT_TRUE(ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.empty());
-}
-
-/**
  * @tc.name: testBundleDelete_001
  * @tc.desc: current ime is deleted
  *           test:current ime delete, current ime(default ime) mod to sys ime
@@ -1541,7 +1525,7 @@ HWTEST_F(ImeEnabledInfoManagerTest, ComputeEnabledStatus_001, TestSize.Level0)
     ImeInfoInquirer::GetInstance().systemConfig_.enableInputMethodFeature = false;
     EnabledStatus status = EnabledStatus::DISABLED;
     status = SettingsDataUtils::GetInstance().ComputeEnabledStatus(
-        ImeEnabledInfoManagerTest::IME_KEY2, false, EnabledStatus::DISABLED);
+        ImeEnabledInfoManagerTest::IME_KEY2, EnabledStatus::DISABLED);
     if (SysCfgParser::IsContainField(INIT_ENABLED_STATE)) {
         EXPECT_TRUE(status == EnabledStatus::DISABLED);
     } else {
@@ -1550,7 +1534,7 @@ HWTEST_F(ImeEnabledInfoManagerTest, ComputeEnabledStatus_001, TestSize.Level0)
     ImeInfoInquirer::GetInstance().systemConfig_.enableFullExperienceFeature = true;
     ImeInfoInquirer::GetInstance().systemConfig_.enableInputMethodFeature = false;
     status = SettingsDataUtils::GetInstance().ComputeEnabledStatus(
-        ImeEnabledInfoManagerTest::IME_KEY3, false, EnabledStatus::DISABLED);
+        ImeEnabledInfoManagerTest::IME_KEY3, EnabledStatus::DISABLED);
     if (SysCfgParser::IsContainField(INIT_ENABLED_STATE)) {
         EXPECT_TRUE(status == EnabledStatus::DISABLED);
     } else {
@@ -1560,32 +1544,14 @@ HWTEST_F(ImeEnabledInfoManagerTest, ComputeEnabledStatus_001, TestSize.Level0)
     ImeInfoInquirer::GetInstance().systemConfig_.enableFullExperienceFeature = false;
     ImeInfoInquirer::GetInstance().systemConfig_.enableInputMethodFeature = true;
     status = SettingsDataUtils::GetInstance().ComputeEnabledStatus(
-        ImeEnabledInfoManagerTest::IME_KEY3, false, EnabledStatus::DISABLED);
+        ImeEnabledInfoManagerTest::IME_KEY3, EnabledStatus::DISABLED);
     EXPECT_TRUE(status == EnabledStatus::DISABLED);
 
     ImeInfoInquirer::GetInstance().systemConfig_.enableFullExperienceFeature = true;
     ImeInfoInquirer::GetInstance().systemConfig_.enableInputMethodFeature = true;
     status = SettingsDataUtils::GetInstance().ComputeEnabledStatus(
-        ImeEnabledInfoManagerTest::sysImeProp_.bundleName, false, EnabledStatus::DISABLED);
+        ImeEnabledInfoManagerTest::sysImeProp_.bundleName, EnabledStatus::DISABLED);
     EXPECT_TRUE(status == EnabledStatus::BASIC_MODE);
-}
-
-/**
- * @tc.name: ComputeEnabledStatus_002
- * @tc.desc: test1:bundleName is empty
- *           test2:sys special ime
- * @tc.require:
- * @tc.author:
- */
-HWTEST_F(ImeEnabledInfoManagerTest, ComputeEnabledStatus_002, TestSize.Level0)
-{
-    IMSA_HILOGI("ImeEnabledInfoManagerTest ComputeEnabledStatus_002 START");
-    auto status = SettingsDataUtils::GetInstance().ComputeEnabledStatus("", false, EnabledStatus::BASIC_MODE);
-    EXPECT_EQ(status, EnabledStatus::DISABLED);
-
-    status = SettingsDataUtils::GetInstance().ComputeEnabledStatus(
-        SYS_SPECIAL_IME_BUNDLE_NAME, true, EnabledStatus::BASIC_MODE);
-    EXPECT_EQ(status, EnabledStatus::FULL_EXPERIENCE_MODE);
 }
 } // namespace MiscServices
 } // namespace OHOS

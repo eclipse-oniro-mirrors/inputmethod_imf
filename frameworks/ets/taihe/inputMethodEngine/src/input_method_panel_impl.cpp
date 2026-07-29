@@ -130,7 +130,7 @@ void PanelImpl::SetSystemPanelButtonColorAsync(int64_t id, FillColorData_t const
         set_business_error(JsUtils::Convert(code), JsUtils::ToMessage(JsUtils::Convert(code)));
         return;
     }
-    IMSA_HILOGI("SetSystemPanelButtonColor success!");
+    IMSA_HILOGD("SetSystemPanelButtonColor success!");
 }
 
 void PanelImpl::SetShadow(double radius, ::taihe::string_view color, double offsetX, double offsetY)

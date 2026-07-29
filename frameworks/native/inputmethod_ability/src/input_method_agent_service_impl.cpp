@@ -29,13 +29,13 @@ using namespace MessageID;
 InputMethodAgentServiceImpl::InputMethodAgentServiceImpl() {}
 
 InputMethodAgentServiceImpl::~InputMethodAgentServiceImpl() {}
-
+// LCOV_EXCL_START
 ErrCode InputMethodAgentServiceImpl::DispatchKeyEvent(
     const MiscServices::KeyEventValue &keyEvent, uint64_t cbId, const sptr<IRemoteObject> &channelObject)
 {
     return InputMethodAbility::GetInstance().DispatchKeyEvent(keyEvent.event, cbId, channelObject);
 }
-
+// LCOV_EXCL_STOP
 ErrCode InputMethodAgentServiceImpl::SetCallingWindow(uint32_t windowId)
 {
     FocusedInfo focusedInfo;
@@ -90,7 +90,6 @@ ErrCode InputMethodAgentServiceImpl::SendMessage(const ArrayBuffer &arraybuffer)
 {
     return InputMethodAbility::GetInstance().RecvMessage(arraybuffer);
 }
-
 
 ErrCode InputMethodAgentServiceImpl::DiscardTypingText()
 {

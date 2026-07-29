@@ -22,13 +22,18 @@
 
 namespace OHOS {
 namespace MiscServices {
+struct ScbInfo {
+    int32_t userId;
+    pid_t pid;
+};
+
 class WindowMonitorsManager {
 public:
     static WindowMonitorsManager &GetInstance();
     void SetInited(int32_t userId);
     bool IsInited(int32_t userId);
-    void UpdateForegroundUser(int32_t userId, int32_t screenId);
-    int32_t GetForegroundUser(int32_t screenId);
+    void UpdateForegroundUser(int32_t userId, int32_t screenId, pid_t pid);
+    ScbInfo GetForegroundUser(int32_t screenId);
     void Reset();
 
 private:
@@ -37,7 +42,7 @@ private:
     std::mutex initedListMtx_;
     std::unordered_set<int32_t> initedUserList_;
     std::mutex foregroundUserMtx_;
-    std::unordered_map<int32_t, int32_t> foregroundUsers_; // { key: screenId, value: userId }
+    std::unordered_map<int32_t, ScbInfo> foregroundScbs_; // { key: screenId, value: ScbInfo }
 };
 } // namespace MiscServices
 } // namespace OHOS

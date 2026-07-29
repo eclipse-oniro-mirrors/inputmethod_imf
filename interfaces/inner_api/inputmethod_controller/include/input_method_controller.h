@@ -460,6 +460,16 @@ public:
      * @since 6
      */
     IMF_API std::shared_ptr<Property> GetCurrentInputMethod(int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
+    /**
+     * @brief Get current input method property.
+     *
+     * This function is used to get current input method property.
+     *
+     * @return The property of current input method.
+     * @since 24
+     */
+    IMF_API int32_t GetCurrentInputMethod(
+        std::shared_ptr<Property> &property, int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
 
     /**
      * @brief Get current input method subtypes.
@@ -470,6 +480,16 @@ public:
      * @since 6
      */
     IMF_API std::shared_ptr<SubProperty> GetCurrentInputMethodSubtype(int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
+    /**
+     * @brief Get current input method subtypes.
+     *
+     * This function is used to get current input method's current subtype.
+     *
+     * @return The subtypes of current input method.
+     * @since 24
+     */
+    IMF_API int32_t GetCurrentInputMethodSubtype(
+        std::shared_ptr<SubProperty> &subtype, int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
 
     /**
      * @brief Get default input method property.
@@ -527,6 +547,18 @@ public:
      */
     IMF_API int32_t SwitchInputMethod(SwitchTrigger trigger, const std::string &name, const std::string &subName = "",
         int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
+
+    /**
+     * @brief Set EDC backup input method configuration
+     *
+     * This function is used to configure EDC backup input method.
+     * Requires system-level permission.
+     *
+     * @param edcBackupImeName Indicates the EDC backup input method name (Input method B).
+     * @return Returns 0 for success, others for failure.
+     * @since 26
+     */
+    IMF_API int32_t SetEDCDefaultInputMethod(const std::string &edcBackupImeName);
 
     /**
      * @brief Set simple keyboard mode.

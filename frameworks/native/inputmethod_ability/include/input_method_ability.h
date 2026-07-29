@@ -222,11 +222,12 @@ private:
 
     sptr<IInputMethodCore> coreStub_ { nullptr };
     sptr<IInputMethodAgent> agentStub_ { nullptr };
-    std::mutex imeCheckMutex_;
-    bool isCurrentIme_ = false;
 
     double positionY_ = 0;
     double height_ = 0;
+
+    std::mutex imeCheckMutex_;
+    bool isCurrentIme_ = false;
 
     std::mutex defaultImeCheckMutex_;
     bool isDefaultIme_ = false;
