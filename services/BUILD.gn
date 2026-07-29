@@ -167,6 +167,9 @@ ohos_shared_library("inputmethod_service") {
   if (imf_restore_in_high_cpu_usage) {
     defines += [ "IMF_RESTORE_IN_HIGH_CPU_USAGE" ]
   }
+  if (imf_compatibility_config_center_enable) {
+    defines += [ "COMPATIBILITY_CONFIG_CENTER_ENABLE" ]
+  }
   subsystem_name = "inputmethod"
   part_name = "imf"
 }
@@ -281,6 +284,9 @@ ohos_static_library("inputmethod_service_static") {
     defines += [ "SCENE_BOARD_ENABLE" ]
   } else {
     external_deps += [ "window_manager:libwm" ]
+  }
+  if (imf_compatibility_config_center_enable) {
+    defines += [ "COMPATIBILITY_CONFIG_CENTER_ENABLE" ]
   }
   subsystem_name = "inputmethod"
   part_name = "imf"

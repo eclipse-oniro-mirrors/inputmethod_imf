@@ -37,6 +37,7 @@ ohos_static_library("settings_data_static") {
   sources = [
     "common/src/settings_data_observer.cpp",
     "common/src/settings_data_utils.cpp",
+    "src/comp_config_dl_loader.cpp",
     "src/ime_enabled_info_manager.cpp",
     "src/enable_upgrade_manager.cpp",
     "src/numkey_apps_manager.cpp",
@@ -68,6 +69,10 @@ ohos_static_library("settings_data_static") {
     "resource_management:global_resmgr",
     "samgr:samgr_proxy",
   ]
+  defines = []
+  if (imf_compatibility_config_center_enable) {
+    defines += [ "COMPATIBILITY_CONFIG_CENTER_ENABLE" ]
+  }
 
   subsystem_name = "inputmethod"
   part_name = "imf"

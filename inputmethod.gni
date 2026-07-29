@@ -32,4 +32,9 @@ declare_args() {
   }
   imf_on_demand_start_stop_sa_enable = false
   imf_restore_in_high_cpu_usage = false
+  imf_compatibility_config_center_enable = false
+  if (defined(global_parts_info) &&
+      defined(global_parts_info.multidevicecompatibility_compatibility_config_center)) {
+    imf_compatibility_config_center_enable = true
+  }
 }

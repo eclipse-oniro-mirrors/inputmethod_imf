@@ -62,8 +62,11 @@ int32_t NumkeyAppsManager::Init(int32_t userId)
     }
     CHECK_FEATURE_DISABLED_RETURN(ErrorCode::NO_ERROR);
 
-    int32_t ret = InitWhiteList();
-    IMSA_HILOGI("InitWhiteList ret: %{public}d", ret);
+    int32_t ret = ErrorCode::NO_ERROR;
+#ifdef COMPATIBILITY_CONFIG_CENTER_ENABLE
+    ret = InitCompConfigReader();
+    IMSA_HILOGI("InitCompConfigReader ret: %{public}d", ret);
+#endif
 
     ret = RegisterUserBlockListData(userId);
     IMSA_HILOGI("RegisterUserBlockListData ret: %{public}d", ret);
@@ -75,13 +78,28 @@ int32_t NumkeyAppsManager::Init(int32_t userId)
 
 bool NumkeyAppsManager::NeedAutoNumKeyInput(int32_t userId, const std::string &bundleName)
 {
+    IMSA_HILOGD("userId: %{public}d, bundleName: %{public}s", userId, bundleName.c_str());
     CHECK_FEATURE_DISABLED_RETURN(false);
+    // Step 1: Consumer priority - block list (original logic)
     if (IsInNumkeyBlockList(userId, bundleName)) {
+        IMSA_HILOGD("in block list, return false");
         return false;
     }
-    if (IsInNumKeyWhiteList(bundleName)) {
+#ifdef COMPATIBILITY_CONFIG_CENTER_ENABLE
+    // Step 2: Developer config from compatibility config center (new logic)
+    DevConfigState devConfigState = QueryDevCompConfig(bundleName);
+    if (devConfigState == DevConfigState::ENABLED) {
+        IMSA_HILOGD("bundleName: %{public}s dev config enabled.", bundleName.c_str());
         return true;
     }
+    if (devConfigState == DevConfigState::DISABLED) {
+        IMSA_HILOGD("bundleName: %{public}s dev config disabled.", bundleName.c_str());
+        return false;
+    }
+    // devConfigState == DevConfigState::NO_CONFIG, fall through to step 3
+    IMSA_HILOGD("devConfig no config, fallback to device type check");
+#endif
+    // Step 3: System fallback - device type check (original logic)
     {
         std::lock_guard<std::mutex> lock(appDeviceTypeLock_);
         if (disableNumKeyAppDeviceTypes_.empty()) {
@@ -92,9 +110,12 @@ bool NumkeyAppsManager::NeedAutoNumKeyInput(int32_t userId, const std::string &b
     std::string compatibleDeviceType;
     bool ret = ImeInfoInquirer::GetInstance().GetCompatibleDeviceType(bundleName, compatibleDeviceType);
     if (!ret || compatibleDeviceType.empty()) {
-        IMSA_HILOGE("getCompatibleDeviceType failed.");
+        IMSA_HILOGE("getCompatibleDeviceType failed, ret: %{public}d, type empty: %{public}d", ret,
+            compatibleDeviceType.empty());
         return false;
     }
+    IMSA_HILOGD("bundleName: %{public}s, compatibleDeviceType: %{public}s", bundleName.c_str(),
+        compatibleDeviceType.c_str());
     std::transform(compatibleDeviceType.begin(), compatibleDeviceType.end(), compatibleDeviceType.begin(),
         [](char c) { return static_cast<char>(std::tolower(static_cast<unsigned char>(c))); });
     {
@@ -143,22 +164,66 @@ int32_t NumkeyAppsManager::OnUserRemoved(int32_t userId)
     return ret;
 }
 
-int32_t NumkeyAppsManager::InitWhiteList()
+#ifdef COMPATIBILITY_CONFIG_CENTER_ENABLE
+int32_t NumkeyAppsManager::InitCompConfigReader()
 {
-    if (isListInited_.load()) {
+    std::lock_guard<std::mutex> lock(compConfigLock_);
+    if (compConfigInited_) {
+        IMSA_HILOGI("already inited");
         return ErrorCode::NO_ERROR;
     }
-    std::unordered_set<std::string> whiteList;
-    int32_t ret = ParseWhiteList(whiteList);
-    if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGI("ParseWhiteList failed, ret: %{public}d", ret);
-        return ret;
+    if (!compConfigLoader_.Load()) {
+        IMSA_HILOGE("CompConfigDlLoader Load failed");
+        return ErrorCode::ERROR_PARSE_CONFIG_FILE;
     }
-    std::lock_guard<std::mutex> lock(appListLock_);
-    numKeyAppList_ = whiteList;
-    IMSA_HILOGI("success, list size: %{public}zu", numKeyAppList_.size());
+    IMSA_HILOGD("Init with key: %{public}s", COMP_CONFIG_KEY_NUM_KEY);
+    auto ret = compConfigLoader_.Init({COMP_CONFIG_KEY_NUM_KEY});
+    if (ret != 0) {
+        IMSA_HILOGE("CompConfigDlLoader Init failed, ret: %{public}d", ret);
+        return ErrorCode::ERROR_PARSE_CONFIG_FILE;
+    }
+    compConfigInited_ = true;
+    IMSA_HILOGI("success");
     return ErrorCode::NO_ERROR;
 }
+
+DevConfigState NumkeyAppsManager::QueryDevCompConfig(const std::string &bundleName)
+{
+    std::lock_guard<std::mutex> lock(compConfigLock_);
+    if (!compConfigInited_) {
+        IMSA_HILOGD("comp config not inited");
+        return DevConfigState::NO_CONFIG;
+    }
+    IMSA_HILOGD("query bundleName: %{public}s, key: %{public}s", bundleName.c_str(), COMP_CONFIG_KEY_NUM_KEY);
+    auto [ret, valMap] = compConfigLoader_.GetConfig(bundleName, {COMP_CONFIG_KEY_NUM_KEY});
+    if (ret != 0) {
+        IMSA_HILOGD("GetConfig failed for %{public}s, ret: %{public}d", bundleName.c_str(), ret);
+        return DevConfigState::NO_CONFIG;
+    }
+    auto it = valMap.find(COMP_CONFIG_KEY_NUM_KEY);
+    if (it == valMap.end()) {
+        IMSA_HILOGD("no dev config for %{public}s", bundleName.c_str());
+        return DevConfigState::NO_CONFIG;
+    }
+    IMSA_HILOGD("raw config value for %{public}s: %{public}s", bundleName.c_str(), it->second.c_str());
+    NumKeyOptions options;
+    if (!options.Unmarshall(it->second)) {
+        IMSA_HILOGD("unmarshall failed for %{public}s, treat as no config", bundleName.c_str());
+        return DevConfigState::NO_CONFIG;
+    }
+    if (!options.hasAutoConsumeNumKeysAndInsert) {
+        IMSA_HILOGD("numKeyOptions exists but no autoConsumeNumKeysAndInsert, treat as no config for %{public}s",
+            bundleName.c_str());
+        return DevConfigState::NO_CONFIG;
+    }
+    if (options.autoConsumeNumKeysAndInsert) {
+        IMSA_HILOGD("dev config enabled for %{public}s", bundleName.c_str());
+        return DevConfigState::ENABLED;
+    }
+    IMSA_HILOGD("dev config disabled for %{public}s", bundleName.c_str());
+    return DevConfigState::DISABLED;
+}
+#endif // COMPATIBILITY_CONFIG_CENTER_ENABLE
 
 int32_t NumkeyAppsManager::UpdateUserBlockList(int32_t userId)
 {
@@ -171,29 +236,6 @@ int32_t NumkeyAppsManager::UpdateUserBlockList(int32_t userId)
     std::lock_guard<std::mutex> lock(blockListLock_);
     usersBlockList_.insert_or_assign(userId, blockList);
     IMSA_HILOGI("success, list size: %{public}zu", blockList.size());
-    return ErrorCode::NO_ERROR;
-}
-
-int32_t NumkeyAppsManager::ParseWhiteList(std::unordered_set<std::string> &list)
-{
-    std::string valueStr;
-    int32_t ret = SettingsDataUtils::GetInstance().GetStringValue(SETTING_URI_PROXY, COMPATIBLE_APP_STRATEGY, valueStr);
-    if (ret != ErrorCode::NO_ERROR && ret != ErrorCode::ERROR_KEYWORD_NOT_FOUND) {
-        IMSA_HILOGE("failed to get white list from settings data, ret: %{public}d", ret);
-        return ret;
-    }
-    if (ret == ErrorCode::ERROR_KEYWORD_NOT_FOUND) {
-        IMSA_HILOGD("key not found");
-        return ErrorCode::NO_ERROR;
-    }
-    NumkeyAppListCfg whiteListCfg;
-    if (!valueStr.empty() && !whiteListCfg.Unmarshall(valueStr)) {
-        IMSA_HILOGE("unmarshall failed");
-        return ErrorCode::ERROR_PARSE_CONFIG_FILE;
-    }
-    for (const auto &app : whiteListCfg.numkeyApps) {
-        list.insert(app.name);
-    }
     return ErrorCode::NO_ERROR;
 }
 
@@ -247,16 +289,6 @@ int32_t NumkeyAppsManager::RegisterUserBlockListData(int32_t userId)
     std::lock_guard<std::mutex> lock(observersLock_);
     observers_.insert_or_assign(userId, observer);
     return ErrorCode::NO_ERROR;
-}
-
-bool NumkeyAppsManager::IsInNumKeyWhiteList(const std::string &bundleName)
-{
-    std::lock_guard<std::mutex> lock(appListLock_);
-    if (numKeyAppList_.find(bundleName) == numKeyAppList_.end()) {
-        return false;
-    }
-    IMSA_HILOGD("%{public}s in white list.", bundleName.c_str());
-    return true;
 }
 
 bool NumkeyAppsManager::IsInNumkeyBlockList(int32_t userId, const std::string &bundleName)
