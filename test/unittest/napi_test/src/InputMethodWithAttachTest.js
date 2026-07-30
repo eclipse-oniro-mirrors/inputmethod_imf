@@ -119,7 +119,9 @@ describe('InputMethodWithAttachTest', function () {
         commonEventManager.unsubscribe(subscriber);
         done();
       })
-      publishCommonEvent(functionCode);
+      setTimeout(() => {
+        publishCommonEvent(functionCode);
+      }, 200);
     })
   }
   /*
