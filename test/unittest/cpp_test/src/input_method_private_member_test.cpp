@@ -47,6 +47,16 @@
 #include "display_adapter.h"
 #include "focus_change_listener.h"
 #include "global.h"
+
+// Mock functions for ScreenLockManager (defined in mock/screenlock_manager_mock.cpp)
+// These override PerUserSession::IsDeviceLockAndScreenLocked() at link time
+namespace OHOS {
+namespace MiscServices {
+void SetMockDeviceLocked(bool isDeviceLocked);
+void SetMockScreenLocked(bool isScreenLocked);
+void ResetMockScreenLock();
+} // namespace MiscServices
+} // namespace OHOS
 #include "iinput_method_agent.h"
 #include "iinput_method_core.h"
 #include "im_common_event_manager.h"
@@ -392,6 +402,8 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchByCombinationKey_001, TestSize.L
 HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchByCombinationKey_002, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest SA_SwitchByCombinationKey_002 TEST START");
+    SetMockDeviceLocked(false);
+    SetMockScreenLocked(false);
     ImeEnabledCfg cfg;
     ImeEnabledInfo imeInfo;
     imeInfo.bundleName = "bundleName";
@@ -400,10 +412,35 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchByCombinationKey_002, TestSize.L
     imeInfo.extraInfo.currentSubName = "subName";
     cfg.enabledInfos.emplace_back(imeInfo);
     ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert({ MAIN_USER_ID, cfg });
+    auto session = UserSessionManager::GetInstance().GetUserSession(MAIN_USER_ID);
+    auto waitImeStartLock = [session]() {
+        if (session == nullptr) {
+            return;
+        }
+        constexpr int32_t waitTime = 1000;
+        constexpr int32_t pollintervalMs = 50;
+        for (int32_t waited = 0; waited < waitTime; waited += pollintervalMs) {
+            std::unique_lock<std::mutex> lock(session->imeStartLock_, std::defer_lock);
+            if (lock.try_lock()) {
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(pollintervalMs));
+        }
+    };
+    waitImeStartLock();
     auto ret = service_->SwitchByCombinationKey(KeyboardEvent::SHIFT_RIGHT_MASK);
+    if (ret == ErrorCode::ERROR_TRY_IME_START_FAILED) {
+        waitImeStartLock();
+        ret = service_->SwitchByCombinationKey(KeyboardEvent::SHIFT_RIGHT_MASK);
+    }
     EXPECT_EQ(ret, ErrorCode::ERROR_BAD_PARAMETERS);
     ret = service_->SwitchByCombinationKey(KeyboardEvent::CAPS_MASK);
+    if (ret == ErrorCode::ERROR_TRY_IME_START_FAILED) {
+        waitImeStartLock();
+        ret = service_->SwitchByCombinationKey(KeyboardEvent::CAPS_MASK);
+    }
     EXPECT_EQ(ret, ErrorCode::ERROR_BAD_PARAMETERS);
+    ResetMockScreenLock();
 }
 
 /**
@@ -416,6 +453,8 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchByCombinationKey_002, TestSize.L
 HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchByCombinationKey_003, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest SA_SwitchByCombinationKey_003 TEST START");
+    SetMockDeviceLocked(false);
+    SetMockScreenLocked(false);
     FullImeInfo info;
     info.isNewIme = true;
     info.prop.name = "testBundleName";
@@ -435,6 +474,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchByCombinationKey_003, TestSize.L
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     ret = service_->SwitchByCombinationKey(KeyboardEvent::CAPS_MASK);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ResetMockScreenLock();
 }
 
 /**
@@ -447,6 +487,8 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchByCombinationKey_003, TestSize.L
 HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchByCombinationKey_004, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest SA_SwitchByCombinationKey_004 TEST START");
+    SetMockDeviceLocked(false);
+    SetMockScreenLocked(false);
     FullImeInfo info;
     info.prop.name = "testBundleName";
     info.prop.id = "testExtName";
@@ -466,6 +508,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchByCombinationKey_004, TestSize.L
     ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert({ MAIN_USER_ID, cfg });
     auto ret = service_->SwitchByCombinationKey(KeyboardEvent::SHIFT_RIGHT_MASK);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ResetMockScreenLock();
 }
 
 /**
@@ -478,6 +521,8 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchByCombinationKey_004, TestSize.L
 HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchByCombinationKey_005, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest SA_SwitchByCombinationKey_005 TEST START");
+    SetMockDeviceLocked(false);
+    SetMockScreenLocked(false);
     FullImeInfo info;
     info.prop.name = "testBundleName";
     info.prop.id = "testExtName";
@@ -500,6 +545,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchByCombinationKey_005, TestSize.L
     EXPECT_EQ(ret, ErrorCode::ERROR_BAD_PARAMETERS);
     ret = service_->SwitchByCombinationKey(KeyboardEvent::CAPS_MASK);
     EXPECT_EQ(ret, ErrorCode::ERROR_BAD_PARAMETERS);
+    ResetMockScreenLock();
 }
 
 /**
@@ -537,12 +583,42 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchByCombinationKey_006, TestSize.L
     imeInfo.extraInfo.currentSubName = "testSubName";
     cfg.enabledInfos.emplace_back(imeInfo);
     ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert({ MAIN_USER_ID, cfg });
+    // Mock ScreenLockManager to avoid device screen lock state interference
+    SetMockDeviceLocked(false);
+    SetMockScreenLocked(false);
+    // Wait for background StartIme to finish (imeStartLock_ held during HandleFirstStart->BlockRetry),
+    // then retry if race window causes try_lock failure in StartIme.
+    auto session = UserSessionManager::GetInstance().GetUserSession(MAIN_USER_ID);
+    auto waitImeStartLock = [session]() {
+        if (session == nullptr) {
+            return;
+        }
+        constexpr int32_t waitTime = 1000;
+        constexpr int32_t pollintervalMs = 50;
+        for (int32_t waited = 0; waited < waitTime; waited += pollintervalMs) {
+            std::unique_lock<std::mutex> lock(session->imeStartLock_, std::defer_lock);
+            if (lock.try_lock()) {
+                break;
+            }
+            std::this_thread::sleep_for(std::chrono::milliseconds(pollintervalMs));
+        }
+    };
     // english->chinese
+    waitImeStartLock();
     auto ret = service_->SwitchByCombinationKey(KeyboardEvent::SHIFT_RIGHT_MASK);
+    if (ret == ErrorCode::ERROR_TRY_IME_START_FAILED) {
+        waitImeStartLock();
+        ret = service_->SwitchByCombinationKey(KeyboardEvent::SHIFT_RIGHT_MASK);
+    }
     EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_REBOOT_OLD_IME_NOT_STOP);
     // lower->upper
     ret = service_->SwitchByCombinationKey(KeyboardEvent::CAPS_MASK);
+    if (ret == ErrorCode::ERROR_TRY_IME_START_FAILED) {
+        waitImeStartLock();
+        ret = service_->SwitchByCombinationKey(KeyboardEvent::CAPS_MASK);
+    }
     EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_REBOOT_OLD_IME_NOT_STOP);
+    ResetMockScreenLock();
 }
 
 /**
@@ -1735,6 +1811,8 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_StartPreconfiguredDefaultIme, TestSize
 HWTEST_F(InputMethodPrivateMemberTest, SA_AllowSwitchImeByCombinationKey, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::SA_AllowSwitchImeByCombinationKey start.");
+    SetMockDeviceLocked(false);
+    SetMockScreenLocked(false);
     auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     // not has current client info
     userSession->clientGroupMap_.clear();
@@ -1753,6 +1831,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_AllowSwitchImeByCombinationKey, TestSi
     userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
     ret = userSession->IsImeSwitchForbidden();
     EXPECT_TRUE(ret);
+    ResetMockScreenLock();
 }
 
 /**
@@ -1764,6 +1843,8 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_AllowSwitchImeByCombinationKey, TestSi
 HWTEST_F(InputMethodPrivateMemberTest, SA_SpecialScenarioCheck, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::SA_SpecialScenarioCheck start.");
+    SetMockDeviceLocked(false);
+    SetMockScreenLocked(false);
     auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     // has current client info
     auto group = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
@@ -1800,6 +1881,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SpecialScenarioCheck, TestSize.Level0)
     userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
     allow = userSession->SpecialScenarioCheck();
     EXPECT_FALSE(allow);
+    ResetMockScreenLock();
 }
 
 /**
@@ -1811,6 +1893,8 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SpecialScenarioCheck, TestSize.Level0)
 HWTEST_F(InputMethodPrivateMemberTest, SA_IsScreenLockOrSecurityFlag, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::SA_IsScreenLockOrSecurityFlag start.");
+    SetMockDeviceLocked(false);
+    SetMockScreenLocked(false);
     auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     // has current client info
     auto group = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
@@ -1842,6 +1926,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_IsScreenLockOrSecurityFlag, TestSize.L
     userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
     ret = userSession->IsImeSwitchForbidden();
     EXPECT_TRUE(ret);
+    ResetMockScreenLock();
 }
 
 /**
@@ -4419,6 +4504,8 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_IsPanelShown_001, TestSize
 HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_StartInputService_IsRestartAfterTimeout_001, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_StartInputService_IsRestartAfterTimeout_001 start.");
+    SetMockDeviceLocked(false);
+    SetMockScreenLocked(false);
     auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     auto ime = std::make_shared<ImeNativeCfg>();
     std::shared_ptr<Property> property = InputMethodController::GetInstance()->GetCurrentInputMethod();
@@ -4428,6 +4515,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_StartInputService_IsRestar
     ime->imeId = ime->bundleName + "/" + ime->extName;
     auto ret = userSession->StartInputService(ime, false);
     EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_IME_START_TIMEOUT);
+    ResetMockScreenLock();
 }
 
 /**

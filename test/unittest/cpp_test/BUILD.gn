@@ -602,6 +602,7 @@ ohos_unittest("InputMethodPrivateMemberTest") {
     "${inputmethod_path}/services/adapter/settings_data_provider/common/src/settings_data_utils.cpp",
     "${inputmethod_path}/services/src/input_control_channel_service_impl.cpp",
     "mock/datashare_helper.cpp",
+    "mock/screenlock_manager_mock.cpp",
     "src/input_method_private_member_test.cpp",
   ]
 
@@ -660,6 +661,8 @@ ohos_unittest("InputMethodPrivateMemberTest") {
     external_deps += [ "selinux_adapter:librestorecon" ]
     cflags = [ "-DWITH_SELINUX" ]
   }
+
+  ldflags = [ "-Wl,--allow-multiple-definition" ]
 }
 
 ohos_unittest("InputMethodEditorTest") {
