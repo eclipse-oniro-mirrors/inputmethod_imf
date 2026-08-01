@@ -132,7 +132,7 @@ ohos_unittest("InputMethodAttachTest") {
 
   deps = [
     "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:input_control_channel_proxy",
-    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_static",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_client_stub",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_method_agent_proxy",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
@@ -203,7 +203,7 @@ ohos_unittest("InputMethodAbilityTest") {
     "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:input_control_channel_proxy",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:input_method_core_proxy",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:input_method_core_stub",
-    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_static",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_client_stub",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_method_agent_proxy",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_method_agent_stub",
@@ -268,7 +268,7 @@ ohos_unittest("InputMethodServiceTest") {
   configs = [ ":module_private_config" ]
 
   deps = [
-    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_static",
     "${inputmethod_path}/services/adapter/settings_data_provider:settings_data_static",
     "${inputmethod_path}/services:inputmethod_service_static",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_static",
@@ -543,7 +543,7 @@ ohos_unittest("InputMethodSwitchTest") {
   deps = [
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_method_agent_proxy",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
-    "${inputmethod_path}/services:inputmethod_service",
+    "${inputmethod_path}/services:inputmethod_service_static",
     "${inputmethod_path}/services/adapter/settings_data_provider:settings_data_static",
     "${inputmethod_path}/test/common:inputmethod_test_common",
     "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
@@ -614,7 +614,7 @@ ohos_unittest("InputMethodPrivateMemberTest") {
   deps = [
     "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:input_control_channel_proxy",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:input_method_core_stub",
-    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_static",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_method_agent_proxy",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_method_agent_stub",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
@@ -688,7 +688,7 @@ ohos_unittest("InputMethodEditorTest") {
 
   deps = [
     "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:input_control_channel_proxy",
-    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_static",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_client_stub",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_method_agent_proxy",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
@@ -756,7 +756,7 @@ ohos_unittest("NewImeSwitchTest") {
   deps = [
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_method_agent_proxy",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
-    "${inputmethod_path}/services:inputmethod_service",
+    "${inputmethod_path}/services:inputmethod_service_static",
     "${inputmethod_path}/services/adapter/settings_data_provider:settings_data_static",
     "${inputmethod_path}/test/common:inputmethod_test_common",
     "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
@@ -911,10 +911,10 @@ ohos_unittest("TextListenerInnerApiTest") {
   configs = [ ":module_private_config" ]
 
   deps = [
-    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_static",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_method_agent_proxy",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
-    "${inputmethod_path}/services:inputmethod_service",
+    "${inputmethod_path}/services:inputmethod_service_static",
     "${inputmethod_path}/test/common:inputmethod_test_common",
     "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
   ]
@@ -969,7 +969,7 @@ ohos_unittest("TextListenerInnerApiTest") {
     deps = [
       "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_method_agent_proxy",
       "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
-      "${inputmethod_path}/services:inputmethod_service",
+      "${inputmethod_path}/services:inputmethod_service_static",
       "${inputmethod_path}/services/adapter/settings_data_provider:settings_data_static",
       "${inputmethod_path}/test/common:inputmethod_test_common",
       "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
@@ -1023,9 +1023,9 @@ ohos_unittest("ImeProxyAgentImeTest") {
   configs = [ ":module_private_config" ]
 
   deps = [
-    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_static",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
-    "${inputmethod_path}/services:inputmethod_service",
+    "${inputmethod_path}/services:inputmethod_service_static",
     "${inputmethod_path}/services/file:imf_file_static",
     "${inputmethod_path}/services/json:imf_json_static",
     "${inputmethod_path}/test/common:inputmethod_test_common",
@@ -1071,6 +1071,7 @@ ohos_unittest("ImeProxyAgentImeTest") {
 }
 
 ohos_executable("ImeProxyDemo") {
+  testonly = true
   branch_protector_ret = "pac_ret"
   sanitize = {
     cfi = true
@@ -1086,7 +1087,7 @@ ohos_executable("ImeProxyDemo") {
       [ "${inputmethod_path}/interfaces/inner_api/inputmethod_ability/include" ]
 
   deps = [
-    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_static",
     "${inputmethod_path}/services/file:imf_file_static",
     "${inputmethod_path}/services/json:imf_json_static",
   ]
@@ -1130,7 +1131,7 @@ ohos_unittest("ImeProxyTest") {
   deps = [
     "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:input_control_channel_proxy",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:input_method_core_stub",
-    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_static",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_client_stub",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_method_agent_proxy",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
@@ -1198,7 +1199,7 @@ ohos_unittest("TaskManagerTest") {
   configs = [ ":module_private_config" ]
 
   deps = [
-    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_static",
     "${inputmethod_path}/test/common:inputmethod_test_common",
     "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
   ]
@@ -1313,9 +1314,9 @@ ohos_unittest("VirtualListenerTest") {
   configs = [ ":module_private_config" ]
 
   deps = [
-    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_static",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
-    "${inputmethod_path}/services:inputmethod_service",
+    "${inputmethod_path}/services:inputmethod_service_static",
     "${inputmethod_path}/test/common:inputmethod_test_common",
   ]
 
@@ -1364,10 +1365,10 @@ ohos_unittest("ImeSystemChannelTest") {
   configs = [ ":module_private_config" ]
 
   deps = [
-    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_static",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_method_agent_proxy",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
-    "${inputmethod_path}/services:inputmethod_service",
+    "${inputmethod_path}/services:inputmethod_service_static",
     "${inputmethod_path}/test/common:inputmethod_test_common",
     "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
   ]
@@ -1748,11 +1749,11 @@ ohos_unittest("ImaTextEditTest") {
   deps = [
     "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:input_control_channel_proxy",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:input_method_core_stub",
-    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_static",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_client_stub",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_method_agent_proxy",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
-    "${inputmethod_path}/services:inputmethod_service",
+    "${inputmethod_path}/services:inputmethod_service_static",
     "${inputmethod_path}/test/common:inputmethod_test_common",
     "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
     "${inputmethod_path}/test/unittest/resource/bundle_dependencies/editorBox:editorBox",
@@ -1838,7 +1839,7 @@ ohos_unittest("InputMethodManagerCommandTest") {
   ]
 
   deps = [
-    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
     "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
     "${inputmethod_path}/test/unittest/resource/bundle_dependencies/newTestIme:newTestIme",
     "${inputmethod_path}/test/unittest/resource/ohos_test:copy_ohos_test",
@@ -1938,7 +1939,7 @@ ohos_unittest("ImeMirrorTest") {
   ]
 
   deps = [
-    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_static",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_static",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
     "${inputmethod_path}/services:inputmethod_service_static",
@@ -1989,6 +1990,7 @@ ohos_unittest("ImeMirrorTest") {
 }
 
 ohos_executable("ImeMirrorDemo") {
+  testonly = true
   branch_protector_ret = "pac_ret"
   sanitize = {
     cfi = true
@@ -2004,7 +2006,7 @@ ohos_executable("ImeMirrorDemo") {
       [ "${inputmethod_path}/interfaces/inner_api/inputmethod_ability/include" ]
 
   deps = [
-    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_static",
     "${inputmethod_path}/services/file:imf_file_static",
     "${inputmethod_path}/services/json:imf_json_static",
   ]
@@ -2026,6 +2028,7 @@ ohos_executable("ImeMirrorDemo") {
 }
 
 ohos_executable("ImcInnerTestDemo") {
+  testonly = true
   branch_protector_ret = "pac_ret"
   sanitize = {
     cfi = true
@@ -2039,7 +2042,7 @@ ohos_executable("ImcInnerTestDemo") {
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller/include"
   ]
 
-  deps = [ "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client" ]
+  deps = [ "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static" ]
 
   configs = [ ":module_private_config" ]
 
@@ -2057,6 +2060,7 @@ ohos_executable("ImcInnerTestDemo") {
 }
 
 ohos_executable("ProxyImeTestDemo") {
+  testonly = true
   branch_protector_ret = "pac_ret"
   sanitize = {
     cfi = true
@@ -2074,7 +2078,7 @@ ohos_executable("ProxyImeTestDemo") {
   ]
 
   deps = [
-    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_static",
     "${inputmethod_path}/services/file:imf_file_static",
     "${inputmethod_path}/services/json:imf_json_static",
   ]
@@ -2166,7 +2170,7 @@ ohos_unittest("InputMethodDisplayAttributeListenerTest") {
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_method_agent_proxy",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_method_agent_stub",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
-    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_static",
     "${inputmethod_path}/test/common:inputmethod_test_common",
     "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
   ]
@@ -2228,8 +2232,8 @@ ohos_unittest("ImeEventListenerManagerTest") {
 
   deps = [
     "${inputmethod_path}/services:inputmethod_service_static",
-    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client",
-    "${inputmethod_path}/services:inputmethod_service",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
+    "${inputmethod_path}/services:inputmethod_service_static",
     "${inputmethod_path}/test/common:inputmethod_test_common",
   ]
 
@@ -2253,6 +2257,7 @@ ohos_unittest("ImeEventListenerManagerTest") {
 }
 
 ohos_executable("PublishCommonEventDemo") {
+  testonly = true
   branch_protector_ret = "pac_ret"
   sanitize = {
     cfi = true
@@ -2267,7 +2272,7 @@ ohos_executable("PublishCommonEventDemo") {
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller/include",
   ]
 
-  deps = [ "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client" ]
+  deps = [ "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static" ]
 
   configs = [ ":module_private_config" ]
 
@@ -2408,8 +2413,8 @@ ohos_unittest("ImeInfoInquirerTest") {
   deps = [
     "${inputmethod_path}/services/adapter/settings_data_provider:settings_data_static",
     "${inputmethod_path}/services:inputmethod_service_static",
-    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client",
-    "${inputmethod_path}/services:inputmethod_service",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
+    "${inputmethod_path}/services:inputmethod_service_static",
     "${inputmethod_path}/test/common:inputmethod_test_common",
     "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
   ]
@@ -2952,7 +2957,7 @@ ohos_unittest("InputMethodToolsTest") {
   ]
 
   deps = [
-    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_static",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
     "${inputmethod_path}/services/adapter/settings_data_provider:settings_data_static",
     "${inputmethod_path}/services/json:imf_json_static",

@@ -37,7 +37,7 @@ ohos_fuzztest("ImeEventMonitorManagerFuzzTest") {
   sources = [ "imeeventmonitormanager_fuzzer.cpp" ]
 
   deps = [
-    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_fuzz_static",
     "${inputmethod_path}/test/common:inputmethod_test_common",
   ]
 

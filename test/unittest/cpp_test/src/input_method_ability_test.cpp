@@ -225,6 +225,7 @@ public:
     {
         IMSA_HILOGI("InputMethodAbilityTest::SetUp");
         TaskManager::GetInstance().Reset();
+        TaskManager::GetInstance().SetInited(true);
     }
     void TearDown()
     {

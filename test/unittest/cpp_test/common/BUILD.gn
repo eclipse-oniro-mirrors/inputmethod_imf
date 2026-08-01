@@ -51,7 +51,7 @@ ohos_static_library("inputmethod_tdd_util") {
   ]
   public_configs = [ ":inputmethod_tdd_util_public_config" ]
   deps = [
-    "${inputmethod_path}/services:inputmethod_service",
+    "${inputmethod_path}/services:inputmethod_service_static",
     "${inputmethod_path}/services/adapter/settings_data_provider:settings_data_static",
   ]
   external_deps = [
