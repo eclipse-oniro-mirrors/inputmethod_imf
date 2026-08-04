@@ -172,6 +172,7 @@ ohos_shared_library("inputmethod_service") {
   }
   subsystem_name = "inputmethod"
   part_name = "imf"
+  shlib_type="sa"
 }
 
 ohos_static_library("inputmethod_service_static") {

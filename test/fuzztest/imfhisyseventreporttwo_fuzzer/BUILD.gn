@@ -46,7 +46,7 @@ ohos_fuzztest("ImfHisyseventReportTwoFuzzTest") {
 
   deps = [
     "${inputmethod_path}/common/imf_hisysevent:imf_hisysevent",
-    "${inputmethod_path}/services:inputmethod_service",
+    "${inputmethod_path}/services:inputmethod_service_static",
     "${inputmethod_path}/services/json:imf_json_static",
     "${inputmethod_path}/test/common:inputmethod_test_common",
   ]

@@ -337,7 +337,10 @@ ohos_static_library("inputmethod_client_static") {
     "${inputmethod_path}/frameworks/native/inputmethod_controller/src/system_cmd_channel_service_impl.cpp",
   ]
 
-  public_configs = [ ":inputmethod_client_native_public_config" ]
+  public_configs = [
+    ":inputmethod_client_native_public_config",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_native_public_config",
+  ]
 
   deps = [
     ":input_client_interface",
@@ -421,11 +424,15 @@ ohos_static_library("inputmethod_client_fuzz_static") {
     "${inputmethod_path}/frameworks/native/inputmethod_controller/src/system_cmd_channel_service_impl.cpp",
   ]
 
-  public_configs = [ ":inputmethod_client_native_public_config" ]
+  public_configs = [
+    ":inputmethod_client_native_public_config",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_native_public_config",
+  ]
 
   deps = [
     ":input_client_interface",
     ":input_method_agent_interface",
+    ":oninputstop_notify_interface",
     "${inputmethod_path}/common:inputmethod_common",
     "${inputmethod_path}/common/imf_hisysevent:imf_hisysevent",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:input_data_channel_stub",
@@ -470,6 +477,10 @@ ohos_static_library("inputmethod_client_fuzz_static") {
                               "*_proxy.cpp",
                               "*_stub.cpp",
                             ])
+
+  oninputstop_notify_output_values =
+      get_target_outputs(":oninputstop_notify_interface")
+  sources += filter_include(oninputstop_notify_output_values, [ "*_proxy.cpp" ])
 
   subsystem_name = "inputmethod"
   part_name = "imf"
