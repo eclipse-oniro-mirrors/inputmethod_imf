@@ -831,6 +831,10 @@ ohos_unittest("NumKeyAppsManagerTest") {
     "ipc:ipc_single",
     "resource_management:global_resmgr",
   ]
+  defines = []
+  if (imf_compatibility_config_center_enable) {
+    defines += [ "COMPATIBILITY_CONFIG_CENTER_ENABLE" ]
+  }
 }
 
 ohos_unittest("IdentityCheckerTest") {
