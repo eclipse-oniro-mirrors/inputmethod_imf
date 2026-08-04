@@ -1106,7 +1106,7 @@ napi_value JsGetInputMethodSetting::GetDefaultInputMethodAbility(napi_env env, n
 
     int32_t ret = channel->GetDefaultImeCfg(property);
     if (ret != ErrorCode::NO_ERROR || property == nullptr) {
-        JsUtils::ThrowException(env, EXCEPTION_IMMS, "failed to get default input methods", TYPE_NONE);
+        JsUtils::ThrowException(env, EXCEPTION_IMMS, "failed to get default input method ability!", TYPE_NONE);
         IMSA_HILOGE("GetDefaultImeCfg failed or property is nullptr ret: %{public}d!", ret);
         return nullptr;
     }
