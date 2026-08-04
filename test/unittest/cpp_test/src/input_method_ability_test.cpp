@@ -225,7 +225,6 @@ public:
     {
         IMSA_HILOGI("InputMethodAbilityTest::SetUp");
         TaskManager::GetInstance().Reset();
-        TaskManager::GetInstance().SetInited(true);
     }
     void TearDown()
     {
@@ -662,6 +661,7 @@ HWTEST_F(InputMethodAbilityTest, testStartInputWithSimpleKeyBoard, TestSize.Leve
 HWTEST_F(InputMethodAbilityTest, testStartInputBeforeCreatePanel, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbilityTest testStartInputBeforeCreatePanel start.");
+    TaskManager::GetInstance().SetInited(true);
     inputMethodAbility_.panels_.Clear();
     inputMethodAbility_.SetImeListener(std::make_shared<InputMethodEngineListenerImpl>());
     auto ret = imc_->Attach(textListener_);
