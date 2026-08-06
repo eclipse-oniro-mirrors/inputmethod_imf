@@ -187,6 +187,7 @@ public:
     static ImeStartInputStatistics imeStartInputStatistics_;
     static BaseTextOperationStatistics baseTextOperationStatistics_;
     static int32_t multiThreadExecTotalNum_;
+    static std::shared_ptr<HiSysEventListener> watcher_;
 
 private:
     static void WatchHiSysEvent();
@@ -253,6 +254,10 @@ void ImfHiSysEventReporterTest::SetUpTestCase(void)
 void ImfHiSysEventReporterTest::TearDownTestCase(void)
 {
     IMSA_HILOGI("ImfHiSysEventReporterTest::TearDownTestCase");
+    auto ret = HiSysEventManager::RemoveListener(watcher_);
+    if (ret != SUCCESS) {
+        IMSA_HILOGE("RemoveListener failed! ret = %{public}d", ret);
+    }
 }
 
 void ImfHiSysEventReporterTest::SetUp(void)
@@ -292,8 +297,8 @@ void ImfHiSysEventReporterTest::WatchHiSysEvent()
     AddListenerRules(EVENT_NAME_IME_START_INPUT_STATISTICS, sysRules);
     AddListenerRules(EVENT_NAME_BASIC_TEXT_OPERATION_STATISTICS, sysRules);
     AddListenerRules(DOMAIN, sysRules);
-    std::shared_ptr<HiSysEventListener> watcher = std::make_shared<ImfHiSysEventWatcher>();
-    auto ret = HiSysEventManager::AddListener(watcher, sysRules);
+    watcher_ = std::make_shared<ImfHiSysEventWatcher>();
+    auto ret = HiSysEventManager::AddListener(watcher_, sysRules);
     if (ret != SUCCESS) {
         IMSA_HILOGE("AddListener failed! ret = %{public}d", ret);
     }
@@ -569,6 +574,7 @@ ClientShowStatistics ImfHiSysEventReporterTest::clientShowStatistics_;
 ImeStartInputStatistics ImfHiSysEventReporterTest::imeStartInputStatistics_;
 BaseTextOperationStatistics ImfHiSysEventReporterTest::baseTextOperationStatistics_;
 int32_t ImfHiSysEventReporterTest::multiThreadExecTotalNum_{ 0 };
+std::shared_ptr<HiSysEventListener> ImfHiSysEventReporterTest::watcher_;
 
 /**
  * @tc.name: ImcClientAttachFailed_001
