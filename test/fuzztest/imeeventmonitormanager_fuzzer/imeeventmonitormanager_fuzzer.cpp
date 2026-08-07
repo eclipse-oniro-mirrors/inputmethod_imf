@@ -18,9 +18,13 @@
 #include "ime_event_monitor_manager.h"
 #include "ime_setting_listener_test_impl.h"
 
+#include <atomic>
+#include <thread>
+
 using namespace OHOS::MiscServices;
 namespace OHOS {
 constexpr size_t THRESHOLD = 10;
+constexpr int32_t WAIT_TIME = 200;
 void FuzzRegisterImeEventListener(FuzzedDataProvider &provider)
 {
     auto listener = std::make_shared<ImeSettingListenerTestImpl>();
@@ -44,6 +48,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
 
     /* Run your code on data */
     FuzzedDataProvider provider(data, size);
+    std::this_thread::sleep_for(std::chrono::milliseconds(OHOS::WAIT_TIME));
     OHOS::FuzzRegisterImeEventListener(provider);
     OHOS::FuzzUnRegisterImeEventListener(provider);
     return 0;
