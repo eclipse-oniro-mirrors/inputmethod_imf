@@ -21,8 +21,10 @@
 
 #include "inputmethodcontroller_fuzzer.h"
 
+#include <atomic>
 #include <cstddef>
 #include <cstdint>
+#include <thread>
 
 #include "fuzzer/FuzzedDataProvider.h"
 #include "global.h"
@@ -33,6 +35,7 @@
 
 using namespace OHOS::MiscServices;
 namespace OHOS {
+constexpr int32_t WAIT_TIME = 200;
 void TestListInputMethod(sptr<InputMethodController> imc, FuzzedDataProvider &provider)
 {
     auto fuzzedBool1 = provider.ConsumeBool();
@@ -163,6 +166,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     FuzzedDataProvider provider(data, size);
 
     OHOS::sptr<InputMethodController> imc = InputMethodController::GetInstance();
+    std::this_thread::sleep_for(std::chrono::milliseconds(OHOS::WAIT_TIME));
 
     OHOS::TestListInputMethod(imc, provider);
     OHOS::TestListInputMethodSubtype(imc, provider);

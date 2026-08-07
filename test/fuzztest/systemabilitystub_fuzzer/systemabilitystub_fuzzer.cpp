@@ -22,6 +22,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string_ex.h>
+#include <thread>
 
 #include "accesstoken_kit.h"
 #include "global.h"
@@ -40,6 +41,7 @@ using namespace OHOS::MiscServices;
 namespace OHOS {
 std::atomic_bool g_isInitialize = false;
 constexpr uint32_t TARGET_REMOTE_CODE_NUMS = 21;
+constexpr int32_t WAIT_TIME = 200;
 void GrantNativePermission()
 {
     const char **perms = new const char *[1];
@@ -112,6 +114,7 @@ extern "C" int LLVMFuzzerTestOneInput(const uint8_t *data, size_t size)
     }
     /* Run your code on data */
     FuzzedDataProvider provider(data, size);
+    std::this_thread::sleep_for(std::chrono::milliseconds(OHOS::WAIT_TIME));
     OHOS::FuzzInputMethodSystemAbility(provider);
     OHOS::TestDump(provider);
     return 0;
