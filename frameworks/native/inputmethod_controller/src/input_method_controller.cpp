@@ -2541,11 +2541,16 @@ void OnTextChangedListener::DeleteBackwardV2(int32_t length)
 void OnTextChangedListener::SendKeyboardStatusV2(const KeyboardStatus &keyboardStatus)
 {
     auto eventHandler = GetEventHandler();
+    auto weakPtr = wptr<OnTextChangedListener>(this);
     if (eventHandler == nullptr) {
+        auto listener = weakPtr.promote();
+        if (listener == nullptr) {
+            IMSA_HILOGE("SendKeyboardStatusV2 listener is nullptr!");
+            return;
+        }
         SendKeyboardStatus(keyboardStatus);
         return;
     }
-    auto weakPtr = wptr<OnTextChangedListener>(this);
     auto task = [weakPtr, keyboardStatus]() {
         auto listener = weakPtr.promote();
         if (listener == nullptr) {
