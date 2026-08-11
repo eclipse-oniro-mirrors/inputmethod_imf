@@ -36,12 +36,12 @@ NumkeyAppsManager &NumkeyAppsManager::GetInstance()
 // LCOV_EXCL_START
 void NumkeyAppsManager::Release()
 {
-    if (observers_.empty()) {
-        return;
-    }
     std::map<int32_t, sptr<SettingsDataObserver>> observers;
     {
         std::lock_guard<std::mutex> lock(observersLock_);
+        if (observers_.empty()) {
+            return;
+        }
         observers = observers_;
         observers_.clear();
     }

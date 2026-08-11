@@ -23,16 +23,11 @@ sptr<InputMethodTextChangedListener> InputMethodTextChangedListener::inputMethod
 sptr<InputMethodTextChangedListener> InputMethodTextChangedListener::GetInstance(bool newEditBox)
 {
     IMSA_HILOGD("newEditBox is %{public}d.", newEditBox);
+    std::lock_guard<std::mutex> lock(listenerMutex_);
     if (newEditBox) {
-        std::lock_guard<std::mutex> lock(listenerMutex_);
         inputMethodListener_ = new (std::nothrow) InputMethodTextChangedListener();
-    } else {
-        if (inputMethodListener_ == nullptr) {
-            std::lock_guard<std::mutex> lock(listenerMutex_);
-            if (inputMethodListener_ == nullptr) {
-                inputMethodListener_ = new (std::nothrow) InputMethodTextChangedListener();
-            }
-        }
+    } else if (inputMethodListener_ == nullptr) {
+        inputMethodListener_ = new (std::nothrow) InputMethodTextChangedListener();
     }
     return inputMethodListener_;
 }

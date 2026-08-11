@@ -1957,10 +1957,10 @@ int32_t InputMethodPanel::SizeChange(const WindowSize &size)
         return ErrorCode::ERROR_BAD_PARAMETERS;
     }
     if (sizeChangeRegistered_) {
-        listener->OnSizeChange(windowId_, keyboardSize_, keyboardArea, "sizeChange");
+        listener->OnSizeChange(windowId_, size, keyboardArea, "sizeChange");
     }
     if (sizeUpdateRegistered_) {
-        listener->OnSizeChange(windowId_, keyboardSize_, keyboardArea, "sizeUpdate");
+        listener->OnSizeChange(windowId_, size, keyboardArea, "sizeUpdate");
     }
     return ErrorCode::NO_ERROR;
 }

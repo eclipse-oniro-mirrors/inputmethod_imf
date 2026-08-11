@@ -82,17 +82,19 @@ void InputMethodSysEvent::InputmethodFaultReporter(
 void InputMethodSysEvent::ImeUsageBehaviourReporter()
 {
     IMSA_HILOGD("start.");
-    int ret = HiSysEventWrite(HiviewDFX::HiSysEvent::Domain::INPUTMETHOD, "IME_USAGE",
-        HiSysEventNameSpace::EventType::STATISTIC, "IME_START",
-        inputmethodBehaviour_[static_cast<int32_t>(IMEBehaviour::START_IME)], "IME_CHANGE",
-        inputmethodBehaviour_[static_cast<int32_t>(IMEBehaviour::CHANGE_IME)]);
-    if (ret != HiviewDFX::SUCCESS) {
-        IMSA_HILOGE("hisysevent BehaviourReporter failed! ret: %{public}d", ret);
-    }
+    int32_t startCount = 0;
+    int32_t changeCount = 0;
     {
         std::lock_guard<std::mutex> lock(behaviourMutex_);
+        startCount = inputmethodBehaviour_[static_cast<int32_t>(IMEBehaviour::START_IME)];
+        changeCount = inputmethodBehaviour_[static_cast<int32_t>(IMEBehaviour::CHANGE_IME)];
         inputmethodBehaviour_[static_cast<int32_t>(IMEBehaviour::START_IME)] = 0;
         inputmethodBehaviour_[static_cast<int32_t>(IMEBehaviour::CHANGE_IME)] = 0;
+    }
+    int ret = HiSysEventWrite(HiviewDFX::HiSysEvent::Domain::INPUTMETHOD, "IME_USAGE",
+        HiSysEventNameSpace::EventType::STATISTIC, "IME_START", startCount, "IME_CHANGE", changeCount);
+    if (ret != HiviewDFX::SUCCESS) {
+        IMSA_HILOGE("hisysevent BehaviourReporter failed! ret: %{public}d", ret);
     }
     StartTimerForReport();
 }
