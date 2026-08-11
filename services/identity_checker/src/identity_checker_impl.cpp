@@ -276,6 +276,12 @@ std::pair<bool, FocusedInfo> IdentityCheckerImpl::IsFocusedUIExtension(
         return { false, {} };
     }
     auto retInfo = GenerateFocusCheckRet(*iter, focusWindowInfos);
+    if (retInfo.second.displayId == 0 && ImeInfoInquirer::GetInstance().IsSupperFold()) {
+        auto callingDisplayId = WindowAdapter::GetDisplayIdByWindowId(retInfo.second.windowId, userId);
+        retInfo.second.displayId = callingDisplayId;
+        retInfo.second.keyboardDisplayId = callingDisplayId;
+        IMSA_HILOGD("IsSupperFold, displayId:%{public}" PRIu64 "", callingDisplayId);
+    }
     retInfo.second.uiExtensionHostPid = iter->pid_;
     return retInfo;
 }
