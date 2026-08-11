@@ -697,18 +697,18 @@ napi_value JsPanel::UpdatePanelRectSync(napi_env env, napi_callback_info info)
     auto panel = UnwrapPanel(env, thisVar);
     if (panel == nullptr) {
         IMSA_HILOGE("inputMethodPanel is nullptr!");
-        return JsUtil::Const::Null(env);
+        return JsUtil::Const::Undefined(env);
     }
 
     auto ctxt = std::make_shared<PanelContentContext>(env, info);
     bool isEnhancedCall = IsEnhancedAdjust(env, argv, argc);
     if (!isEnhancedCall) {
         if (CheckParam(env, argc, argv, ctxt) != napi_ok) {
-            return JsUtil::Const::Null(env);
+            return JsUtil::Const::Undefined(env);
         }
     } else {
         if (CheckEnhancedParam(env, argc, argv, ctxt) != napi_ok) {
-            return JsUtil::Const::Null(env);
+            return JsUtil::Const::Undefined(env);
         }
     }
     JsEventInfo eventInfo = { std::chrono::system_clock::now(), JsEvent::UPDATE_PANEL_RECT_SYNC };
@@ -730,7 +730,7 @@ napi_value JsPanel::UpdatePanelRectSync(napi_env env, napi_callback_info info)
     }
     RESULT_CHECK_RETURN(env, ret == ErrorCode::NO_ERROR, JsUtils::Convert(ret),
         "failed to UpdatePanelRectSync!", TYPE_NONE, JsUtil::Const::Null(env));
-    return JsUtil::Const::Null(env);
+    return JsUtil::Const::Undefined(env);
 }
 
 napi_value JsPanel::UpdateRegion(napi_env env, napi_callback_info info)
