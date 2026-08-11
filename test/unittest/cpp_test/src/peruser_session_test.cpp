@@ -1071,5 +1071,1086 @@ HWTEST_F(PerUserSessionTest, TestOnSetCallingWindow_NullClient_001, TestSize.Lev
     auto ret = session_->OnSetCallingWindow(focusedInfo, nullptr, 0);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOCUSED);
 }
+
+/**
+* @tc.name: TestOnSetCallingWindow_ClientGroupNotFound_001
+* @tc.desc: Test OnSetCallingWindow when client group not found
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestOnSetCallingWindow_ClientGroupNotFound_001, TestSize.Level0)
+{
+    FocusedInfo focusedInfo;
+    sptr<IInputClient> clientStub = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(clientStub, nullptr);
+    auto ret = session_->OnSetCallingWindow(focusedInfo, clientStub, 0);
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOCUSED);
+}
+
+/**
+* @tc.name: TestGetInputStartInfo_NoClient_001
+* @tc.desc: Test GetInputStartInfo when no client is bound to real ime
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetInputStartInfo_NoClient_001, TestSize.Level0)
+{
+    InputStartInfo info;
+    auto ret = session_->GetInputStartInfo(info);
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_BOUND);
+}
+
+/**
+* @tc.name: TestIsSameIme_001
+* @tc.desc: Test IsSameIme with various inputs
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestIsSameIme_001, TestSize.Level0)
+{
+    auto bindData = std::make_shared<BindImeData>(TEST_PID, ImeType::IME);
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    EXPECT_FALSE(session_->IsSameIme(nullptr, imeData));
+    EXPECT_FALSE(session_->IsSameIme(bindData, nullptr));
+    EXPECT_TRUE(session_->IsSameIme(bindData, imeData));
+    auto otherBindData = std::make_shared<BindImeData>(9999, ImeType::IME);
+    EXPECT_FALSE(session_->IsSameIme(otherBindData, imeData));
+}
+
+/**
+* @tc.name: TestIsSameImeType_001
+* @tc.desc: Test IsSameImeType with various inputs
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestIsSameImeType_001, TestSize.Level0)
+{
+    auto bindData = std::make_shared<BindImeData>(TEST_PID, ImeType::IME);
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    // null bindImeData returns true
+    EXPECT_TRUE(session_->IsSameImeType(nullptr, imeData));
+    // null newIme returns true
+    EXPECT_TRUE(session_->IsSameImeType(bindData, nullptr));
+    // same type
+    EXPECT_TRUE(session_->IsSameImeType(bindData, imeData));
+    // different type
+    auto proxyBindData = std::make_shared<BindImeData>(TEST_PID, ImeType::PROXY_IME);
+    EXPECT_FALSE(session_->IsSameImeType(proxyBindData, imeData));
+}
+
+/**
+* @tc.name: TestIsPanelShown_NoClient_001
+* @tc.desc: Test IsPanelShown with displayId when no client is bound
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestIsPanelShown_NoClient_001, TestSize.Level0)
+{
+    PanelInfo panelInfo;
+    bool isShown = false;
+    auto ret = session_->IsPanelShown(TEST_DISPLAY_ID, panelInfo, isShown);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_FALSE(isShown);
+}
+
+/**
+* @tc.name: TestIsPanelShown_NoClient_DefaultDisplay_001
+* @tc.desc: Test IsPanelShown without displayId when no client is bound
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestIsPanelShown_NoClient_DefaultDisplay_001, TestSize.Level0)
+{
+    PanelInfo panelInfo;
+    bool isShown = false;
+    auto ret = session_->IsPanelShown(panelInfo, isShown);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_FALSE(isShown);
+}
+
+/**
+* @tc.name: TestOnConnectSystemCmd_NoIme_001
+* @tc.desc: Test OnConnectSystemCmd when no IME is started
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestOnConnectSystemCmd_NoIme_001, TestSize.Level0)
+{
+    sptr<IRemoteObject> channel = new (std::nothrow) InputClientServiceImpl();
+    sptr<IRemoteObject> agent;
+    auto ret = session_->OnConnectSystemCmd(channel, agent);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IME_NOT_STARTED);
+}
+
+/**
+* @tc.name: TestIsEnable_NullData_001
+* @tc.desc: Test IsEnable with null IME data
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestIsEnable_NullData_001, TestSize.Level0)
+{
+    EXPECT_FALSE(session_->IsEnable(nullptr, TEST_DISPLAY_ID));
+}
+
+/**
+* @tc.name: TestIsEnable_NullCore_001
+* @tc.desc: Test IsEnable with null core
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestIsEnable_NullCore_001, TestSize.Level0)
+{
+    auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, TEST_PID);
+    EXPECT_FALSE(session_->IsEnable(imeData, TEST_DISPLAY_ID));
+}
+
+/**
+* @tc.name: TestIsImeInUse_NoIme_001
+* @tc.desc: Test IsImeInUse when no IME is started
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestIsImeInUse_NoIme_001, TestSize.Level0)
+{
+    EXPECT_FALSE(session_->IsImeInUse());
+}
+
+/**
+* @tc.name: TestGetSoftKeyboardInfo_NoClient_001
+* @tc.desc: Test GetSoftKeyboardInfo when no client is bound
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetSoftKeyboardInfo_NoClient_001, TestSize.Level0)
+{
+    BoundImeInfo imeInfo;
+    auto ret = session_->GetSoftKeyboardInfo(imeInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_EQ(imeInfo.status, InputWindowStatus::HIDE);
+}
+
+/**
+* @tc.name: TestGetCursorInfo_NoClient_001
+* @tc.desc: Test GetCursorInfo when no client is bound
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetCursorInfo_NoClient_001, TestSize.Level0)
+{
+    CursorInfoInner cursorInfo;
+    auto ret = session_->GetCursorInfo(cursorInfo, TEST_PID);
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOUND);
+}
+
+/**
+* @tc.name: TestIsKeyboardCallingProcess_NoClient_001
+* @tc.desc: Test IsKeyboardCallingProcess when no client is bound
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestIsKeyboardCallingProcess_NoClient_001, TestSize.Level0)
+{
+    EXPECT_FALSE(session_->IsKeyboardCallingProcess(TEST_PID, 0));
+}
+
+/**
+* @tc.name: TestSpecialScenarioCheck_NoClient_001
+* @tc.desc: Test SpecialScenarioCheck when no client is bound
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestSpecialScenarioCheck_NoClient_001, TestSize.Level0)
+{
+    EXPECT_FALSE(session_->SpecialScenarioCheck());
+}
+
+/**
+* @tc.name: TestIsImeSwitchForbidden_NoClient_001
+* @tc.desc: Test IsImeSwitchForbidden when no client is bound
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestIsImeSwitchForbidden_NoClient_001, TestSize.Level0)
+{
+    EXPECT_FALSE(session_->IsImeSwitchForbidden());
+}
+
+/**
+* @tc.name: TestGetImeUsedBeforeScreenLocked_001
+* @tc.desc: Test GetImeUsedBeforeScreenLocked and SetImeUsedBeforeScreenLocked
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetImeUsedBeforeScreenLocked_001, TestSize.Level0)
+{
+    auto ime = session_->GetImeUsedBeforeScreenLocked();
+    EXPECT_TRUE(ime.first.empty());
+    EXPECT_TRUE(ime.second.empty());
+
+    std::pair<std::string, std::string> testIme = { "com.test.ime", "ExtAbility" };
+    session_->SetImeUsedBeforeScreenLocked(testIme);
+    ime = session_->GetImeUsedBeforeScreenLocked();
+    EXPECT_EQ(ime.first, "com.test.ime");
+    EXPECT_EQ(ime.second, "ExtAbility");
+}
+
+/**
+* @tc.name: TestResetRestartTasks_001
+* @tc.desc: Test ResetRestartTasks
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestResetRestartTasks_001, TestSize.Level0)
+{
+    session_->restartTasks_ = 5;
+    session_->ResetRestartTasks();
+    EXPECT_EQ(session_->restartTasks_, 0);
+}
+
+/**
+* @tc.name: TestGetAllReadyImeData_NullData_001
+* @tc.desc: Test GetAllReadyImeData with null data
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetAllReadyImeData_NullData_001, TestSize.Level0)
+{
+    auto result = session_->GetAllReadyImeData(nullptr, TEST_DISPLAY_GROUP_ID);
+    EXPECT_TRUE(result.empty());
+}
+
+/**
+* @tc.name: TestGetAllReadyImeData_ImeMirror_001
+* @tc.desc: Test GetAllReadyImeData with IME mirror data
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetAllReadyImeData_ImeMirror_001, TestSize.Level0)
+{
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME_MIRROR, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    auto result = session_->GetAllReadyImeData(imeData, TEST_DISPLAY_GROUP_ID);
+    EXPECT_EQ(result.size(), 1u);
+}
+
+/**
+* @tc.name: TestGetAllReadyImeData_RealIme_001
+* @tc.desc: Test GetAllReadyImeData with real IME and no mirror
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetAllReadyImeData_RealIme_001, TestSize.Level0)
+{
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    auto result = session_->GetAllReadyImeData(imeData, ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID);
+    EXPECT_EQ(result.size(), 1u);
+}
+
+/**
+* @tc.name: TestGetAllReadyImeData_RealImeWithMirror_001
+* @tc.desc: Test GetAllReadyImeData with real IME and mirror IME
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetAllReadyImeData_RealImeWithMirror_001, TestSize.Level0)
+{
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    auto mirrorData = MakeImeData(TEST_PID + 1, ImeType::IME_MIRROR, ImeStatus::READY);
+    ASSERT_NE(mirrorData, nullptr);
+    session_->mirrorImeData_ = mirrorData;
+    auto result = session_->GetAllReadyImeData(imeData, ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID);
+    EXPECT_EQ(result.size(), 2u);
+}
+
+/**
+* @tc.name: TestGetAllReadyImeData_RealImeNonDefaultGroup_001
+* @tc.desc: Test GetAllReadyImeData with real IME in non-default group (no mirror included)
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetAllReadyImeData_RealImeNonDefaultGroup_001, TestSize.Level0)
+{
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    auto mirrorData = MakeImeData(TEST_PID + 1, ImeType::IME_MIRROR, ImeStatus::READY);
+    ASSERT_NE(mirrorData, nullptr);
+    session_->mirrorImeData_ = mirrorData;
+    auto result = session_->GetAllReadyImeData(imeData, 999);
+    EXPECT_EQ(result.size(), 1u);
+}
+
+/**
+* @tc.name: TestPrepareImeInfos_NullData_001
+* @tc.desc: Test PrepareImeInfos with null data
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestPrepareImeInfos_NullData_001, TestSize.Level0)
+{
+    std::vector<sptr<IRemoteObject>> agents;
+    std::vector<BindImeInfo> imeInfos;
+    auto ret = session_->PrepareImeInfos(nullptr, agents, imeInfos, TEST_DISPLAY_GROUP_ID);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IME_NOT_STARTED);
+}
+
+/**
+* @tc.name: TestIsRequestOverLimit_001
+* @tc.desc: Test IsRequestOverLimit within limits
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestIsRequestOverLimit_001, TestSize.Level0)
+{
+    auto ret = session_->IsRequestOverLimit(PerUserSession::TimeLimitType::IME_LIMIT, 3, 10);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+* @tc.name: TestIsRequestOverLimit_Exceeded_001
+* @tc.desc: Test IsRequestOverLimit exceeding limits
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestIsRequestOverLimit_Exceeded_001, TestSize.Level0)
+{
+    session_->managers_[PerUserSession::TimeLimitType::IME_LIMIT] = { 11, time(nullptr) };
+    auto ret = session_->IsRequestOverLimit(PerUserSession::TimeLimitType::IME_LIMIT, 3, 10);
+    EXPECT_EQ(ret, ErrorCode::ERROR_REQUEST_RATE_EXCEEDED);
+}
+
+/**
+* @tc.name: TestIsRequestOverLimit_Reset_001
+* @tc.desc: Test IsRequestOverLimit resets after timeout
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestIsRequestOverLimit_Reset_001, TestSize.Level0)
+{
+    // Set a count of 5 but with a very old timestamp
+    session_->managers_[PerUserSession::TimeLimitType::IME_LIMIT] = { 5, time(nullptr) - 100 };
+    auto ret = session_->IsRequestOverLimit(PerUserSession::TimeLimitType::IME_LIMIT, 3, 10);
+    // Should reset since difftime > resetTimeOut, then num becomes 1
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+* @tc.name: TestRequestIme_NullData_001
+* @tc.desc: Test RequestIme with null data
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestRequestIme_NullData_001, TestSize.Level0)
+{
+    auto ret = session_->RequestIme(nullptr, RequestType::NORMAL, [] { return ErrorCode::NO_ERROR; });
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+* @tc.name: TestRequestIme_NullCore_001
+* @tc.desc: Test RequestIme with null core
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestRequestIme_NullCore_001, TestSize.Level0)
+{
+    auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, TEST_PID);
+    auto ret = session_->RequestIme(imeData, RequestType::NORMAL, [] { return ErrorCode::NO_ERROR; });
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+* @tc.name: TestRequestAllIme_NullData_001
+* @tc.desc: Test RequestAllIme with null data
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestRequestAllIme_NullData_001, TestSize.Level0)
+{
+    auto ret = session_->RequestAllIme(nullptr, RequestType::NORMAL,
+        [](const sptr<IInputMethodCore> &) { return ErrorCode::NO_ERROR; }, TEST_DISPLAY_GROUP_ID);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+* @tc.name: TestGetReadyImeDataToBind_NoIme_001
+* @tc.desc: Test GetReadyImeDataToBind when no IME data exists
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetReadyImeDataToBind_NoIme_001, TestSize.Level0)
+{
+    auto data = session_->GetReadyImeDataToBind(TEST_DISPLAY_ID);
+    EXPECT_EQ(data, nullptr);
+}
+
+/**
+* @tc.name: TestGetReadyImeDataToBind_RealImeReady_001
+* @tc.desc: Test GetReadyImeDataToBind when real IME is ready
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetReadyImeDataToBind_RealImeReady_001, TestSize.Level0)
+{
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    session_->realImeData_ = imeData;
+    auto data = session_->GetReadyImeDataToBind(TEST_DISPLAY_ID);
+    ASSERT_NE(data, nullptr);
+    EXPECT_EQ(data->pid, TEST_PID);
+}
+
+/**
+* @tc.name: TestGetProxyImeData_NoData_001
+* @tc.desc: Test GetProxyImeData(displayId) when no proxy IME data exists
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetProxyImeData_NoData_001, TestSize.Level0)
+{
+    auto data = session_->GetProxyImeData(TEST_DISPLAY_ID);
+    EXPECT_EQ(data, nullptr);
+}
+
+/**
+* @tc.name: TestGetProxyImeData_ByPid_NoData_001
+* @tc.desc: Test GetProxyImeData(pid) when no proxy IME data exists
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetProxyImeData_ByPid_NoData_001, TestSize.Level0)
+{
+    auto data = session_->GetProxyImeData(TEST_PID);
+    EXPECT_EQ(data, nullptr);
+}
+
+/**
+* @tc.name: TestRemoveProxyImeData_NoDisplayId_001
+* @tc.desc: Test RemoveProxyImeData(displayId, pid) when displayId not found
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestRemoveProxyImeData_NoDisplayId_001, TestSize.Level0)
+{
+    auto ret = session_->RemoveProxyImeData(999, TEST_PID);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+* @tc.name: TestOnUnregisterProxyIme_InvalidType_001
+* @tc.desc: Test OnUnregisterProxyIme with invalid UnRegisteredType
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestOnUnregisterProxyIme_InvalidType_001, TestSize.Level0)
+{
+    auto ret = session_->OnUnregisterProxyIme(TEST_DISPLAY_ID, TEST_PID, static_cast<UnRegisteredType>(99));
+    EXPECT_EQ(ret, ErrorCode::ERROR_BAD_PARAMETERS);
+}
+
+/**
+* @tc.name: TestInitConnect_NoImeData_001
+* @tc.desc: Test InitConnect when no real IME data exists
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestInitConnect_NoImeData_001, TestSize.Level0)
+{
+    auto ret = session_->InitConnect(TEST_PID);
+    EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
+}
+
+/**
+* @tc.name: TestInitConnect_WithImeData_001
+* @tc.desc: Test InitConnect with existing IME data
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestInitConnect_WithImeData_001, TestSize.Level0)
+{
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    session_->realImeData_ = imeData;
+    auto ret = session_->InitConnect(TEST_PID + 100);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_EQ(session_->realImeData_->pid, TEST_PID + 100);
+}
+
+/**
+* @tc.name: TestIsImeDisconnected_NoData_001
+* @tc.desc: Test IsImeDisconnected when no IME data exists
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestIsImeDisconnected_NoData_001, TestSize.Level0)
+{
+    EXPECT_TRUE(session_->IsImeDisconnected(TEST_PID));
+}
+
+/**
+* @tc.name: TestIsImeDisconnected_NonMatchingPid_001
+* @tc.desc: Test IsImeDisconnected with non-matching pid
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestIsImeDisconnected_NonMatchingPid_001, TestSize.Level0)
+{
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    session_->realImeData_ = imeData;
+    EXPECT_TRUE(session_->IsImeDisconnected(9999));
+}
+
+/**
+* @tc.name: TestIsImeDisconnected_NotDisconnected_001
+* @tc.desc: Test IsImeDisconnected with matching pid but not disconnected
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestIsImeDisconnected_NotDisconnected_001, TestSize.Level0)
+{
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    imeData->isDisconnected = false;
+    session_->realImeData_ = imeData;
+    EXPECT_FALSE(session_->IsImeDisconnected(TEST_PID));
+}
+
+/**
+* @tc.name: TestIsImeDisconnected_Disconnected_001
+* @tc.desc: Test IsImeDisconnected with matching pid and disconnected
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestIsImeDisconnected_Disconnected_001, TestSize.Level0)
+{
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    imeData->isDisconnected = true;
+    session_->realImeData_ = imeData;
+    EXPECT_TRUE(session_->IsImeDisconnected(TEST_PID));
+}
+
+/**
+* @tc.name: TestImeData_IsImeMirror_001
+* @tc.desc: Test ImeData::IsImeMirror
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestImeData_IsImeMirror_001, TestSize.Level0)
+{
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    EXPECT_FALSE(imeData->IsImeMirror());
+    EXPECT_TRUE(imeData->IsRealIme());
+
+    auto mirrorData = MakeImeData(TEST_PID, ImeType::IME_MIRROR, ImeStatus::READY);
+    ASSERT_NE(mirrorData, nullptr);
+    EXPECT_TRUE(mirrorData->IsImeMirror());
+    EXPECT_FALSE(mirrorData->IsRealIme());
+}
+
+/**
+* @tc.name: TestImeEventConverter_001
+* @tc.desc: Test the static imeEventConverter_ map has correct entries
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestImeEventConverter_001, TestSize.Level0)
+{
+    // Test a few key entries from the static map
+    auto iter = PerUserSession::imeEventConverter_.find({ ImeStatus::READY, ImeEvent::START_IME });
+    ASSERT_NE(iter, PerUserSession::imeEventConverter_.end());
+    EXPECT_EQ(iter->second.first, ImeStatus::READY);
+    EXPECT_EQ(iter->second.second, ImeAction::DO_NOTHING);
+
+    iter = PerUserSession::imeEventConverter_.find({ ImeStatus::STARTING, ImeEvent::SET_CORE_AND_AGENT });
+    ASSERT_NE(iter, PerUserSession::imeEventConverter_.end());
+    EXPECT_EQ(iter->second.first, ImeStatus::READY);
+    EXPECT_EQ(iter->second.second, ImeAction::DO_SET_CORE_AND_AGENT);
+
+    iter = PerUserSession::imeEventConverter_.find({ ImeStatus::EXITING, ImeEvent::START_IME });
+    ASSERT_NE(iter, PerUserSession::imeEventConverter_.end());
+    EXPECT_EQ(iter->second.first, ImeStatus::EXITING);
+    EXPECT_EQ(iter->second.second, ImeAction::START_AFTER_FORCE_STOP);
+}
+
+/**
+* @tc.name: TestGetImeAction_NullImeData_001
+* @tc.desc: Test GetImeAction when realImeData_ is null
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetImeAction_NullImeData_001, TestSize.Level0)
+{
+    session_->realImeData_ = nullptr;
+    auto action = session_->GetImeAction(ImeEvent::START_IME);
+    EXPECT_EQ(action, ImeAction::DO_ACTION_IN_NULL_IME_DATA);
+}
+
+/**
+* @tc.name: TestGetImeAction_ReadyStartIme_001
+* @tc.desc: Test GetImeAction with READY status and START_IME event
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetImeAction_ReadyStartIme_001, TestSize.Level0)
+{
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    session_->realImeData_ = imeData;
+    auto action = session_->GetImeAction(ImeEvent::START_IME);
+    EXPECT_EQ(action, ImeAction::DO_NOTHING);
+}
+
+/**
+* @tc.name: TestGetImeAction_StartingSetCoreAndAgent_001
+* @tc.desc: Test GetImeAction with STARTING status and SET_CORE_AND_AGENT event
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetImeAction_StartingSetCoreAndAgent_001, TestSize.Level0)
+{
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::STARTING);
+    ASSERT_NE(imeData, nullptr);
+    session_->realImeData_ = imeData;
+    auto action = session_->GetImeAction(ImeEvent::SET_CORE_AND_AGENT);
+    EXPECT_EQ(action, ImeAction::DO_SET_CORE_AND_AGENT);
+    // Status should have changed to READY
+    EXPECT_EQ(session_->realImeData_->imeStatus, ImeStatus::READY);
+}
+
+/**
+* @tc.name: TestGetImeAction_ExitingStopIme_001
+* @tc.desc: Test GetImeAction with EXITING status and STOP_IME event
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetImeAction_ExitingStopIme_001, TestSize.Level0)
+{
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::EXITING);
+    ASSERT_NE(imeData, nullptr);
+    session_->realImeData_ = imeData;
+    auto action = session_->GetImeAction(ImeEvent::STOP_IME);
+    EXPECT_EQ(action, ImeAction::FORCE_STOP_IME);
+}
+
+/**
+* @tc.name: TestGetImeAction_ReadyStopIme_001
+* @tc.desc: Test GetImeAction with READY status and STOP_IME event
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetImeAction_ReadyStopIme_001, TestSize.Level0)
+{
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    session_->realImeData_ = imeData;
+    auto action = session_->GetImeAction(ImeEvent::STOP_IME);
+    EXPECT_EQ(action, ImeAction::STOP_READY_IME);
+}
+
+/**
+* @tc.name: TestOnImeDied_ExitingStatus_001
+* @tc.desc: Test OnImeDied when IME status is EXITING
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestOnImeDied_ExitingStatus_001, TestSize.Level0)
+{
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::EXITING);
+    ASSERT_NE(imeData, nullptr);
+    session_->realImeData_ = imeData;
+    auto coreStub = new (std::nothrow) InputMethodCoreServiceImpl();
+    ASSERT_NE(coreStub, nullptr);
+    auto core = iface_cast<IInputMethodCore>(coreStub->AsObject());
+    session_->OnImeDied(core, ImeType::IME, TEST_PID);
+}
+
+/**
+* @tc.name: TestAddClientInfo_ExistingGroup_001
+* @tc.desc: Test AddClientInfo when client group already exists
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestAddClientInfo_ExistingGroup_001, TestSize.Level0)
+{
+    auto info1 = MakeClientInfo(100, TEST_DISPLAY_GROUP_ID);
+    auto ret = session_->OnPrepareInput(info1);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    // Second client in same group
+    auto info2 = MakeClientInfo(200, TEST_DISPLAY_GROUP_ID);
+    ret = session_->OnPrepareInput(info2);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+* @tc.name: TestHandleInMultiGroup_SameGroup_001
+* @tc.desc: Test HandleInMultiGroup with same client group
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestHandleInMultiGroup_SameGroup_001, TestSize.Level0)
+{
+    auto info = MakeClientInfo(TEST_PID, TEST_DISPLAY_GROUP_ID);
+    auto ret = session_->OnPrepareInput(info);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    auto group = session_->GetClientGroupByGroupId(TEST_DISPLAY_GROUP_ID);
+    ASSERT_NE(group, nullptr);
+    auto clientInfo = group->GetClientInfo(info.client->AsObject());
+    // Same group, should just return
+    session_->HandleInMultiGroup(info, group, clientInfo);
+}
+
+/**
+* @tc.name: TestIsShowSameRealImeInMainDisplayInMultiGroup_NullOldClient_001
+* @tc.desc: Test IsShowSameRealImeInMainDisplayInMultiGroup with null old client
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestIsShowSameRealImeInMainDisplayInMultiGroup_NullOldClient_001, TestSize.Level0)
+{
+    auto newInfo = MakeClientInfo(TEST_PID, TEST_DISPLAY_GROUP_ID);
+    EXPECT_FALSE(session_->IsShowSameRealImeInMainDisplayInMultiGroup(newInfo, nullptr));
+}
+
+/**
+* @tc.name: TestIsShowSameRealImeInMainDisplayInMultiGroup_SameGroup_001
+* @tc.desc: Test IsShowSameRealImeInMainDisplayInMultiGroup with same client group
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestIsShowSameRealImeInMainDisplayInMultiGroup_SameGroup_001, TestSize.Level0)
+{
+    auto info = MakeClientInfo(TEST_PID, TEST_DISPLAY_GROUP_ID);
+    auto ret = session_->OnPrepareInput(info);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    auto group = session_->GetClientGroupByGroupId(TEST_DISPLAY_GROUP_ID);
+    ASSERT_NE(group, nullptr);
+    auto clientInfo = group->GetClientInfo(info.client->AsObject());
+    auto newInfo = MakeClientInfo(TEST_PID + 1, TEST_DISPLAY_GROUP_ID);
+    // Same group, should return false
+    EXPECT_FALSE(session_->IsShowSameRealImeInMainDisplayInMultiGroup(newInfo, clientInfo));
+}
+
+/**
+* @tc.name: TestAddProxyImeData_NullCore_001
+* @tc.desc: Test AddProxyImeData with null core
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestAddProxyImeData_NullCore_001, TestSize.Level0)
+{
+    auto result = session_->AddProxyImeData(TEST_DISPLAY_ID, nullptr, nullptr, TEST_PID, TEST_UID);
+    EXPECT_EQ(result, nullptr);
+}
+
+/**
+* @tc.name: TestClearRequestKeyboardReason_ValidClientInfo_001
+* @tc.desc: Test ClearRequestKeyboardReason with valid clientInfo
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestClearRequestKeyboardReason_ValidClientInfo_001, TestSize.Level0)
+{
+    auto info = std::make_shared<InputClientInfo>(MakeClientInfo(TEST_PID));
+    info->config.requestKeyboardReason = RequestKeyboardReason::MOUSE;
+    session_->ClearRequestKeyboardReason(info);
+    EXPECT_EQ(info->config.requestKeyboardReason, RequestKeyboardReason::NONE);
+}
+
+/**
+* @tc.name: TestSendPrivateData_NoIme_001
+* @tc.desc: Test SendPrivateData when no IME is started
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestSendPrivateData_NoIme_001, TestSize.Level0)
+{
+    std::unordered_map<std::string, PrivateDataValue> cmd;
+    auto ret = session_->SendPrivateData(cmd);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IME_NOT_STARTED);
+}
+
+/**
+* @tc.name: TestSendVoicePrivateCommand_NoIme_001
+* @tc.desc: Test SendVoicePrivateCommand when no IME is started
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestSendVoicePrivateCommand_NoIme_001, TestSize.Level0)
+{
+    auto ret = session_->SendVoicePrivateCommand(true);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IME_NOT_STARTED);
+}
+
+/**
+* @tc.name: TestTryStartIme_NotBlocked_001
+* @tc.desc: Test TryStartIme when not blocked by low memory
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestTryStartIme_NotBlocked_001, TestSize.Level0)
+{
+    session_->isBlockStartedByLowMem_.store(false);
+    auto ret = session_->TryStartIme();
+    EXPECT_EQ(ret, ErrorCode::ERROR_OPERATION_NOT_ALLOWED);
+}
+
+/**
+* @tc.name: TestTryDisconnectIme_NoIme_001
+* @tc.desc: Test TryDisconnectIme when no IME is started
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestTryDisconnectIme_NoIme_001, TestSize.Level0)
+{
+    auto ret = session_->TryDisconnectIme();
+    EXPECT_EQ(ret, ErrorCode::ERROR_IME_NOT_STARTED);
+}
+
+/**
+* @tc.name: TestTryDisconnectIme_StartingStatus_001
+* @tc.desc: Test TryDisconnectIme when IME is in STARTING status
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestTryDisconnectIme_StartingStatus_001, TestSize.Level0)
+{
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::STARTING);
+    ASSERT_NE(imeData, nullptr);
+    session_->realImeData_ = imeData;
+    auto ret = session_->TryDisconnectIme();
+    EXPECT_EQ(ret, ErrorCode::ERROR_IME_NOT_STARTED);
+}
+
+/**
+* @tc.name: TestTryDisconnectIme_Attaching_001
+* @tc.desc: Test TryDisconnectIme when attach count > 0
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestTryDisconnectIme_Attaching_001, TestSize.Level0)
+{
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    session_->realImeData_ = imeData;
+    session_->IncreaseAttachCount();
+    auto ret = session_->TryDisconnectIme();
+    EXPECT_EQ(ret, ErrorCode::ERROR_OPERATION_NOT_ALLOWED);
+}
+
+/**
+* @tc.name: TestGetRealImeData_ByPid_NoData_001
+* @tc.desc: Test GetRealImeData(pid) when no data exists
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetRealImeData_ByPid_NoData_001, TestSize.Level0)
+{
+    auto data = session_->GetRealImeData(TEST_PID);
+    EXPECT_EQ(data, nullptr);
+}
+
+/**
+* @tc.name: TestGetRealImeData_ByPid_MatchingPid_001
+* @tc.desc: Test GetRealImeData(pid) with matching pid
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetRealImeData_ByPid_MatchingPid_001, TestSize.Level0)
+{
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    session_->realImeData_ = imeData;
+    auto data = session_->GetRealImeData(TEST_PID);
+    ASSERT_NE(data, nullptr);
+    EXPECT_EQ(data->pid, TEST_PID);
+}
+
+/**
+ * @tc.name: TestGetRealImeData_ByPid_NonMatchingPid_001
+ * @tc.desc: Test GetRealImeData(pid) with non-matching pid
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetRealImeData_ByPid_NonMatchingPid_001, TestSize.Level0)
+{
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    session_->realImeData_ = imeData;
+    auto data = session_->GetRealImeData(9999);
+    EXPECT_EQ(data, nullptr);
+}
+
+/**
+ * @tc.name: TestGetMirrorImeData_ByPid_NoData_001
+ * @tc.desc: Test GetMirrorImeData(pid) when no data exists
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetMirrorImeData_ByPid_NoData_001, TestSize.Level0)
+{
+    auto data = session_->GetMirrorImeData(TEST_PID);
+    EXPECT_EQ(data, nullptr);
+}
+
+/**
+ * @tc.name: TestUpdateRealImeDataOnDisconnect_NullConnection_001
+ * @tc.desc: Test UpdateRealImeDataOnDisconnect with null connection
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestUpdateRealImeDataOnDisconnect_NullConnection_001, TestSize.Level0)
+{
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    session_->realImeData_ = imeData;
+    // Should not crash with null connection
+    session_->UpdateRealImeDataOnDisconnect(nullptr);
+}
+
+/**
+ * @tc.name: TestFillImeData_NullCore_001
+ * @tc.desc: Test FillImeData with null core
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestFillImeData_NullCore_001, TestSize.Level0)
+{
+    auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, -1);
+    auto ret = session_->FillImeData(nullptr, nullptr, TEST_PID, ImeType::IME, imeData, TEST_UID);
+    EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
+}
+
+/**
+ * @tc.name: TestFillImeData_NullAgent_001
+ * @tc.desc: Test FillImeData with null agent
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestFillImeData_NullAgent_001, TestSize.Level0)
+{
+    auto coreStub = new (std::nothrow) InputMethodCoreServiceImpl();
+    ASSERT_NE(coreStub, nullptr);
+    auto core = iface_cast<IInputMethodCore>(coreStub->AsObject());
+    auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, -1);
+    auto ret = session_->FillImeData(core, nullptr, TEST_PID, ImeType::IME, imeData, TEST_UID);
+    EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
+}
+
+/**
+ * @tc.name: TestFillImeData_NullImeData_001
+ * @tc.desc: Test FillImeData with null imeData
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestFillImeData_NullImeData_001, TestSize.Level0)
+{
+    auto coreStub = new (std::nothrow) InputMethodCoreServiceImpl();
+    ASSERT_NE(coreStub, nullptr);
+    auto core = iface_cast<IInputMethodCore>(coreStub->AsObject());
+    sptr<IRemoteObject> agent = new (std::nothrow) InputMethodAgentServiceImpl();
+    std::shared_ptr<ImeData> nullImeData;
+    auto ret = session_->FillImeData(core, agent, TEST_PID, ImeType::IME, nullImeData, TEST_UID);
+    EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
+}
+
+/**
+ * @tc.name: TestTaskNames_MakeTaskNames_001
+ * @tc.desc: Test TaskNames::MakeTaskNames
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestTaskNames_MakeTaskNames_001, TestSize.Level0)
+{
+    auto names = PerUserSession::TaskNames::MakeTaskNames(100);
+    EXPECT_FALSE(names.imageTimeout.empty());
+    EXPECT_FALSE(names.imeInfoReportHook.empty());
+    EXPECT_FALSE(names.restartIme.empty());
+    EXPECT_NE(names.imageTimeout, names.imeInfoReportHook);
+    EXPECT_NE(names.imageTimeout, names.restartIme);
+}
+
+/**
+ * @tc.name: TestTaskNames_GetAllTaskNames_001
+ * @tc.desc: Test TaskNames::GetAllTaskNames
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestTaskNames_GetAllTaskNames_001, TestSize.Level0)
+{
+    auto names = PerUserSession::TaskNames::MakeTaskNames(100);
+    auto all = names.GetAllTaskNames();
+    EXPECT_EQ(all.size(), 3u);
+}
+
+/**
+ * @tc.name: TestBindImeData_IsRealIme_001
+ * @tc.desc: Test BindImeData::IsRealIme
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestBindImeData_IsRealIme_001, TestSize.Level0)
+{
+    BindImeData data(TEST_PID, ImeType::IME);
+    EXPECT_TRUE(data.IsRealIme());
+    BindImeData proxyData(TEST_PID, ImeType::PROXY_IME);
+    EXPECT_FALSE(proxyData.IsRealIme());
+}
+
+/**
+ * @tc.name: TestCheckPwdInputPatternConv_NoGroup_001
+ * @tc.desc: Test CheckPwdInputPatternConv when no client group exists
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestCheckPwdInputPatternConv_NoGroup_001, TestSize.Level0)
+{
+    auto info = MakeClientInfo(TEST_PID);
+    EXPECT_FALSE(session_->CheckPwdInputPatternConv(info, TEST_DISPLAY_ID));
+}
+
+/**
+ * @tc.name: TestGetCurrentClientInfo_NoGroup_001
+ * @tc.desc: Test GetCurrentClientInfo when no client group exists
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetCurrentClientInfo_NoGroup_001, TestSize.Level0)
+{
+    auto info = session_->GetCurrentClientInfo(TEST_DISPLAY_ID);
+    EXPECT_EQ(info, nullptr);
+}
+
+/**
+ * @tc.name: TestOnScreenLock_NoImeData_001
+ * @tc.desc: Test OnScreenLock when no IME data exists
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestOnScreenLock_NoImeData_001, TestSize.Level0)
+{
+    session_->realImeData_ = nullptr;
+    // Should not crash
+    session_->OnScreenLock();
+    auto ime = session_->GetImeUsedBeforeScreenLocked();
+    EXPECT_TRUE(ime.first.empty());
+}
+
+/**
+ * @tc.name: TestOnScreenLock_WithImeData_001
+ * @tc.desc: Test OnScreenLock with IME data set
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestOnScreenLock_WithImeData_001, TestSize.Level0)
+{
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    session_->realImeData_ = imeData;
+    session_->OnScreenLock();
+    auto ime = session_->GetImeUsedBeforeScreenLocked();
+    EXPECT_EQ(ime.first, "com.test.ime");
+}
+
+/**
+ * @tc.name: TestOnPackageUpdated_Attaching_001
+ * @tc.desc: Test OnPackageUpdated when attach count > 0
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestOnPackageUpdated_Attaching_001, TestSize.Level0)
+{
+    session_->IncreaseAttachCount();
+    auto ret = session_->OnPackageUpdated("com.test.ime");
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: TestSetInputType_NoIme_001
+ * @tc.desc: Test SetInputType when no IME is started
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestSetInputType_NoIme_001, TestSize.Level0)
+{
+    auto info = std::make_shared<InputClientInfo>(MakeClientInfo(TEST_PID));
+    auto ret = session_->SetInputType(info);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IME_NOT_STARTED);
+}
+
+/**
+ * @tc.name: TestRestoreCurrentImeSubType_NotStarted_001
+ * @tc.desc: Test RestoreCurrentImeSubType when input type is not started
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestRestoreCurrentImeSubType_NotStarted_001, TestSize.Level0)
+{
+    InputTypeManager::GetInstance().Set(false);
+    auto ret = session_->RestoreCurrentImeSubType();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: TestNeedHideRealIme_NoClient_001
+ * @tc.desc: Test NeedHideRealIme when no client is bound to real ime
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestNeedHideRealIme_NoClient_001, TestSize.Level0)
+{
+    EXPECT_TRUE(session_->NeedHideRealIme(TEST_DISPLAY_GROUP_ID));
+}
+
+/**
+ * @tc.name: TestStopImeInput_NullClientInfo_001
+ * @tc.desc: Test StopImeInput with null clientInfo
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestStopImeInput_NullClientInfo_001, TestSize.Level0)
+{
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    // Should not crash
+    session_->StopImeInput(imeData, nullptr, 0);
+}
+
+/**
+ * @tc.name: TestRemoveClient_NullClient_001
+ * @tc.desc: Test RemoveClient with null client
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestRemoveClient_NullClient_001, TestSize.Level0)
+{
+    DetachOptions options = { .sessionId = 0, .isUnbindFromClient = true };
+    auto ret = session_->RemoveClient(nullptr, nullptr, options);
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
+}
 } // namespace MiscServices
 } // namespace OHOS
