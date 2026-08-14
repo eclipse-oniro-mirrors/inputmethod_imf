@@ -60,8 +60,7 @@
 | 修改 IME 生命周期/启停逻辑 | `services/src/ime_lifecycle_manager.cpp`, `services/src/ime_state_manager.cpp` | IME 生命周期涉及多进程协同，理解状态机再改 |
 | 修改多用户/会话逻辑 | `services/src/peruser_session.cpp`, `services/src/user_session_manager.cpp`, `services/adapter/os_account_adapter/` | 多用户场景有跨用户隔离要求 |
 | 修改 DFX/日志/事件 | `common/include/global.h` (IMSA_HILOG* 宏), `hisysevent.yaml`, `common/include/inputmethod_sysevent.h` | 日志和事件有命名规范和配置约束 |
-| 修改 面板显示/隐藏/尺寸逻辑 | `services/adapter/peruser_session.cpp`, `services/adapter/window_adapter/src/window_adapter.cpp` | 面板显示流程与尺寸调整流程存在并
-发竞态风险，修改前必须理解键盘类型切换时的并发场景 |
+| 修改 面板显示/隐藏/尺寸逻辑 | `services/adapter/peruser_session.cpp`, `services/adapter/window_adapter/src/window_adapter.cpp` | 面板显示流程与尺寸调整流程存在并发竞态风险，修改前必须理解键盘类型切换时的并发场景 |
 | 修改 seccomp 策略 | `seccomp_policy/imf_ext_secure_mode.seccomp.policy` | seccomp 策略影响 Extension 安全沙箱 |
 
 ### 词汇触发路由
@@ -535,8 +534,7 @@ IMSA_HILOGF("Fatal: %{public}s", reason.c_str()); // LOG_FATAL
 - **禁止** 在 NAPI 模块中使用非 `napi_ok` 返回值时跳过错误处理 — 使用 `IMF_CALL` / `IMF_CALL_RETURN_VOID` 宏检查
 - **禁止** 手动编写 IPC Stub/Proxy 代码 — Stub/Proxy 由 IDL 文件通过构建系统自动生成（`idl_gen_interface`），修改 IPC 接口时改 `.idl` 文件而非生成的代码
 - **禁止** 修改面板类型/标志枚举值 — 枚举值是公共 API 的一部分，新增只能在末尾追加
-- **禁止** 面板显示流程与尺寸计算流程无并发保护地并行执行 - 键盘类型切换（如普通键盘与密码键盘切换时），显示流程和尺寸调整流程是两个异步操作，若无串行化保护，旧类型的尺
-寸结果可能在切换后才到达并应用到新类型面板上，导致面板尺寸与当前键盘类型不匹配
+- **禁止** 面板显示流程与尺寸计算流程无并发保护地并行执行 - 键盘类型切换（如普通键盘与密码键盘切换时），显示流程和尺寸调整流程是两个异步操作，若无串行化保护，旧类型的尺寸结果可能在切换后才到达并应用到新类型面板上，导致面板尺寸与当前键盘类型不匹配
 
 ### 修改前需确认
 
@@ -560,8 +558,7 @@ IMSA_HILOGF("Fatal: %{public}s", reason.c_str()); // LOG_FATAL
 - **DeathRecipient 必须设置**：持有远程对象引用时必须注册 InputDeathRecipient，否则无法感知对端进程死亡
 - **IDL 是 IPC 接口的源文件**：Stub/Proxy 代码由构建系统从 `.idl` 文件自动生成，不要手动修改生成的代码
 - **智能指针规则**：`sptr<>` 用于 IPC/Binder 对象，`std::shared_ptr` 用于普通 C++ 对象，不混用
-- **面板显示与尺寸调整必须串行化**：键盘类型切换时，面板显示（ShowPanel）和尺寸调整（Resize）是两个可能并发执行的异步流程，必须通过互斥锁或状态校验保证尺寸计算结果
-与当前键盘类型一致；旧类型的延迟尺寸结果必须被丢弃而非应用。违反此不变量会导致面板尺寸与键盘类型错配（如密码键盘尺寸应用到普通键盘，出现灰色空白区域）
+- **面板显示与尺寸调整必须串行化**：键盘类型切换时，面板显示（ShowPanel）和尺寸调整（Resize）是两个可能并发执行的异步流程，必须通过互斥锁或状态校验保证尺寸计算结果与当前键盘类型一致；旧类型的延迟尺寸结果必须被丢弃而非应用。违反此不变量会导致面板尺寸与键盘类型错配（如密码键盘尺寸应用到普通键盘，出现灰色空白区域）
 
 ### 常见 Agent 失败模式
 
@@ -572,8 +569,7 @@ IMSA_HILOGF("Fatal: %{public}s", reason.c_str()); // LOG_FATAL
 - **在 NAPI 层泄露 C++ 异常**：NAPI 绑定必须将 C++ 异常转换为 JS 错误码，不得让异常穿透到 JS 层
 - **修改面板类型/标志枚举值**：枚举值是公共 API 的一部分，新增只能在末尾追加，不能修改已有值
 - **权限检查遗漏**：涉及 IME 切换、安全模式、系统级操作的 IPC 方法必须使用 IdentityChecker 校验权限和焦点
-- **忽略键盘类型切换时的并发竞态**：面板显示和尺寸调整是两个异步流程，键盘类型切换时如果未做串行化保护，旧类型的尺寸计算结果可能延迟到达并应用到新类型面板上，导致尺
-寸错配（如密码键盘高度应用到普通键盘产生灰色空白区域）。修改面板显示/尺寸逻辑时必须考虑并发场景
+- **忽略键盘类型切换时的并发竞态**：面板显示和尺寸调整是两个异步流程，键盘类型切换时如果未做串行化保护，旧类型的尺寸计算结果可能延迟到达并应用到新类型面板上，导致尺寸错配（如密码键盘高度应用到普通键盘产生灰色空白区域）。修改面板显示/尺寸逻辑时必须考虑并发场景
 
 ## 验证循环
 
