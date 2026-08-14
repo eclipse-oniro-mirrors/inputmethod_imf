@@ -99,21 +99,21 @@ InputMethodController::~InputMethodController() { }
 
 sptr<InputMethodController> InputMethodController::GetInstance()
 {
-    if (instance_ == nullptr) {
-        std::lock_guard<std::mutex> autoLock(instanceLock_);
+    static std::once_flag onceFlag;
+    std::call_once(onceFlag, [&]() {
         if (instance_ == nullptr) {
             IMSA_HILOGD("instance_ is nullptr!");
             instance_ = new (std::nothrow) InputMethodController();
             if (instance_ == nullptr) {
                 IMSA_HILOGE("failed to create InputMethodController!");
-                return instance_;
+                return;
             }
             int32_t ret = instance_->Initialize();
             if (ret != ErrorCode::NO_ERROR) {
                 InputMethodSysEvent::GetInstance().InputmethodFaultReporter(ret, "", "IMC initialize failed!");
             }
         }
-    }
+    });
     return instance_;
 }
 // LCOV_EXCL_START
@@ -1700,8 +1700,12 @@ void InputMethodController::OnImeMirrorStop(sptr<IRemoteObject> object)
 void InputMethodController::ClearEditorCache(bool isNewEditor, sptr<OnTextChangedListener> lastListener)
 {
     IMSA_HILOGD("isNewEditor: %{public}d.", isNewEditor);
-    if (isNewEditor && isBound_.load() && lastListener != nullptr &&
-        textConfig_.inputAttribute.isTextPreviewSupported) {
+    bool isTextPreviewSupported = false;
+    {
+        std::lock_guard<std::mutex> lock(textConfigLock_);
+        isTextPreviewSupported = textConfig_.inputAttribute.isTextPreviewSupported;
+    }
+    if (isNewEditor && isBound_.load() && lastListener != nullptr && isTextPreviewSupported) {
         IMSA_HILOGD("last editor FinishTextPreview");
         lastListener->FinishTextPreviewV2();
     }

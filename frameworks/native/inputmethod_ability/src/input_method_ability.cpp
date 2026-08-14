@@ -1674,9 +1674,6 @@ int32_t InputMethodAbility::SendPrivateCommand(const std::unordered_map<std::str
 
 void InputMethodAbility::PushPrivateCommand()
 {
-    if (privateCommandData_.size() == 0) {
-        return;
-    }
     auto systemChannel = GetSystemCmdChannelProxy();
     if (systemChannel == nullptr) {
         IMSA_HILOGE("channel is nullptr!");
@@ -1684,6 +1681,9 @@ void InputMethodAbility::PushPrivateCommand()
     }
 
     std::lock_guard<std::mutex> lock(privateCommandLock_);
+    if (privateCommandData_.empty()) {
+        return;
+    }
     for (const auto &privateCommand : privateCommandData_) {
         Value commandValueMap(privateCommand);
         auto ret = systemChannel->SendPrivateCommand(commandValueMap);

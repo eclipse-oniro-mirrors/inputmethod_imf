@@ -23,16 +23,11 @@ sptr<JsGetInputMethodTextChangedListener> JsGetInputMethodTextChangedListener::G
     const std::shared_ptr<AppExecFwk::EventHandler> &handler, bool newEditBox)
 {
     IMSA_HILOGD("newEditBox is %{public}d.", newEditBox);
+    std::lock_guard<std::mutex> lock(listenerMutex_);
     if (newEditBox) {
-        std::lock_guard<std::mutex> lock(listenerMutex_);
         inputMethodListener_ = new (std::nothrow) JsGetInputMethodTextChangedListener(handler);
-    } else {
-        if (inputMethodListener_ == nullptr) {
-            std::lock_guard<std::mutex> lock(listenerMutex_);
-            if (inputMethodListener_ == nullptr) {
-                inputMethodListener_ = new (std::nothrow) JsGetInputMethodTextChangedListener(handler);
-            }
-        }
+    } else if (inputMethodListener_ == nullptr) {
+        inputMethodListener_ = new (std::nothrow) JsGetInputMethodTextChangedListener(handler);
     }
     return inputMethodListener_;
 }
