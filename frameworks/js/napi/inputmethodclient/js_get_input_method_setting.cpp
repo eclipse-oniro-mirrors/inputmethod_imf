@@ -802,6 +802,9 @@ napi_value JsGetInputMethodSetting::UnSubscribe(napi_env env, napi_callback_info
     argv[1] = paramType == napi_function ? argv[1] : nullptr;
 
     IMSA_HILOGD("unsubscribe type: %{public}s.", type.c_str());
+    if (paramType != napi_function) {
+        IMSA_HILOGI("unsubscribe type: %{public}s, callback is null, will remove all.", type.c_str());
+    }
 
     auto engine = reinterpret_cast<JsGetInputMethodSetting *>(JsUtils::GetNativeSelf(env, info));
     if (engine == nullptr) {
@@ -830,13 +833,17 @@ napi_value JsGetInputMethodSetting::UnSubscribeImechange(napi_env env, napi_call
     IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
 
     // if the first param is not napi_function/napi_null/napi_undefined, return
+    napi_valuetype paramType = napi_undefined;
     if (argc > 0) {
-        auto paramType = JsUtil::GetType(env, argv[0]);
+        paramType = JsUtil::GetType(env, argv[0]);
         if (paramType != napi_function && paramType != napi_null && paramType != napi_undefined) {
             return nullptr;
         }
         // if the first param is napi_function, delete it, else delete all
         argv[0] = paramType == napi_function ? argv[0] : nullptr;
+    }
+    if (paramType != napi_function) {
+        IMSA_HILOGI("unsubscribe type: %{public}s, callback is null, will remove all.", type.c_str());
     }
     auto engine = reinterpret_cast<JsGetInputMethodSetting *>(JsUtils::GetNativeSelf(env, info));
     if (engine == nullptr) {

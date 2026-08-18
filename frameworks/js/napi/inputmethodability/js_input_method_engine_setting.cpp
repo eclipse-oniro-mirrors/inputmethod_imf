@@ -605,6 +605,9 @@ napi_value JsInputMethodEngineSetting::UnSubscribe(napi_env env, napi_callback_i
     argv[1] = paramType == napi_function ? argv[1] : nullptr;
 
     IMSA_HILOGD("unsubscribe type: %{public}s.", type.c_str());
+    if (paramType != napi_function) {
+        IMSA_HILOGI("unsubscribe type: %{public}s, callback is null, will remove all.", type.c_str());
+    }
     auto setting = reinterpret_cast<JsInputMethodEngineSetting *>(JsUtils::GetNativeSelf(env, info));
     if (setting == nullptr) {
         return nullptr;

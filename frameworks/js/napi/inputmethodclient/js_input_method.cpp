@@ -551,15 +551,19 @@ napi_value JsInputMethod::UnSubscribe(napi_env env, napi_callback_info info, con
     void *data = nullptr;
     IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
     napi_value callback = nullptr;
+    napi_valuetype paramType = napi_undefined;
     if (argc > 0) {
         // if the one param is not napi_function/napi_undefined, return
         napi_value param = argv[0];
-        auto paramType = JsUtil::GetType(env, param);
+        paramType = JsUtil::GetType(env, param);
         if (paramType != napi_function && paramType != napi_undefined) {
             return JsUtil::Const::Null(env);
         }
         // if the second param is napi_function, delete it, else delete all
         callback = paramType == napi_function ? param : nullptr;
+    }
+    if (paramType != napi_function) {
+        IMSA_HILOGI("unsubscribe type: %{public}s, callback is null, will remove all.", eventType.c_str());
     }
     RemoveCallback(callback, eventType);
 
