@@ -504,6 +504,9 @@ napi_value JsPanel::UnSubscribe(napi_env env, napi_callback_info info)
     argv[1] = paramType == napi_function ? argv[1] : nullptr;
 
     IMSA_HILOGD("unsubscribe type: %{public}s.", type.c_str());
+    if (paramType != napi_function) {
+        IMSA_HILOGI("unsubscribe type: %{public}s, callback is null, will remove all.", type.c_str());
+    }
     std::shared_ptr<PanelListenerImpl> observer = PanelListenerImpl::GetInstance();
     auto inputMethodPanel = UnwrapPanel(env, thisVar);
     if (inputMethodPanel == nullptr) {
