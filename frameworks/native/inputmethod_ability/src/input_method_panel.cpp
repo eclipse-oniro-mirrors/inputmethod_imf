@@ -1656,13 +1656,17 @@ int32_t InputMethodPanel::SetPrivacyMode(bool isPrivacyMode)
 
 void InputMethodPanel::PanelStatusChange(const InputWindowStatus &status)
 {
-    if (status == InputWindowStatus::SHOW && showRegistered_ && panelStatusListener_ != nullptr) {
-        IMSA_HILOGD("ShowPanel panelStatusListener_ is not nullptr.");
-        panelStatusListener_->OnPanelStatus(windowId_, true);
+    auto listener = GetPanelListener();
+    if (listener == nullptr) {
+        return;
     }
-    if (status == InputWindowStatus::HIDE && hideRegistered_ && panelStatusListener_ != nullptr) {
+    if (status == InputWindowStatus::SHOW && showRegistered_) {
+        IMSA_HILOGD("ShowPanel panelStatusListener_ is not nullptr.");
+        listener->OnPanelStatus(windowId_, true);
+    }
+    if (status == InputWindowStatus::HIDE && hideRegistered_) {
         IMSA_HILOGD("HidePanel panelStatusListener_ is not nullptr.");
-        panelStatusListener_->OnPanelStatus(windowId_, false);
+        listener->OnPanelStatus(windowId_, false);
     }
 }
 
@@ -1805,16 +1809,20 @@ bool InputMethodPanel::SetPanelStatusListener(
     }
     IMSA_HILOGD("type: %{public}s.", type.c_str());
     if (type == "show" || type == "hide") {
-        if (panelStatusListener_ == nullptr) {
-            IMSA_HILOGD("panelStatusListener_ is nullptr, need to be set");
-            panelStatusListener_ = std::move(statusListener);
-        }
-        if (window_ != nullptr) {
-            if (type == "show" && IsShowing()) {
-                panelStatusListener_->OnPanelStatus(windowId_, true);
+        {
+            std::lock_guard<std::mutex> lock(panelStatusListenerMutex_);
+            if (panelStatusListener_ == nullptr) {
+                IMSA_HILOGD("panelStatusListener_ is nullptr, need to be set");
+                panelStatusListener_ = std::move(statusListener);
             }
-            if (type == "hide" && IsHidden()) {
-                panelStatusListener_->OnPanelStatus(windowId_, false);
+        }
+        auto listener = GetPanelListener();
+        if (window_ != nullptr) {
+            if (type == "show" && IsShowing() && listener != nullptr) {
+                listener->OnPanelStatus(windowId_, true);
+            }
+            if (type == "hide" && IsHidden() && listener != nullptr) {
+                listener->OnPanelStatus(windowId_, false);
             }
         }
     }
@@ -1830,8 +1838,11 @@ bool InputMethodPanel::SetPanelSizeChangeListener(std::shared_ptr<PanelStatusLis
         (panelFlag_ != PanelFlag::FLG_FIXED && panelFlag_ != PanelFlag::FLG_FLOATING)) {
         return true;
     }
-    if (panelStatusListener_ == nullptr && statusListener != nullptr) {
-        panelStatusListener_ = std::move(statusListener);
+    {
+        std::lock_guard<std::mutex> lock(panelStatusListenerMutex_);
+        if (panelStatusListener_ == nullptr && statusListener != nullptr) {
+            panelStatusListener_ = std::move(statusListener);
+        }
     }
     std::lock_guard<std::mutex> lock(windowListenerLock_);
     if (windowChangedListener_ != nullptr) {
@@ -1863,18 +1874,22 @@ void InputMethodPanel::ClearPanelListener(const std::string &type)
         IMSA_HILOGI("UnregisterWindowChangeListener ret: %{public}d.", ret);
         windowChangedListener_ = nullptr;
     }
-    if (panelStatusListener_ == nullptr) {
-        IMSA_HILOGD("panelStatusListener_ not set, don't need to remove.");
-        return;
+    {
+        std::lock_guard<std::mutex> lock(panelStatusListenerMutex_);
+        if (panelStatusListener_ == nullptr) {
+            IMSA_HILOGD("panelStatusListener_ not set, don't need to remove.");
+            return;
+        }
+        if (showRegistered_ || hideRegistered_ || sizeChangeRegistered_ || sizeUpdateRegistered_) {
+            return;
+        }
+        panelStatusListener_ = nullptr;
     }
-    if (showRegistered_ || hideRegistered_ || sizeChangeRegistered_ || sizeUpdateRegistered_) {
-        return;
-    }
-    panelStatusListener_ = nullptr;
 }
 
 std::shared_ptr<PanelStatusListener> InputMethodPanel::GetPanelListener()
 {
+    std::lock_guard<std::mutex> lock(panelStatusListenerMutex_);
     return panelStatusListener_;
 }
 

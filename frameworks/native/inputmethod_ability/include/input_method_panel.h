@@ -267,6 +267,7 @@ private:
     bool sizeUpdateRegistered_ = false;
     uint32_t invalidGravityPercent = 0;
     uint32_t callingWindowId_ = 0;
+    std::mutex panelStatusListenerMutex_;
     std::shared_ptr<PanelStatusListener> panelStatusListener_ = nullptr;
 
     static std::atomic<uint32_t> sequenceId_;
