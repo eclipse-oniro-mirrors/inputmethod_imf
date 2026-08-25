@@ -150,5 +150,17 @@ ErrCode InputMethodCoreServiceImpl::GetSoftKeyboardInfo(BoundImeInfo &imeInfo)
 {
     return InputMethodAbility::GetInstance().GetSoftKeyboardInfo(imeInfo);
 }
+
+ErrCode InputMethodCoreServiceImpl::OnPttLongPress()
+{
+    ErrCode ret = InputMethodAbility::GetInstance().OnPttLongPress();
+    return ret;
+}
+
+ErrCode InputMethodCoreServiceImpl::OnPttGestureCancelled()
+{
+    InputMethodAbility::GetInstance().OnPttGestureCancelled();
+    return ERR_OK;
+}
 } // namespace MiscServices
 } // namespace OHOS

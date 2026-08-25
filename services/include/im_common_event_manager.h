@@ -57,6 +57,7 @@ public:
         void OnBundleResChanged(const EventFwk::CommonEventData &data);
         void HandleNotifyMakeImage(const EventFwk::CommonEventData &data);
         void OnHybridModeSwitch(const EventFwk::CommonEventData &data);
+        void OnPushToTalk(const EventFwk::CommonEventData &data);
 
     private:
         using EventListenerFunc = std::function<void(EventSubscriber *that, const EventFwk::CommonEventData &data)>;
@@ -68,6 +69,7 @@ public:
 private:
     bool SubscribeManagerServiceCommon(const Handler &handler, int32_t saId);
     std::shared_ptr<EventSubscriber> CreateLargeMemorySubscriber();
+    std::shared_ptr<EventSubscriber> CreatePushToTalkSubscriber();
     class SystemAbilityStatusChangeListener : public SystemAbilityStatusChangeStub {
     public:
         explicit SystemAbilityStatusChangeListener(std::function<void()>);

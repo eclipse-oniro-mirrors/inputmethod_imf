@@ -51,6 +51,8 @@ public:
     ErrCode OnSendPrivateData(const Value &Value) override;
     ErrCode NotifyPreemption() override;
     ErrCode GetSoftKeyboardInfo(BoundImeInfo &imeInfo) override;
+    ErrCode OnPttLongPress() override;
+    ErrCode OnPttGestureCancelled() override;
 };
 }  // namespace MiscServices
 }  // namespace OHOS

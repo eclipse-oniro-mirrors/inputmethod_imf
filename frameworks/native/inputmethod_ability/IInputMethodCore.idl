@@ -40,4 +40,6 @@ interface OHOS.MiscServices.IInputMethodCore {
     void GetSoftKeyboardInfo([out] BoundImeInfo imeInfo);
     void OnSendPrivateData([in] Value value);
     void NotifyPreemption();
+    void OnPttLongPress();
+    void OnPttGestureCancelled();
 }

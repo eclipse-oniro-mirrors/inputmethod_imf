@@ -16,17 +16,29 @@
 #ifndef IMF_KEYBOARD_EVENT_H
 #define IMF_KEYBOARD_EVENT_H
 
+#include <vector>
+
 #include "global.h"
 #include "key_event.h"
 
 namespace OHOS {
 namespace MiscServices {
+class InputEventCallback;
 using KeyHandle = std::function<int32_t(uint32_t)>;
+
+struct KeyboardEventInfo {
+    int32_t keyCode { 0 };
+    int32_t keyAction { 0 };
+    std::vector<int32_t> pressedKeys;
+};
+
+using KeyEventMonitorHandler = std::function<void(const KeyboardEventInfo &)>;
 
 class KeyboardEvent {
 public:
     static KeyboardEvent &GetInstance();
     static int32_t AddKeyEventMonitor(KeyHandle handle);
+    static int32_t AddKeyEventMonitor(KeyHandle handle, KeyEventMonitorHandler keyEventHandler);
     static constexpr uint8_t SHIFT_LEFT_MASK = 0X1;
     static constexpr uint8_t SHIFT_RIGHT_MASK = 0X1 << 1;
     static constexpr uint8_t CTRL_LEFT_MASK = 0X1 << 2;
@@ -43,6 +55,7 @@ private:
     KeyboardEvent(KeyboardEvent &&) = delete;
     KeyboardEvent &operator=(const KeyboardEvent &) = delete;
     KeyboardEvent &operator=(KeyboardEvent &&) = delete;
+    static void SubscribeSwitchCombinationKeys(const std::shared_ptr<InputEventCallback> &callback);
     static void SubscribeCombinationKey(
         int32_t preKey, int32_t finalKey, CombinationKeyCallBack callback, bool setFinalKeyDown = false);
 };

@@ -63,6 +63,10 @@ public:
                                            "\"en-US\",\"mode\": \"upper\"}]} ";
     static constexpr const char *INPUT_SYS_CGF = "{\"systemConfig\":{\"enableInputMethodFeature\":true,"
                                                  "\"enableFullExperienceFeature\":true,"
+                                                 "\"enablePushToTalk\":true,"
+                                                 "\"pushToTalkLongPressMs\":350,"
+                                                 "\"pushToTalkDialogBundleName\":\"dialogBundleName\","
+                                                 "\"pushToTalkDialogAbilityName\":\"dialogAbilityName\","
                                                  "\"systemInputMethodConfigAbility\":\"setAbility\","
                                                  "\"defaultInputMethod\":\"bundleName/extName\"},"
                                                  "\"supportedInputTypeList\":[{\"inputType\":0,\"bundleName\":"
@@ -74,6 +78,12 @@ public:
                                                     "\"top\": 1,\"left\": 2,\"right\": 3,\"bottom\": 4}]}";
     static constexpr const char *IGNORE_SYS_PANEL_ADJUST = "{\"ignoreSysPanelAdjust\":{\"inputType\": [0, 1, 3]}}";
     static constexpr const char *INPUT_SYS_CGF_UID_LIST = "{\"systemConfig\": {\"proxyImeUidList\": [7101, 5521]}}";
+    static constexpr const char *pushToTalkSystemCfg =
+        "{\"systemConfig\":{\"enablePushToTalk\":true,\"pushToTalkLongPressMs\":350,"
+        "\"pushToTalkDialogBundleName\":\"dialogBundleName\","
+        "\"pushToTalkDialogAbilityName\":\"dialogAbilityName\"}}";
+    static constexpr const char *pushToTalkWrongLevelCfg =
+        "{\"systemConfig\":{\"enablePushToTalk\":true},\"pushToTalkLongPressMs\":350}";
     static void SetUpTestCase() { }
     static void TearDownTestCase() { }
     void SetUp() { }
@@ -117,6 +127,41 @@ HWTEST_F(JsonOperateTest, testParseSystemConfig001, TestSize.Level1)
     EXPECT_EQ(systemConfig.defaultInputMethod, "bundleName/extName");
     EXPECT_TRUE(systemConfig.enableInputMethodFeature);
     EXPECT_TRUE(systemConfig.enableFullExperienceFeature);
+    EXPECT_TRUE(systemConfig.enablePushToTalk);
+    EXPECT_EQ(systemConfig.pushToTalkLongPressMs, 350U);
+    EXPECT_EQ(systemConfig.pushToTalkDialogBundleName, "dialogBundleName");
+    EXPECT_EQ(systemConfig.pushToTalkDialogAbilityName, "dialogAbilityName");
+}
+
+/**
+ * @tc.name: testParsePushToTalkLongPressMs001
+ * @tc.desc: Parse PTT long-press duration from the same systemConfig level as its enable switch.
+ * @tc.type: FUNC
+ */
+HWTEST_F(JsonOperateTest, testParsePushToTalkLongPressMs001, TestSize.Level0)
+{
+    ImeSystemConfig imeSystemConfig;
+    ASSERT_TRUE(imeSystemConfig.Unmarshall(pushToTalkSystemCfg));
+    EXPECT_TRUE(imeSystemConfig.systemConfig.enablePushToTalk);
+    EXPECT_EQ(imeSystemConfig.systemConfig.pushToTalkLongPressMs, 350U);
+    EXPECT_EQ(imeSystemConfig.systemConfig.pushToTalkDialogBundleName, "dialogBundleName");
+    EXPECT_EQ(imeSystemConfig.systemConfig.pushToTalkDialogAbilityName, "dialogAbilityName");
+
+    ImeSystemConfig wrongLevelConfig;
+    ASSERT_TRUE(wrongLevelConfig.Unmarshall(pushToTalkWrongLevelCfg));
+    EXPECT_TRUE(wrongLevelConfig.systemConfig.enablePushToTalk);
+    EXPECT_EQ(wrongLevelConfig.systemConfig.pushToTalkLongPressMs, 0U);
+
+    const std::vector<std::string> invalidConfigs {
+        "{\"systemConfig\":{\"pushToTalkLongPressMs\":\"350\"}}",
+        "{\"systemConfig\":{\"pushToTalkLongPressMs\":-1}}"
+    };
+    // Invalid optional values keep the fail-safe default; the timer rejects zero.
+    for (const auto &invalidConfig : invalidConfigs) {
+        ImeSystemConfig invalid;
+        EXPECT_TRUE(invalid.Unmarshall(invalidConfig));
+        EXPECT_EQ(invalid.systemConfig.pushToTalkLongPressMs, 0U);
+    }
 }
 
 /**

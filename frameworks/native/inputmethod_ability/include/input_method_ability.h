@@ -16,6 +16,8 @@
 #ifndef FRAMEWORKS_INPUTMETHOD_ABILITY_INCLUDE_INPUT_METHOD_ABILITY_H
 #define FRAMEWORKS_INPUTMETHOD_ABILITY_INCLUDE_INPUT_METHOD_ABILITY_H
 
+#include <atomic>
+#include <cstdint>
 #include <thread>
 
 #include "calling_window_info.h"
@@ -141,7 +143,15 @@ public:
     int32_t OnStopInputService(bool isTerminateIme);
     HiSysEventClientInfo GetBindClientInfo();
     int32_t GetSoftKeyboardInfo(BoundImeInfo &imeInfo);
+    int32_t OnPttLongPress();
+    void OnPttGestureCancelled();
 private:
+    enum class PttSpaceTrackingState : uint8_t {
+        IDLE = 0,
+        TRACKING,
+        SUPPRESSED,
+    };
+
     std::mutex controlChannelLock_;
     std::shared_ptr<InputControlChannelProxy> controlChannel_ = nullptr;
 
@@ -207,6 +217,12 @@ private:
     void ClearBindClientInfo();
     void ReportImeStartInput(int32_t eventCode, int32_t errCode, bool isShowKeyboard, int64_t consumeTime = -1);
     void ClearBindInfo(const sptr<IRemoteObject> &channel);
+    bool IsOnlySpacePressed(const std::shared_ptr<MMI::KeyEvent> &keyEvent);
+    bool HandlePttKeyEvent(const std::shared_ptr<MMI::KeyEvent> &keyEvent, uint64_t callbackId,
+        const sptr<IRemoteObject> &channel, int32_t &result);
+    bool IsPttGestureAvailable(const sptr<IRemoteObject> &channel);
+    void ResetPttKeyEventTracking();
+    void SuppressPttKeyEventTracking();
     void OnInputDataChannelDied(const sptr<IRemoteObject> &dataChannelObject);
     void UpdatePrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand);
     void PushPrivateCommand();
@@ -219,6 +235,7 @@ private:
     ConcurrentMap<PanelType, std::shared_ptr<InputMethodPanel>> panels_ {};
     std::atomic_bool isBound_ { false };
     std::atomic_bool isProxyIme_{ false };
+    std::atomic<PttSpaceTrackingState> pttSpaceTrackingState_ { PttSpaceTrackingState::IDLE };
 
     sptr<IInputMethodCore> coreStub_ { nullptr };
     sptr<IInputMethodAgent> agentStub_ { nullptr };

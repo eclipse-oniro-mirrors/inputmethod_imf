@@ -60,6 +60,9 @@ std::chrono::system_clock::time_point InputMethodController::startLogTime_ = sys
 std::mutex InputMethodController::printTextChangeMutex_;
 int32_t InputMethodController::textChangeCountInPeriod_ = 0;
 std::chrono::steady_clock::time_point InputMethodController::textChangeStartLogTime_ = steady_clock::now();
+std::atomic<InputMethodController::PttSpaceKeyEventState> InputMethodController::pttSpaceKeyEventState_ {
+    InputMethodController::PttSpaceKeyEventState::UP
+};
 constexpr uint32_t MAX_ATTACH_TIMEOUT = 2500; // 2.5s
 BlockQueue<InputMethodController::CtrlEventInfo> InputMethodController::ctrlEventQueue_ { MAX_ATTACH_TIMEOUT };
 constexpr int32_t LOOP_COUNT = 5;
@@ -243,6 +246,7 @@ void InputMethodController::RemoveDeathRecipient()
 // LCOV_EXCL_STOP
 void InputMethodController::DeactivateClient()
 {
+    ResetPttSpaceKeyEventState();
     {
         std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
         clientInfo_.state = ClientState::INACTIVE;
@@ -875,6 +879,7 @@ int32_t InputMethodController::StartInput(
     InputClientInfo &inputClientInfo, std::vector<sptr<IRemoteObject>> &agents, std::vector<BindImeInfo> &imeInfos)
 {
     IMSA_HILOGD("InputMethodController::StartInput start.");
+    ResetPttSpaceKeyEventState();
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
         IMSA_HILOGE("proxy is nullptr!");
@@ -888,6 +893,7 @@ int32_t InputMethodController::StartInput(
 int32_t InputMethodController::ReleaseInput(sptr<IInputClient> &client, int32_t clientSessionId)
 {
     IMSA_HILOGD("InputMethodController::ReleaseInput start with clientSessionId: %{public}d.", clientSessionId);
+    ResetPttSpaceKeyEventState();
     auto proxy = TryGetSystemAbilityProxy();
     if (proxy == nullptr) {
         IMSA_HILOGE("proxy is nullptr!");
@@ -936,6 +942,7 @@ int32_t InputMethodController::HideInput(sptr<IInputClient> &client)
 void InputMethodController::OnRemoteSaDied(const wptr<IRemoteObject> &remote)
 {
     IMSA_HILOGI("input method service death.");
+    ResetPttSpaceKeyEventState();
     // imf sa died, current client callback inputStop
     InputStopInfo info;
     info.scene = InputStopScene::IMSA_DIED;
@@ -1235,20 +1242,32 @@ int32_t InputMethodController::DispatchKeyEvent(std::shared_ptr<MMI::KeyEvent> k
     keyEventQueue_.Push(keyEventInfo);
     InputMethodSyncTrace tracer("DispatchKeyEvent trace");
     keyEventQueue_.Wait(keyEventInfo);
+    if (HandlePttSpaceKeyEventBlock(keyEvent, callback)) {
+        return ErrorCode::NO_ERROR;
+    }
+    int32_t ret = DispatchKeyEventInner(keyEvent, callback);
+    keyEventQueue_.Pop();
+    int64_t endTime = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    if (endTime - startTime > DISPATCH_KEYBOARD_TIME_OUT) {
+        IMSA_HILOGW("DispatchKeyEvent timeout: [%{public}" PRId64 ", %{public}" PRId64 "].", startTime, endTime);
+    }
+    return ret;
+}
+
+int32_t InputMethodController::DispatchKeyEventInner(
+    std::shared_ptr<MMI::KeyEvent> &keyEvent, const KeyEventCallback &callback)
+{
     if (!IsEditable()) {
         IMSA_HILOGD("not editable.");
-        keyEventQueue_.Pop();
         return ErrorCode::ERROR_CLIENT_NOT_EDITABLE;
     }
     if (keyEvent == nullptr) {
         IMSA_HILOGE("keyEvent is nullptr!");
-        keyEventQueue_.Pop();
         return ErrorCode::ERROR_EX_NULL_POINTER;
     }
     auto agent = GetAgent();
     if (agent == nullptr) {
         IMSA_HILOGE("agent is nullptr!");
-        keyEventQueue_.Pop();
         return ErrorCode::ERROR_IME_NOT_STARTED;
     }
     IMSA_HILOGD("start.");
@@ -1259,7 +1278,6 @@ int32_t InputMethodController::DispatchKeyEvent(std::shared_ptr<MMI::KeyEvent> k
     }
     if (channelObject == nullptr) {
         IMSA_HILOGE("channelObject is nullptr!");
-        keyEventQueue_.Pop();
         return ErrorCode::ERROR_EX_NULL_POINTER;
     }
     auto cbId = keyEventRetHandler_.AddKeyEventCbInfo({ keyEvent, callback });
@@ -1270,12 +1288,72 @@ int32_t InputMethodController::DispatchKeyEvent(std::shared_ptr<MMI::KeyEvent> k
         IMSA_HILOGE("failed to DispatchKeyEvent: %{public}d", ret);
         keyEventRetHandler_.RemoveKeyEventCbInfo(cbId);
     }
-    keyEventQueue_.Pop();
-    int64_t endTime = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-    if (endTime - startTime > DISPATCH_KEYBOARD_TIME_OUT) {
-        IMSA_HILOGW("DispatchKeyEvent timeout: [%{public}" PRId64 ", %{public}" PRId64 "].", startTime, endTime);
-    }
     return ret;
+}
+
+bool InputMethodController::HandlePttSpaceKeyEventBlock(
+    std::shared_ptr<MMI::KeyEvent> &keyEvent, const KeyEventCallback &callback)
+{
+    if (keyEvent == nullptr || keyEvent->GetKeyCode() != MMI::KeyEvent::KEYCODE_SPACE) {
+        return false;
+    }
+    if (keyEvent->GetKeyAction() == MMI::KeyEvent::KEY_ACTION_UP) {
+        ResetPttSpaceKeyEventState();
+        return false;
+    }
+    if (keyEvent->GetKeyAction() != MMI::KeyEvent::KEY_ACTION_DOWN) {
+        return false;
+    }
+    auto expected = PttSpaceKeyEventState::UP;
+    if (pttSpaceKeyEventState_.compare_exchange_strong(expected, PttSpaceKeyEventState::DOWN)) {
+        return false;
+    }
+    if (pttSpaceKeyEventState_.load() != PttSpaceKeyEventState::BLOCKED) {
+        return false;
+    }
+    if (callback == nullptr) {
+        IMSA_HILOGW("PTT: cannot block repeated space down because callback is nullptr.");
+        return false;
+    }
+    // Report the immediate consumed result synchronously, but release the queue first so callback re-entry is safe.
+    keyEventQueue_.Pop();
+    callback(keyEvent, true);
+    return true;
+}
+
+bool InputMethodController::StartPttSpaceKeyEventBlock()
+{
+    if (!isEditable_.load() || !isBound_.load()) {
+        IMSA_HILOGW("PTT: cannot start space key block because the input client is not ready, "
+            "editable=%{public}d, bound=%{public}d.", isEditable_.load(), isBound_.load());
+        return false;
+    }
+    auto expected = PttSpaceKeyEventState::DOWN;
+    if (!pttSpaceKeyEventState_.compare_exchange_strong(expected, PttSpaceKeyEventState::BLOCKED)) {
+        IMSA_HILOGW("PTT: cannot start space key block, state=%{public}d.", static_cast<int32_t>(expected));
+        return false;
+    }
+    IMSA_HILOGI("PTT: client space key block started, editable=%{public}d, bound=%{public}d.",
+        isEditable_.load(), isBound_.load());
+    return true;
+}
+
+void InputMethodController::ResetPttSpaceKeyEventState()
+{
+    auto previous = pttSpaceKeyEventState_.exchange(PttSpaceKeyEventState::UP);
+    if (previous == PttSpaceKeyEventState::BLOCKED) {
+        IMSA_HILOGI("PTT: client space key block stopped, editable=%{public}d, bound=%{public}d.",
+            isEditable_.load(), isBound_.load());
+    }
+}
+
+void InputMethodController::LogPttSpaceKeyEventBlockState(const char *stage) const
+{
+    if (pttSpaceKeyEventState_.load() != PttSpaceKeyEventState::BLOCKED) {
+        return;
+    }
+    IMSA_HILOGI("PTT: client state at %{public}s while space key block is active, "
+        "editable=%{public}d, bound=%{public}d.", stage, isEditable_.load(), isBound_.load());
 }
 
 void InputMethodController::HandleKeyEventResult(uint64_t cbId, bool consumeResult)
@@ -1594,6 +1672,7 @@ void InputMethodController::OnInputReady(sptr<IRemoteObject> agentObject, const 
         return;
     }
     SetAgent(agentObject, imeInfo.bundleName);
+    LogPttSpaceKeyEventBlockState("input ready");
 }
 // LCOV_EXCL_START
 void InputMethodController::SetInputReady(
@@ -1627,6 +1706,7 @@ void InputMethodController::OnTmpInputStop(const sptr<IRemoteObject> &proxy)
     isBound_.store(false);
     isEditable_.store(false);
     isTextNotified_.store(false);
+    LogPttSpaceKeyEventBlockState("temporary input stop");
     keyEventRetHandler_.ClearKeyEventCbInfo();
     if (proxy == nullptr) {
         IMSA_HILOGD("proxy is nullptr!");
@@ -1659,6 +1739,8 @@ void InputMethodController::OnInputStop(bool isStopInactiveClient, const sptr<IR
     isBound_.store(false);
     isEditable_.store(false);
     isTextNotified_.store(false);
+    // Keep the PTT space latch across this IME handoff. SPACE UP or client teardown resets it.
+    LogPttSpaceKeyEventBlockState("input stop");
     keyEventRetHandler_.ClearKeyEventCbInfo();
     {
         std::lock_guard<std::mutex> lock(editorContentLock_);

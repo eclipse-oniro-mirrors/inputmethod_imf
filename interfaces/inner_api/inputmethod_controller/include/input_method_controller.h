@@ -19,6 +19,7 @@
 #include <atomic>
 #include <chrono>
 #include <condition_variable>
+#include <cstdint>
 #include <ctime>
 #include <mutex>
 #include <thread>
@@ -1103,6 +1104,7 @@ public:
 private:
     friend class MockInputMethodSystemAbilityProxy;
     friend class ImeEventMonitorManagerImpl;
+    friend class InputClientServiceImpl;
     InputMethodController();
     ~InputMethodController();
 
@@ -1135,6 +1137,18 @@ private:
     void PrintLogIfAceTimeout(int64_t start);
     void PrintTextChangeLog();
     void PrintKeyEventLog();
+    int32_t DispatchKeyEventInner(
+        std::shared_ptr<MMI::KeyEvent> &keyEvent, const KeyEventCallback &callback);
+    enum class PttSpaceKeyEventState : uint8_t {
+        UP = 0,
+        DOWN,
+        BLOCKED,
+    };
+    bool HandlePttSpaceKeyEventBlock(
+        std::shared_ptr<MMI::KeyEvent> &keyEvent, const KeyEventCallback &callback);
+    bool StartPttSpaceKeyEventBlock();
+    void ResetPttSpaceKeyEventState();
+    void LogPttSpaceKeyEventBlockState(const char *stage) const;
     std::shared_ptr<MsgHandlerCallbackInterface> GetMsgHandlerCallback();
     int32_t IsValidTextConfig(const TextConfig &textConfig);
     void SetBindImeInfo(const std::pair<int64_t, std::string> &imeInfo);
@@ -1222,6 +1236,7 @@ private:
     static std::mutex printTextChangeMutex_;
     static int32_t textChangeCountInPeriod_;
     static std::chrono::steady_clock::time_point textChangeStartLogTime_;
+    static std::atomic<PttSpaceKeyEventState> pttSpaceKeyEventState_;
 
     std::atomic_bool isEditable_{ false };
     std::atomic_bool isBound_{ false };

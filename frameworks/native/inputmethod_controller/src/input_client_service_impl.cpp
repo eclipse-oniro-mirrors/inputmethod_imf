@@ -124,5 +124,15 @@ ErrCode InputClientServiceImpl::GetCurrentCursorInfo(CursorInfoInner &cursorInfo
     cursorInfo = InputMethodTools::GetInstance().CursorInfoToInner(info);
     return ERR_OK;
 }
+
+ErrCode InputClientServiceImpl::StartPttSpaceKeyEventBlock()
+{
+    auto instance = InputMethodController::GetInstance();
+    if (instance == nullptr) {
+        IMSA_HILOGW("PTT: failed to get InputMethodController instance.");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    return instance->StartPttSpaceKeyEventBlock() ? ERR_OK : ErrorCode::ERROR_BAD_PARAMETERS;
+}
 }  // namespace MiscServices
 }  // namespace OHOS

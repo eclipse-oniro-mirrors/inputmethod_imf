@@ -2653,5 +2653,237 @@ HWTEST_F(InputMethodAbilityTest, testSetInputDataChannel, TestSize.Level0)
     EXPECT_EQ(
         InputMethodAbilityTest::inputMethodAbility_.dataChannelObject_.GetRefPtr(), dataChannelObject1.GetRefPtr());
 }
+
+namespace {
+class PttSystemAbilityProxy : public InputMethodSystemAbilityProxy {
+public:
+    PttSystemAbilityProxy() : InputMethodSystemAbilityProxy(nullptr) { }
+
+    ErrCode IsPttGestureAvailable(const sptr<IRemoteObject> &channel, bool &resultValue) override
+    {
+        ++callCount_;
+        lastChannel_ = channel;
+        resultValue = isAvailable_;
+        return returnCode_;
+    }
+
+    int32_t callCount_ { 0 };
+    bool isAvailable_ { false };
+    ErrCode returnCode_ { ERR_OK };
+    sptr<IRemoteObject> lastChannel_;
+};
+
+std::shared_ptr<MMI::KeyEvent> MakePttKeyEvent(
+    int32_t keyCode, int32_t keyAction, const std::vector<int32_t> &pressedKeys = {})
+{
+    auto keyEvent = MMI::KeyEvent::Create();
+    if (keyEvent == nullptr) {
+        return nullptr;
+    }
+    keyEvent->SetKeyCode(keyCode);
+    keyEvent->SetKeyAction(keyAction);
+    for (int32_t pressedKey : pressedKeys) {
+        MMI::KeyEvent::KeyItem keyItem;
+        keyItem.SetKeyCode(pressedKey);
+        keyItem.SetPressed(true);
+        keyEvent->AddKeyItem(keyItem);
+    }
+    return keyEvent;
+}
+} // namespace
+
+class InputMethodAbilityPttTest : public testing::Test {
+public:
+    void SetUp() override
+    {
+        ability_.ResetPttKeyEventTracking();
+    }
+
+    void TearDown() override
+    {
+        ability_.ResetPttKeyEventTracking();
+    }
+
+    InputMethodAbility &ability_ = InputMethodAbility::GetInstance();
+};
+
+/**
+ * @tc.name: InputMethodAbilityPtt_IsOnlySpacePressed_001
+ * @tc.desc: Verify exact pressed-key filtering for a PTT gesture.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityPttTest, InputMethodAbilityPtt_IsOnlySpacePressed_001, TestSize.Level0)
+{
+    EXPECT_FALSE(ability_.IsOnlySpacePressed(nullptr));
+
+    auto noPressedKey = MakePttKeyEvent(MMI::KeyEvent::KEYCODE_SPACE, MMI::KeyEvent::KEY_ACTION_DOWN);
+    ASSERT_NE(noPressedKey, nullptr);
+    EXPECT_FALSE(ability_.IsOnlySpacePressed(noPressedKey));
+
+    auto onlySpace = MakePttKeyEvent(MMI::KeyEvent::KEYCODE_SPACE, MMI::KeyEvent::KEY_ACTION_DOWN,
+        { MMI::KeyEvent::KEYCODE_SPACE });
+    ASSERT_NE(onlySpace, nullptr);
+    EXPECT_TRUE(ability_.IsOnlySpacePressed(onlySpace));
+
+    auto chord = MakePttKeyEvent(MMI::KeyEvent::KEYCODE_SPACE, MMI::KeyEvent::KEY_ACTION_DOWN,
+        { MMI::KeyEvent::KEYCODE_SPACE, MMI::KeyEvent::KEYCODE_A });
+    ASSERT_NE(chord, nullptr);
+    EXPECT_FALSE(ability_.IsOnlySpacePressed(chord));
+}
+
+/**
+ * @tc.name: InputMethodAbilityPtt_TrackingTransitions_001
+ * @tc.desc: Verify repeated space handling, suppression, and release reset.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityPttTest, InputMethodAbilityPtt_TrackingTransitions_001, TestSize.Level0)
+{
+    auto spaceDown = MakePttKeyEvent(MMI::KeyEvent::KEYCODE_SPACE, MMI::KeyEvent::KEY_ACTION_DOWN,
+        { MMI::KeyEvent::KEYCODE_SPACE });
+    auto spaceUp = MakePttKeyEvent(MMI::KeyEvent::KEYCODE_SPACE, MMI::KeyEvent::KEY_ACTION_UP);
+    auto otherDown = MakePttKeyEvent(MMI::KeyEvent::KEYCODE_A, MMI::KeyEvent::KEY_ACTION_DOWN);
+    auto otherUnknownAction = MakePttKeyEvent(MMI::KeyEvent::KEYCODE_A, -1);
+    auto spaceUnknownAction = MakePttKeyEvent(MMI::KeyEvent::KEYCODE_SPACE, -1);
+    ASSERT_NE(spaceDown, nullptr);
+    ASSERT_NE(spaceUp, nullptr);
+    ASSERT_NE(otherDown, nullptr);
+    ASSERT_NE(otherUnknownAction, nullptr);
+    ASSERT_NE(spaceUnknownAction, nullptr);
+
+    int32_t result = ErrorCode::NO_ERROR;
+    EXPECT_FALSE(ability_.HandlePttKeyEvent(spaceDown, 1, nullptr, result));
+    EXPECT_EQ(ability_.pttSpaceTrackingState_.load(), InputMethodAbility::PttSpaceTrackingState::SUPPRESSED);
+    EXPECT_FALSE(ability_.HandlePttKeyEvent(spaceUp, 2, nullptr, result));
+    EXPECT_EQ(ability_.pttSpaceTrackingState_.load(), InputMethodAbility::PttSpaceTrackingState::IDLE);
+
+    ability_.pttSpaceTrackingState_.store(InputMethodAbility::PttSpaceTrackingState::TRACKING);
+    EXPECT_TRUE(ability_.HandlePttKeyEvent(spaceDown, 3, nullptr, result));
+    EXPECT_EQ(result, ErrorCode::ERROR_IMA_CHANNEL_NULLPTR);
+    EXPECT_EQ(ability_.pttSpaceTrackingState_.load(), InputMethodAbility::PttSpaceTrackingState::TRACKING);
+    EXPECT_EQ(ability_.DispatchKeyEvent(spaceDown, 4, nullptr), ErrorCode::ERROR_IMA_CHANNEL_NULLPTR);
+
+    EXPECT_FALSE(ability_.HandlePttKeyEvent(otherUnknownAction, 5, nullptr, result));
+    EXPECT_EQ(ability_.pttSpaceTrackingState_.load(), InputMethodAbility::PttSpaceTrackingState::TRACKING);
+    EXPECT_FALSE(ability_.HandlePttKeyEvent(spaceUnknownAction, 6, nullptr, result));
+    EXPECT_EQ(ability_.pttSpaceTrackingState_.load(), InputMethodAbility::PttSpaceTrackingState::TRACKING);
+    EXPECT_FALSE(ability_.HandlePttKeyEvent(otherDown, 7, nullptr, result));
+    EXPECT_EQ(ability_.pttSpaceTrackingState_.load(), InputMethodAbility::PttSpaceTrackingState::SUPPRESSED);
+    EXPECT_FALSE(ability_.HandlePttKeyEvent(spaceUp, 8, nullptr, result));
+    EXPECT_EQ(ability_.pttSpaceTrackingState_.load(), InputMethodAbility::PttSpaceTrackingState::IDLE);
+}
+
+/**
+ * @tc.name: InputMethodAbilityPtt_AvailabilityAndReset_001
+ * @tc.desc: Verify availability guard clauses and explicit cancellation.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityPttTest, InputMethodAbilityPtt_AvailabilityAndReset_001, TestSize.Level0)
+{
+    EXPECT_FALSE(ability_.IsPttGestureAvailable(nullptr));
+
+    sptr<InputMethodCoreServiceImpl> coreStub = new (std::nothrow) InputMethodCoreServiceImpl();
+    ASSERT_NE(coreStub, nullptr);
+    sptr<PttSystemAbilityProxy> proxy = new (std::nothrow) PttSystemAbilityProxy();
+    ASSERT_NE(proxy, nullptr);
+    auto spaceDown = MakePttKeyEvent(MMI::KeyEvent::KEYCODE_SPACE, MMI::KeyEvent::KEY_ACTION_DOWN,
+        { MMI::KeyEvent::KEYCODE_SPACE });
+    ASSERT_NE(spaceDown, nullptr);
+
+    auto originalAbilityManager = ability_.abilityManager_;
+    ability_.abilityManager_ = proxy;
+    proxy->returnCode_ = ErrorCode::ERROR_BAD_PARAMETERS;
+    EXPECT_FALSE(ability_.IsPttGestureAvailable(coreStub->AsObject()));
+    proxy->returnCode_ = ERR_OK;
+    EXPECT_FALSE(ability_.IsPttGestureAvailable(coreStub->AsObject()));
+    proxy->isAvailable_ = true;
+    EXPECT_TRUE(ability_.IsPttGestureAvailable(coreStub->AsObject()));
+    EXPECT_EQ(proxy->callCount_, 3);
+    EXPECT_EQ(proxy->lastChannel_, coreStub->AsObject());
+
+    int32_t result = ErrorCode::NO_ERROR;
+    EXPECT_FALSE(ability_.HandlePttKeyEvent(spaceDown, 1, coreStub->AsObject(), result));
+    EXPECT_EQ(ability_.pttSpaceTrackingState_.load(), InputMethodAbility::PttSpaceTrackingState::TRACKING);
+    ability_.abilityManager_ = originalAbilityManager;
+
+    ability_.ResetPttKeyEventTracking();
+    ability_.SuppressPttKeyEventTracking();
+    EXPECT_EQ(ability_.pttSpaceTrackingState_.load(), InputMethodAbility::PttSpaceTrackingState::IDLE);
+    ability_.pttSpaceTrackingState_.store(InputMethodAbility::PttSpaceTrackingState::TRACKING);
+    ability_.OnPttGestureCancelled();
+    EXPECT_EQ(ability_.pttSpaceTrackingState_.load(), InputMethodAbility::PttSpaceTrackingState::SUPPRESSED);
+    ability_.ResetPttKeyEventTracking();
+    EXPECT_EQ(ability_.pttSpaceTrackingState_.load(), InputMethodAbility::PttSpaceTrackingState::IDLE);
+}
+
+/**
+ * @tc.name: InputMethodAbilityPtt_CoreServiceDelegation_001
+ * @tc.desc: Verify the IInputMethodCore PTT methods delegate to InputMethodAbility.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityPttTest, InputMethodAbilityPtt_CoreServiceDelegation_001, TestSize.Level0)
+{
+    sptr<InputMethodCoreServiceImpl> coreStub = new (std::nothrow) InputMethodCoreServiceImpl();
+    ASSERT_NE(coreStub, nullptr);
+
+    ability_.pttSpaceTrackingState_.store(InputMethodAbility::PttSpaceTrackingState::TRACKING);
+    EXPECT_EQ(coreStub->OnPttGestureCancelled(), ERR_OK);
+    EXPECT_EQ(ability_.pttSpaceTrackingState_.load(), InputMethodAbility::PttSpaceTrackingState::SUPPRESSED);
+
+    auto originalChannel = ability_.dataChannelProxyWrap_;
+    ability_.dataChannelProxyWrap_ = nullptr;
+    EXPECT_EQ(coreStub->OnPttLongPress(), ErrorCode::ERROR_CLIENT_NULL_POINTER);
+    ability_.dataChannelProxyWrap_ = originalChannel;
+}
+
+class PttRollbackTextListener : public TextListener {
+public:
+    void SetTextBeforeCursor(const std::u16string &text)
+    {
+        textBeforeCursor_ = text;
+    }
+
+    std::u16string GetLeftTextOfCursor(int32_t number) override
+    {
+        return textBeforeCursor_;
+    }
+
+private:
+    std::u16string textBeforeCursor_;
+};
+
+/**
+ * @tc.name: testOnPttLongPress_001
+ * @tc.desc: Verify rollback skips empty/non-space text and deletes a preceding space.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testOnPttLongPress_001, TestSize.Level0)
+{
+    sptr<InputMethodCoreServiceImpl> coreStub = new (std::nothrow) InputMethodCoreServiceImpl();
+    ASSERT_NE(coreStub, nullptr);
+    sptr<PttRollbackTextListener> pttListener = new (std::nothrow) PttRollbackTextListener();
+    ASSERT_NE(pttListener, nullptr);
+
+    GetIMCAttachIMA();
+    auto originalListener = imc_->GetTextListener();
+    imc_->SetTextListener(pttListener);
+
+    TextListener::ResetParam();
+    pttListener->SetTextBeforeCursor(u"");
+    EXPECT_EQ(inputMethodAbility_.OnPttLongPress(), ErrorCode::NO_ERROR);
+    EXPECT_EQ(TextListener::deleteBackwardLength_, -1);
+
+    TextListener::ResetParam();
+    pttListener->SetTextBeforeCursor(u"x");
+    EXPECT_EQ(inputMethodAbility_.OnPttLongPress(), ErrorCode::NO_ERROR);
+    EXPECT_EQ(TextListener::deleteBackwardLength_, -1);
+
+    TextListener::ResetParam();
+    pttListener->SetTextBeforeCursor(u" ");
+    EXPECT_EQ(coreStub->OnPttLongPress(), ErrorCode::NO_ERROR);
+    EXPECT_TRUE(TextListener::WaitDeleteBackward(1));
+
+    imc_->SetTextListener(originalListener);
+    GetIMCDetachIMA();
+}
 } // namespace MiscServices
 } // namespace OHOS

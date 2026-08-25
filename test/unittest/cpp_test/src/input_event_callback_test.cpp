@@ -18,6 +18,8 @@
 
 #include <gtest/gtest.h>
 
+#include <vector>
+
 #include "global.h"
 #include "key_event.h"
 
@@ -25,6 +27,24 @@ namespace OHOS {
 namespace MiscServices {
 namespace {
 using namespace testing::ext;
+
+std::shared_ptr<MMI::KeyEvent> MakePttRoutingEvent(
+    int32_t keyCode, int32_t keyAction, const std::vector<int32_t> &pressedKeys = {})
+{
+    auto keyEvent = MMI::KeyEvent::Create();
+    if (keyEvent == nullptr) {
+        return nullptr;
+    }
+    keyEvent->SetKeyCode(keyCode);
+    keyEvent->SetKeyAction(keyAction);
+    for (int32_t pressedKey : pressedKeys) {
+        MMI::KeyEvent::KeyItem keyItem;
+        keyItem.SetKeyCode(pressedKey);
+        keyItem.SetPressed(true);
+        keyEvent->AddKeyItem(keyItem);
+    }
+    return keyEvent;
+}
 } // namespace
 
 class InputEventCallbackTest : public testing::Test {
@@ -342,6 +362,135 @@ HWTEST_F(InputEventCallbackTest, StaticState_001, TestSize.Level0)
     InputEventCallback::isKeyHandled_ = false;
     EXPECT_EQ(InputEventCallback::keyState_, 0);
     EXPECT_FALSE(InputEventCallback::isKeyHandled_);
+}
+
+/**
+ * @tc.name: InputEventCallback_PttHandlerConfiguration_001
+ * @tc.desc: Test PTT handler assignment and null event filtering.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputEventCallbackTest, PttHandlerConfiguration_001, TestSize.Level0)
+{
+    auto callback = std::make_shared<InputEventCallback>();
+    ASSERT_NE(callback, nullptr);
+    EXPECT_FALSE(callback->ShouldForwardPttKeyEvent(nullptr));
+
+    callback->SetKeyEventMonitorHandler([](const KeyboardEventInfo &eventInfo) {});
+    EXPECT_NE(callback->keyEventHandler_, nullptr);
+    callback->SetKeyEventMonitorHandler(nullptr);
+    EXPECT_EQ(callback->keyEventHandler_, nullptr);
+}
+
+/**
+ * @tc.name: InputEventCallback_PttSpaceSequence_001
+ * @tc.desc: Test initial space down, repeat suppression, and release forwarding.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputEventCallbackTest, PttSpaceSequence_001, TestSize.Level0)
+{
+    auto callback = std::make_shared<InputEventCallback>();
+    ASSERT_NE(callback, nullptr);
+    std::vector<KeyboardEventInfo> events;
+    callback->SetKeyEventMonitorHandler([&events](const KeyboardEventInfo &eventInfo) {
+        events.push_back(eventInfo);
+    });
+    auto spaceDown = MakePttRoutingEvent(MMI::KeyEvent::KEYCODE_SPACE, MMI::KeyEvent::KEY_ACTION_DOWN,
+        { MMI::KeyEvent::KEYCODE_SPACE });
+    auto spaceUp = MakePttRoutingEvent(MMI::KeyEvent::KEYCODE_SPACE, MMI::KeyEvent::KEY_ACTION_UP);
+    ASSERT_NE(spaceDown, nullptr);
+    ASSERT_NE(spaceUp, nullptr);
+
+    callback->OnInputEvent(spaceDown);
+    ASSERT_EQ(events.size(), 1);
+    EXPECT_EQ(events[0].keyCode, MMI::KeyEvent::KEYCODE_SPACE);
+    EXPECT_EQ(events[0].keyAction, MMI::KeyEvent::KEY_ACTION_DOWN);
+    EXPECT_EQ(events[0].pressedKeys, std::vector<int32_t>({ MMI::KeyEvent::KEYCODE_SPACE }));
+    EXPECT_EQ(callback->pttRoutingState_, InputEventCallback::PttRoutingState::TRACKING);
+
+    callback->OnInputEvent(spaceDown);
+    EXPECT_EQ(events.size(), 1);
+    callback->OnInputEvent(spaceUp);
+    ASSERT_EQ(events.size(), 2);
+    EXPECT_EQ(events[1].keyAction, MMI::KeyEvent::KEY_ACTION_UP);
+    EXPECT_TRUE(events[1].pressedKeys.empty());
+    EXPECT_EQ(callback->pttRoutingState_, InputEventCallback::PttRoutingState::IDLE);
+
+    callback->OnInputEvent(spaceUp);
+    EXPECT_EQ(events.size(), 2);
+}
+
+/**
+ * @tc.name: InputEventCallback_PttSuppression_001
+ * @tc.desc: Test chord suppression and cancellation by another key.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputEventCallbackTest, PttSuppression_001, TestSize.Level0)
+{
+    auto callback = std::make_shared<InputEventCallback>();
+    ASSERT_NE(callback, nullptr);
+    std::vector<KeyboardEventInfo> events;
+    callback->SetKeyEventMonitorHandler([&events](const KeyboardEventInfo &eventInfo) {
+        events.push_back(eventInfo);
+    });
+    auto chordedSpaceDown = MakePttRoutingEvent(MMI::KeyEvent::KEYCODE_SPACE, MMI::KeyEvent::KEY_ACTION_DOWN,
+        { MMI::KeyEvent::KEYCODE_SPACE, MMI::KeyEvent::KEYCODE_A });
+    auto spaceDown = MakePttRoutingEvent(MMI::KeyEvent::KEYCODE_SPACE, MMI::KeyEvent::KEY_ACTION_DOWN,
+        { MMI::KeyEvent::KEYCODE_SPACE });
+    auto spaceUp = MakePttRoutingEvent(MMI::KeyEvent::KEYCODE_SPACE, MMI::KeyEvent::KEY_ACTION_UP);
+    auto otherDown = MakePttRoutingEvent(MMI::KeyEvent::KEYCODE_A, MMI::KeyEvent::KEY_ACTION_DOWN);
+    auto otherUp = MakePttRoutingEvent(MMI::KeyEvent::KEYCODE_A, MMI::KeyEvent::KEY_ACTION_UP);
+    ASSERT_NE(chordedSpaceDown, nullptr);
+    ASSERT_NE(spaceDown, nullptr);
+    ASSERT_NE(spaceUp, nullptr);
+    ASSERT_NE(otherDown, nullptr);
+    ASSERT_NE(otherUp, nullptr);
+
+    callback->OnInputEvent(chordedSpaceDown);
+    EXPECT_TRUE(events.empty());
+    EXPECT_EQ(callback->pttRoutingState_, InputEventCallback::PttRoutingState::SUPPRESSED);
+    callback->OnInputEvent(otherDown);
+    EXPECT_TRUE(events.empty());
+    callback->OnInputEvent(spaceUp);
+    ASSERT_EQ(events.size(), 1);
+    EXPECT_EQ(callback->pttRoutingState_, InputEventCallback::PttRoutingState::IDLE);
+
+    callback->OnInputEvent(spaceDown);
+    callback->OnInputEvent(otherDown);
+    ASSERT_EQ(events.size(), 3);
+    EXPECT_EQ(events[2].keyCode, MMI::KeyEvent::KEYCODE_A);
+    EXPECT_EQ(callback->pttRoutingState_, InputEventCallback::PttRoutingState::SUPPRESSED);
+    callback->OnInputEvent(otherUp);
+    EXPECT_EQ(events.size(), 3);
+    callback->OnInputEvent(spaceUp);
+    EXPECT_EQ(events.size(), 4);
+    EXPECT_EQ(callback->pttRoutingState_, InputEventCallback::PttRoutingState::IDLE);
+}
+
+/**
+ * @tc.name: InputEventCallback_PttInvalidActions_001
+ * @tc.desc: Test idle non-space events and unsupported key actions are ignored.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputEventCallbackTest, PttInvalidActions_001, TestSize.Level0)
+{
+    auto callback = std::make_shared<InputEventCallback>();
+    ASSERT_NE(callback, nullptr);
+    int32_t callCount = 0;
+    callback->SetKeyEventMonitorHandler([&callCount](const KeyboardEventInfo &eventInfo) {
+        ++callCount;
+    });
+    auto otherDown = MakePttRoutingEvent(MMI::KeyEvent::KEYCODE_A, MMI::KeyEvent::KEY_ACTION_DOWN);
+    auto invalidOther = MakePttRoutingEvent(MMI::KeyEvent::KEYCODE_A, -1);
+    auto invalidSpace = MakePttRoutingEvent(MMI::KeyEvent::KEYCODE_SPACE, -1);
+    ASSERT_NE(otherDown, nullptr);
+    ASSERT_NE(invalidOther, nullptr);
+    ASSERT_NE(invalidSpace, nullptr);
+
+    callback->OnInputEvent(otherDown);
+    callback->OnInputEvent(invalidOther);
+    callback->OnInputEvent(invalidSpace);
+    EXPECT_EQ(callCount, 0);
+    EXPECT_EQ(callback->pttRoutingState_, InputEventCallback::PttRoutingState::IDLE);
 }
 } // namespace MiscServices
 } // namespace OHOS

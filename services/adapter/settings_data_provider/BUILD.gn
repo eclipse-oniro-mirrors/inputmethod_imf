@@ -41,6 +41,7 @@ ohos_static_library("settings_data_static") {
     "src/ime_enabled_info_manager.cpp",
     "src/enable_upgrade_manager.cpp",
     "src/numkey_apps_manager.cpp",
+    "src/ptt_settings_manager.cpp",
   ]
 
   public_configs = [ ":settings_data_config" ]
