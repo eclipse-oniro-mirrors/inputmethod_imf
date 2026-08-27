@@ -17,6 +17,7 @@
 #define SERVICES_INCLUDE_INPUT_METHOD_SYSTEM_ABILITY_H
 
 #include "identity_checker_impl.h"
+#include "ime_usage_reporter.h.h"
 #include "ime_info_inquirer.h"
 #include "input_method_system_ability_stub.h"
 #include "input_method_types.h"
@@ -126,6 +127,7 @@ private:
     int32_t GetUserId(int32_t uid);
     uint64_t GetCallingDisplayId(int32_t userId, sptr<IRemoteObject> abilityToken = nullptr);
     std::shared_ptr<IdentityChecker> identityChecker_ = nullptr;
+    std::unique_ptr<ImeUsageReporter> imeUsageReporter_ = nullptr;
     int32_t PrepareInput(int32_t userId, InputClientInfo &clientInfo, const FocusedInfo &focusedInfo);
     void WorkThread();
     int32_t OnHideKeyboardSelf(const Message *msg);
@@ -179,6 +181,8 @@ private:
     static std::shared_ptr<AppExecFwk::EventHandler> serviceHandler_;
     std::atomic<int32_t> userId_;
     bool stop_ = false;
+    void InitImeUsageReporter();
+    void SetupImeUsageCallbacks(int32_t userId);
     void InitMonitors();
     int32_t InitKeyEventMonitor();
     bool InitWmsMonitor();
