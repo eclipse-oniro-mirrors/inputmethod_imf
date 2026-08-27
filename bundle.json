@@ -65,6 +65,7 @@
               "runtime_core",
               "ace_engine",
               "hiview",
+              "relational_store",
               "api_metrics",
               "ets_frontend",
               "node",
