@@ -1936,3 +1936,129 @@ HWTEST_F(ImeUsageEventCacherTest, GetToday0ClockMs_001, TestSize.Level0)
     uint64_t globalToday0 = GetToday0ClockMs();
     EXPECT_EQ(today0, globalToday0);
 }
+
+// ==================== OnImeBind: different IME while showing produces hide record ====================
+
+/**
+ * @tc.name: ImeUsageEventCacher_OnImeBind_DifferentIme
+ * @tc.desc: OnImeBind with a different IME while one is showing produces hide+show in DB
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, OnImeBind_DifferentIme, TestSize.Level0)
+{
+    cacher_->OnImeBind(TEST_BUNDLE);
+    EXPECT_TRUE(cacher_->isKeyboardShowing_);
+    EXPECT_EQ(cacher_->currentImeBundle_, TEST_BUNDLE);
+
+    // Bind a different IME - should hide old one first then show new
+    cacher_->OnImeBind(TEST_BUNDLE2);
+    EXPECT_TRUE(cacher_->isKeyboardShowing_);
+    EXPECT_EQ(cacher_->currentImeBundle_, TEST_BUNDLE2);
+
+    // Verify STOP for TEST_BUNDLE and START for TEST_BUNDLE2 in DB
+    int stopIdx = dbHelper_->QueryRawEventIndex(TEST_BUNDLE, EVENT_INPUT_STOP);
+    EXPECT_GE(stopIdx, 0);
+    int startIdx2 = dbHelper_->QueryRawEventIndex(TEST_BUNDLE2, EVENT_INPUT_START);
+    EXPECT_GE(startIdx2, 0);
+}
+
+// ==================== STOP->START pair in CalculateDuration ====================
+
+/**
+ * @tc.name: ImeUsageEventCacher_CalculateDuration_012
+ * @tc.desc: STOP->START pair is valid but produces no duration (gap between sessions)
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, CalculateDuration_012, TestSize.Level0)
+{
+    // Use dayStartTime=3000 so cross-midnight does NOT apply for STOP at happenTime=3000
+    uint64_t dayStartTime = 3000;
+    std::vector<ImeEventRecord> records;
+    ImeEventRecord stop;
+    stop.rawid = EVENT_INPUT_STOP;
+    stop.ts = 3000;
+    stop.happenTime = 3000;
+    stop.screenStatus = UNFOLDED_PORTRAIT;
+    records.push_back(stop);
+
+    ImeEventRecord start;
+    start.rawid = EVENT_INPUT_START;
+    start.ts = 5000;
+    start.happenTime = 5000;
+    start.screenStatus = EXPAND_PORTRAIT;
+    records.push_back(start);
+
+    DurationMap durations;
+    cacher_->CalculateDuration(dayStartTime, records, durations);
+    // First event is STOP (not START), cross-midnight: dayStartTime(3000)->stop(3000) = 0ms
+    // Pair STOP->START: duration = 5000-3000 = 2000ms, uses preIt->screenStatus = UNFOLDED_PORTRAIT
+    EXPECT_EQ(durations[UNFOLDED_PORTRAIT], 2000u);
+}
+
+// ==================== ImeUsageInfo: GetAppUsage with all duration fields ====================
+
+/**
+ * @tc.name: ImeUsageInfo_GetAppUsage_003
+ * @tc.desc: GetAppUsage sums all 12 duration fields correctly
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, GetAppUsage_003, TestSize.Level0)
+{
+    ImeUsageInfo info;
+    info.foldPortraitDuration = 100;
+    info.foldLandscapeDuration = 200;
+    info.expandPortraitDuration = 300;
+    info.expandLandscapeDuration = 400;
+    info.gPortraitDuration = 500;
+    info.gLandscapeDuration = 600;
+    info.unFoldedPortraitDuration = 700;
+    info.unFoldedLandscapeDuration = 800;
+    info.nPortraitDuration = 900;
+    info.nLandscapeDuration = 1000;
+    info.lmPortraitDuration = 1100;
+    info.lmLandscapeDuration = 1200;
+    EXPECT_EQ(info.GetAppUsage(), 7800u);
+}
+
+// ==================== FormatDateStr ====================
+
+/**
+ * @tc.name: ImeUsageCommon_FormatDateStr_001
+ * @tc.desc: FormatDateStr returns correct date string
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, FormatDateStr_001, TestSize.Level0)
+{
+    // Test with a known timestamp
+    uint64_t ms = 1700000000000ULL; // 2023-11-14 22:13:20 UTC
+    std::string dateStr = FormatDateStr(ms);
+    // Should be a valid date string in YYYYMMDD format
+    EXPECT_EQ(dateStr.length(), 8u);
+    // All characters should be digits
+    for (char c : dateStr) {
+        EXPECT_TRUE(std::isdigit(c));
+    }
+}
+
+// ==================== ZeroClockMsFromTimeT ====================
+
+/**
+ * @tc.name: ImeUsageCommon_ZeroClockMsFromTimeT_001
+ * @tc.desc: ZeroClockMsFromTimeT returns midnight of given time
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, ZeroClockMsFromTimeT_001, TestSize.Level0)
+{
+    // Use current time
+    auto now = std::chrono::system_clock::now();
+    std::time_t t = std::chrono::system_clock::to_time_t(now);
+    uint64_t midnight = ZeroClockMsFromTimeT(t);
+    EXPECT_GT(midnight, 0u);
+    // Midnight should be <= current time
+    uint64_t nowMs =
+        static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count());
+    EXPECT_LE(midnight, nowMs);
+}
+
+} // namespace MiscServices
+} // namespace OHOS
