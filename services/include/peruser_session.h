@@ -105,7 +105,7 @@ enum class StartPreDefaultImeStatus : uint32_t { NO_NEED, HAS_STARTED, TO_START 
  */
 class PerUserSession : public std::enable_shared_from_this<PerUserSession> {
 public:
-    using ImeUsageCallback = std::function<void>(const std::string &)>;
+    using ImeUsageCallback = std::function<void(const std::string &)>;
 
     PerUserSession(int32_t userId, const std::shared_ptr<AppExecFwk::EventHandler> &eventHandler);
     ~PerUserSession();

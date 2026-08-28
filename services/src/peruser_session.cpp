@@ -1085,7 +1085,7 @@ void PerUserSession::StopImeInput(const std::shared_ptr<ImeData> &imeData,
     if (imeData->IsRealIme()) {
         RestoreCurrentImeSubType();
         if (onImeUnbind_) {
-            onImeUnbind_(ime->ime.first);
+            onImeUnbind_(imeData->ime.first);
         }
     }
 }

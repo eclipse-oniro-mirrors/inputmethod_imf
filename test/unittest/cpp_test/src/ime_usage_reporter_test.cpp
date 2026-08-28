@@ -125,16 +125,16 @@ HWTEST_F(ImeUsageReporterTest, Init_001, TestSize.Level0)
 
 /**
  * @tc.name: ImeUsageReporter_Init_002
- * @tc.desc: Init sets shouldReportLastData when no prior report exists
+ * @tc.desc: Init with no prior report triggers immediate daily report
  * @tc.type: FUNC
  */
 HWTEST_F(ImeUsageReporterTest, Init_002, TestSize.Level0)
 {
     int ret = reporter_->Init(DB_DIR);
     EXPECT_EQ(ret, 0);
-    // lastReportTime_ defaults to 0, which is before currentPeriodStart
-    // so shouldReportLastData_ should be true
-    EXPECT_TRUE(reporter_->shouldReportLastData_);
+    // lastReportTime_ defaults to 0, which triggers immediate report
+    // After report, lastReportTime_ should be updated to non-zero
+    EXPECT_NE(reporter_->lastReportTime_, 0u);
 }
 
 // ==================== SetEventHandler ====================
@@ -223,20 +223,6 @@ HWTEST_F(ImeUsageReporterTest, OnTimeout_002, TestSize.Level0)
 // ==================== ReportDailyEvent ====================
 
 /**
- * @tc.name: ImeUsageReporter_ReportDailyEvent_Scenario1
- * @tc.desc: Scenario 1 - crash/reboot recovery triggers report
- * @tc.type: FUNC
- */
-HWTEST_F(ImeUsageReporterTest, ReportDailyEvent_Scenario1, TestSize.Level0)
-{
-    int ret = reporter_->Init(DB_DIR);
-    EXPECT_EQ(ret, 0);
-    reporter_->shouldReportLastData_ = true;
-    reporter_->ReportDailyEvent();
-    EXPECT_FALSE(reporter_->shouldReportLastData_);
-}
-
-/**
  * @tc.name: ImeUsageReporter_ReportDailyEvent_Scenario2
  * @tc.desc: Scenario 2 - time jumped forward
  * @tc.type: FUNC
@@ -245,7 +231,6 @@ HWTEST_F(ImeUsageReporterTest, ReportDailyEvent_Scenario2, TestSize.Level0)
 {
     int ret = reporter_->Init(DB_DIR);
     EXPECT_EQ(ret, 0);
-    reporter_->shouldReportLastData_ = false;
     // Set nextReportTime_ far in the past to simulate time jump
     reporter_->nextReportTime_ = reporter_->GetNowMs() - MILLISECS_PER_DAY * 2;
     reporter_->lastReportTime_ = reporter_->nextReportTime_ - MILLISECS_PER_DAY;
@@ -262,7 +247,6 @@ HWTEST_F(ImeUsageReporterTest, ReportDailyEvent_Scenario3, TestSize.Level0)
 {
     int ret = reporter_->Init(DB_DIR);
     EXPECT_EQ(ret, 0);
-    reporter_->shouldReportLastData_ = false;
     // Set nextReportTime_ far in the future to simulate backward clock
     reporter_->nextReportTime_ = reporter_->GetNowMs() + MILLISECS_PER_DAY * 2;
     reporter_->ReportDailyEvent();
@@ -278,7 +262,6 @@ HWTEST_F(ImeUsageReporterTest, ReportDailyEvent_Scenario4, TestSize.Level0)
 {
     int ret = reporter_->Init(DB_DIR);
     EXPECT_EQ(ret, 0);
-    reporter_->shouldReportLastData_ = false;
     // Set nextReportTime_ to a past time (but within 1 day)
     reporter_->nextReportTime_ = reporter_->GetNowMs() - 1;
     reporter_->lastReportTime_ = reporter_->nextReportTime_ - MILLISECS_PER_DAY;
@@ -317,43 +300,6 @@ HWTEST_F(ImeUsageReporterTest, InnerReportDailyEvent_002, TestSize.Level0)
     reporter_->InnerReportDailyEvent();
     // Should have reported and updated lastReportTime_
     EXPECT_NE(reporter_->lastReportTime_, 0u);
-}
-
-// ==================== ReportCatchupDays ====================
-
-/**
- * @tc.name: ImeUsageReporter_ReportCatchupDays_001
- * @tc.desc: ReportCatchupDays with no data returns 0
- * @tc.type: FUNC
- */
-HWTEST_F(ImeUsageReporterTest, ReportCatchupDays_001, TestSize.Level0)
-{
-    int ret = reporter_->Init(DB_DIR);
-    EXPECT_EQ(ret, 0);
-    uint64_t dayStart = DayStartFromMs(GetToday0ClockMs());
-    uint32_t days = reporter_->ReportCatchupDays(dayStart, dayStart + MILLISECS_PER_DAY);
-    EXPECT_EQ(days, 0u);
-}
-
-/**
- * @tc.name: ImeUsageReporter_ReportCatchupDays_002
- * @tc.desc: ReportCatchupDays with data returns days reported
- * @tc.type: FUNC
- */
-HWTEST_F(ImeUsageReporterTest, ReportCatchupDays_002, TestSize.Level0)
-{
-    int ret = reporter_->Init(DB_DIR);
-    EXPECT_EQ(ret, 0);
-    // Use UTC-aligned day boundaries so QueryActiveDays' (happen_time / MILLISECS_PER_DAY)
-    // calculation matches the firstReportDayStart parameter
-    uint64_t now = reporter_->GetNowMs();
-    uint64_t todayUtc = (now / MILLISECS_PER_DAY) * MILLISECS_PER_DAY;
-    uint64_t yesterdayUtc = todayUtc - MILLISECS_PER_DAY;
-    InsertSessionForDay(
-        reporter_->eventFactory_->GetDbHelper(), TEST_BUNDLE, yesterdayUtc, 3600000, 7200000, UNFOLDED_PORTRAIT);
-
-    uint32_t days = reporter_->ReportCatchupDays(yesterdayUtc, todayUtc);
-    EXPECT_GE(days, 1u);
 }
 
 // ==================== ReportSingleDay ====================
@@ -435,17 +381,16 @@ HWTEST_F(ImeUsageReporterTest, OnScreenStatusChanged_001, TestSize.Level0)
 
 /**
  * @tc.name: ImeUsageReporter_OnBootCompleted_001
- * @tc.desc: OnBootCompleted sets shouldReportLastData when needed
+ * @tc.desc: OnBootCompleted with no prior report triggers immediate daily report
  * @tc.type: FUNC
  */
 HWTEST_F(ImeUsageReporterTest, OnBootCompleted_001, TestSize.Level0)
 {
     int ret = reporter_->Init(DB_DIR);
     EXPECT_EQ(ret, 0);
-    reporter_->shouldReportLastData_ = false;
     reporter_->OnBootCompleted();
-    // lastReportTime_ was 0 (no prior report), so shouldReportLastData_ should be true
-    EXPECT_TRUE(reporter_->shouldReportLastData_);
+    // lastReportTime_ was 0 (no prior report), should trigger immediate report
+    EXPECT_NE(reporter_->lastReportTime_, 0u);
 }
 
 // ==================== PersistLastReportTime / LoadLastReportTime ====================
@@ -665,15 +610,13 @@ HWTEST_F(ImeUsageReporterTest, ReportDailyEvent_Scenario2_NoReport, TestSize.Lev
 {
     int ret = reporter_->Init(DB_DIR);
     EXPECT_EQ(ret, 0);
-    reporter_->shouldReportLastData_ = false;
     uint64_t now = reporter_->GetNowMs();
-    // Set nextReportTime_ far in the past (> 1 day gap)
+    // Set nextReportTime_ far in the past (> 1 day gap) triggers forward jump path
+    // which calls InnerReportDailyEvent directly (no conditional check)
     reporter_->nextReportTime_ = now - MILLISECS_PER_DAY * 2;
-    // Set lastReportTime_ to a recent time (>= currentPeriodStart)
-    uint64_t currentPeriodStart = reporter_->GetCurrentPeriodStartMs();
-    reporter_->lastReportTime_ = currentPeriodStart + 1;
+    reporter_->lastReportTime_ = now - MILLISECS_PER_DAY * 3;
     reporter_->ReportDailyEvent();
-    // Should not trigger InnerReportDailyEvent because lastReportTime_ >= currentPeriodStart
+    // Should have triggered a report via forward jump path
 }
 
 // ==================== ReportDailyEvent scenario3 triggers report ====================
@@ -687,32 +630,13 @@ HWTEST_F(ImeUsageReporterTest, ReportDailyEvent_Scenario3_TriggersReport, TestSi
 {
     int ret = reporter_->Init(DB_DIR);
     EXPECT_EQ(ret, 0);
-    reporter_->shouldReportLastData_ = false;
     // Set nextReportTime_ far in the future (clock backward scenario)
     uint64_t now = reporter_->GetNowMs();
     reporter_->nextReportTime_ = now + MILLISECS_PER_DAY * 2;
-    // Set lastReportTime_ to an old time (< currentPeriodStart)
     reporter_->lastReportTime_ = now - MILLISECS_PER_DAY * 5;
     reporter_->ReportDailyEvent();
-    // Should have updated lastReportTime_ to now and triggered report
+    // Should have reset lastReportTime_ to now and recalculated nextReportTime_
     EXPECT_NE(reporter_->lastReportTime_, now - MILLISECS_PER_DAY * 5);
-}
-
-// ==================== ReportCatchupDays null checks ====================
-
-/**
- * @tc.name: ImeUsageReporter_ReportCatchupDays_003
- * @tc.desc: ReportCatchupDays with null eventFactory_ returns 0
- * @tc.type: FUNC
- */
-HWTEST_F(ImeUsageReporterTest, ReportCatchupDays_003, TestSize.Level0)
-{
-    int ret = reporter_->Init(DB_DIR);
-    EXPECT_EQ(ret, 0);
-    reporter_->eventFactory_ = nullptr;
-    uint64_t dayStart = DayStartFromMs(GetToday0ClockMs());
-    uint32_t days = reporter_->ReportCatchupDays(dayStart, dayStart + MILLISECS_PER_DAY);
-    EXPECT_EQ(days, 0u);
 }
 
 // ==================== ReportSingleDay null check ====================
@@ -811,7 +735,7 @@ HWTEST_F(ImeUsageReporterTest, OnScreenStatusChanged_NullCacher, TestSize.Level0
 
 /**
  * @tc.name: ImeUsageReporter_OnBootCompleted_002
- * @tc.desc: OnBootCompleted with lastReportTime_ >= currentPeriodStart does not set shouldReport
+ * @tc.desc: OnBootCompleted with lastReportTime_ >= currentPeriodStart does not trigger report
  * @tc.type: FUNC
  */
 HWTEST_F(ImeUsageReporterTest, OnBootCompleted_002, TestSize.Level0)
@@ -821,12 +745,12 @@ HWTEST_F(ImeUsageReporterTest, OnBootCompleted_002, TestSize.Level0)
     // Set lastReportTime_ to a recent time
     uint64_t currentPeriodStart = reporter_->GetCurrentPeriodStartMs();
     reporter_->lastReportTime_ = currentPeriodStart + 1000;
-    reporter_->shouldReportLastData_ = false;
     // Persist so LoadLastReportTime returns a recent value
     reporter_->PersistLastReportTime();
+    uint64_t beforeTime = reporter_->lastReportTime_;
     reporter_->OnBootCompleted();
-    // lastReportTime_ was loaded as recent, shouldReportLastData_ should stay false
-    EXPECT_FALSE(reporter_->shouldReportLastData_);
+    // lastReportTime_ was loaded as recent, no report needed
+    EXPECT_EQ(reporter_->lastReportTime_, beforeTime);
 }
 
 // ==================== PersistLastReportTime null check ====================
@@ -1063,35 +987,11 @@ HWTEST_F(ImeUsageReporterTest, LoadLastReportTime_EmptyValue, TestSize.Level0)
     EXPECT_EQ(loaded, 0u);
 }
 
-// ==================== ReportCatchupDays: dayStart out of range ====================
-
-/**
- * @tc.name: ImeUsageReporter_ReportCatchupDays_004
- * @tc.desc: ReportCatchupDays skips days outside [firstReportDayStart, today0Time)
- * @tc.type: FUNC
- */
-HWTEST_F(ImeUsageReporterTest, ReportCatchupDays_004, TestSize.Level0)
-{
-    int ret = reporter_->Init(DB_DIR);
-    EXPECT_EQ(ret, 0);
-    // Use UTC-aligned day boundaries
-    uint64_t now = reporter_->GetNowMs();
-    uint64_t todayUtc = (now / MILLISECS_PER_DAY) * MILLISECS_PER_DAY;
-    uint64_t yesterdayUtc = todayUtc - MILLISECS_PER_DAY;
-    InsertSessionForDay(
-        reporter_->eventFactory_->GetDbHelper(), TEST_BUNDLE, yesterdayUtc, 3600000, 7200000, UNFOLDED_PORTRAIT);
-
-    // Set firstReportDayStart to todayUtc, so yesterdayUtc < firstReportDayStart is skipped
-    uint32_t days = reporter_->ReportCatchupDays(todayUtc, todayUtc + MILLISECS_PER_DAY);
-    // Yesterday's data should be skipped since dayStart < firstReportDayStart
-    EXPECT_EQ(days, 0u);
-}
-
 // ==================== OnBootCompleted: lastReportTime_ >= currentPeriodStart ====================
 
 /**
  * @tc.name: ImeUsageReporter_OnBootCompleted_003
- * @tc.desc: OnBootCompleted with lastReportTime_ >= currentPeriodStart does not set shouldReportLastData
+ * @tc.desc: OnBootCompleted with lastReportTime_ >= currentPeriodStart does not trigger report
  * @tc.type: FUNC
  */
 HWTEST_F(ImeUsageReporterTest, OnBootCompleted_003, TestSize.Level0)
@@ -1102,9 +1002,10 @@ HWTEST_F(ImeUsageReporterTest, OnBootCompleted_003, TestSize.Level0)
     uint64_t currentPeriodStart = reporter_->GetCurrentPeriodStartMs();
     reporter_->lastReportTime_ = currentPeriodStart + 1;
     reporter_->PersistLastReportTime();
-    reporter_->shouldReportLastData_ = false;
+    uint64_t beforeTime = reporter_->lastReportTime_;
     reporter_->OnBootCompleted();
-    EXPECT_FALSE(reporter_->shouldReportLastData_);
+    // No report needed since lastReportTime_ >= currentPeriodStart
+    EXPECT_EQ(reporter_->lastReportTime_, beforeTime);
 }
 
 // ==================== GetNextReportTimeMs: today0 == 0 fallback ====================
@@ -1137,7 +1038,6 @@ HWTEST_F(ImeUsageReporterTest, ReportDailyEvent_Scenario4_NoReport, TestSize.Lev
 {
     int ret = reporter_->Init(DB_DIR);
     EXPECT_EQ(ret, 0);
-    reporter_->shouldReportLastData_ = false;
     // Set nextReportTime_ far in the future
     reporter_->nextReportTime_ = reporter_->GetNowMs() + MILLISECS_PER_DAY;
     uint64_t beforeTime = reporter_->lastReportTime_;
@@ -1147,11 +1047,11 @@ HWTEST_F(ImeUsageReporterTest, ReportDailyEvent_Scenario4_NoReport, TestSize.Lev
     EXPECT_EQ(reporter_->lastReportTime_, beforeTime);
 }
 
-// ==================== Init: shouldReportLastData_ stays false when lastReportTime_ is recent ====================
+// ==================== Init: no immediate report when lastReportTime_ is recent ====================
 
 /**
  * @tc.name: ImeUsageReporter_Init_005
- * @tc.desc: Init with existing recent lastReportTime does not set shouldReportLastData
+ * @tc.desc: Init with existing recent lastReportTime does not trigger immediate report
  * @tc.type: FUNC
  */
 HWTEST_F(ImeUsageReporterTest, Init_005, TestSize.Level0)
@@ -1164,12 +1064,12 @@ HWTEST_F(ImeUsageReporterTest, Init_005, TestSize.Level0)
     reporter_->PersistLastReportTime();
     reporter_.reset();
 
-    // Re-init: should load the recent lastReportTime
+    // Re-init: should load the recent lastReportTime and not trigger report
     reporter_ = std::make_unique<ImeUsageReporter>();
     ret = reporter_->Init(DB_DIR);
     EXPECT_EQ(ret, 0);
-    // lastReportTime_ was recent, so shouldReportLastData_ should be false
-    EXPECT_FALSE(reporter_->shouldReportLastData_);
+    // lastReportTime_ should be loaded as recent (>= currentPeriodStart)
+    EXPECT_GE(reporter_->lastReportTime_, currentPeriodStart);
 }
 
 } // namespace MiscServices

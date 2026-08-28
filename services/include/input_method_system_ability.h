@@ -17,7 +17,7 @@
 #define SERVICES_INCLUDE_INPUT_METHOD_SYSTEM_ABILITY_H
 
 #include "identity_checker_impl.h"
-#include "ime_usage_reporter.h.h"
+#include "ime_usage_reporter.h"
 #include "ime_info_inquirer.h"
 #include "input_method_system_ability_stub.h"
 #include "input_method_types.h"

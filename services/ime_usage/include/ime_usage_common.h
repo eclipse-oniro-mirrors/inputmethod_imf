@@ -12,18 +12,20 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
- 
+
 #ifndef SERVICES_IME_USAGE_INCLUDE_IME_USAGE_COMMON_H
 #define SERVICES_IME_USAGE_INCLUDE_IME_USAGE_COMMON_H
- 
+
+#include <array>
 #include <chrono>
-#include <ctime>
 #include <cstdint>
+#include <ctime>
 #include <map>
 #include <string>
- 
+
 namespace OHOS {
 namespace MiscServices {
+
 // Event IDs for IME usage tracking
 namespace ImeUsageEventId {
 inline constexpr int32_t EVENT_INPUT_START = 1001;
@@ -31,19 +33,19 @@ inline constexpr int32_t EVENT_INPUT_STOP = 1002;
 inline constexpr int32_t EVENT_INPUT_STATUS_CHANGED = 1003;
 inline constexpr int32_t EVENT_COUNT_DURATION = 1004;
 } // namespace ImeUsageEventId
- 
+
 // Screen status base values (directly mapped from FoldDisplayMode)
 namespace ImeFoldStatusBase {
-inline constexpr int8_t UNFOLDED = 1;  // 非折叠机
-inline constexpr int8_t FOLD = 2;      // F态 (MAIN)
-inline constexpr int8_t EXPAND = 3;    // M态 (FULL/COORDINATION)
-inline constexpr int8_t G = 4;         // G态 (GLOBAL_FULL)
-inline constexpr int8_t N = 5;         // N态 (N_MAIN)
-inline constexpr int8_t LM = 6;        // LM态 (L_FULL)
+inline constexpr int8_t UNFOLDED = 1; // 非折叠机
+inline constexpr int8_t FOLD = 2;     // F态 (MAIN)
+inline constexpr int8_t EXPAND = 3;   // M态 (FULL/COORDINATION)
+inline constexpr int8_t G = 4;        // G态 (GLOBAL_FULL)
+inline constexpr int8_t N = 5;        // N态 (N_MAIN)
+inline constexpr int8_t LM = 6;       // LM态 (L_FULL)
 inline constexpr int8_t LANDSCAPE = 1;
 inline constexpr int8_t PORTRAIT = 2;
 } // namespace ImeFoldStatusBase
- 
+
 // Screen status encoding: screenStatus = foldStatus * 10 + vhMode
 //
 // foldStatus (derived from FoldDisplayMode):
@@ -81,7 +83,41 @@ inline constexpr int N_PORTRAIT = N * 10 + PORTRAIT;
 inline constexpr int LM_LANDSCAPE = LM * 10 + LANDSCAPE;
 inline constexpr int LM_PORTRAIT = LM * 10 + PORTRAIT;
 } // namespace ImeScreenStatus
- 
+
+// Index into the durations array in ImeUsageInfo.
+// Order matches DURATION_COLUMNS in ime_usage_db_helper.cpp.
+enum DurationIndex : size_t {
+    IDX_UNFOLDED_LANDSCAPE = 0, // foldStatus=1, vhMode=1
+    IDX_UNFOLDED_PORTRAIT = 1,  // foldStatus=1, vhMode=2
+    IDX_FOLD_LANDSCAPE = 2,     // foldStatus=2, vhMode=1
+    IDX_FOLD_PORTRAIT = 3,      // foldStatus=2, vhMode=2
+    IDX_EXPAND_LANDSCAPE = 4,   // foldStatus=3, vhMode=1
+    IDX_EXPAND_PORTRAIT = 5,    // foldStatus=3, vhMode=2
+    IDX_G_LANDSCAPE = 6,        // foldStatus=4, vhMode=1
+    IDX_G_PORTRAIT = 7,         // foldStatus=4, vhMode=2
+    IDX_N_LANDSCAPE = 8,        // foldStatus=5, vhMode=1
+    IDX_N_PORTRAIT = 9,         // foldStatus=5, vhMode=2
+    IDX_LM_LANDSCAPE = 10,      // foldStatus=6, vhMode=1
+    IDX_LM_PORTRAIT = 11,       // foldStatus=6, vhMode=2
+    DURATION_COUNT = 12
+};
+
+// Convert a screenStatus code (foldStatus*10 + vhMode) to DurationIndex.
+// Returns DURATION_COUNT for invalid screenStatus values.
+inline size_t ScreenStatusToIndex(int32_t screenStatus)
+{
+    int32_t foldStatus = screenStatus / 10;
+    int32_t vhMode = screenStatus % 10;
+    if (foldStatus < 1 || foldStatus > 6 || vhMode < 1 || vhMode > 2) {
+        return DURATION_COUNT;
+    }
+    return static_cast<size_t>((foldStatus - 1) * 2 + (vhMode - 1));
+}
+
+// Screen status value indicating IME is unavailable for the current display mode
+// (e.g., SUB or V_MAIN fold modes where the IME panel cannot be shown).
+inline constexpr int32_t IME_SCREEN_STATUS_UNAVAILABLE = -1;
+
 // DB table field names
 namespace ImeUsageTable {
 inline constexpr char FIELD_ID[] = "id";
@@ -105,7 +141,7 @@ inline constexpr char FIELD_LM_PORTRAIT_DURATION[] = "lm_portrait_duration";
 inline constexpr char FIELD_LM_LANDSCAPE_DURATION[] = "lm_landscape_duration";
 inline constexpr char FIELD_SHOW_COUNT[] = "show_count";
 } // namespace ImeUsageTable
- 
+
 // HiSysEvent field keys for reporting
 namespace ImeUsageEventSpace {
 inline constexpr char EVENT_NAME[] = "IME_USAGE_DURATION";
@@ -126,7 +162,7 @@ inline constexpr char KEY_OF_USAGE[] = "USAGE";
 inline constexpr char KEY_OF_DATE[] = "DATE";
 inline constexpr char KEY_OF_SHOW_COUNT[] = "TOTAL_SHOW_NUM";
 } // namespace ImeUsageEventSpace
- 
+
 inline constexpr uint32_t MAX_IME_USAGE_SIZE = 100;
 inline constexpr uint32_t DATA_KEEP_DAY = 3;
 inline constexpr uint64_t MILLISECS_PER_DAY = 24ULL * 60 * 60 * 1000;
@@ -134,17 +170,17 @@ inline constexpr const char *IME_USAGE_DB_NAME = "ime_usage_log.db";
 inline constexpr const char *IME_USAGE_DB_TABLE = "ime_usage_events";
 inline constexpr const char *IME_USAGE_STATE_TABLE = "ime_usage_report_state";
 inline constexpr const char *STATE_KEY_LAST_REPORT_TIME = "last_report_time";
- 
+
 // Single event record written to DB
 struct ImeEventRecord {
     int32_t rawid = 0;
-    int64_t ts = 0;           // boot-relative timestamp for duration calculation
-    int64_t happenTime = 0;   // wall-clock timestamp for date-range queries
+    int64_t ts = 0;         // boot-relative timestamp for duration calculation
+    int64_t happenTime = 0; // wall-clock timestamp for date-range queries
     std::string bundleName;
     int32_t preScreenStatus = 0;
     int32_t screenStatus = 0;
 };
- 
+
 // Raw event read from DB for foreground recovery
 struct ImeUsageRawEvent {
     int64_t id = 0;
@@ -155,58 +191,37 @@ struct ImeUsageRawEvent {
     int32_t screenStatusBefore = 0;
     int32_t screenStatusAfter = 0;
 };
- 
+
 // Aggregated usage info per IME package
 struct ImeUsageInfo {
     std::string package;
-    uint32_t foldPortraitDuration = 0;
-    uint32_t foldLandscapeDuration = 0;
-    uint32_t expandPortraitDuration = 0;
-    uint32_t expandLandscapeDuration = 0;
-    uint32_t gPortraitDuration = 0;
-    uint32_t gLandscapeDuration = 0;
-    uint32_t unFoldedPortraitDuration = 0;
-    uint32_t unFoldedLandscapeDuration = 0;
-    uint32_t nPortraitDuration = 0;
-    uint32_t nLandscapeDuration = 0;
-    uint32_t lmPortraitDuration = 0;
-    uint32_t lmLandscapeDuration = 0;
+    std::array<uint32_t, DURATION_COUNT> durations {};
     uint32_t showCount = 0;
     uint64_t usage = 0;
- 
+
     ImeUsageInfo &operator+=(const ImeUsageInfo &other)
     {
-        foldPortraitDuration += other.foldPortraitDuration;
-        foldLandscapeDuration += other.foldLandscapeDuration;
-        expandPortraitDuration += other.expandPortraitDuration;
-        expandLandscapeDuration += other.expandLandscapeDuration;
-        gPortraitDuration += other.gPortraitDuration;
-        gLandscapeDuration += other.gLandscapeDuration;
-        unFoldedPortraitDuration += other.unFoldedPortraitDuration;
-        unFoldedLandscapeDuration += other.unFoldedLandscapeDuration;
-        nPortraitDuration += other.nPortraitDuration;
-        nLandscapeDuration += other.nLandscapeDuration;
-        lmPortraitDuration += other.lmPortraitDuration;
-        lmLandscapeDuration += other.lmLandscapeDuration;
+        for (size_t i = 0; i < DURATION_COUNT; i++) {
+            durations[i] += other.durations[i];
+        }
         showCount += other.showCount;
         usage = GetAppUsage();
         return *this;
     }
- 
+
     uint64_t GetAppUsage() const
     {
-        return static_cast<uint64_t>(foldPortraitDuration) + foldLandscapeDuration +
-               expandPortraitDuration + expandLandscapeDuration +
-               gPortraitDuration + gLandscapeDuration +
-               unFoldedPortraitDuration + unFoldedLandscapeDuration +
-               nPortraitDuration + nLandscapeDuration +
-               lmPortraitDuration + lmLandscapeDuration;
+        uint64_t total = 0;
+        for (size_t i = 0; i < DURATION_COUNT; i++) {
+            total += durations[i];
+        }
+        return total;
     }
 };
- 
+
 // Map from screen status code to duration (used in DB read/write)
 using DurationMap = std::map<int32_t, uint64_t>;
- 
+
 inline uint64_t ZeroClockMsFromTimeT(std::time_t t)
 {
     struct tm localTm = {};
@@ -217,19 +232,36 @@ inline uint64_t ZeroClockMsFromTimeT(std::time_t t)
     localTm.tm_min = 0;
     localTm.tm_sec = 0;
     return static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::from_time_t(std::mktime(&localTm)).time_since_epoch()).count());
+        std::chrono::system_clock::from_time_t(std::mktime(&localTm)).time_since_epoch())
+                                     .count());
 }
- 
+
 inline uint64_t GetToday0ClockMs()
 {
     return ZeroClockMsFromTimeT(std::chrono::system_clock::to_time_t(std::chrono::system_clock::now()));
 }
- 
+
 inline uint64_t DayStartFromMs(uint64_t ms)
 {
     return ZeroClockMsFromTimeT(static_cast<std::time_t>(ms / 1000));
 }
- 
+
+// Encode foldStatus and vhMode into a single screenStatus code.
+// Constraint: foldStatus must be in [1, 9] for correct decoding.
+// foldStatus=0 is reserved for "uninitialized" and should not be encoded.
+inline int32_t EncodeScreenStatus(int32_t foldStatus, int32_t vhMode)
+{
+    return foldStatus * 10 + vhMode;
+}
+
+// Decode a screenStatus code back into foldStatus and vhMode.
+// Inverse of EncodeScreenStatus. Only valid when foldStatus was in [1, 9].
+inline void DecodeScreenStatus(int32_t screenStatus, int32_t &foldStatus, int32_t &vhMode)
+{
+    foldStatus = screenStatus / 10;
+    vhMode = screenStatus % 10;
+}
+
 inline std::string FormatDateStr(uint64_t dayStartMs)
 {
     std::time_t t = static_cast<std::time_t>(dayStartMs / 1000);
@@ -241,7 +273,8 @@ inline std::string FormatDateStr(uint64_t dayStartMs)
     }
     return "19700101";
 }
+
 } // namespace MiscServices
 } // namespace OHOS
- 
+
 #endif // SERVICES_IME_USAGE_INCLUDE_IME_USAGE_COMMON_H

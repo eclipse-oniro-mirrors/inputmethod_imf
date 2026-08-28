@@ -2232,7 +2232,7 @@ int32_t InputMethodSystemAbility::OnPackageUpdated(int32_t userId, const std::st
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
         UserSessionManager::GetInstance().AddUserSession(userId);
-        SetupImeCallbacks(userId);
+        SetupImeUsageCallbacks(userId);
     }
     session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
@@ -2276,7 +2276,7 @@ void InputMethodSystemAbility::OnScreenUnlock(const Message *msg)
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
         UserSessionManager::GetInstance().AddUserSession(userId);
-        SetupImeCallbacks(userId);
+        SetupImeUsageCallbacks(userId);
     }
     session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
@@ -2301,7 +2301,7 @@ void InputMethodSystemAbility::OnScreenLock(const Message *msg)
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
         UserSessionManager::GetInstance().AddUserSession(userId);
-        SetupImeCallbacks(userId);
+        SetupImeUsageCallbacks(userId);
     }
     session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
@@ -2589,7 +2589,6 @@ void InputMethodSystemAbility::InitImeUsageReporter()
         return;
     }
     imeUsageReporter_->SetEventHandler(serviceHandler_);
-
     // Set IME usage callbacks on any already-existing sessions
     for (const auto &[userId, session] : UserSessionManager::GetInstance().GetUserSessions()) {
         SetupImeUsageCallbacks(userId);
