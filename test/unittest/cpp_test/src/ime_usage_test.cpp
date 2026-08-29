@@ -379,7 +379,7 @@ HWTEST_F(ImeUsageEventCacherTest, ProcessScreenChangedEvent_006, TestSize.Level0
 
 /**
  * @tc.name: ImeUsageEventCacher_RecoverActiveSession_001
- * @tc.desc: RecoverActiveSession resets in-memory state
+ * @tc.desc: RecoverActiveSession recovers active session from DB when last event is START
  * @tc.type: FUNC
  */
 HWTEST_F(ImeUsageEventCacherTest, RecoverActiveSession_001, TestSize.Level0)
@@ -388,6 +388,34 @@ HWTEST_F(ImeUsageEventCacherTest, RecoverActiveSession_001, TestSize.Level0)
     EXPECT_TRUE(cacher_->isKeyboardShowing_);
     EXPECT_EQ(cacher_->currentImeBundle_, TEST_BUNDLE);
 
+    // Reset in-memory state to simulate service restart
+    cacher_->isKeyboardShowing_ = false;
+    cacher_->currentImeBundle_.clear();
+
+    // RecoverActiveSession queries DB, finds last event is START,
+    // and restores the active session
+    cacher_->RecoverActiveSession();
+    EXPECT_TRUE(cacher_->isKeyboardShowing_);
+    EXPECT_EQ(cacher_->currentImeBundle_, TEST_BUNDLE);
+}
+
+/**
+ * @tc.name: ImeUsageEventCacher_RecoverActiveSession_002
+ * @tc.desc: RecoverActiveSession does not recover when last event is STOP/COUNT
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, RecoverActiveSession_002, TestSize.Level0)
+{
+    cacher_->OnImeBind(TEST_BUNDLE);
+    cacher_->OnImeUnbind(TEST_BUNDLE);
+    EXPECT_FALSE(cacher_->isKeyboardShowing_);
+
+    // Reset in-memory state to simulate service restart
+    cacher_->isKeyboardShowing_ = false;
+    cacher_->currentImeBundle_.clear();
+
+    // RecoverActiveSession queries DB, finds last event is not START/STATUS_CHANGED,
+    // so it does not recover an active session
     cacher_->RecoverActiveSession();
     EXPECT_FALSE(cacher_->isKeyboardShowing_);
     EXPECT_TRUE(cacher_->currentImeBundle_.empty());
@@ -820,9 +848,9 @@ HWTEST_F(ImeUsageEventCacherTest, GetAppUsage_001, TestSize.Level0)
     ImeUsageInfo info;
     EXPECT_EQ(info.GetAppUsage(), 0u);
     // All individual duration fields should also be zero
-    EXPECT_EQ(info.foldPortraitDuration, 0u);
-    EXPECT_EQ(info.expandPortraitDuration, 0u);
-    EXPECT_EQ(info.unFoldedPortraitDuration, 0u);
+    EXPECT_EQ(info.durations[IDX_FOLD_PORTRAIT], 0u);
+    EXPECT_EQ(info.durations[IDX_EXPAND_PORTRAIT], 0u);
+    EXPECT_EQ(info.durations[IDX_UNFOLDED_PORTRAIT], 0u);
     EXPECT_EQ(info.showCount, 0u);
 }
 
@@ -834,9 +862,9 @@ HWTEST_F(ImeUsageEventCacherTest, GetAppUsage_001, TestSize.Level0)
 HWTEST_F(ImeUsageEventCacherTest, GetAppUsage_002, TestSize.Level0)
 {
     ImeUsageInfo info;
-    info.expandPortraitDuration = 100;
-    info.foldLandscapeDuration = 200;
-    info.gPortraitDuration = 300;
+    info.durations[IDX_EXPAND_PORTRAIT] = 100;
+    info.durations[IDX_FOLD_LANDSCAPE] = 200;
+    info.durations[IDX_G_PORTRAIT] = 300;
     EXPECT_EQ(info.GetAppUsage(), 600u);
 }
 
@@ -848,18 +876,18 @@ HWTEST_F(ImeUsageEventCacherTest, GetAppUsage_002, TestSize.Level0)
 HWTEST_F(ImeUsageEventCacherTest, OperatorPlus_001, TestSize.Level0)
 {
     ImeUsageInfo a;
-    a.expandPortraitDuration = 100;
+    a.durations[IDX_EXPAND_PORTRAIT] = 100;
     a.showCount = 1;
     // Note: usage is NOT manually set; GetAppUsage() sums all duration fields
 
     ImeUsageInfo b;
-    b.expandPortraitDuration = 200;
-    b.foldPortraitDuration = 300;
+    b.durations[IDX_EXPAND_PORTRAIT] = 200;
+    b.durations[IDX_FOLD_PORTRAIT] = 300;
     b.showCount = 2;
 
     a += b;
-    EXPECT_EQ(a.expandPortraitDuration, 300u);
-    EXPECT_EQ(a.foldPortraitDuration, 300u);
+    EXPECT_EQ(a.durations[IDX_EXPAND_PORTRAIT], 300u);
+    EXPECT_EQ(a.durations[IDX_FOLD_PORTRAIT], 300u);
     EXPECT_EQ(a.showCount, 3u);
     // operator+= recalculates usage = GetAppUsage() = sum of all 12 duration fields
     // a: expandPortrait=300 + foldPortrait=300 = 600
@@ -1062,7 +1090,7 @@ HWTEST_F(ImeUsageEventCacherTest, DbHelper_QueryStatisticEventsInPeriod_002, Tes
     ASSERT_EQ(infos.size(), 1u);
     auto it = infos.find(TEST_BUNDLE);
     ASSERT_NE(it, infos.end());
-    EXPECT_EQ(it->second.unFoldedPortraitDuration, 3000u);
+    EXPECT_EQ(it->second.durations[IDX_UNFOLDED_PORTRAIT], 3000u);
     EXPECT_EQ(it->second.showCount, 1u); // 1 INPUT_START event
 }
 
@@ -1098,8 +1126,8 @@ HWTEST_F(ImeUsageEventCacherTest, DbHelper_QueryStatisticEventsInPeriod_003, Tes
     std::unordered_map<std::string, ImeUsageInfo> infos;
     dbHelper_->QueryStatisticEventsInPeriod(0, 10000, infos);
     EXPECT_EQ(infos.size(), 2u);
-    EXPECT_EQ(infos[TEST_BUNDLE].unFoldedPortraitDuration, 2000u);
-    EXPECT_EQ(infos[TEST_BUNDLE2].expandPortraitDuration, 4000u);
+    EXPECT_EQ(infos[TEST_BUNDLE].durations[IDX_UNFOLDED_PORTRAIT], 2000u);
+    EXPECT_EQ(infos[TEST_BUNDLE2].durations[IDX_EXPAND_PORTRAIT], 4000u);
 }
 
 // ==================== DbHelper: QueryFinalEventInfo ====================
@@ -1187,7 +1215,7 @@ HWTEST_F(ImeUsageEventCacherTest, DbHelper_QueryForegroundImeInfo_001, TestSize.
     uint64_t endTime = 5000;
     dbHelper_->QueryForegroundImeInfo(startTime, endTime, UNFOLDED_PORTRAIT, info);
     // When no events found, the entire time range is treated as foreground duration
-    EXPECT_EQ(info.unFoldedPortraitDuration, static_cast<uint32_t>(endTime - startTime));
+    EXPECT_EQ(info.durations[IDX_UNFOLDED_PORTRAIT], static_cast<uint32_t>(endTime - startTime));
 }
 
 /**
@@ -1214,7 +1242,7 @@ HWTEST_F(ImeUsageEventCacherTest, DbHelper_QueryForegroundImeInfo_002, TestSize.
     info.showCount = 0;
     dbHelper_->QueryForegroundImeInfo(dayStart, dayEnd, UNFOLDED_PORTRAIT, info);
     // Duration from dayStart to happenTime with screenStatus, plus from happenTime to dayEnd
-    EXPECT_GT(info.unFoldedPortraitDuration, 0u);
+    EXPECT_GT(info.durations[IDX_UNFOLDED_PORTRAIT], 0u);
 }
 
 /**
@@ -1250,8 +1278,8 @@ HWTEST_F(ImeUsageEventCacherTest, DbHelper_QueryForegroundImeInfo_003, TestSize.
     info.showCount = 0;
     dbHelper_->QueryForegroundImeInfo(dayStart, dayEnd, EXPAND_PORTRAIT, info);
     // Should have both UNFOLDED_PORTRAIT and EXPAND_PORTRAIT durations
-    EXPECT_GT(info.unFoldedPortraitDuration, 0u);
-    EXPECT_GT(info.expandPortraitDuration, 0u);
+    EXPECT_GT(info.durations[IDX_UNFOLDED_PORTRAIT], 0u);
+    EXPECT_GT(info.durations[IDX_EXPAND_PORTRAIT], 0u);
 }
 
 // ==================== DbHelper: SaveReportState / LoadReportState ====================
@@ -1557,7 +1585,7 @@ HWTEST_F(ImeUsageEventCacherTest, DbHelper_QueryForegroundImeInfo_NullRdbStore, 
     info.package = TEST_BUNDLE;
     dbHelper_->QueryForegroundImeInfo(0, MILLISECS_PER_DAY, UNFOLDED_PORTRAIT, info);
     // Should not crash; info should remain unchanged (no duration added)
-    EXPECT_EQ(info.unFoldedPortraitDuration, 0u);
+    EXPECT_EQ(info.durations[IDX_UNFOLDED_PORTRAIT], 0u);
 }
 
 /**
@@ -1923,18 +1951,15 @@ HWTEST_F(ImeUsageEventCacherTest, GetWallClockMs_001, TestSize.Level0)
 
 /**
  * @tc.name: ImeUsageEventCacher_GetToday0ClockMs_001
- * @tc.desc: GetToday0ClockMs returns non-zero value consistent with global function
+ * @tc.desc: GetToday0ClockMs global function returns non-zero value
  * @tc.type: FUNC
  */
 HWTEST_F(ImeUsageEventCacherTest, GetToday0ClockMs_001, TestSize.Level0)
 {
-    uint64_t today0 = cacher_->GetToday0ClockMs();
+    uint64_t today0 = GetToday0ClockMs();
     EXPECT_GT(today0, 0u);
     // Should be less than year 2100 in ms
     EXPECT_LT(today0, 4102444800000ULL);
-    // Should match global GetToday0ClockMs
-    uint64_t globalToday0 = GetToday0ClockMs();
-    EXPECT_EQ(today0, globalToday0);
 }
 
 // ==================== OnImeBind: different IME while showing produces hide record ====================
@@ -1960,6 +1985,73 @@ HWTEST_F(ImeUsageEventCacherTest, OnImeBind_DifferentIme, TestSize.Level0)
     EXPECT_GE(stopIdx, 0);
     int startIdx2 = dbHelper_->QueryRawEventIndex(TEST_BUNDLE2, EVENT_INPUT_START);
     EXPECT_GE(startIdx2, 0);
+    // Verify COUNT_DURATION for old IME is written (STOP+COUNT are in one transaction)
+    int countIdx = dbHelper_->QueryRawEventIndex(TEST_BUNDLE, EVENT_COUNT_DURATION);
+    EXPECT_GE(countIdx, 0);
+    // Verify row-ID ordering: STOP (old IME) < START (new IME)
+    EXPECT_LT(stopIdx, startIdx2);
+}
+
+// ==================== STOP->START pair in CalculateDuration ====================
+
+/**
+ * @tc.name: ImeUsageEventCacher_OnImeBind_DifferentIme_SplitTransaction
+ * @tc.desc: OnImeBind IME switch writes STOP+COUNT in one transaction, START separately
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, OnImeBind_DifferentIme_SplitTransaction, TestSize.Level0)
+{
+    // Bind first IME
+    cacher_->OnImeBind(TEST_BUNDLE);
+    EXPECT_TRUE(cacher_->isKeyboardShowing_);
+
+    // Switch to second IME - STOP+COUNT for old IME and START for new IME
+    // are written as two independent operations
+    cacher_->OnImeBind(TEST_BUNDLE2);
+    EXPECT_TRUE(cacher_->isKeyboardShowing_);
+    EXPECT_EQ(cacher_->currentImeBundle_, TEST_BUNDLE2);
+
+    // Verify old IME's STOP and COUNT_DURATION exist
+    int stopIdx = dbHelper_->QueryRawEventIndex(TEST_BUNDLE, EVENT_INPUT_STOP);
+    EXPECT_GE(stopIdx, 0);
+    int countIdx = dbHelper_->QueryRawEventIndex(TEST_BUNDLE, EVENT_COUNT_DURATION);
+    EXPECT_GE(countIdx, 0);
+    // Verify new IME's START exists
+    int startIdx2 = dbHelper_->QueryRawEventIndex(TEST_BUNDLE2, EVENT_INPUT_START);
+    EXPECT_GE(startIdx2, 0);
+    // Verify COUNT_DURATION row ID > STOP row ID (COUNT is written after STOP in transaction)
+    EXPECT_GT(countIdx, stopIdx);
+}
+
+/**
+ * @tc.name: ImeUsageEventCacher_OnImeBind_DifferentIme_MultipleSwitches
+ * @tc.desc: Multiple consecutive IME switches produce correct DB records
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, OnImeBind_DifferentIme_MultipleSwitches, TestSize.Level0)
+{
+    // IME1 -> IME2 -> IME1
+    cacher_->OnImeBind(TEST_BUNDLE);
+    cacher_->OnImeBind(TEST_BUNDLE2);
+    cacher_->OnImeBind(TEST_BUNDLE);
+
+    // Each switch should produce STOP+COUNT for old IME and START for new IME
+    // TEST_BUNDLE: START, then later START again (after switch back)
+    int startIdx1 = dbHelper_->QueryRawEventIndex(TEST_BUNDLE, EVENT_INPUT_START);
+    EXPECT_GE(startIdx1, 0);
+    // TEST_BUNDLE: STOP from first switch-out
+    int stopIdx1 = dbHelper_->QueryRawEventIndex(TEST_BUNDLE, EVENT_INPUT_STOP);
+    EXPECT_GE(stopIdx1, 0);
+    // TEST_BUNDLE2: START and STOP
+    int startIdx2 = dbHelper_->QueryRawEventIndex(TEST_BUNDLE2, EVENT_INPUT_START);
+    EXPECT_GE(startIdx2, 0);
+    int stopIdx2 = dbHelper_->QueryRawEventIndex(TEST_BUNDLE2, EVENT_INPUT_STOP);
+    EXPECT_GE(stopIdx2, 0);
+    // Both IMEs should have COUNT_DURATION
+    int countIdx1 = dbHelper_->QueryRawEventIndex(TEST_BUNDLE, EVENT_COUNT_DURATION);
+    EXPECT_GE(countIdx1, 0);
+    int countIdx2 = dbHelper_->QueryRawEventIndex(TEST_BUNDLE2, EVENT_COUNT_DURATION);
+    EXPECT_GE(countIdx2, 0);
 }
 
 // ==================== STOP->START pair in CalculateDuration ====================
@@ -2005,18 +2097,18 @@ HWTEST_F(ImeUsageEventCacherTest, CalculateDuration_012, TestSize.Level0)
 HWTEST_F(ImeUsageEventCacherTest, GetAppUsage_003, TestSize.Level0)
 {
     ImeUsageInfo info;
-    info.foldPortraitDuration = 100;
-    info.foldLandscapeDuration = 200;
-    info.expandPortraitDuration = 300;
-    info.expandLandscapeDuration = 400;
-    info.gPortraitDuration = 500;
-    info.gLandscapeDuration = 600;
-    info.unFoldedPortraitDuration = 700;
-    info.unFoldedLandscapeDuration = 800;
-    info.nPortraitDuration = 900;
-    info.nLandscapeDuration = 1000;
-    info.lmPortraitDuration = 1100;
-    info.lmLandscapeDuration = 1200;
+    info.durations[IDX_FOLD_PORTRAIT] = 100;
+    info.durations[IDX_FOLD_LANDSCAPE] = 200;
+    info.durations[IDX_EXPAND_PORTRAIT] = 300;
+    info.durations[IDX_EXPAND_LANDSCAPE] = 400;
+    info.durations[IDX_G_PORTRAIT] = 500;
+    info.durations[IDX_G_LANDSCAPE] = 600;
+    info.durations[IDX_UNFOLDED_PORTRAIT] = 700;
+    info.durations[IDX_UNFOLDED_LANDSCAPE] = 800;
+    info.durations[IDX_N_PORTRAIT] = 900;
+    info.durations[IDX_N_LANDSCAPE] = 1000;
+    info.durations[IDX_LM_PORTRAIT] = 1100;
+    info.durations[IDX_LM_LANDSCAPE] = 1200;
     EXPECT_EQ(info.GetAppUsage(), 7800u);
 }
 

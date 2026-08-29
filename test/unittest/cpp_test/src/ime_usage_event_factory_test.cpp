@@ -331,7 +331,7 @@ HWTEST_F(ImeUsageEventFactoryTest, MergeForegroundInfo_003, TestSize.Level0)
     // Pre-populate statisticInfos with aggregated data
     ImeUsageInfo existing;
     existing.package = TEST_BUNDLE;
-    existing.unFoldedPortraitDuration = 5000;
+    existing.durations[IDX_UNFOLDED_PORTRAIT] = 5000;
     existing.showCount = 1;
     existing.usage = existing.GetAppUsage();
     statisticInfos[TEST_BUNDLE] = existing;
@@ -340,7 +340,7 @@ HWTEST_F(ImeUsageEventFactoryTest, MergeForegroundInfo_003, TestSize.Level0)
     auto it = statisticInfos.find(TEST_BUNDLE);
     ASSERT_NE(it, statisticInfos.end());
     // Should have merged: existing 5000 + foreground duration > 5000
-    EXPECT_GT(it->second.unFoldedPortraitDuration, 5000u);
+    EXPECT_GT(it->second.durations[IDX_UNFOLDED_PORTRAIT], 5000u);
 }
 
 // ==================== CollectAndSortResults ====================
@@ -360,7 +360,7 @@ HWTEST_F(ImeUsageEventFactoryTest, CollectAndSortResults_001, TestSize.Level0)
 
     ImeUsageInfo nonzero;
     nonzero.package = TEST_BUNDLE;
-    nonzero.unFoldedPortraitDuration = 1000;
+    nonzero.durations[IDX_UNFOLDED_PORTRAIT] = 1000;
     nonzero.usage = 1000;
     statisticInfos[TEST_BUNDLE] = nonzero;
 
@@ -380,13 +380,13 @@ HWTEST_F(ImeUsageEventFactoryTest, CollectAndSortResults_002, TestSize.Level0)
     std::unordered_map<std::string, ImeUsageInfo> statisticInfos;
     ImeUsageInfo info1;
     info1.package = TEST_BUNDLE;
-    info1.unFoldedPortraitDuration = 1000;
+    info1.durations[IDX_UNFOLDED_PORTRAIT] = 1000;
     info1.usage = 1000;
     statisticInfos[TEST_BUNDLE] = info1;
 
     ImeUsageInfo info2;
     info2.package = TEST_BUNDLE2;
-    info2.expandPortraitDuration = 5000;
+    info2.durations[IDX_EXPAND_PORTRAIT] = 5000;
     info2.usage = 5000;
     statisticInfos[TEST_BUNDLE2] = info2;
 
@@ -410,7 +410,7 @@ HWTEST_F(ImeUsageEventFactoryTest, CollectAndSortResults_003, TestSize.Level0)
     for (uint32_t i = 0; i < 102; i++) {
         ImeUsageInfo info;
         info.package = "com.ime" + std::to_string(i);
-        info.unFoldedPortraitDuration = 1000 + i;
+        info.durations[IDX_UNFOLDED_PORTRAIT] = 1000 + i;
         info.usage = 1000 + i;
         statisticInfos[info.package] = info;
     }
@@ -498,8 +498,8 @@ HWTEST_F(ImeUsageEventFactoryTest, MergeForegroundInfo_004, TestSize.Level0)
     ASSERT_NE(it, statisticInfos.end());
     EXPECT_GT(it->second.usage, 0u);
     // Should have both UNFOLDED_PORTRAIT and EXPAND_PORTRAIT durations
-    EXPECT_GT(it->second.unFoldedPortraitDuration, 0u);
-    EXPECT_GT(it->second.expandPortraitDuration, 0u);
+    EXPECT_GT(it->second.durations[IDX_UNFOLDED_PORTRAIT], 0u);
+    EXPECT_GT(it->second.durations[IDX_EXPAND_PORTRAIT], 0u);
 }
 
 // ==================== CollectAndSortResults: empty input ====================
@@ -623,7 +623,7 @@ HWTEST_F(ImeUsageEventFactoryTest, CollectAndSortResults_005, TestSize.Level0)
     for (uint32_t i = 0; i < MAX_IME_USAGE_SIZE; i++) {
         ImeUsageInfo info;
         info.package = "com.ime" + std::to_string(i);
-        info.unFoldedPortraitDuration = 1000 + i;
+        info.durations[IDX_UNFOLDED_PORTRAIT] = 1000 + i;
         info.usage = 1000 + i;
         statisticInfos[info.package] = info;
     }
@@ -671,25 +671,22 @@ HWTEST_F(ImeUsageEventFactoryTest, MergeForegroundInfo_006, TestSize.Level0)
     ASSERT_NE(it, statisticInfos.end());
     EXPECT_GT(it->second.usage, 0u);
     // Should have both UNFOLDED_PORTRAIT and EXPAND_PORTRAIT durations from foreground calculation
-    EXPECT_GT(it->second.unFoldedPortraitDuration + it->second.expandPortraitDuration, 0u);
+    EXPECT_GT(it->second.durations[IDX_UNFOLDED_PORTRAIT] + it->second.durations[IDX_EXPAND_PORTRAIT], 0u);
 }
 
 // ==================== GetToday0ClockMs ====================
 
 /**
  * @tc.name: ImeUsageEventFactory_GetToday0ClockMs_001
- * @tc.desc: GetToday0ClockMs returns non-zero value
+ * @tc.desc: GetToday0ClockMs global function returns non-zero value
  * @tc.type: FUNC
  */
 HWTEST_F(ImeUsageEventFactoryTest, GetToday0ClockMs_001, TestSize.Level0)
 {
-    uint64_t t = factory_->GetToday0ClockMs();
+    uint64_t t = GetToday0ClockMs();
     EXPECT_GT(t, 0u);
     // Verify result is reasonable: should be less than year 2100 in ms
     EXPECT_LT(t, 4102444800000ULL);
-    // Verify it matches global GetToday0ClockMs
-    uint64_t globalT = GetToday0ClockMs();
-    EXPECT_EQ(t, globalT);
 }
 
 } // namespace MiscServices

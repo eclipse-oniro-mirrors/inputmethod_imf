@@ -419,8 +419,15 @@ HWTEST_F(ImeUsageReporterTest, PersistLoadLastReportTime_001, TestSize.Level0)
  */
 HWTEST_F(ImeUsageReporterTest, LoadLastReportTime_001, TestSize.Level0)
 {
-    int ret = reporter_->Init(DB_DIR);
-    EXPECT_EQ(ret, 0);
+    // Do NOT call Init() here — Init() triggers InnerReportDailyEvent() which
+    // persists lastReportTime_ to DB. We want to verify LoadLastReportTime
+    // returns 0 when the DB has no saved state. Manually set up eventFactory_
+    // so LoadLastReportTime can access the dbHelper.
+    auto dbHelper = std::make_shared<ImeUsageDbHelper>(DB_DIR);
+    ASSERT_NE(dbHelper, nullptr);
+    ASSERT_TRUE(dbHelper->IsReady());
+    reporter_->eventFactory_ = std::make_unique<ImeUsageEventFactory>(dbHelper);
+    ASSERT_NE(reporter_->eventFactory_, nullptr);
     // No prior persist, so load should return 0
     uint64_t loaded = reporter_->LoadLastReportTime();
     EXPECT_EQ(loaded, 0u);
@@ -461,20 +468,20 @@ HWTEST_F(ImeUsageReporterTest, GetNextReportTimeMs_001, TestSize.Level0)
     EXPECT_GT(nextReport, now);
 }
 
-// ==================== GetCurrentPeriodStartMs ====================
+// ==================== GetToday0ClockMs ====================
 
 /**
- * @tc.name: ImeUsageReporter_GetCurrentPeriodStartMs_001
- * @tc.desc: GetCurrentPeriodStartMs returns today's 0:00
+ * @tc.name: ImeUsageReporter_GetToday0ClockMs_001
+ * @tc.desc: GetToday0ClockMs returns today's 0:00
  * @tc.type: FUNC
  */
-HWTEST_F(ImeUsageReporterTest, GetCurrentPeriodStartMs_001, TestSize.Level0)
+HWTEST_F(ImeUsageReporterTest, GetToday0ClockMs_001, TestSize.Level0)
 {
     int ret = reporter_->Init(DB_DIR);
     EXPECT_EQ(ret, 0);
-    uint64_t periodStart = reporter_->GetCurrentPeriodStartMs();
-    uint64_t today0 = GetToday0ClockMs();
-    EXPECT_EQ(periodStart, today0);
+    uint64_t today0 = reporter_->GetToday0ClockMs();
+    uint64_t expectedToday0 = GetToday0ClockMs();
+    EXPECT_EQ(today0, expectedToday0);
 }
 
 // ==================== DayStartFromMs ====================
@@ -743,7 +750,7 @@ HWTEST_F(ImeUsageReporterTest, OnBootCompleted_002, TestSize.Level0)
     int ret = reporter_->Init(DB_DIR);
     EXPECT_EQ(ret, 0);
     // Set lastReportTime_ to a recent time
-    uint64_t currentPeriodStart = reporter_->GetCurrentPeriodStartMs();
+    uint64_t currentPeriodStart = reporter_->GetToday0ClockMs();
     reporter_->lastReportTime_ = currentPeriodStart + 1000;
     // Persist so LoadLastReportTime returns a recent value
     reporter_->PersistLastReportTime();
@@ -844,7 +851,7 @@ HWTEST_F(ImeUsageReporterTest, WriteImeUsageEvent_001, TestSize.Level0)
 {
     ImeUsageInfo info;
     info.package = TEST_BUNDLE;
-    info.unFoldedPortraitDuration = 5000;
+    info.durations[IDX_UNFOLDED_PORTRAIT] = 5000;
     info.usage = 5000;
     bool result = reporter_->WriteImeUsageEvent(info, "20260825");
     // HiSysEventWrite typically returns non-0 in test environment
@@ -999,7 +1006,7 @@ HWTEST_F(ImeUsageReporterTest, OnBootCompleted_003, TestSize.Level0)
     int ret = reporter_->Init(DB_DIR);
     EXPECT_EQ(ret, 0);
     // Set lastReportTime_ to a value >= currentPeriodStart
-    uint64_t currentPeriodStart = reporter_->GetCurrentPeriodStartMs();
+    uint64_t currentPeriodStart = reporter_->GetToday0ClockMs();
     reporter_->lastReportTime_ = currentPeriodStart + 1;
     reporter_->PersistLastReportTime();
     uint64_t beforeTime = reporter_->lastReportTime_;
@@ -1059,7 +1066,7 @@ HWTEST_F(ImeUsageReporterTest, Init_005, TestSize.Level0)
     // First init and persist a recent lastReportTime
     int ret = reporter_->Init(DB_DIR);
     EXPECT_EQ(ret, 0);
-    uint64_t currentPeriodStart = reporter_->GetCurrentPeriodStartMs();
+    uint64_t currentPeriodStart = reporter_->GetToday0ClockMs();
     reporter_->lastReportTime_ = currentPeriodStart + 1;
     reporter_->PersistLastReportTime();
     reporter_.reset();

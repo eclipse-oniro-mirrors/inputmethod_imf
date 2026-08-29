@@ -641,7 +641,7 @@ HWTEST_F(FoldStatusAdapterTest, DisplayAttributeListenerImpl_001, TestSize.Level
     });
     // Create listener and trigger it
     auto listener = new FoldStatusAdapter::DisplayAttributeListenerImpl(adapter);
-    std::vector<std::string> attributes = {"rotation"};
+    std::vector<std::string> attributes = { "rotation" };
     listener->OnAttributeChange(0, attributes);
     // Verify foldStatus_ remains UNFOLDED (HandleDisplayChanged does not change foldStatus_)
     EXPECT_EQ(adapter.foldStatus_, UNFOLDED);
