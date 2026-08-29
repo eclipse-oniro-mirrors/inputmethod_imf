@@ -81,11 +81,15 @@ group("unittest") {
       "cpp_test:EnableUpgradeManagerTest",
       "cpp_test:PerUserSessionTest",
       "cpp_test:SystemCmdChannelServiceImplTest",
-      "cpp_test:FoldStatusAdapterTest",
-      "cpp_test:ImeUsageEventFactoryTest",
-      "cpp_test:ImeUsageReporterTest",
-      "cpp_test:ImeUsageTest",
     ]
+    if (target_platform == "phone") {
+      deps += [
+        "cpp_test:FoldStatusAdapterTest",
+        "cpp_test:ImeUsageEventFactoryTest",
+        "cpp_test:ImeUsageReporterTest",
+        "cpp_test:ImeUsageTest",
+      ]
+    }
   }
 }
 ###############################################################################

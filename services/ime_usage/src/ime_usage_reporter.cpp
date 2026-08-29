@@ -58,20 +58,20 @@ ImeUsageReporter::~ImeUsageReporter()
 
 int ImeUsageReporter::Init(const std::string &workPath)
 {
-    IMSA_HILOGD("ImeUsageReporter::Init start, workPath=%{public}s", workPath.c_str());
+    IMSA_HILOGI("ImeUsageReporter::Init start, workPath=%{public}s", workPath.c_str());
     workPath_ = workPath;
 
     // Create shared dbHelper instance
     auto dbHelper = std::make_shared<ImeUsageDbHelper>(workPath);
     if (dbHelper == nullptr || !dbHelper->IsReady()) {
         IMSA_HILOGE("Failed to create dbHelper or RDB store init failed");
-        return -1;
+        return IME_USAGE_FAILED;
     }
 
     eventCacher_ = std::make_unique<ImeUsageEventCacher>();
     if (eventCacher_ == nullptr) {
         IMSA_HILOGE("Failed to create eventCacher");
-        return -1;
+        return IME_USAGE_FAILED;
     }
     // Synchronize initial fold/vh state from FoldStatusAdapter to avoid
     // screenStatus=0 (uninitialized) when keyboard shows before the first
@@ -91,7 +91,7 @@ int ImeUsageReporter::Init(const std::string &workPath)
     eventFactory_ = std::make_unique<ImeUsageEventFactory>(dbHelper);
     if (eventFactory_ == nullptr) {
         IMSA_HILOGE("Failed to create eventFactory");
-        return -1;
+        return IME_USAGE_FAILED;
     }
 
     // Load persisted lastReportTime from DB
@@ -115,7 +115,7 @@ int ImeUsageReporter::Init(const std::string &workPath)
 
     isRunning_ = true;
 
-    IMSA_HILOGD("ImeUsageReporter initialized, workPath=%{public}s, currentPeriodStart=%{public}llu, "
+    IMSA_HILOGI("ImeUsageReporter initialized, workPath=%{public}s, currentPeriodStart=%{public}llu, "
                 "nextReportTime=%{public}llu, lastReportTime=%{public}llu",
         workPath.c_str(), static_cast<unsigned long long>(currentPeriodStart),
         static_cast<unsigned long long>(nextReportTime_), static_cast<unsigned long long>(lastReportTime_));
@@ -124,7 +124,7 @@ int ImeUsageReporter::Init(const std::string &workPath)
 
 void ImeUsageReporter::SetEventHandler(const std::shared_ptr<AppExecFwk::EventHandler> &handler)
 {
-    IMSA_HILOGD("SetEventHandler, handler=%{public}p", handler.get());
+    IMSA_HILOGI("SetEventHandler, handler=%{public}p", handler.get());
     eventHandler_ = handler;
     StartTimer();
 }
@@ -144,7 +144,7 @@ void ImeUsageReporter::StartTimer()
 void ImeUsageReporter::OnTimeout()
 {
     if (!isRunning_) {
-        IMSA_HILOGD("OnTimeout: reporter not running, skip");
+        IMSA_HILOGI("OnTimeout: reporter not running, skip");
         return;
     }
     IMSA_HILOGD("OnTimeout: checking daily report, now=%{public}llu", static_cast<unsigned long long>(GetNowMs()));
@@ -218,7 +218,7 @@ void ImeUsageReporter::InnerReportDailyEvent()
     if (localLastReportTime == 0) {
         int64_t earliestTime = eventFactory_->GetDbHelper()->QueryEarliestEventTime();
         if (earliestTime <= 0) {
-            IMSA_HILOGD("InnerReportDailyEvent: no data in DB, nothing to report");
+            IMSA_HILOGI("InnerReportDailyEvent: no data in DB, nothing to report");
             {
                 std::lock_guard<std::mutex> lock(reportMutex_);
                 lastReportTime_ = GetNowMs();
@@ -283,16 +283,6 @@ bool ImeUsageReporter::ReportSingleDay(uint64_t dayStartTime, uint64_t dayEndTim
 
 bool ImeUsageReporter::WriteImeUsageEvent(const ImeUsageInfo &info, const std::string &dateStr)
 {
-    IMSA_HILOGI("Reporting IME: pkg=%{public}s, usage=%{public}llu, showCount=%{public}u, "
-                "foldV=%{public}u, foldH=%{public}u, expdV=%{public}u, expdH=%{public}u, "
-                "gV=%{public}u, gH=%{public}u, unfoldV=%{public}u, unfoldH=%{public}u, "
-                "nV=%{public}u, nH=%{public}u, lmV=%{public}u, lmH=%{public}u",
-        info.package.c_str(), static_cast<unsigned long long>(info.usage), info.showCount,
-        info.durations[IDX_FOLD_PORTRAIT], info.durations[IDX_FOLD_LANDSCAPE], info.durations[IDX_EXPAND_PORTRAIT],
-        info.durations[IDX_EXPAND_LANDSCAPE], info.durations[IDX_G_PORTRAIT], info.durations[IDX_G_LANDSCAPE],
-        info.durations[IDX_UNFOLDED_PORTRAIT], info.durations[IDX_UNFOLDED_LANDSCAPE], info.durations[IDX_N_PORTRAIT],
-        info.durations[IDX_N_LANDSCAPE], info.durations[IDX_LM_PORTRAIT], info.durations[IDX_LM_LANDSCAPE]);
-
     int ret = HiSysEventWrite(HiviewDFX::HiSysEvent::Domain::INPUTMETHOD_UE, EVENT_NAME,
         HiviewDFX::HiSysEvent::EventType::STATISTIC, KEY_OF_PACKAGE, info.package, KEY_OF_FOLD_PORTRAIT,
         info.durations[IDX_FOLD_PORTRAIT], KEY_OF_FOLD_LANDSCAPE, info.durations[IDX_FOLD_LANDSCAPE],
@@ -309,7 +299,15 @@ bool ImeUsageReporter::WriteImeUsageEvent(const ImeUsageInfo &info, const std::s
             dateStr.c_str(), ret);
         return false;
     }
-    IMSA_HILOGI("HiSysEventWrite success for %{public}s date=%{public}s", info.package.c_str(), dateStr.c_str());
+    IMSA_HILOGI("Reporting IME: pkg=%{public}s, usage=%{public}llu, showCount=%{public}u, "
+                "foldV=%{public}u, foldH=%{public}u, expdV=%{public}u, expdH=%{public}u, "
+                "gV=%{public}u, gH=%{public}u, unfoldV=%{public}u, unfoldH=%{public}u, "
+                "nV=%{public}u, nH=%{public}u, lmV=%{public}u, lmH=%{public}u, HiSysEventWrite success, for %{public}s date=%{public}s", 
+        info.package.c_str(), static_cast<unsigned long long>(info.usage), info.showCount,
+        info.durations[IDX_FOLD_PORTRAIT], info.durations[IDX_FOLD_LANDSCAPE], info.durations[IDX_EXPAND_PORTRAIT],
+        info.durations[IDX_EXPAND_LANDSCAPE], info.durations[IDX_G_PORTRAIT], info.durations[IDX_G_LANDSCAPE],
+        info.durations[IDX_UNFOLDED_PORTRAIT], info.durations[IDX_UNFOLDED_LANDSCAPE], info.durations[IDX_N_PORTRAIT],
+        info.durations[IDX_N_LANDSCAPE], info.durations[IDX_LM_PORTRAIT], info.durations[IDX_LM_LANDSCAPE], info.package.c_str(), dateStr.c_str());
     return true;
 }
 
@@ -328,7 +326,7 @@ void ImeUsageReporter::ReportAndCleanupOldData(uint64_t clearDataTime, uint64_t 
     // iterating through days with no events.
     auto activeDays = eventFactory_->GetDbHelper()->QueryActiveDays(0, reportEnd);
 
-    IMSA_HILOGD("ReportAndCleanupOldData: clearDataTime=%{public}llu, "
+    IMSA_HILOGI("ReportAndCleanupOldData: clearDataTime=%{public}llu, "
                 "alreadyReportedDay0=%{public}llu, reportEnd=%{public}llu, activeDays=%{public}zu",
         static_cast<unsigned long long>(clearDataTime), static_cast<unsigned long long>(alreadyReportedDay0),
         static_cast<unsigned long long>(reportEnd), activeDays.size());
@@ -366,7 +364,7 @@ uint64_t ImeUsageReporter::GetNowMs() const
 
 void ImeUsageReporter::OnImeBind(const std::string &bundleName)
 {
-    IMSA_HILOGD("OnImeBind: bundle=%{public}s", bundleName.c_str());
+    IMSA_HILOGI("OnImeBind: bundle=%{public}s", bundleName.c_str());
     if (eventCacher_ != nullptr) {
         eventCacher_->OnImeBind(bundleName);
     }
@@ -374,7 +372,7 @@ void ImeUsageReporter::OnImeBind(const std::string &bundleName)
 
 void ImeUsageReporter::OnImeUnbind(const std::string &bundleName)
 {
-    IMSA_HILOGD("OnImeUnbind: bundle=%{public}s", bundleName.c_str());
+    IMSA_HILOGI("OnImeUnbind: bundle=%{public}s", bundleName.c_str());
     if (eventCacher_ != nullptr) {
         eventCacher_->OnImeUnbind(bundleName);
     }
@@ -382,7 +380,7 @@ void ImeUsageReporter::OnImeUnbind(const std::string &bundleName)
 
 void ImeUsageReporter::OnScreenStatusChanged(int32_t preScreenStatus, int32_t newScreenStatus)
 {
-    IMSA_HILOGD("OnScreenStatusChanged: pre=%{public}d, new=%{public}d", preScreenStatus, newScreenStatus);
+    IMSA_HILOGI("OnScreenStatusChanged: pre=%{public}d, new=%{public}d", preScreenStatus, newScreenStatus);
     if (eventCacher_ != nullptr) {
         eventCacher_->OnScreenStatusChanged(preScreenStatus, newScreenStatus);
     }
@@ -390,7 +388,7 @@ void ImeUsageReporter::OnScreenStatusChanged(int32_t preScreenStatus, int32_t ne
 
 void ImeUsageReporter::OnBootCompleted()
 {
-    IMSA_HILOGD("OnBootCompleted: start recovery");
+    IMSA_HILOGI("OnBootCompleted: start recovery");
     if (eventCacher_ != nullptr) {
         eventCacher_->RecoverActiveSession();
     }
@@ -404,7 +402,7 @@ void ImeUsageReporter::OnBootCompleted()
     // If there is unreported data, report immediately
     uint64_t currentPeriodStart = GetToday0ClockMs();
     if (loadedTime < currentPeriodStart) {
-        IMSA_HILOGD("OnBootCompleted: unreported data detected, reporting immediately");
+        IMSA_HILOGI("OnBootCompleted: unreported data detected, reporting immediately");
         InnerReportDailyEvent();
     }
     IMSA_HILOGD("OnBootCompleted: lastReportTime=%{public}llu, currentPeriodStart=%{public}llu",
@@ -433,7 +431,7 @@ uint64_t ImeUsageReporter::LoadLastReportTime()
     std::string value;
     int ret = eventFactory_->GetDbHelper()->LoadReportState(STATE_KEY_LAST_REPORT_TIME, value);
     if (ret != 0 || value.empty()) {
-        IMSA_HILOGD("LoadLastReportTime: not found or failed, defaulting to 0");
+        IMSA_HILOGI("LoadLastReportTime: not found or failed, defaulting to 0");
         return 0;
     }
     uint64_t time = 0;

@@ -32,13 +32,13 @@ int ImeUsageEventCacher::Init(std::shared_ptr<ImeUsageDbHelper> dbHelper, int32_
 {
     if (dbHelper == nullptr) {
         IMSA_HILOGE("Init: dbHelper is nullptr");
-        return -1;
+        return IME_USAGE_FAILED;
     }
     dbHelper_ = dbHelper;
     foldStatus_ = foldStatus;
     vhMode_ = vhMode;
     lastScreenStatus_ = GetScreenStatus();
-    IMSA_HILOGD("ImeUsageEventCacher::Init success, fold=%{public}d, vh=%{public}d, screenStatus=%{public}d",
+    IMSA_HILOGI("ImeUsageEventCacher::Init success, fold=%{public}d, vh=%{public}d, screenStatus=%{public}d",
         foldStatus_, vhMode_, lastScreenStatus_);
     return 0;
 }
@@ -47,7 +47,8 @@ uint64_t ImeUsageEventCacher::GetBootTimeMs() const
 {
     struct timespec ts = { 0, 0 };
     clock_gettime(CLOCK_BOOTTIME, &ts);
-    return static_cast<uint64_t>(ts.tv_sec) * 1000 + static_cast<uint64_t>(ts.tv_nsec) / 1000000;
+    return static_cast<uint64_t>(ts.tv_sec) * MILLISECS_PER_SEC +
+        static_cast<uint64_t>(ts.tv_nsec) / NANOSECS_PER_MILLISEC;
 }
 
 uint64_t ImeUsageEventCacher::GetWallClockMs() const
@@ -201,7 +202,7 @@ ImeUsageEventCacher::ShowPrepareResult ImeUsageEventCacher::PrepareShowEvent(con
     // Same IME already showing: skip duplicate show (caused by screen rotation/fold
     // triggering panel re-show).
     if (isKeyboardShowing_ && currentImeBundle_ == bundleName) {
-        IMSA_HILOGD("PrepareShowEvent: same IME already showing, skip for %{public}s", bundleName.c_str());
+        IMSA_HILOGW("PrepareShowEvent: same IME already showing, skip for %{public}s", bundleName.c_str());
         return result;
     }
     // Different IME: close previous session first (state update only, DB outside lock)
@@ -233,7 +234,7 @@ ImeUsageEventCacher::ShowPrepareResult ImeUsageEventCacher::PrepareShowEvent(con
 ImeEventRecord ImeUsageEventCacher::PrepareHideRecord(const std::string &bundleName)
 {
     if (dbHelper_ == nullptr || !isKeyboardShowing_) {
-        IMSA_HILOGD(
+        IMSA_HILOGW(
             "PrepareHideRecord: skip, dbHelper=%{public}p, isShowing=%{public}d", dbHelper_.get(), isKeyboardShowing_);
         return {};
     }
@@ -264,7 +265,7 @@ ImeEventRecord ImeUsageEventCacher::ProcessScreenChangedEvent(int32_t preScreenS
     }
     // Deduplicate: skip if new status is same as last recorded status
     if (newScreenStatus == lastScreenStatus_) {
-        IMSA_HILOGD("ProcessScreenChangedEvent: skip duplicate, screenStatus=%{public}d unchanged", newScreenStatus);
+        IMSA_HILOGI("ProcessScreenChangedEvent: skip duplicate, screenStatus=%{public}d unchanged", newScreenStatus);
         return {};
     }
     ImeEventRecord record;
@@ -302,7 +303,7 @@ DurationMap ImeUsageEventCacher::CalculateDurationForRecord(const ImeEventRecord
     }
     int32_t startIndex = GetStartIndex(record.bundleName);
     if (startIndex < 0) {
-        IMSA_HILOGD("CalculateDurationForRecord: No START event found for %{public}s", record.bundleName.c_str());
+        IMSA_HILOGW("CalculateDurationForRecord: No START event found for %{public}s", record.bundleName.c_str());
         return durations;
     }
     uint64_t dayStartTime = OHOS::MiscServices::GetToday0ClockMs();
@@ -330,7 +331,7 @@ DurationMap ImeUsageEventCacher::CalculateDurationForRecord(const ImeEventRecord
 int ImeUsageEventCacher::GetStartIndex(const std::string &bundleName)
 {
     if (dbHelper_ == nullptr) {
-        return -1;
+        return IME_INDEX_NOT_FOUND;
     }
     return dbHelper_->QueryRawEventIndex(bundleName, EVENT_INPUT_START);
 }
@@ -339,15 +340,13 @@ void ImeUsageEventCacher::CalculateDuration(
     uint64_t dayStartTime, std::vector<ImeEventRecord> &records, DurationMap &durations)
 {
     if (records.empty()) {
-        IMSA_HILOGD("CalculateDuration: no records to calculate");
+        IMSA_HILOGI("CalculateDuration: no records to calculate");
         return;
     }
 
     IMSA_HILOGD("CalculateDuration: processing %{public}zu records, dayStartTime=%{public}llu", records.size(),
         static_cast<unsigned long long>(dayStartTime));
-
     auto it = records.begin();
-
     // Handle cross-midnight: if first event is not START, duration from dayStartTime to first event
     if (it->rawid != EVENT_INPUT_START) {
         int32_t status = (it->rawid == EVENT_INPUT_STOP) ? it->screenStatus : it->preScreenStatus;

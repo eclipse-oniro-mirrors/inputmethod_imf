@@ -33,8 +33,12 @@ using namespace OHOS::MiscServices::ImeUsageEventId;
 namespace OHOS {
 namespace MiscServices {
 namespace {
-constexpr int DB_SUCC = 0;
-constexpr int DB_FAILED = -1;
+using OHOS::MiscServices::IME_INDEX_NOT_FOUND;
+using OHOS::MiscServices::IME_USAGE_FAILED;
+using OHOS::MiscServices::IME_USAGE_SUCCESS;
+
+constexpr int DB_SUCC = IME_USAGE_SUCCESS;
+constexpr int DB_FAILED = IME_USAGE_FAILED;
 constexpr int DB_VERSION = 3;
 constexpr int32_t RDB_RETRY_TIMEOUT_MS = 200;
 constexpr int32_t RDB_RETRY_COUNT = 5;
@@ -92,7 +96,7 @@ void CollectForegroundEvents(std::shared_ptr<NativeRdb::ResultSet> resultSet, co
             lastBundle = bundle;
         }
         if (bundle != lastBundle) {
-            IMSA_HILOGD("CollectForegroundEvents: bundle changed, stop");
+            IMSA_HILOGI("CollectForegroundEvents: bundle changed, stop");
             break;
         }
         if (evt.rawId == ImeUsageEventId::EVENT_INPUT_START) {
@@ -223,7 +227,7 @@ bool ImeUsageDbHelper::CreateDbStore(const std::string &dbPath)
         dbFile.pop_back();
     }
     dbFile += "/" + std::string(IME_USAGE_DB_NAME);
-    IMSA_HILOGD("CreateDbStore: dbFile=%{public}s", dbFile.c_str());
+    IMSA_HILOGI("CreateDbStore: dbFile=%{public}s", dbFile.c_str());
 
     std::string dbDir = dbFile.substr(0, dbFile.rfind('/'));
     if (!EnsureDirectoryExist(dbDir)) {
@@ -245,7 +249,7 @@ bool ImeUsageDbHelper::CreateDbStore(const std::string &dbPath)
         return false;
     }
 
-    IMSA_HILOGD("RdbStore created successfully");
+    IMSA_HILOGI("RdbStore created successfully");
 
     // Create tables first — on a fresh install the tables do not exist yet,
     // so any verification must happen AFTER this step.
@@ -278,7 +282,7 @@ bool ImeUsageDbHelper::VerifyAndRecoverStore(const std::string &dbFile, NativeRd
         IMSA_HILOGW("VerifyAndRecoverStore: store broken, deleting and recreating");
         rdbStore_ = nullptr;
         int delRet = NativeRdb::RdbHelper::DeleteRdbStore(dbFile);
-        IMSA_HILOGD("VerifyAndRecoverStore: DeleteRdbStore ret=%{public}d", delRet);
+        IMSA_HILOGI("VerifyAndRecoverStore: DeleteRdbStore ret=%{public}d", delRet);
         ImeUsageDbOpenCallback callback;
         rdbStore_ = GetRdbStoreWithRetry(config, DB_VERSION, callback, errCode);
         if (rdbStore_ == nullptr || errCode != DB_SUCC) {
@@ -465,17 +469,17 @@ int ImeUsageDbHelper::QueryRawEventIndex(const std::string &bundleName, int32_t 
 {
     std::lock_guard<std::mutex> lock(dbMutex_);
     if (rdbStore_ == nullptr) {
-        return -1;
+        return IME_INDEX_NOT_FOUND;
     }
     std::string sql = "SELECT id FROM " + std::string(IME_USAGE_DB_TABLE) +
         " WHERE bundle_name = ? AND rawid = ? ORDER BY id DESC LIMIT 1";
     auto resultSet = rdbStore_->QuerySql(sql, std::vector<std::string> { bundleName, std::to_string(rawId) });
     if (resultSet == nullptr) {
-        IMSA_HILOGD(
+        IMSA_HILOGW(
             "QueryRawEventIndex: resultSet is null, bundle=%{public}s, rawId=%{public}d", bundleName.c_str(), rawId);
-        return -1;
+        return IME_INDEX_NOT_FOUND;
     }
-    int32_t id = -1;
+    int32_t id = IME_INDEX_NOT_FOUND;
     if (resultSet->GoToNextRow() == DB_SUCC) {
         resultSet->GetInt(0, id);
     }
@@ -592,7 +596,7 @@ void ImeUsageDbHelper::QueryFinalEventInfo(uint64_t endTime, ImeUsageRawEvent &e
     auto resultSet =
         rdbStore_->QuerySql(sql, std::vector<std::string> { std::to_string(static_cast<int64_t>(endTime)) });
     if (resultSet == nullptr) {
-        IMSA_HILOGD("QueryFinalEventInfo: resultSet is null");
+        IMSA_HILOGW("QueryFinalEventInfo: resultSet is null");
         return;
     }
     if (resultSet->GoToNextRow() == DB_SUCC) {
@@ -694,7 +698,7 @@ int ImeUsageDbHelper::LoadReportState(const std::string &key, std::string &value
     std::string sql = "SELECT value FROM " + std::string(IME_USAGE_STATE_TABLE) + " WHERE key = ?";
     auto resultSet = rdbStore_->QuerySql(sql, std::vector<std::string> { key });
     if (resultSet == nullptr) {
-        IMSA_HILOGD("LoadReportState: no result for key=%{public}s", key.c_str());
+        IMSA_HILOGW("LoadReportState: no result for key=%{public}s", key.c_str());
         return DB_FAILED;
     }
     if (resultSet->GoToNextRow() == DB_SUCC) {
@@ -702,7 +706,7 @@ int ImeUsageDbHelper::LoadReportState(const std::string &key, std::string &value
     }
     resultSet->Close();
     if (value.empty()) {
-        IMSA_HILOGD("LoadReportState: key=%{public}s not found", key.c_str());
+        IMSA_HILOGW("LoadReportState: key=%{public}s not found", key.c_str());
         return DB_FAILED;
     }
     IMSA_HILOGD("LoadReportState: key=%{public}s, value=%{public}s", key.c_str(), value.c_str());
@@ -713,14 +717,14 @@ int64_t ImeUsageDbHelper::QueryEarliestEventTime()
 {
     std::lock_guard<std::mutex> lock(dbMutex_);
     if (rdbStore_ == nullptr) {
-        return -1;
+        return IME_INDEX_NOT_FOUND;
     }
     std::string sql = "SELECT MIN(happen_time) FROM " + std::string(IME_USAGE_DB_TABLE);
     auto resultSet = rdbStore_->QuerySql(sql);
     if (resultSet == nullptr) {
-        return -1;
+        return IME_INDEX_NOT_FOUND;
     }
-    int64_t earliestTime = -1;
+    int64_t earliestTime = IME_INDEX_NOT_FOUND;
     if (resultSet->GoToNextRow() == DB_SUCC) {
         resultSet->GetLong(0, earliestTime);
     }

@@ -29,7 +29,7 @@ namespace MiscServices {
 ImeUsageEventFactory::ImeUsageEventFactory(std::shared_ptr<ImeUsageDbHelper> dbHelper)
 {
     dbHelper_ = dbHelper;
-    IMSA_HILOGD("ImeUsageEventFactory created, dbHelper=%{public}p", dbHelper_.get());
+    IMSA_HILOGI("ImeUsageEventFactory created, dbHelper=%{public}p", dbHelper_.get());
 }
 
 void ImeUsageEventFactory::Create(std::vector<ImeUsageInfo> &infos, uint64_t dayStartTime, uint64_t dayEndTime)
@@ -80,7 +80,7 @@ void ImeUsageEventFactory::MergeForegroundInfo(
     dbHelper_->QueryFinalEventInfo(endTime, lastEvent);
 
     if (lastEvent.rawId != EVENT_INPUT_START && lastEvent.rawId != EVENT_INPUT_STATUS_CHANGED) {
-        IMSA_HILOGD("MergeForegroundInfo: no foreground IME, lastRawId=%{public}d", lastEvent.rawId);
+        IMSA_HILOGI("MergeForegroundInfo: no foreground IME, lastRawId=%{public}d", lastEvent.rawId);
         return;
     }
     IMSA_HILOGD(

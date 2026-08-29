@@ -33,11 +33,11 @@ FoldStatusAdapter &FoldStatusAdapter::GetInstance()
 
 void FoldStatusAdapter::Init()
 {
-    IMSA_HILOGD("FoldStatusAdapter::Init start");
+    IMSA_HILOGI("FoldStatusAdapter::Init start");
     {
         std::lock_guard<std::mutex> lock(mutex_);
         if (isInitialized_ || isInitializing_) {
-            IMSA_HILOGD("FoldStatusAdapter already initialized or initializing, skip");
+            IMSA_HILOGI("FoldStatusAdapter already initialized or initializing, skip");
             return;
         }
         isInitializing_ = true;
@@ -148,12 +148,10 @@ bool FoldStatusAdapter::IsFoldable() const
 void FoldStatusAdapter::HandleDisplayModeChanged(Rosen::FoldDisplayMode displayMode)
 {
     int32_t newFoldStatus = ConvertDisplayMode(displayMode);
-    IMSA_HILOGD("HandleDisplayModeChanged: displayMode=%{public}u, newFoldStatus=%{public}d",
-        static_cast<uint32_t>(displayMode), newFoldStatus);
 
     // Skip IME-unavailable modes (SUB=3, V_MAIN=6)
     if (newFoldStatus == IME_SCREEN_STATUS_UNAVAILABLE) {
-        IMSA_HILOGD("HandleDisplayModeChanged: IME unavailable mode=%{public}u, skip update",
+        IMSA_HILOGI("HandleDisplayModeChanged: IME unavailable mode=%{public}u, skip update",
             static_cast<uint32_t>(displayMode));
         return;
     }
@@ -183,7 +181,7 @@ void FoldStatusAdapter::HandleDisplayModeChanged(Rosen::FoldDisplayMode displayM
     vhMode_ = newVhMode;
     int32_t newScreenStatus = EncodeScreenStatus(foldStatus_, vhMode_);
 
-    IMSA_HILOGD("HandleDisplayModeChanged: old=%{public}d, new=%{public}d", oldScreenStatus, newScreenStatus);
+    IMSA_HILOGI("HandleDisplayModeChanged: old=%{public}d, new=%{public}d", oldScreenStatus, newScreenStatus);
 
     if (oldScreenStatus != newScreenStatus && onScreenStatusChanged_) {
         onScreenStatusChanged_(oldScreenStatus, newScreenStatus);
@@ -232,12 +230,12 @@ int32_t FoldStatusAdapter::ConvertVhMode() const
     auto displayId = Rosen::DisplayManagerLite::GetInstance().GetDefaultDisplayId();
     auto display = Rosen::DisplayManagerLite::GetInstance().GetDisplayById(displayId);
     if (display == nullptr) {
-        IMSA_HILOGD("ConvertVhMode: display is null, default PORTRAIT");
+        IMSA_HILOGI("ConvertVhMode: display is null, default PORTRAIT");
         return PORTRAIT;
     }
     auto displayInfo = display->GetDisplayInfo();
     if (displayInfo == nullptr) {
-        IMSA_HILOGD("ConvertVhMode: displayInfo is null, default PORTRAIT");
+        IMSA_HILOGI("ConvertVhMode: displayInfo is null, default PORTRAIT");
         return PORTRAIT;
     }
     int32_t vh = (displayInfo->GetWidth() > displayInfo->GetHeight()) ? LANDSCAPE : PORTRAIT;
@@ -256,8 +254,6 @@ void FoldStatusAdapter::DisplayModeListenerImpl::OnDisplayModeChanged(Rosen::Fol
 void FoldStatusAdapter::DisplayAttributeListenerImpl::OnAttributeChange(
     Rosen::DisplayId displayId, const std::vector<std::string> &attributes)
 {
-    IMSA_HILOGD("OnAttributeChange: displayId=%{public}llu, attributes count=%{public}zu",
-        static_cast<unsigned long long>(displayId), attributes.size());
     adapter_.HandleDisplayChanged();
 }
 

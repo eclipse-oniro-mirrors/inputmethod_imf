@@ -72,7 +72,6 @@ ohos_shared_library("inputmethod_service") {
     "adapter/display_adapter/src/display_adapter.cpp",
     "adapter/focus_monitor/src/focus_change_listener.cpp",
     "adapter/focus_monitor/src/focus_monitor_manager.cpp",
-    "adapter/fold_status_adapter/src/fold_status_adapter.cpp",
     "adapter/ime_connection_manager/src/ime_connection.cpp",
     "adapter/res_sched_adapter/src/res_sched_adapter.cpp",
     "adapter/system_param_adapter/src/system_param_adapter.cpp",
@@ -102,10 +101,6 @@ ohos_shared_library("inputmethod_service") {
     "src/peruser_session.cpp",
     "src/sys_cfg_parser.cpp",
     "src/user_session_manager.cpp",
-    "ime_usage/src/ime_usage_db_helper.cpp",
-    "ime_usage/src/ime_usage_event_cacher.cpp",
-    "ime_usage/src/ime_usage_event_factory.cpp",
-    "ime_usage/src/ime_usage_reporter.cpp",
   ]
 
   configs = [ ":inputmethod_services_native_config" ]
@@ -140,12 +135,10 @@ ohos_shared_library("inputmethod_service") {
     "data_share:datashare_consumer",
     "hicollie:libhicollie",
     "hilog:libhilog",
-    "hisysevent:libhisysevent",
     "i18n:intl_util",
     "init:libbeget_proxy",
     "input:libmmi-client",
     "memmgr:memmgrclient",
-    "relational_store:native_rdb",
     "os_account:os_account_innerkits",
     "resource_schedule_service:ressched_client",
     "samgr:samgr_proxy",
@@ -179,6 +172,20 @@ ohos_shared_library("inputmethod_service") {
   if (imf_compatibility_config_center_enable) {
     defines += [ "COMPATIBILITY_CONFIG_CENTER_ENABLE" ]
   }
+  if (target_platform == "phone") {
+    defines += [ "IME_USAGE_ENABLE" ]
+    sources += [
+      "adapter/fold_status_adapter/src/fold_status_adapter.cpp",
+      "ime_usage/src/ime_usage_db_helper.cpp",
+      "ime_usage/src/ime_usage_event_cacher.cpp",
+      "ime_usage/src/ime_usage_event_factory.cpp",
+      "ime_usage/src/ime_usage_reporter.cpp",
+    ]
+    external_deps += [
+      "hisysevent:libhisysevent",
+      "relational_store:native_rdb",
+    ]
+  }
   subsystem_name = "inputmethod"
   part_name = "imf"
   shlib_type="sa"
@@ -199,7 +206,6 @@ ohos_static_library("inputmethod_service_static") {
   sources = [
     "adapter/app_mgr_adapter/src/app_mgr_adapter.cpp",
     "adapter/display_adapter/src/display_adapter.cpp",
-    "adapter/fold_status_adapter/src/fold_status_adapter.cpp",
     "adapter/focus_monitor/src/focus_change_listener.cpp",
     "adapter/focus_monitor/src/focus_monitor_manager.cpp",
     "adapter/ime_connection_manager/src/ime_connection.cpp",
@@ -231,10 +237,6 @@ ohos_static_library("inputmethod_service_static") {
     "src/peruser_session.cpp",
     "src/sys_cfg_parser.cpp",
     "src/user_session_manager.cpp",
-    "ime_usage/src/ime_usage_db_helper.cpp",
-    "ime_usage/src/ime_usage_event_cacher.cpp",
-    "ime_usage/src/ime_usage_event_factory.cpp",
-    "ime_usage/src/ime_usage_reporter.cpp",
   ]
 
   public_configs = [ ":inputmethod_services_native_config" ]
@@ -272,8 +274,6 @@ ohos_static_library("inputmethod_service_static") {
     "eventhandler:libeventhandler",
     "hicollie:libhicollie",
     "hilog:libhilog",
-    "hisysevent:libhisysevent",
-    "relational_store:native_rdb",
     "i18n:intl_util",
     "init:libbeget_proxy",
     "init:libbegetutil",
@@ -305,6 +305,20 @@ ohos_static_library("inputmethod_service_static") {
   }
   if (imf_compatibility_config_center_enable) {
     defines += [ "COMPATIBILITY_CONFIG_CENTER_ENABLE" ]
+  }
+  if (target_platform == "phone") {
+    defines += [ "IME_USAGE_ENABLE" ]
+    sources += [
+      "adapter/fold_status_adapter/src/fold_status_adapter.cpp",
+      "ime_usage/src/ime_usage_db_helper.cpp",
+      "ime_usage/src/ime_usage_event_cacher.cpp",
+      "ime_usage/src/ime_usage_event_factory.cpp",
+      "ime_usage/src/ime_usage_reporter.cpp",
+    ]
+    external_deps += [
+      "hisysevent:libhisysevent",
+      "relational_store:native_rdb",
+    ]
   }
   subsystem_name = "inputmethod"
   part_name = "imf"

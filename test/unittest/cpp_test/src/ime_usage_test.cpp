@@ -97,7 +97,7 @@ HWTEST_F(ImeUsageEventCacherTest, Init_001, TestSize.Level0)
 {
     auto cacher = std::make_unique<ImeUsageEventCacher>();
     int ret = cacher->Init(nullptr, UNFOLDED, PORTRAIT);
-    EXPECT_EQ(ret, -1);
+    EXPECT_EQ(ret, IME_USAGE_FAILED);
 }
 
 /**
@@ -964,16 +964,16 @@ HWTEST_F(ImeUsageEventCacherTest, DbHelper_AddEvent_002, TestSize.Level0)
  */
 HWTEST_F(ImeUsageEventCacherTest, DbHelper_QueryRawEventIndex_001, TestSize.Level0)
 {
-    // Query for non-existent bundle should return -1
+    // Query for non-existent bundle should return IME_INDEX_NOT_FOUND
     std::string nonExistent = "non.existent.bundle";
     int idx = dbHelper_->QueryRawEventIndex(nonExistent, EVENT_INPUT_START);
-    EXPECT_EQ(idx, -1);
-    // Query for non-existent event type with valid bundle should also return -1
+    EXPECT_EQ(idx, IME_INDEX_NOT_FOUND);
+    // Query for non-existent event type with valid bundle should also return IME_INDEX_NOT_FOUND
     int idx2 = dbHelper_->QueryRawEventIndex(nonExistent, EVENT_INPUT_STOP);
-    EXPECT_EQ(idx2, -1);
-    // Query for COUNT_DURATION should also return -1
+    EXPECT_EQ(idx2, IME_INDEX_NOT_FOUND);
+    // Query for COUNT_DURATION should also return IME_INDEX_NOT_FOUND
     int idx3 = dbHelper_->QueryRawEventIndex(nonExistent, EVENT_COUNT_DURATION);
-    EXPECT_EQ(idx3, -1);
+    EXPECT_EQ(idx3, IME_INDEX_NOT_FOUND);
 }
 
 /**
@@ -1517,7 +1517,7 @@ HWTEST_F(ImeUsageEventCacherTest, DbHelper_AddEvent_NullRdbStore, TestSize.Level
     record.bundleName = TEST_BUNDLE;
     record.screenStatus = UNFOLDED_PORTRAIT;
     int ret = dbHelper_->AddEvent(record);
-    EXPECT_EQ(ret, -1);
+    EXPECT_EQ(ret, IME_USAGE_FAILED);
 }
 
 /**
@@ -1529,7 +1529,7 @@ HWTEST_F(ImeUsageEventCacherTest, DbHelper_QueryRawEventIndex_NullRdbStore, Test
 {
     dbHelper_->rdbStore_ = nullptr;
     int idx = dbHelper_->QueryRawEventIndex(TEST_BUNDLE, EVENT_INPUT_START);
-    EXPECT_EQ(idx, -1);
+    EXPECT_EQ(idx, IME_INDEX_NOT_FOUND);
 }
 
 /**
@@ -1597,7 +1597,7 @@ HWTEST_F(ImeUsageEventCacherTest, DbHelper_DeleteEventsByTime_NullRdbStore, Test
 {
     dbHelper_->rdbStore_ = nullptr;
     int ret = dbHelper_->DeleteEventsByTime(0);
-    EXPECT_EQ(ret, -1);
+    EXPECT_EQ(ret, IME_USAGE_FAILED);
 }
 
 /**
@@ -1609,7 +1609,7 @@ HWTEST_F(ImeUsageEventCacherTest, DbHelper_SaveReportState_NullRdbStore, TestSiz
 {
     dbHelper_->rdbStore_ = nullptr;
     int ret = dbHelper_->SaveReportState("key", "value");
-    EXPECT_EQ(ret, -1);
+    EXPECT_EQ(ret, IME_USAGE_FAILED);
 }
 
 /**
@@ -1622,7 +1622,7 @@ HWTEST_F(ImeUsageEventCacherTest, DbHelper_LoadReportState_NullRdbStore, TestSiz
     dbHelper_->rdbStore_ = nullptr;
     std::string value;
     int ret = dbHelper_->LoadReportState("key", value);
-    EXPECT_EQ(ret, -1);
+    EXPECT_EQ(ret, IME_USAGE_FAILED);
 }
 
 /**
@@ -1634,7 +1634,7 @@ HWTEST_F(ImeUsageEventCacherTest, DbHelper_QueryEarliestEventTime_NullRdbStore, 
 {
     dbHelper_->rdbStore_ = nullptr;
     int64_t earliest = dbHelper_->QueryEarliestEventTime();
-    EXPECT_EQ(earliest, -1);
+    EXPECT_EQ(earliest, IME_INDEX_NOT_FOUND);
 }
 
 /**
@@ -1907,12 +1907,12 @@ HWTEST_F(ImeUsageEventCacherTest, CountDuration_001, TestSize.Level0)
     record.preScreenStatus = UNFOLDED_PORTRAIT;
     // Verify no START event exists for this bundle
     int32_t startIdx = cacher_->GetStartIndex("nonexistent.bundle");
-    EXPECT_EQ(startIdx, -1);
-    // CountDuration should return early because GetStartIndex returns -1
+    EXPECT_EQ(startIdx, IME_INDEX_NOT_FOUND);
+    // CountDuration should return early because GetStartIndex returns IME_INDEX_NOT_FOUND
     cacher_->CountDuration(record);
     // Verify no COUNT_DURATION was written for this bundle
     int32_t countIdx = dbHelper_->QueryRawEventIndex("nonexistent.bundle", EVENT_COUNT_DURATION);
-    EXPECT_EQ(countIdx, -1);
+    EXPECT_EQ(countIdx, IME_INDEX_NOT_FOUND);
 }
 
 // ==================== GetBootTimeMs / GetWallClockMs ====================

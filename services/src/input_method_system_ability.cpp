@@ -61,20 +61,24 @@
 #include "window_adapter.h"
 #include "os_account_manager.h"
 #include "res_sched_adapter.h"
-#include "fold_status_adapter.h"
 #include "ime_info_inquirer.h"
+#ifdef IME_USAGE_ENABLE
+#include "fold_status_adapter.h"
 #include "ime_usage_reporter.h"
+#endif
 
- namespace OHOS {
+namespace OHOS {
 namespace MiscServices {
 using namespace MessageID;
 using namespace AppExecFwk;
 using namespace Security::AccessToken;
 using namespace std::chrono;
 using namespace HiviewDFX;
+#ifdef IME_USAGE_ENABLE
 namespace {
 constexpr const char *IME_USAGE_WORK_PATH = "/data/service/el1/public/imf/";
 } // namespace
+#endif
 using namespace AccountSA;
 constexpr uint32_t FATAL_TIMEOUT = 30;    // 30s
 constexpr int64_t WARNING_TIMEOUT = 5000; // 5s
@@ -2565,6 +2569,7 @@ int32_t InputMethodSystemAbility::InitKeyEventMonitor()
     return ret ? ErrorCode::NO_ERROR : ErrorCode::ERROR_SERVICE_START_FAILED;
 }
 
+#ifdef IME_USAGE_ENABLE
 void InputMethodSystemAbility::InitImeUsageReporter()
 {
     // Initialize FoldStatusAdapter BEFORE ImeUsageReporter so that
@@ -2614,6 +2619,10 @@ void InputMethodSystemAbility::SetupImeUsageCallbacks(int32_t userId)
             }
         });
 }
+#else
+void InputMethodSystemAbility::InitImeUsageReporter() { }
+void InputMethodSystemAbility::SetupImeUsageCallbacks(int32_t userId) { }
+#endif
 
 bool InputMethodSystemAbility::InitWmsMonitor()
 {

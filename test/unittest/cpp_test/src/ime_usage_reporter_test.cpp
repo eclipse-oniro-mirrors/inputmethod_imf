@@ -537,7 +537,7 @@ HWTEST_F(ImeUsageReporterTest, ReportAndCleanupOldData_002, TestSize.Level0)
     reporter_->ReportAndCleanupOldData(clearTime, oldDay + MILLISECS_PER_DAY);
     // Verify data was deleted
     int idx = reporter_->eventFactory_->GetDbHelper()->QueryRawEventIndex(TEST_BUNDLE, EVENT_INPUT_START);
-    EXPECT_EQ(idx, -1);
+    EXPECT_EQ(idx, IME_INDEX_NOT_FOUND);
 }
 
 // ==================== Init error paths ====================

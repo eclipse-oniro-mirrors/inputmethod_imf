@@ -456,7 +456,7 @@ HWTEST_F(ImeUsageEventFactoryTest, CleanupOldData_002, TestSize.Level0)
 
     // Verify events are deleted
     int idx = dbHelper_->QueryRawEventIndex(TEST_BUNDLE, EVENT_INPUT_START);
-    EXPECT_EQ(idx, -1);
+    EXPECT_EQ(idx, IME_INDEX_NOT_FOUND);
 }
 
 // ==================== MergeForegroundInfo: EVENT_INPUT_STATUS_CHANGED ====================

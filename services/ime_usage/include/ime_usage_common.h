@@ -166,10 +166,18 @@ inline constexpr char KEY_OF_SHOW_COUNT[] = "TOTAL_SHOW_NUM";
 inline constexpr uint32_t MAX_IME_USAGE_SIZE = 100;
 inline constexpr uint32_t DATA_KEEP_DAY = 3;
 inline constexpr uint64_t MILLISECS_PER_DAY = 24ULL * 60 * 60 * 1000;
+inline constexpr uint64_t MILLISECS_PER_SEC = 1000;
+inline constexpr uint64_t NANOSECS_PER_MILLISEC = 1000000;
 inline constexpr const char *IME_USAGE_DB_NAME = "ime_usage_log.db";
 inline constexpr const char *IME_USAGE_DB_TABLE = "ime_usage_events";
 inline constexpr const char *IME_USAGE_STATE_TABLE = "ime_usage_report_state";
 inline constexpr const char *STATE_KEY_LAST_REPORT_TIME = "last_report_time";
+
+// Common return codes for IME usage operations
+inline constexpr int IME_USAGE_SUCCESS = 0;
+inline constexpr int IME_USAGE_FAILED = -1;
+// Sentinel value indicating no matching DB row was found
+inline constexpr int IME_INDEX_NOT_FOUND = -1;
 
 // Single event record written to DB
 struct ImeEventRecord {
@@ -243,7 +251,7 @@ inline uint64_t GetToday0ClockMs()
 
 inline uint64_t DayStartFromMs(uint64_t ms)
 {
-    return ZeroClockMsFromTimeT(static_cast<std::time_t>(ms / 1000));
+    return ZeroClockMsFromTimeT(static_cast<std::time_t>(ms / MILLISECS_PER_SEC));
 }
 
 // Encode foldStatus and vhMode into a single screenStatus code.
@@ -264,7 +272,7 @@ inline void DecodeScreenStatus(int32_t screenStatus, int32_t &foldStatus, int32_
 
 inline std::string FormatDateStr(uint64_t dayStartMs)
 {
-    std::time_t t = static_cast<std::time_t>(dayStartMs / 1000);
+    std::time_t t = static_cast<std::time_t>(dayStartMs / MILLISECS_PER_SEC);
     struct tm localTm = {};
     if (localtime_r(&t, &localTm) != nullptr) {
         char buf[16] = { 0 };

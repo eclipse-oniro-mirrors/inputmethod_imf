@@ -30,6 +30,9 @@
 
 namespace OHOS {
 namespace MiscServices {
+#ifdef IME_USAGE_ENABLE
+class ImeUsageReporter;
+#endif
 enum class ServiceRunningState { STATE_NOT_START, STATE_RUNNING };
 class InputMethodSystemAbility : public SystemAbility, public InputMethodSystemAbilityStub {
     DECLARE_SYSTEM_ABILITY(InputMethodSystemAbility);
@@ -127,7 +130,9 @@ private:
     int32_t GetUserId(int32_t uid);
     uint64_t GetCallingDisplayId(int32_t userId, sptr<IRemoteObject> abilityToken = nullptr);
     std::shared_ptr<IdentityChecker> identityChecker_ = nullptr;
-    std::unique_ptr<ImeUsageReporter> imeUsageReporter_ = nullptr;
+#ifdef IME_USAGE_ENABLE
+    std::unique_ptr<ImeUsageReporter> imeUsageReporter_;
+#endif
     int32_t PrepareInput(int32_t userId, InputClientInfo &clientInfo, const FocusedInfo &focusedInfo);
     void WorkThread();
     int32_t OnHideKeyboardSelf(const Message *msg);

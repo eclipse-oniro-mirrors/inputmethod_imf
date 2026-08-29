@@ -2858,6 +2858,7 @@ ohos_unittest("EnableUpgradeManagerTest") {
   ]
 }
 
+if (target_platform == "phone") {
 ohos_unittest("ImeUsageTest") {
   branch_protector_ret = "pac_ret"
   sanitize = {
@@ -3025,6 +3026,7 @@ ohos_unittest("ImeUsageReporterTest") {
   cflags = [
     "-fno-access-control",
   ]
+}
 }
 
 ohos_unittest("PerUserSessionTest") {

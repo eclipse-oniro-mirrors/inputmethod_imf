@@ -93,14 +93,14 @@ HWTEST_F(FoldStatusAdapterTest, ConvertDisplayMode_002, TestSize.Level0)
 
 /**
  * @tc.name: FoldStatusAdapter_ConvertDisplayMode_003
- * @tc.desc: SUB -> -1 (IME unavailable)
+ * @tc.desc: SUB -> IME_SCREEN_STATUS_UNAVAILABLE (IME unavailable)
  * @tc.type: FUNC
  */
 HWTEST_F(FoldStatusAdapterTest, ConvertDisplayMode_003, TestSize.Level0)
 {
     auto &adapter = FoldStatusAdapter::GetInstance();
     int32_t result = adapter.ConvertDisplayMode(Rosen::FoldDisplayMode::SUB);
-    EXPECT_EQ(result, -1);
+    EXPECT_EQ(result, IME_SCREEN_STATUS_UNAVAILABLE);
 }
 
 /**
@@ -129,14 +129,14 @@ HWTEST_F(FoldStatusAdapterTest, ConvertDisplayMode_005, TestSize.Level0)
 
 /**
  * @tc.name: FoldStatusAdapter_ConvertDisplayMode_006
- * @tc.desc: V_MAIN -> -1 (IME unavailable)
+ * @tc.desc: V_MAIN -> IME_SCREEN_STATUS_UNAVAILABLE (IME unavailable)
  * @tc.type: FUNC
  */
 HWTEST_F(FoldStatusAdapterTest, ConvertDisplayMode_006, TestSize.Level0)
 {
     auto &adapter = FoldStatusAdapter::GetInstance();
     int32_t result = adapter.ConvertDisplayMode(Rosen::FoldDisplayMode::V_MAIN);
-    EXPECT_EQ(result, -1);
+    EXPECT_EQ(result, IME_SCREEN_STATUS_UNAVAILABLE);
 }
 
 /**
@@ -455,7 +455,7 @@ HWTEST_F(FoldStatusAdapterTest, HandleDisplayChanged_002, TestSize.Level0)
 
 /**
  * @tc.name: FoldStatusAdapter_ConvertDisplayMode_009
- * @tc.desc: Unknown FoldDisplayMode returns -1 (IME unavailable)
+ * @tc.desc: Unknown FoldDisplayMode returns IME_SCREEN_STATUS_UNAVAILABLE (IME unavailable)
  * @tc.type: FUNC
  */
 HWTEST_F(FoldStatusAdapterTest, ConvertDisplayMode_009, TestSize.Level0)
@@ -463,7 +463,7 @@ HWTEST_F(FoldStatusAdapterTest, ConvertDisplayMode_009, TestSize.Level0)
     auto &adapter = FoldStatusAdapter::GetInstance();
     // Use a value outside the known enum range
     int32_t result = adapter.ConvertDisplayMode(static_cast<Rosen::FoldDisplayMode>(99));
-    EXPECT_EQ(result, -1);
+    EXPECT_EQ(result, IME_SCREEN_STATUS_UNAVAILABLE);
 }
 
 // ==================== Init ====================
@@ -560,7 +560,7 @@ HWTEST_F(FoldStatusAdapterTest, HandleDisplayModeChanged_005, TestSize.Level0)
     });
     adapter.HandleDisplayModeChanged(Rosen::FoldDisplayMode::V_MAIN);
     EXPECT_FALSE(called);
-    // foldStatus_ should remain unchanged since V_MAIN returns -1 (IME unavailable)
+    // foldStatus_ should remain unchanged since V_MAIN returns IME_SCREEN_STATUS_UNAVAILABLE
     EXPECT_EQ(adapter.foldStatus_, UNFOLDED);
 }
 
