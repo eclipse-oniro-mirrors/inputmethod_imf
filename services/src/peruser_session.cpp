@@ -872,9 +872,6 @@ int32_t PerUserSession::BindClientWithIme(
         InputMethodSysEvent::GetInstance().ReportImeState(ImeState::BIND, imeData->pid, imeData->ime.first);
         Memory::MemMgrClient::GetInstance().SetCritical(getpid(), true, INPUT_METHOD_SYSTEM_ABILITY_ID);
         PostCurrentImeInfoReportHook(imeData->ime.first);
-        // imeData is guaranteed non-null here: checked at function entry (line 862).
-        // The unbind path re-fetches imeData via GetImeData() which can return null
-        // (IME may have died between bind and unbind), so it needs the null check.
         if (onImeBind_) {
             onImeBind_(imeData->ime.first);
         }

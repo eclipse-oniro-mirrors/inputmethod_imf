@@ -44,7 +44,16 @@ inline constexpr int8_t N = 5;        // N态 (N_MAIN)
 inline constexpr int8_t LM = 6;       // LM态 (L_FULL)
 inline constexpr int8_t LANDSCAPE = 1;
 inline constexpr int8_t PORTRAIT = 2;
+// Range bounds derived from the enum values above
+inline constexpr int8_t FOLD_STATUS_MIN = UNFOLDED;
+inline constexpr int8_t FOLD_STATUS_MAX = LM;
+inline constexpr int8_t VH_MODE_MIN = LANDSCAPE;
+inline constexpr int8_t VH_MODE_MAX = PORTRAIT;
+inline constexpr int8_t VH_MODE_COUNT = VH_MODE_MAX - VH_MODE_MIN + 1;
 } // namespace ImeFoldStatusBase
+
+// Encoding base for screenStatus: screenStatus = foldStatus * ENCODE_BASE + vhMode
+inline constexpr int32_t SCREEN_STATUS_ENCODE_BASE = 10;
 
 // Screen status encoding: screenStatus = foldStatus * 10 + vhMode
 //
@@ -70,18 +79,18 @@ inline constexpr int8_t PORTRAIT = 2;
 //   62 = LM+PORTRAIT          (LM-mode, portrait)
 namespace ImeScreenStatus {
 using namespace ImeFoldStatusBase;
-inline constexpr int UNFOLDED_LANDSCAPE = UNFOLDED * 10 + LANDSCAPE;
-inline constexpr int UNFOLDED_PORTRAIT = UNFOLDED * 10 + PORTRAIT;
-inline constexpr int FOLD_LANDSCAPE = FOLD * 10 + LANDSCAPE;
-inline constexpr int FOLD_PORTRAIT = FOLD * 10 + PORTRAIT;
-inline constexpr int EXPAND_LANDSCAPE = EXPAND * 10 + LANDSCAPE;
-inline constexpr int EXPAND_PORTRAIT = EXPAND * 10 + PORTRAIT;
-inline constexpr int G_LANDSCAPE = G * 10 + LANDSCAPE;
-inline constexpr int G_PORTRAIT = G * 10 + PORTRAIT;
-inline constexpr int N_LANDSCAPE = N * 10 + LANDSCAPE;
-inline constexpr int N_PORTRAIT = N * 10 + PORTRAIT;
-inline constexpr int LM_LANDSCAPE = LM * 10 + LANDSCAPE;
-inline constexpr int LM_PORTRAIT = LM * 10 + PORTRAIT;
+inline constexpr int UNFOLDED_LANDSCAPE = UNFOLDED * SCREEN_STATUS_ENCODE_BASE + LANDSCAPE;
+inline constexpr int UNFOLDED_PORTRAIT = UNFOLDED * SCREEN_STATUS_ENCODE_BASE + PORTRAIT;
+inline constexpr int FOLD_LANDSCAPE = FOLD * SCREEN_STATUS_ENCODE_BASE + LANDSCAPE;
+inline constexpr int FOLD_PORTRAIT = FOLD * SCREEN_STATUS_ENCODE_BASE + PORTRAIT;
+inline constexpr int EXPAND_LANDSCAPE = EXPAND * SCREEN_STATUS_ENCODE_BASE + LANDSCAPE;
+inline constexpr int EXPAND_PORTRAIT = EXPAND * SCREEN_STATUS_ENCODE_BASE + PORTRAIT;
+inline constexpr int G_LANDSCAPE = G * SCREEN_STATUS_ENCODE_BASE + LANDSCAPE;
+inline constexpr int G_PORTRAIT = G * SCREEN_STATUS_ENCODE_BASE + PORTRAIT;
+inline constexpr int N_LANDSCAPE = N * SCREEN_STATUS_ENCODE_BASE + LANDSCAPE;
+inline constexpr int N_PORTRAIT = N * SCREEN_STATUS_ENCODE_BASE + PORTRAIT;
+inline constexpr int LM_LANDSCAPE = LM * SCREEN_STATUS_ENCODE_BASE + LANDSCAPE;
+inline constexpr int LM_PORTRAIT = LM * SCREEN_STATUS_ENCODE_BASE + PORTRAIT;
 } // namespace ImeScreenStatus
 
 // Index into the durations array in ImeUsageInfo.
@@ -106,12 +115,13 @@ enum DurationIndex : size_t {
 // Returns DURATION_COUNT for invalid screenStatus values.
 inline size_t ScreenStatusToIndex(int32_t screenStatus)
 {
-    int32_t foldStatus = screenStatus / 10;
-    int32_t vhMode = screenStatus % 10;
-    if (foldStatus < 1 || foldStatus > 6 || vhMode < 1 || vhMode > 2) {
+    using namespace ImeFoldStatusBase;
+    int32_t foldStatus = screenStatus / SCREEN_STATUS_ENCODE_BASE;
+    int32_t vhMode = screenStatus % SCREEN_STATUS_ENCODE_BASE;
+    if (foldStatus < FOLD_STATUS_MIN || foldStatus > FOLD_STATUS_MAX || vhMode < VH_MODE_MIN || vhMode > VH_MODE_MAX) {
         return DURATION_COUNT;
     }
-    return static_cast<size_t>((foldStatus - 1) * 2 + (vhMode - 1));
+    return static_cast<size_t>((foldStatus - FOLD_STATUS_MIN) * VH_MODE_COUNT + (vhMode - VH_MODE_MIN));
 }
 
 // Screen status value indicating IME is unavailable for the current display mode
@@ -179,25 +189,33 @@ inline constexpr int IME_USAGE_FAILED = -1;
 // Sentinel value indicating no matching DB row was found
 inline constexpr int IME_INDEX_NOT_FOUND = -1;
 
+// Sentinel values for "not set" / "never happened" states
+// rawid=0 means the ImeEventRecord was default-constructed and never filled
+inline constexpr int32_t RAWID_NONE = 0;
+// screenStatus=0 means foldStatus/vhMode were never initialized
+inline constexpr int32_t SCREEN_STATUS_UNINITIALIZED = 0;
+// lastReportTime=0 means no report has ever been recorded
+inline constexpr uint64_t REPORT_TIME_NEVER = 0;
+
 // Single event record written to DB
 struct ImeEventRecord {
-    int32_t rawid = 0;
+    int32_t rawid = RAWID_NONE;
     int64_t ts = 0;         // boot-relative timestamp for duration calculation
     int64_t happenTime = 0; // wall-clock timestamp for date-range queries
     std::string bundleName;
-    int32_t preScreenStatus = 0;
-    int32_t screenStatus = 0;
+    int32_t preScreenStatus = SCREEN_STATUS_UNINITIALIZED;
+    int32_t screenStatus = SCREEN_STATUS_UNINITIALIZED;
 };
 
 // Raw event read from DB for foreground recovery
 struct ImeUsageRawEvent {
     int64_t id = 0;
-    int32_t rawId = 0;
+    int32_t rawId = RAWID_NONE;
     std::string package;
     int64_t ts = 0;
     int64_t happenTime = 0;
-    int32_t screenStatusBefore = 0;
-    int32_t screenStatusAfter = 0;
+    int32_t screenStatusBefore = SCREEN_STATUS_UNINITIALIZED;
+    int32_t screenStatusAfter = SCREEN_STATUS_UNINITIALIZED;
 };
 
 // Aggregated usage info per IME package
@@ -259,15 +277,15 @@ inline uint64_t DayStartFromMs(uint64_t ms)
 // foldStatus=0 is reserved for "uninitialized" and should not be encoded.
 inline int32_t EncodeScreenStatus(int32_t foldStatus, int32_t vhMode)
 {
-    return foldStatus * 10 + vhMode;
+    return foldStatus * SCREEN_STATUS_ENCODE_BASE + vhMode;
 }
 
 // Decode a screenStatus code back into foldStatus and vhMode.
 // Inverse of EncodeScreenStatus. Only valid when foldStatus was in [1, 9].
 inline void DecodeScreenStatus(int32_t screenStatus, int32_t &foldStatus, int32_t &vhMode)
 {
-    foldStatus = screenStatus / 10;
-    vhMode = screenStatus % 10;
+    foldStatus = screenStatus / SCREEN_STATUS_ENCODE_BASE;
+    vhMode = screenStatus % SCREEN_STATUS_ENCODE_BASE;
 }
 
 inline std::string FormatDateStr(uint64_t dayStartMs)

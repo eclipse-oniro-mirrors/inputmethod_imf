@@ -46,6 +46,79 @@ constexpr int32_t RDB_RETRY_COUNT = 5;
 // Transient RDB error codes that warrant retry (same set as SMS/MMS)
 constexpr int32_t RETRY_ERROR_CODES[] = { 27394108, 27394109, 27394110, 27394112, 27394100, 27394095 };
 
+// ResultSet column indices for each query, grouped by the function that uses them.
+// Named constants make the GetInt/GetLong/GetString calls self-documenting and
+// guard against silent breakage if column order changes in the SELECT statement.
+namespace QueryRawEventIndexCol {
+constexpr int COL_ID = 0;
+} // namespace QueryRawEventIndexCol
+
+namespace LoadReportStateCol {
+constexpr int COL_VALUE = 0;
+} // namespace LoadReportStateCol
+
+namespace QueryEarliestTimeCol {
+constexpr int COL_MIN_HAPPEN_TIME = 0;
+} // namespace QueryEarliestTimeCol
+
+namespace VerifyCountCol {
+constexpr int COL_COUNT = 0;
+} // namespace VerifyCountCol
+
+namespace QueryActiveDaysCol {
+constexpr int COL_DAY_START = 0;
+} // namespace QueryActiveDaysCol
+
+namespace QueryEventRecordsCol {
+constexpr int COL_ID = 0;
+constexpr int COL_RAWID = 1;
+constexpr int COL_TS = 2;
+constexpr int COL_HAPPEN_TIME = 3;
+constexpr int COL_BUNDLE_NAME = 4;
+constexpr int COL_FOLD_STATUS = 5;
+constexpr int COL_PRE_FOLD_STATUS = 6;
+} // namespace QueryEventRecordsCol
+
+namespace QueryStatisticCol {
+constexpr int COL_BUNDLE_NAME = 0;
+constexpr int FIRST_DURATION = 1; // duration SUM columns follow at index 1..12
+constexpr int COL_START_NUM = 13; // SUM(CASE WHEN rawid=INPUT_START THEN 1 ELSE 0 END)
+} // namespace QueryStatisticCol
+
+namespace QueryFinalEventCol {
+constexpr int COL_ID = 0;
+constexpr int COL_RAWID = 1;
+constexpr int COL_BUNDLE_NAME = 2;
+constexpr int COL_TS = 3;
+constexpr int COL_HAPPEN_TIME = 4;
+constexpr int COL_FOLD_STATUS = 5;
+constexpr int COL_PRE_FOLD_STATUS = 6;
+} // namespace QueryFinalEventCol
+
+namespace ForegroundEventCol {
+constexpr int COL_RAWID = 0;
+constexpr int COL_BUNDLE_NAME = 1;
+constexpr int COL_TS = 2;
+constexpr int COL_HAPPEN_TIME = 3;
+constexpr int COL_FOLD_STATUS_AFTER = 4;
+constexpr int COL_FOLD_STATUS_BEFORE = 5;
+} // namespace ForegroundEventCol
+
+// Sentinel value for Insert rowId out-param (unused; RDB fills it in)
+constexpr int64_t INSERT_ROWID_NONE = -1;
+// Sentinel value for VerifyAndRecoverStore: COUNT(*) query failed or returned no row
+constexpr int VERIFY_COUNT_INVALID = -1;
+// Threshold for ts vs happenTime divergence check (30 seconds)
+constexpr int64_t DIVERGENCE_THRESHOLD_MS = 30000;
+// RDB read-concurrency pool size: 0 means default (single connection)
+constexpr int RDB_READ_CON_SIZE_DEFAULT = 0;
+// Directory permission: owner rwx + group rwx
+constexpr mode_t DIR_PERM = S_IRWXU | S_IRWXG;
+// Report state table column names (not in ImeUsageTable namespace because they
+// are for the state table, not the events table)
+constexpr char STATE_COL_KEY[] = "key";
+constexpr char STATE_COL_VALUE[] = "value";
+
 // Duration columns in DB, mapped to their screen status codes and DurationIndex
 struct DurationColumnInfo {
     const char *fieldName;
@@ -83,14 +156,14 @@ void CollectForegroundEvents(std::shared_ptr<NativeRdb::ResultSet> resultSet, co
     std::string lastBundle;
     while (resultSet->GoToNextRow() == DB_SUCC) {
         ForegroundRawEvt evt;
-        resultSet->GetInt(0, evt.rawId);
+        resultSet->GetInt(ForegroundEventCol::COL_RAWID, evt.rawId);
         std::string bundle;
-        resultSet->GetString(1, bundle);
+        resultSet->GetString(ForegroundEventCol::COL_BUNDLE_NAME, bundle);
         evt.bundle = bundle;
-        resultSet->GetLong(2, evt.ts);
-        resultSet->GetLong(3, evt.happenTime);
-        resultSet->GetInt(4, evt.screenAfter);
-        resultSet->GetInt(5, evt.screenBefore);
+        resultSet->GetLong(ForegroundEventCol::COL_TS, evt.ts);
+        resultSet->GetLong(ForegroundEventCol::COL_HAPPEN_TIME, evt.happenTime);
+        resultSet->GetInt(ForegroundEventCol::COL_FOLD_STATUS_AFTER, evt.screenAfter);
+        resultSet->GetInt(ForegroundEventCol::COL_FOLD_STATUS_BEFORE, evt.screenBefore);
 
         if (lastBundle.empty()) {
             lastBundle = bundle;
@@ -132,7 +205,6 @@ void CalculateForegroundDuration(const std::vector<ForegroundRawEvt> &events, ui
     for (int i = static_cast<int>(events.size()) - 1; i > 0; i--) {
         int64_t tsDelta = events[i - 1].ts - events[i].ts;
         int64_t htDelta = events[i - 1].happenTime - events[i].happenTime;
-        constexpr int64_t DIVERGENCE_THRESHOLD_MS = 30000; // 30 seconds
         if (tsDelta > 0 && htDelta > 0 && std::abs(tsDelta - htDelta) > DIVERGENCE_THRESHOLD_MS) {
             IMSA_HILOGW("CalculateForegroundDuration: ts/happenTime divergence at idx=%{public}d, "
                         "tsDelta=%{public}lld, htDelta=%{public}lld",
@@ -165,7 +237,7 @@ public:
         // This feature has not yet shipped, so no production V1/V2 databases exist.
         // The upgrade path is retained for forward compatibility: if a future
         // schema change bumps DB_VERSION again, add a new `if (oldVersion < N)` block.
-        if (oldVersion < 3) {
+        if (oldVersion < DB_VERSION) {
             // Re-create events table (drops any stale schema) and add report state table
             rdbStore.ExecuteSql("DROP TABLE IF EXISTS ime_usage_events");
             rdbStore.ExecuteSql("CREATE TABLE IF NOT EXISTS ime_usage_report_state ("
@@ -200,24 +272,24 @@ bool ImeUsageDbHelper::EnsureDirectoryExist(const std::string &path)
     while ((pos = path.find('/', pos + 1)) != std::string::npos) {
         std::string subPath = path.substr(0, pos);
         if (access(subPath.c_str(), F_OK) != 0) {
-            if (mkdir(subPath.c_str(), S_IRWXU | S_IRWXG) != 0 && errno != EEXIST) {
+            if (mkdir(subPath.c_str(), DIR_PERM) != 0 && errno != EEXIST) {
                 IMSA_HILOGE("EnsureDirectoryExist: mkdir %{public}s failed, errno=%{public}d", subPath.c_str(), errno);
                 return false;
             }
         }
     }
     // Create the final directory
-    if (mkdir(path.c_str(), S_IRWXU | S_IRWXG) != 0 && errno != EEXIST) {
+    if (mkdir(path.c_str(), DIR_PERM) != 0 && errno != EEXIST) {
         IMSA_HILOGE("EnsureDirectoryExist: mkdir %{public}s failed, errno=%{public}d", path.c_str(), errno);
         return false;
     }
-    IMSA_HILOGD("EnsureDirectoryExist: created %{public}s", path.c_str());
+    IMSA_HILOGI("EnsureDirectoryExist: created %{public}s", path.c_str());
     return true;
 }
 
 bool ImeUsageDbHelper::CreateDbStore(const std::string &dbPath)
 {
-    IMSA_HILOGD("CreateDbStore: dbPath=%{public}s", dbPath.c_str());
+    IMSA_HILOGI("CreateDbStore: dbPath=%{public}s", dbPath.c_str());
 
     // Use direct path pattern (same as Time Service, Certificate Manager):
     // build the full db file path ourselves, ensure directory exists,
@@ -238,7 +310,7 @@ bool ImeUsageDbHelper::CreateDbStore(const std::string &dbPath)
     NativeRdb::RdbStoreConfig config(dbFile);
     config.SetSecurityLevel(NativeRdb::SecurityLevel::S1);
     config.SetAllowRebuild(true);
-    config.SetReadConSize(0);
+    config.SetReadConSize(RDB_READ_CON_SIZE_DEFAULT);
 
     ImeUsageDbOpenCallback callback;
     int errCode = DB_SUCC;
@@ -270,15 +342,15 @@ bool ImeUsageDbHelper::CreateDbStore(const std::string &dbPath)
 bool ImeUsageDbHelper::VerifyAndRecoverStore(const std::string &dbFile, NativeRdb::RdbStoreConfig &config, int &errCode)
 {
     auto checkRs = rdbStore_->QuerySql("SELECT COUNT(*) FROM " + std::string(IME_USAGE_DB_TABLE));
-    int checkCount = -1;
+    int checkCount = VERIFY_COUNT_INVALID;
     if (checkRs != nullptr && checkRs->GoToNextRow() == DB_SUCC) {
-        checkRs->GetInt(0, checkCount);
+        checkRs->GetInt(VerifyCountCol::COL_COUNT, checkCount);
     }
     if (checkRs != nullptr) {
         checkRs->Close();
     }
-    IMSA_HILOGD("VerifyAndRecoverStore: COUNT(*)=%{public}d", checkCount);
-    if (checkCount < 0) {
+    IMSA_HILOGI("VerifyAndRecoverStore: COUNT(*)=%{public}d", checkCount);
+    if (checkCount == VERIFY_COUNT_INVALID) {
         IMSA_HILOGW("VerifyAndRecoverStore: store broken, deleting and recreating");
         rdbStore_ = nullptr;
         int delRet = NativeRdb::RdbHelper::DeleteRdbStore(dbFile);
@@ -393,7 +465,7 @@ int ImeUsageDbHelper::AddEvent(const ImeEventRecord &record, const DurationMap &
         }
     }
 
-    int64_t rowId = -1;
+    int64_t rowId = INSERT_ROWID_NONE;
     int ret = rdbStore_->Insert(rowId, IME_USAGE_DB_TABLE, values);
     if (ret != DB_SUCC) {
         IMSA_HILOGE("Insert failed, ret=%{public}d, rawId=%{public}d, bundle=%{public}s", ret, record.rawid,
@@ -401,7 +473,7 @@ int ImeUsageDbHelper::AddEvent(const ImeEventRecord &record, const DurationMap &
         return DB_FAILED;
     }
 
-    IMSA_HILOGD("AddEvent: rowId=%{public}lld, rawId=%{public}d, bundle=%{public}s, "
+    IMSA_HILOGI("AddEvent: rowId=%{public}lld, rawId=%{public}d, bundle=%{public}s, "
                 "screenStatus=%{public}d, happenTime=%{public}lld, durationCount=%{public}zu",
         static_cast<long long>(rowId), record.rawid, record.bundleName.c_str(), record.screenStatus,
         static_cast<long long>(record.happenTime), durations.size());
@@ -444,7 +516,7 @@ int ImeUsageDbHelper::AddEventsTransactional(const std::vector<std::pair<ImeEven
             }
         }
 
-        int64_t rowId = -1;
+        int64_t rowId = INSERT_ROWID_NONE;
         ret = rdbStore_->Insert(rowId, IME_USAGE_DB_TABLE, values);
         if (ret != DB_SUCC) {
             IMSA_HILOGE("AddEventsTransactional: Insert failed, ret=%{public}d, rawId=%{public}d, bundle=%{public}s",
@@ -461,7 +533,7 @@ int ImeUsageDbHelper::AddEventsTransactional(const std::vector<std::pair<ImeEven
         return DB_FAILED;
     }
 
-    IMSA_HILOGD("AddEventsTransactional: committed %{public}zu events", events.size());
+    IMSA_HILOGI("AddEventsTransactional: committed %{public}zu events", events.size());
     return DB_SUCC;
 }
 
@@ -475,16 +547,16 @@ int ImeUsageDbHelper::QueryRawEventIndex(const std::string &bundleName, int32_t 
         " WHERE bundle_name = ? AND rawid = ? ORDER BY id DESC LIMIT 1";
     auto resultSet = rdbStore_->QuerySql(sql, std::vector<std::string> { bundleName, std::to_string(rawId) });
     if (resultSet == nullptr) {
-        IMSA_HILOGW(
+        IMSA_HILOGI(
             "QueryRawEventIndex: resultSet is null, bundle=%{public}s, rawId=%{public}d", bundleName.c_str(), rawId);
         return IME_INDEX_NOT_FOUND;
     }
     int32_t id = IME_INDEX_NOT_FOUND;
     if (resultSet->GoToNextRow() == DB_SUCC) {
-        resultSet->GetInt(0, id);
+        resultSet->GetInt(QueryRawEventIndexCol::COL_ID, id);
     }
     resultSet->Close();
-    IMSA_HILOGD(
+    IMSA_HILOGI(
         "QueryRawEventIndex: bundle=%{public}s, rawId=%{public}d, foundId=%{public}d", bundleName.c_str(), rawId, id);
     return id;
 }
@@ -509,15 +581,15 @@ void ImeUsageDbHelper::QueryEventRecords(
     while (resultSet->GoToNextRow() == DB_SUCC) {
         ImeEventRecord record;
         int32_t tmpId = 0;
-        resultSet->GetInt(0, tmpId);
-        resultSet->GetInt(1, record.rawid);
-        resultSet->GetLong(2, record.ts);
-        resultSet->GetLong(3, record.happenTime);
+        resultSet->GetInt(QueryEventRecordsCol::COL_ID, tmpId);
+        resultSet->GetInt(QueryEventRecordsCol::COL_RAWID, record.rawid);
+        resultSet->GetLong(QueryEventRecordsCol::COL_TS, record.ts);
+        resultSet->GetLong(QueryEventRecordsCol::COL_HAPPEN_TIME, record.happenTime);
         std::string bundle;
-        resultSet->GetString(4, bundle);
+        resultSet->GetString(QueryEventRecordsCol::COL_BUNDLE_NAME, bundle);
         record.bundleName = bundle;
-        resultSet->GetInt(5, record.screenStatus);
-        resultSet->GetInt(6, record.preScreenStatus);
+        resultSet->GetInt(QueryEventRecordsCol::COL_FOLD_STATUS, record.screenStatus);
+        resultSet->GetInt(QueryEventRecordsCol::COL_PRE_FOLD_STATUS, record.preScreenStatus);
 
         if (record.rawid == ImeUsageEventId::EVENT_COUNT_DURATION) {
             checkpointCount++;
@@ -532,7 +604,7 @@ void ImeUsageDbHelper::QueryEventRecords(
         records.push_back(record);
     }
     resultSet->Close();
-    IMSA_HILOGD("QueryEventRecords: bundle=%{public}s, startIndex=%{public}d, "
+    IMSA_HILOGI("QueryEventRecords: bundle=%{public}s, startIndex=%{public}d, "
                 "dayStartTime=%{public}lld, resultCount=%{public}zu, checkpoints=%{public}d",
         bundleName.c_str(), startIndex, static_cast<long long>(dayStartTime), records.size(), checkpointCount);
 }
@@ -544,7 +616,7 @@ void ImeUsageDbHelper::QueryStatisticEventsInPeriod(
     if (rdbStore_ == nullptr) {
         return;
     }
-    IMSA_HILOGD("QueryStatisticEventsInPeriod: startTime=%{public}llu, endTime=%{public}llu",
+    IMSA_HILOGI("QueryStatisticEventsInPeriod: startTime=%{public}llu, endTime=%{public}llu",
         static_cast<unsigned long long>(startTime), static_cast<unsigned long long>(endTime));
 
     std::string sql = "SELECT bundle_name";
@@ -563,10 +635,10 @@ void ImeUsageDbHelper::QueryStatisticEventsInPeriod(
     while (resultSet->GoToNextRow() == DB_SUCC) {
         ImeUsageInfo info;
         std::string bundle;
-        resultSet->GetString(0, bundle);
+        resultSet->GetString(QueryStatisticCol::COL_BUNDLE_NAME, bundle);
         info.package = bundle;
 
-        int colIdx = 1;
+        int colIdx = QueryStatisticCol::FIRST_DURATION;
         for (const auto &dc : DURATION_COLUMNS) {
             int64_t val = 0;
             resultSet->GetLong(colIdx, val);
@@ -574,14 +646,14 @@ void ImeUsageDbHelper::QueryStatisticEventsInPeriod(
             colIdx++;
         }
         int64_t startNum = 0;
-        resultSet->GetLong(colIdx, startNum);
+        resultSet->GetLong(QueryStatisticCol::COL_START_NUM, startNum);
         info.showCount = static_cast<uint32_t>(std::max<int64_t>(0, startNum));
         info.usage = info.GetAppUsage();
 
         infos[bundle] = info;
     }
     resultSet->Close();
-    IMSA_HILOGD("QueryStatisticEventsInPeriod: found %{public}zu IME groups", infos.size());
+    IMSA_HILOGI("QueryStatisticEventsInPeriod: found %{public}zu IME groups", infos.size());
 }
 
 void ImeUsageDbHelper::QueryFinalEventInfo(uint64_t endTime, ImeUsageRawEvent &event)
@@ -596,25 +668,25 @@ void ImeUsageDbHelper::QueryFinalEventInfo(uint64_t endTime, ImeUsageRawEvent &e
     auto resultSet =
         rdbStore_->QuerySql(sql, std::vector<std::string> { std::to_string(static_cast<int64_t>(endTime)) });
     if (resultSet == nullptr) {
-        IMSA_HILOGW("QueryFinalEventInfo: resultSet is null");
+        IMSA_HILOGI("QueryFinalEventInfo: resultSet is null");
         return;
     }
     if (resultSet->GoToNextRow() == DB_SUCC) {
-        resultSet->GetLong(0, event.id);
-        resultSet->GetInt(1, event.rawId);
+        resultSet->GetLong(QueryFinalEventCol::COL_ID, event.id);
+        resultSet->GetInt(QueryFinalEventCol::COL_RAWID, event.rawId);
         std::string bundle;
-        resultSet->GetString(2, bundle);
+        resultSet->GetString(QueryFinalEventCol::COL_BUNDLE_NAME, bundle);
         event.package = bundle;
-        resultSet->GetLong(3, event.ts);
-        resultSet->GetLong(4, event.happenTime);
-        resultSet->GetInt(5, event.screenStatusAfter);
-        resultSet->GetInt(6, event.screenStatusBefore);
-        IMSA_HILOGD("QueryFinalEventInfo: id=%{public}lld, rawId=%{public}d, "
+        resultSet->GetLong(QueryFinalEventCol::COL_TS, event.ts);
+        resultSet->GetLong(QueryFinalEventCol::COL_HAPPEN_TIME, event.happenTime);
+        resultSet->GetInt(QueryFinalEventCol::COL_FOLD_STATUS, event.screenStatusAfter);
+        resultSet->GetInt(QueryFinalEventCol::COL_PRE_FOLD_STATUS, event.screenStatusBefore);
+        IMSA_HILOGI("QueryFinalEventInfo: id=%{public}lld, rawId=%{public}d, "
                     "pkg=%{public}s, screenAfter=%{public}d, screenBefore=%{public}d",
             static_cast<long long>(event.id), event.rawId, event.package.c_str(), event.screenStatusAfter,
             event.screenStatusBefore);
     } else {
-        IMSA_HILOGD("QueryFinalEventInfo: no events found before endTime=%{public}llu",
+        IMSA_HILOGI("QueryFinalEventInfo: no events found before endTime=%{public}llu",
             static_cast<unsigned long long>(endTime));
     }
     resultSet->Close();
@@ -627,7 +699,7 @@ void ImeUsageDbHelper::QueryForegroundImeInfo(
     if (rdbStore_ == nullptr) {
         return;
     }
-    IMSA_HILOGD("QueryForegroundImeInfo: startTime=%{public}llu, endTime=%{public}llu, "
+    IMSA_HILOGI("QueryForegroundImeInfo: startTime=%{public}llu, endTime=%{public}llu, "
                 "screenStatus=%{public}d, pkg=%{public}s",
         static_cast<unsigned long long>(startTime), static_cast<unsigned long long>(endTime), screenStatus,
         info.package.c_str());
@@ -645,7 +717,7 @@ void ImeUsageDbHelper::QueryForegroundImeInfo(
 
     std::vector<ForegroundRawEvt> events;
     CollectForegroundEvents(resultSet, info.package, events);
-    IMSA_HILOGD("QueryForegroundImeInfo: collected %{public}zu events", events.size());
+    IMSA_HILOGI("QueryForegroundImeInfo: collected %{public}zu events", events.size());
     CalculateForegroundDuration(events, startTime, endTime, screenStatus, info);
 }
 
@@ -663,7 +735,7 @@ int ImeUsageDbHelper::DeleteEventsByTime(uint64_t clearDataTime)
         IMSA_HILOGE("Delete failed, ret=%{public}d", ret);
         return DB_FAILED;
     }
-    IMSA_HILOGD("Deleted rows older than %{public}llu", static_cast<unsigned long long>(clearDataTime));
+    IMSA_HILOGI("Deleted rows older than %{public}llu", static_cast<unsigned long long>(clearDataTime));
     return DB_SUCC;
 }
 
@@ -675,16 +747,16 @@ int ImeUsageDbHelper::SaveReportState(const std::string &key, const std::string 
     }
     // INSERT OR REPLACE: update if key exists, insert otherwise
     NativeRdb::ValuesBucket values;
-    values.PutString("key", key);
-    values.PutString("value", value);
-    int64_t rowId = -1;
+    values.PutString(STATE_COL_KEY, key);
+    values.PutString(STATE_COL_VALUE, value);
+    int64_t rowId = INSERT_ROWID_NONE;
     int ret = rdbStore_->InsertWithConflictResolution(
         rowId, IME_USAGE_STATE_TABLE, values, NativeRdb::ConflictResolution::ON_CONFLICT_REPLACE);
     if (ret != DB_SUCC) {
         IMSA_HILOGE("SaveReportState failed, key=%{public}s, ret=%{public}d", key.c_str(), ret);
         return DB_FAILED;
     }
-    IMSA_HILOGD("SaveReportState: key=%{public}s, value=%{public}s", key.c_str(), value.c_str());
+    IMSA_HILOGI("SaveReportState: key=%{public}s, value=%{public}s", key.c_str(), value.c_str());
     return DB_SUCC;
 }
 
@@ -698,18 +770,18 @@ int ImeUsageDbHelper::LoadReportState(const std::string &key, std::string &value
     std::string sql = "SELECT value FROM " + std::string(IME_USAGE_STATE_TABLE) + " WHERE key = ?";
     auto resultSet = rdbStore_->QuerySql(sql, std::vector<std::string> { key });
     if (resultSet == nullptr) {
-        IMSA_HILOGW("LoadReportState: no result for key=%{public}s", key.c_str());
+        IMSA_HILOGI("LoadReportState: no result for key=%{public}s", key.c_str());
         return DB_FAILED;
     }
     if (resultSet->GoToNextRow() == DB_SUCC) {
-        resultSet->GetString(0, value);
+        resultSet->GetString(LoadReportStateCol::COL_VALUE, value);
     }
     resultSet->Close();
     if (value.empty()) {
-        IMSA_HILOGW("LoadReportState: key=%{public}s not found", key.c_str());
+        IMSA_HILOGI("LoadReportState: key=%{public}s not found", key.c_str());
         return DB_FAILED;
     }
-    IMSA_HILOGD("LoadReportState: key=%{public}s, value=%{public}s", key.c_str(), value.c_str());
+    IMSA_HILOGI("LoadReportState: key=%{public}s, value=%{public}s", key.c_str(), value.c_str());
     return DB_SUCC;
 }
 
@@ -726,10 +798,10 @@ int64_t ImeUsageDbHelper::QueryEarliestEventTime()
     }
     int64_t earliestTime = IME_INDEX_NOT_FOUND;
     if (resultSet->GoToNextRow() == DB_SUCC) {
-        resultSet->GetLong(0, earliestTime);
+        resultSet->GetLong(QueryEarliestTimeCol::COL_MIN_HAPPEN_TIME, earliestTime);
     }
     resultSet->Close();
-    IMSA_HILOGD("QueryEarliestEventTime: %{public}lld", static_cast<long long>(earliestTime));
+    IMSA_HILOGI("QueryEarliestEventTime: %{public}lld", static_cast<long long>(earliestTime));
     return earliestTime;
 }
 
@@ -753,12 +825,12 @@ std::vector<uint64_t> ImeUsageDbHelper::QueryActiveDays(uint64_t startTime, uint
     }
     while (resultSet->GoToNextRow() == DB_SUCC) {
         int64_t dayStart = 0;
-        if (resultSet->GetLong(0, dayStart) == DB_SUCC && dayStart >= 0) {
+        if (resultSet->GetLong(QueryActiveDaysCol::COL_DAY_START, dayStart) == DB_SUCC && dayStart >= 0) {
             days.push_back(static_cast<uint64_t>(dayStart));
         }
     }
     resultSet->Close();
-    IMSA_HILOGD("QueryActiveDays: found %{public}zu days in [%{public}llu, %{public}llu]", days.size(),
+    IMSA_HILOGI("QueryActiveDays: found %{public}zu days in [%{public}llu, %{public}llu]", days.size(),
         static_cast<unsigned long long>(startTime), static_cast<unsigned long long>(endTime));
     return days;
 }

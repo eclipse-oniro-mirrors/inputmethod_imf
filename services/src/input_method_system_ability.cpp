@@ -64,7 +64,6 @@
 #include "ime_info_inquirer.h"
 #ifdef IME_USAGE_ENABLE
 #include "fold_status_adapter.h"
-#include "ime_usage_reporter.h"
 #endif
 
 namespace OHOS {
@@ -2016,9 +2015,12 @@ void InputMethodSystemAbility::WorkThread()
             }
             case MSG_ID_BOOT_COMPLETED: {
                 FullImeInfoManager::GetInstance().Init();
-                if (imeUsageReporter_ != nullptr) {
+#ifdef IME_USAGE_ENABLE
+                if (ImeInfoInquirer::GetInstance().GetSystemConfig().enableImeUsageFeature
+                    && imeUsageReporter_ != nullptr) {
                     imeUsageReporter_->OnBootCompleted();
                 }
+#endif
                 break;
             }
             case MSG_ID_OS_ACCOUNT_STARTED: {
@@ -2572,6 +2574,10 @@ int32_t InputMethodSystemAbility::InitKeyEventMonitor()
 #ifdef IME_USAGE_ENABLE
 void InputMethodSystemAbility::InitImeUsageReporter()
 {
+    if (!ImeInfoInquirer::GetInstance().GetSystemConfig().enableImeUsageFeature) {
+        IMSA_HILOGW("ImeUsage feature is disbaled by system config");
+        return;
+    }
     // Initialize FoldStatusAdapter BEFORE ImeUsageReporter so that
     // ImeUsageEventCacher::Init can read the real fold/vh state instead of 0/0.
     FoldStatusAdapter::GetInstance().Init();

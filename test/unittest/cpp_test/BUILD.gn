@@ -656,7 +656,9 @@ ohos_unittest("InputMethodPrivateMemberTest") {
   } else {
     external_deps += [ "window_manager:libwm" ]
   }
-
+  if (target_platform == "phone") {
+    defines += [ "IME_USAGE_ENABLE" ]
+  }
   if (build_selinux) {
     external_deps += [ "selinux_adapter:librestorecon" ]
     cflags = [ "-DWITH_SELINUX" ]

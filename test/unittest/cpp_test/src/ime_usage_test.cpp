@@ -39,6 +39,9 @@ using namespace testing::ext;
 using namespace ImeUsageEventId;
 using namespace ImeFoldStatusBase;
 using namespace ImeScreenStatus;
+using OHOS::MiscServices::RAWID_NONE;
+using OHOS::MiscServices::SCREEN_STATUS_UNINITIALIZED;
+using OHOS::MiscServices::IME_USAGE_SUCCESS;
 
 const std::string TEST_BUNDLE = "com.test.ime";
 const std::string TEST_BUNDLE2 = "com.test.ime2";
@@ -722,14 +725,14 @@ HWTEST_F(ImeUsageEventCacherTest, CalculateDuration_006, TestSize.Level0)
     start.rawid = EVENT_INPUT_START;
     start.ts = 1000;
     start.happenTime = 1000;
-    start.screenStatus = 0; // uninitialized
+    start.screenStatus = SCREEN_STATUS_UNINITIALIZED; // uninitialized
     records.push_back(start);
 
     ImeEventRecord stop;
     stop.rawid = EVENT_INPUT_STOP;
     stop.ts = 5000;
     stop.happenTime = 5000;
-    stop.screenStatus = 0;
+    stop.screenStatus = SCREEN_STATUS_UNINITIALIZED;
     records.push_back(stop);
 
     DurationMap durations;
@@ -1828,8 +1831,8 @@ HWTEST_F(ImeUsageEventCacherTest, CalculateDuration_010, TestSize.Level0)
     changed.rawid = EVENT_INPUT_STATUS_CHANGED;
     changed.ts = 3000;
     changed.happenTime = 3000;
-    changed.screenStatus = 0;
-    changed.preScreenStatus = 0;
+    changed.screenStatus = SCREEN_STATUS_UNINITIALIZED;
+    changed.preScreenStatus = SCREEN_STATUS_UNINITIALIZED;
     records.push_back(changed);
 
     DurationMap durations;
@@ -1853,7 +1856,7 @@ HWTEST_F(ImeUsageEventCacherTest, CalculateDuration_011, TestSize.Level0)
     start.rawid = EVENT_INPUT_START;
     start.ts = 1000;
     start.happenTime = 1000;
-    start.screenStatus = 0; // uninitialized
+    start.screenStatus = SCREEN_STATUS_UNINITIALIZED; // uninitialized
     records.push_back(start);
 
     ImeEventRecord stop;
@@ -2150,6 +2153,373 @@ HWTEST_F(ImeUsageEventCacherTest, ZeroClockMsFromTimeT_001, TestSize.Level0)
     uint64_t nowMs =
         static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(now.time_since_epoch()).count());
     EXPECT_LE(midnight, nowMs);
+}
+
+// ==================== DbHelper: AddEventsTransactional ====================
+
+/**
+ * @tc.name: ImeUsageDbHelper_AddEventsTransactional_002
+ * @tc.desc: AddEventsTransactional writes multiple events atomically
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, DbHelper_AddEventsTransactional_002, TestSize.Level0)
+{
+    ImeEventRecord stopRec;
+    stopRec.rawid = EVENT_INPUT_STOP;
+    stopRec.ts = 5000;
+    stopRec.happenTime = 5000;
+    stopRec.bundleName = TEST_BUNDLE;
+    stopRec.preScreenStatus = UNFOLDED_PORTRAIT;
+    stopRec.screenStatus = UNFOLDED_PORTRAIT;
+
+    ImeEventRecord countRec;
+    countRec.rawid = EVENT_COUNT_DURATION;
+    countRec.ts = 5000;
+    countRec.happenTime = 5000;
+    countRec.bundleName = TEST_BUNDLE;
+    countRec.preScreenStatus = UNFOLDED_PORTRAIT;
+    countRec.screenStatus = UNFOLDED_PORTRAIT;
+
+    DurationMap durations;
+    durations[UNFOLDED_PORTRAIT] = 3000;
+
+    std::vector<std::pair<ImeEventRecord, DurationMap>> events;
+    events.emplace_back(stopRec, DurationMap {});
+    events.emplace_back(countRec, durations);
+
+    int ret = dbHelper_->AddEventsTransactional(events);
+    EXPECT_EQ(ret, 0);
+
+    // Verify both records were written
+    int stopIdx = dbHelper_->QueryRawEventIndex(TEST_BUNDLE, EVENT_INPUT_STOP);
+    EXPECT_GE(stopIdx, 0);
+    int countIdx = dbHelper_->QueryRawEventIndex(TEST_BUNDLE, EVENT_COUNT_DURATION);
+    EXPECT_GE(countIdx, 0);
+    // COUNT_DURATION row should have a higher row ID than STOP
+    EXPECT_GT(countIdx, stopIdx);
+}
+
+/**
+ * @tc.name: ImeUsageDbHelper_AddEventsTransactional_004
+ * @tc.desc: AddEventsTransactional with single event succeeds
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, DbHelper_AddEventsTransactional_004, TestSize.Level0)
+{
+    ImeEventRecord startRec;
+    startRec.rawid = EVENT_INPUT_START;
+    startRec.ts = 1000;
+    startRec.happenTime = 2000;
+    startRec.bundleName = TEST_BUNDLE;
+    startRec.preScreenStatus = UNFOLDED_PORTRAIT;
+    startRec.screenStatus = UNFOLDED_PORTRAIT;
+
+    std::vector<std::pair<ImeEventRecord, DurationMap>> events;
+    events.emplace_back(startRec, DurationMap {});
+
+    int ret = dbHelper_->AddEventsTransactional(events);
+    EXPECT_EQ(ret, 0);
+    int idx = dbHelper_->QueryRawEventIndex(TEST_BUNDLE, EVENT_INPUT_START);
+    EXPECT_GE(idx, 0);
+}
+
+// ==================== RecoverActiveSession: STATUS_CHANGED as last event ====================
+
+/**
+ * @tc.name: ImeUsageEventCacher_RecoverActiveSession_003
+ * @tc.desc: RecoverActiveSession recovers active session when last event is STATUS_CHANGED
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, RecoverActiveSession_003, TestSize.Level0)
+{
+    // Create a session: START then STATUS_CHANGED (but no STOP - simulates crash mid-session)
+    cacher_->OnImeBind(TEST_BUNDLE);
+    cacher_->OnScreenStatusChanged(UNFOLDED_PORTRAIT, EXPAND_PORTRAIT);
+    EXPECT_TRUE(cacher_->isKeyboardShowing_);
+    EXPECT_EQ(cacher_->currentImeBundle_, TEST_BUNDLE);
+
+    // Reset in-memory state to simulate service restart
+    cacher_->isKeyboardShowing_ = false;
+    cacher_->currentImeBundle_.clear();
+    cacher_->foldStatus_ = UNFOLDED;
+    cacher_->vhMode_ = PORTRAIT;
+
+    // RecoverActiveSession queries DB, finds last event is STATUS_CHANGED,
+    // and restores the active session
+    cacher_->RecoverActiveSession();
+    EXPECT_TRUE(cacher_->isKeyboardShowing_);
+    EXPECT_EQ(cacher_->currentImeBundle_, TEST_BUNDLE);
+    // foldStatus_/vhMode_ should be decoded from the STATUS_CHANGED event's screenStatus
+    EXPECT_EQ(cacher_->foldStatus_, EXPAND);
+    EXPECT_EQ(cacher_->vhMode_, PORTRAIT);
+}
+
+// ==================== ProcessCountDurationEvent: empty durations skip ====================
+
+/**
+ * @tc.name: ImeUsageEventCacher_ProcessCountDurationEvent_EmptyDurations
+ * @tc.desc: ProcessCountDurationEvent skips DB write when durations are empty
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, ProcessCountDurationEvent_EmptyDurations, TestSize.Level0)
+{
+    ImeEventRecord record;
+    record.rawid = EVENT_INPUT_STOP;
+    record.ts = 5000;
+    record.happenTime = 5000;
+    record.bundleName = TEST_BUNDLE;
+    record.screenStatus = UNFOLDED_PORTRAIT;
+    record.preScreenStatus = UNFOLDED_PORTRAIT;
+
+    // Empty durations - ProcessCountDurationEvent should skip writing COUNT_DURATION
+    DurationMap emptyDurations;
+    cacher_->ProcessCountDurationEvent(record, emptyDurations);
+
+    // Verify no COUNT_DURATION was written for this bundle
+    int countIdx = dbHelper_->QueryRawEventIndex(TEST_BUNDLE, EVENT_COUNT_DURATION);
+    EXPECT_EQ(countIdx, IME_INDEX_NOT_FOUND);
+}
+
+// ==================== ProcessCountDurationEvent: dbHelper_ null ====================
+
+/**
+ * @tc.name: ImeUsageEventCacher_ProcessCountDurationEvent_NullDbHelper
+ * @tc.desc: ProcessCountDurationEvent with null dbHelper_ does not crash
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, ProcessCountDurationEvent_NullDbHelper, TestSize.Level0)
+{
+    auto cacher = std::make_unique<ImeUsageEventCacher>();
+    // No Init - dbHelper_ is nullptr
+    ImeEventRecord record;
+    record.rawid = EVENT_INPUT_STOP;
+    record.ts = 5000;
+    record.happenTime = 5000;
+    record.bundleName = TEST_BUNDLE;
+    record.screenStatus = UNFOLDED_PORTRAIT;
+    record.preScreenStatus = UNFOLDED_PORTRAIT;
+
+    DurationMap durations;
+    durations[UNFOLDED_PORTRAIT] = 1000;
+    // Should not crash
+    cacher->ProcessCountDurationEvent(record, durations);
+    // dbHelper_ is null, so ProcessCountDurationEvent returns early without writing DB.
+    // Verify state remains unchanged: isKeyboardShowing_ stays false, no side effects.
+    EXPECT_FALSE(cacher->isKeyboardShowing_);
+    EXPECT_TRUE(cacher->currentImeBundle_.empty());
+}
+
+// ==================== CalculateDurationForRecord: dbHelper_ null ====================
+
+/**
+ * @tc.name: ImeUsageEventCacher_CalculateDurationForRecord_NullDbHelper
+ * @tc.desc: CalculateDurationForRecord with null dbHelper_ returns empty durations
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, CalculateDurationForRecord_NullDbHelper, TestSize.Level0)
+{
+    auto cacher = std::make_unique<ImeUsageEventCacher>();
+    // No Init - dbHelper_ is nullptr
+    ImeEventRecord record;
+    record.rawid = EVENT_INPUT_STOP;
+    record.ts = 5000;
+    record.happenTime = 5000;
+    record.bundleName = TEST_BUNDLE;
+    record.screenStatus = UNFOLDED_PORTRAIT;
+    record.preScreenStatus = UNFOLDED_PORTRAIT;
+
+    DurationMap durations = cacher->CalculateDurationForRecord(record);
+    EXPECT_TRUE(durations.empty());
+}
+
+// ==================== CalculateDuration: cross-midnight STOP with screenStatus=0 ====================
+
+/**
+ * @tc.name: ImeUsageEventCacher_CalculateDuration_013
+ * @tc.desc: Cross-midnight with STOP as first event and screenStatus=0 falls back to UNFOLDED_PORTRAIT
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, CalculateDuration_013, TestSize.Level0)
+{
+    uint64_t dayStartTime = 1000;
+
+    std::vector<ImeEventRecord> records;
+    // First event is STOP with screenStatus=0 (uninitialized)
+    ImeEventRecord stop;
+    stop.rawid = EVENT_INPUT_STOP;
+    stop.ts = 3000;
+    stop.happenTime = 3000;
+    stop.screenStatus = SCREEN_STATUS_UNINITIALIZED;
+    stop.preScreenStatus = SCREEN_STATUS_UNINITIALIZED;
+    records.push_back(stop);
+
+    DurationMap durations;
+    cacher_->CalculateDuration(dayStartTime, records, durations);
+    // Cross-midnight STOP with screenStatus=0 should fallback to UNFOLDED_PORTRAIT(12)
+    EXPECT_EQ(durations[UNFOLDED_PORTRAIT], 2000u);
+}
+
+// ==================== CountDuration: dbHelper_ null ====================
+
+/**
+ * @tc.name: ImeUsageEventCacher_CountDuration_NullDbHelper
+ * @tc.desc: CountDuration with null dbHelper_ does not crash
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, CountDuration_NullDbHelper, TestSize.Level0)
+{
+    auto cacher = std::make_unique<ImeUsageEventCacher>();
+    // No Init - dbHelper_ is nullptr
+    ImeEventRecord record;
+    record.rawid = EVENT_INPUT_STOP;
+    record.ts = 5000;
+    record.happenTime = 5000;
+    record.bundleName = TEST_BUNDLE;
+    record.screenStatus = UNFOLDED_PORTRAIT;
+    record.preScreenStatus = UNFOLDED_PORTRAIT;
+    // Should not crash
+    cacher->CountDuration(record);
+    // dbHelper_ is null, so ProcessCountDurationEvent returns early without writing DB.
+    // Verify state remains unchanged: isKeyboardShowing_ stays false, no side effects.
+    EXPECT_FALSE(cacher->isKeyboardShowing_);
+    EXPECT_TRUE(cacher->currentImeBundle_.empty());
+}
+
+// ==================== DbHelper: AddEventsTransactional with durations ====================
+
+/**
+ * @tc.name: ImeUsageDbHelper_AddEventsTransactional_005
+ * @tc.desc: AddEventsTransactional writes events with duration columns correctly
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, DbHelper_AddEventsTransactional_005, TestSize.Level0)
+{
+    ImeEventRecord countRec;
+    countRec.rawid = EVENT_COUNT_DURATION;
+    countRec.ts = 5000;
+    countRec.happenTime = 5000;
+    countRec.bundleName = TEST_BUNDLE;
+    countRec.preScreenStatus = UNFOLDED_PORTRAIT;
+    countRec.screenStatus = UNFOLDED_PORTRAIT;
+
+    DurationMap durations;
+    durations[UNFOLDED_PORTRAIT] = 4000;
+    durations[EXPAND_PORTRAIT] = 2000;
+
+    std::vector<std::pair<ImeEventRecord, DurationMap>> events;
+    events.emplace_back(countRec, durations);
+
+    int ret = dbHelper_->AddEventsTransactional(events);
+    EXPECT_EQ(ret, 0);
+
+    // Verify the COUNT_DURATION was written and has correct aggregated data
+    std::unordered_map<std::string, ImeUsageInfo> infos;
+    dbHelper_->QueryStatisticEventsInPeriod(0, 10000, infos);
+    ASSERT_EQ(infos.size(), 1u);
+    auto it = infos.find(TEST_BUNDLE);
+    ASSERT_NE(it, infos.end());
+    EXPECT_EQ(it->second.durations[IDX_UNFOLDED_PORTRAIT], 4000u);
+    EXPECT_EQ(it->second.durations[IDX_EXPAND_PORTRAIT], 2000u);
+}
+
+// ==================== DbHelper: AddEvent null rdbStore for all methods ====================
+
+/**
+ * @tc.name: ImeUsageDbHelper_AddEventsTransactional_NullRdbStore
+ * @tc.desc: AddEventsTransactional with null rdbStore_ returns DB_FAILED
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, DbHelper_AddEventsTransactional_NullRdbStore, TestSize.Level0)
+{
+    dbHelper_->rdbStore_ = nullptr;
+    std::vector<std::pair<ImeEventRecord, DurationMap>> events;
+    ImeEventRecord record;
+    record.rawid = EVENT_INPUT_START;
+    record.ts = 1000;
+    record.happenTime = 2000;
+    record.bundleName = TEST_BUNDLE;
+    record.screenStatus = UNFOLDED_PORTRAIT;
+    events.emplace_back(record, DurationMap {});
+    int ret = dbHelper_->AddEventsTransactional(events);
+    EXPECT_EQ(ret, IME_USAGE_FAILED);
+}
+
+// ==================== OnImeBind/OnImeUnbind: full session verifies transactional write ====================
+
+/**
+ * @tc.name: ImeUsageEventCacher_FullSession_TransactionalVerify
+ * @tc.desc: Full session verifies STOP+COUNT_DURATION are in correct DB order via transaction
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, FullSession_TransactionalVerify, TestSize.Level0)
+{
+    cacher_->OnImeBind(TEST_BUNDLE);
+    cacher_->OnImeUnbind(TEST_BUNDLE);
+    EXPECT_FALSE(cacher_->isKeyboardShowing_);
+
+    // Verify STOP and COUNT_DURATION exist
+    int stopIdx = dbHelper_->QueryRawEventIndex(TEST_BUNDLE, EVENT_INPUT_STOP);
+    EXPECT_GE(stopIdx, 0);
+    int countIdx = dbHelper_->QueryRawEventIndex(TEST_BUNDLE, EVENT_COUNT_DURATION);
+    EXPECT_GE(countIdx, 0);
+    // COUNT_DURATION row should have a higher row ID than STOP (written in same transaction)
+    EXPECT_GT(countIdx, stopIdx);
+}
+
+// ==================== ImeUsageInfo: operator+= with all fields ====================
+
+/**
+ * @tc.name: ImeUsageInfo_OperatorPlus_002
+ * @tc.desc: operator+= with all 12 duration fields sums correctly
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, OperatorPlus_002, TestSize.Level0)
+{
+    ImeUsageInfo a;
+    a.durations[IDX_UNFOLDED_LANDSCAPE] = 10;
+    a.durations[IDX_UNFOLDED_PORTRAIT] = 20;
+    a.durations[IDX_FOLD_LANDSCAPE] = 30;
+    a.durations[IDX_FOLD_PORTRAIT] = 40;
+    a.durations[IDX_EXPAND_LANDSCAPE] = 50;
+    a.durations[IDX_EXPAND_PORTRAIT] = 60;
+    a.durations[IDX_G_LANDSCAPE] = 70;
+    a.durations[IDX_G_PORTRAIT] = 80;
+    a.durations[IDX_N_LANDSCAPE] = 90;
+    a.durations[IDX_N_PORTRAIT] = 100;
+    a.durations[IDX_LM_LANDSCAPE] = 110;
+    a.durations[IDX_LM_PORTRAIT] = 120;
+    a.showCount = 1;
+
+    ImeUsageInfo b;
+    b.durations[IDX_UNFOLDED_LANDSCAPE] = 1;
+    b.durations[IDX_UNFOLDED_PORTRAIT] = 2;
+    b.durations[IDX_FOLD_LANDSCAPE] = 3;
+    b.durations[IDX_FOLD_PORTRAIT] = 4;
+    b.durations[IDX_EXPAND_LANDSCAPE] = 5;
+    b.durations[IDX_EXPAND_PORTRAIT] = 6;
+    b.durations[IDX_G_LANDSCAPE] = 7;
+    b.durations[IDX_G_PORTRAIT] = 8;
+    b.durations[IDX_N_LANDSCAPE] = 9;
+    b.durations[IDX_N_PORTRAIT] = 10;
+    b.durations[IDX_LM_LANDSCAPE] = 11;
+    b.durations[IDX_LM_PORTRAIT] = 12;
+    b.showCount = 2;
+
+    a += b;
+    EXPECT_EQ(a.durations[IDX_UNFOLDED_LANDSCAPE], 11u);
+    EXPECT_EQ(a.durations[IDX_UNFOLDED_PORTRAIT], 22u);
+    EXPECT_EQ(a.durations[IDX_FOLD_LANDSCAPE], 33u);
+    EXPECT_EQ(a.durations[IDX_FOLD_PORTRAIT], 44u);
+    EXPECT_EQ(a.durations[IDX_EXPAND_LANDSCAPE], 55u);
+    EXPECT_EQ(a.durations[IDX_EXPAND_PORTRAIT], 66u);
+    EXPECT_EQ(a.durations[IDX_G_LANDSCAPE], 77u);
+    EXPECT_EQ(a.durations[IDX_G_PORTRAIT], 88u);
+    EXPECT_EQ(a.durations[IDX_N_LANDSCAPE], 99u);
+    EXPECT_EQ(a.durations[IDX_N_PORTRAIT], 110u);
+    EXPECT_EQ(a.durations[IDX_LM_LANDSCAPE], 121u);
+    EXPECT_EQ(a.durations[IDX_LM_PORTRAIT], 132u);
+    EXPECT_EQ(a.showCount, 3u);
+    EXPECT_EQ(a.usage, a.GetAppUsage());
 }
 
 } // namespace MiscServices

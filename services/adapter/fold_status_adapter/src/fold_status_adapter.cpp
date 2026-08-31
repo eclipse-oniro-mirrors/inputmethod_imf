@@ -148,14 +148,12 @@ bool FoldStatusAdapter::IsFoldable() const
 void FoldStatusAdapter::HandleDisplayModeChanged(Rosen::FoldDisplayMode displayMode)
 {
     int32_t newFoldStatus = ConvertDisplayMode(displayMode);
-
     // Skip IME-unavailable modes (SUB=3, V_MAIN=6)
     if (newFoldStatus == IME_SCREEN_STATUS_UNAVAILABLE) {
         IMSA_HILOGI("HandleDisplayModeChanged: IME unavailable mode=%{public}u, skip update",
             static_cast<uint32_t>(displayMode));
         return;
     }
-
     // Snapshot-Call-Update pattern: lock → snapshot state → unlock → call DMS
     // API → lock → update state. The race window between unlock and re-lock is
     // mitigated by using the current member variables (not the stale snapshot)

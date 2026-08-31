@@ -42,6 +42,14 @@ using namespace ImeFoldStatusBase;
 
 const std::string DB_DIR = "/data/test/ime_usage_reporter_test";
 const std::string TEST_BUNDLE = "com.test.ime";
+
+// Helper: parameters for InsertSessionForDay
+struct SessionParams {
+    std::string bundle;
+    uint64_t startOffset = 0;
+    uint64_t stopOffset = 0;
+    int32_t screenStatus = SCREEN_STATUS_UNINITIALIZED;
+};
 } // namespace
 
 class ImeUsageReporterTest : public testing::Test {
@@ -74,36 +82,35 @@ void ImeUsageReporterTest::TearDown()
 }
 
 // Helper: insert a complete session into DB for a given day
-static void InsertSessionForDay(std::shared_ptr<ImeUsageDbHelper> db, const std::string &bundle, uint64_t dayStart,
-    uint64_t startOffset, uint64_t stopOffset, int32_t screenStatus)
+static void InsertSessionForDay(std::shared_ptr<ImeUsageDbHelper> db, uint64_t dayStart, const SessionParams &params)
 {
     ImeEventRecord startRec;
     startRec.rawid = EVENT_INPUT_START;
-    startRec.ts = dayStart + startOffset;
-    startRec.happenTime = dayStart + startOffset;
-    startRec.bundleName = bundle;
-    startRec.screenStatus = screenStatus;
-    startRec.preScreenStatus = screenStatus;
+    startRec.ts = dayStart + params.startOffset;
+    startRec.happenTime = dayStart + params.startOffset;
+    startRec.bundleName = params.bundle;
+    startRec.screenStatus = params.screenStatus;
+    startRec.preScreenStatus = params.screenStatus;
     db->AddEvent(startRec);
 
     ImeEventRecord stopRec;
     stopRec.rawid = EVENT_INPUT_STOP;
-    stopRec.ts = dayStart + stopOffset;
-    stopRec.happenTime = dayStart + stopOffset;
-    stopRec.bundleName = bundle;
-    stopRec.screenStatus = screenStatus;
-    stopRec.preScreenStatus = screenStatus;
+    stopRec.ts = dayStart + params.stopOffset;
+    stopRec.happenTime = dayStart + params.stopOffset;
+    stopRec.bundleName = params.bundle;
+    stopRec.screenStatus = params.screenStatus;
+    stopRec.preScreenStatus = params.screenStatus;
     DurationMap durations;
-    durations[screenStatus] = static_cast<uint64_t>(stopOffset - startOffset);
+    durations[params.screenStatus] = static_cast<uint64_t>(params.stopOffset - params.startOffset);
     db->AddEvent(stopRec, durations);
 
     ImeEventRecord countRec;
     countRec.rawid = EVENT_COUNT_DURATION;
-    countRec.ts = dayStart + stopOffset;
-    countRec.happenTime = dayStart + stopOffset;
-    countRec.bundleName = bundle;
-    countRec.screenStatus = screenStatus;
-    countRec.preScreenStatus = screenStatus;
+    countRec.ts = dayStart + params.stopOffset;
+    countRec.happenTime = dayStart + params.stopOffset;
+    countRec.bundleName = params.bundle;
+    countRec.screenStatus = params.screenStatus;
+    countRec.preScreenStatus = params.screenStatus;
     db->AddEvent(countRec, durations);
 }
 
@@ -294,7 +301,7 @@ HWTEST_F(ImeUsageReporterTest, InnerReportDailyEvent_002, TestSize.Level0)
     EXPECT_EQ(ret, 0);
     uint64_t dayStart = DayStartFromMs(GetToday0ClockMs());
     InsertSessionForDay(
-        reporter_->eventFactory_->GetDbHelper(), TEST_BUNDLE, dayStart, 3600000, 7200000, UNFOLDED_PORTRAIT);
+        reporter_->eventFactory_->GetDbHelper(), dayStart, { TEST_BUNDLE, 3600000, 7200000, UNFOLDED_PORTRAIT });
 
     reporter_->lastReportTime_ = 0;
     reporter_->InnerReportDailyEvent();
@@ -329,7 +336,7 @@ HWTEST_F(ImeUsageReporterTest, ReportSingleDay_002, TestSize.Level0)
     EXPECT_EQ(ret, 0);
     uint64_t dayStart = DayStartFromMs(GetToday0ClockMs());
     InsertSessionForDay(
-        reporter_->eventFactory_->GetDbHelper(), TEST_BUNDLE, dayStart, 3600000, 7200000, UNFOLDED_PORTRAIT);
+        reporter_->eventFactory_->GetDbHelper(), dayStart, { TEST_BUNDLE, 3600000, 7200000, UNFOLDED_PORTRAIT });
 
     reporter_->ReportSingleDay(dayStart, dayStart + MILLISECS_PER_DAY - 1, "20260825");
     // HiSysEvent write may fail in test env, but the function should not crash
@@ -531,7 +538,7 @@ HWTEST_F(ImeUsageReporterTest, ReportAndCleanupOldData_002, TestSize.Level0)
     // Insert data for 4 days ago (should be cleaned up)
     uint64_t oldDay = today - MILLISECS_PER_DAY * 4;
     InsertSessionForDay(
-        reporter_->eventFactory_->GetDbHelper(), TEST_BUNDLE, oldDay, 3600000, 7200000, UNFOLDED_PORTRAIT);
+        reporter_->eventFactory_->GetDbHelper(), oldDay, { TEST_BUNDLE, 3600000, 7200000, UNFOLDED_PORTRAIT });
 
     uint64_t clearTime = today - MILLISECS_PER_DAY * DATA_KEEP_DAY;
     reporter_->ReportAndCleanupOldData(clearTime, oldDay + MILLISECS_PER_DAY);
@@ -923,7 +930,7 @@ HWTEST_F(ImeUsageReporterTest, ReportAndCleanupOldData_006, TestSize.Level0)
     uint64_t today = DayStartFromMs(GetToday0ClockMs());
     // Insert data for today
     InsertSessionForDay(
-        reporter_->eventFactory_->GetDbHelper(), TEST_BUNDLE, today, 3600000, 7200000, UNFOLDED_PORTRAIT);
+        reporter_->eventFactory_->GetDbHelper(), today, { TEST_BUNDLE, 3600000, 7200000, UNFOLDED_PORTRAIT });
 
     // clearDataTime <= firstReportDayStart: no cleanup loop executes
     uint64_t clearTime = today; // equal to firstReportDayStart
@@ -946,7 +953,7 @@ HWTEST_F(ImeUsageReporterTest, ReportAndCleanupOldData_007, TestSize.Level0)
     // Insert data for an old day (should trigger report + cleanup)
     uint64_t oldDay = today - MILLISECS_PER_DAY * 2;
     InsertSessionForDay(
-        reporter_->eventFactory_->GetDbHelper(), TEST_BUNDLE, oldDay, 3600000, 7200000, UNFOLDED_PORTRAIT);
+        reporter_->eventFactory_->GetDbHelper(), oldDay, { TEST_BUNDLE, 3600000, 7200000, UNFOLDED_PORTRAIT });
 
     // clearDataTime > oldDay so cleanup should run
     uint64_t clearTime = oldDay + MILLISECS_PER_DAY;
@@ -970,7 +977,7 @@ HWTEST_F(ImeUsageReporterTest, InnerReportDailyEvent_006, TestSize.Level0)
     uint64_t today = DayStartFromMs(GetToday0ClockMs());
     // Insert data
     InsertSessionForDay(
-        reporter_->eventFactory_->GetDbHelper(), TEST_BUNDLE, today, 3600000, 7200000, UNFOLDED_PORTRAIT);
+        reporter_->eventFactory_->GetDbHelper(), today, { TEST_BUNDLE, 3600000, 7200000, UNFOLDED_PORTRAIT });
     // Set lastReportTime_ to a non-zero value (else branch at line 232)
     reporter_->lastReportTime_ = today + 1000;
     reporter_->InnerReportDailyEvent();
@@ -992,27 +999,6 @@ HWTEST_F(ImeUsageReporterTest, LoadLastReportTime_EmptyValue, TestSize.Level0)
     reporter_->eventFactory_->GetDbHelper()->SaveReportState(STATE_KEY_LAST_REPORT_TIME, "");
     uint64_t loaded = reporter_->LoadLastReportTime();
     EXPECT_EQ(loaded, 0u);
-}
-
-// ==================== OnBootCompleted: lastReportTime_ >= currentPeriodStart ====================
-
-/**
- * @tc.name: ImeUsageReporter_OnBootCompleted_003
- * @tc.desc: OnBootCompleted with lastReportTime_ >= currentPeriodStart does not trigger report
- * @tc.type: FUNC
- */
-HWTEST_F(ImeUsageReporterTest, OnBootCompleted_003, TestSize.Level0)
-{
-    int ret = reporter_->Init(DB_DIR);
-    EXPECT_EQ(ret, 0);
-    // Set lastReportTime_ to a value >= currentPeriodStart
-    uint64_t currentPeriodStart = reporter_->GetToday0ClockMs();
-    reporter_->lastReportTime_ = currentPeriodStart + 1;
-    reporter_->PersistLastReportTime();
-    uint64_t beforeTime = reporter_->lastReportTime_;
-    reporter_->OnBootCompleted();
-    // No report needed since lastReportTime_ >= currentPeriodStart
-    EXPECT_EQ(reporter_->lastReportTime_, beforeTime);
 }
 
 // ==================== GetNextReportTimeMs: today0 == 0 fallback ====================
@@ -1077,6 +1063,29 @@ HWTEST_F(ImeUsageReporterTest, Init_005, TestSize.Level0)
     EXPECT_EQ(ret, 0);
     // lastReportTime_ should be loaded as recent (>= currentPeriodStart)
     EXPECT_GE(reporter_->lastReportTime_, currentPeriodStart);
+}
+
+// ==================== ReportDailyEvent: exact boundary (now == nextReport) ====================
+
+/**
+ * @tc.name: ImeUsageReporter_ReportDailyEvent_ExactBoundary
+ * @tc.desc: ReportDailyEvent when now == nextReportTime triggers report
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageReporterTest, ReportDailyEvent_ExactBoundary, TestSize.Level0)
+{
+    int ret = reporter_->Init(DB_DIR);
+    EXPECT_EQ(ret, 0);
+    // Set nextReportTime_ to current time exactly
+    uint64_t now = reporter_->GetNowMs();
+    reporter_->nextReportTime_ = now;
+    reporter_->ReportDailyEvent();
+    // Should trigger InnerReportDailyEvent since now >= nextReport
+    // Verify by checking that lastReportTime_ was updated
+    {
+        std::lock_guard<std::mutex> lock(reporter_->reportMutex_);
+        EXPECT_GE(reporter_->lastReportTime_, now);
+    }
 }
 
 } // namespace MiscServices

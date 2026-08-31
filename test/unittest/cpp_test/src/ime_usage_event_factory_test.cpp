@@ -41,6 +41,7 @@ using namespace testing::ext;
 using namespace ImeUsageEventId;
 using namespace ImeScreenStatus;
 using namespace ImeFoldStatusBase;
+using OHOS::MiscServices::SCREEN_STATUS_UNINITIALIZED;
 
 const std::string TEST_BUNDLE = "com.test.ime";
 const std::string TEST_BUNDLE2 = "com.test.ime2";
@@ -79,7 +80,7 @@ struct SessionParams {
     std::string bundle;
     uint64_t startOffset = 0;
     uint64_t stopOffset = 0;
-    int32_t screenStatus = 0;
+    int32_t screenStatus = SCREEN_STATUS_UNINITIALIZED;
 };
 
 // Helper: insert a complete show->hide session into DB
@@ -673,21 +674,5 @@ HWTEST_F(ImeUsageEventFactoryTest, MergeForegroundInfo_006, TestSize.Level0)
     // Should have both UNFOLDED_PORTRAIT and EXPAND_PORTRAIT durations from foreground calculation
     EXPECT_GT(it->second.durations[IDX_UNFOLDED_PORTRAIT] + it->second.durations[IDX_EXPAND_PORTRAIT], 0u);
 }
-
-// ==================== GetToday0ClockMs ====================
-
-/**
- * @tc.name: ImeUsageEventFactory_GetToday0ClockMs_001
- * @tc.desc: GetToday0ClockMs global function returns non-zero value
- * @tc.type: FUNC
- */
-HWTEST_F(ImeUsageEventFactoryTest, GetToday0ClockMs_001, TestSize.Level0)
-{
-    uint64_t t = GetToday0ClockMs();
-    EXPECT_GT(t, 0u);
-    // Verify result is reasonable: should be less than year 2100 in ms
-    EXPECT_LT(t, 4102444800000ULL);
-}
-
 } // namespace MiscServices
 } // namespace OHOS

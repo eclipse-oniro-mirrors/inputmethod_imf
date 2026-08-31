@@ -17,7 +17,6 @@
 #define SERVICES_INCLUDE_INPUT_METHOD_SYSTEM_ABILITY_H
 
 #include "identity_checker_impl.h"
-#include "ime_usage_reporter.h"
 #include "ime_info_inquirer.h"
 #include "input_method_system_ability_stub.h"
 #include "input_method_types.h"
@@ -27,12 +26,12 @@
 #include "inputmethod_trace.h"
 #include "system_ability.h"
 #include "user_session_manager.h"
+#ifdef IME_USAGE_ENABLE
+#include "ime_usage_reporter.h"
+#endif
 
 namespace OHOS {
 namespace MiscServices {
-#ifdef IME_USAGE_ENABLE
-class ImeUsageReporter;
-#endif
 enum class ServiceRunningState { STATE_NOT_START, STATE_RUNNING };
 class InputMethodSystemAbility : public SystemAbility, public InputMethodSystemAbilityStub {
     DECLARE_SYSTEM_ABILITY(InputMethodSystemAbility);
@@ -130,9 +129,6 @@ private:
     int32_t GetUserId(int32_t uid);
     uint64_t GetCallingDisplayId(int32_t userId, sptr<IRemoteObject> abilityToken = nullptr);
     std::shared_ptr<IdentityChecker> identityChecker_ = nullptr;
-#ifdef IME_USAGE_ENABLE
-    std::unique_ptr<ImeUsageReporter> imeUsageReporter_;
-#endif
     int32_t PrepareInput(int32_t userId, InputClientInfo &clientInfo, const FocusedInfo &focusedInfo);
     void WorkThread();
     int32_t OnHideKeyboardSelf(const Message *msg);
@@ -284,6 +280,9 @@ private:
     std::atomic<uint32_t> targetSwitchCount_ = 0;
     std::atomic<bool> isAccountSaFirstStart_{ true };
     std::atomic<bool> waitAccountReadyToInit_{ false };
+#ifdef IME_USAGE_ENABLE
+    std::unique_ptr<ImeUsageReporter> imeUsageReporter_;
+#endif
 };
 } // namespace MiscServices
 } // namespace OHOS

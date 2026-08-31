@@ -24,6 +24,9 @@
 using namespace OHOS::MiscServices::ImeUsageEventId;
 using namespace OHOS::MiscServices::ImeScreenStatus;
 using namespace OHOS::MiscServices::ImeFoldStatusBase;
+using OHOS::MiscServices::IME_USAGE_SUCCESS;
+using OHOS::MiscServices::RAWID_NONE;
+using OHOS::MiscServices::SCREEN_STATUS_UNINITIALIZED;
 
 namespace OHOS {
 namespace MiscServices {
@@ -40,7 +43,7 @@ int ImeUsageEventCacher::Init(std::shared_ptr<ImeUsageDbHelper> dbHelper, int32_
     lastScreenStatus_ = GetScreenStatus();
     IMSA_HILOGI("ImeUsageEventCacher::Init success, fold=%{public}d, vh=%{public}d, screenStatus=%{public}d",
         foldStatus_, vhMode_, lastScreenStatus_);
-    return 0;
+    return IME_USAGE_SUCCESS;
 }
 
 uint64_t ImeUsageEventCacher::GetBootTimeMs() const
@@ -61,7 +64,7 @@ int32_t ImeUsageEventCacher::GetScreenStatus() const
 {
     int32_t status = EncodeScreenStatus(foldStatus_, vhMode_);
     // Fallback: if uninitialized (both 0), treat as UNFOLDED_PORTRAIT
-    if (status == 0) {
+    if (status == SCREEN_STATUS_UNINITIALIZED) {
         IMSA_HILOGW("GetScreenStatus: foldStatus=0, vhMode=0, fallback to UNFOLDED_PORTRAIT(12)");
         return ImeScreenStatus::UNFOLDED_PORTRAIT;
     }
@@ -76,7 +79,7 @@ void ImeUsageEventCacher::OnImeBind(const std::string &bundleName)
         result = PrepareShowEvent(bundleName);
     }
     // DB writes outside the lock to avoid holding mutex_ during I/O.
-    if (result.hideRecord.rawid != 0 && result.showRecord.rawid != 0) {
+    if (result.hideRecord.rawid != RAWID_NONE && result.showRecord.rawid != RAWID_NONE) {
         // IME switch: split into two independent operations to avoid
         // partial-write inconsistency on transaction failure.
         // Writing old IME's STOP+COUNT and new IME's START in one
@@ -102,7 +105,7 @@ void ImeUsageEventCacher::OnImeBind(const std::string &bundleName)
         hideEvents.emplace_back(countRecord, hideDurations);
 
         int hideRet = dbHelper_->AddEventsTransactional(hideEvents);
-        if (hideRet != 0) {
+        if (hideRet != IME_USAGE_SUCCESS) {
             IMSA_HILOGE("OnImeBind: STOP+COUNT transaction failed, falling back to separate writes");
             dbHelper_->AddEvent(result.hideRecord);
             dbHelper_->AddEvent(countRecord, hideDurations);
@@ -113,10 +116,10 @@ void ImeUsageEventCacher::OnImeBind(const std::string &bundleName)
         // currentImeBundle_) remains correct; daily aggregation's foreground-
         // recovery channel will compensate for the missing START.
         int showRet = dbHelper_->AddEvent(result.showRecord);
-        if (showRet != 0) {
+        if (showRet != IME_USAGE_SUCCESS) {
             IMSA_HILOGE("OnImeBind: START AddEvent failed for %{public}s", result.showRecord.bundleName.c_str());
         }
-    } else if (result.hideRecord.rawid != 0) {
+    } else if (result.hideRecord.rawid != RAWID_NONE) {
         // Only hide (no show): use transactional write for STOP + COUNT_DURATION
         DurationMap hideDurations = CalculateDurationForRecord(result.hideRecord);
         ImeEventRecord countRecord;
@@ -132,12 +135,12 @@ void ImeUsageEventCacher::OnImeBind(const std::string &bundleName)
         hideEvents.emplace_back(countRecord, hideDurations);
 
         int hideRet = dbHelper_->AddEventsTransactional(hideEvents);
-        if (hideRet != 0) {
+        if (hideRet != IME_USAGE_SUCCESS) {
             IMSA_HILOGE("OnImeBind: STOP+COUNT transaction failed, falling back to separate writes");
             dbHelper_->AddEvent(result.hideRecord);
             dbHelper_->AddEvent(countRecord, hideDurations);
         }
-    } else if (result.showRecord.rawid != 0) {
+    } else if (result.showRecord.rawid != RAWID_NONE) {
         dbHelper_->AddEvent(result.showRecord);
     }
 }
@@ -152,7 +155,7 @@ void ImeUsageEventCacher::OnImeUnbind(const std::string &bundleName)
     // DB writes outside the lock to avoid holding mutex_ during I/O.
     // Write STOP and COUNT_DURATION atomically in a single transaction
     // to guarantee no data loss on process crash.
-    if (record.rawid != 0) {
+    if (record.rawid != RAWID_NONE) {
         DurationMap durations = CalculateDurationForRecord(record);
 
         ImeEventRecord countRecord;
@@ -168,7 +171,7 @@ void ImeUsageEventCacher::OnImeUnbind(const std::string &bundleName)
         events.emplace_back(countRecord, durations);
 
         int ret = dbHelper_->AddEventsTransactional(events);
-        if (ret != 0) {
+        if (ret != IME_USAGE_SUCCESS) {
             IMSA_HILOGE("OnImeUnbind: AddEventsTransactional failed, falling back to separate writes");
             dbHelper_->AddEvent(record);
             dbHelper_->AddEvent(countRecord, durations);
@@ -187,7 +190,7 @@ void ImeUsageEventCacher::OnScreenStatusChanged(int32_t preScreenStatus, int32_t
         statusRecord = ProcessScreenChangedEvent(preScreenStatus, newScreenStatus);
     }
     // DB write outside the lock to avoid holding mutex_ during I/O
-    if (statusRecord.rawid != 0) {
+    if (statusRecord.rawid != RAWID_NONE) {
         dbHelper_->AddEvent(statusRecord);
     }
 }
@@ -202,7 +205,7 @@ ImeUsageEventCacher::ShowPrepareResult ImeUsageEventCacher::PrepareShowEvent(con
     // Same IME already showing: skip duplicate show (caused by screen rotation/fold
     // triggering panel re-show).
     if (isKeyboardShowing_ && currentImeBundle_ == bundleName) {
-        IMSA_HILOGW("PrepareShowEvent: same IME already showing, skip for %{public}s", bundleName.c_str());
+        IMSA_HILOGD("PrepareShowEvent: same IME already showing, skip for %{public}s", bundleName.c_str());
         return result;
     }
     // Different IME: close previous session first (state update only, DB outside lock)
@@ -259,13 +262,13 @@ ImeEventRecord ImeUsageEventCacher::PrepareHideRecord(const std::string &bundleN
 ImeEventRecord ImeUsageEventCacher::ProcessScreenChangedEvent(int32_t preScreenStatus, int32_t newScreenStatus)
 {
     if (dbHelper_ == nullptr || !isKeyboardShowing_) {
-        IMSA_HILOGD("ProcessScreenChangedEvent: skip, dbHelper=%{public}p, isShowing=%{public}d", dbHelper_.get(),
+        IMSA_HILOGW("ProcessScreenChangedEvent: skip, dbHelper=%{public}p, isShowing=%{public}d", dbHelper_.get(),
             isKeyboardShowing_);
         return {};
     }
     // Deduplicate: skip if new status is same as last recorded status
     if (newScreenStatus == lastScreenStatus_) {
-        IMSA_HILOGI("ProcessScreenChangedEvent: skip duplicate, screenStatus=%{public}d unchanged", newScreenStatus);
+        IMSA_HILOGD("ProcessScreenChangedEvent: skip duplicate, screenStatus=%{public}d unchanged", newScreenStatus);
         return {};
     }
     ImeEventRecord record;
@@ -340,7 +343,7 @@ void ImeUsageEventCacher::CalculateDuration(
     uint64_t dayStartTime, std::vector<ImeEventRecord> &records, DurationMap &durations)
 {
     if (records.empty()) {
-        IMSA_HILOGI("CalculateDuration: no records to calculate");
+        IMSA_HILOGW("CalculateDuration: no records to calculate");
         return;
     }
 
@@ -351,7 +354,7 @@ void ImeUsageEventCacher::CalculateDuration(
     if (it->rawid != EVENT_INPUT_START) {
         int32_t status = (it->rawid == EVENT_INPUT_STOP) ? it->screenStatus : it->preScreenStatus;
         // Fallback: screenStatus=0 means uninitialized; treat as UNFOLDED_PORTRAIT(12)
-        if (status == 0) {
+        if (status == SCREEN_STATUS_UNINITIALIZED) {
             IMSA_HILOGW("CalculateDuration: cross-midnight status=0, fallback to UNFOLDED_PORTRAIT(12)");
             status = ImeScreenStatus::UNFOLDED_PORTRAIT;
         }
@@ -373,7 +376,7 @@ void ImeUsageEventCacher::CalculateDuration(
                 (it->ts > static_cast<uint64_t>(preIt->ts)) ? static_cast<uint64_t>(it->ts - preIt->ts) : 0;
             // Fallback: screenStatus=0 means uninitialized; treat as UNFOLDED_PORTRAIT(12)
             int32_t status = preIt->screenStatus;
-            if (status == 0) {
+            if (status == SCREEN_STATUS_UNINITIALIZED) {
                 IMSA_HILOGW("CalculateDuration: pair status=0, fallback to UNFOLDED_PORTRAIT(12)");
                 status = ImeScreenStatus::UNFOLDED_PORTRAIT;
             }
@@ -417,7 +420,7 @@ void ImeUsageEventCacher::ProcessCountDurationEvent(ImeEventRecord &record, cons
     // (e.g., no START event found for this bundle). Writing an empty
     // COUNT_DURATION wastes DB space and confuses downstream queries.
     if (durations.empty()) {
-        IMSA_HILOGD("ProcessCountDurationEvent: skip, no durations for %{public}s", record.bundleName.c_str());
+        IMSA_HILOGW("ProcessCountDurationEvent: skip, no durations for %{public}s", record.bundleName.c_str());
         return;
     }
     ImeEventRecord countRecord;
