@@ -37,4 +37,5 @@ declare_args() {
       defined(global_parts_info.multidevicecompatibility_compatibility_config_center)) {
     imf_compatibility_config_center_enable = true
   }
+  imf_cli_enable = false
 }

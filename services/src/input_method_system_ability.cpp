@@ -79,6 +79,7 @@ constexpr std::int32_t INIT_INTERVAL = 10000L;
 constexpr std::int32_t WMS_RETRY_INTERVAL = 60000;  // 1min
 constexpr const char *UNDEFINED = "undefined";
 static const char *PERMISSION_CONNECT_IME_ABILITY = "ohos.permission.CONNECT_IME_ABILITY";
+static const char *PERMISSION_CONTROL_DEVICE = "ohos.permission.CONTROL_DEVICE";
 std::shared_ptr<AppExecFwk::EventHandler> InputMethodSystemAbility::serviceHandler_;
 constexpr uint32_t START_SA_TIMEOUT = 6; // 6s
 constexpr const char *SELECT_DIALOG_ACTION = "action.system.inputmethodchoose";
@@ -3754,5 +3755,23 @@ void InputMethodSystemAbility::HandleEDCInputMethodRemove(int32_t userId, const 
     }
 }
 
+int32_t InputMethodSystemAbility::ExecTextInteraction(const std::string &text)
+{
+    auto uid = IPCSkeleton::GetCallingUid();
+    auto pid = IPCSkeleton::GetCallingPid();
+    auto tokenId = IPCSkeleton::GetCallingTokenID();
+    if (!identityChecker_->HasPermission(tokenId, std::string(PERMISSION_CONTROL_DEVICE))) {
+        IMSA_HILOGE("permission denied");
+        return ErrorCode::ERROR_STATUS_PERMISSION_DENIED;
+    }
+    IMSA_HILOGD("uid/pid:%{public}d/%{public}d", uid, pid);
+    auto userId = GetCallingUserId();
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+    if (session == nullptr) {
+        IMSA_HILOGE("%{public}d session is nullptr!", userId);
+        return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
+    }
+    return session->ExecTextInteraction(text);
+}
 } // namespace MiscServices
 } // namespace OHOS

@@ -48,6 +48,7 @@ public:
     ErrCode DeactivateClient() override;
     ErrCode OnImeMirrorStop(const sptr<IRemoteObject> &object) override;
     ErrCode GetCurrentCursorInfo(CursorInfoInner &cursorInfo) override;
+    ErrCode OnExecTextInteraction(const std::string &text) override;
 };
 }  // namespace MiscServices
 }  // namespace OHOS

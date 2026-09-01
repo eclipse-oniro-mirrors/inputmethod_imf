@@ -2949,6 +2949,23 @@ void SaMgrListener::OnAddSystemAbility(int32_t systemAbilityId, const std::strin
         func_();
     }
 }
+
+int32_t InputMethodController::ExecTextInteraction(const std::string &text)
+{
+    IMSA_HILOGD("IMC start.");
+    auto proxy = GetSystemAbilityProxy();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("proxy is nullptr!");
+        return ErrorCode::ERROR_SERVICE_START_FAILED;
+    }
+    return proxy->ExecTextInteraction(text);
+}
+
+int32_t InputMethodController::OnExecTextInteraction(const std::string &text)
+{
+    FinishTextPreview();
+    return InsertText(Str8ToStr16(text));
+}
 // LCOV_EXCL_STOP
 } // namespace MiscServices
 } // namespace OHOS

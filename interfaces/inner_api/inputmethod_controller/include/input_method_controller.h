@@ -1100,6 +1100,19 @@ public:
      */
     IMF_API int32_t GetSoftKeyboardInfo(int32_t userId, BoundImeInfo &imeInfo);
 
+    /**
+     * @brief Pass the specified text to the edit box currently bound to the input method application.
+     *
+     * @permission ohos.permission.CONTROL_DEVICE permission.
+     *
+     * @param text Indicates the specified text
+     *
+     * @return Returns 0 for success, others for failure.
+     */
+    IMF_API int32_t ExecTextInteraction(const std::string &text);
+
+    int32_t OnExecTextInteraction(const std::string &text);
+
 private:
     friend class MockInputMethodSystemAbilityProxy;
     friend class ImeEventMonitorManagerImpl;

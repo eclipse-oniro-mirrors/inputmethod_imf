@@ -196,6 +196,7 @@ public:
     int32_t GetCursorInfo(CursorInfoInner &cursorInfo, const pid_t clientPid);
     void OnImeDisconnect(sptr<ImeConnection> connection);
     void SetAttachFailedByUnavailableImeFlag(bool flag);
+    int32_t ExecTextInteraction(const std::string &text);
 private:
     struct ResetManager {
         uint32_t num{ 0 };
