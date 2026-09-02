@@ -276,17 +276,6 @@ void InputMethodController::CalibrateImmersiveParam(InputAttribute &inputAttribu
     }
 }
 
-void InputMethodController::CalibrateInputPatternParam(InputAttribute &inputAttribute)
-{
-    if (inputAttribute.inputPattern != InputAttribute::PATTERN_ONE_TIME_CODE_NUMBER) {
-        IMSA_HILOGD("no calibration required, inputPattern = %{public}d", inputAttribute.inputPattern);
-        return;
-    }
-    inputAttribute.inputPattern = static_cast<int32_t>(TextInputType::NUMBER);
-    inputAttribute.isOneTimeCodeNumberFlag = true;
-    IMSA_HILOGW("isOneTimeCodeNumberFlag = %{public}d", inputAttribute.isOneTimeCodeNumberFlag);
-}
-
 bool InputMethodController::ShouldOverrideImmersiveMode(const TextConfig &textConfig)
 {
     if (textConfig.inputAttribute.immersiveMode == 0) {
@@ -388,7 +377,6 @@ void InputMethodController::SaveTextConfig(const TextConfig &textConfig)
         textConfig_ = textConfig;
         bool shouldOverride = ShouldOverrideImmersiveMode(textConfig);
         CalibrateImmersiveParam(textConfig_.inputAttribute, shouldOverride);
-        CalibrateInputPatternParam(textConfig_.inputAttribute);
         textConfig_.cursorInfo = cursorInfo;
         StringUtils::TruncateUtf16String(textConfig_.inputAttribute.placeholder, MAX_PLACEHOLDER_SIZE);
         StringUtils::TruncateUtf16String(textConfig_.inputAttribute.abilityName, MAX_ABILITY_NAME_SIZE);

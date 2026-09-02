@@ -1146,7 +1146,6 @@ private:
     void ReportClientShow(int32_t eventCode, int32_t errCode, ClientType type);
     void GetWindowScaleCoordinate(uint32_t windowId, CursorInfo &cursorInfo);
     void CalibrateImmersiveParam(InputAttribute &inputAttribute, bool shouldOverrideImmersiveMode = false);
-    void CalibrateInputPatternParam(InputAttribute &inputAttribute);
     bool IsDisableImmersiveMode();
     bool IsPcMode();
     bool IsSupportPcMode();
