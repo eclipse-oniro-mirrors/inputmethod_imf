@@ -14,19 +14,27 @@
  */
 #include "global.h"
 #include "native_inputmethod_types.h"
+#include "text_editor_proxy_manager.h"
 
 using namespace OHOS::MiscServices;
 InputMethod_TextEditorProxy *OH_TextEditorProxy_Create(void)
 {
-    return new (std::nothrow) InputMethod_TextEditorProxy();
+    auto *raw = new (std::nothrow) InputMethod_TextEditorProxy();
+    if (raw == nullptr) {
+        IMSA_HILOGE("new InputMethod_TextEditorProxy failed");
+        return nullptr;
+    }
+    TextEditorProxyManager::GetInstance().Register(raw);
+    return raw;
 }
+
 void OH_TextEditorProxy_Destroy(InputMethod_TextEditorProxy *proxy)
 {
     if (proxy == nullptr) {
         IMSA_HILOGE("proxy is nullptr");
         return;
     }
-    delete proxy;
+    TextEditorProxyManager::GetInstance().Unregister(proxy);
 }
 
 InputMethod_ErrorCode OH_TextEditorProxy_SetGetTextConfigFunc(

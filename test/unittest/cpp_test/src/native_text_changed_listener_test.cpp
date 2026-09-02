@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 #include <gtest/gtest.h>
+#include <atomic>
+#include <chrono>
+#include <thread>
 
 #include "string_ex.h"
 
@@ -389,7 +392,49 @@ HWTEST_F(NativeTextChangedListenerTest, CallInNonMainThreadAndPostTest_FAIL, Tes
 
     std::thread noMainThread(func);
     noMainThread.join();
-    EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Detach(inputMethodProxy));
+static std::atomic<int> g_raceInsertCallCount{ 0 };
+void RaceInsertTextCb(InputMethod_TextEditorProxy *proxy, const char16_t *text, size_t length)
+{
+    g_raceInsertCallCount.fetch_add(1, std::memory_order_relaxed);
+    OH_TextEditorProxy_InsertTextFunc func = nullptr;
+    OH_TextEditorProxy_GetInsertTextFunc(proxy, &func);
+}
+
+/**
+ * @tc.name: DestroyConcurrentWithInsertTextSafe_001
+ * @tc.desc: Destroy proxy while InsertText callback is in flight on another thread; must not crash.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeTextChangedListenerTest, DestroyConcurrentWithInsertTextSafe_001, TestSize.Level1)
+{
+    IMSA_HILOGI("NativeTextChangedListenerTest::DestroyConcurrentWithInsertTextSafe_001 start");
+    auto *proxy = OH_TextEditorProxy_Create();
+    ASSERT_NE(nullptr, proxy);
+    EXPECT_EQ(IME_ERR_OK, OH_TextEditorProxy_SetInsertTextFunc(proxy, RaceInsertTextCb));
+
+    sptr<NativeTextChangedListener> listener = new (std::nothrow) NativeTextChangedListener(proxy);
+    ASSERT_NE(nullptr, listener);
+
+    g_raceInsertCallCount.store(0, std::memory_order_relaxed);
+    listener->InsertText(u"pre");
+    int preCount = g_raceInsertCallCount.load(std::memory_order_relaxed);
+
+    std::atomic<bool> stop(false);
+    auto worker = [&]() {
+        while (!stop.load(std::memory_order_relaxed)) {
+            listener->InsertText(u"abc");
+        }
+    };
+    std::thread t(worker);
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    OH_TextEditorProxy_Destroy(proxy);
+    stop.store(true, std::memory_order_relaxed);
+    t.join();
+
+    EXPECT_GE(g_raceInsertCallCount.load(std::memory_order_relaxed), preCount);
+    int afterDestroy = g_raceInsertCallCount.load(std::memory_order_relaxed);
+    listener->InsertText(u"xyz");
+    EXPECT_EQ(g_raceInsertCallCount.load(std::memory_order_relaxed), afterDestroy);
 }
 } // namespace MiscServices
 } // namespace OHOS

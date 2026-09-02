@@ -15,143 +15,153 @@
 #include "native_text_changed_listener.h"
 #include "input_method_utils.h"
 #include "native_inputmethod_utils.h"
+#include "text_editor_proxy_manager.h"
 
 namespace OHOS {
 namespace MiscServices {
-NativeTextChangedListener::~NativeTextChangedListener()
+NativeTextChangedListener::NativeTextChangedListener(InputMethod_TextEditorProxy *textEditor)
+    : textEditor_(TextEditorProxyManager::GetInstance().GetWeak(textEditor))
 {
-    textEditor_ = nullptr;
 }
 void NativeTextChangedListener::InsertText(const std::u16string &text)
 {
-    if (textEditor_ == nullptr) {
+    auto proxy = textEditor_.lock();
+    if (proxy == nullptr) {
         IMSA_HILOGE("textEditor_ is nullptr");
         return;
     }
 
-    if (textEditor_->insertTextFunc == nullptr) {
+    if (proxy->insertTextFunc == nullptr) {
         IMSA_HILOGE("insertTextFunc is nullptr");
         return;
     }
 
-    textEditor_->insertTextFunc(textEditor_, text.c_str(), text.length());
+    proxy->insertTextFunc(proxy.get(), text.c_str(), text.length());
 }
 
 void NativeTextChangedListener::DeleteForward(int32_t length)
 {
-    if (textEditor_ == nullptr) {
+    auto proxy = textEditor_.lock();
+    if (proxy == nullptr) {
         IMSA_HILOGE("textEditor_ is nullptr");
         return;
     }
 
-    if (textEditor_->deleteForwardFunc == nullptr) {
+    if (proxy->deleteForwardFunc == nullptr) {
         IMSA_HILOGE("deleteForwardFunc is nullptr");
         return;
     }
 
-    textEditor_->deleteForwardFunc(textEditor_, length);
+    proxy->deleteForwardFunc(proxy.get(), length);
 }
 
 void NativeTextChangedListener::DeleteBackward(int32_t length)
 {
-    if (textEditor_ == nullptr) {
+    auto proxy = textEditor_.lock();
+    if (proxy == nullptr) {
         IMSA_HILOGE("textEditor_ is nullptr");
         return;
     }
 
-    if (textEditor_->deleteBackwardFunc == nullptr) {
+    if (proxy->deleteBackwardFunc == nullptr) {
         IMSA_HILOGE("deleteBackwardFunc is nullptr");
         return;
     }
 
-    textEditor_->deleteBackwardFunc(textEditor_, length);
+    proxy->deleteBackwardFunc(proxy.get(), length);
 }
 
 void NativeTextChangedListener::SendKeyboardStatus(const OHOS::MiscServices::KeyboardStatus &status)
 {
-    if (textEditor_ == nullptr) {
+    auto proxy = textEditor_.lock();
+    if (proxy == nullptr) {
         IMSA_HILOGE("textEditor_ is nullptr");
         return;
     }
 
-    if (textEditor_->sendKeyboardStatusFunc == nullptr) {
+    if (proxy->sendKeyboardStatusFunc == nullptr) {
         IMSA_HILOGE("sendKeyboardStatusFunc is nullptr");
         return;
     }
 
-    textEditor_->sendKeyboardStatusFunc(textEditor_, ConvertToCKeyboardStatus(status));
+    proxy->sendKeyboardStatusFunc(proxy.get(), ConvertToCKeyboardStatus(status));
 }
 
 void NativeTextChangedListener::SendFunctionKey(const OHOS::MiscServices::FunctionKey &functionKey)
 {
-    if (textEditor_ == nullptr) {
+    auto proxy = textEditor_.lock();
+    if (proxy == nullptr) {
         IMSA_HILOGE("textEditor_ is nullptr");
         return;
     }
 
-    if (textEditor_->sendEnterKeyFunc == nullptr) {
+    if (proxy->sendEnterKeyFunc == nullptr) {
         IMSA_HILOGE("sendEnterKeyFunc is nullptr");
         return;
     }
 
     auto enterKeyType = ConvertToCEnterKeyType(functionKey.GetEnterKeyType());
 
-    textEditor_->sendEnterKeyFunc(textEditor_, enterKeyType);
+    proxy->sendEnterKeyFunc(proxy.get(), enterKeyType);
 }
 
 void NativeTextChangedListener::MoveCursor(const OHOS::MiscServices::Direction direction)
 {
-    if (textEditor_ == nullptr) {
+    auto proxy = textEditor_.lock();
+    if (proxy == nullptr) {
         IMSA_HILOGE("textEditor_ is nullptr");
         return;
     }
 
-    if (textEditor_->moveCursorFunc == nullptr) {
+    if (proxy->moveCursorFunc == nullptr) {
         IMSA_HILOGE("moveCursorFunc is nullptr");
         return;
     }
 
-    textEditor_->moveCursorFunc(textEditor_, ConvertToCDirection(direction));
+    proxy->moveCursorFunc(proxy.get(), ConvertToCDirection(direction));
 }
 
 void NativeTextChangedListener::HandleSetSelection(int32_t start, int32_t end)
 {
-    if (textEditor_ == nullptr) {
+    auto proxy = textEditor_.lock();
+    if (proxy == nullptr) {
         IMSA_HILOGE("textEditor_ is nullptr");
         return;
     }
 
-    if (textEditor_->handleSetSelectionFunc == nullptr) {
+    if (proxy->handleSetSelectionFunc == nullptr) {
         IMSA_HILOGE("handleSetSelectionFunc is nullptr");
         return;
     }
 
-    textEditor_->handleSetSelectionFunc(textEditor_, start, end);
+    proxy->handleSetSelectionFunc(proxy.get(), start, end);
 }
 
 void NativeTextChangedListener::HandleExtendAction(int32_t action)
 {
-    if (textEditor_ == nullptr) {
+    auto proxy = textEditor_.lock();
+    if (proxy == nullptr) {
         IMSA_HILOGE("textEditor_ is nullptr");
         return;
     }
 
-    if (textEditor_->handleExtendActionFunc == nullptr) {
+    if (proxy->handleExtendActionFunc == nullptr) {
         IMSA_HILOGE("handleExtendActionFunc is nullptr");
         return;
     }
 
-    textEditor_->handleExtendActionFunc(textEditor_, ConvertToCExtendAction(action));
+    proxy->handleExtendActionFunc(proxy.get(), ConvertToCExtendAction(action));
 }
 
 std::u16string NativeTextChangedListener::GetLeftTextOfCursor(int32_t number)
 {
-    if (textEditor_ == nullptr) {
+    auto proxy = textEditor_.lock();
+    if (proxy == nullptr) {
         IMSA_HILOGE("textEditor_ is nullptr");
         return u"";
     }
 
-    if (textEditor_->getLeftTextOfCursorFunc == nullptr) {
+    if (proxy->getLeftTextOfCursorFunc == nullptr) {
         IMSA_HILOGE("getLeftTextOfCursorFunc is nullptr");
         return u"";
     }
@@ -165,7 +175,7 @@ std::u16string NativeTextChangedListener::GetLeftTextOfCursor(int32_t number)
     std::vector<char16_t> text(bufferSize);
     size_t realLength = static_cast<size_t>(number);
 
-    textEditor_->getLeftTextOfCursorFunc(textEditor_, number, text.data(), &realLength);
+    proxy->getLeftTextOfCursorFunc(proxy.get(), number, text.data(), &realLength);
     if (realLength > static_cast<size_t>(number)) {
         IMSA_HILOGE("realLength > number");
         return u"";
@@ -177,12 +187,13 @@ std::u16string NativeTextChangedListener::GetLeftTextOfCursor(int32_t number)
 
 std::u16string NativeTextChangedListener::GetRightTextOfCursor(int32_t number)
 {
-    if (textEditor_ == nullptr) {
+    auto proxy = textEditor_.lock();
+    if (proxy == nullptr) {
         IMSA_HILOGE("textEditor_ is nullptr");
         return u"";
     }
 
-    if (textEditor_->getRightTextOfCursorFunc == nullptr) {
+    if (proxy->getRightTextOfCursorFunc == nullptr) {
         IMSA_HILOGE("getRightTextOfCursorFunc is nullptr");
         return u"";
     }
@@ -196,7 +207,7 @@ std::u16string NativeTextChangedListener::GetRightTextOfCursor(int32_t number)
     std::vector<char16_t> text(bufferSize);
     size_t realLength = static_cast<size_t>(number);
 
-    textEditor_->getRightTextOfCursorFunc(textEditor_, number, text.data(), &realLength);
+    proxy->getRightTextOfCursorFunc(proxy.get(), number, text.data(), &realLength);
     if (realLength > static_cast<size_t>(number)) {
         IMSA_HILOGE("realLength > number");
         return u"";
@@ -207,28 +218,30 @@ std::u16string NativeTextChangedListener::GetRightTextOfCursor(int32_t number)
 
 int32_t NativeTextChangedListener::GetTextIndexAtCursor()
 {
-    if (textEditor_ == nullptr) {
+    auto proxy = textEditor_.lock();
+    if (proxy == nullptr) {
         IMSA_HILOGE("textEditor_ is nullptr");
         return 0;
     }
 
-    if (textEditor_->getTextIndexAtCursorFunc == nullptr) {
+    if (proxy->getTextIndexAtCursorFunc == nullptr) {
         IMSA_HILOGE("getTextIndexAtCursorFunc is nullptr");
         return 0;
     }
 
-    return textEditor_->getTextIndexAtCursorFunc(textEditor_);
+    return proxy->getTextIndexAtCursorFunc(proxy.get());
 }
 
 int32_t NativeTextChangedListener::ReceivePrivateCommand(
     const std::unordered_map<std::string, PrivateDataValue> &privateCommand)
 {
-    if (textEditor_ == nullptr) {
+    auto proxy = textEditor_.lock();
+    if (proxy == nullptr) {
         IMSA_HILOGE("textEditor_ is nullptr");
         return ErrorCode::ERROR_NULL_POINTER;
     }
 
-    if (textEditor_->receivePrivateCommandFunc == nullptr) {
+    if (proxy->receivePrivateCommandFunc == nullptr) {
         IMSA_HILOGE("receivePrivateCommandFunc is nullptr");
         return ErrorCode::ERROR_NULL_POINTER;
     }
@@ -261,7 +274,7 @@ int32_t NativeTextChangedListener::ReceivePrivateCommand(
         ++index;
     }
 
-    auto errCode = textEditor_->receivePrivateCommandFunc(textEditor_, command, privateCommand.size());
+    auto errCode = proxy->receivePrivateCommandFunc(proxy.get(), command, privateCommand.size());
 
     freeCommand(index);
     return errCode;
@@ -269,32 +282,34 @@ int32_t NativeTextChangedListener::ReceivePrivateCommand(
 
 int32_t NativeTextChangedListener::SetPreviewText(const std::u16string &text, const OHOS::MiscServices::Range &range)
 {
-    if (textEditor_ == nullptr) {
+    auto proxy = textEditor_.lock();
+    if (proxy == nullptr) {
         IMSA_HILOGE("textEditor_ is nullptr");
         return ErrorCode::ERROR_NULL_POINTER;
     }
 
-    if (textEditor_->setPreviewTextFunc == nullptr) {
+    if (proxy->setPreviewTextFunc == nullptr) {
         IMSA_HILOGE("setPreviewTextFunc is nullptr");
         return ErrorCode::ERROR_NULL_POINTER;
     }
 
-    return textEditor_->setPreviewTextFunc(textEditor_, text.c_str(), text.length(), range.start, range.end);
+    return proxy->setPreviewTextFunc(proxy.get(), text.c_str(), text.length(), range.start, range.end);
 }
 
 void NativeTextChangedListener::FinishTextPreview()
 {
-    if (textEditor_ == nullptr) {
+    auto proxy = textEditor_.lock();
+    if (proxy == nullptr) {
         IMSA_HILOGE("textEditor_ is nullptr");
         return;
     }
 
-    if (textEditor_->finishTextPreviewFunc == nullptr) {
+    if (proxy->finishTextPreviewFunc == nullptr) {
         IMSA_HILOGE("finishTextPreviewFunc is nullptr");
         return;
     }
 
-    textEditor_->finishTextPreviewFunc(textEditor_);
+    proxy->finishTextPreviewFunc(proxy.get());
 }
 
 void NativeTextChangedListener::OnDetach()
@@ -304,12 +319,13 @@ void NativeTextChangedListener::OnDetach()
 
 std::shared_ptr<AppExecFwk::EventHandler> NativeTextChangedListener::GetEventHandler()
 {
-    if (textEditor_ == nullptr) {
+    auto proxy = textEditor_.lock();
+    if (proxy == nullptr) {
         IMSA_HILOGE("textEditor_ is nullptr");
         return nullptr;
     }
 
-    if (!textEditor_->isCallbackInMainThread) {
+    if (!proxy->isCallbackInMainThread) {
         return nullptr;
     }
 

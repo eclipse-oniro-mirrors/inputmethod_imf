@@ -14,14 +14,16 @@
  */
 #ifndef NATIVE_TEXT_CHANGED_LISTENER_H
 #define NATIVE_TEXT_CHANGED_LISTENER_H
+#include <memory>
+
 #include "input_method_controller.h"
 #include "native_inputmethod_types.h"
 namespace OHOS {
 namespace MiscServices {
 class NativeTextChangedListener : public OHOS::MiscServices::OnTextChangedListener {
 public:
-    explicit NativeTextChangedListener(InputMethod_TextEditorProxy *textEditor) : textEditor_(textEditor) {};
-    ~NativeTextChangedListener();
+    explicit NativeTextChangedListener(InputMethod_TextEditorProxy *textEditor);
+    ~NativeTextChangedListener() = default;
     void InsertText(const std::u16string &text) override;
     void DeleteForward(int32_t length) override;
     void DeleteBackward(int32_t length) override;
@@ -51,7 +53,7 @@ private:
     InputMethod_ExtendAction ConvertToCExtendAction(int32_t action);
     std::shared_ptr<AppExecFwk::EventHandler> GetMainHandler();
 
-    InputMethod_TextEditorProxy *textEditor_;
+    std::weak_ptr<InputMethod_TextEditorProxy> textEditor_;
     std::mutex mainHandlerMtx_;
     std::shared_ptr<AppExecFwk::EventHandler> mainHandler_ { nullptr };
 };
