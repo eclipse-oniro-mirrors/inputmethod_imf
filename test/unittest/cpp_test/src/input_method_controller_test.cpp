@@ -753,14 +753,14 @@ HWTEST_F(InputMethodControllerTest, testIsKeyboardCallingProcess_001, TestSize.L
     EXPECT_EQ(closeRet, ErrorCode::NO_ERROR);
     auto ret = inputMethodController_->IsKeyboardCallingProcess(getpid(), 0);
     EXPECT_FALSE(ret);
- 
+
     imeListener_->isInputStart_ = false;
     TextListener::ResetParam();
     auto attachRet = inputMethodController_->Attach(textListener_, true);
     EXPECT_EQ(attachRet, ErrorCode::NO_ERROR);
     ret = inputMethodController_->IsKeyboardCallingProcess(getpid(), 0);
     EXPECT_TRUE(ret);
- 
+
     TextListener::ResetParam();
     inputMethodController_->DeactivateClient();
 }
@@ -785,7 +785,7 @@ HWTEST_F(InputMethodControllerTest, testIsKeyboardCallingProcess_002, TestSize.L
     const auto errorCode = imsa_->IsKeyboardCallingProcess(0, 0, isKeyboardCallingProcess);
     EXPECT_EQ(errorCode, ErrorCode::NO_ERROR);
 
- 
+
     // save and erase sessions in the map
     const auto saveSession = sessionManager.userSessions_[userId];
     sessionManager.userSessions_.erase(userId);
@@ -2381,7 +2381,7 @@ HWTEST_F(InputMethodControllerTest, TestNotifyOnInputStopFinished001, TestSize.L
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     UserSessionManager::GetInstance().userSessions_.erase(0);
 }
- 
+
 /**
  * @tc.name: testOnInputStopAsync
  * @tc.desc: Bind IMSA.
@@ -3201,6 +3201,21 @@ HWTEST_F(InputMethodControllerTest, testIsDisablePcModeImmersiveMode_Cached_001,
     EXPECT_TRUE(inputMethodController_->IsDisablePcModeImmersiveMode());
     inputMethodController_->immersiveCache_.isDisablePcModeImmersiveModeQueried.store(origQueried);
     inputMethodController_->immersiveCache_.isDisablePcModeImmersiveModeCached.store(origCached);
+}
+
+/**
+ * @tc.name: testExecTextInteraction
+ * @tc.desc:
+ * @tc.type: IMC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, testExecTextInteraction, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC testExecTextInteraction Test START");
+    std::string text = "adg";
+    // has no permisson
+    auto ret = inputMethodController_->ExecTextInteraction(text);
+    EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
 }
 } // namespace MiscServices
 } // namespace OHOS

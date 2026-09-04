@@ -3255,3 +3255,42 @@ ohos_unittest("SystemCmdChannelServiceImplTest") {
     "-fno-access-control",
   ]
 }
+
+ohos_unittest("OhosImfToolTest") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+
+  module_out_path = module_output_path
+
+  sources = [
+    "${inputmethod_path}/tools/ohos-imf/src/cli_utils.cpp",
+    "${inputmethod_path}/tools/ohos-imf/src/command_manager.cpp",
+    "${inputmethod_path}/tools/ohos-imf/src/executor.cpp",
+    "${inputmethod_path}/tools/ohos-imf/src/insert_command.cpp",
+    "${inputmethod_path}/tools/ohos-imf/src/param_parser.cpp",
+    "${inputmethod_path}/tools/ohos-imf/tests/command_manager_test.cpp",
+    "${inputmethod_path}/tools/ohos-imf/tests/executor_test.cpp",
+    "${inputmethod_path}/tools/ohos-imf/tests/insert_command_test.cpp",
+    "${inputmethod_path}/tools/ohos-imf/tests/mock/src/input_method_controller.cpp",
+    "${inputmethod_path}/tools/ohos-imf/tests/param_parser_test.cpp",
+  ]
+  include_dirs = [
+    "${inputmethod_path}/tools/ohos-imf/include",
+    "${inputmethod_path}/tools/ohos-imf/tests/mock/include",
+  ]
+
+  deps = [ "${inputmethod_path}/services/json:imf_json_static" ]
+
+  external_deps = [
+    "cJSON:cjson",
+    "c_utils:utils",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "input:libmmi-client",
+    "ipc:ipc_single",
+  ]
+}

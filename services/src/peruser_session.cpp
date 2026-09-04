@@ -3754,5 +3754,20 @@ void PerUserSession::SetAttachFailedByUnavailableImeFlag(bool flag)
 {
     attachFailedByUnavailableIme_.store(flag);
 }
+
+int32_t PerUserSession::ExecTextInteraction(const std::string &text)
+{
+    auto [clientGroup, clientInfo] = GetCurrentClientBoundRealIme();
+    if (clientInfo == nullptr || clientInfo->client == nullptr) {
+        IMSA_HILOGD("current client not exists.");
+        return ErrorCode::ERROR_CLIENT_NOT_BOUND;
+    }
+    auto ret = clientInfo->client->OnExecTextInteraction(text);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("OnExecTextInteraction failed, ret: %{public}d", ret);
+        return ret;
+    }
+    return ErrorCode::NO_ERROR;
+}
 } // namespace MiscServices
 } // namespace OHOS

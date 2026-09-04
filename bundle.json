@@ -18,7 +18,8 @@
       "features": [
           "imf_screenlock_mgr_enable",
           "imf_on_demand_start_stop_sa_enable",
-          "imf_restore_in_high_cpu_usage"
+          "imf_restore_in_high_cpu_usage",
+          "imf_cli_enable"
       ], 
       "hisysevent_config": [
           "//base/inputmethod/imf/hisysevent.yaml",
@@ -106,7 +107,8 @@
                   "//base/inputmethod/imf/frameworks/kits/extension_cj:cj_inputmethod_extension_ffi",
                   "//base/inputmethod/imf/seccomp_policy:imf_ext_secure_filter",
                   "//base/inputmethod/imf/services/dialog:input_method_choose_dialog",
-                  "//base/inputmethod/imf/tools/ime:ime"
+                  "//base/inputmethod/imf/tools/ime:ime",
+                  "//base/inputmethod/imf/tools/ohos-imf:ohos-imf"
               ]
           },
           "inner_kits": [
