@@ -16,6 +16,7 @@
 #ifndef SERVICES_INCLUDE_PERUSER_SESSION_H
 #define SERVICES_INCLUDE_PERUSER_SESSION_H
 
+#include <functional>
 #include <unordered_set>
 
 #include "block_queue.h"
@@ -104,8 +105,12 @@ enum class StartPreDefaultImeStatus : uint32_t { NO_NEED, HAS_STARTED, TO_START 
  */
 class PerUserSession : public std::enable_shared_from_this<PerUserSession> {
 public:
+    using ImeUsageCallback = std::function<void(const std::string &)>;
+
     PerUserSession(int32_t userId, const std::shared_ptr<AppExecFwk::EventHandler> &eventHandler);
     ~PerUserSession();
+
+    void SetImeUsageCallbacks(ImeUsageCallback onBind, ImeUsageCallback onUnbind);
 
     int32_t OnPrepareInput(const InputClientInfo &clientInfo);
     int32_t OnStartInput(InputClientInfo &inputClientInfo, std::vector<sptr<IRemoteObject>> &agents,
@@ -431,6 +436,8 @@ private:
     std::mutex imageTimeoutTaskLock_;
     std::atomic<bool> disconnectedByRss_{ false };
     std::atomic<bool> attachFailedByUnavailableIme_{ false };
+    ImeUsageCallback onImeBind_;
+    ImeUsageCallback onImeUnbind_;
 };
 } // namespace MiscServices
 } // namespace OHOS

@@ -82,6 +82,14 @@ group("unittest") {
       "cpp_test:PerUserSessionTest",
       "cpp_test:SystemCmdChannelServiceImplTest",
     ]
+    if (target_platform == "phone") {
+      deps += [
+        "cpp_test:FoldStatusAdapterTest",
+        "cpp_test:ImeUsageEventFactoryTest",
+        "cpp_test:ImeUsageReporterTest",
+        "cpp_test:ImeUsageTest",
+      ]
+    }
   }
 }
 ###############################################################################

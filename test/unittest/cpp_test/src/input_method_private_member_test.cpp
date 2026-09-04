@@ -6233,5 +6233,36 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnFocused_FocusPidPositive
     userSession->clientGroupMap_[DEFAULT_DISPLAY_ID] = clientGroup;
     userSession->OnFocused(DEFAULT_DISPLAY_ID, 123456, 0);
 }
+ 
+/**
+ * @tc.name: SA_SystemConfig_EnableImeUsageFeature
+ * @tc.desc: SystemConfig should parse enableImeUsageFeature from JSON.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_SystemConfig_EnableImeUsageFeature, TestSize.Level0)
+{
+    SystemConfig sysCfg;
+    EXPECT_FALSE(sysCfg.enableImeUsageFeature);
+    sysCfg.enableImeUsageFeature = true;
+    EXPECT_TRUE(sysCfg.enableImeUsageFeature);
+}
+
+#ifdef IME_USAGE_ENABLE
+/**
+ * @tc.name: SA_InitImeUsageReporter_DisabledByConfig
+ * @tc.desc: InitImeUsageReporter should return early when enableImeUsageFeature is false.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_InitImeUsageReporter_DisabledByConfig, TestSize.Level0)
+{
+    // Default enableImeUsageFeature is false, InitImeUsageReporter should not create reporter
+    EXPECT_FALSE(ImeInfoInquirer::GetInstance().GetSystemConfig().enableImeUsageFeature);
+    service_->InitImeUsageReporter();
+    service_->SetupImeUsageCallbacks(ImfCommonConst::START_USER_ID);
+    EXPECT_EQ(service_->imeUsageReporter_, nullptr);
+}
+#endif
 } // namespace MiscServices
 } // namespace OHOS

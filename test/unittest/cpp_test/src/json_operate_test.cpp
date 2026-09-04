@@ -63,6 +63,7 @@ public:
                                            "\"en-US\",\"mode\": \"upper\"}]} ";
     static constexpr const char *INPUT_SYS_CGF = "{\"systemConfig\":{\"enableInputMethodFeature\":true,"
                                                  "\"enableFullExperienceFeature\":true,"
+                                                 "\"enableImeUsageFeature\":true,"
                                                  "\"systemInputMethodConfigAbility\":\"setAbility\","
                                                  "\"defaultInputMethod\":\"bundleName/extName\"},"
                                                  "\"supportedInputTypeList\":[{\"inputType\":0,\"bundleName\":"
@@ -117,6 +118,7 @@ HWTEST_F(JsonOperateTest, testParseSystemConfig001, TestSize.Level1)
     EXPECT_EQ(systemConfig.defaultInputMethod, "bundleName/extName");
     EXPECT_TRUE(systemConfig.enableInputMethodFeature);
     EXPECT_TRUE(systemConfig.enableFullExperienceFeature);
+    EXPECT_TRUE(systemConfig.enableImeUsageFeature);
 }
 
 /**

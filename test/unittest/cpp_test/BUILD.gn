@@ -656,7 +656,9 @@ ohos_unittest("InputMethodPrivateMemberTest") {
   } else {
     external_deps += [ "window_manager:libwm" ]
   }
-
+  if (target_platform == "phone") {
+    defines += [ "IME_USAGE_ENABLE" ]
+  }
   if (build_selinux) {
     external_deps += [ "selinux_adapter:librestorecon" ]
     cflags = [ "-DWITH_SELINUX" ]
@@ -2856,6 +2858,177 @@ ohos_unittest("EnableUpgradeManagerTest") {
   cflags = [
     "-fno-access-control",
   ]
+}
+
+if (target_platform == "phone") {
+ohos_unittest("ImeUsageTest") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+  module_out_path = module_output_path
+
+  include_dirs = [
+    "${inputmethod_path}/common/include",
+    "${inputmethod_path}/services/include",
+    "${inputmethod_path}/services/ime_usage/include",
+    "${inputmethod_path}/services/adapter/fold_status_adapter/include",
+  ]
+
+  sources = [ "src/ime_usage_test.cpp" ]
+
+  configs = [ ":module_private_config" ]
+
+  deps = [
+    "${inputmethod_path}/services:inputmethod_service_static",
+    "${inputmethod_path}/test/common:inputmethod_test_common",
+    "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "data_share:datashare_common",
+    "data_share:datashare_consumer",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "init:libbegetutil",
+    "ipc:ipc_single",
+    "relational_store:native_rdb",
+  ]
+
+  cflags = [
+    "-fno-access-control",
+  ]
+}
+
+ohos_unittest("FoldStatusAdapterTest") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+  module_out_path = module_output_path
+
+  include_dirs = [
+    "${inputmethod_path}/common/include",
+    "${inputmethod_path}/services/include",
+    "${inputmethod_path}/services/ime_usage/include",
+    "${inputmethod_path}/services/adapter/fold_status_adapter/include",
+  ]
+
+  sources = [ "src/fold_status_adapter_test.cpp" ]
+
+  configs = [ ":module_private_config" ]
+
+  deps = [
+    "${inputmethod_path}/services:inputmethod_service_static",
+    "${inputmethod_path}/test/common:inputmethod_test_common",
+    "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "data_share:datashare_common",
+    "data_share:datashare_consumer",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "init:libbegetutil",
+    "ipc:ipc_single",
+    "relational_store:native_rdb",
+    "window_manager:libdm_lite",
+  ]
+
+  cflags = [
+    "-fno-access-control",
+  ]
+}
+
+ohos_unittest("ImeUsageEventFactoryTest") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+  module_out_path = module_output_path
+
+  include_dirs = [
+    "${inputmethod_path}/common/include",
+    "${inputmethod_path}/services/include",
+    "${inputmethod_path}/services/ime_usage/include",
+    "${inputmethod_path}/services/adapter/fold_status_adapter/include",
+  ]
+
+  sources = [ "src/ime_usage_event_factory_test.cpp" ]
+
+  configs = [ ":module_private_config" ]
+
+  deps = [
+    "${inputmethod_path}/services:inputmethod_service_static",
+    "${inputmethod_path}/test/common:inputmethod_test_common",
+    "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "data_share:datashare_common",
+    "data_share:datashare_consumer",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "init:libbegetutil",
+    "ipc:ipc_single",
+    "relational_store:native_rdb",
+  ]
+
+  cflags = [
+    "-fno-access-control",
+  ]
+}
+
+ohos_unittest("ImeUsageReporterTest") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+  module_out_path = module_output_path
+
+  include_dirs = [
+    "${inputmethod_path}/common/include",
+    "${inputmethod_path}/services/include",
+    "${inputmethod_path}/services/ime_usage/include",
+    "${inputmethod_path}/services/adapter/fold_status_adapter/include",
+  ]
+
+  sources = [ "src/ime_usage_reporter_test.cpp" ]
+
+  configs = [ ":module_private_config" ]
+
+  deps = [
+    "${inputmethod_path}/services:inputmethod_service_static",
+    "${inputmethod_path}/test/common:inputmethod_test_common",
+    "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
+  ]
+
+  external_deps = [
+    "c_utils:utils",
+    "data_share:datashare_common",
+    "data_share:datashare_consumer",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "init:libbegetutil",
+    "ipc:ipc_single",
+    "relational_store:native_rdb",
+  ]
+
+  cflags = [
+    "-fno-access-control",
+  ]
+}
 }
 
 ohos_unittest("PerUserSessionTest") {

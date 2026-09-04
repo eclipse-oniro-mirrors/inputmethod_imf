@@ -61,14 +61,23 @@
 #include "window_adapter.h"
 #include "os_account_manager.h"
 #include "res_sched_adapter.h"
+#include "ime_info_inquirer.h"
+#ifdef IME_USAGE_ENABLE
+#include "fold_status_adapter.h"
+#endif
 
- namespace OHOS {
+namespace OHOS {
 namespace MiscServices {
 using namespace MessageID;
 using namespace AppExecFwk;
 using namespace Security::AccessToken;
 using namespace std::chrono;
 using namespace HiviewDFX;
+#ifdef IME_USAGE_ENABLE
+namespace {
+constexpr const char *IME_USAGE_WORK_PATH = "/data/service/el1/public/imf/";
+} // namespace
+#endif
 using namespace AccountSA;
 constexpr uint32_t FATAL_TIMEOUT = 30;    // 30s
 constexpr int64_t WARNING_TIMEOUT = 5000; // 5s
@@ -415,12 +424,14 @@ int32_t InputMethodSystemAbility::Init()
     ImeStateManagerFactory::GetInstance().SetDynamicStartIme(ImeInfoInquirer::GetInstance().IsDynamicStartIme());
 #endif
     InitMonitors();
+    InitImeUsageReporter();
     return ErrorCode::NO_ERROR;
 }
 
 void InputMethodSystemAbility::InitUserInfo(int32_t userId, uint64_t displayId)
 {
     UserSessionManager::GetInstance().AddUserSession(userId);
+    SetupImeUsageCallbacks(userId);
     uint64_t displayGroupId = ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID;
     int32_t ret = WindowAdapter::GetInstance().GetDisplayGroupIdWithRetry(displayId, userId, displayGroupId);
     if (ret != ErrorCode::NO_ERROR) {
@@ -437,6 +448,7 @@ void InputMethodSystemAbility::UpdateUserInfo(int32_t userId, uint64_t displayId
     // update user-separated data
     FullImeInfoManager::GetInstance().Switch(userId, displayId);
     UserSessionManager::GetInstance().AddUserSession(userId);
+    SetupImeUsageCallbacks(userId);
     uint64_t displayGroupId = ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID;
     int32_t ret = WindowAdapter::GetInstance().GetDisplayGroupIdWithRetry(displayId, userId, displayGroupId);
     if (ret != ErrorCode::NO_ERROR) {
@@ -500,6 +512,7 @@ void InputMethodSystemAbility::Initialize()
     identityChecker_ = std::make_shared<IdentityCheckerImpl>();
     UserSessionManager::GetInstance().SetEventHandler(serviceHandler_);
     UserSessionManager::GetInstance().AddUserSession(ImfCommonConst::START_USER_ID);
+    SetupImeUsageCallbacks(ImfCommonConst::START_USER_ID);
     IMSA_HILOGI("start get scene board enable status");
     ImeEnabledInfoManager::GetInstance().SetCurrentImeStatusChangedHandler(
         [this](int32_t userId, const std::string &bundleName, EnabledStatus newStatus) {
@@ -529,6 +542,7 @@ void InputMethodSystemAbility::RestartAllForegroundImes()
         auto session = UserSessionManager::GetInstance().GetUserSession(account);
         if (session == nullptr) {
             UserSessionManager::GetInstance().AddUserSession(account);
+            SetupImeUsageCallbacks(account);
             session = UserSessionManager::GetInstance().GetUserSession(account);
         }
         if (session != nullptr) {
@@ -2001,6 +2015,12 @@ void InputMethodSystemAbility::WorkThread()
             }
             case MSG_ID_BOOT_COMPLETED: {
                 FullImeInfoManager::GetInstance().Init();
+#ifdef IME_USAGE_ENABLE
+                if (ImeInfoInquirer::GetInstance().GetSystemConfig().enableImeUsageFeature
+                    && imeUsageReporter_ != nullptr) {
+                    imeUsageReporter_->OnBootCompleted();
+                }
+#endif
                 break;
             }
             case MSG_ID_OS_ACCOUNT_STARTED: {
@@ -2218,6 +2238,7 @@ int32_t InputMethodSystemAbility::OnPackageUpdated(int32_t userId, const std::st
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
         UserSessionManager::GetInstance().AddUserSession(userId);
+        SetupImeUsageCallbacks(userId);
     }
     session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
@@ -2261,6 +2282,7 @@ void InputMethodSystemAbility::OnScreenUnlock(const Message *msg)
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
         UserSessionManager::GetInstance().AddUserSession(userId);
+        SetupImeUsageCallbacks(userId);
     }
     session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
@@ -2285,6 +2307,7 @@ void InputMethodSystemAbility::OnScreenLock(const Message *msg)
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
         UserSessionManager::GetInstance().AddUserSession(userId);
+        SetupImeUsageCallbacks(userId);
     }
     session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
@@ -2547,6 +2570,65 @@ int32_t InputMethodSystemAbility::InitKeyEventMonitor()
     bool ret = imCommonEventManager->SubscribeKeyboardEvent(handler);
     return ret ? ErrorCode::NO_ERROR : ErrorCode::ERROR_SERVICE_START_FAILED;
 }
+
+#ifdef IME_USAGE_ENABLE
+void InputMethodSystemAbility::InitImeUsageReporter()
+{
+    if (!ImeInfoInquirer::GetInstance().GetSystemConfig().enableImeUsageFeature) {
+        IMSA_HILOGW("ImeUsage feature is disbaled by system config");
+        return;
+    }
+    // Initialize FoldStatusAdapter BEFORE ImeUsageReporter so that
+    // ImeUsageEventCacher::Init can read the real fold/vh state instead of 0/0.
+    FoldStatusAdapter::GetInstance().Init();
+    FoldStatusAdapter::GetInstance().SetScreenStatusChangedCallback(
+        [this](int32_t preStatus, int32_t newStatus) {
+            if (imeUsageReporter_ != nullptr) {
+                imeUsageReporter_->OnScreenStatusChanged(preStatus, newStatus);
+            }
+        });
+ 
+    imeUsageReporter_ = std::make_unique<ImeUsageReporter>();
+    if (imeUsageReporter_ == nullptr) {
+        IMSA_HILOGE("Failed to create ImeUsageReporter");
+        return;
+    }
+    int ret = imeUsageReporter_->Init(IME_USAGE_WORK_PATH);
+    if (ret != 0) {
+        IMSA_HILOGE("ImeUsageReporter Init failed, ret=%{public}d", ret);
+        imeUsageReporter_.reset();
+        return;
+    }
+    imeUsageReporter_->SetEventHandler(serviceHandler_);
+    // Set IME usage callbacks on any already-existing sessions
+    for (const auto &[userId, session] : UserSessionManager::GetInstance().GetUserSessions()) {
+        SetupImeUsageCallbacks(userId);
+    }
+    IMSA_HILOGI("ImeUsageReporter initialized");
+}
+ 
+void InputMethodSystemAbility::SetupImeUsageCallbacks(int32_t userId)
+{
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+    if (session == nullptr) {
+        return;
+    }
+    session->SetImeUsageCallbacks(
+        [this](const std::string &bundleName) {
+            if (imeUsageReporter_ != nullptr) {
+                imeUsageReporter_->OnImeBind(bundleName);
+            }
+        },
+        [this](const std::string &bundleName) {
+            if (imeUsageReporter_ != nullptr) {
+                imeUsageReporter_->OnImeUnbind(bundleName);
+            }
+        });
+}
+#else
+void InputMethodSystemAbility::InitImeUsageReporter() { }
+void InputMethodSystemAbility::SetupImeUsageCallbacks(int32_t userId) { }
+#endif
 
 bool InputMethodSystemAbility::InitWmsMonitor()
 {
@@ -2905,6 +2987,7 @@ void InputMethodSystemAbility::HandleWmsConnected(int32_t userId, int32_t screen
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
         UserSessionManager::GetInstance().AddUserSession(userId);
+        SetupImeUsageCallbacks(userId);
     }
     session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
@@ -2919,6 +3002,7 @@ void InputMethodSystemAbility::StartNewUserIme(int32_t userId)
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
         UserSessionManager::GetInstance().AddUserSession(userId);
+        SetupImeUsageCallbacks(userId);
     }
     session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {

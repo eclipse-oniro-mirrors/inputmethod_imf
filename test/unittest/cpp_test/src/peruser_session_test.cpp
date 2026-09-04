@@ -692,6 +692,43 @@ HWTEST_F(PerUserSessionTest, TestRemoveImeData_001, TestSize.Level0)
 }
 
 /**
+ * @tc.name: TestOnHideSoftKeyBoardSelf_TriggersOnImeUnbind_001
+ * @tc.desc: OnHideSoftKeyBoardSelf calls onImeUnbind_ when client is bound to a real IME
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestOnHideSoftKeyBoardSelf_TriggersOnImeUnbind_001, TestSize.Level0)
+{
+    // Set up a client bound to a real IME
+    auto info = MakeClientInfo(TEST_PID, TEST_DISPLAY_GROUP_ID);
+    info.isShowKeyboard = true;
+    info.bindImeData = std::make_shared<BindImeData>(TEST_PID, ImeType::IME);
+    auto ret = session_->OnPrepareInput(info);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    // Set currentClient_ on the group so GetCurrentClientBoundRealIme can find it
+    auto group = session_->GetClientGroupByGroupId(TEST_DISPLAY_GROUP_ID);
+    ASSERT_NE(group, nullptr);
+    group->currentClient_ = info.client;
+    
+    // Set up real IME data so GetImeData(bindImeData) returns a real IME
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    session_->realImeData_ = imeData;
+
+    // Register onImeUnbind_ callback and capture the bundle name
+    std::string capturedBundle;
+    session_->SetImeUsageCallbacks([](const std::string &) {},
+        [&capturedBundle](const std::string &bundle) {
+            capturedBundle = bundle;
+        });
+
+    session_->OnHideSoftKeyBoardSelf();
+
+    // onImeUnbind_ should have been called with imeData->ime.first
+    EXPECT_EQ(capturedBundle, "com.test.ime");
+}
+
+/**
  * @tc.name: TestRemoveDeathRecipient_NullDeathRecipient_001
  * @tc.desc: Test RemoveDeathRecipient with null death recipient
  * @tc.type: FUNC

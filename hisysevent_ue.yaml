@@ -17,3 +17,22 @@ SYSTEM_SHORTCUT:
   __BASE: {type: BEHAVIOR, level: CRITICAL, desc: Operating the input method through system shortcuts, preserve: true}
   PROCESS_NAME: {type: STRING, desc: 'process name'}
   SHORTCUT_NAME: {type: STRING, desc: 'system shortcut name'}
+
+IME_USAGE_DURATION:
+  __BASE: {type: STATISTIC, level: CRITICAL, desc: IME usage duration statistics per fold status, preserve: true}
+  PACKAGE: {type: STRING, desc: 'IME package name'}
+  EXPD_V: {type: UINT32, desc: 'expand portrait duration in milliseconds'}
+  EXPD_H: {type: UINT32, desc: 'expand landscape duration in milliseconds'}
+  FOLD_V: {type: UINT32, desc: 'fold portrait duration in milliseconds'}
+  FOLD_H: {type: UINT32, desc: 'fold landscape duration in milliseconds'}
+  G_V: {type: UINT32, desc: 'G-type portrait duration in milliseconds'}
+  G_H: {type: UINT32, desc: 'G-type landscape duration in milliseconds'}
+  UNFOLD_V: {type: UINT32, desc: 'unfolded portrait duration in milliseconds'}
+  UNFOLD_H: {type: UINT32, desc: 'unfolded landscape duration in milliseconds'}
+  N_V: {type: UINT32, desc: 'N-type portrait duration in milliseconds'}
+  N_H: {type: UINT32, desc: 'N-type landscape duration in milliseconds'}
+  LM_V: {type: UINT32, desc: 'LM-type portrait duration in milliseconds'}
+  LM_H: {type: UINT32, desc: 'LM-type landscape duration in milliseconds'}
+  USAGE: {type: UINT32, desc: 'total usage duration in milliseconds'}
+  DATE: {type: STRING, desc: 'statistics date in YYYYMMDD format'}
+  TOTAL_SHOW_NUM: {type: UINT32, desc: 'total keyboard show count'}

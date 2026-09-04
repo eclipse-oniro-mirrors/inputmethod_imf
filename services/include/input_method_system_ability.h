@@ -26,6 +26,9 @@
 #include "inputmethod_trace.h"
 #include "system_ability.h"
 #include "user_session_manager.h"
+#ifdef IME_USAGE_ENABLE
+#include "ime_usage_reporter.h"
+#endif
 
 namespace OHOS {
 namespace MiscServices {
@@ -179,6 +182,8 @@ private:
     static std::shared_ptr<AppExecFwk::EventHandler> serviceHandler_;
     std::atomic<int32_t> userId_;
     bool stop_ = false;
+    void InitImeUsageReporter();
+    void SetupImeUsageCallbacks(int32_t userId);
     void InitMonitors();
     int32_t InitKeyEventMonitor();
     bool InitWmsMonitor();
@@ -275,6 +280,9 @@ private:
     std::atomic<uint32_t> targetSwitchCount_ = 0;
     std::atomic<bool> isAccountSaFirstStart_{ true };
     std::atomic<bool> waitAccountReadyToInit_{ false };
+#ifdef IME_USAGE_ENABLE
+    std::unique_ptr<ImeUsageReporter> imeUsageReporter_;
+#endif
 };
 } // namespace MiscServices
 } // namespace OHOS
