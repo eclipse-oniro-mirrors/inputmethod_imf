@@ -2392,6 +2392,7 @@ ohos_executable("PublishCommonEventDemo") {
     "c_utils:utils",
     "hilog:libhilog",
     "common_event_service:cesfwk_innerkits",
+    "hilog:libhilog",
     "input:libmmi-client",
   ]
 
