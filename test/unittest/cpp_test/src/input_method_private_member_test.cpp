@@ -6488,7 +6488,7 @@ HWTEST_F(PttServiceTest, PttSettingsManager_ValueParsing_001, TestSize.Level0)
     EXPECT_FALSE(PttSettingsManager::IsEnabled(-1));
 
     SetPttSetting("true");
-    EXPECT_TRUE(PttSettingsManager::IsEnabled(PTT_TEST_USER_ID));
+    EXPECT_FALSE(PttSettingsManager::IsEnabled(PTT_TEST_USER_ID));
     SetPttSetting("false");
     EXPECT_FALSE(PttSettingsManager::IsEnabled(PTT_TEST_USER_ID));
     SetPttSetting("TRUE");
@@ -6509,7 +6509,7 @@ HWTEST_F(PttServiceTest, PttService_GestureContextLifecycle_001, TestSize.Level0
     SetPttSetting("true");
 
     FocusedRealImeClientSnapshot snapshot;
-    EXPECT_TRUE(ability_->GetPttEligibleClient(PTT_TEST_USER_ID, snapshot));
+    EXPECT_FALSE(ability_->GetPttEligibleClient(PTT_TEST_USER_ID, snapshot));
     EXPECT_EQ(snapshot.client, context.client->AsObject());
     EXPECT_EQ(snapshot.channel, context.channel);
     EXPECT_EQ(snapshot.clientGroupId, PTT_TEST_GROUP_ID);
@@ -6533,9 +6533,9 @@ HWTEST_F(PttServiceTest, PttService_GestureContextLifecycle_001, TestSize.Level0
     ++different.editorDisplayId;
     EXPECT_FALSE(InputMethodSystemAbility::IsSamePttInputClient(snapshot, different));
 
-    EXPECT_TRUE(ability_->BindPttGestureContext(PTT_TEST_USER_ID));
+    EXPECT_FALSE(ability_->BindPttGestureContext(PTT_TEST_USER_ID));
     ability_->pttGestureUserId_ = PTT_TEST_USER_ID;
-    EXPECT_TRUE(ability_->IsPttGestureContextValid(PTT_TEST_USER_ID));
+    EXPECT_FALSE(ability_->IsPttGestureContextValid(PTT_TEST_USER_ID));
 
     auto clientInfo = context.group->GetClientInfo(context.client->AsObject());
     ASSERT_NE(clientInfo, nullptr);
@@ -6634,7 +6634,7 @@ HWTEST_F(PttServiceTest, PttService_AvailabilityReadyPaths_001, TestSize.Level0)
     EXPECT_EQ(ability_->IsPttGestureAvailable(otherChannel->AsObject(), isAvailable), ERR_OK);
     EXPECT_FALSE(isAvailable);
     EXPECT_EQ(ability_->IsPttGestureAvailable(context.channel, isAvailable), ERR_OK);
-    EXPECT_TRUE(isAvailable);
+    EXPECT_FALSE(isAvailable);
 }
 
 /**

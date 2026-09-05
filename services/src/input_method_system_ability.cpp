@@ -26,7 +26,6 @@
 #include "display_adapter.h"
 #include "full_ime_info_manager.h"
 #include "im_common_event_manager.h"
-#include "ime_cfg_manager.h"
 #include "ime_enabled_info_manager.h"
 #include "ime_event_listener_manager.h"
 #include "imsa_hisysevent_reporter.h"
