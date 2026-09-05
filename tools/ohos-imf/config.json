@@ -1,0 +1,79 @@
+{
+  "name": "ohos-imf",
+  "version": "1.0.0",
+  "description": "Input method framework CLI tool. used for text interaction. For PC use only.",
+  "executablePath": "/system/bin/cli_tool/executable/ohos-imf",
+  "requirePermissions": [],
+  "inputSchema": {
+    "type": "object",
+    "properties": {},
+    "required": []
+  },
+  "outputSchema": {
+    "type": "object",
+    "properties": {}
+  },
+  "hasSubCommand": true,
+  "subcommands": {
+    "insert": {
+      "description": "Insert text into the focused edit box bound to the input method application. Used for simulating real‑user input. Only '--text <content>' is supported.",
+      "requirePermissions": [
+        "ohos.permission.CONTROL_DEVICE"
+      ],
+      "inputSchema": {
+        "type": "object",
+        "properties": {
+          "text": {
+            "type": "string",
+            "description": "Text to be inserted",
+            "maxLength": 512
+          }
+        },
+        "required": [
+          "text"
+        ]
+      },
+      "outputSchema": {
+        "type": "object",
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["result"],
+            "description": "Mark this as the final result"
+          },
+          "status": {
+            "type": "string",
+            "enum": [
+              "success",
+              "failed"
+            ],
+            "description": "Execution status"
+          },
+          "data": {
+            "type": "object",
+            "description": "Success data on successful execution",
+            "properties": {}
+          },
+          "errCode": {
+            "type": "string",
+            "description": "Error code on failure"
+          },
+          "errMsg": {
+            "type": "string",
+            "description": "Error message on failure"
+          },
+          "suggestion": {
+            "type": "string",
+            "description": "Suggestion on failure"
+          }
+        },
+        "required": [
+          "type",
+          "status"
+        ]
+      }
+    }
+  },
+  "eventTypes": [],
+  "eventSchemas": {}
+}

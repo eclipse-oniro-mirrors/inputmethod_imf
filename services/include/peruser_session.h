@@ -16,6 +16,7 @@
 #ifndef SERVICES_INCLUDE_PERUSER_SESSION_H
 #define SERVICES_INCLUDE_PERUSER_SESSION_H
 
+#include <functional>
 #include <unordered_set>
 
 #include "block_queue.h"
@@ -112,8 +113,12 @@ struct FocusedRealImeClientSnapshot {
  */
 class PerUserSession : public std::enable_shared_from_this<PerUserSession> {
 public:
+    using ImeUsageCallback = std::function<void(const std::string &)>;
+
     PerUserSession(int32_t userId, const std::shared_ptr<AppExecFwk::EventHandler> &eventHandler);
     ~PerUserSession();
+
+    void SetImeUsageCallbacks(ImeUsageCallback onBind, ImeUsageCallback onUnbind);
 
     int32_t OnPrepareInput(const InputClientInfo &clientInfo);
     int32_t OnStartInput(InputClientInfo &inputClientInfo, std::vector<sptr<IRemoteObject>> &agents,
@@ -205,6 +210,7 @@ public:
     int32_t GetCursorInfo(CursorInfoInner &cursorInfo, const pid_t clientPid);
     void OnImeDisconnect(sptr<ImeConnection> connection);
     void SetAttachFailedByUnavailableImeFlag(bool flag);
+    int32_t ExecTextInteraction(const std::string &text);
     int32_t NotifyRollbackSpace();
     int32_t NotifyPttGestureCancelled();
     // Returns the service-side snapshot of the ACTIVE current client bound to a real IME.
@@ -446,6 +452,8 @@ private:
     std::mutex imageTimeoutTaskLock_;
     std::atomic<bool> disconnectedByRss_{ false };
     std::atomic<bool> attachFailedByUnavailableIme_{ false };
+    ImeUsageCallback onImeBind_;
+    ImeUsageCallback onImeUnbind_;
 };
 } // namespace MiscServices
 } // namespace OHOS

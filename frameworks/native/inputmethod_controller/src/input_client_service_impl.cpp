@@ -125,6 +125,17 @@ ErrCode InputClientServiceImpl::GetCurrentCursorInfo(CursorInfoInner &cursorInfo
     return ERR_OK;
 }
 
+int32_t InputClientServiceImpl::OnExecTextInteraction(const std::string &text)
+{
+    IMSA_HILOGD("InputClientServiceImpl::OnExecTextInteraction start.");
+    auto instance = InputMethodController::GetInstance();
+    if (instance == nullptr) {
+        IMSA_HILOGW("failed to get InputMethodController instance!");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    return instance->OnExecTextInteraction(text);
+}
+
 ErrCode InputClientServiceImpl::StartPttSpaceKeyEventBlock()
 {
     auto instance = InputMethodController::GetInstance();

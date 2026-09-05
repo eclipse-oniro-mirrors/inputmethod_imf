@@ -27,6 +27,9 @@
 #include "ptt_controller.h"
 #include "system_ability.h"
 #include "user_session_manager.h"
+#ifdef IME_USAGE_ENABLE
+#include "ime_usage_reporter.h"
+#endif
 
 namespace OHOS {
 namespace MiscServices {
@@ -109,6 +112,7 @@ public:
     ErrCode IsPttGestureAvailable(const sptr<IRemoteObject> &channel, bool &resultValue) override;
     int32_t GetCallingUserId();
     int32_t GetCallingUserId(int32_t &outputUserId, int32_t inputUserId = -1);
+    int32_t ExecTextInteraction(const std::string &text) override;
 
 protected:
     void OnStart() override;
@@ -181,6 +185,8 @@ private:
     static std::shared_ptr<AppExecFwk::EventHandler> serviceHandler_;
     std::atomic<int32_t> userId_;
     bool stop_ = false;
+    void InitImeUsageReporter();
+    void SetupImeUsageCallbacks(int32_t userId);
     void InitMonitors();
     int32_t InitKeyEventMonitor();
     bool InitWmsMonitor();
@@ -278,6 +284,9 @@ private:
     std::atomic<uint32_t> targetSwitchCount_ = 0;
     std::atomic<bool> isAccountSaFirstStart_{ true };
     std::atomic<bool> waitAccountReadyToInit_{ false };
+#ifdef IME_USAGE_ENABLE
+    std::unique_ptr<ImeUsageReporter> imeUsageReporter_;
+#endif
     void HandlePttKeyEvent(const KeyboardEventInfo &eventInfo);
     void ApplyPttAction(PttAction action, int32_t eventUserId);
     void HandlePttStartTimer(int32_t eventUserId);

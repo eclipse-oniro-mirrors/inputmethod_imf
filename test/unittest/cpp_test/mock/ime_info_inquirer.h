@@ -56,6 +56,7 @@ struct SystemConfig {
     std::unordered_set<std::string> supportedCapacityList;
     std::string dynamicStartImeSysParam;
     std::string dynamicStartImeValue;
+    bool enableImeUsageFeature = true;
 };
 
 enum class Condition {

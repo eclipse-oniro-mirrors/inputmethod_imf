@@ -98,6 +98,12 @@ PerUserSession::~PerUserSession()
     RemoveAllTask();
 }
 
+void PerUserSession::SetImeUsageCallbacks(ImeUsageCallback onBind, ImeUsageCallback onUnbind)
+{
+    onImeBind_ = onBind;
+    onImeUnbind_ = onUnbind;
+}
+
 int PerUserSession::AddClientInfo(sptr<IRemoteObject> inputClient, const InputClientInfo &clientInfo)
 {
     IMSA_HILOGD("PerUserSession start.");
@@ -429,6 +435,12 @@ void PerUserSession::OnHideSoftKeyBoardSelf()
     }
     clientGroup->UpdateClientInfo(clientInfo->client->AsObject(), { { UpdateFlag::ISSHOWKEYBOARD, false } });
     RestoreCurrentImeSubType();
+    if (onImeUnbind_) {
+        auto imeData = GetImeData(clientInfo->bindImeData);
+        if (imeData != nullptr && imeData->IsRealIme()) {
+            onImeUnbind_(imeData->ime.first);
+        }
+    }
 }
 
 int32_t PerUserSession::OnRequestHideInput(uint64_t displayId, const std::string &callerBundleName)
@@ -442,6 +454,12 @@ int32_t PerUserSession::OnRequestHideInput(uint64_t displayId, const std::string
     IMSA_HILOGD("start, displayId: %{public}" PRIu64 ", groupId: %{public}" PRIu64 ".", displayId, displayGroupId);
     if (RequestHideRealIme(displayGroupId)) {
         IMSA_HILOGI("hide real ime");
+        if (onImeUnbind_) {
+            auto realImeData = GetRealImeData(false);
+            if (realImeData != nullptr) {
+                onImeUnbind_(realImeData->ime.first);
+            }
+        }
     } else if (RequestHideProxyIme(displayId)) {
         IMSA_HILOGI("hide proxy ime");
     }
@@ -856,6 +874,9 @@ int32_t PerUserSession::BindClientWithIme(
         InputMethodSysEvent::GetInstance().ReportImeState(ImeState::BIND, imeData->pid, imeData->ime.first);
         Memory::MemMgrClient::GetInstance().SetCritical(getpid(), true, INPUT_METHOD_SYSTEM_ABILITY_ID);
         PostCurrentImeInfoReportHook(imeData->ime.first);
+        if (onImeBind_) {
+            onImeBind_(imeData->ime.first);
+        }
     }
     if (!isBindFromClient) {
         ret = SendAllReadyImeToClient(imeData, clientInfo);
@@ -1062,6 +1083,9 @@ void PerUserSession::StopImeInput(const std::shared_ptr<ImeData> &imeData,
     }
     if (imeData->IsRealIme()) {
         RestoreCurrentImeSubType();
+        if (onImeUnbind_) {
+            onImeUnbind_(imeData->ime.first);
+        }
     }
 }
 
@@ -3777,6 +3801,21 @@ int32_t PerUserSession::OnMakeSysImeImage()
 void PerUserSession::SetAttachFailedByUnavailableImeFlag(bool flag)
 {
     attachFailedByUnavailableIme_.store(flag);
+}
+
+int32_t PerUserSession::ExecTextInteraction(const std::string &text)
+{
+    auto [clientGroup, clientInfo] = GetCurrentClientBoundRealIme();
+    if (clientInfo == nullptr || clientInfo->client == nullptr) {
+        IMSA_HILOGD("current client not exists.");
+        return ErrorCode::ERROR_CLIENT_NOT_BOUND;
+    }
+    auto ret = clientInfo->client->OnExecTextInteraction(text);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("OnExecTextInteraction failed, ret: %{public}d", ret);
+        return ret;
+    }
+    return ErrorCode::NO_ERROR;
 }
 
 int32_t PerUserSession::NotifyRollbackSpace()

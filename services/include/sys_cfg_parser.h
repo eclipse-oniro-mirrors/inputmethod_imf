@@ -55,6 +55,7 @@ struct SystemConfig : public Serializable {
     std::vector<SaInfo> dependentSaList;
     std::string systemPanelAppIdentifier;
     bool disableImmersiveMode = false;
+    bool enableImeUsageFeature =  false;
 
     bool Unmarshal(cJSON *node) override
     {
@@ -80,6 +81,7 @@ struct SystemConfig : public Serializable {
         GetValue(node, GET_NAME(dependentSaList), dependentSaList);
         GetValue(node, GET_NAME(systemPanelAppIdentifier), systemPanelAppIdentifier);
         GetValue(node, GET_NAME(disableImmersiveMode), disableImmersiveMode);
+        GetValue(node, GET_NAME(enableImeUsageFeature), enableImeUsageFeature);
         return true;
     }
 };

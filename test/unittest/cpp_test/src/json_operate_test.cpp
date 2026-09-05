@@ -63,6 +63,7 @@ public:
                                            "\"en-US\",\"mode\": \"upper\"}]} ";
     static constexpr const char *INPUT_SYS_CGF = "{\"systemConfig\":{\"enableInputMethodFeature\":true,"
                                                  "\"enableFullExperienceFeature\":true,"
+                                                 "\"enableImeUsageFeature\":true,"
                                                  "\"enablePushToTalk\":true,"
                                                  "\"pushToTalkLongPressMs\":350,"
                                                  "\"pushToTalkDialogBundleName\":\"dialogBundleName\","
@@ -127,6 +128,7 @@ HWTEST_F(JsonOperateTest, testParseSystemConfig001, TestSize.Level1)
     EXPECT_EQ(systemConfig.defaultInputMethod, "bundleName/extName");
     EXPECT_TRUE(systemConfig.enableInputMethodFeature);
     EXPECT_TRUE(systemConfig.enableFullExperienceFeature);
+    EXPECT_TRUE(systemConfig.enableImeUsageFeature);
     EXPECT_TRUE(systemConfig.enablePushToTalk);
     EXPECT_EQ(systemConfig.pushToTalkLongPressMs, 350U);
     EXPECT_EQ(systemConfig.pushToTalkDialogBundleName, "dialogBundleName");
