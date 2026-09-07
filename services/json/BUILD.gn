@@ -35,6 +35,7 @@ ohos_static_library("imf_json_static") {
   cflags_cc = [ "-fvisibility=hidden" ]
 
   external_deps = [
+    "c_utils:utils",
     "cJSON:cjson",
     "hilog:libhilog",
   ]

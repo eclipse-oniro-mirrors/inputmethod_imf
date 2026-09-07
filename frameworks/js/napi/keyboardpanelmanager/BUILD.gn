@@ -63,6 +63,7 @@ ohos_shared_library("inputmethodsystempanelmanager") {
   external_deps = [
     "ability_runtime:abilitykit_native",
     "ability_runtime:napi_common",
+    "c_utils:utils",
     "ffrt:libffrt",
     "hilog:libhilog",
     "napi:ace_napi",
