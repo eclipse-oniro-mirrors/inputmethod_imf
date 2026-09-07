@@ -82,6 +82,28 @@ constexpr uint32_t WAIT_SA_DIE_TIME_OUT = 3;
 const std::string IME_KEY = "settings.inputmethod.enable_ime";
 constexpr uint32_t MAX_ATTACH_TIMEOUT = 2500; // 2.5s
 
+class PttControllerStateGuard {
+public:
+    explicit PttControllerStateGuard(const sptr<InputMethodController> &controller)
+        : controller_(controller), originalEditable_(controller->isEditable_.load()),
+          originalBound_(controller->isBound_.load()), originalState_(controller->pttSpaceKeyEventState_.load())
+    {
+    }
+
+    ~PttControllerStateGuard()
+    {
+        controller_->isEditable_.store(originalEditable_);
+        controller_->isBound_.store(originalBound_);
+        controller_->pttSpaceKeyEventState_.store(originalState_);
+    }
+
+private:
+    sptr<InputMethodController> controller_;
+    bool originalEditable_;
+    bool originalBound_;
+    InputMethodController::PttSpaceKeyEventState originalState_;
+};
+
 class SelectListenerMock : public ControllerListener {
 public:
     SelectListenerMock() = default;
@@ -3216,6 +3238,89 @@ HWTEST_F(InputMethodControllerTest, testExecTextInteraction, TestSize.Level0)
     // has no permisson
     auto ret = inputMethodController_->ExecTextInteraction(text);
     EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
+}
+
+/**
+ * @tc.name: testPttSpaceKeyEventBlock_001
+ * @tc.desc: Verify the initial down latch, eligibility checks, and repeated-down blocking.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, testPttSpaceKeyEventBlock_001, TestSize.Level0)
+{
+    auto controller = inputMethodController_;
+    ASSERT_NE(controller, nullptr);
+    PttControllerStateGuard stateGuard(controller);
+    auto spaceDown = KeyEventUtil::CreateKeyEvent(MMI::KeyEvent::KEYCODE_SPACE, MMI::KeyEvent::KEY_ACTION_DOWN);
+    auto otherDown = KeyEventUtil::CreateKeyEvent(MMI::KeyEvent::KEYCODE_A, MMI::KeyEvent::KEY_ACTION_DOWN);
+    auto invalidSpace = KeyEventUtil::CreateKeyEvent(MMI::KeyEvent::KEYCODE_SPACE, -1);
+    ASSERT_NE(spaceDown, nullptr);
+    ASSERT_NE(otherDown, nullptr);
+    ASSERT_NE(invalidSpace, nullptr);
+    controller->pttSpaceKeyEventState_.store(InputMethodController::PttSpaceKeyEventState::UP);
+
+    KeyEventCallback callback = nullptr;
+    std::shared_ptr<MMI::KeyEvent> nullKeyEvent = nullptr;
+    EXPECT_FALSE(controller->HandlePttSpaceKeyEventBlock(nullKeyEvent, callback));
+    EXPECT_FALSE(controller->HandlePttSpaceKeyEventBlock(otherDown, callback));
+    EXPECT_FALSE(controller->HandlePttSpaceKeyEventBlock(invalidSpace, callback));
+    EXPECT_FALSE(controller->HandlePttSpaceKeyEventBlock(spaceDown, callback));
+    EXPECT_EQ(controller->pttSpaceKeyEventState_.load(), InputMethodController::PttSpaceKeyEventState::DOWN);
+
+    controller->isEditable_.store(false);
+    controller->isBound_.store(true);
+    EXPECT_FALSE(controller->StartPttSpaceKeyEventBlock());
+    controller->isEditable_.store(true);
+    EXPECT_TRUE(controller->StartPttSpaceKeyEventBlock());
+    EXPECT_EQ(controller->pttSpaceKeyEventState_.load(), InputMethodController::PttSpaceKeyEventState::BLOCKED);
+    EXPECT_FALSE(controller->StartPttSpaceKeyEventBlock());
+    EXPECT_FALSE(controller->HandlePttSpaceKeyEventBlock(spaceDown, callback));
+}
+
+/**
+ * @tc.name: testPttSpaceKeyEventBlock_002
+ * @tc.desc: Verify blocked dispatch, release/reset, and the input-client IPC entry.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerTest, testPttSpaceKeyEventBlock_002, TestSize.Level0)
+{
+    auto controller = inputMethodController_;
+    ASSERT_NE(controller, nullptr);
+    PttControllerStateGuard stateGuard(controller);
+    auto spaceDown = KeyEventUtil::CreateKeyEvent(MMI::KeyEvent::KEYCODE_SPACE, MMI::KeyEvent::KEY_ACTION_DOWN);
+    auto spaceUp = KeyEventUtil::CreateKeyEvent(MMI::KeyEvent::KEYCODE_SPACE, MMI::KeyEvent::KEY_ACTION_UP);
+    ASSERT_NE(spaceDown, nullptr);
+    ASSERT_NE(spaceUp, nullptr);
+    sptr<InputClientServiceImpl> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+    controller->pttSpaceKeyEventState_.store(InputMethodController::PttSpaceKeyEventState::BLOCKED);
+
+    bool callbackCalled = false;
+    bool consumed = false;
+    KeyEventCallback callback = [&callbackCalled, &consumed](std::shared_ptr<MMI::KeyEvent> &, bool isConsumed) {
+        callbackCalled = true;
+        consumed = isConsumed;
+    };
+    EXPECT_EQ(controller->DispatchKeyEvent(spaceDown, callback), ErrorCode::NO_ERROR);
+    EXPECT_TRUE(callbackCalled);
+    EXPECT_TRUE(consumed);
+    EXPECT_EQ(controller->keyEventQueue_.Size(), 0U);
+    EXPECT_FALSE(controller->HandlePttSpaceKeyEventBlock(spaceUp, callback));
+    EXPECT_EQ(controller->pttSpaceKeyEventState_.load(), InputMethodController::PttSpaceKeyEventState::UP);
+    EXPECT_FALSE(controller->StartPttSpaceKeyEventBlock());
+
+    controller->pttSpaceKeyEventState_.store(InputMethodController::PttSpaceKeyEventState::BLOCKED);
+    controller->LogPttSpaceKeyEventBlockState("unit test");
+    controller->ResetPttSpaceKeyEventState();
+    controller->LogPttSpaceKeyEventBlockState("unit test reset");
+    EXPECT_EQ(controller->pttSpaceKeyEventState_.load(), InputMethodController::PttSpaceKeyEventState::UP);
+
+    controller->isEditable_.store(false);
+    controller->isBound_.store(false);
+    EXPECT_EQ(client->StartPttSpaceKeyEventBlock(), ErrorCode::ERROR_BAD_PARAMETERS);
+    controller->isEditable_.store(true);
+    controller->isBound_.store(true);
+    controller->pttSpaceKeyEventState_.store(InputMethodController::PttSpaceKeyEventState::DOWN);
+    EXPECT_EQ(client->StartPttSpaceKeyEventBlock(), ERR_OK);
 }
 } // namespace MiscServices
 } // namespace OHOS

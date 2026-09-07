@@ -99,8 +99,10 @@ ohos_shared_library("inputmethod_service") {
     "src/input_type_manager.cpp",
     "src/notify_service_impl.cpp",
     "src/peruser_session.cpp",
+    "src/ptt_controller.cpp",
     "src/sys_cfg_parser.cpp",
     "src/user_session_manager.cpp",
+    "src/push_to_talk_connection.cpp",
   ]
 
   configs = [ ":inputmethod_services_native_config" ]
@@ -235,8 +237,10 @@ ohos_static_library("inputmethod_service_static") {
     "src/input_type_manager.cpp",
     "src/notify_service_impl.cpp",
     "src/peruser_session.cpp",
+    "src/ptt_controller.cpp",
     "src/sys_cfg_parser.cpp",
     "src/user_session_manager.cpp",
+    "src/push_to_talk_connection.cpp",
   ]
 
   public_configs = [ ":inputmethod_services_native_config" ]

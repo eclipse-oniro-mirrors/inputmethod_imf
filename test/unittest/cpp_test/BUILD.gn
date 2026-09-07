@@ -604,6 +604,7 @@ ohos_unittest("InputMethodPrivateMemberTest") {
     "mock/datashare_helper.cpp",
     "mock/screenlock_manager_mock.cpp",
     "src/input_method_private_member_test.cpp",
+    "src/ptt_controller_test.cpp",
   ]
 
   configs = [
@@ -2153,6 +2154,7 @@ ohos_unittest("InputMethodDisplayAttributeListenerTest") {
   sources = [
     "${inputmethod_path}/frameworks/common/src/inputmethod_display_listener.cpp",
     "${inputmethod_path}/frameworks/native/inputmethod_ability/src/input_method_ability.cpp",
+    "${inputmethod_path}/frameworks/native/inputmethod_ability/src/input_method_ability_ptt.cpp",
     "${inputmethod_path}/frameworks/native/inputmethod_ability/src/input_method_agent_service_impl.cpp",
     "${inputmethod_path}/frameworks/native/inputmethod_ability/src/input_method_core_service_impl.cpp",
     "src/inputmethod_display_listener_test.cpp",

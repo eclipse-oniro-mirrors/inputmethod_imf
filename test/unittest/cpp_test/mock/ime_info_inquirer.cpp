@@ -290,6 +290,30 @@ bool ImeInfoInquirer::IsEnableNumKey()
     return sysCfg_.enableNumKeyFeature;
 }
 
+bool ImeInfoInquirer::IsEnablePushToTalkDialog()
+{
+    std::lock_guard<std::mutex> lock(sysCfgLock_);
+    return sysCfg_.enablePushToTalk;
+}
+
+uint32_t ImeInfoInquirer::GetPushToTalkLongPressMs()
+{
+    std::lock_guard<std::mutex> lock(sysCfgLock_);
+    return sysCfg_.pushToTalkLongPressMs;
+}
+
+std::string ImeInfoInquirer::GetPushToTalkDialogBundleName()
+{
+    std::lock_guard<std::mutex> lock(sysCfgLock_);
+    return sysCfg_.pushToTalkDialogBundleName;
+}
+
+std::string ImeInfoInquirer::GetPushToTalkDialogAbilityName()
+{
+    std::lock_guard<std::mutex> lock(sysCfgLock_);
+    return sysCfg_.pushToTalkDialogAbilityName;
+}
+
 bool ImeInfoInquirer::IsProxyIme(int32_t callingUid)
 {
     std::lock_guard<std::mutex> lock(sysCfgLock_);

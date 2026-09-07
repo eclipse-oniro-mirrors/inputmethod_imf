@@ -64,6 +64,8 @@ constexpr uint32_t STOP_IME_TIME = 600;
 constexpr const char *STRICT_MODE = "strictMode";
 constexpr const char *ISOLATED_SANDBOX = "isolatedSandbox";
 constexpr const char *SUB_NAME = "subName";
+constexpr const char *PTT_COMMAND_KEY = "pushToTalk";
+constexpr const char *PTT_STOP_COMMAND = "stop";
 constexpr uint32_t CHECK_IME_RUNNING_RETRY_INTERVAL = 60;
 constexpr uint32_t CHECK_IME_RUNNING_RETRY_TIMES = 10;
 constexpr uint32_t MAX_RESTART_NUM = 3;
@@ -1162,6 +1164,27 @@ std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> PerUse
         return { group, currentClientInfo };
     }
     return { nullptr, nullptr };
+}
+
+bool PerUserSession::GetFocusedRealImeClient(FocusedRealImeClientSnapshot &snapshot)
+{
+    snapshot = {};
+    auto [clientGroup, clientInfo] = GetCurrentClientBoundRealIme();
+    if (clientGroup == nullptr || clientInfo == nullptr || clientInfo->client == nullptr ||
+        clientInfo->channel == nullptr || clientInfo->state != ClientState::ACTIVE || clientInfo->userID != userId_) {
+        return false;
+    }
+
+    sptr<IRemoteObject> clientObject = clientInfo->client->AsObject();
+    if (clientObject == nullptr) {
+        return false;
+    }
+    snapshot.client = clientObject;
+    snapshot.channel = clientInfo->channel;
+    snapshot.clientGroupId = clientGroup->GetDisplayGroupId();
+    snapshot.editorWindowId = clientInfo->config.inputAttribute.editorWindowId;
+    snapshot.editorDisplayId = clientInfo->config.inputAttribute.editorDisplayId;
+    return true;
 }
 
 std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> PerUserSession::GetClientBoundRealIme()
@@ -3321,6 +3344,31 @@ int32_t PerUserSession::SendVoicePrivateCommand(const bool isPersistence)
     return ret;
 }
 
+int32_t PerUserSession::SendPttStopPrivateCommand()
+{
+    auto data = GetRealImeData(true);
+    if (data == nullptr) {
+        IMSA_HILOGE("PTT: real IME data is nullptr.");
+        return ErrorCode::ERROR_IME_NOT_STARTED;
+    }
+    // PTT system private-command protocol: sys_cmd=1, pushToTalk="stop".
+    // The IME must handle STOP idempotently and only stop voice capture/recognition.
+    std::unordered_map<std::string, PrivateDataValue> privateCommand = {
+        { SYSTEM_CMD_KEY, 1 },
+        { PTT_COMMAND_KEY, std::string(PTT_STOP_COMMAND) },
+    };
+    int32_t ret = RequestIme(data, RequestType::NORMAL, [&data, &privateCommand] {
+        Value value(privateCommand);
+        return data->core->OnSendPrivateData(value);
+    });
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("PTT: send stop private command failed, ret=%{public}d.", ret);
+        return ret;
+    }
+    IMSA_HILOGI("PTT: send stop private command succeeded.");
+    return ErrorCode::NO_ERROR;
+}
+
 void PerUserSession::ClearRequestKeyboardReason(std::shared_ptr<InputClientInfo> &clientInfo)
 {
     if (clientInfo == nullptr) {
@@ -3769,5 +3817,39 @@ int32_t PerUserSession::ExecTextInteraction(const std::string &text)
     }
     return ErrorCode::NO_ERROR;
 }
+
+int32_t PerUserSession::NotifyRollbackSpace()
+{
+    IMSA_HILOGI("PTT: request IME to roll back space, userId=%{public}d.", userId_);
+    auto imeData = GetRealImeData(true);
+    if (imeData == nullptr) {
+        IMSA_HILOGE("PTT: roll back space failed, ready IME data is nullptr, userId=%{public}d.", userId_);
+        return ErrorCode::ERROR_IME_NOT_STARTED;
+    }
+    if (imeData->core == nullptr) {
+        IMSA_HILOGE("PTT: roll back space failed, IME core is nullptr, userId=%{public}d.", userId_);
+        return ErrorCode::ERROR_IME_NOT_STARTED;
+    }
+
+    int32_t ret = RequestIme(imeData, RequestType::NORMAL, [imeData]() {
+        return imeData->core->OnPttLongPress();
+    });
+    IMSA_HILOGI("PTT: IME roll back space request finished, userId=%{public}d, ret=%{public}d.", userId_, ret);
+    return ret;
+}
+
+int32_t PerUserSession::NotifyPttGestureCancelled()
+{
+    auto imeData = GetRealImeData(true);
+    if (imeData == nullptr || imeData->core == nullptr) {
+        IMSA_HILOGW("PTT: cannot cancel IME key tracking because real IME is unavailable, userId=%{public}d.",
+            userId_);
+        return ErrorCode::ERROR_IME_NOT_STARTED;
+    }
+    return RequestIme(imeData, RequestType::NORMAL, [imeData]() {
+        return imeData->core->OnPttGestureCancelled();
+    });
+}
+
 } // namespace MiscServices
 } // namespace OHOS

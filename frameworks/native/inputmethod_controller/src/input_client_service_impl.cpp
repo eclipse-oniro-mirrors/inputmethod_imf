@@ -135,5 +135,15 @@ int32_t InputClientServiceImpl::OnExecTextInteraction(const std::string &text)
     }
     return instance->OnExecTextInteraction(text);
 }
+
+ErrCode InputClientServiceImpl::StartPttSpaceKeyEventBlock()
+{
+    auto instance = InputMethodController::GetInstance();
+    if (instance == nullptr) {
+        IMSA_HILOGW("PTT: failed to get InputMethodController instance.");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    return instance->StartPttSpaceKeyEventBlock() ? ERR_OK : ErrorCode::ERROR_BAD_PARAMETERS;
+}
 }  // namespace MiscServices
 }  // namespace OHOS

@@ -90,6 +90,10 @@ public:
     bool IsEnableSecurityMode();
     bool IsEnableAppAgent();
     bool IsEnableNumKey();
+    bool IsEnablePushToTalkDialog();
+    uint32_t GetPushToTalkLongPressMs();
+    std::string GetPushToTalkDialogBundleName();
+    std::string GetPushToTalkDialogAbilityName();
     bool IsProxyIme(int32_t callingUid);
     bool IsSpecialSaUid(int32_t callingUid);
     bool IsMemoryWatermarkEnabled();

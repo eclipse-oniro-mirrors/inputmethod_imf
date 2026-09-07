@@ -1,4 +1,4 @@
- /*
+/*
  * Copyright (C) 2021 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,6 +37,8 @@
 #include "mem_mgr_client.h"
 #include "numkey_apps_manager.h"
 #include "os_account_adapter.h"
+#include "ptt_settings_manager.h"
+#include "push_to_talk_connection.h"
 #include "samgr_adapter.h"
 #include "scene_board_judgement.h"
 #include "securec.h"
@@ -479,6 +481,7 @@ void InputMethodSystemAbility::OnStop()
     ImeStateManager::SetEventHandler(nullptr);
     UserSessionManager::GetInstance().SetEventHandler(nullptr);
     ImeEnabledInfoManager::GetInstance().SetEventHandler(nullptr);
+    isPttKeyEventMonitorReady_.store(false);
     serviceHandler_ = nullptr;
     state_ = ServiceRunningState::STATE_NOT_START;
     Memory::MemMgrClient::GetInstance().NotifyProcessStatus(getpid(), 1, 0, INPUT_METHOD_SYSTEM_ABILITY_ID);
@@ -821,6 +824,7 @@ int32_t InputMethodSystemAbility::StartInputInner(InputClientInfo &inputClientIn
             return ret;
         }
     }
+    StartPushToTalkDialogAbility(userId);
     return session->OnStartInput(inputClientInfo, agents, imeInfos);
 }
 
@@ -1341,6 +1345,34 @@ ErrCode InputMethodSystemAbility::IsCurrentIme(bool& resultValue)
     auto userId = GetCallingUserId();
     auto tokenId = GetCallingTokenID();
     resultValue = IsCurrentIme(userId, tokenId);
+    return ERR_OK;
+}
+
+ErrCode InputMethodSystemAbility::IsPttGestureAvailable(
+    const sptr<IRemoteObject> &channel, bool &resultValue)
+{
+    resultValue = false;
+    if (channel == nullptr) {
+        IMSA_HILOGW("PTT: gesture availability query has a nullptr input channel.");
+        return ErrorCode::ERROR_BAD_PARAMETERS;
+    }
+    if (serviceHandler_ == nullptr || !isPttKeyEventMonitorReady_.load()) {
+        IMSA_HILOGW("PTT: gesture availability query rejected because PTT event handling is not ready.");
+        return ERR_OK;
+    }
+    int32_t userId = GetCallingUserId();
+    if (!IsCurrentIme(userId, GetCallingTokenID())) {
+        IMSA_HILOGW("PTT: gesture availability query rejected for a non-current IME, userId=%{public}d.", userId);
+        return ErrorCode::ERROR_NOT_CURRENT_IME;
+    }
+
+    FocusedRealImeClientSnapshot snapshot;
+    if (!GetPttEligibleClient(userId, snapshot)) {
+        return ERR_OK;
+    }
+    resultValue = snapshot.channel == channel;
+    IMSA_HILOGD("PTT: gesture availability query finished, userId=%{public}d, result=%{public}d.",
+        userId, resultValue);
     return ERR_OK;
 }
 
@@ -2354,6 +2386,369 @@ int32_t InputMethodSystemAbility::SwitchByCombinationKey(uint32_t state)
     return ErrorCode::ERROR_EX_UNSUPPORTED_OPERATION;
 }
 
+int32_t InputMethodSystemAbility::NotifyRollbackSpace(int32_t userId)
+{
+    IMSA_HILOGI("PTT: request rollback space, userId=%{public}d.", userId);
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+    if (session == nullptr) {
+        IMSA_HILOGE("PTT: rollback space failed, user session is nullptr, userId=%{public}d.", userId);
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    int32_t ret = session->NotifyRollbackSpace();
+    IMSA_HILOGI("PTT: rollback space finished, userId=%{public}d, ret=%{public}d.", userId, ret);
+    return ret;
+}
+
+void InputMethodSystemAbility::HandlePttKeyEvent(const KeyboardEventInfo &eventInfo)
+{
+    auto handler = serviceHandler_;
+    if (handler == nullptr) {
+        IMSA_HILOGE("PTT: discard key event because service handler is nullptr, controllerState=%{public}s.",
+            PttController::StateToString(pttController_.GetState()));
+        return;
+    }
+
+    auto task = [this, eventInfo]() {
+        PttAction action = pttController_.HandleKeyEvent(eventInfo);
+        IMSA_HILOGD("PTT: key event resolved, action=%{public}s, controllerState=%{public}s.",
+            PttController::ActionToString(action), PttController::StateToString(pttController_.GetState()));
+        ApplyPttAction(action, PTT_INVALID_USER_ID);
+    };
+
+    bool ret = handler->PostTask(
+        task, std::string(PTT_KEY_EVENT_TASK), 0, AppExecFwk::EventQueue::Priority::IMMEDIATE);
+    if (!ret) {
+        IMSA_HILOGE("PTT: post key event task failed, controllerState=%{public}s.",
+            PttController::StateToString(pttController_.GetState()));
+    } else {
+        IMSA_HILOGD("PTT: key event task posted, taskName=%{public}s.", PTT_KEY_EVENT_TASK);
+    }
+}
+
+void InputMethodSystemAbility::ApplyPttAction(PttAction action, int32_t eventUserId)
+{
+    IMSA_HILOGD("PTT: apply action, action=%{public}s, controllerState=%{public}s, "
+        "eventUserId=%{public}d, gestureUserId=%{public}d.", PttController::ActionToString(action),
+        PttController::StateToString(pttController_.GetState()), eventUserId, pttGestureUserId_);
+    switch (action) {
+        case PttAction::START_TIMER:
+            HandlePttStartTimer(eventUserId);
+            break;
+        case PttAction::CANCEL_TIMER:
+            HandlePttCancelTimer();
+            break;
+        case PttAction::START_VOICE:
+            HandlePttStartVoice();
+            break;
+        case PttAction::STOP_VOICE:
+            HandlePttStopVoice();
+            break;
+        case PttAction::NONE:
+            HandlePttNoAction();
+            break;
+        default:
+            IMSA_HILOGW("PTT: unknown action=%{public}d.", static_cast<int32_t>(action));
+            break;
+    }
+}
+
+void InputMethodSystemAbility::HandlePttStartTimer(int32_t eventUserId)
+{
+    if (eventUserId == PTT_INVALID_USER_ID) {
+        int32_t ret = AccountSA::OsAccountManager::GetForegroundOsAccountLocalId(eventUserId);
+        if (ret != ERR_OK || eventUserId == PTT_INVALID_USER_ID) {
+            PttState failureState = pttController_.SuppressUntilSpaceUp();
+            ClearPttGestureContext();
+            IMSA_HILOGE("PTT: cannot bind gesture user, ret=%{public}d, userId=%{public}d, "
+                "controllerState=%{public}s.", ret, eventUserId, PttController::StateToString(failureState));
+            return;
+        }
+        IMSA_HILOGI("PTT: resolved gesture user in queued start action, userId=%{public}d.", eventUserId);
+    }
+    if (!BindPttGestureContext(eventUserId)) {
+        PttState failureState = pttController_.SuppressUntilSpaceUp();
+        NotifyPttGestureCancelled(eventUserId);
+        ClearPttGestureContext();
+        IMSA_HILOGI("PTT: gesture rejected because setting is disabled or no input client is focused, "
+            "userId=%{public}d, controllerState=%{public}s.", eventUserId,
+            PttController::StateToString(failureState));
+        return;
+    }
+    pttGestureUserId_ = eventUserId;
+    IMSA_HILOGI("PTT: bound user to gesture, userId=%{public}d.", pttGestureUserId_);
+    SchedulePttLongPressTimer();
+}
+
+void InputMethodSystemAbility::SchedulePttLongPressTimer()
+{
+    if (serviceHandler_ == nullptr) {
+        PttState failureState = pttController_.SuppressUntilSpaceUp();
+        IMSA_HILOGE("PTT: cannot start timer because service handler is nullptr, "
+            "userId=%{public}d, controllerState=%{public}s.", pttGestureUserId_,
+            PttController::StateToString(failureState));
+        NotifyPttGestureCancelled(pttGestureUserId_);
+        ClearPttGestureContext();
+        return;
+    }
+    uint32_t longPressDelayMs = ImeInfoInquirer::GetInstance().GetPushToTalkLongPressMs();
+    if (longPressDelayMs == 0) {
+        PttState failureState = pttController_.SuppressUntilSpaceUp();
+        IMSA_HILOGE("PTT: cannot start timer because long press delay config is invalid, "
+            "userId=%{public}d, controllerState=%{public}s.", pttGestureUserId_,
+            PttController::StateToString(failureState));
+        NotifyPttGestureCancelled(pttGestureUserId_);
+        ClearPttGestureContext();
+        return;
+    }
+    serviceHandler_->RemoveTask(std::string(PTT_TIMEOUT_TASK));
+    int32_t gestureUserId = pttGestureUserId_;
+    auto timeoutTask = [this, gestureUserId]() {
+        if (gestureUserId != pttGestureUserId_) {
+            IMSA_HILOGW("PTT: ignore stale long press timer, timerUserId=%{public}d, "
+                "gestureUserId=%{public}d.", gestureUserId, pttGestureUserId_);
+            return;
+        }
+        IMSA_HILOGI("PTT: long press timer fired, controllerState=%{public}s, userId=%{public}d.",
+            PttController::StateToString(pttController_.GetState()), gestureUserId);
+        PttAction timeoutAction = pttController_.HandleTimeout();
+        ApplyPttAction(timeoutAction, gestureUserId);
+    };
+    bool ret = serviceHandler_->PostTask(timeoutTask, std::string(PTT_TIMEOUT_TASK), longPressDelayMs);
+    if (!ret) {
+        PttState failureState = pttController_.SuppressUntilSpaceUp();
+        IMSA_HILOGE("PTT: post long press timer failed, delay=%{public}u"
+            ", userId=%{public}d, controllerState=%{public}s.", longPressDelayMs,
+            pttGestureUserId_, PttController::StateToString(failureState));
+        NotifyPttGestureCancelled(pttGestureUserId_);
+        ClearPttGestureContext();
+    } else {
+        IMSA_HILOGI("PTT: long press timer started, delay=%{public}u"
+            ", taskName=%{public}s, userId=%{public}d.", longPressDelayMs, PTT_TIMEOUT_TASK,
+            pttGestureUserId_);
+    }
+}
+
+void InputMethodSystemAbility::HandlePttCancelTimer()
+{
+    if (serviceHandler_ != nullptr) {
+        serviceHandler_->RemoveTask(std::string(PTT_TIMEOUT_TASK));
+        IMSA_HILOGI("PTT: long press timer cancelled, taskName=%{public}s, userId=%{public}d.",
+            PTT_TIMEOUT_TASK, pttGestureUserId_);
+    } else {
+        IMSA_HILOGW("PTT: cannot cancel timer because service handler is nullptr.");
+    }
+    ClearPttGestureContext();
+}
+
+void InputMethodSystemAbility::HandlePttStartVoice()
+{
+    int32_t userId = pttGestureUserId_;
+    if (userId == PTT_INVALID_USER_ID) {
+        PttState failureState = pttController_.SuppressUntilSpaceUp();
+        IMSA_HILOGE("PTT: start voice rejected because gesture user is invalid, "
+            "controllerState=%{public}s.", PttController::StateToString(failureState));
+        ClearPttGestureContext();
+        return;
+    }
+    if (!OsAccountAdapter::IsOsAccountForeground(userId)) {
+        PttState failureState = pttController_.SuppressUntilSpaceUp();
+        IMSA_HILOGW("PTT: start voice cancelled because gesture user is no longer foreground, "
+            "userId=%{public}d, controllerState=%{public}s.", userId,
+            PttController::StateToString(failureState));
+        NotifyPttGestureCancelled(userId);
+        ClearPttGestureContext();
+        return;
+    }
+    if (!IsPttGestureContextValid(userId)) {
+        PttState failureState = pttController_.SuppressUntilSpaceUp();
+        IMSA_HILOGI("PTT: start voice rejected because setting is disabled or the input client lost focus, "
+            "userId=%{public}d, controllerState=%{public}s.", userId,
+            PttController::StateToString(failureState));
+        NotifyPttGestureCancelled(userId);
+        ClearPttGestureContext();
+        return;
+    }
+    if (!EnablePttSpaceKeyEventBlock(userId)) {
+        return;
+    }
+    int32_t rollbackRet = NotifyRollbackSpace(userId);
+    if (rollbackRet != ErrorCode::NO_ERROR) {
+        IMSA_HILOGW("PTT: rollback space failed before starting voice, ret=%{public}d.", rollbackRet);
+    }
+    int32_t ret = StartInputType(userId, InputType::PUSH_TO_TALK_INPUT, true);
+    if (ret != ErrorCode::NO_ERROR) {
+        PttState failureState = pttController_.SuppressUntilSpaceUp();
+        IMSA_HILOGE("PTT: start voice failed, userId=%{public}d, ret=%{public}d, "
+            "controllerState=%{public}s.", userId, ret, PttController::StateToString(failureState));
+        NotifyPttGestureCancelled(userId);
+        ClearPttGestureContext();
+    } else {
+        IMSA_HILOGI("PTT: start voice succeeded, userId=%{public}d.", userId);
+    }
+}
+
+bool InputMethodSystemAbility::EnablePttSpaceKeyEventBlock(int32_t userId)
+{
+    int32_t ret = ErrorCode::ERROR_NULL_POINTER;
+    sptr<IRemoteObject> clientObject;
+    {
+        std::lock_guard<std::mutex> lock(pttGestureClientSnapshotMutex_);
+        clientObject = pttGestureClientSnapshot_.client;
+    }
+    sptr<IInputClient> client = iface_cast<IInputClient>(clientObject);
+    if (client != nullptr) {
+        ret = client->StartPttSpaceKeyEventBlock();
+    }
+    if (ret == ErrorCode::NO_ERROR) {
+        return true;
+    }
+    PttState failureState = pttController_.SuppressUntilSpaceUp();
+    IMSA_HILOGE("PTT: start voice rejected because repeated space down cannot be blocked, "
+        "userId=%{public}d, ret=%{public}d, controllerState=%{public}s.", userId, ret,
+        PttController::StateToString(failureState));
+    NotifyPttGestureCancelled(userId);
+    ClearPttGestureContext();
+    return false;
+}
+
+void InputMethodSystemAbility::HandlePttStopVoice()
+{
+    int32_t userId = pttGestureUserId_;
+    if (userId == PTT_INVALID_USER_ID) {
+        IMSA_HILOGE("PTT: stop voice rejected because gesture user is invalid.");
+        ClearPttGestureContext();
+        return;
+    }
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+    if (session == nullptr) {
+        IMSA_HILOGE("PTT: stop voice failed, user session is nullptr, userId=%{public}d.", userId);
+    } else {
+        int32_t ret = session->SendPttStopPrivateCommand();
+        if (ret != ErrorCode::NO_ERROR) {
+            IMSA_HILOGE("PTT: stop command failed; continue restoring current IME as fallback, "
+                "userId=%{public}d, ret=%{public}d.", userId, ret);
+        } else {
+            IMSA_HILOGI("PTT: stop voice succeeded, userId=%{public}d.", userId);
+        }
+    }
+    int32_t restoreRet = RestoreCurrentImeAfterPtt(userId);
+    if (restoreRet != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("PTT: restore current IME after stop failed, userId=%{public}d, ret=%{public}d.",
+            userId, restoreRet);
+    }
+    ClearPttGestureContext();
+}
+
+int32_t InputMethodSystemAbility::RestoreCurrentImeAfterPtt(int32_t userId)
+{
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+    if (session == nullptr) {
+        IMSA_HILOGE("PTT: restore current IME failed, user session is nullptr, userId=%{public}d.", userId);
+        return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
+    }
+    InputTypeManager::GetInstance().Set(false);
+    int32_t ret = session->StartCurrentIme();
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("PTT: restore current IME failed, userId=%{public}d, ret=%{public}d.", userId, ret);
+        return ret;
+    }
+    IMSA_HILOGI("PTT: restore current IME succeeded, userId=%{public}d.", userId);
+    return ErrorCode::NO_ERROR;
+}
+
+void InputMethodSystemAbility::HandlePttNoAction()
+{
+    IMSA_HILOGD("PTT: no action required, controllerState=%{public}s.",
+        PttController::StateToString(pttController_.GetState()));
+    if (pttController_.GetState() == PttState::IDLE) {
+        ClearPttGestureContext();
+    }
+}
+
+bool InputMethodSystemAbility::BindPttGestureContext(int32_t userId)
+{
+    {
+        std::lock_guard<std::mutex> lock(pttGestureClientSnapshotMutex_);
+        pttGestureClientSnapshot_ = {};
+    }
+    FocusedRealImeClientSnapshot snapshot;
+    if (!GetPttEligibleClient(userId, snapshot)) {
+        return false;
+    }
+    {
+        std::lock_guard<std::mutex> lock(pttGestureClientSnapshotMutex_);
+        pttGestureClientSnapshot_ = std::move(snapshot);
+    }
+    return true;
+}
+
+bool InputMethodSystemAbility::IsPttGestureContextValid(int32_t userId)
+{
+    FocusedRealImeClientSnapshot gestureSnapshot;
+    {
+        std::lock_guard<std::mutex> lock(pttGestureClientSnapshotMutex_);
+        gestureSnapshot = pttGestureClientSnapshot_;
+    }
+    if (userId != pttGestureUserId_ || gestureSnapshot.client == nullptr) {
+        return false;
+    }
+    FocusedRealImeClientSnapshot currentSnapshot;
+    return GetPttEligibleClient(userId, currentSnapshot) &&
+        IsSamePttInputClient(gestureSnapshot, currentSnapshot);
+}
+
+bool InputMethodSystemAbility::GetPttEligibleClient(
+    int32_t userId, FocusedRealImeClientSnapshot &snapshot)
+{
+    snapshot = {};
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+    if (session == nullptr) {
+        IMSA_HILOGW("PTT: user session is nullptr, userId=%{public}d.", userId);
+        return false;
+    }
+    if (!session->GetFocusedRealImeClient(snapshot)) {
+        IMSA_HILOGI("PTT: no input client is focused, userId=%{public}d.", userId);
+        return false;
+    }
+    if (!PttSettingsManager::IsEnabled(userId)) {
+        IMSA_HILOGI("PTT: setting is disabled, userId=%{public}d.", userId);
+        return false;
+    }
+    return true;
+}
+
+void InputMethodSystemAbility::NotifyPttGestureCancelled(int32_t userId)
+{
+    if (userId == PTT_INVALID_USER_ID) {
+        return;
+    }
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+    if (session == nullptr) {
+        IMSA_HILOGW("PTT: cannot cancel IME key tracking because user session is nullptr, userId=%{public}d.",
+            userId);
+        return;
+    }
+    int32_t ret = session->NotifyPttGestureCancelled();
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGW("PTT: cancel IME key tracking failed, userId=%{public}d, ret=%{public}d.", userId, ret);
+    }
+}
+
+void InputMethodSystemAbility::ClearPttGestureContext()
+{
+    pttGestureUserId_ = PTT_INVALID_USER_ID;
+    std::lock_guard<std::mutex> lock(pttGestureClientSnapshotMutex_);
+    pttGestureClientSnapshot_ = {};
+}
+
+bool InputMethodSystemAbility::IsSamePttInputClient(
+    const FocusedRealImeClientSnapshot &left, const FocusedRealImeClientSnapshot &right)
+{
+    return left.client != nullptr && left.client == right.client && left.channel == right.channel &&
+        left.clientGroupId == right.clientGroupId && left.editorWindowId == right.editorWindowId &&
+        left.editorDisplayId == right.editorDisplayId;
+}
+
 void InputMethodSystemAbility::DealSwitchRequest(int32_t userId)
 {
     {
@@ -2547,14 +2942,21 @@ int32_t InputMethodSystemAbility::InitKeyEventMonitor()
     auto handler = [this]() {
         // Check device capslock status and ime cfg corrent, when device power-up.
         HandleImeCfgCapsState(OsAccountAdapter::GetMainAccountId());
+        isPttKeyEventMonitorReady_.store(false);
 
         for (int32_t attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             auto switchTrigger = [this](uint32_t keyCode) { return SwitchByCombinationKey(keyCode);};
-            int32_t ret = KeyboardEvent::GetInstance().AddKeyEventMonitor(switchTrigger);
+            auto pttKeyHandler = [this](const KeyboardEventInfo &keyEvent) { return HandlePttKeyEvent(keyEvent); };
+            IMSA_HILOGI("PTT: registering key event monitor, attempt=%{public}d.", attempt);
+            int32_t ret = KeyboardEvent::GetInstance().AddKeyEventMonitor(switchTrigger, pttKeyHandler);
             if (ret == ErrorCode::NO_ERROR) {
+                isPttKeyEventMonitorReady_.store(true);
+                IMSA_HILOGI("PTT: key event monitor registered successfully, attempt=%{public}d.", attempt);
                 IMSA_HILOGI("SubscribeKeyboardEvent add monitor: success.");
                 break;
             } else {
+                IMSA_HILOGW("PTT: key event monitor registration failed, attempt=%{public}d, ret=%{public}d.",
+                    attempt, ret);
                 IMSA_HILOGW("SubscribeKeyboardEvent add monitor: failed. attempt: %{public}d, Retrying...", attempt);
                 std::this_thread::sleep_for(std::chrono::milliseconds(INTERVALMS_RETRY));
             }
@@ -3237,14 +3639,27 @@ bool InputMethodSystemAbility::IsCurrentIme(int32_t userId, uint32_t tokenId)
 // LCOV_EXCL_START
 int32_t InputMethodSystemAbility::StartInputType(int32_t userId, InputType type, bool isPersistence)
 {
+    bool isPttType = type == InputType::PUSH_TO_TALK_INPUT;
+    if (isPttType) {
+        IMSA_HILOGI("PTT: start input type request, userId=%{public}d, type=%{public}d, "
+            "isPersistence=%{public}d.", userId, static_cast<int32_t>(type), isPersistence);
+    }
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
+        if (isPttType) {
+            IMSA_HILOGE("PTT: start input type failed, user session is nullptr, userId=%{public}d, type=%{public}d.",
+                userId, static_cast<int32_t>(type));
+        }
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
     }
     ImeIdentification ime;
     int32_t ret = InputTypeManager::GetInstance().GetImeByInputType(type, ime);
     if (ret != ErrorCode::NO_ERROR) {
+        if (isPttType) {
+            IMSA_HILOGE("PTT: input type mapping not found, userId=%{public}d, type=%{public}d, ret=%{public}d.",
+                userId, static_cast<int32_t>(type), ret);
+        }
         IMSA_HILOGW("not find input type: %{public}d.", type);
         // add for not adapter for SECURITY_INPUT
         if (type == InputType::SECURITY_INPUT) {
@@ -3255,6 +3670,12 @@ int32_t InputMethodSystemAbility::StartInputType(int32_t userId, InputType type,
     SwitchInfo switchInfo = { std::chrono::system_clock::now(), ime.bundleName, ime.subName };
     session->GetSwitchQueue().Push(switchInfo);
     IMSA_HILOGI("start input type: %{public}d, isPersistence: %{public}d.", type, isPersistence);
+    if (isPttType) {
+        ret = OnStartInputType(userId, switchInfo, false, isPersistence);
+        IMSA_HILOGI("PTT: start input type finished, userId=%{public}d, type=%{public}d, ret=%{public}d.",
+            userId, static_cast<int32_t>(type), ret);
+        return ret;
+    }
     return (type == InputType::SECURITY_INPUT) ? OnStartInputType(userId, switchInfo, false) :
         OnStartInputType(userId, switchInfo, true, isPersistence);
 }
@@ -3794,6 +4215,76 @@ void InputMethodSystemAbility::HandleEDCInputMethodInstall(int32_t userId, const
             IMSA_HILOGE("Failed to switch to EDC backup IME");
         }
     }
+}
+
+namespace {
+void ConnectPushToTalkDialog(const std::string &dialogBundleName, const std::string &dialogAbilityName)
+{
+    // connect serviceExternsionAbility
+    cJSON *paramJson = cJSON_CreateObject();
+    if (paramJson == nullptr) {
+        IMSA_HILOGE("create push-to-talk dialog parameters failed");
+        return;
+    }
+    const std::string uiExtensionTypeStr = "sysDialog/common";
+    cJSON_AddStringToObject(paramJson, "ability.want.params.uiExtensionType", uiExtensionTypeStr.c_str());
+    char *pParamJson = cJSON_PrintUnformatted(paramJson);
+    cJSON_Delete(paramJson);
+    if (pParamJson == nullptr) {
+        IMSA_HILOGE("serialize push-to-talk dialog parameters failed");
+        return;
+    }
+    std::string paramStr(pParamJson);
+    cJSON_free(pParamJson);
+    sptr<AAFwk::IAbilityConnection> connection =
+        new (std::nothrow) PushToTalkConnection(dialogBundleName, dialogAbilityName, paramStr);
+    if (connection == nullptr) {
+        IMSA_HILOGE("create push-to-talk dialog connection failed");
+        return;
+    }
+    AAFwk::Want want;
+    want.SetElementName("com.ohos.sceneboard", "com.ohos.sceneboard.systemdialog");
+    AAFwk::AbilityManagerClient::GetInstance()->ConnectAbility(want, connection, -1);
+}
+} // namespace
+
+void InputMethodSystemAbility::StartPushToTalkDialogAbility(int32_t userId)
+{
+    // systemConfig to control dialog display
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    auto flag = inquirer.IsEnablePushToTalkDialog();
+    if (!flag) {
+        IMSA_HILOGI("push-to-talk dialog is disabled by config, skip");
+        return;
+    }
+
+    // check whether its default input method
+    auto prop = inquirer.GetCurrentInputMethod(userId);
+    if (prop == nullptr) {
+        IMSA_HILOGE("prop is nullptr!");
+        return;
+    }
+    if (!inquirer.IsSysIme(prop->name)) {
+        return;
+    }
+
+    std::string dialogBundleName = inquirer.GetPushToTalkDialogBundleName();
+    std::string dialogAbilityName = inquirer.GetPushToTalkDialogAbilityName();
+    if (dialogBundleName.empty() || dialogAbilityName.empty()) {
+        IMSA_HILOGW("push-to-talk dialog endpoint is not configured, skip");
+        return;
+    }
+
+    // pull up dialog only once
+    static bool isPushToTalkDialogPop = SettingsDataUtils::GetInstance().GetPushToTalkDialogPopped();
+    if (isPushToTalkDialogPop) {
+        IMSA_HILOGI("Dialog popped already, not pop again");
+        return;
+    }
+    isPushToTalkDialogPop = true;
+    SettingsDataUtils::GetInstance().SetPushToTalkDialogPopped();
+
+    ConnectPushToTalkDialog(dialogBundleName, dialogAbilityName);
 }
 
 void InputMethodSystemAbility::HandleEDCInputMethodRemove(int32_t userId, const std::string &removedBundleName)

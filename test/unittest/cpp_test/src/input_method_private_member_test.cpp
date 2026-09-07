@@ -14,6 +14,7 @@
  */
 #define private public
 #define protected public
+#include "../mock/datashare_helper.h"
 #include "app_mgr_adapter.h"
 #include "full_ime_info_manager.h"
 #include "ime_info_inquirer.h"
@@ -39,12 +40,17 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+#include <memory>
+#include <mutex>
 #include <string>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "application_info.h"
 #include "combination_key.h"
 #include "display_adapter.h"
+#include "event_runner.h"
 #include "focus_change_listener.h"
 #include "global.h"
 
@@ -63,6 +69,7 @@ void ResetMockScreenLock();
 
 #include "input_client_service_impl.h"
 #include "input_client_stub.h"
+#include "input_death_recipient.h"
 #include "input_method_utils.h"
 #include "input_method_ability.h"
 #include "input_method_agent_proxy.h"
@@ -73,7 +80,9 @@ void ResetMockScreenLock();
 #include "input_method_engine_listener_impl.h"
 #include "itypes_util.h"
 #include "keyboard_event.h"
+#include "ipc_skeleton.h"
 #include "os_account_manager.h"
+#include "ptt_settings_manager.h"
 #include "tdd_util.h"
 
 using namespace testing::ext;
@@ -6264,5 +6273,437 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_InitImeUsageReporter_DisabledByConfig,
     EXPECT_EQ(service_->imeUsageReporter_, nullptr);
 }
 #endif
+
+namespace {
+constexpr int32_t PTT_TEST_USER_ID = 8701;
+constexpr int32_t PTT_MISSING_USER_ID = 8702;
+constexpr pid_t PTT_TEST_CLIENT_PID = 101;
+constexpr int32_t PTT_TEST_CLIENT_UID = 102;
+constexpr pid_t PTT_TEST_IME_PID = 103;
+constexpr uint64_t PTT_TEST_GROUP_ID = 91;
+constexpr uint32_t PTT_TEST_WINDOW_ID = 92;
+constexpr uint64_t PTT_TEST_DISPLAY_ID = 93;
+constexpr const char *PTT_TEST_IME_BUNDLE = "com.test.ptt.ime";
+
+KeyboardEventInfo MakePttSpaceDownEvent()
+{
+    return { MMI::KeyEvent::KEYCODE_SPACE, MMI::KeyEvent::KEY_ACTION_DOWN,
+        { MMI::KeyEvent::KEYCODE_SPACE } };
+}
+
+class ScopedFullImeInfos {
+public:
+    explicit ScopedFullImeInfos(int32_t userId) : userId_(userId)
+    {
+        auto &manager = FullImeInfoManager::GetInstance();
+        std::lock_guard<std::mutex> lock(manager.lock_);
+        auto iter = manager.fullImeInfos_.find(userId_);
+        hadOriginalInfo_ = iter != manager.fullImeInfos_.end();
+        if (hadOriginalInfo_) {
+            originalInfos_ = iter->second;
+        }
+    }
+
+    ~ScopedFullImeInfos()
+    {
+        auto &manager = FullImeInfoManager::GetInstance();
+        std::lock_guard<std::mutex> lock(manager.lock_);
+        if (hadOriginalInfo_) {
+            manager.fullImeInfos_.insert_or_assign(userId_, std::move(originalInfos_));
+            return;
+        }
+        manager.fullImeInfos_.erase(userId_);
+    }
+
+    void ReplaceWith(const FullImeInfo &info)
+    {
+        auto &manager = FullImeInfoManager::GetInstance();
+        std::lock_guard<std::mutex> lock(manager.lock_);
+        manager.fullImeInfos_.insert_or_assign(userId_, std::vector<FullImeInfo> { info });
+    }
+
+private:
+    int32_t userId_;
+    bool hadOriginalInfo_ { false };
+    std::vector<FullImeInfo> originalInfos_;
+};
+} // namespace
+
+class PttServiceTest : public testing::Test {
+public:
+    struct EligibleClientContext {
+        std::shared_ptr<PerUserSession> session;
+        std::shared_ptr<ClientGroup> group;
+        sptr<IInputClient> client;
+        sptr<IRemoteObject> channel;
+    };
+
+    struct OriginalSession {
+        bool existed { false };
+        std::shared_ptr<PerUserSession> session;
+    };
+
+    void SetUp() override
+    {
+        originalSettingsToken_ = SettingsDataUtils::GetInstance().remoteObj_;
+        originalDataShareHelper_ = DataShare::DataShareHelper::instance_;
+        RemoveSessionForTest(PTT_TEST_USER_ID);
+        RemoveSessionForTest(PTT_MISSING_USER_ID);
+
+        auto controller = InputMethodController::GetInstance();
+        ASSERT_NE(controller, nullptr);
+        originalEditable_ = controller->isEditable_.load();
+        originalBound_ = controller->isBound_.load();
+        originalSpaceKeyState_ = controller->pttSpaceKeyEventState_.load();
+
+        ability_ = new (std::nothrow) InputMethodSystemAbility();
+        ASSERT_NE(ability_, nullptr);
+
+        settingsToken_ = new (std::nothrow) InputMethodCoreServiceImpl();
+        ASSERT_NE(settingsToken_, nullptr);
+        auto helper = std::make_shared<DataShare::DataShareHelper>();
+        ASSERT_NE(helper, nullptr);
+
+        SettingsDataUtils::GetInstance().remoteObj_ = settingsToken_->AsObject();
+        DataShare::DataShareHelper::instance_ = helper;
+        SetPttSetting("false");
+    }
+
+    void TearDown() override
+    {
+        auto &sessionManager = UserSessionManager::GetInstance();
+        for (const auto &[userId, original] : originalSessions_) {
+            if (!original.existed) {
+                sessionManager.userSessions_.erase(userId);
+            } else {
+                sessionManager.userSessions_.insert_or_assign(userId, original.session);
+            }
+        }
+        originalSessions_.clear();
+
+        SettingsDataUtils::GetInstance().remoteObj_ = originalSettingsToken_;
+        DataShare::DataShareHelper::instance_ = originalDataShareHelper_;
+
+        auto controller = InputMethodController::GetInstance();
+        if (controller != nullptr) {
+            controller->isEditable_.store(originalEditable_);
+            controller->isBound_.store(originalBound_);
+            controller->pttSpaceKeyEventState_.store(originalSpaceKeyState_);
+        }
+        ability_ = nullptr;
+        settingsToken_ = nullptr;
+    }
+
+    void SetPttSetting(const std::string &value)
+    {
+        auto helper = DataShare::DataShareHelper::instance_;
+        ASSERT_NE(helper, nullptr);
+        helper->resultSet_ = std::make_shared<DataShare::DataShareResultSet>();
+        ASSERT_NE(helper->resultSet_, nullptr);
+        helper->resultSet_->strValue_ = value;
+    }
+
+    EligibleClientContext CreateEligibleClientContext(int32_t userId = PTT_TEST_USER_ID)
+    {
+        EligibleClientContext context;
+        context.session = std::make_shared<PerUserSession>(userId, nullptr);
+        context.client = new (std::nothrow) InputClientServiceImpl();
+        sptr<InputMethodCoreServiceImpl> channelStub = new (std::nothrow) InputMethodCoreServiceImpl();
+        sptr<InputDeathRecipient> deathRecipient = new (std::nothrow) InputDeathRecipient();
+        if (context.session == nullptr || context.client == nullptr || channelStub == nullptr ||
+            deathRecipient == nullptr) {
+            return {};
+        }
+        context.channel = channelStub->AsObject();
+
+        InputClientInfo clientInfo;
+        clientInfo.pid = PTT_TEST_CLIENT_PID;
+        clientInfo.uid = PTT_TEST_CLIENT_UID;
+        clientInfo.userID = userId;
+        clientInfo.client = context.client;
+        clientInfo.channel = context.channel;
+        clientInfo.deathRecipient = deathRecipient;
+        clientInfo.clientGroupId = PTT_TEST_GROUP_ID;
+        clientInfo.state = ClientState::ACTIVE;
+        clientInfo.bindImeData = std::make_shared<BindImeData>(PTT_TEST_IME_PID, ImeType::IME);
+        clientInfo.config.inputAttribute.editorWindowId = PTT_TEST_WINDOW_ID;
+        clientInfo.config.inputAttribute.editorDisplayId = PTT_TEST_DISPLAY_ID;
+
+        if (context.session->OnPrepareInput(clientInfo) != ErrorCode::NO_ERROR) {
+            return {};
+        }
+        context.group = context.session->GetClientGroupByGroupId(PTT_TEST_GROUP_ID);
+        if (context.group == nullptr) {
+            return {};
+        }
+        context.group->SetCurrentClient(context.client);
+        InstallSessionForTest(userId, context.session);
+        return context;
+    }
+
+    void SaveOriginalSession(int32_t userId)
+    {
+        if (originalSessions_.find(userId) != originalSessions_.end()) {
+            return;
+        }
+        auto &sessions = UserSessionManager::GetInstance().userSessions_;
+        auto iter = sessions.find(userId);
+        OriginalSession original;
+        original.existed = iter != sessions.end();
+        original.session = original.existed ? iter->second : nullptr;
+        originalSessions_.insert_or_assign(userId, std::move(original));
+    }
+
+    void RemoveSessionForTest(int32_t userId)
+    {
+        SaveOriginalSession(userId);
+        UserSessionManager::GetInstance().userSessions_.erase(userId);
+    }
+
+    void InstallSessionForTest(int32_t userId, const std::shared_ptr<PerUserSession> &session)
+    {
+        SaveOriginalSession(userId);
+        UserSessionManager::GetInstance().userSessions_.insert_or_assign(userId, session);
+    }
+
+    sptr<InputMethodSystemAbility> ability_;
+    sptr<InputMethodCoreServiceImpl> settingsToken_;
+    sptr<IRemoteObject> originalSettingsToken_;
+    std::shared_ptr<DataShare::DataShareHelper> originalDataShareHelper_;
+    std::unordered_map<int32_t, OriginalSession> originalSessions_;
+    bool originalEditable_ { false };
+    bool originalBound_ { false };
+    InputMethodController::PttSpaceKeyEventState originalSpaceKeyState_ {
+        InputMethodController::PttSpaceKeyEventState::UP
+    };
+};
+
+/**
+ * @tc.name: PttSettingsManager_ValueParsing_001
+ * @tc.desc: Verify invalid users and the exact enabled setting value.
+ * @tc.type: FUNC
+ */
+HWTEST_F(PttServiceTest, PttSettingsManager_ValueParsing_001, TestSize.Level0)
+{
+    EXPECT_FALSE(PttSettingsManager::IsEnabled(-1));
+
+    SetPttSetting("true");
+    EXPECT_FALSE(PttSettingsManager::IsEnabled(PTT_TEST_USER_ID));
+    SetPttSetting("false");
+    EXPECT_FALSE(PttSettingsManager::IsEnabled(PTT_TEST_USER_ID));
+    SetPttSetting("TRUE");
+    EXPECT_FALSE(PttSettingsManager::IsEnabled(PTT_TEST_USER_ID));
+}
+
+/**
+ * @tc.name: PttService_GestureContextLifecycle_001
+ * @tc.desc: Verify eligible-client binding, identity comparison, validation, and cleanup.
+ * @tc.type: FUNC
+ */
+HWTEST_F(PttServiceTest, PttService_GestureContextLifecycle_001, TestSize.Level0)
+{
+    auto context = CreateEligibleClientContext();
+    ASSERT_NE(context.session, nullptr);
+    ASSERT_NE(context.group, nullptr);
+    ASSERT_NE(context.client, nullptr);
+    SetPttSetting("true");
+
+    FocusedRealImeClientSnapshot snapshot;
+    EXPECT_FALSE(ability_->GetPttEligibleClient(PTT_TEST_USER_ID, snapshot));
+    EXPECT_EQ(snapshot.client, context.client->AsObject());
+    EXPECT_EQ(snapshot.channel, context.channel);
+    EXPECT_EQ(snapshot.clientGroupId, PTT_TEST_GROUP_ID);
+    EXPECT_EQ(snapshot.editorWindowId, PTT_TEST_WINDOW_ID);
+    EXPECT_EQ(snapshot.editorDisplayId, PTT_TEST_DISPLAY_ID);
+
+    EXPECT_TRUE(InputMethodSystemAbility::IsSamePttInputClient(snapshot, snapshot));
+    auto different = snapshot;
+    different.client = nullptr;
+    EXPECT_FALSE(InputMethodSystemAbility::IsSamePttInputClient(different, snapshot));
+    different = snapshot;
+    different.channel = nullptr;
+    EXPECT_FALSE(InputMethodSystemAbility::IsSamePttInputClient(snapshot, different));
+    different = snapshot;
+    ++different.clientGroupId;
+    EXPECT_FALSE(InputMethodSystemAbility::IsSamePttInputClient(snapshot, different));
+    different = snapshot;
+    ++different.editorWindowId;
+    EXPECT_FALSE(InputMethodSystemAbility::IsSamePttInputClient(snapshot, different));
+    different = snapshot;
+    ++different.editorDisplayId;
+    EXPECT_FALSE(InputMethodSystemAbility::IsSamePttInputClient(snapshot, different));
+
+    EXPECT_FALSE(ability_->BindPttGestureContext(PTT_TEST_USER_ID));
+    ability_->pttGestureUserId_ = PTT_TEST_USER_ID;
+    EXPECT_FALSE(ability_->IsPttGestureContextValid(PTT_TEST_USER_ID));
+
+    auto clientInfo = context.group->GetClientInfo(context.client->AsObject());
+    ASSERT_NE(clientInfo, nullptr);
+    ++clientInfo->config.inputAttribute.editorWindowId;
+    EXPECT_FALSE(ability_->IsPttGestureContextValid(PTT_TEST_USER_ID));
+    --clientInfo->config.inputAttribute.editorWindowId;
+
+    ability_->ClearPttGestureContext();
+    EXPECT_EQ(ability_->pttGestureUserId_, InputMethodSystemAbility::PTT_INVALID_USER_ID);
+    EXPECT_EQ(ability_->pttGestureClientSnapshot_.client, nullptr);
+    EXPECT_FALSE(ability_->IsPttGestureContextValid(PTT_TEST_USER_ID));
+
+    SetPttSetting("false");
+    EXPECT_FALSE(ability_->GetPttEligibleClient(PTT_TEST_USER_ID, snapshot));
+}
+
+/**
+ * @tc.name: PttService_UnavailablePaths_001
+ * @tc.desc: Verify parameter, readiness, missing-session, and missing-client guards.
+ * @tc.type: FUNC
+ */
+HWTEST_F(PttServiceTest, PttService_UnavailablePaths_001, TestSize.Level0)
+{
+    bool isAvailable = true;
+    EXPECT_EQ(ability_->IsPttGestureAvailable(nullptr, isAvailable), ErrorCode::ERROR_BAD_PARAMETERS);
+    EXPECT_FALSE(isAvailable);
+    EXPECT_EQ(ability_->IsPttGestureAvailable(settingsToken_->AsObject(), isAvailable), ERR_OK);
+    EXPECT_FALSE(isAvailable);
+
+    EXPECT_EQ(ability_->NotifyRollbackSpace(PTT_MISSING_USER_ID), ErrorCode::ERROR_NULL_POINTER);
+    EXPECT_EQ(ability_->RestoreCurrentImeAfterPtt(PTT_MISSING_USER_ID),
+        ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND);
+    EXPECT_EQ(ability_->StartInputType(PTT_MISSING_USER_ID, InputType::PUSH_TO_TALK_INPUT, true),
+        ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND);
+
+    FocusedRealImeClientSnapshot snapshot;
+    EXPECT_FALSE(ability_->GetPttEligibleClient(PTT_MISSING_USER_ID, snapshot));
+    EXPECT_FALSE(ability_->BindPttGestureContext(PTT_MISSING_USER_ID));
+    ability_->pttGestureUserId_ = PTT_MISSING_USER_ID;
+    EXPECT_FALSE(ability_->IsPttGestureContextValid(PTT_MISSING_USER_ID));
+    ability_->NotifyPttGestureCancelled(InputMethodSystemAbility::PTT_INVALID_USER_ID);
+    ability_->NotifyPttGestureCancelled(PTT_MISSING_USER_ID);
+
+    ability_->HandlePttKeyEvent(MakePttSpaceDownEvent());
+    EXPECT_EQ(ability_->pttController_.GetState(), PttState::IDLE);
+
+    ability_->pttController_.HandleKeyEvent(MakePttSpaceDownEvent());
+    EXPECT_FALSE(ability_->EnablePttSpaceKeyEventBlock(PTT_MISSING_USER_ID));
+    EXPECT_EQ(ability_->pttController_.GetState(), PttState::SUPPRESSED);
+}
+
+/**
+ * @tc.name: PttService_AvailabilityReadyPaths_001
+ * @tc.desc: Verify current-IME validation and exact input-channel matching when PTT handling is ready.
+ * @tc.type: FUNC
+ */
+HWTEST_F(PttServiceTest, PttService_AvailabilityReadyPaths_001, TestSize.Level0)
+{
+    int32_t callingUserId = ability_->GetCallingUserId();
+    ASSERT_GE(callingUserId, 0);
+    auto context = CreateEligibleClientContext(callingUserId);
+    ASSERT_NE(context.session, nullptr);
+    ASSERT_NE(context.channel, nullptr);
+    auto imeData = std::make_shared<ImeData>(settingsToken_, nullptr, nullptr, PTT_TEST_IME_PID);
+    ASSERT_NE(imeData, nullptr);
+    imeData->type = ImeType::IME;
+    imeData->imeStatus = ImeStatus::READY;
+    imeData->ime = { PTT_TEST_IME_BUNDLE, "PttImeExtension" };
+    context.session->realImeData_ = imeData;
+
+    auto runner = AppExecFwk::EventRunner::Create("PttServiceAvailability");
+    ASSERT_NE(runner, nullptr);
+    auto handler = std::make_shared<AppExecFwk::EventHandler>(runner);
+    ASSERT_NE(handler, nullptr);
+    sptr<InputMethodCoreServiceImpl> otherChannel = new (std::nothrow) InputMethodCoreServiceImpl();
+    ASSERT_NE(otherChannel, nullptr);
+    SetPttSetting("true");
+
+    uint32_t callingTokenId = IPCSkeleton::GetCallingTokenID();
+    ScopedFullImeInfos fullImeInfos(callingUserId);
+    FullImeInfo nonCurrentInfo;
+    nonCurrentInfo.tokenId = callingTokenId;
+    nonCurrentInfo.prop.name = "com.test.other.ime";
+    fullImeInfos.ReplaceWith(nonCurrentInfo);
+
+    ability_->serviceHandler_ = handler;
+    ability_->isPttKeyEventMonitorReady_.store(true);
+    bool isAvailable = true;
+    EXPECT_EQ(ability_->IsPttGestureAvailable(context.channel, isAvailable), ErrorCode::ERROR_NOT_CURRENT_IME);
+    EXPECT_FALSE(isAvailable);
+
+    FullImeInfo currentInfo;
+    currentInfo.tokenId = callingTokenId;
+    currentInfo.prop.name = PTT_TEST_IME_BUNDLE;
+    fullImeInfos.ReplaceWith(currentInfo);
+    EXPECT_EQ(ability_->IsPttGestureAvailable(otherChannel->AsObject(), isAvailable), ERR_OK);
+    EXPECT_FALSE(isAvailable);
+    EXPECT_EQ(ability_->IsPttGestureAvailable(context.channel, isAvailable), ERR_OK);
+    EXPECT_FALSE(isAvailable);
+}
+
+/**
+ * @tc.name: PttService_ActionFailureCleanup_001
+ * @tc.desc: Verify every action branch cleans up failed gesture state safely.
+ * @tc.type: FUNC
+ */
+HWTEST_F(PttServiceTest, PttService_ActionFailureCleanup_001, TestSize.Level0)
+{
+    ability_->pttController_.HandleKeyEvent(MakePttSpaceDownEvent());
+    ability_->ApplyPttAction(PttAction::START_TIMER, PTT_MISSING_USER_ID);
+    EXPECT_EQ(ability_->pttController_.GetState(), PttState::SUPPRESSED);
+    EXPECT_EQ(ability_->pttGestureUserId_, InputMethodSystemAbility::PTT_INVALID_USER_ID);
+
+    ability_->pttController_.Reset();
+    ability_->pttController_.HandleKeyEvent(MakePttSpaceDownEvent());
+    ability_->pttGestureUserId_ = PTT_MISSING_USER_ID;
+    ability_->SchedulePttLongPressTimer();
+    EXPECT_EQ(ability_->pttController_.GetState(), PttState::SUPPRESSED);
+    EXPECT_EQ(ability_->pttGestureUserId_, InputMethodSystemAbility::PTT_INVALID_USER_ID);
+
+    ability_->pttGestureUserId_ = PTT_MISSING_USER_ID;
+    ability_->ApplyPttAction(PttAction::CANCEL_TIMER, PTT_MISSING_USER_ID);
+    EXPECT_EQ(ability_->pttGestureUserId_, InputMethodSystemAbility::PTT_INVALID_USER_ID);
+
+    ability_->pttController_.Reset();
+    ability_->pttController_.HandleKeyEvent(MakePttSpaceDownEvent());
+    ability_->pttController_.HandleTimeout();
+    ability_->pttGestureUserId_ = InputMethodSystemAbility::PTT_INVALID_USER_ID;
+    ability_->ApplyPttAction(PttAction::START_VOICE, PTT_MISSING_USER_ID);
+    EXPECT_EQ(ability_->pttController_.GetState(), PttState::SUPPRESSED);
+
+    ability_->pttController_.Reset();
+    ability_->pttController_.HandleKeyEvent(MakePttSpaceDownEvent());
+    ability_->pttController_.HandleTimeout();
+    ability_->pttGestureUserId_ = InputMethodSystemAbility::PTT_INVALID_USER_ID;
+    ability_->ApplyPttAction(PttAction::STOP_VOICE, PTT_MISSING_USER_ID);
+    EXPECT_EQ(ability_->pttGestureUserId_, InputMethodSystemAbility::PTT_INVALID_USER_ID);
+
+    ability_->pttController_.Reset();
+    ability_->pttGestureUserId_ = PTT_MISSING_USER_ID;
+    ability_->ApplyPttAction(PttAction::NONE, PTT_MISSING_USER_ID);
+    EXPECT_EQ(ability_->pttGestureUserId_, InputMethodSystemAbility::PTT_INVALID_USER_ID);
+    ability_->ApplyPttAction(static_cast<PttAction>(255), PTT_MISSING_USER_ID);
+}
+
+/**
+ * @tc.name: PttService_EnableClientSpaceBlock_001
+ * @tc.desc: Verify the service enables blocking through the captured input client.
+ * @tc.type: FUNC
+ */
+HWTEST_F(PttServiceTest, PttService_EnableClientSpaceBlock_001, TestSize.Level0)
+{
+    auto context = CreateEligibleClientContext();
+    ASSERT_NE(context.client, nullptr);
+
+    auto controller = InputMethodController::GetInstance();
+    ASSERT_NE(controller, nullptr);
+    controller->isEditable_.store(true);
+    controller->isBound_.store(true);
+    controller->pttSpaceKeyEventState_.store(InputMethodController::PttSpaceKeyEventState::DOWN);
+    ability_->pttGestureClientSnapshot_.client = context.client->AsObject();
+
+    EXPECT_TRUE(ability_->EnablePttSpaceKeyEventBlock(PTT_TEST_USER_ID));
+    EXPECT_EQ(controller->pttSpaceKeyEventState_.load(), InputMethodController::PttSpaceKeyEventState::BLOCKED);
+
+    EXPECT_EQ(context.client->StartPttSpaceKeyEventBlock(), ErrorCode::ERROR_BAD_PARAMETERS);
+    controller->pttSpaceKeyEventState_.store(InputMethodController::PttSpaceKeyEventState::DOWN);
+    EXPECT_EQ(context.client->StartPttSpaceKeyEventBlock(), ERR_OK);
+}
 } // namespace MiscServices
 } // namespace OHOS

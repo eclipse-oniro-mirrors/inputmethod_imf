@@ -49,6 +49,7 @@ public:
     ErrCode OnImeMirrorStop(const sptr<IRemoteObject> &object) override;
     ErrCode GetCurrentCursorInfo(CursorInfoInner &cursorInfo) override;
     ErrCode OnExecTextInteraction(const std::string &text) override;
+    ErrCode StartPttSpaceKeyEventBlock() override;
 };
 }  // namespace MiscServices
 }  // namespace OHOS
