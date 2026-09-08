@@ -76,6 +76,7 @@ taihe_shared_library("imf_syspanel_mgr_taihe_native") {
   ]
   external_deps = [
     "ability_runtime:abilitykit_native",
+    "c_utils:utils",
     "hilog:libhilog",
     "ipc:ipc_core",
     "napi:ace_napi",

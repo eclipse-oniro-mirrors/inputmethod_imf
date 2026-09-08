@@ -1293,6 +1293,7 @@ ohos_unittest("JsonOperateTest") {
 
   external_deps = [
     "ability_runtime:dataobs_manager",
+    "c_utils:utils",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
     "cJSON:cjson",
@@ -1453,6 +1454,7 @@ ohos_unittest("ImeControllerCpaiTest") {
 
   external_deps = [
     "ability_base:want",
+    "c_utils:utils",
     "ace_engine:ace_ndk",
     "ace_engine:ace_uicontent",
     "googletest:gtest_main",
