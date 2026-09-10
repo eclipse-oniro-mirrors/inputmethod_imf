@@ -20,38 +20,31 @@
 #include "ime_event_listener.h"
 #include "ime_event_monitor_manager.h"
 #include "input_method_controller.h"
-#include "nativetoken_kit.h"
+#include "mock_token.h"
 #include "token_setproc.h"
 using namespace std;
 using namespace OHOS::Security::AccessToken;
 using namespace OHOS::MiscServices;
 std::vector<std::shared_ptr<ImeEventListener>> inputStatusChangedListeners_;
 std::vector<std::shared_ptr<ImeEventListener>> softKeyboardInfoChangedListeners_;
-const int32_t PERMISSION_NUM = 1;
 
 void GrantNativePermission()
 {
-    const char **perms = new const char *[PERMISSION_NUM];
-    perms[0] = "ohos.permission.MANAGE_SECURE_SETTINGS";
-    TokenInfoParams infoInstance = {
-        .dcapsNum = 0,
-        .permsNum = PERMISSION_NUM,
-        .aclsNum = 0,
-        .dcaps = nullptr,
-        .perms = perms,
-        .acls = nullptr,
-        .processName = "imf_imc_inner_test",
-        .aplStr = "system_core",
-    };
-    uint64_t tokenId = GetAccessTokenId(&infoInstance);
+    // User 版本权限 mock：通过 mock 已有 SA 进程的 tokenId 获取系统权限。
+    // 参考 wiki WIKI202506197190466。
+    uint64_t shellTokenId = GetSelfTokenID();
+    MockToken::SetTestEnvironment(shellTokenId);
+    uint64_t tokenId = MockToken::GetNativeTokenIdFromProcess("inputmethod_service");
+    if (tokenId == 0) {
+        IMSA_HILOGE("failed to get inputmethod_service tokenId, fallback to foundation");
+        tokenId = MockToken::GetNativeTokenIdFromProcess("foundation");
+    }
     int32_t ret = SetSelfTokenID(tokenId);
     if (ret == 0) {
         IMSA_HILOGI("SetSelfTokenID success!");
     } else {
         IMSA_HILOGE("SetSelfTokenID fail!");
     }
-    AccessTokenKit::ReloadNativeTokenInfo();
-    delete[] perms;
 }
 
 BoundImeInfo GetSoftKeyboardInfo()

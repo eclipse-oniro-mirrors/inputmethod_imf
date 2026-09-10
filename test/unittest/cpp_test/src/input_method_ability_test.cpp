@@ -2001,8 +2001,11 @@ HWTEST_F(InputMethodAbilityTest, testGetInputMethodState_001, TestSize.Level0)
     IMSA_HILOGI("currentImeTokenId_: %{public}" PRIu64 ", GetCurrentTokenID: %{public}" PRIu64,
         currentImeTokenId_, TddUtil::GetCurrentTokenID());
     int32_t status = 0;
+    auto savedBundleName = InputMethodAbilityTest::imsa_->identityChecker_->GetBundleNameByToken(0);
+    IdentityCheckerMock::SetBundleName("");
     auto ret = InputMethodAbilityTest::imsa_->GetInputMethodState(status);
     EXPECT_EQ(ret, ErrorCode::ERROR_NOT_IME);
+    IdentityCheckerMock::SetBundleName(savedBundleName);
 }
 
 /**

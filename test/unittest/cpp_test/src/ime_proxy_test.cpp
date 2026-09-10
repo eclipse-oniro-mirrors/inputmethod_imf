@@ -632,18 +632,20 @@ HWTEST_F(ImeProxyTest, ClientDiedInImaBind_016, TestSize.Level1)
 {
     IMSA_HILOGI("ImeProxyTest::ClientDiedInImaBind_016");
     // open the app, click the edit box in pe, bind ima
+    TddUtil::GetFocused();
     {
         UidScope uidScope(ImeProxyTest::uid_);
-        StartApp();
         ImeSettingListenerTestImpl::ResetParam();
-        ClickEditor(false);
+        auto ret = Attach(false);
+        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
         EXPECT_TRUE(ImeSettingListenerTestImpl::WaitPanelShow());
         EnsureBindComplete();
 
         ImeSettingListenerTestImpl::ResetParam();
-        StopApp();
+        Close(false);
         EXPECT_TRUE(ImeSettingListenerTestImpl::WaitPanelHide());
     }
+    TddUtil::GetUnfocused();
 }
 
 /**
@@ -655,23 +657,25 @@ HWTEST_F(ImeProxyTest, ClientDiedInProxyBind_017, TestSize.Level1)
 {
     IMSA_HILOGI("ImeProxyTest::ClientDiedInProxyBind_017");
     // RegisteredProxy not in ima bind
+    TddUtil::GetFocused();
     {
         UidScope uidScope(ImeProxyTest::uid_);
         InputMethodEngineListenerImpl::isEnable_ = true;
         auto ret = InputMethodAbilityInterface::GetInstance().RegisteredProxy();
         EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 
-        StartApp();
         InputMethodEngineListenerImpl::ResetParam();
-        ClickEditor(true);
+        ret = Attach(true);
+        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
         EXPECT_TRUE(InputMethodEngineListenerImpl::WaitInputStart());
         EnsureBindComplete();
 
         InputMethodEngineListenerImpl::ResetParam();
-        StopApp();
+        Close(false);
         EXPECT_TRUE(InputMethodEngineListenerImpl::WaitInputFinish());
         InputMethodAbilityInterface::GetInstance().UnRegisteredProxy(UnRegisteredType::REMOVE_PROXY_IME);
     }
+    TddUtil::GetUnfocused();
 }
 
 /**

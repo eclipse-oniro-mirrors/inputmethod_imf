@@ -42,6 +42,7 @@ ohos_static_library("inputmethod_tdd_util") {
   }
   sources = [
     "src/key_event_util.cpp",
+    "src/mock_token.cpp",
     "src/tdd_util.cpp",
   ]
   configs = [
