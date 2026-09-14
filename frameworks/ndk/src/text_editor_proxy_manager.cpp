@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2024 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,6 +14,7 @@
  */
 #include "text_editor_proxy_manager.h"
 
+#include "global.h"
 namespace OHOS {
 namespace MiscServices {
 TextEditorProxyManager &TextEditorProxyManager::GetInstance()
@@ -24,21 +25,32 @@ TextEditorProxyManager &TextEditorProxyManager::GetInstance()
 
 void TextEditorProxyManager::Register(InputMethod_TextEditorProxy *raw)
 {
+    if (raw == nullptr) {
+        return;
+    }
     std::lock_guard<std::mutex> lock(proxiesMtx_);
-    proxies_.try_emplace(raw, raw);
+    auto sp = std::shared_ptr<InputMethod_TextEditorProxy>(raw);
+    proxies_.try_emplace(raw, std::move(sp));
 }
 
 void TextEditorProxyManager::Unregister(InputMethod_TextEditorProxy *raw)
 {
+    if (raw == nullptr) {
+        return;
+    }
     std::lock_guard<std::mutex> lock(proxiesMtx_);
     proxies_.erase(raw);
 }
 
 std::weak_ptr<InputMethod_TextEditorProxy> TextEditorProxyManager::GetWeak(InputMethod_TextEditorProxy *raw)
 {
+    if (raw == nullptr) {
+        return {};
+    }
     std::lock_guard<std::mutex> lock(proxiesMtx_);
     auto it = proxies_.find(raw);
     if (it == proxies_.end()) {
+        IMSA_HILOGE("raw not find in proxies_");
         return {};
     }
     return std::weak_ptr<InputMethod_TextEditorProxy>(it->second);
