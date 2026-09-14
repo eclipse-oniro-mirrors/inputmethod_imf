@@ -164,6 +164,7 @@ ohos_unittest("InputMethodAttachTest") {
     "napi:ace_napi",
     "node:node_header_notice",
     "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
     "window_manager:libdm",
   ]
 
@@ -241,6 +242,7 @@ ohos_unittest("InputMethodAbilityTest") {
     "node:node_header_notice",
     "os_account:os_account_innerkits",
     "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
     "window_manager:libdm",
     "window_manager:libwsutils",
   ]
@@ -294,6 +296,7 @@ ohos_unittest("InputMethodServiceTest") {
     "napi:ace_napi",
     "node:node_header_notice",
     "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
     "window_manager:libdm",
     "window_manager:libwsutils",
     "data_share:datashare_common",
@@ -370,6 +373,7 @@ ohos_unittest("InputMethodDfxTest") {
     "napi:ace_napi",
     "node:node_header_notice",
     "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
     "window_manager:libdm",
   ]
 
@@ -440,6 +444,7 @@ ohos_unittest("InputMethodPanelTest") {
     "node:node_header_notice",
     "os_account:os_account_innerkits",
     "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
     "window_manager:libdm",
     "window_manager:libwsutils",
   ]
@@ -507,6 +512,7 @@ ohos_unittest("InputMethodPanelAdjustTest") {
     "napi:ace_napi",
     "node:node_header_notice",
     "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
     "window_manager:libdm",
     "window_manager:libwsutils",
   ]
@@ -648,6 +654,7 @@ ohos_unittest("InputMethodPrivateMemberTest") {
     "node:node_header_notice",
     "os_account:os_account_innerkits",
     "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
     "window_manager:libdm",
   ]
   defines = []
@@ -724,6 +731,7 @@ ohos_unittest("InputMethodEditorTest") {
     "napi:ace_napi",
     "node:node_header_notice",
     "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
     "window_manager:libdm",
   ]
 
@@ -888,6 +896,7 @@ ohos_unittest("IdentityCheckerTest") {
     "napi:ace_napi",
     "node:node_header_notice",
     "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
     "window_manager:libdm",
   ]
 
@@ -1174,6 +1183,7 @@ ohos_unittest("ImeProxyTest") {
     "napi:ace_napi",
     "node:node_header_notice",
     "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
     "window_manager:libdm",
   ]
 
@@ -1265,6 +1275,7 @@ ohos_unittest("ImeFreezeManagerTest") {
     "napi:ace_napi",
     "os_account:os_account_innerkits",
     "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -1647,6 +1658,7 @@ ohos_unittest("ResSchedAdapterTest") {
     "ipc:ipc_single",
     "safwk:system_ability_fwk",
     "resource_management:global_resmgr",
+    "samgr:samgr_proxy",
   ]
 }
 
@@ -1788,6 +1800,7 @@ ohos_unittest("ImaTextEditTest") {
     "napi:ace_napi",
     "node:node_header_notice",
     "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
     "window_manager:libdm",
   ]
 
@@ -2206,6 +2219,7 @@ ohos_unittest("InputMethodDisplayAttributeListenerTest") {
     "napi:ace_napi",
     "node:node_header_notice",
     "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
     "window_manager:libdm",
   ]
 

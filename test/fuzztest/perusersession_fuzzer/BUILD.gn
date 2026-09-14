@@ -68,6 +68,7 @@ ohos_fuzztest("PerUserSessionFuzzTest") {
     "napi:ace_napi",
     "node:node_header_notice",
     "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
     "window_manager:libdm",
   ]
 
