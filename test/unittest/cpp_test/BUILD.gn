@@ -2048,10 +2048,14 @@ ohos_executable("ImcInnerTestDemo") {
   sources = [ "src/imc_inner_test_demo.cpp" ]
   include_dirs = [
     "${inputmethod_path}/common/include",
-    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller/include"
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller/include",
+    "${inputmethod_path}/test/unittest/cpp_test/common/include",
   ]
 
-  deps = [ "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static" ]
+  deps = [
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
+    "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
+  ]
 
   configs = [ ":module_private_config" ]
 
@@ -2280,9 +2284,13 @@ ohos_executable("PublishCommonEventDemo") {
   include_dirs = [
     "${inputmethod_path}/common/include",
     "${inputmethod_path}/interfaces/inner_api/inputmethod_controller/include",
+    "${inputmethod_path}/test/unittest/cpp_test/common/include",
   ]
 
-  deps = [ "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static" ]
+  deps = [
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
+    "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
+  ]
 
   configs = [ ":module_private_config" ]
 
