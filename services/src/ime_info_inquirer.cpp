@@ -166,6 +166,11 @@ bool ImeInfoInquirer::IsMemoryWatermarkEnabled()
     return !productConfig_.disabledMemoryWatermark;
 }
 
+std::string ImeInfoInquirer::GetPermissionCliChecked()
+{
+    return systemConfig_.permissionCliChecked;
+}
+
 SystemConfig ImeInfoInquirer::GetSystemConfig()
 {
     return systemConfig_;

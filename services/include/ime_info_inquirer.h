@@ -93,6 +93,7 @@ public:
     bool IsProxyIme(int32_t callingUid);
     bool IsSpecialSaUid(int32_t callingUid);
     bool IsMemoryWatermarkEnabled();
+    std::string GetPermissionCliChecked();
     void InitSystemConfig();
     void InitProductConfig();
     void InitDynamicStartImeCfg();

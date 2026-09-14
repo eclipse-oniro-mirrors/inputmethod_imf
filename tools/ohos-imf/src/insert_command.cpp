@@ -36,7 +36,7 @@ std::string InsertCommand::GetUsage() const
 
 std::vector<std::pair<std::string, std::string>> InsertCommand::GetParams() const
 {
-    return { { "--text <text>", "Text to be inserted(required, type: string, max size 512 bytes)" } };
+    return { { "--text <text>", "Text to be inserted (required, type: string, max size 512 bytes)" } };
 }
 
 std::vector<std::pair<std::string, std::string>> InsertCommand::GetExamples() const
@@ -61,12 +61,12 @@ std::string InsertCommand::Execute(const std::vector<std::string> &argList)
         if (ret == ErrorCode::ERROR_STATUS_PERMISSION_DENIED) {
             return CliUtils::GenerateError(
                 { "ERR_PERMISSION_DENIED", "Permission denied: missing ohos.permission.CONTROL_DEVICE permission",
-                    "Please add ohos.permission.CONTROL_DEVICE in the requirePermissions field of module.json5" });
+                    "Please add ohos.permission.CONTROL_DEVICE in the requestPermissions field of module.json5" });
         } else {
-            return CliUtils::GenerateError(
-                { "ERR_EDIT_BOX_NOT_BOUND_WITH_IME_APP", "No focused edit box or not bound to the IME app",
-                    "Please click the edit box in current focused window to trigger the binding operation first and "
-                    "try again" });
+            return CliUtils::GenerateError({ "ERR_EDIT_BOX_NOT_BOUND_WITH_IME_APP",
+                "No focused edit box or not bound to the IME app",
+                "Please click the edit box in the current focused window to trigger the binding operation first and "
+                "try again" });
         }
     }
     return CliUtils::GenerateSuccess(std::make_shared<CommonSuccessInfo>());
