@@ -1807,9 +1807,8 @@ std::shared_ptr<ImeNativeCfg> PerUserSession::GetRealCurrentIme(bool needMinGuar
             }
         }
         if (IsPreconfiguredDefaultImeSpecified(*clientInfo)) {
-            IMSA_HILOGD("get preconfigured default ime:%{public}d/%{public}d/%{public}d!",
-                clientInfo->config.isSimpleKeyboardEnabled, clientInfo->config.inputAttribute.IsOneTimeCodeFlag(),
-                    clientInfo->config.inputAttribute.isOneTimeCodeNumberFlag);
+            IMSA_HILOGD("get preconfigured default ime:%{public}d/%{public}d!",
+                clientInfo->config.isSimpleKeyboardEnabled, clientInfo->config.inputAttribute.IsOneTimeCodeFlag());
             auto preconfiguredIme = ImeInfoInquirer::GetInstance().GetDefaultImeCfg();
             auto defaultIme = ImeEnabledInfoManager::GetInstance().GetCurrentImeCfg(userId_);
             if (preconfiguredIme != nullptr && defaultIme != nullptr && defaultIme->imeId == preconfiguredIme->imeId) {
@@ -3268,8 +3267,7 @@ bool PerUserSession::SpecialScenarioCheck()
         return false;
     }
     if (clientInfo->config.inputAttribute.IsSecurityImeFlag() ||
-        clientInfo->config.inputAttribute.IsOneTimeCodeFlag() ||
-        clientInfo->config.inputAttribute.isOneTimeCodeNumberFlag) {
+        clientInfo->config.inputAttribute.IsOneTimeCodeFlag()) {
         IMSA_HILOGE("send failed, is special input box!");
         return false;
     }
@@ -3388,8 +3386,7 @@ bool PerUserSession::IsPreconfiguredDefaultImeSpecified(const InputClientInfo &i
     return ImeInfoInquirer::GetInstance().IsRestrictedDefaultImeByDisplay(
         inputClientInfo.config.inputAttribute.callingDisplayId) ||
         inputClientInfo.config.isSimpleKeyboardEnabled ||
-        inputClientInfo.config.inputAttribute.IsOneTimeCodeFlag() ||
-        inputClientInfo.config.inputAttribute.isOneTimeCodeNumberFlag;
+        inputClientInfo.config.inputAttribute.IsOneTimeCodeFlag();
 }
 
 std::pair<std::string, std::string> PerUserSession::GetImeUsedBeforeScreenLocked()

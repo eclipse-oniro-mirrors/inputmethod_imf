@@ -657,8 +657,9 @@ HWTEST_F(InputMethodControllerTest, testIMCAttach002, TestSize.Level0)
     textConfig = {
         .inputAttribute = attribute, .cursorInfo = cursorInfo, .range = selectionRange, .windowId = windowId
     };
+    const int32_t patternOneTimeCodeNumber = 0x0f;
     inputMethodController_->Attach(textListener_, true, textConfig);
-    EXPECT_EQ(inputAttribute_.inputPattern, static_cast<int32_t>(TextInputType::NUMBER));
+    EXPECT_EQ(inputAttribute_.inputPattern, patternOneTimeCodeNumber);
 }
 
 /**
@@ -2942,24 +2943,6 @@ HWTEST_F(InputMethodControllerTest, testIsPanelShown_002, TestSize.Level0)
     ret = inputMethodController_->IsPanelShown(displayId, panelInfo, isShown);
     EXPECT_NE(ret, ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
     IdentityCheckerMock::ResetParam();
-}
-
-/**
- * @tc.name: testCalibrateInputPatternParam_001
- * @tc.desc: IMC testCalibrateInputPatternParam
- * @tc.type: IMC
- * @tc.require:
- */
-HWTEST_F(InputMethodControllerTest, testCalibrateInputPatternParam_001, TestSize.Level0)
-{
-    IMSA_HILOGI("IMC CalibrateInputPatternParam_001 Test START");
-    InputAttribute inputAttribute = { .inputPattern = 15 };
-    inputMethodController_->CalibrateInputPatternParam(inputAttribute);
-    EXPECT_TRUE(inputAttribute.isOneTimeCodeNumberFlag);
-
-    InputAttribute inputAttribute1 = { .inputPattern = 2 };
-    inputMethodController_->CalibrateInputPatternParam(inputAttribute1);
-    EXPECT_FALSE(inputAttribute1.isOneTimeCodeNumberFlag);
 }
 
 /**
