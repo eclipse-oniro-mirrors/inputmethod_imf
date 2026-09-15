@@ -14,6 +14,7 @@
  */
 #define private public
 #define protected public
+#include "../mock/datashare_helper.h"
 #include "app_mgr_adapter.h"
 #include "full_ime_info_manager.h"
 #include "ime_info_inquirer.h"
@@ -39,12 +40,17 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+#include <memory>
+#include <mutex>
 #include <string>
+#include <unordered_map>
+#include <utility>
 #include <vector>
 
 #include "application_info.h"
 #include "combination_key.h"
 #include "display_adapter.h"
+#include "event_runner.h"
 #include "focus_change_listener.h"
 #include "global.h"
 
@@ -63,6 +69,7 @@ void ResetMockScreenLock();
 
 #include "input_client_service_impl.h"
 #include "input_client_stub.h"
+#include "input_death_recipient.h"
 #include "input_method_utils.h"
 #include "input_method_ability.h"
 #include "input_method_agent_proxy.h"
@@ -73,6 +80,7 @@ void ResetMockScreenLock();
 #include "input_method_engine_listener_impl.h"
 #include "itypes_util.h"
 #include "keyboard_event.h"
+#include "ipc_skeleton.h"
 #include "os_account_manager.h"
 #include "tdd_util.h"
 
@@ -1982,7 +1990,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SpecialScenarioCheck, TestSize.Level0)
     allow = userSession->SpecialScenarioCheck();
     EXPECT_FALSE(allow);
 
-    info->config.inputAttribute.isOneTimeCodeNumberFlag = true;
+    info->config.inputAttribute.inputPattern = InputAttribute::PATTERN_ONE_TIME_CODE_NUMBER;
     group->mapClients_.insert_or_assign(client->AsObject(), info);
     userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
     allow = userSession->SpecialScenarioCheck();
@@ -2015,6 +2023,12 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_IsScreenLockOrSecurityFlag, TestSize.L
     EXPECT_FALSE(ret);
 
     info->config.inputAttribute.inputPattern = InputAttribute::PATTERN_ONE_TIME_CODE;
+    group->mapClients_.insert_or_assign(client->AsObject(), info);
+    userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
+    ret = userSession->IsImeSwitchForbidden();
+    EXPECT_FALSE(ret);
+
+    info->config.inputAttribute.inputPattern = InputAttribute::PATTERN_ONE_TIME_CODE_NUMBER;
     group->mapClients_.insert_or_assign(client->AsObject(), info);
     userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
     ret = userSession->IsImeSwitchForbidden();
@@ -6370,5 +6384,6 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_InitImeUsageReporter_DisabledByConfig,
     EXPECT_EQ(service_->imeUsageReporter_, nullptr);
 }
 #endif
+
 } // namespace MiscServices
 } // namespace OHOS

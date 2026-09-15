@@ -1,4 +1,4 @@
- /*
+/*
  * Copyright (C) 2021 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -37,6 +37,7 @@
 #include "mem_mgr_client.h"
 #include "numkey_apps_manager.h"
 #include "os_account_adapter.h"
+#include "push_to_talk_manager.h"
 #include "samgr_adapter.h"
 #include "scene_board_judgement.h"
 #include "securec.h"
@@ -110,10 +111,24 @@ const constexpr int32_t CPU_USAGE_HIGH_PERCENT = 70;
 InputMethodSystemAbility::InputMethodSystemAbility(int32_t systemAbilityId, bool runOnCreate)
     : SystemAbility(systemAbilityId, runOnCreate), state_(ServiceRunningState::STATE_NOT_START)
 {
+    pushToTalkManager_ = std::make_shared<PushToTalkManager>(
+        []() {
+            return serviceHandler_;
+        },
+        [this](int32_t userId) {
+            return StartInputType(userId, InputType::PUSH_TO_TALK_INPUT, true);
+        });
 }
 
 InputMethodSystemAbility::InputMethodSystemAbility() : state_(ServiceRunningState::STATE_NOT_START)
 {
+    pushToTalkManager_ = std::make_shared<PushToTalkManager>(
+        []() {
+            return serviceHandler_;
+        },
+        [this](int32_t userId) {
+            return StartInputType(userId, InputType::PUSH_TO_TALK_INPUT, true);
+        });
 }
 
 InputMethodSystemAbility::~InputMethodSystemAbility()
@@ -479,6 +494,7 @@ void InputMethodSystemAbility::OnStop()
     ImeStateManager::SetEventHandler(nullptr);
     UserSessionManager::GetInstance().SetEventHandler(nullptr);
     ImeEnabledInfoManager::GetInstance().SetEventHandler(nullptr);
+    pushToTalkManager_->SetKeyEventMonitorReady(false);
     serviceHandler_ = nullptr;
     state_ = ServiceRunningState::STATE_NOT_START;
     Memory::MemMgrClient::GetInstance().NotifyProcessStatus(getpid(), 1, 0, INPUT_METHOD_SYSTEM_ABILITY_ID);
@@ -821,6 +837,7 @@ int32_t InputMethodSystemAbility::StartInputInner(InputClientInfo &inputClientIn
             return ret;
         }
     }
+    pushToTalkManager_->StartDialogAbility(userId);
     return session->OnStartInput(inputClientInfo, agents, imeInfos);
 }
 
@@ -1341,6 +1358,28 @@ ErrCode InputMethodSystemAbility::IsCurrentIme(bool& resultValue)
     auto userId = GetCallingUserId();
     auto tokenId = GetCallingTokenID();
     resultValue = IsCurrentIme(userId, tokenId);
+    return ERR_OK;
+}
+
+ErrCode InputMethodSystemAbility::IsPttGestureAvailable(
+    const sptr<IRemoteObject> &channel, bool &resultValue)
+{
+    resultValue = false;
+    if (channel == nullptr) {
+        IMSA_HILOGW("PTT: gesture availability query has a nullptr input channel.");
+        return ErrorCode::ERROR_BAD_PARAMETERS;
+    }
+    if (!pushToTalkManager_->IsReady()) {
+        IMSA_HILOGW("PTT: gesture availability query rejected because PTT event handling is not ready.");
+        return ERR_OK;
+    }
+    int32_t userId = GetCallingUserId();
+    if (!IsCurrentIme(userId, GetCallingTokenID())) {
+        IMSA_HILOGW("PTT: gesture availability query rejected for a non-current IME, userId=%{public}d.", userId);
+        return ErrorCode::ERROR_NOT_CURRENT_IME;
+    }
+
+    resultValue = pushToTalkManager_->IsGestureAvailable(userId, channel);
     return ERR_OK;
 }
 
@@ -2547,14 +2586,23 @@ int32_t InputMethodSystemAbility::InitKeyEventMonitor()
     auto handler = [this]() {
         // Check device capslock status and ime cfg corrent, when device power-up.
         HandleImeCfgCapsState(OsAccountAdapter::GetMainAccountId());
+        pushToTalkManager_->SetKeyEventMonitorReady(false);
 
         for (int32_t attempt = 1; attempt <= MAX_RETRIES; attempt++) {
             auto switchTrigger = [this](uint32_t keyCode) { return SwitchByCombinationKey(keyCode);};
-            int32_t ret = KeyboardEvent::GetInstance().AddKeyEventMonitor(switchTrigger);
+            auto pttKeyHandler = [this](const KeyboardEventInfo &keyEvent) {
+                pushToTalkManager_->HandleKeyEvent(keyEvent);
+            };
+            IMSA_HILOGI("PTT: registering key event monitor, attempt=%{public}d.", attempt);
+            int32_t ret = KeyboardEvent::GetInstance().AddKeyEventMonitor(switchTrigger, pttKeyHandler);
             if (ret == ErrorCode::NO_ERROR) {
+                pushToTalkManager_->SetKeyEventMonitorReady(true);
+                IMSA_HILOGI("PTT: key event monitor registered successfully, attempt=%{public}d.", attempt);
                 IMSA_HILOGI("SubscribeKeyboardEvent add monitor: success.");
                 break;
             } else {
+                IMSA_HILOGW("PTT: key event monitor registration failed, attempt=%{public}d, ret=%{public}d.",
+                    attempt, ret);
                 IMSA_HILOGW("SubscribeKeyboardEvent add monitor: failed. attempt: %{public}d, Retrying...", attempt);
                 std::this_thread::sleep_for(std::chrono::milliseconds(INTERVALMS_RETRY));
             }
@@ -3237,14 +3285,27 @@ bool InputMethodSystemAbility::IsCurrentIme(int32_t userId, uint32_t tokenId)
 // LCOV_EXCL_START
 int32_t InputMethodSystemAbility::StartInputType(int32_t userId, InputType type, bool isPersistence)
 {
+    bool isPttType = type == InputType::PUSH_TO_TALK_INPUT;
+    if (isPttType) {
+        IMSA_HILOGI("PTT: start input type request, userId=%{public}d, type=%{public}d, "
+            "isPersistence=%{public}d.", userId, static_cast<int32_t>(type), isPersistence);
+    }
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
+        if (isPttType) {
+            IMSA_HILOGE("PTT: start input type failed, user session is nullptr, userId=%{public}d, type=%{public}d.",
+                userId, static_cast<int32_t>(type));
+        }
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
     }
     ImeIdentification ime;
     int32_t ret = InputTypeManager::GetInstance().GetImeByInputType(type, ime);
     if (ret != ErrorCode::NO_ERROR) {
+        if (isPttType) {
+            IMSA_HILOGE("PTT: input type mapping not found, userId=%{public}d, type=%{public}d, ret=%{public}d.",
+                userId, static_cast<int32_t>(type), ret);
+        }
         IMSA_HILOGW("not find input type: %{public}d.", type);
         // add for not adapter for SECURITY_INPUT
         if (type == InputType::SECURITY_INPUT) {
@@ -3255,6 +3316,12 @@ int32_t InputMethodSystemAbility::StartInputType(int32_t userId, InputType type,
     SwitchInfo switchInfo = { std::chrono::system_clock::now(), ime.bundleName, ime.subName };
     session->GetSwitchQueue().Push(switchInfo);
     IMSA_HILOGI("start input type: %{public}d, isPersistence: %{public}d.", type, isPersistence);
+    if (isPttType) {
+        ret = OnStartInputType(userId, switchInfo, false, isPersistence);
+        IMSA_HILOGI("PTT: start input type finished, userId=%{public}d, type=%{public}d, ret=%{public}d.",
+            userId, static_cast<int32_t>(type), ret);
+        return ret;
+    }
     return (type == InputType::SECURITY_INPUT) ? OnStartInputType(userId, switchInfo, false) :
         OnStartInputType(userId, switchInfo, true, isPersistence);
 }

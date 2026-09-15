@@ -37,6 +37,9 @@ public:
     static constexpr const char *ENABLE_IME = "settings.inputmethod.enable_ime";
     static constexpr const char *SECURITY_MODE = "settings.inputmethod.full_experience";
     static constexpr const char *EDC_BACKUP_INPUT_METHOD = "settings.inputmethod.edc_backup_ime";
+    static constexpr const char *KBD_PUSH_TO_TALK_SWITCH = "settings.keyboard.push_talk_switch";
+    static constexpr const char *KBD_PUSH_TO_TALK_DIALOG_POP = "settings.keyboard.push_talk_dialog_pop";
+
     static SettingsDataUtils &GetInstance();
     std::shared_ptr<DataShare::DataShareHelper> CreateDataShareHelper(const std::string &uriProxy);
     int32_t CreateAndRegisterObserver(
@@ -53,6 +56,8 @@ public:
     void Release();
     bool SetEDCBackupInputMethod(int32_t userId, const std::string &backupIme);
     bool GetEDCBackupInputMethod(int32_t userId, std::string &backupIme);
+    bool GetPushToTalkDialogPopped();
+    void SetPushToTalkDialogPopped();
     EnabledStatus ComputeEnabledStatus(
         const std::string &bundleName, bool isSystemSpecialIme, EnabledStatus initStatus);
 

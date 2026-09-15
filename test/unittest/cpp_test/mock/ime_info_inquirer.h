@@ -44,6 +44,10 @@ struct SystemConfig {
     EnabledStatus initEnabledState{ EnabledStatus::DISABLED };
     bool enableAppAgentFeature = false;
     bool enableNumKeyFeature = false;
+    bool enablePushToTalk = false;
+    uint32_t pushToTalkLongPressMs { 0 };
+    std::string pushToTalkDialogBundleName;
+    std::string pushToTalkDialogAbilityName;
     bool enableExtModuleFeature = false;
     std::unordered_set<std::string> disableNumKeyAppDeviceTypes;
     std::unordered_set<int32_t> proxyImeUidList;
@@ -94,6 +98,10 @@ public:
     bool IsEnableSecurityMode();
     bool IsEnableAppAgent();
     bool IsEnableNumKey();
+    bool IsEnablePushToTalkDialog();
+    uint32_t GetPushToTalkLongPressMs();
+    std::string GetPushToTalkDialogBundleName();
+    std::string GetPushToTalkDialogAbilityName();
     bool IsProxyIme(int32_t callingUid);
     bool IsSpecialSaUid(int32_t callingUid);
     void InitSystemConfig();

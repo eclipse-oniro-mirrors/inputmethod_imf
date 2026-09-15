@@ -26,6 +26,7 @@
 #include "settings_data_utils.h"
 #include "system_ability_definition.h"
 #include "user_session_manager.h"
+#include "settings_data_utils.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -43,6 +44,7 @@ constexpr const char *EVENT_MEMORY_STATE = "memory_state";
 constexpr const char *EVENT_PARAM_UID = "uid";
 constexpr const char *COMMON_EVENT_NOTIFY_SA_MAKE_IMAGE = "NOTIFY_SA_MAKE_IMAGE";
 constexpr const char *EVENT_HYBRID_MODE_SWITCH = "HYBRID_MODE_SWITCH";
+constexpr const char *ENABLE_PUSH_TO_TALK = "accessory.manager.event.ENABLE_PUSH_TALK";
 ImCommonEventManager::ImCommonEventManager()
 {
 }
@@ -69,6 +71,15 @@ std::shared_ptr<ImCommonEventManager::EventSubscriber> ImCommonEventManager::Cre
     matchingSkills.AddEvent(EVENT_LARGE_MEMORY_STATUS_CHANGED);
     EventFwk::CommonEventSubscribeInfo subscriberInfo(matchingSkills);
     subscriberInfo.SetPermission("ohos.permission.REPORT_RESOURCE_SCHEDULE_EVENT");
+    return std::make_shared<EventSubscriber>(subscriberInfo);
+}
+
+std::shared_ptr<ImCommonEventManager::EventSubscriber> ImCommonEventManager::CreatePushToTalkSubscriber()
+{
+    EventFwk::MatchingSkills matchingSkills;
+    matchingSkills.AddEvent(ENABLE_PUSH_TO_TALK);
+    EventFwk::CommonEventSubscribeInfo subscriberInfo(matchingSkills);
+    subscriberInfo.SetPermission("ohos.permission.ACCESS_BLUETOOTH");
     return std::make_shared<EventSubscriber>(subscriberInfo);
 }
 
@@ -99,12 +110,15 @@ bool ImCommonEventManager::SubscribeEvent()
     }
 
     auto largeMemorySubscriber = CreateLargeMemorySubscriber();
+    auto pushTalkSubscriber = CreatePushToTalkSubscriber();
     sptr<ISystemAbilityStatusChange> listener =
-        new (std::nothrow) SystemAbilityStatusChangeListener([subscriber, largeMemorySubscriber]() {
+        new (std::nothrow) SystemAbilityStatusChangeListener([subscriber, largeMemorySubscriber, pushTalkSubscriber]() {
             bool subscribeResult = EventFwk::CommonEventManager::SubscribeCommonEvent(subscriber);
             IMSA_HILOGI("SubscribeCommonEvent ret: %{public}d", subscribeResult);
             subscribeResult = EventFwk::CommonEventManager::SubscribeCommonEvent(largeMemorySubscriber);
             IMSA_HILOGI("SubscribeCommonEvent largeMemorySubscriber ret: %{public}d", subscribeResult);
+            subscribeResult = EventFwk::CommonEventManager::SubscribeCommonEvent(pushTalkSubscriber);
+            IMSA_HILOGI("SubscribeCommonEvent pushTalkSubscriber ret: %{public}d", subscribeResult);
         });
     if (listener == nullptr) {
         IMSA_HILOGE("SubscribeEvent listener is nullptr!");
@@ -206,6 +220,8 @@ ImCommonEventManager::EventSubscriber::EventSubscriber(const EventFwk::CommonEve
         [](EventSubscriber *that, const CommonEventData &data) { return that->HandleNotifyMakeImage(data); };
     EventManagerFunc_[EVENT_HYBRID_MODE_SWITCH] =
         [](EventSubscriber *that, const CommonEventData &data) { return that->OnHybridModeSwitch(data); };
+    EventManagerFunc_[ENABLE_PUSH_TO_TALK] =
+        [](EventSubscriber *that, const CommonEventData &data) { return that->OnPushToTalk(data); };
 }
 
 void ImCommonEventManager::EventSubscriber::OnBundleResChanged(const CommonEventData &data)
@@ -490,6 +506,15 @@ void ImCommonEventManager::EventSubscriber::OnScreenLock(const EventFwk::CommonE
         return;
     }
     MessageHandler::Instance()->SendMessage(msg);
+}
+
+void ImCommonEventManager::EventSubscriber::OnPushToTalk(const EventFwk::CommonEventData &data)
+{
+    int32_t ret = SettingsDataUtils::GetInstance().SetStringValue(
+        SETTING_URI_PROXY, SettingsDataUtils::KBD_PUSH_TO_TALK_SWITCH, "true");
+    if (!ret) {
+        IMSA_HILOGW("set pushToTalk setting failed");
+    }
 }
 
 ImCommonEventManager::SystemAbilityStatusChangeListener::SystemAbilityStatusChangeListener(std::function<void()> func)

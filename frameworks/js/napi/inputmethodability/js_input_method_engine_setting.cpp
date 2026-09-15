@@ -85,6 +85,8 @@ napi_value JsInputMethodEngineSetting::Init(napi_env env, napi_value exports)
             "PATTERN_NUMBER_DECIMAL", GetJsConstProperty(env, static_cast<uint32_t>(TextInputType::NUMBER_DECIMAL))),
         DECLARE_NAPI_PROPERTY(
             "PATTERN_ONE_TIME_CODE", GetJsConstProperty(env, static_cast<uint32_t>(TextInputType::ONE_TIME_CODE))),
+        DECLARE_NAPI_PROPERTY("PATTERN_ONE_TIME_CODE_NUMBER",
+            GetJsConstProperty(env, static_cast<uint32_t>(InputAttribute::PATTERN_ONE_TIME_CODE_NUMBER))),
         DECLARE_NAPI_FUNCTION("getInputMethodEngine", GetInputMethodEngine),
         DECLARE_NAPI_FUNCTION("getInputMethodAbility", GetInputMethodAbility),
         DECLARE_NAPI_STATIC_PROPERTY("PanelType", GetJsPanelTypeProperty(env)),

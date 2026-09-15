@@ -58,7 +58,7 @@ bool WindowAdapter::ListWindowInfo(std::vector<sptr<OHOS::Rosen::WindowInfo>> &w
     WindowInfoOption option;
     WMError ret = WindowManagerLite::GetInstance(userId).ListWindowInfo(option, windowInfos);
     if (ret != WMError::WM_OK) {
-        IMSA_HILOGE("ListWindowInfo failed, ret: %{public}d", ret);
+        IMSA_HILOGE("ListWindowInfo failed, user: %{public}d, ret: %{public}d", userId, ret);
         return false;
     }
     return true;

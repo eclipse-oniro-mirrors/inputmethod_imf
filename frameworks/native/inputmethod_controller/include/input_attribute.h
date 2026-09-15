@@ -139,7 +139,6 @@ struct InputAttribute {
     int32_t enterKeyType = 0;
     int32_t inputOption = 0;
     bool isTextPreviewSupported { false };
-    bool isOneTimeCodeNumberFlag { false };
     std::string bundleName { "" };
     int32_t immersiveMode = 0;
     int32_t gradientMode { 0 };
@@ -165,7 +164,7 @@ struct InputAttribute {
 
     bool IsOneTimeCodeFlag() const
     {
-        return inputPattern == PATTERN_ONE_TIME_CODE;
+        return inputPattern == PATTERN_ONE_TIME_CODE || inputPattern == PATTERN_ONE_TIME_CODE_NUMBER;
     }
 
     bool IsSecurityImeFlag() const
@@ -213,11 +212,12 @@ struct InputAttributeInner : public Parcelable {
     static const int32_t PATTERN_PASSWORD_NUMBER = 0x00000008;
     static const int32_t PATTERN_PASSWORD_SCREEN_LOCK = 0x00000009;
     static const int32_t PATTERN_NEWPASSWORD = 0x0000000b;
+    static const int32_t PATTERN_ONE_TIME_CODE = 0x0000000d;
+    static const int32_t PATTERN_ONE_TIME_CODE_NUMBER = 0x0000000f;
     int32_t inputPattern = 0;
     int32_t enterKeyType = 0;
     int32_t inputOption = 0;
     bool isTextPreviewSupported { false };
-    bool isOneTimeCodeNumberFlag { false };
     std::string bundleName { "" };
     int32_t immersiveMode = 0;
     int32_t gradientMode { 0 };
@@ -240,7 +240,6 @@ struct InputAttributeInner : public Parcelable {
         enterKeyType = in.ReadInt32();
         inputOption = in.ReadInt32();
         isTextPreviewSupported = in.ReadBool();
-        isOneTimeCodeNumberFlag = in.ReadBool();
         bundleName = in.ReadString();
         immersiveMode = in.ReadInt32();
         editorWindowId = in.ReadUint32();
@@ -280,9 +279,6 @@ struct InputAttributeInner : public Parcelable {
             return false;
         }
         if (!out.WriteBool(isTextPreviewSupported)) {
-            return false;
-        }
-        if (!out.WriteBool(isOneTimeCodeNumberFlag)) {
             return false;
         }
         if (!out.WriteString(bundleName)) {

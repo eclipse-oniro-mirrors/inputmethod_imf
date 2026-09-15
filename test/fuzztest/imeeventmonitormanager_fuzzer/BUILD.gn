@@ -42,6 +42,7 @@ ohos_fuzztest("ImeEventMonitorManagerFuzzTest") {
   ]
 
   external_deps = [
+    "c_utils:utils",
     "hilog:libhilog",
     "input:libmmi-client",
     "ipc:ipc_single",

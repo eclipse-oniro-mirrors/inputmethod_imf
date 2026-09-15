@@ -86,4 +86,5 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void GetCursorInfo([in] int userId, [out] CursorInfoInner cursorInfo);
     void SetEDCDefaultInputMethod([in] String edcBackupImeName);
     void ExecTextInteraction([in] String text);
+    void IsPttGestureAvailable([in] IRemoteObject channel, [out] boolean resultValue);
 }

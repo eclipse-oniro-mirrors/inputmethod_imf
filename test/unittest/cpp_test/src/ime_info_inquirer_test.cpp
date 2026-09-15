@@ -423,6 +423,38 @@ HWTEST_F(ImeInfoInquirerTest, IsDisableImmersiveMode_001, TestSize.Level0)
 }
 
 /**
+ * @tc.name: GetPushToTalkLongPressMs_001
+ * @tc.desc: Get the PTT long-press duration cached in systemConfig.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeInfoInquirerTest, GetPushToTalkLongPressMs_001, TestSize.Level0)
+{
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    uint32_t originalLongPressMs = inquirer.systemConfig_.pushToTalkLongPressMs;
+    inquirer.systemConfig_.pushToTalkLongPressMs = 350;
+    EXPECT_EQ(inquirer.GetPushToTalkLongPressMs(), 350U);
+    inquirer.systemConfig_.pushToTalkLongPressMs = originalLongPressMs;
+}
+
+/**
+ * @tc.name: GetPushToTalkDialogEndpoint_001
+ * @tc.desc: Get the PTT dialog endpoint cached in systemConfig.
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeInfoInquirerTest, GetPushToTalkDialogEndpoint_001, TestSize.Level0)
+{
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    std::string originalBundleName = inquirer.systemConfig_.pushToTalkDialogBundleName;
+    std::string originalAbilityName = inquirer.systemConfig_.pushToTalkDialogAbilityName;
+    inquirer.systemConfig_.pushToTalkDialogBundleName = "dialogBundleName";
+    inquirer.systemConfig_.pushToTalkDialogAbilityName = "dialogAbilityName";
+    EXPECT_EQ(inquirer.GetPushToTalkDialogBundleName(), "dialogBundleName");
+    EXPECT_EQ(inquirer.GetPushToTalkDialogAbilityName(), "dialogAbilityName");
+    inquirer.systemConfig_.pushToTalkDialogBundleName = originalBundleName;
+    inquirer.systemConfig_.pushToTalkDialogAbilityName = originalAbilityName;
+}
+
+/**
  * @tc.name: OnHybridModeSwitch_001
  * @tc.desc: OnHybridModeSwitch with HybridMode::PC_MODE sets isPcMode to true
  * @tc.type: FUNC

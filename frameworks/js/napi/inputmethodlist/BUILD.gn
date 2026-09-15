@@ -51,6 +51,7 @@ ohos_shared_library("inputmethodlist") {
   deps = [ ":inputmethodlist_abc" ]
 
   external_deps = [
+    "c_utils:utils",
     "libuv:uv",
     "napi:ace_napi",
     "node:node_header_notice",

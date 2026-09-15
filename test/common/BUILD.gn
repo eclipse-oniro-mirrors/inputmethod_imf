@@ -52,6 +52,7 @@ ohos_static_library("inputmethod_test_common") {
   ]
   external_deps = [
     "ability_base:want",
+    "c_utils:utils",
     "hilog:libhilog",
     "input:libmmi-client",
     "ipc:ipc_single",
@@ -79,6 +80,7 @@ ohos_static_library("inputmethod_fuzztest_common") {
   ]
   external_deps = [
     "ability_base:want",
+    "c_utils:utils",
     "hilog:libhilog",
     "input:libmmi-client",
     "ipc:ipc_single",

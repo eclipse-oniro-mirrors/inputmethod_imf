@@ -16,6 +16,8 @@
 #ifndef SERVICES_INCLUDE_INPUT_METHOD_SYSTEM_ABILITY_H
 #define SERVICES_INCLUDE_INPUT_METHOD_SYSTEM_ABILITY_H
 
+#include <memory>
+
 #include "identity_checker_impl.h"
 #include "ime_info_inquirer.h"
 #include "input_method_system_ability_stub.h"
@@ -32,6 +34,7 @@
 
 namespace OHOS {
 namespace MiscServices {
+class PushToTalkManager;
 enum class ServiceRunningState { STATE_NOT_START, STATE_RUNNING };
 class InputMethodSystemAbility : public SystemAbility, public InputMethodSystemAbilityStub {
     DECLARE_SYSTEM_ABILITY(InputMethodSystemAbility);
@@ -108,6 +111,7 @@ public:
     ErrCode UnbindImeMirror() override;
     ErrCode GetCursorInfo(int32_t userId, CursorInfoInner &cursorInfo) override;
     int32_t SetEDCDefaultInputMethod(const std::string &edcBackupImeName) override;
+    ErrCode IsPttGestureAvailable(const sptr<IRemoteObject> &channel, bool &resultValue) override;
     int32_t GetCallingUserId();
     int32_t GetCallingUserId(int32_t &outputUserId, int32_t inputUserId = -1);
     int32_t ExecTextInteraction(const std::string &text) override;
@@ -285,6 +289,7 @@ private:
 #ifdef IME_USAGE_ENABLE
     std::unique_ptr<ImeUsageReporter> imeUsageReporter_;
 #endif
+    std::shared_ptr<PushToTalkManager> pushToTalkManager_;
 };
 } // namespace MiscServices
 } // namespace OHOS

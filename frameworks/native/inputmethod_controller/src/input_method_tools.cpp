@@ -45,7 +45,6 @@ InputAttributeInner InputMethodTools::AttributeToInner(const InputAttribute &att
     inner.inputOption = attribute.inputOption;
     inner.enterKeyType = attribute.enterKeyType;
     inner.isTextPreviewSupported = attribute.isTextPreviewSupported;
-    inner.isOneTimeCodeNumberFlag = attribute.isOneTimeCodeNumberFlag;
     inner.bundleName = attribute.bundleName;
     inner.immersiveMode = attribute.immersiveMode;
     inner.gradientMode = attribute.gradientMode;
@@ -71,7 +70,6 @@ InputAttribute InputMethodTools::InnerToAttribute(const InputAttributeInner &inn
     inputAttribute.inputOption = inner.inputOption;
     inputAttribute.enterKeyType = inner.enterKeyType;
     inputAttribute.isTextPreviewSupported = inner.isTextPreviewSupported;
-    inputAttribute.isOneTimeCodeNumberFlag = inner.isOneTimeCodeNumberFlag;
     inputAttribute.bundleName = inner.bundleName;
     inputAttribute.immersiveMode = inner.immersiveMode;
     inputAttribute.gradientMode = inner.gradientMode;

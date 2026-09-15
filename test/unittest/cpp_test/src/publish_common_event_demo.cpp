@@ -21,7 +21,7 @@
 #include "common_event_manager.h"
 #include "global.h"
 #include "input_method_controller.h"
-#include "nativetoken_kit.h"
+#include "mock_token.h"
 #include "running_process_info.h"
 #include "singleton.h"
 #include "token_setproc.h"
@@ -34,32 +34,24 @@ using namespace OHOS::MiscServices;
 using namespace OHOS::AppExecFwk;
 
 constexpr const char *COMMON_EVENT_NOTIFY_SA_MAKE_IMAGE = "NOTIFY_SA_MAKE_IMAGE";
-const int32_t PERMISSION_NUM = 1;
-constexpr int32_t FIRST_PARAM_INDEX = 0;
 
 void GrantNativePermission()
 {
-    const char **perms = new const char *[PERMISSION_NUM];
-    perms[FIRST_PARAM_INDEX] = "ohos.permission.GET_RUNNING_INFO";
-    TokenInfoParams infoInstance = {
-        .dcapsNum = 0,
-        .permsNum = PERMISSION_NUM,
-        .aclsNum = 0,
-        .dcaps = nullptr,
-        .perms = perms,
-        .acls = nullptr,
-        .processName = "imf_test",
-        .aplStr = "system_core",
-    };
-    uint64_t tokenId = GetAccessTokenId(&infoInstance);
+    // User 版本权限 mock：通过 mock 已有 SA 进程的 tokenId 获取系统权限。
+    // 参考 wiki WIKI202506197190466。
+    uint64_t shellTokenId = GetSelfTokenID();
+    MockToken::SetTestEnvironment(shellTokenId);
+    uint64_t tokenId = MockToken::GetNativeTokenIdFromProcess("inputmethod_service");
+    if (tokenId == 0) {
+        IMSA_HILOGE("failed to get inputmethod_service tokenId, fallback to foundation");
+        tokenId = MockToken::GetNativeTokenIdFromProcess("foundation");
+    }
     int32_t ret = SetSelfTokenID(tokenId);
     if (ret == 0) {
         IMSA_HILOGI("SetSelfTokenID success!");
     } else {
         IMSA_HILOGE("SetSelfTokenID fail!");
     }
-    AccessTokenKit::ReloadNativeTokenInfo();
-    delete[] perms;
 }
 
 void NotifySaMakeImage(const std::string &bundleName)

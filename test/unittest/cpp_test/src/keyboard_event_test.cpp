@@ -18,6 +18,8 @@
 
 #include <gtest/gtest.h>
 
+#include <memory>
+
 #include "global.h"
 
 namespace OHOS {
@@ -191,6 +193,26 @@ HWTEST_F(KeyboardEventTest, KeyboardEventSingleton_001, TestSize.Level0)
     IMSA_HILOGI("KeyboardEventTest KeyboardEventSingleton_001 START");
     auto &instance = KeyboardEvent::GetInstance();
     EXPECT_TRUE(std::is_reference<decltype(instance)>::value);
+}
+
+/**
+ * @tc.name: KeyboardEvent_AddPttKeyEventMonitor_001
+ * @tc.desc: Test the monitor overload that installs a raw key-event handler for PTT.
+ * @tc.type: FUNC
+ */
+HWTEST_F(KeyboardEventTest, AddPttKeyEventMonitor_001, TestSize.Level0)
+{
+    auto pttEventCount = std::make_shared<int32_t>(0);
+    KeyHandle switchHandler = [](uint32_t) {
+        return ErrorCode::NO_ERROR;
+    };
+    KeyEventMonitorHandler pttHandler = [pttEventCount](const KeyboardEventInfo &) {
+        ++(*pttEventCount);
+    };
+
+    auto ret = KeyboardEvent::AddKeyEventMonitor(switchHandler, pttHandler);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_EQ(*pttEventCount, 0);
 }
 } // namespace MiscServices
 } // namespace OHOS
