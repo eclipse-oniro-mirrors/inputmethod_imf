@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -36,6 +36,12 @@ void ExamModeManager::InitFromPersistedData()
 {
     if (!LoadFromPersistedData()) {
         IMSA_HILOGI("no persisted exam mode data found, using defaults");
+        isExamMode_.store(false);
+        {
+            std::lock_guard<std::mutex> lock(previousImeMutex_);
+            previousImeBundleName_.clear();
+            previousImeSubName_.clear();
+        }
     }
 }
 
@@ -55,7 +61,7 @@ bool ExamModeManager::LoadFromPersistedData()
     cJSON *bundleItem = cJSON_GetObjectItem(root, FIELD_PREVIOUS_BUNDLE_NAME);
     cJSON *subItem = cJSON_GetObjectItem(root, FIELD_PREVIOUS_SUB_NAME);
     if (examModeItem != nullptr && cJSON_IsBool(examModeItem)) {
-        isExamMode_ = examModeItem->valueint != 0;
+        isExamMode_.store(examModeItem->valueint != 0);
     }
     std::lock_guard<std::mutex> lock(previousImeMutex_);
     if (bundleItem != nullptr && bundleItem->valuestring != nullptr) {
@@ -66,7 +72,7 @@ bool ExamModeManager::LoadFromPersistedData()
     }
     cJSON_Delete(root);
     IMSA_HILOGI("loaded persisted exam mode: %{public}d, previous ime: %{public}s/%{public}s",
-        isExamMode_, previousImeBundleName_.c_str(), previousImeSubName_.c_str());
+        isExamMode_.load(), previousImeBundleName_.c_str(), previousImeSubName_.c_str());
     return true;
 }
 
@@ -77,7 +83,7 @@ void ExamModeManager::Persist()
         IMSA_HILOGE("failed to create json object for persist");
         return;
     }
-    cJSON_AddBoolToObject(root, FIELD_IS_EXAM_MODE, isExamMode_);
+    cJSON_AddBoolToObject(root, FIELD_IS_EXAM_MODE, isExamMode_.load());
     std::lock_guard<std::mutex> lock(previousImeMutex_);
     cJSON_AddStringToObject(root, FIELD_PREVIOUS_BUNDLE_NAME, previousImeBundleName_.c_str());
     cJSON_AddStringToObject(root, FIELD_PREVIOUS_SUB_NAME, previousImeSubName_.c_str());
@@ -97,13 +103,13 @@ void ExamModeManager::Persist()
 
 bool ExamModeManager::IsExamMode()
 {
-    return isExamMode_;
+    return isExamMode_.load();
 }
 
 void ExamModeManager::SetExamMode(bool isExamMode)
 {
     IMSA_HILOGI("set exam mode: %{public}d", isExamMode);
-    isExamMode_ = isExamMode;
+    isExamMode_.store(isExamMode);
     Persist();
 }
 
@@ -118,10 +124,11 @@ void ExamModeManager::SavePreviousIme(const std::string &bundleName, const std::
     Persist();
 }
 
-std::pair<std::string, std::string> ExamModeManager::GetPreviousIme()
+void ExamModeManager::GetPreviousIme(std::string &bundleName, std::string &subName)
 {
     std::lock_guard<std::mutex> lock(previousImeMutex_);
-    return { previousImeBundleName_, previousImeSubName_ };
+    bundleName = previousImeBundleName_;
+    subName = previousImeSubName_;
 }
 
 std::string ExamModeManager::GetPreviousImeBundleName()

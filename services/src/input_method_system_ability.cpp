@@ -3725,6 +3725,124 @@ InputType InputMethodSystemAbility::GetSecurityInputType(const InputClientInfo &
     }
 }
 // LCOV_EXCL_STOP
+
+void InputMethodSystemAbility::OnExamModeOn(const Message *msg)
+{
+    IMSA_HILOGI("enter exam mode");
+    if (msg == nullptr || msg->msgContent_ == nullptr) {
+        IMSA_HILOGE("msg or msgContent_ is nullptr!");
+        return;
+    }
+    int32_t userId = OsAccountAdapter::INVALID_USER_ID;
+    if (!ITypesUtil::Unmarshal(*msg->msgContent_, userId)) {
+        IMSA_HILOGE("failed to unmarshal userId!");
+        return;
+    }
+    if (userId == OsAccountAdapter::INVALID_USER_ID) {
+        IMSA_HILOGE("invalid user id!");
+        return;
+    }
+    auto currentImeCfg = ImeEnabledInfoManager::GetInstance().GetCurrentImeCfg(userId);
+    if (currentImeCfg == nullptr || currentImeCfg->bundleName.empty()) {
+        IMSA_HILOGE("failed to get current ime config");
+        return;
+    }
+    ExamModeManager::GetInstance().SetExamMode(true);
+    if (ImeInfoInquirer::GetInstance().IsSysIme(currentImeCfg->bundleName)) {
+        IMSA_HILOGI("current ime is already system ime, no need to switch");
+        ExamModeManager::GetInstance().ClearPreviousIme();
+        return;
+    }
+    ExamModeManager::GetInstance().SavePreviousIme(currentImeCfg->bundleName, currentImeCfg->subName);
+    SwitchToDefaultIme(userId);
+}
+
+void InputMethodSystemAbility::OnExamModeOff(const Message *msg)
+{
+    IMSA_HILOGI("exit exam mode");
+    if (msg == nullptr || msg->msgContent_ == nullptr) {
+        IMSA_HILOGE("msg or msgContent_ is nullptr!");
+        return;
+    }
+    int32_t userId = OsAccountAdapter::INVALID_USER_ID;
+    if (!ITypesUtil::Unmarshal(*msg->msgContent_, userId)) {
+        IMSA_HILOGE("failed to unmarshal userId!");
+        return;
+    }
+    if (userId == OsAccountAdapter::INVALID_USER_ID) {
+        IMSA_HILOGE("invalid user id!");
+        return;
+    }
+    std::string previousBundleName;
+    std::string previousSubName;
+    ExamModeManager::GetInstance().GetPreviousIme(previousBundleName, previousSubName);
+    if (!previousBundleName.empty()) {
+        auto ret = SwitchToPreviousIme(userId);
+        if (ret == ErrorCode::NO_ERROR) {
+            ExamModeManager::GetInstance().ClearPreviousIme();
+        } else {
+            IMSA_HILOGE("failed to restore previous ime, ret: %{public}d, keep previous ime info", ret);
+        }
+    }
+    ExamModeManager::GetInstance().SetExamMode(false);
+}
+
+int32_t InputMethodSystemAbility::SwitchToDefaultIme(int32_t userId)
+{
+    auto defaultIme = ImeInfoInquirer::GetInstance().GetDefaultIme();
+    if (defaultIme.bundleName.empty()) {
+        IMSA_HILOGE("default ime bundleName is empty!");
+        return ErrorCode::ERROR_IMSA_GET_IME_INFO_FAILED;
+    }
+    IMSA_HILOGI("switch to default ime: %{public}s", defaultIme.bundleName.c_str());
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+    if (session == nullptr) {
+        IMSA_HILOGE("%{public}d session is nullptr!", userId);
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    SwitchInfo switchInfo = { std::chrono::system_clock::now(), defaultIme.bundleName, "" };
+    session->GetSwitchQueue().Push(switchInfo);
+    return OnSwitchInputMethod(userId, switchInfo, SwitchTrigger::IMSA);
+}
+
+int32_t InputMethodSystemAbility::SwitchToPreviousIme(int32_t userId)
+{
+    std::string previousBundleName;
+    std::string previousSubName;
+    ExamModeManager::GetInstance().GetPreviousIme(previousBundleName, previousSubName);
+    if (previousBundleName.empty()) {
+        IMSA_HILOGI("no previous third-party ime to restore");
+        return ErrorCode::NO_ERROR;
+    }
+    IMSA_HILOGI("switch to previous ime: %{public}s/%{public}s", previousBundleName.c_str(), previousSubName.c_str());
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+    if (session == nullptr) {
+        IMSA_HILOGE("%{public}d session is nullptr!", userId);
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    EnabledStatus status = EnabledStatus::DISABLED;
+    auto ret = ImeEnabledInfoManager::GetInstance().GetEnabledState(userId, previousBundleName, status);
+    if (ret != ErrorCode::NO_ERROR || status == EnabledStatus::DISABLED) {
+        IMSA_HILOGW("previous ime %{public}s is not enabled, skip restore", previousBundleName.c_str());
+        return ErrorCode::ERROR_ENABLE_IME;
+    }
+    SwitchInfo switchInfo = { std::chrono::system_clock::now(), previousBundleName, previousSubName };
+    session->GetSwitchQueue().Push(switchInfo);
+    return OnSwitchInputMethod(userId, switchInfo, SwitchTrigger::IMSA);
+}
+
+bool InputMethodSystemAbility::IsSwitchingAllow(int32_t userId, const std::string &targetBundleName)
+{
+    if (!ExamModeManager::GetInstance().IsExamMode()) {
+        return true;
+    }
+    if (ImeInfoInquirer::GetInstance().IsSysIme(targetBundleName)) {
+        return true;
+    }
+    IMSA_HILOGI("exam mode is on, switch to third-party ime %{public}s is blocked", targetBundleName.c_str());
+    return false;
+}
+
 int32_t InputMethodSystemAbility::StartSecurityIme(int32_t &userId, InputClientInfo &inputClientInfo)
 {
     InputType type = GetSecurityInputType(inputClientInfo);
@@ -3947,6 +4065,7 @@ int32_t InputMethodSystemAbility::ExecTextInteraction(const std::string &text)
     }
     return session->ExecTextInteraction(text);
 }
+
 // for test start
 bool InputMethodSystemAbility::IsPassed(uint32_t tokenId)
 {
@@ -3957,119 +4076,5 @@ bool InputMethodSystemAbility::IsPassed(uint32_t tokenId)
     return identityChecker_->HasPermission(tokenId, permission);
 }
 // for test end
-
-void InputMethodSystemAbility::OnExamModeOn(const Message *msg)
-{
-    IMSA_HILOGI("enter exam mode");
-    if (msg == nullptr || msg->msgContent_ == nullptr) {
-        IMSA_HILOGE("msg or msgContent_ is nullptr!");
-        return;
-    }
-    int32_t userId = OsAccountAdapter::INVALID_USER_ID;
-    if (!ITypesUtil::Unmarshal(*msg->msgContent_, userId)) {
-        IMSA_HILOGE("failed to unmarshal userId!");
-        return;
-    }
-    if (userId == OsAccountAdapter::INVALID_USER_ID) {
-        IMSA_HILOGE("invalid user id!");
-        return;
-    }
-    ExamModeManager::GetInstance().SetExamMode(true);
-    auto currentImeCfg = ImeEnabledInfoManager::GetInstance().GetCurrentImeCfg(userId);
-    if (currentImeCfg == nullptr) {
-        IMSA_HILOGE("failed to get current ime config");
-        return;
-    }
-    if (ImeInfoInquirer::GetInstance().IsSysIme(currentImeCfg->bundleName)) {
-        IMSA_HILOGI("current ime is already system ime, no need to switch");
-        ExamModeManager::GetInstance().ClearPreviousIme();
-        return;
-    }
-    ExamModeManager::GetInstance().SavePreviousIme(currentImeCfg->bundleName, currentImeCfg->subName);
-    SwitchToDefaultIme(userId);
-}
-
-void InputMethodSystemAbility::OnExamModeOff(const Message *msg)
-{
-    IMSA_HILOGI("exit exam mode");
-    if (msg == nullptr || msg->msgContent_ == nullptr) {
-        IMSA_HILOGE("msg or msgContent_ is nullptr!");
-        return;
-    }
-    int32_t userId = OsAccountAdapter::INVALID_USER_ID;
-    if (!ITypesUtil::Unmarshal(*msg->msgContent_, userId)) {
-        IMSA_HILOGE("failed to unmarshal userId!");
-        return;
-    }
-    if (userId == OsAccountAdapter::INVALID_USER_ID) {
-        IMSA_HILOGE("invalid user id!");
-        return;
-    }
-    auto [previousBundleName, previousSubName] = ExamModeManager::GetInstance().GetPreviousIme();
-    if (!previousBundleName.empty()) {
-        auto ret = SwitchToPreviousIme(userId);
-        if (ret == ErrorCode::NO_ERROR) {
-            ExamModeManager::GetInstance().ClearPreviousIme();
-        } else {
-            IMSA_HILOGE("failed to restore previous ime, ret: %{public}d, keep previous ime info", ret);
-        }
-    }
-    ExamModeManager::GetInstance().SetExamMode(false);
-}
-
-int32_t InputMethodSystemAbility::SwitchToDefaultIme(int32_t userId)
-{
-    auto defaultIme = ImeInfoInquirer::GetInstance().GetDefaultIme();
-    if (defaultIme.bundleName.empty()) {
-        IMSA_HILOGE("default ime bundleName is empty!");
-        return ErrorCode::ERROR_IMSA_GET_IME_INFO_FAILED;
-    }
-    IMSA_HILOGI("switch to default ime: %{public}s", defaultIme.bundleName.c_str());
-    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
-    if (session == nullptr) {
-        IMSA_HILOGE("%{public}d session is nullptr!", userId);
-        return ErrorCode::ERROR_NULL_POINTER;
-    }
-    SwitchInfo switchInfo = { std::chrono::system_clock::now(), defaultIme.bundleName, "" };
-    switchInfo.timestamp = std::chrono::system_clock::now();
-    session->GetSwitchQueue().Push(switchInfo);
-    return OnSwitchInputMethod(userId, switchInfo, SwitchTrigger::IMSA);
-}
-
-int32_t InputMethodSystemAbility::SwitchToPreviousIme(int32_t userId)
-{
-    auto [previousBundleName, previousSubName] = ExamModeManager::GetInstance().GetPreviousIme();
-    if (previousBundleName.empty()) {
-        IMSA_HILOGI("no previous third-party ime to restore");
-        return ErrorCode::NO_ERROR;
-    }
-    IMSA_HILOGI("switch to previous ime: %{public}s/%{public}s", previousBundleName.c_str(), previousSubName.c_str());
-    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
-    if (session == nullptr) {
-        IMSA_HILOGE("%{public}d session is nullptr!", userId);
-        return ErrorCode::ERROR_NULL_POINTER;
-    }
-    EnabledStatus status = EnabledStatus::DISABLED;
-    auto ret = ImeEnabledInfoManager::GetInstance().GetEnabledState(userId, previousBundleName, status);
-    if (ret != ErrorCode::NO_ERROR || status == EnabledStatus::DISABLED) {
-        IMSA_HILOGW("previous ime %{public}s is not enabled, skip restore", previousBundleName.c_str());
-        return ErrorCode::ERROR_ENABLE_IME;
-    }
-    SwitchInfo switchInfo = { std::chrono::system_clock::now(), previousBundleName, previousSubName };
-    session->GetSwitchQueue().Push(switchInfo);
-    return OnSwitchInputMethod(userId, switchInfo, SwitchTrigger::IMSA);
-}
-
-bool InputMethodSystemAbility::IsSwitchingAllow(int32_t userId, const std::string &targetBundleName)
-{
-    if (!ExamModeManager::GetInstance().IsExamMode()) {
-        return true;
-    }
-    if (ImeInfoInquirer::GetInstance().IsSysIme(targetBundleName)) {
-        return true;
-    }
-    IMSA_HILOGI("exam mode is on, switch to third-party ime %{public}s is blocked", targetBundleName.c_str());
-    return false;
-}
 } // namespace MiscServices
 } // namespace OHOS

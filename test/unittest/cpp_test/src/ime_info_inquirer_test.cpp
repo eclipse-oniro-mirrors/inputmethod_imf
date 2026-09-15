@@ -611,7 +611,9 @@ HWTEST_F(ImeInfoInquirerTest, ExamModeManager_Persist_SavePreviousIme_001, TestS
     examMgr.SavePreviousIme("com.test.persist", "subPersist");
     EXPECT_EQ(examMgr.GetPreviousImeBundleName(), "com.test.persist");
     EXPECT_EQ(examMgr.GetPreviousImeSubName(), "subPersist");
-    auto [bundleName, subName] = examMgr.GetPreviousIme();
+    std::string bundleName;
+    std::string subName;
+    examMgr.GetPreviousIme(bundleName, subName);
     EXPECT_EQ(bundleName, "com.test.persist");
     EXPECT_EQ(subName, "subPersist");
     examMgr.ClearPreviousIme();

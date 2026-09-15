@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -16,6 +16,7 @@
 #ifndef SERVICES_INCLUDE_EXAM_MODE_MANAGER_H
 #define SERVICES_INCLUDE_EXAM_MODE_MANAGER_H
 
+#include <atomic>
 #include <mutex>
 #include <string>
 #include <utility>
@@ -32,7 +33,7 @@ public:
     bool IsExamMode();
     void SetExamMode(bool isExamMode);
     void SavePreviousIme(const std::string &bundleName, const std::string &subName);
-    std::pair<std::string, std::string> GetPreviousIme();
+    void GetPreviousIme(std::string &bundleName, std::string &subName);
     std::string GetPreviousImeBundleName();
     std::string GetPreviousImeSubName();
     void ClearPreviousIme();
@@ -42,7 +43,7 @@ private:
     ~ExamModeManager() = default;
     void Persist();
     bool LoadFromPersistedData();
-    bool isExamMode_ { false };
+    std::atomic<bool> isExamMode_ { false };
     std::mutex previousImeMutex_;
     std::string previousImeBundleName_;
     std::string previousImeSubName_;

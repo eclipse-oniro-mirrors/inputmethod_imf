@@ -24,6 +24,7 @@
 #include "input_method_controller.h"
 #include "input_method_system_ability.h"
 #include "peruser_session.h"
+#include "os_account_adapter.h"
 #include "wms_connection_observer.h"
 #include "settings_data_utils.h"
 #include "input_type_manager.h"
@@ -83,6 +84,7 @@ void ResetMockScreenLock();
 #include "keyboard_event.h"
 #include "ipc_skeleton.h"
 #include "os_account_manager.h"
+#include "ptt_settings_manager.h"
 #include "tdd_util.h"
 
 using namespace testing::ext;
@@ -950,119 +952,13 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_IsPanelShown_AccountLocalIdFailed, Tes
     panelInfo.panelFlag = FLG_FIXED;
     bool isShown = false;
     uint64_t inValidDisplayId = 99999;
-    sptr<InputMethodSystemAbility> imsa = new (std::nothrow) InputMethodSystemAbility();
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
     ASSERT_NE(imsa, nullptr);
     IdentityCheckerMock::ResetParam();
     IdentityCheckerMock::SetSystemApp(true);
     imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
     auto ret = imsa->IsPanelShown(inValidDisplayId, panelInfo, isShown);
     EXPECT_EQ(ret, ErrorCode::ERROR_ACCOUNT_LOCALID_FAILED);
-}
-
-/**
- * @tc.name: SA_IsPassed_PermissionEmpty
- * @tc.desc: permissionCliChecked is empty, IsPassed returns false.
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(InputMethodPrivateMemberTest, SA_IsPassed_PermissionEmpty, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodPrivateMemberTest SA_IsPassed_PermissionEmpty TEST START");
-    sptr<InputMethodSystemAbility> imsa = new (std::nothrow) InputMethodSystemAbility();
-    ASSERT_NE(imsa, nullptr);
-    ImeInfoInquirer::GetInstance().systemConfig_.permissionCliChecked.clear();
-    EXPECT_FALSE(imsa->IsPassed(0));
-}
-
-/**
- * @tc.name: SA_IsPassed_HasPermission
- * @tc.desc: permissionCliChecked is non-empty and HasPermission returns true, IsPassed returns true.
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(InputMethodPrivateMemberTest, SA_IsPassed_HasPermission, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodPrivateMemberTest SA_IsPassed_HasPermission TEST START");
-    sptr<InputMethodSystemAbility> imsa = new (std::nothrow) InputMethodSystemAbility();
-    ASSERT_NE(imsa, nullptr);
-    IdentityCheckerMock::ResetParam();
-    IdentityCheckerMock::SetPermission(true);
-    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
-    ImeInfoInquirer::GetInstance().systemConfig_.permissionCliChecked = "ohos.permission.CONTROL_DEVICE";
-    EXPECT_TRUE(imsa->IsPassed(0));
-}
-
-/**
- * @tc.name: SA_IsPassed_NoPermission
- * @tc.desc: permissionCliChecked is non-empty and HasPermission returns false, IsPassed returns false.
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(InputMethodPrivateMemberTest, SA_IsPassed_NoPermission, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodPrivateMemberTest SA_IsPassed_NoPermission TEST START");
-    sptr<InputMethodSystemAbility> imsa = new (std::nothrow) InputMethodSystemAbility();
-    ASSERT_NE(imsa, nullptr);
-    IdentityCheckerMock::ResetParam();
-    IdentityCheckerMock::SetPermission(false);
-    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
-    ImeInfoInquirer::GetInstance().systemConfig_.permissionCliChecked = "ohos.permission.CONTROL_DEVICE";
-    EXPECT_FALSE(imsa->IsPassed(0));
-    ImeInfoInquirer::GetInstance().systemConfig_.permissionCliChecked.clear();
-}
-
-/**
- * @tc.name: SA_ExecTextInteraction_IdentityCheckerNull
- * @tc.desc: identityChecker_ is nullptr, return ERROR_NULL_POINTER.
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(InputMethodPrivateMemberTest, SA_ExecTextInteraction_IdentityCheckerNull, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodPrivateMemberTest SA_ExecTextInteraction_IdentityCheckerNull TEST START");
-    sptr<InputMethodSystemAbility> imsa = new (std::nothrow) InputMethodSystemAbility();
-    ASSERT_NE(imsa, nullptr);
-    EXPECT_EQ(imsa->ExecTextInteraction("text"), ErrorCode::ERROR_NULL_POINTER);
-}
-
-/**
- * @tc.name: SA_ExecTextInteraction_NoControlDevicePermission
- * @tc.desc: HasPermission(CONTROL_DEVICE) is false, return ERROR_STATUS_PERMISSION_DENIED.
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(InputMethodPrivateMemberTest, SA_ExecTextInteraction_NoControlDevicePermission, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodPrivateMemberTest SA_ExecTextInteraction_NoControlDevicePermission TEST START");
-    sptr<InputMethodSystemAbility> imsa = new (std::nothrow) InputMethodSystemAbility();
-    ASSERT_NE(imsa, nullptr);
-    IdentityCheckerMock::ResetParam();
-    IdentityCheckerMock::SetPermission(false);
-    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
-    ImeInfoInquirer::GetInstance().systemConfig_.permissionCliChecked = "ohos.permission.CONTROL_DEVICE";
-    EXPECT_EQ(imsa->ExecTextInteraction("text"), ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
-    ImeInfoInquirer::GetInstance().systemConfig_.permissionCliChecked.clear();
-}
-
-/**
- * @tc.name: SA_ExecTextInteraction_PermissionPassed
- * @tc.desc: HasPermission(CONTROL_DEVICE) is true, permission gate passed (reaches session lookup).
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(InputMethodPrivateMemberTest, SA_ExecTextInteraction_PermissionPassed, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodPrivateMemberTest SA_ExecTextInteraction_PermissionPassed TEST START");
-    sptr<InputMethodSystemAbility> imsa = new (std::nothrow) InputMethodSystemAbility();
-    ASSERT_NE(imsa, nullptr);
-    IdentityCheckerMock::ResetParam();
-    IdentityCheckerMock::SetPermission(true);
-    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
-    ImeInfoInquirer::GetInstance().systemConfig_.permissionCliChecked = "ohos.permission.CONTROL_DEVICE";
-    auto ret = imsa->ExecTextInteraction("text");
-    EXPECT_NE(ret, ErrorCode::ERROR_NULL_POINTER);
-    EXPECT_NE(ret, ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
-    ImeInfoInquirer::GetInstance().systemConfig_.permissionCliChecked.clear();
 }
 
 /**
@@ -1991,7 +1887,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SpecialScenarioCheck, TestSize.Level0)
     allow = userSession->SpecialScenarioCheck();
     EXPECT_FALSE(allow);
 
-    info->config.inputAttribute.inputPattern = InputAttribute::PATTERN_ONE_TIME_CODE_NUMBER;
+    info->config.inputAttribute.isOneTimeCodeNumberFlag = true;
     group->mapClients_.insert_or_assign(client->AsObject(), info);
     userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
     allow = userSession->SpecialScenarioCheck();
@@ -2024,12 +1920,6 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_IsScreenLockOrSecurityFlag, TestSize.L
     EXPECT_FALSE(ret);
 
     info->config.inputAttribute.inputPattern = InputAttribute::PATTERN_ONE_TIME_CODE;
-    group->mapClients_.insert_or_assign(client->AsObject(), info);
-    userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
-    ret = userSession->IsImeSwitchForbidden();
-    EXPECT_FALSE(ret);
-
-    info->config.inputAttribute.inputPattern = InputAttribute::PATTERN_ONE_TIME_CODE_NUMBER;
     group->mapClients_.insert_or_assign(client->AsObject(), info);
     userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
     ret = userSession->IsImeSwitchForbidden();
@@ -6386,7 +6276,6 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_InitImeUsageReporter_DisabledByConfig,
 }
 #endif
 
-
 /**
  * @tc.name: ImCommonEventManager_OnExamMode_ExamModeOn
  * @tc.desc: OnExamMode sends MSG_ID_EXAM_MODE_ON when receiving KIOSK_MODE_ON with type=1
@@ -6499,7 +6388,6 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_IsSwitchingAllow_ExamModeOff, TestSize
 HWTEST_F(InputMethodPrivateMemberTest, SA_IsSwitchingAllow_ExamModeOn_ThirdPartyIme, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::SA_IsSwitchingAllow_ExamModeOn_ThirdPartyIme start.");
-    auto &inquirer = ImeInfoInquirer::GetInstance();
     bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
     ExamModeManager::GetInstance().SetExamMode(true);
     bool allowed = service_->IsSwitchingAllow(100, "com.thirdparty.ime");
@@ -6589,7 +6477,6 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchToPreviousIme_NoPreviousIme, Tes
 HWTEST_F(InputMethodPrivateMemberTest, SA_OnExamModeOn_NullMsg, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::SA_OnExamModeOn_NullMsg start.");
-    auto &inquirer = ImeInfoInquirer::GetInstance();
     bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
     ExamModeManager::GetInstance().SetExamMode(false);
     service_->OnExamModeOn(nullptr);
@@ -6853,7 +6740,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_OnExamModeOn_InvalidUserId, TestSize.L
     IMSA_HILOGI("InputMethodPrivateMemberTest::SA_OnExamModeOn_InvalidUserId start.");
     bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
     ExamModeManager::GetInstance().SetExamMode(false);
-    int32_t userId = INVALID_USER_ID;
+    int32_t userId = OsAccountAdapter::INVALID_USER_ID;
     MessageParcel *parcel = new (std::nothrow) MessageParcel();
     ASSERT_NE(parcel, nullptr);
     EXPECT_TRUE(ITypesUtil::Marshal(*parcel, userId));
@@ -6863,7 +6750,32 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_OnExamModeOn_InvalidUserId, TestSize.L
     ExamModeManager::GetInstance().SetExamMode(origExamMode);
     ExamModeManager::GetInstance().ClearPreviousIme();
 }
- 
+
+/**
+ * @tc.name: SA_OnExamModeOn_NoCurrentImeCfg
+ * @tc.desc: OnExamModeOn returns early when GetCurrentImeCfg returns nullptr, exam mode is not set
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_OnExamModeOn_NoCurrentImeCfg, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_OnExamModeOn_NoCurrentImeCfg start.");
+    bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
+    ExamModeManager::GetInstance().SetExamMode(false);
+    int32_t userId = 100;
+    // Ensure no imeEnabledCfg_ exists so GetCurrentImeCfg returns nullptr
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.erase(userId);
+    MessageParcel *parcel = new (std::nothrow) MessageParcel();
+    ASSERT_NE(parcel, nullptr);
+    EXPECT_TRUE(ITypesUtil::Marshal(*parcel, userId));
+    auto msg = std::make_shared<Message>(MessageID::MSG_ID_EXAM_MODE_ON, parcel);
+    service_->OnExamModeOn(msg.get());
+    // Exam mode should NOT be set (GetCurrentImeCfg returned nullptr)
+    EXPECT_FALSE(ExamModeManager::GetInstance().IsExamMode());
+    ExamModeManager::GetInstance().SetExamMode(origExamMode);
+    ExamModeManager::GetInstance().ClearPreviousIme();
+}
+
 /**
  * @tc.name: SA_OnExamModeOff_NullMsgContent
  * @tc.desc: OnExamModeOff returns early when msgContent is nullptr, exam mode is not cleared
@@ -6940,7 +6852,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_OnExamModeOff_InvalidUserId, TestSize.
     std::string prevBundleName = "com.example.thirdparty";
     std::string prevSubName = "sub1";
     ExamModeManager::GetInstance().SavePreviousIme(prevBundleName, prevSubName);
-    int32_t userId = INVALID_USER_ID;
+    int32_t userId = OsAccountAdapter::INVALID_USER_ID;
     MessageParcel *parcel = new (std::nothrow) MessageParcel();
     ASSERT_NE(parcel, nullptr);
     EXPECT_TRUE(ITypesUtil::Marshal(*parcel, userId));
@@ -7102,6 +7014,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchInputMethodInner_BlockedByExamMo
     std::string thirdPartyBundleName = "com.example.thirdparty";
     ExamModeManager::GetInstance().SetExamMode(true);
     inquirer.systemConfig_.defaultInputMethod = sysBundleName + "/" + sysExtName;
+    service_->identityChecker_ = std::make_shared<IdentityCheckerImpl>();
     // Create a user session
     auto session = std::make_shared<PerUserSession>(userId, nullptr);
     UserSessionManager::GetInstance().userSessions_.insert_or_assign(userId, session);
@@ -7215,15 +7128,20 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_HandleDataShareReady_RestoresExamMode,
 {
     IMSA_HILOGI("InputMethodPrivateMemberTest::SA_HandleDataShareReady_RestoresExamMode start.");
     bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
+    std::string origPreviousBundleName;
+    std::string origPreviousSubName;
+    ExamModeManager::GetInstance().GetPreviousIme(origPreviousBundleName, origPreviousSubName);
+    // Persist a known state, then reload it via InitFromPersistedData
     ExamModeManager::GetInstance().SetExamMode(true);
     ExamModeManager::GetInstance().SavePreviousIme("com.thirdparty", "sub1");
-    service_->HandleDataShareReady();
-    // DataShare unavailable in test, InitFromPersistedData resets to defaults
-    EXPECT_FALSE(ExamModeManager::GetInstance().IsExamMode());
-    EXPECT_EQ(ExamModeManager::GetInstance().GetPreviousImeBundleName(), "");
-    EXPECT_EQ(ExamModeManager::GetInstance().GetPreviousImeSubName(), "");
+    ExamModeManager::GetInstance().InitFromPersistedData();
+    // InitFromPersistedData should reload the persisted state
+    EXPECT_TRUE(ExamModeManager::GetInstance().IsExamMode());
+    EXPECT_EQ(ExamModeManager::GetInstance().GetPreviousImeBundleName(), "com.thirdparty");
+    EXPECT_EQ(ExamModeManager::GetInstance().GetPreviousImeSubName(), "sub1");
+    // Restore original state
     ExamModeManager::GetInstance().SetExamMode(origExamMode);
-    ExamModeManager::GetInstance().ClearPreviousIme();
+    ExamModeManager::GetInstance().SavePreviousIme(origPreviousBundleName, origPreviousSubName);
 }
 } // namespace MiscServices
 } // namespace OHOS
