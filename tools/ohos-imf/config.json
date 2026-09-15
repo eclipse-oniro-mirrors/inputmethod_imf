@@ -1,7 +1,7 @@
 {
   "name": "ohos-imf",
   "version": "1.0.0",
-  "description": "Input method framework CLI tool. used for text interaction. For PC use only.",
+  "description": "Input method framework CLI tool. Used for text interaction. For PC use only.",
   "executablePath": "/system/bin/cli_tool/executable/ohos-imf",
   "requirePermissions": [],
   "inputSchema": {
@@ -16,7 +16,7 @@
   "hasSubCommand": true,
   "subcommands": {
     "insert": {
-      "description": "Insert text into the focused edit box bound to the input method application. Used for simulating real‑user input. Only '--text <content>' is supported.",
+      "description": "Insert text into the focused edit box bound to the input method application. Used for simulating real-user input. Only '--text <content>' is supported.",
       "requirePermissions": [
         "ohos.permission.CONTROL_DEVICE"
       ],
@@ -25,7 +25,7 @@
         "properties": {
           "text": {
             "type": "string",
-            "description": "Text to be inserted",
+            "description": "Text to be inserted. Maximum 512 bytes",
             "maxLength": 512
           }
         },

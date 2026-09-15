@@ -56,6 +56,7 @@ struct SystemConfig : public Serializable {
     std::string systemPanelAppIdentifier;
     bool disableImmersiveMode = false;
     bool enableImeUsageFeature =  false;
+    std::string permissionCliChecked;
 
     bool Unmarshal(cJSON *node) override
     {
@@ -82,6 +83,7 @@ struct SystemConfig : public Serializable {
         GetValue(node, GET_NAME(systemPanelAppIdentifier), systemPanelAppIdentifier);
         GetValue(node, GET_NAME(disableImmersiveMode), disableImmersiveMode);
         GetValue(node, GET_NAME(enableImeUsageFeature), enableImeUsageFeature);
+        GetValue(node, GET_NAME(permissionCliChecked), permissionCliChecked);
         return true;
     }
 };

@@ -45,7 +45,7 @@ public:
 
 /**
  * @tc.name: Execute_001
- * @tc.desc: param num is not same with 2
+ * @tc.desc: param num is not the same as 2
  * @tc.type: FUNC
  * @tc.require:
  */
@@ -61,7 +61,7 @@ HWTEST_F(InsertCommandTest, Execute_001, TestSize.Level0)
 
 /**
  * @tc.name: Execute_002
- * @tc.desc: "--key" is missing
+ * @tc.desc: "--text" is missing
  * @tc.type: FUNC
  * @tc.require:
  */
@@ -125,12 +125,12 @@ HWTEST_F(InsertCommandTest, Execute_005, TestSize.Level0)
     auto ret = cmd.Execute(argList);
     EXPECT_EQ(ret, CliUtils::GenerateError({ "ERR_PERMISSION_DENIED",
                        "Permission denied: missing ohos.permission.CONTROL_DEVICE permission",
-                       "Please add ohos.permission.CONTROL_DEVICE in the requirePermissions field of module.json5" }));
+                       "Please add ohos.permission.CONTROL_DEVICE in the requestPermissions field of module.json5" }));
 }
 
 /**
  * @tc.name: Execute_006
- * @tc.desc: has no edit bow bound ime
+ * @tc.desc: has no edit box bound ime
  * @tc.type: FUNC
  * @tc.require:
  */
@@ -143,7 +143,7 @@ HWTEST_F(InsertCommandTest, Execute_006, TestSize.Level0)
     auto ret = cmd.Execute(argList);
     EXPECT_EQ(ret, CliUtils::GenerateError(
                        { "ERR_EDIT_BOX_NOT_BOUND_WITH_IME_APP", "No focused edit box or not bound to the IME app",
-                           "Please click the edit box in current focused window to trigger the binding operation "
+                           "Please click the edit box in the current focused window to trigger the binding operation "
                            "first and "
                            "try again" }));
 }

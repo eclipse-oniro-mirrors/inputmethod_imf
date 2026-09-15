@@ -261,6 +261,7 @@ private:
     void InitAllUsersWindowMonitors();
     void InitUserInfo(int32_t userId, uint64_t displayId);
     void UpdateUserInfo(int32_t userId, uint64_t displayId);
+    bool IsPassed(uint32_t tokenId);
 
     class AttachStateGuard {
     public:
