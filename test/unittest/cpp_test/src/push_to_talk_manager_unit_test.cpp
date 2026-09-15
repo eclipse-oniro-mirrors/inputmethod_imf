@@ -29,6 +29,7 @@
 #include "cJSON.h"
 #include "event_runner.h"
 #include "ime_info_inquirer.h"
+#include "input_attribute.h"
 #include "input_death_recipient.h"
 #include "input_type_manager.h"
 #include "ptt_settings_manager.h"
@@ -269,6 +270,7 @@ public:
         EXPECT_EQ(snapshot.clientGroupId, 0);
         EXPECT_EQ(snapshot.editorWindowId, 0);
         EXPECT_EQ(snapshot.editorDisplayId, 0);
+        EXPECT_FALSE(snapshot.isSecurityIme);
     }
 
     PttTestState &state_ { GetPttTestState() };
@@ -317,6 +319,11 @@ HWTEST_F(PushToTalkManagerUnitTest, GestureEligibility, TestSize.Level0)
 {
     ASSERT_TRUE(PttSettingsManager::IsEnabled(PTT_UNIT_TEST_USER_ID));
     EXPECT_TRUE(manager_->IsGestureAvailable(PTT_UNIT_TEST_USER_ID, channel_->AsObject()));
+    auto info = group_->GetClientInfo(client_->AsObject());
+    ASSERT_NE(info, nullptr);
+    info->config.inputAttribute.inputPattern = InputAttribute::PATTERN_PASSWORD;
+    EXPECT_FALSE(manager_->IsGestureAvailable(PTT_UNIT_TEST_USER_ID, channel_->AsObject()));
+    info->config.inputAttribute.inputPattern = InputAttribute::PATTERN_TEXT;
     EXPECT_FALSE(manager_->IsGestureAvailable(PTT_UNIT_TEST_USER_ID, client_->AsObject()));
     EXPECT_FALSE(manager_->IsGestureAvailable(PTT_UNIT_TEST_USER_ID, nullptr));
     EXPECT_FALSE(manager_->IsGestureAvailable(PTT_UNIT_MISSING_USER_ID, channel_->AsObject()));
@@ -616,6 +623,24 @@ HWTEST_F(PushToTalkManagerUnitTest, SettingDisabledDuringGestureCancelsVoice, Te
 {
     ASSERT_TRUE(PrepareVoice());
     state_.settingValue = "false";
+    manager_->HandleStartVoice();
+    EXPECT_EQ(state_.calls, (std::vector<std::string> { "cancel" }));
+    EXPECT_EQ(manager_->controller_.GetState(), PttState::SUPPRESSED);
+    ExpectContextCleared();
+}
+
+/**
+ * @tc.name: SecurityInputDuringGestureCancelsVoice
+ * @tc.desc: Recheck the security-input flag at timeout before starting voice.
+ * @tc.type: FUNC
+ */
+HWTEST_F(PushToTalkManagerUnitTest, SecurityInputDuringGestureCancelsVoice, TestSize.Level0)
+{
+    ASSERT_TRUE(PrepareVoice());
+    auto info = group_->GetClientInfo(client_->AsObject());
+    ASSERT_NE(info, nullptr);
+    info->config.inputAttribute.inputPattern = InputAttribute::PATTERN_PASSWORD;
+    EXPECT_FALSE(manager_->IsGestureContextValid(PTT_UNIT_TEST_USER_ID));
     manager_->HandleStartVoice();
     EXPECT_EQ(state_.calls, (std::vector<std::string> { "cancel" }));
     EXPECT_EQ(manager_->controller_.GetState(), PttState::SUPPRESSED);

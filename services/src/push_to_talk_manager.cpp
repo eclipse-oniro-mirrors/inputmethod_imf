@@ -404,6 +404,10 @@ bool PushToTalkManager::GetEligibleClient(int32_t userId, FocusedRealImeClientSn
         IMSA_HILOGI("PTT: no input client is focused, userId=%{public}d.", userId);
         return false;
     }
+    if (snapshot.isSecurityIme) {
+        IMSA_HILOGI("PTT: security input is focused, skip gesture, userId=%{public}d.", userId);
+        return false;
+    }
     if (!PttSettingsManager::IsEnabled(userId)) {
         IMSA_HILOGI("PTT: setting is disabled, userId=%{public}d.", userId);
         return false;

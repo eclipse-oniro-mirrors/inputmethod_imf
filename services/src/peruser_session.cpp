@@ -1184,6 +1184,7 @@ bool PerUserSession::GetFocusedRealImeClient(FocusedRealImeClientSnapshot &snaps
     snapshot.clientGroupId = clientGroup->GetDisplayGroupId();
     snapshot.editorWindowId = clientInfo->config.inputAttribute.editorWindowId;
     snapshot.editorDisplayId = clientInfo->config.inputAttribute.editorDisplayId;
+    snapshot.isSecurityIme = clientInfo->config.inputAttribute.IsSecurityImeFlag();
     return true;
 }
 
