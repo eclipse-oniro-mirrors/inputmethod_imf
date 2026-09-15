@@ -40,6 +40,7 @@ ohos_shared_library("ohinputmethod") {
     "src/native_capi_utils.cpp",
     "src/native_message_handler_callback.cpp",
     "src/native_text_changed_listener.cpp",
+    "src/text_editor_proxy_manager.cpp",
   ]
   include_dirs = [
     "include",
@@ -93,6 +94,7 @@ ohos_static_library("ohinputmethod_static") {
     "src/native_capi_utils.cpp",
     "src/native_message_handler_callback.cpp",
     "src/native_text_changed_listener.cpp",
+    "src/text_editor_proxy_manager.cpp",
   ]
 
   include_dirs = [

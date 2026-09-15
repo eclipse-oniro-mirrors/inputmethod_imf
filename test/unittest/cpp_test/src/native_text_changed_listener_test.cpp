@@ -13,6 +13,9 @@
  * limitations under the License.
  */
 #include <gtest/gtest.h>
+#include <atomic>
+#include <chrono>
+#include <thread>
 
 #include "string_ex.h"
 
@@ -22,6 +25,7 @@
 #include "mock_iremote_object.h"
 #include "native_inputmethod_types.h"
 #include "native_text_changed_listener.h"
+#include "text_editor_proxy_manager.h"
 
 using namespace testing::ext;
 using namespace OHOS;
@@ -390,6 +394,101 @@ HWTEST_F(NativeTextChangedListenerTest, CallInNonMainThreadAndPostTest_FAIL, Tes
     std::thread noMainThread(func);
     noMainThread.join();
     EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Detach(inputMethodProxy));
+}
+
+/**
+ * @tc.name: DestroyConcurrentWithInsertTextSafe_001
+ * @tc.desc: Destroy proxy while InsertText callback is in flight on another thread; must not crash.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeTextChangedListenerTest, DestroyConcurrentWithInsertTextSafe_001, TestSize.Level1)
+{
+    IMSA_HILOGI("NativeTextChangedListenerTest::DestroyConcurrentWithInsertTextSafe_001 start");
+    auto *proxy = OH_TextEditorProxy_Create();
+    ASSERT_NE(nullptr, proxy);
+    EXPECT_EQ(IME_ERR_OK, OH_TextEditorProxy_SetInsertTextFunc(proxy, InsertText));
+
+    sptr<NativeTextChangedListener> listener = new (std::nothrow) NativeTextChangedListener(proxy);
+    ASSERT_NE(nullptr, listener);
+
+    std::atomic<bool> stop(false);
+    auto worker = [&stop, listener]() {
+        while (!stop.load(std::memory_order_relaxed)) {
+            listener->InsertText(u"abc");
+        }
+    };
+    std::thread t(worker);
+    std::this_thread::sleep_for(std::chrono::milliseconds(5));
+    OH_TextEditorProxy_Destroy(proxy);
+    stop.store(true, std::memory_order_relaxed);
+    t.join();
+    listener->InsertText(u"xyz");
+}
+
+/**
+ * @tc.name: TextEditorProxyManager_RegisterNullptr_001
+ * @tc.desc: Register(nullptr) is a no-op; no crash, nullptr not registered.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeTextChangedListenerTest, TextEditorProxyManager_RegisterNullptr_001, TestSize.Level1)
+{
+    IMSA_HILOGI("NativeTextChangedListenerTest::TextEditorProxyManager_RegisterNullptr_001 start");
+    TextEditorProxyManager::GetInstance().Register(nullptr);
+    EXPECT_TRUE(TextEditorProxyManager::GetInstance().GetWeak(nullptr).expired());
+}
+
+/**
+ * @tc.name: TextEditorProxyManager_UnregisterNullptr_001
+ * @tc.desc: Unregister(nullptr) is a no-op; no crash.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeTextChangedListenerTest, TextEditorProxyManager_UnregisterNullptr_001, TestSize.Level1)
+{
+    IMSA_HILOGI("NativeTextChangedListenerTest::TextEditorProxyManager_UnregisterNullptr_001 start");
+    TextEditorProxyManager::GetInstance().Unregister(nullptr);
+    EXPECT_TRUE(true);
+}
+
+/**
+ * @tc.name: TextEditorProxyManager_GetWeakNotRegistered_001
+ * @tc.desc: GetWeak with a non-null raw not registered returns empty weak.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeTextChangedListenerTest, TextEditorProxyManager_GetWeakNotRegistered_001, TestSize.Level1)
+{
+    IMSA_HILOGI("NativeTextChangedListenerTest::TextEditorProxyManager_GetWeakNotRegistered_001 start");
+    auto *raw = new (std::nothrow) InputMethod_TextEditorProxy();
+    ASSERT_NE(nullptr, raw);
+    auto wp = TextEditorProxyManager::GetInstance().GetWeak(raw);
+    EXPECT_TRUE(wp.expired());
+    delete raw;
+}
+
+/**
+ * @tc.name: TextEditorProxy_DestroyNullptr_001
+ * @tc.desc: OH_TextEditorProxy_Destroy(nullptr) is a no-op; no crash.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeTextChangedListenerTest, TextEditorProxy_DestroyNullptr_001, TestSize.Level1)
+{
+    IMSA_HILOGI("NativeTextChangedListenerTest::TextEditorProxy_DestroyNullptr_001 start");
+    OH_TextEditorProxy_Destroy(nullptr);
+    EXPECT_TRUE(true);
+}
+
+/**
+ * @tc.name: TextEditorProxy_DoubleDestroy_001
+ * @tc.desc: Destroy twice is safe; the second is a no-op (not registered), no crash.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeTextChangedListenerTest, TextEditorProxy_DoubleDestroy_001, TestSize.Level1)
+{
+    IMSA_HILOGI("NativeTextChangedListenerTest::TextEditorProxy_DoubleDestroy_001 start");
+    auto *proxy = OH_TextEditorProxy_Create();
+    ASSERT_NE(nullptr, proxy);
+    OH_TextEditorProxy_Destroy(proxy);
+    OH_TextEditorProxy_Destroy(proxy);
+    EXPECT_TRUE(true);
 }
 } // namespace MiscServices
 } // namespace OHOS
