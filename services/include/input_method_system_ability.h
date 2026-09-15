@@ -16,6 +16,8 @@
 #ifndef SERVICES_INCLUDE_INPUT_METHOD_SYSTEM_ABILITY_H
 #define SERVICES_INCLUDE_INPUT_METHOD_SYSTEM_ABILITY_H
 
+#include <memory>
+
 #include "identity_checker_impl.h"
 #include "ime_info_inquirer.h"
 #include "input_method_system_ability_stub.h"
@@ -24,7 +26,6 @@
 #include "input_type_manager.h"
 #include "inputmethod_dump.h"
 #include "inputmethod_trace.h"
-#include "ptt_controller.h"
 #include "system_ability.h"
 #include "user_session_manager.h"
 #ifdef IME_USAGE_ENABLE
@@ -33,6 +34,7 @@
 
 namespace OHOS {
 namespace MiscServices {
+class PushToTalkManager;
 enum class ServiceRunningState { STATE_NOT_START, STATE_RUNNING };
 class InputMethodSystemAbility : public SystemAbility, public InputMethodSystemAbilityStub {
     DECLARE_SYSTEM_ABILITY(InputMethodSystemAbility);
@@ -217,7 +219,6 @@ private:
     bool GetDeviceFunctionKeyState(int32_t functionKey, bool &isEnable);
     bool ModifyImeCfgWithWrongCaps(int32_t userId);
     void HandleBundleScanFinished();
-    void StartPushToTalkDialogAbility(int32_t userId);
     int32_t StartInputInner(InputClientInfo &inputClientInfo, std::vector<sptr<IRemoteObject>> &agents,
         std::vector<BindImeInfo> &imeInfos, bool &failedByUnavailableIme);
     std::pair<bool, FocusedInfo> IsFocusedOrBroker(int64_t callingPid, uint32_t callingTokenId, int32_t userId,
@@ -288,32 +289,7 @@ private:
 #ifdef IME_USAGE_ENABLE
     std::unique_ptr<ImeUsageReporter> imeUsageReporter_;
 #endif
-    void HandlePttKeyEvent(const KeyboardEventInfo &eventInfo);
-    void ApplyPttAction(PttAction action, int32_t eventUserId);
-    void HandlePttStartTimer(int32_t eventUserId);
-    void SchedulePttLongPressTimer();
-    void HandlePttCancelTimer();
-    void HandlePttStartVoice();
-    bool EnablePttSpaceKeyEventBlock(int32_t userId);
-    void HandlePttStopVoice();
-    int32_t RestoreCurrentImeAfterPtt(int32_t userId);
-    void HandlePttNoAction();
-    bool BindPttGestureContext(int32_t userId);
-    bool IsPttGestureContextValid(int32_t userId);
-    bool GetPttEligibleClient(int32_t userId, FocusedRealImeClientSnapshot &snapshot);
-    void NotifyPttGestureCancelled(int32_t userId);
-    void ClearPttGestureContext();
-    static bool IsSamePttInputClient(
-        const FocusedRealImeClientSnapshot &left, const FocusedRealImeClientSnapshot &right);
-    static constexpr int32_t PTT_INVALID_USER_ID = -1;
-    PttController pttController_;
-    std::atomic_bool isPttKeyEventMonitorReady_ { false };
-    int32_t pttGestureUserId_ { PTT_INVALID_USER_ID };
-    std::mutex pttGestureClientSnapshotMutex_;
-    FocusedRealImeClientSnapshot pttGestureClientSnapshot_;
-    static constexpr const char *PTT_KEY_EVENT_TASK = "PttKeyEventTask";
-    static constexpr const char *PTT_TIMEOUT_TASK = "PttTimeoutTask";
-    int32_t NotifyRollbackSpace(int32_t userId);
+    std::shared_ptr<PushToTalkManager> pushToTalkManager_;
 };
 } // namespace MiscServices
 } // namespace OHOS

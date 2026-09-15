@@ -611,7 +611,10 @@ ohos_unittest("InputMethodPrivateMemberTest") {
     "mock/screenlock_manager_mock.cpp",
     "src/input_method_private_member_test.cpp",
     "src/ptt_controller_test.cpp",
+    "src/push_to_talk_manager_test.cpp",
   ]
+
+  cflags_cc = [ "-fno-access-control" ]
 
   configs = [
     ":module_private_config",
@@ -673,6 +676,77 @@ ohos_unittest("InputMethodPrivateMemberTest") {
   }
 
   ldflags = [ "-Wl,--allow-multiple-definition" ]
+}
+
+# Keep boundary stubs in their own executable so other service tests use their existing dependencies.
+ohos_unittest("PushToTalkManagerUnitTest") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+  module_out_path = module_output_path
+
+  sources = [
+    "mock/push_to_talk_test_env.cpp",
+    "src/push_to_talk_manager_unit_test.cpp",
+  ]
+
+  cflags_cc = [ "-fno-access-control" ]
+  configs = [ ":module_private_config" ]
+
+  deps = [
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:input_control_channel_proxy",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:input_method_core_stub",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_static",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_client_stub",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_method_agent_proxy",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
+    "${inputmethod_path}/services/adapter/settings_data_provider:settings_data_static",
+    "${inputmethod_path}/services:inputmethod_service_static",
+    "${inputmethod_path}/test/common:inputmethod_test_common",
+  ]
+
+  external_deps = [
+    "ability_base:want",
+    "ability_runtime:ability_connect_callback_stub",
+    "ability_runtime:ability_manager",
+    "ability_runtime:runtime",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "cJSON:cjson",
+    "c_utils:utils",
+    "data_share:datashare_common",
+    "data_share:datashare_consumer",
+    "eventhandler:libeventhandler",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "input:libmmi-client",
+    "ipc:ipc_single",
+    "os_account:os_account_innerkits",
+    "safwk:system_ability_fwk",
+    "window_manager:libdm",
+  ]
+  defines = []
+  if (window_manager_use_sceneboard) {
+    external_deps += [ "window_manager:libwm_lite" ]
+    defines += [ "SCENE_BOARD_ENABLE" ]
+  } else {
+    external_deps += [ "window_manager:libwm" ]
+  }
+  if (target_platform == "phone") {
+    defines += [ "IME_USAGE_ENABLE" ]
+  }
+  if (build_selinux) {
+    external_deps += [ "selinux_adapter:librestorecon" ]
+    cflags = [ "-DWITH_SELINUX" ]
+  }
+
+  # Test objects supply boundary methods before the service archives, following the private-member test pattern.
+  ldflags = [
+    "-Wl,--allow-multiple-definition",
+  ]
 }
 
 ohos_unittest("InputMethodEditorTest") {
