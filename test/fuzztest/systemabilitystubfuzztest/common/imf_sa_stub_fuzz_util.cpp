@@ -116,8 +116,13 @@ bool ImfSaStubFuzzUtil::SwitchIpcCode(IInputMethodSystemAbilityIpcCode code, Mes
 bool ImfSaStubFuzzUtil::FuzzInputMethodSystemAbility(FuzzedDataProvider &provider,
     IInputMethodSystemAbilityIpcCode code)
 {
+    static sptr<InputMethodSystemAbility> imsa = new (std::nothrow) InputMethodSystemAbility();
+    if (imsa == nullptr) {
+        IMSA_HILOGE("failed to create InputMethodSystemAbility");
+        return false;
+    }
     if (!isInitialize_) {
-        Initialize();
+        Initialize(imsa);
     }
     auto fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
     std::vector<uint8_t> bufferData = provider.ConsumeRemainingBytes<uint8_t>();
@@ -130,24 +135,23 @@ bool ImfSaStubFuzzUtil::FuzzInputMethodSystemAbility(FuzzedDataProvider &provide
     datas.RewindRead(0);
     MessageParcel reply;
     MessageOption option;
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->OnRemoteRequest(
-        static_cast<int32_t>(code), datas, reply, option);
+    imsa->OnRemoteRequest(static_cast<int32_t>(code), datas, reply, option);
     return true;
 }
 
-void ImfSaStubFuzzUtil::Initialize()
+void ImfSaStubFuzzUtil::Initialize(const sptr<InputMethodSystemAbility> &imsa)
 {
     std::lock_guard<std::mutex> lock(initMutex_);
     if (isInitialize_) {
         return;
     }
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->Initialize();
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->InitServiceHandler();
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->state_ = ServiceRunningState::STATE_RUNNING;
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->SubscribeCommonEvent();
-    int32_t ret = DelayedSingleton<InputMethodSystemAbility>::GetInstance()->InitKeyEventMonitor();
+    imsa->Initialize();
+    imsa->InitServiceHandler();
+    imsa->state_ = ServiceRunningState::STATE_RUNNING;
+    imsa->SubscribeCommonEvent();
+    int32_t ret = imsa->InitKeyEventMonitor();
     IMSA_HILOGI("init KeyEvent monitor %{public}s", ret == ErrorCode::NO_ERROR ? "success" : "failed");
-    ret = DelayedSingleton<InputMethodSystemAbility>::GetInstance()->InitWmsMonitor();
+    ret = imsa->InitWmsMonitor();
     ImeInfoInquirer::GetInstance().InitSystemConfig();
     IMSA_HILOGI("init wms monitor %{public}s", ret ? "success" : "failed");
     isInitialize_ = true;
