@@ -1,4 +1,4 @@
-﻿/*
+/*
  * Copyright (C) 2022 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -84,7 +84,6 @@ void ResetMockScreenLock();
 #include "keyboard_event.h"
 #include "ipc_skeleton.h"
 #include "os_account_manager.h"
-#include "ptt_settings_manager.h"
 #include "tdd_util.h"
 
 using namespace testing::ext;
@@ -959,6 +958,112 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_IsPanelShown_AccountLocalIdFailed, Tes
     imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
     auto ret = imsa->IsPanelShown(inValidDisplayId, panelInfo, isShown);
     EXPECT_EQ(ret, ErrorCode::ERROR_ACCOUNT_LOCALID_FAILED);
+}
+
+/**
+ * @tc.name: SA_IsPassed_PermissionEmpty
+ * @tc.desc: permissionCliChecked is empty, IsPassed returns false.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_IsPassed_PermissionEmpty, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest SA_IsPassed_PermissionEmpty TEST START");
+    sptr<InputMethodSystemAbility> imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    ImeInfoInquirer::GetInstance().systemConfig_.permissionCliChecked.clear();
+    EXPECT_FALSE(imsa->IsPassed(0));
+}
+ 
+/**
+ * @tc.name: SA_IsPassed_HasPermission
+ * @tc.desc: permissionCliChecked is non-empty and HasPermission returns true, IsPassed returns true.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_IsPassed_HasPermission, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest SA_IsPassed_HasPermission TEST START");
+    sptr<InputMethodSystemAbility> imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetPermission(true);
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    ImeInfoInquirer::GetInstance().systemConfig_.permissionCliChecked = "ohos.permission.CONTROL_DEVICE";
+    EXPECT_TRUE(imsa->IsPassed(0));
+}
+ 
+/**
+ * @tc.name: SA_IsPassed_NoPermission
+ * @tc.desc: permissionCliChecked is non-empty and HasPermission returns false, IsPassed returns false.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_IsPassed_NoPermission, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest SA_IsPassed_NoPermission TEST START");
+    sptr<InputMethodSystemAbility> imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetPermission(false);
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    ImeInfoInquirer::GetInstance().systemConfig_.permissionCliChecked = "ohos.permission.CONTROL_DEVICE";
+    EXPECT_FALSE(imsa->IsPassed(0));
+    ImeInfoInquirer::GetInstance().systemConfig_.permissionCliChecked.clear();
+}
+ 
+/**
+ * @tc.name: SA_ExecTextInteraction_IdentityCheckerNull
+ * @tc.desc: identityChecker_ is nullptr, return ERROR_NULL_POINTER.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_ExecTextInteraction_IdentityCheckerNull, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest SA_ExecTextInteraction_IdentityCheckerNull TEST START");
+    sptr<InputMethodSystemAbility> imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    EXPECT_EQ(imsa->ExecTextInteraction("text"), ErrorCode::ERROR_NULL_POINTER);
+}
+ 
+/**
+ * @tc.name: SA_ExecTextInteraction_NoControlDevicePermission
+ * @tc.desc: HasPermission(CONTROL_DEVICE) is false, return ERROR_STATUS_PERMISSION_DENIED.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_ExecTextInteraction_NoControlDevicePermission, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest SA_ExecTextInteraction_NoControlDevicePermission TEST START");
+    sptr<InputMethodSystemAbility> imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetPermission(false);
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    ImeInfoInquirer::GetInstance().systemConfig_.permissionCliChecked = "ohos.permission.CONTROL_DEVICE";
+    EXPECT_EQ(imsa->ExecTextInteraction("text"), ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
+    ImeInfoInquirer::GetInstance().systemConfig_.permissionCliChecked.clear();
+}
+ 
+/**
+ * @tc.name: SA_ExecTextInteraction_PermissionPassed
+ * @tc.desc: HasPermission(CONTROL_DEVICE) is true, permission gate passed (reaches session lookup).
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_ExecTextInteraction_PermissionPassed, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest SA_ExecTextInteraction_PermissionPassed TEST START");
+    sptr<InputMethodSystemAbility> imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetPermission(true);
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    ImeInfoInquirer::GetInstance().systemConfig_.permissionCliChecked = "ohos.permission.CONTROL_DEVICE";
+    auto ret = imsa->ExecTextInteraction("text");
+    EXPECT_NE(ret, ErrorCode::ERROR_NULL_POINTER);
+    EXPECT_NE(ret, ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
+    ImeInfoInquirer::GetInstance().systemConfig_.permissionCliChecked.clear();
 }
 
 /**
