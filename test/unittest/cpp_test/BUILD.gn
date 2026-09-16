@@ -2151,6 +2151,7 @@ ohos_executable("ImcInnerTestDemo") {
     "access_token:libnativetoken",
     "access_token:libtoken_setproc",
     "c_utils:utils",
+    "hilog:libhilog",
     "input:libmmi-client",
   ]
 
@@ -2187,6 +2188,7 @@ ohos_executable("ProxyImeTestDemo") {
 
   external_deps = [
     "c_utils:utils",
+    "cJSON:cjson",
     "config_policy:configpolicy_util",
     "hilog:libhilog",
     "input:libmmi-client",
