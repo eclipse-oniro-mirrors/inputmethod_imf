@@ -951,7 +951,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_IsPanelShown_AccountLocalIdFailed, Tes
     panelInfo.panelFlag = FLG_FIXED;
     bool isShown = false;
     uint64_t inValidDisplayId = 99999;
-    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    sptr<InputMethodSystemAbility> imsa = new (std::nothrow) InputMethodSystemAbility();
     ASSERT_NE(imsa, nullptr);
     IdentityCheckerMock::ResetParam();
     IdentityCheckerMock::SetSystemApp(true);
@@ -974,7 +974,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_IsPassed_PermissionEmpty, TestSize.Lev
     ImeInfoInquirer::GetInstance().systemConfig_.permissionCliChecked.clear();
     EXPECT_FALSE(imsa->IsPassed(0));
 }
- 
+
 /**
  * @tc.name: SA_IsPassed_HasPermission
  * @tc.desc: permissionCliChecked is non-empty and HasPermission returns true, IsPassed returns true.
@@ -992,7 +992,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_IsPassed_HasPermission, TestSize.Level
     ImeInfoInquirer::GetInstance().systemConfig_.permissionCliChecked = "ohos.permission.CONTROL_DEVICE";
     EXPECT_TRUE(imsa->IsPassed(0));
 }
- 
+
 /**
  * @tc.name: SA_IsPassed_NoPermission
  * @tc.desc: permissionCliChecked is non-empty and HasPermission returns false, IsPassed returns false.
@@ -1011,7 +1011,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_IsPassed_NoPermission, TestSize.Level0
     EXPECT_FALSE(imsa->IsPassed(0));
     ImeInfoInquirer::GetInstance().systemConfig_.permissionCliChecked.clear();
 }
- 
+
 /**
  * @tc.name: SA_ExecTextInteraction_IdentityCheckerNull
  * @tc.desc: identityChecker_ is nullptr, return ERROR_NULL_POINTER.
@@ -1025,7 +1025,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_ExecTextInteraction_IdentityCheckerNul
     ASSERT_NE(imsa, nullptr);
     EXPECT_EQ(imsa->ExecTextInteraction("text"), ErrorCode::ERROR_NULL_POINTER);
 }
- 
+
 /**
  * @tc.name: SA_ExecTextInteraction_NoControlDevicePermission
  * @tc.desc: HasPermission(CONTROL_DEVICE) is false, return ERROR_STATUS_PERMISSION_DENIED.
@@ -1044,7 +1044,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_ExecTextInteraction_NoControlDevicePer
     EXPECT_EQ(imsa->ExecTextInteraction("text"), ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
     ImeInfoInquirer::GetInstance().systemConfig_.permissionCliChecked.clear();
 }
- 
+
 /**
  * @tc.name: SA_ExecTextInteraction_PermissionPassed
  * @tc.desc: HasPermission(CONTROL_DEVICE) is true, permission gate passed (reaches session lookup).
