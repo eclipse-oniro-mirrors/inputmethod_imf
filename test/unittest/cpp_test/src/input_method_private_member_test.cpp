@@ -1992,7 +1992,7 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SpecialScenarioCheck, TestSize.Level0)
     allow = userSession->SpecialScenarioCheck();
     EXPECT_FALSE(allow);
 
-    info->config.inputAttribute.isOneTimeCodeNumberFlag = true;
+    info->config.inputAttribute.inputPattern = InputAttribute::PATTERN_ONE_TIME_CODE_NUMBER;
     group->mapClients_.insert_or_assign(client->AsObject(), info);
     userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
     allow = userSession->SpecialScenarioCheck();
@@ -2025,6 +2025,12 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_IsScreenLockOrSecurityFlag, TestSize.L
     EXPECT_FALSE(ret);
 
     info->config.inputAttribute.inputPattern = InputAttribute::PATTERN_ONE_TIME_CODE;
+    group->mapClients_.insert_or_assign(client->AsObject(), info);
+    userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
+    ret = userSession->IsImeSwitchForbidden();
+    EXPECT_FALSE(ret);
+
+    info->config.inputAttribute.inputPattern = InputAttribute::PATTERN_ONE_TIME_CODE_NUMBER;
     group->mapClients_.insert_or_assign(client->AsObject(), info);
     userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
     ret = userSession->IsImeSwitchForbidden();
