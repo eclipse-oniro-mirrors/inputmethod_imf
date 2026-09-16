@@ -6308,7 +6308,7 @@ HWTEST_F(InputMethodPrivateMemberTest, ImCommonEventManager_OnExamMode_ExamModeO
  
 /**
  * @tc.name: ImCommonEventManager_OnExamMode_ExamModeOff
- * @tc.desc: OnExamMode sends MSG_ID_EXAM_MODE_OFF when receiving KIOSK_MODE_OFF with type=0
+ * @tc.desc: OnExamMode sends MSG_ID_EXAM_MODE_OFF when receiving KIOSK_MODE_OFF with type=1
  * @tc.type: FUNC
  * @tc.require:
  */
@@ -6326,7 +6326,7 @@ HWTEST_F(InputMethodPrivateMemberTest, ImCommonEventManager_OnExamMode_ExamModeO
     AAFwk::Want want;
     want.SetAction("usual.event.KIOSK_MODE_OFF");
     want.SetParam(COMMON_EVENT_PARAM_USER_ID, 100);
-    want.SetParam("type", 0);
+    want.SetParam("type", 1);
     EventFwk::CommonEventData data;
     data.SetWant(want);
     subscriber->OnExamMode(data);
@@ -6944,7 +6944,7 @@ HWTEST_F(InputMethodPrivateMemberTest, ImCommonEventManager_OnExamMode_ExamOnTyp
  
 /**
  * @tc.name: ImCommonEventManager_OnExamMode_ExamOffTypeOn
- * @tc.desc: OnExamMode does not send message when action is OFF but type is ON (mismatched)
+ * @tc.desc: OnExamMode sends MSG_ID_EXAM_MODE_OFF when receiving KIOSK_MODE_OFF with type=1
  * @tc.type: FUNC
  * @tc.require:
  */
@@ -6962,11 +6962,14 @@ HWTEST_F(InputMethodPrivateMemberTest, ImCommonEventManager_OnExamMode_ExamOffTy
     AAFwk::Want want;
     want.SetAction("usual.event.KIOSK_MODE_OFF");
     want.SetParam(COMMON_EVENT_PARAM_USER_ID, 100);
-    want.SetParam("type", 1); // EXAM_MODE_TYPE_ON — mismatched with OFF action
+    want.SetParam("type", 1); // EXAM_MODE_TYPE_ON
     EventFwk::CommonEventData data;
     data.SetWant(want);
     subscriber->OnExamMode(data);
-    EXPECT_TRUE(msgHandler->mQueue.empty());
+    EXPECT_FALSE(msgHandler->mQueue.empty());
+    while (!msgHandler->mQueue.empty()) {
+        msgHandler->mQueue.pop();
+    }
 }
  
 /**

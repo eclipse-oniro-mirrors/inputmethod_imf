@@ -48,8 +48,7 @@ constexpr const char *ENABLE_PUSH_TO_TALK = "accessory.manager.event.ENABLE_PUSH
 constexpr const char *EVENT_EXAM_MODE_ON = "usual.event.KIOSK_MODE_ON";
 constexpr const char *EVENT_EXAM_MODE_OFF = "usual.event.KIOSK_MODE_OFF";
 constexpr const char *EVENT_PARAM_EXAM_TYPE = "type";
-constexpr int32_t EXAM_MODE_TYPE_ON = 1;
-constexpr int32_t EXAM_MODE_TYPE_OFF = 0;
+constexpr int32_t EXAM_MODE_TYPE = 1;
 ImCommonEventManager::ImCommonEventManager()
 {
 }
@@ -537,9 +536,9 @@ void ImCommonEventManager::EventSubscriber::OnExamMode(const EventFwk::CommonEve
     IMSA_HILOGI("OnExamMode action: %{public}s, userId: %{public}d, type: %{public}d", action.c_str(), userId, type);
  
     bool isExamModeOn = false;
-    if (action == EVENT_EXAM_MODE_ON && type == EXAM_MODE_TYPE_ON) {
+    if (action == EVENT_EXAM_MODE_ON && type == EXAM_MODE_TYPE) {
         isExamModeOn = true;
-    } else if (action == EVENT_EXAM_MODE_OFF && type == EXAM_MODE_TYPE_OFF) {
+    } else if (action == EVENT_EXAM_MODE_OFF && type == EXAM_MODE_TYPE) {
         isExamModeOn = false;
     } else {
         IMSA_HILOGW("OnExamMode unexpected action or type, skip");
