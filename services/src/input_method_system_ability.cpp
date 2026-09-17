@@ -63,6 +63,7 @@
 #include "os_account_manager.h"
 #include "res_sched_adapter.h"
 #include "ime_info_inquirer.h"
+#include "exam_mode_manager.h"
 #ifdef IME_USAGE_ENABLE
 #include "fold_status_adapter.h"
 #endif
@@ -1708,6 +1709,9 @@ int32_t InputMethodSystemAbility::SwitchInputMethodInner(int32_t userId, const s
         IMSA_HILOGE("Failed to get current ime config");
         return ErrorCode::ERROR_IMSA_GET_IME_INFO_FAILED;
     }
+    if (!IsSwitchingAllow(userId, bundleName)) {
+        return ErrorCode::NO_ERROR;
+    }
     if (switchInfo.subName.empty() && switchInfo.bundleName == currentImeCfg->bundleName) {
         switchInfo.subName = currentImeCfg->subName;
     }
@@ -2102,6 +2106,14 @@ void InputMethodSystemAbility::WorkThread()
                 OnSysImeImageCreated(msg);
                 break;
             }
+            case MSG_ID_EXAM_MODE_ON: {
+                OnExamModeOn(msg);
+                break;
+            }
+            case MSG_ID_EXAM_MODE_OFF: {
+                OnExamModeOff(msg);
+                break;
+            }
             default: {
                 IMSA_HILOGD("the message is %{public}d.", msg->msgId_);
                 break;
@@ -2491,6 +2503,9 @@ int32_t InputMethodSystemAbility::SwitchType(int32_t userId)
         IMSA_HILOGD("Stay current ime, no need to switch.");
         return ErrorCode::NO_ERROR;
     }
+    if (!IsSwitchingAllow(userId, nextSwitchInfo.bundleName)) {
+        return ErrorCode::NO_ERROR;
+    }
     IMSA_HILOGD("switch to: %{public}s.", nextSwitchInfo.bundleName.c_str());
     nextSwitchInfo.timestamp = std::chrono::system_clock::now();
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
@@ -2564,6 +2579,7 @@ void InputMethodSystemAbility::HandleDataShareReady()
         return;
     }
     SettingsDataUtils::GetInstance().NotifyDataShareReady();
+    ExamModeManager::GetInstance().InitFromPersistedData();
     FullImeInfoManager::GetInstance().Init();
     NumkeyAppsManager::GetInstance().Init(OsAccountAdapter::GetMainAccountId());
 }
@@ -3313,6 +3329,9 @@ int32_t InputMethodSystemAbility::StartInputType(int32_t userId, InputType type,
         }
         return ret;
     }
+    if (type != InputType::SECURITY_INPUT && !IsSwitchingAllow(userId, ime.bundleName)) {
+        return ErrorCode::NO_ERROR;
+    }
     SwitchInfo switchInfo = { std::chrono::system_clock::now(), ime.bundleName, ime.subName };
     session->GetSwitchQueue().Push(switchInfo);
     IMSA_HILOGI("start input type: %{public}d, isPersistence: %{public}d.", type, isPersistence);
@@ -3706,6 +3725,124 @@ InputType InputMethodSystemAbility::GetSecurityInputType(const InputClientInfo &
     }
 }
 // LCOV_EXCL_STOP
+
+void InputMethodSystemAbility::OnExamModeOn(const Message *msg)
+{
+    IMSA_HILOGI("enter exam mode");
+    if (msg == nullptr || msg->msgContent_ == nullptr) {
+        IMSA_HILOGE("msg or msgContent_ is nullptr!");
+        return;
+    }
+    int32_t userId = OsAccountAdapter::INVALID_USER_ID;
+    if (!ITypesUtil::Unmarshal(*msg->msgContent_, userId)) {
+        IMSA_HILOGE("failed to unmarshal userId!");
+        return;
+    }
+    if (userId == OsAccountAdapter::INVALID_USER_ID) {
+        IMSA_HILOGE("invalid user id!");
+        return;
+    }
+    auto currentImeCfg = ImeEnabledInfoManager::GetInstance().GetCurrentImeCfg(userId);
+    if (currentImeCfg == nullptr || currentImeCfg->bundleName.empty()) {
+        IMSA_HILOGE("failed to get current ime config");
+        return;
+    }
+    ExamModeManager::GetInstance().SetExamMode(true);
+    if (ImeInfoInquirer::GetInstance().IsSysIme(currentImeCfg->bundleName)) {
+        IMSA_HILOGI("current ime is already system ime, no need to switch");
+        ExamModeManager::GetInstance().ClearPreviousIme();
+        return;
+    }
+    ExamModeManager::GetInstance().SavePreviousIme(currentImeCfg->bundleName, currentImeCfg->subName);
+    SwitchToDefaultIme(userId);
+}
+
+void InputMethodSystemAbility::OnExamModeOff(const Message *msg)
+{
+    IMSA_HILOGI("exit exam mode");
+    if (msg == nullptr || msg->msgContent_ == nullptr) {
+        IMSA_HILOGE("msg or msgContent_ is nullptr!");
+        return;
+    }
+    int32_t userId = OsAccountAdapter::INVALID_USER_ID;
+    if (!ITypesUtil::Unmarshal(*msg->msgContent_, userId)) {
+        IMSA_HILOGE("failed to unmarshal userId!");
+        return;
+    }
+    if (userId == OsAccountAdapter::INVALID_USER_ID) {
+        IMSA_HILOGE("invalid user id!");
+        return;
+    }
+    std::string previousBundleName;
+    std::string previousSubName;
+    ExamModeManager::GetInstance().GetPreviousIme(previousBundleName, previousSubName);
+    if (!previousBundleName.empty()) {
+        auto ret = SwitchToPreviousIme(userId);
+        if (ret == ErrorCode::NO_ERROR) {
+            ExamModeManager::GetInstance().ClearPreviousIme();
+        } else {
+            IMSA_HILOGE("failed to restore previous ime, ret: %{public}d, keep previous ime info", ret);
+        }
+    }
+    ExamModeManager::GetInstance().SetExamMode(false);
+}
+
+int32_t InputMethodSystemAbility::SwitchToDefaultIme(int32_t userId)
+{
+    auto defaultIme = ImeInfoInquirer::GetInstance().GetDefaultIme();
+    if (defaultIme.bundleName.empty()) {
+        IMSA_HILOGE("default ime bundleName is empty!");
+        return ErrorCode::ERROR_IMSA_GET_IME_INFO_FAILED;
+    }
+    IMSA_HILOGI("switch to default ime: %{public}s", defaultIme.bundleName.c_str());
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+    if (session == nullptr) {
+        IMSA_HILOGE("%{public}d session is nullptr!", userId);
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    SwitchInfo switchInfo = { std::chrono::system_clock::now(), defaultIme.bundleName, "" };
+    session->GetSwitchQueue().Push(switchInfo);
+    return OnSwitchInputMethod(userId, switchInfo, SwitchTrigger::IMSA);
+}
+
+int32_t InputMethodSystemAbility::SwitchToPreviousIme(int32_t userId)
+{
+    std::string previousBundleName;
+    std::string previousSubName;
+    ExamModeManager::GetInstance().GetPreviousIme(previousBundleName, previousSubName);
+    if (previousBundleName.empty()) {
+        IMSA_HILOGI("no previous third-party ime to restore");
+        return ErrorCode::NO_ERROR;
+    }
+    IMSA_HILOGI("switch to previous ime: %{public}s/%{public}s", previousBundleName.c_str(), previousSubName.c_str());
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+    if (session == nullptr) {
+        IMSA_HILOGE("%{public}d session is nullptr!", userId);
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    EnabledStatus status = EnabledStatus::DISABLED;
+    auto ret = ImeEnabledInfoManager::GetInstance().GetEnabledState(userId, previousBundleName, status);
+    if (ret != ErrorCode::NO_ERROR || status == EnabledStatus::DISABLED) {
+        IMSA_HILOGW("previous ime %{public}s is not enabled, skip restore", previousBundleName.c_str());
+        return ErrorCode::ERROR_ENABLE_IME;
+    }
+    SwitchInfo switchInfo = { std::chrono::system_clock::now(), previousBundleName, previousSubName };
+    session->GetSwitchQueue().Push(switchInfo);
+    return OnSwitchInputMethod(userId, switchInfo, SwitchTrigger::IMSA);
+}
+
+bool InputMethodSystemAbility::IsSwitchingAllow(int32_t userId, const std::string &targetBundleName)
+{
+    if (!ExamModeManager::GetInstance().IsExamMode()) {
+        return true;
+    }
+    if (ImeInfoInquirer::GetInstance().IsSysIme(targetBundleName)) {
+        return true;
+    }
+    IMSA_HILOGI("exam mode is on, switch to third-party ime %{public}s is blocked", targetBundleName.c_str());
+    return false;
+}
+
 int32_t InputMethodSystemAbility::StartSecurityIme(int32_t &userId, InputClientInfo &inputClientInfo)
 {
     InputType type = GetSecurityInputType(inputClientInfo);

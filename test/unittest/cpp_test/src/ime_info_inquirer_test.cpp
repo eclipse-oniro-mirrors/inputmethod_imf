@@ -14,6 +14,7 @@
  */
 #define private public
 #define protected public
+#include "exam_mode_manager.h"
 #include "ime_info_inquirer.h"
 #undef private
 
@@ -500,6 +501,139 @@ HWTEST_F(ImeInfoInquirerTest, OnHybridModeSwitch_002, TestSize.Level0)
     subscriber->OnHybridModeSwitch(data);
     EXPECT_FALSE(inquirer.IsPcMode());
     inquirer.SetPcMode(origPcMode);
+}
+
+/**
+ * @tc.name: IsExamMode_001
+ * @tc.desc: IsExamMode returns false by default
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(ImeInfoInquirerTest, IsExamMode_001, TestSize.Level0)
+{
+    IMSA_HILOGI("IsExamMode_001 start");
+    auto &examMgr = ExamModeManager::GetInstance();
+    bool origValue = examMgr.IsExamMode();
+    examMgr.SetExamMode(false);
+    EXPECT_FALSE(examMgr.IsExamMode());
+    examMgr.SetExamMode(origValue);
+}
+
+/**
+ * @tc.name: SetExamMode_001
+ * @tc.desc: SetExamMode sets isExamMode to true
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(ImeInfoInquirerTest, SetExamMode_001, TestSize.Level0)
+{
+    IMSA_HILOGI("SetExamMode_001 start");
+    auto &examMgr = ExamModeManager::GetInstance();
+    bool origValue = examMgr.IsExamMode();
+    examMgr.SetExamMode(true);
+    EXPECT_TRUE(examMgr.IsExamMode());
+    examMgr.SetExamMode(origValue);
+}
+
+/**
+ * @tc.name: SaveAndRestorePreviousIme_001
+ * @tc.desc: SavePreviousIme saves bundleName and subName, GetPreviousIme* retrieves them, ClearPreviousIme clears them
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(ImeInfoInquirerTest, SaveAndRestorePreviousIme_001, TestSize.Level0)
+{
+    IMSA_HILOGI("SaveAndRestorePreviousIme_001 start");
+    auto &examMgr = ExamModeManager::GetInstance();
+    examMgr.ClearPreviousIme();
+    EXPECT_EQ(examMgr.GetPreviousImeBundleName(), "");
+    EXPECT_EQ(examMgr.GetPreviousImeSubName(), "");
+    examMgr.SavePreviousIme("com.thirdparty.ime", "subtype1");
+    EXPECT_EQ(examMgr.GetPreviousImeBundleName(), "com.thirdparty.ime");
+    EXPECT_EQ(examMgr.GetPreviousImeSubName(), "subtype1");
+    examMgr.ClearPreviousIme();
+    EXPECT_EQ(examMgr.GetPreviousImeBundleName(), "");
+    EXPECT_EQ(examMgr.GetPreviousImeSubName(), "");
+}
+
+/**
+ * @tc.name: ExamModeManager_InitFromPersistedData_001
+ * @tc.desc: InitFromPersistedData does not crash and resets to defaults when no data persisted
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(ImeInfoInquirerTest, ExamModeManager_InitFromPersistedData_001, TestSize.Level0)
+{
+    IMSA_HILOGI("ExamModeManager_InitFromPersistedData_001 start");
+    auto &examMgr = ExamModeManager::GetInstance();
+    bool origExamMode = examMgr.IsExamMode();
+    std::string origBundle = examMgr.GetPreviousImeBundleName();
+    std::string origSub = examMgr.GetPreviousImeSubName();
+    examMgr.SetExamMode(true);
+    examMgr.SavePreviousIme("com.test.persist", "subPersist");
+    examMgr.InitFromPersistedData();
+    EXPECT_FALSE(examMgr.IsExamMode());
+    EXPECT_EQ(examMgr.GetPreviousImeBundleName(), "");
+    EXPECT_EQ(examMgr.GetPreviousImeSubName(), "");
+    examMgr.SetExamMode(origExamMode);
+    examMgr.ClearPreviousIme();
+}
+
+/**
+ * @tc.name: ExamModeManager_Persist_SetExamMode_001
+ * @tc.desc: SetExamMode updates memory state correctly even when DataShare is unavailable
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(ImeInfoInquirerTest, ExamModeManager_Persist_SetExamMode_001, TestSize.Level0)
+{
+    IMSA_HILOGI("ExamModeManager_Persist_SetExamMode_001 start");
+    auto &examMgr = ExamModeManager::GetInstance();
+    bool origExamMode = examMgr.IsExamMode();
+    examMgr.SetExamMode(true);
+    EXPECT_TRUE(examMgr.IsExamMode());
+    examMgr.SetExamMode(false);
+    EXPECT_FALSE(examMgr.IsExamMode());
+    examMgr.SetExamMode(origExamMode);
+}
+
+/**
+ * @tc.name: ExamModeManager_Persist_SavePreviousIme_001
+ * @tc.desc: SavePreviousIme updates memory state correctly even when DataShare is unavailable
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(ImeInfoInquirerTest, ExamModeManager_Persist_SavePreviousIme_001, TestSize.Level0)
+{
+    IMSA_HILOGI("ExamModeManager_Persist_SavePreviousIme_001 start");
+    auto &examMgr = ExamModeManager::GetInstance();
+    examMgr.ClearPreviousIme();
+    examMgr.SavePreviousIme("com.test.persist", "subPersist");
+    EXPECT_EQ(examMgr.GetPreviousImeBundleName(), "com.test.persist");
+    EXPECT_EQ(examMgr.GetPreviousImeSubName(), "subPersist");
+    std::string bundleName;
+    std::string subName;
+    examMgr.GetPreviousIme(bundleName, subName);
+    EXPECT_EQ(bundleName, "com.test.persist");
+    EXPECT_EQ(subName, "subPersist");
+    examMgr.ClearPreviousIme();
+}
+
+/**
+ * @tc.name: ExamModeManager_Persist_ClearPreviousIme_001
+ * @tc.desc: ClearPreviousIme clears memory state correctly even when DataShare is unavailable
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(ImeInfoInquirerTest, ExamModeManager_Persist_ClearPreviousIme_001, TestSize.Level0)
+{
+    IMSA_HILOGI("ExamModeManager_Persist_ClearPreviousIme_001 start");
+    auto &examMgr = ExamModeManager::GetInstance();
+    examMgr.SavePreviousIme("com.test.clear", "subClear");
+    EXPECT_EQ(examMgr.GetPreviousImeBundleName(), "com.test.clear");
+    examMgr.ClearPreviousIme();
+    EXPECT_EQ(examMgr.GetPreviousImeBundleName(), "");
+    EXPECT_EQ(examMgr.GetPreviousImeSubName(), "");
 }
 } // namespace MiscServices
 } // namespace OHOS
