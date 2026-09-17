@@ -42,4 +42,5 @@ interface OHOS.MiscServices.IInputMethodCore {
     void NotifyPreemption();
     void OnPttLongPress();
     void OnPttGestureCancelled();
+    [oneway] void HideCandidatePanel();
 }

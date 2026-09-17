@@ -3915,7 +3915,7 @@ int32_t InputMethodSystemAbility::ExecTextInteraction(const std::string &text)
     auto uid = IPCSkeleton::GetCallingUid();
     auto pid = IPCSkeleton::GetCallingPid();
     auto tokenId = IPCSkeleton::GetCallingTokenID();
-    if (!identityChecker_->HasPermission(tokenId, std::string(PERMISSION_CONTROL_DEVICE)) && !IsPassed(tokenId)) {
+    if (!identityChecker_->HasPermission(tokenId, std::string(PERMISSION_CONTROL_DEVICE))) {
         IMSA_HILOGE("permission denied");
         return ErrorCode::ERROR_STATUS_PERMISSION_DENIED;
     }
@@ -3928,15 +3928,5 @@ int32_t InputMethodSystemAbility::ExecTextInteraction(const std::string &text)
     }
     return session->ExecTextInteraction(text);
 }
-// for test start
-bool InputMethodSystemAbility::IsPassed(uint32_t tokenId)
-{
-    auto permission = ImeInfoInquirer::GetInstance().GetPermissionCliChecked();
-    if (permission.empty()) {
-        return false;
-    }
-    return identityChecker_->HasPermission(tokenId, permission);
-}
-// for test end
 } // namespace MiscServices
 } // namespace OHOS

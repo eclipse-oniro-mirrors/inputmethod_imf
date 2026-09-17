@@ -758,6 +758,57 @@ HWTEST_F(PerUserSessionTest, TestOnHideSoftKeyBoardSelf_TriggersOnImeUnbind_001,
 }
 
 /**
+ * @tc.name: TestExecTextInteraction_NoClient_001
+ * @tc.desc: ExecTextInteraction with no bound client returns ERROR_CLIENT_NOT_BOUND
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestExecTextInteraction_NoClient_001, TestSize.Level0)
+{
+    auto ret = session_->ExecTextInteraction("text");
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_BOUND);
+}
+
+/**
+ * @tc.name: TestExecTextInteraction_NoImeData_001
+ * @tc.desc: ExecTextInteraction with bound client but no IME data skips hide path
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestExecTextInteraction_NoImeData_001, TestSize.Level0)
+{
+    auto info = MakeClientInfo(TEST_PID, TEST_DISPLAY_GROUP_ID);
+    info.bindImeData = std::make_shared<BindImeData>(TEST_PID, ImeType::IME);
+    auto ret = session_->OnPrepareInput(info);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    auto group = session_->GetClientGroupByGroupId(TEST_DISPLAY_GROUP_ID);
+    ASSERT_NE(group, nullptr);
+    group->currentClient_ = info.client;
+    // realImeData_ stays nullptr -> hide path skipped
+    ret = session_->ExecTextInteraction("text");
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_EDITABLE);
+}
+
+/**
+ * @tc.name: TestExecTextInteraction_WithImeData_001
+ * @tc.desc: ExecTextInteraction with bound client and IME data enters hide path
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestExecTextInteraction_WithImeData_001, TestSize.Level0)
+{
+    auto info = MakeClientInfo(TEST_PID, TEST_DISPLAY_GROUP_ID);
+    info.bindImeData = std::make_shared<BindImeData>(TEST_PID, ImeType::IME);
+    auto ret = session_->OnPrepareInput(info);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    auto group = session_->GetClientGroupByGroupId(TEST_DISPLAY_GROUP_ID);
+    ASSERT_NE(group, nullptr);
+    group->currentClient_ = info.client;
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    session_->realImeData_ = imeData;
+    ret = session_->ExecTextInteraction("text");
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_EDITABLE);
+}
+
+/**
  * @tc.name: TestRemoveDeathRecipient_NullDeathRecipient_001
  * @tc.desc: Test RemoveDeathRecipient with null death recipient
  * @tc.type: FUNC

@@ -959,58 +959,6 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_IsPanelShown_AccountLocalIdFailed, Tes
 }
 
 /**
- * @tc.name: SA_IsPassed_PermissionEmpty
- * @tc.desc: permissionCliChecked is empty, IsPassed returns false.
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(InputMethodPrivateMemberTest, SA_IsPassed_PermissionEmpty, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodPrivateMemberTest SA_IsPassed_PermissionEmpty TEST START");
-    sptr<InputMethodSystemAbility> imsa = new (std::nothrow) InputMethodSystemAbility();
-    ASSERT_NE(imsa, nullptr);
-    ImeInfoInquirer::GetInstance().systemConfig_.permissionCliChecked.clear();
-    EXPECT_FALSE(imsa->IsPassed(0));
-}
-
-/**
- * @tc.name: SA_IsPassed_HasPermission
- * @tc.desc: permissionCliChecked is non-empty and HasPermission returns true, IsPassed returns true.
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(InputMethodPrivateMemberTest, SA_IsPassed_HasPermission, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodPrivateMemberTest SA_IsPassed_HasPermission TEST START");
-    sptr<InputMethodSystemAbility> imsa = new (std::nothrow) InputMethodSystemAbility();
-    ASSERT_NE(imsa, nullptr);
-    IdentityCheckerMock::ResetParam();
-    IdentityCheckerMock::SetPermission(true);
-    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
-    ImeInfoInquirer::GetInstance().systemConfig_.permissionCliChecked = "ohos.permission.CONTROL_DEVICE";
-    EXPECT_TRUE(imsa->IsPassed(0));
-}
-
-/**
- * @tc.name: SA_IsPassed_NoPermission
- * @tc.desc: permissionCliChecked is non-empty and HasPermission returns false, IsPassed returns false.
- * @tc.type: FUNC
- * @tc.require:
- */
-HWTEST_F(InputMethodPrivateMemberTest, SA_IsPassed_NoPermission, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodPrivateMemberTest SA_IsPassed_NoPermission TEST START");
-    sptr<InputMethodSystemAbility> imsa = new (std::nothrow) InputMethodSystemAbility();
-    ASSERT_NE(imsa, nullptr);
-    IdentityCheckerMock::ResetParam();
-    IdentityCheckerMock::SetPermission(false);
-    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
-    ImeInfoInquirer::GetInstance().systemConfig_.permissionCliChecked = "ohos.permission.CONTROL_DEVICE";
-    EXPECT_FALSE(imsa->IsPassed(0));
-    ImeInfoInquirer::GetInstance().systemConfig_.permissionCliChecked.clear();
-}
-
-/**
  * @tc.name: SA_ExecTextInteraction_IdentityCheckerNull
  * @tc.desc: identityChecker_ is nullptr, return ERROR_NULL_POINTER.
  * @tc.type: FUNC

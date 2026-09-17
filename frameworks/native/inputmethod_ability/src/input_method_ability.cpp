@@ -549,6 +549,21 @@ int32_t InputMethodAbility::HideKeyboard()
     return HideKeyboardImplWithoutLock(cmdCount, 0);
 }
 
+int32_t InputMethodAbility::HideCandidatePanel()
+{
+    auto panel = GetSoftKeyboardPanel();
+    if (panel == nullptr) {
+        IMSA_HILOGE("panel is nullptr!");
+        return ErrorCode::ERROR_IME;
+    }
+    auto flag = panel->GetPanelFlag();
+    if (flag != FLG_CANDIDATE_COLUMN) {
+        IMSA_HILOGD("panel flag is not candidate, no need to hide.");
+        return ErrorCode::NO_ERROR;
+    }
+    return HidePanel(panel, flag, Trigger::IMF, 0);
+}
+
 int32_t InputMethodAbility::HideKeyboardImplWithoutLock(int32_t cmdId, uint32_t sessionId, int32_t clientSessionId)
 {
     NotifyInputStopToClients();

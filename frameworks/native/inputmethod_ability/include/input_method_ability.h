@@ -129,6 +129,7 @@ public:
     int32_t StopInput(sptr<IRemoteObject> channelObj, uint32_t sessionId, int32_t clientSessionId = -1);
     int32_t ShowKeyboard(int32_t requestKeyboardReason);
     int32_t HideKeyboard();
+    int32_t HideCandidatePanel();
     int32_t OnDiscardTypingText();
     int32_t OnNotifyPreemption();
 
