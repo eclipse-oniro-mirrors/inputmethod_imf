@@ -62,7 +62,9 @@ std::string Executor::GenerateFullHelp()
     auto names = CommandManager::GetInstance().GetAllCmdNames();
     for (const auto &name : names) {
         auto cmd = CommandManager::GetInstance().GetCmd(name);
-        oss << "  " << std::setw(COLUMN_WIDTH) << name << cmd->GetDescription() << std::endl;
+        if (cmd != nullptr) {
+            oss << "  " << std::setw(COLUMN_WIDTH) << name << cmd->GetDescription() << std::endl;
+        }
     }
     oss << std::endl;
 

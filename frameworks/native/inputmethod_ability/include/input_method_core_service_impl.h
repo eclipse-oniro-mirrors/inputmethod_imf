@@ -53,6 +53,7 @@ public:
     ErrCode GetSoftKeyboardInfo(BoundImeInfo &imeInfo) override;
     ErrCode OnPttLongPress() override;
     ErrCode OnPttGestureCancelled() override;
+    ErrCode HideCandidatePanel() override;
 };
 }  // namespace MiscServices
 }  // namespace OHOS
