@@ -58,6 +58,7 @@ public:
         void HandleNotifyMakeImage(const EventFwk::CommonEventData &data);
         void OnHybridModeSwitch(const EventFwk::CommonEventData &data);
         void OnPushToTalk(const EventFwk::CommonEventData &data);
+        void OnExamMode(const EventFwk::CommonEventData &data);
 
     private:
         using EventListenerFunc = std::function<void(EventSubscriber *that, const EventFwk::CommonEventData &data)>;

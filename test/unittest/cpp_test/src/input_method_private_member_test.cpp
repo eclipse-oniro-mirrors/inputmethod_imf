@@ -16,6 +16,7 @@
 #define protected public
 #include "../mock/datashare_helper.h"
 #include "app_mgr_adapter.h"
+#include "exam_mode_manager.h"
 #include "full_ime_info_manager.h"
 #include "ime_info_inquirer.h"
 #include "input_method_agent_service_impl.h"
@@ -23,6 +24,7 @@
 #include "input_method_controller.h"
 #include "input_method_system_ability.h"
 #include "peruser_session.h"
+#include "os_account_adapter.h"
 #include "wms_connection_observer.h"
 #include "settings_data_utils.h"
 #include "input_type_manager.h"
@@ -6385,5 +6387,875 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_InitImeUsageReporter_DisabledByConfig,
 }
 #endif
 
+/**
+ * @tc.name: ImCommonEventManager_OnExamMode_ExamModeOn
+ * @tc.desc: OnExamMode sends MSG_ID_EXAM_MODE_ON when receiving KIOSK_MODE_ON with type=1
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, ImCommonEventManager_OnExamMode_ExamModeOn, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::ImCommonEventManager_OnExamMode_ExamModeOn start.");
+    EventFwk::MatchingSkills matchingSkills;
+    EventFwk::CommonEventSubscribeInfo subscriberInfo(matchingSkills);
+    auto subscriber = std::make_shared<ImCommonEventManager::EventSubscriber>(subscriberInfo);
+    auto msgHandler = MessageHandler::Instance();
+    ASSERT_NE(msgHandler, nullptr);
+    while (!msgHandler->mQueue.empty()) {
+        msgHandler->mQueue.pop();
+    }
+    AAFwk::Want want;
+    want.SetAction("usual.event.KIOSK_MODE_ON");
+    want.SetParam(COMMON_EVENT_PARAM_USER_ID, 100);
+    want.SetParam("type", 1);
+    EventFwk::CommonEventData data;
+    data.SetWant(want);
+    subscriber->OnExamMode(data);
+    EXPECT_FALSE(msgHandler->mQueue.empty());
+    while (!msgHandler->mQueue.empty()) {
+        msgHandler->mQueue.pop();
+    }
+}
+ 
+/**
+ * @tc.name: ImCommonEventManager_OnExamMode_ExamModeOff
+ * @tc.desc: OnExamMode sends MSG_ID_EXAM_MODE_OFF when receiving KIOSK_MODE_OFF with type=1
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, ImCommonEventManager_OnExamMode_ExamModeOff, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::ImCommonEventManager_OnExamMode_ExamModeOff start.");
+    EventFwk::MatchingSkills matchingSkills;
+    EventFwk::CommonEventSubscribeInfo subscriberInfo(matchingSkills);
+    auto subscriber = std::make_shared<ImCommonEventManager::EventSubscriber>(subscriberInfo);
+    auto msgHandler = MessageHandler::Instance();
+    ASSERT_NE(msgHandler, nullptr);
+    while (!msgHandler->mQueue.empty()) {
+        msgHandler->mQueue.pop();
+    }
+    AAFwk::Want want;
+    want.SetAction("usual.event.KIOSK_MODE_OFF");
+    want.SetParam(COMMON_EVENT_PARAM_USER_ID, 100);
+    want.SetParam("type", 1);
+    EventFwk::CommonEventData data;
+    data.SetWant(want);
+    subscriber->OnExamMode(data);
+    EXPECT_FALSE(msgHandler->mQueue.empty());
+    while (!msgHandler->mQueue.empty()) {
+        msgHandler->mQueue.pop();
+    }
+}
+ 
+/**
+ * @tc.name: ImCommonEventManager_OnExamMode_UnexpectedType
+ * @tc.desc: OnExamMode does not send message when type is unexpected
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, ImCommonEventManager_OnExamMode_UnexpectedType, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::ImCommonEventManager_OnExamMode_UnexpectedType start.");
+    EventFwk::MatchingSkills matchingSkills;
+    EventFwk::CommonEventSubscribeInfo subscriberInfo(matchingSkills);
+    auto subscriber = std::make_shared<ImCommonEventManager::EventSubscriber>(subscriberInfo);
+    auto msgHandler = MessageHandler::Instance();
+    ASSERT_NE(msgHandler, nullptr);
+    while (!msgHandler->mQueue.empty()) {
+        msgHandler->mQueue.pop();
+    }
+    AAFwk::Want want;
+    want.SetAction("usual.event.KIOSK_MODE_ON");
+    want.SetParam(COMMON_EVENT_PARAM_USER_ID, 100);
+    want.SetParam("type", 99); // unexpected type
+    EventFwk::CommonEventData data;
+    data.SetWant(want);
+    subscriber->OnExamMode(data);
+    EXPECT_TRUE(msgHandler->mQueue.empty());
+}
+ 
+/**
+ * @tc.name: SA_IsSwitchingAllow_ExamModeOff
+ * @tc.desc: IsSwitchingAllow returns true when exam mode is off
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_IsSwitchingAllow_ExamModeOff, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_IsSwitchingAllow_ExamModeOff start.");
+    bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
+    ExamModeManager::GetInstance().SetExamMode(false);
+    bool allowed = service_->IsSwitchingAllow(100, "com.thirdparty.ime");
+    EXPECT_TRUE(allowed);
+    ExamModeManager::GetInstance().SetExamMode(origExamMode);
+}
+
+/**
+ * @tc.name: SA_IsSwitchingAllow_ExamModeOn_ThirdPartyIme
+ * @tc.desc: IsSwitchingAllow returns false when exam mode is on and target is third-party IME
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_IsSwitchingAllow_ExamModeOn_ThirdPartyIme, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_IsSwitchingAllow_ExamModeOn_ThirdPartyIme start.");
+    bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
+    ExamModeManager::GetInstance().SetExamMode(true);
+    bool allowed = service_->IsSwitchingAllow(100, "com.thirdparty.ime");
+    EXPECT_FALSE(allowed);
+    ExamModeManager::GetInstance().SetExamMode(origExamMode);
+}
+
+/**
+ * @tc.name: SA_IsSwitchingAllow_ExamModeOn_SystemIme
+ * @tc.desc: IsSwitchingAllow returns true when exam mode is on but target is system IME
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_IsSwitchingAllow_ExamModeOn_SystemIme, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_IsSwitchingAllow_ExamModeOn_SystemIme start.");
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
+    auto defaultIme = inquirer.GetDefaultIme();
+    ExamModeManager::GetInstance().SetExamMode(true);
+    // target is system IME (default IME), should be allowed
+    bool allowed = service_->IsSwitchingAllow(100, defaultIme.bundleName);
+    EXPECT_TRUE(allowed);
+    ExamModeManager::GetInstance().SetExamMode(origExamMode);
+}
+
+/**
+ * @tc.name: SA_IsSwitchingAllow_ExamModeOn_EmptyBundleName
+ * @tc.desc: IsSwitchingAllow returns false when exam mode is on and target bundleName is empty
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_IsSwitchingAllow_ExamModeOn_EmptyBundleName, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_IsSwitchingAllow_ExamModeOn_EmptyBundleName start.");
+    bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
+    ExamModeManager::GetInstance().SetExamMode(true);
+    // empty bundleName is not system IME, should not be allowed
+    bool allowed = service_->IsSwitchingAllow(100, "");
+    EXPECT_FALSE(allowed);
+    ExamModeManager::GetInstance().SetExamMode(origExamMode);
+}
+ 
+/**
+ * @tc.name: SA_OnExamModeOff_ClearsExamMode
+ * @tc.desc: OnExamModeOff sets exam mode to false
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_OnExamModeOff_ClearsExamMode, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_OnExamModeOff_ClearsExamMode start.");
+    bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
+    ExamModeManager::GetInstance().SetExamMode(true);
+    EXPECT_TRUE(ExamModeManager::GetInstance().IsExamMode());
+    int32_t userId = 100;
+    MessageParcel *parcel = new (std::nothrow) MessageParcel();
+    ASSERT_NE(parcel, nullptr);
+    EXPECT_TRUE(ITypesUtil::Marshal(*parcel, userId));
+    auto msg = std::make_shared<Message>(MessageID::MSG_ID_EXAM_MODE_OFF, parcel);
+    service_->OnExamModeOff(msg.get());
+    EXPECT_FALSE(ExamModeManager::GetInstance().IsExamMode());
+    ExamModeManager::GetInstance().SetExamMode(origExamMode);
+    ExamModeManager::GetInstance().ClearPreviousIme();
+}
+ 
+/**
+ * @tc.name: SA_SwitchToPreviousIme_NoPreviousIme
+ * @tc.desc: SwitchToPreviousIme returns NO_ERROR when no previous IME is saved
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchToPreviousIme_NoPreviousIme, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_SwitchToPreviousIme_NoPreviousIme start.");
+    ExamModeManager::GetInstance().ClearPreviousIme();
+    auto ret = service_->SwitchToPreviousIme(100);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+ 
+/**
+ * @tc.name: SA_OnExamModeOn_NullMsg
+ * @tc.desc: OnExamModeOn returns early when msg is nullptr, exam mode is not set
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_OnExamModeOn_NullMsg, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_OnExamModeOn_NullMsg start.");
+    bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
+    ExamModeManager::GetInstance().SetExamMode(false);
+    service_->OnExamModeOn(nullptr);
+    EXPECT_FALSE(ExamModeManager::GetInstance().IsExamMode());
+    ExamModeManager::GetInstance().SetExamMode(origExamMode);
+    ExamModeManager::GetInstance().ClearPreviousIme();
+}
+ 
+/**
+ * @tc.name: SA_OnExamModeOn_SystemIme
+ * @tc.desc: OnExamModeOn sets exam mode, clears stale previousIme, does not switch when current IME is system IME
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_OnExamModeOn_SystemIme, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_OnExamModeOn_SystemIme start.");
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
+    ExamModeManager::GetInstance().SetExamMode(false);
+    // Inject stale previousIme to verify it gets cleared
+    ExamModeManager::GetInstance().SavePreviousIme("com.stale.thirdparty", "staleSub");
+    EXPECT_EQ(ExamModeManager::GetInstance().GetPreviousImeBundleName(), "com.stale.thirdparty");
+    int32_t userId = 100;
+    std::string sysBundleName = "com.example.sysime";
+    std::string sysExtName = "InputMethodExtAbility";
+    // Set up system IME as default
+    inquirer.systemConfig_.defaultInputMethod = sysBundleName + "/" + sysExtName;
+    // Set up current IME cfg as system IME
+    ImeEnabledCfg cfg;
+    ImeEnabledInfo imeInfo;
+    imeInfo.bundleName = sysBundleName;
+    imeInfo.extensionName = sysExtName;
+    imeInfo.enabledStatus = EnabledStatus::BASIC_MODE;
+    imeInfo.extraInfo.isDefaultIme = true;
+    imeInfo.extraInfo.currentSubName = "subName";
+    cfg.enabledInfos.emplace_back(imeInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(userId, cfg);
+    // Send ExamModeOn
+    MessageParcel *parcel = new (std::nothrow) MessageParcel();
+    ASSERT_NE(parcel, nullptr);
+    EXPECT_TRUE(ITypesUtil::Marshal(*parcel, userId));
+    auto msg = std::make_shared<Message>(MessageID::MSG_ID_EXAM_MODE_ON, parcel);
+    service_->OnExamModeOn(msg.get());
+    // Exam mode should be set
+    EXPECT_TRUE(ExamModeManager::GetInstance().IsExamMode());
+    // Stale previousIme should be cleared (current is system IME)
+    EXPECT_EQ(ExamModeManager::GetInstance().GetPreviousImeBundleName(), "");
+    EXPECT_EQ(ExamModeManager::GetInstance().GetPreviousImeSubName(), "");
+    // Cleanup
+    ExamModeManager::GetInstance().SetExamMode(origExamMode);
+    ExamModeManager::GetInstance().ClearPreviousIme();
+    inquirer.systemConfig_.defaultInputMethod.clear();
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.erase(userId);
+}
+ 
+/**
+ * @tc.name: SA_OnExamModeOn_ThirdPartyIme
+ * @tc.desc: OnExamModeOn sets exam mode and saves previous IME when current IME is third-party
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_OnExamModeOn_ThirdPartyIme, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_OnExamModeOn_ThirdPartyIme start.");
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
+    ExamModeManager::GetInstance().SetExamMode(false);
+    ExamModeManager::GetInstance().ClearPreviousIme();
+    int32_t userId = 100;
+    std::string sysBundleName = "com.example.sysime";
+    std::string sysExtName = "InputMethodExtAbility";
+    std::string thirdPartyBundleName = "com.example.thirdparty";
+    std::string thirdPartySubName = "sub1";
+    // Set up system IME as default
+    inquirer.systemConfig_.defaultInputMethod = sysBundleName + "/" + sysExtName;
+    // Set up current IME cfg as third-party IME
+    ImeEnabledCfg cfg;
+    ImeEnabledInfo imeInfo;
+    imeInfo.bundleName = thirdPartyBundleName;
+    imeInfo.extensionName = "InputMethodExtAbility";
+    imeInfo.enabledStatus = EnabledStatus::BASIC_MODE;
+    imeInfo.extraInfo.isDefaultIme = true;
+    imeInfo.extraInfo.currentSubName = thirdPartySubName;
+    cfg.enabledInfos.emplace_back(imeInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(userId, cfg);
+    // Send ExamModeOn
+    MessageParcel *parcel = new (std::nothrow) MessageParcel();
+    ASSERT_NE(parcel, nullptr);
+    EXPECT_TRUE(ITypesUtil::Marshal(*parcel, userId));
+    auto msg = std::make_shared<Message>(MessageID::MSG_ID_EXAM_MODE_ON, parcel);
+    service_->OnExamModeOn(msg.get());
+    // Exam mode should be set
+    EXPECT_TRUE(ExamModeManager::GetInstance().IsExamMode());
+    // Previous IME should be saved
+    EXPECT_EQ(ExamModeManager::GetInstance().GetPreviousImeBundleName(), thirdPartyBundleName);
+    EXPECT_EQ(ExamModeManager::GetInstance().GetPreviousImeSubName(), thirdPartySubName);
+    // Cleanup
+    ExamModeManager::GetInstance().SetExamMode(origExamMode);
+    ExamModeManager::GetInstance().ClearPreviousIme();
+    inquirer.systemConfig_.defaultInputMethod.clear();
+}
+ 
+/**
+ * @tc.name: SA_OnExamModeOff_NullMsg
+ * @tc.desc: OnExamModeOff returns early when msg is nullptr, exam mode is not cleared
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_OnExamModeOff_NullMsg, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_OnExamModeOff_NullMsg start.");
+    bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
+    ExamModeManager::GetInstance().SetExamMode(true);
+    EXPECT_TRUE(ExamModeManager::GetInstance().IsExamMode());
+    service_->OnExamModeOff(nullptr);
+    // Exam mode should NOT be cleared (null msg early return)
+    EXPECT_TRUE(ExamModeManager::GetInstance().IsExamMode());
+    ExamModeManager::GetInstance().SetExamMode(origExamMode);
+    ExamModeManager::GetInstance().ClearPreviousIme();
+}
+ 
+/**
+ * @tc.name: SA_OnExamModeOff_WithPreviousIme_NoSession
+ * @tc.desc: OnExamModeOff clears exam mode and calls SwitchToPreviousIme which fails with no session
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_OnExamModeOff_WithPreviousIme_NoSession, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_OnExamModeOff_WithPreviousIme_NoSession start.");
+    bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
+    ExamModeManager::GetInstance().SetExamMode(true);
+    std::string prevBundleName = "com.example.thirdparty";
+    std::string prevSubName = "sub1";
+    ExamModeManager::GetInstance().SavePreviousIme(prevBundleName, prevSubName);
+    int32_t userId = 100;
+    // Ensure no user session exists
+    UserSessionManager::GetInstance().userSessions_.erase(userId);
+    MessageParcel *parcel = new (std::nothrow) MessageParcel();
+    ASSERT_NE(parcel, nullptr);
+    EXPECT_TRUE(ITypesUtil::Marshal(*parcel, userId));
+    auto msg = std::make_shared<Message>(MessageID::MSG_ID_EXAM_MODE_OFF, parcel);
+    service_->OnExamModeOff(msg.get());
+    // Exam mode should be cleared
+    EXPECT_FALSE(ExamModeManager::GetInstance().IsExamMode());
+    // Previous IME should be retained (SwitchToPreviousIme failed with no session)
+    EXPECT_EQ(ExamModeManager::GetInstance().GetPreviousImeBundleName(), prevBundleName);
+    EXPECT_EQ(ExamModeManager::GetInstance().GetPreviousImeSubName(), prevSubName);
+    // Cleanup
+    ExamModeManager::GetInstance().SetExamMode(origExamMode);
+    ExamModeManager::GetInstance().ClearPreviousIme();
+    UserSessionManager::GetInstance().userSessions_.erase(userId);
+}
+ 
+/**
+ * @tc.name: SA_SwitchToPreviousIme_NoSession
+ * @tc.desc: SwitchToPreviousIme returns ERROR_NULL_POINTER when session is nullptr
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchToPreviousIme_NoSession, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_SwitchToPreviousIme_NoSession start.");
+    ExamModeManager::GetInstance().ClearPreviousIme();
+    ExamModeManager::GetInstance().SavePreviousIme("com.example.thirdparty", "sub1");
+    int32_t userId = 100;
+    // Ensure no user session exists
+    UserSessionManager::GetInstance().userSessions_.erase(userId);
+    auto ret = service_->SwitchToPreviousIme(userId);
+    EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
+    // Cleanup
+    ExamModeManager::GetInstance().ClearPreviousIme();
+    UserSessionManager::GetInstance().userSessions_.erase(userId);
+}
+ 
+/**
+ * @tc.name: SA_SwitchToPreviousIme_ImeNotEnabled
+ * @tc.desc: SwitchToPreviousIme returns ERROR_ENABLE_IME when previous IME is not enabled
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchToPreviousIme_ImeNotEnabled, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_SwitchToPreviousIme_ImeNotEnabled start.");
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    ExamModeManager::GetInstance().ClearPreviousIme();
+    std::string prevBundleName = "com.example.thirdparty";
+    std::string prevSubName = "sub1";
+    ExamModeManager::GetInstance().SavePreviousIme(prevBundleName, prevSubName);
+    int32_t userId = 100;
+    // Create a user session
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_.insert_or_assign(userId, session);
+    // Set up imeEnabledCfg_ with a DIFFERENT IME (not the previous one)
+    ImeEnabledCfg cfg;
+    ImeEnabledInfo imeInfo;
+    imeInfo.bundleName = "com.example.otherime";
+    imeInfo.extensionName = "InputMethodExtAbility";
+    imeInfo.enabledStatus = EnabledStatus::BASIC_MODE;
+    imeInfo.extraInfo.isDefaultIme = true;
+    cfg.enabledInfos.emplace_back(imeInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(userId, cfg);
+    // Also set default IME to something different so GetEnabledState doesn't override
+    inquirer.systemConfig_.defaultInputMethod = "com.example.sysime/InputMethodExtAbility";
+    auto ret = service_->SwitchToPreviousIme(userId);
+    EXPECT_EQ(ret, ErrorCode::ERROR_ENABLE_IME);
+    // Cleanup
+    ExamModeManager::GetInstance().ClearPreviousIme();
+    inquirer.systemConfig_.defaultInputMethod.clear();
+    UserSessionManager::GetInstance().userSessions_.erase(userId);
+}
+ 
+/**
+ * @tc.name: SA_OnExamModeOn_NullMsgContent
+ * @tc.desc: OnExamModeOn returns early when msgContent is nullptr, exam mode is not set
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_OnExamModeOn_NullMsgContent, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_OnExamModeOn_NullMsgContent start.");
+    bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
+    ExamModeManager::GetInstance().SetExamMode(false);
+    Message msg(MessageID::MSG_ID_EXAM_MODE_ON, nullptr);
+    service_->OnExamModeOn(&msg);
+    EXPECT_FALSE(ExamModeManager::GetInstance().IsExamMode());
+    ExamModeManager::GetInstance().SetExamMode(origExamMode);
+    ExamModeManager::GetInstance().ClearPreviousIme();
+}
+ 
+/**
+ * @tc.name: SA_OnExamModeOn_UnmarshalFail
+ * @tc.desc: OnExamModeOn returns early when Unmarshal fails, exam mode is not set
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_OnExamModeOn_UnmarshalFail, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_OnExamModeOn_UnmarshalFail start.");
+    bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
+    ExamModeManager::GetInstance().SetExamMode(false);
+    MessageParcel *parcel = new (std::nothrow) MessageParcel();
+    ASSERT_NE(parcel, nullptr);
+    // Do NOT write anything — ReadInt32 will fail on empty parcel
+    auto msg = std::make_shared<Message>(MessageID::MSG_ID_EXAM_MODE_ON, parcel);
+    service_->OnExamModeOn(msg.get());
+    EXPECT_FALSE(ExamModeManager::GetInstance().IsExamMode());
+    ExamModeManager::GetInstance().SetExamMode(origExamMode);
+    ExamModeManager::GetInstance().ClearPreviousIme();
+}
+ 
+/**
+ * @tc.name: SA_OnExamModeOn_InvalidUserId
+ * @tc.desc: OnExamModeOn returns early when userId is invalid, exam mode is not set
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_OnExamModeOn_InvalidUserId, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_OnExamModeOn_InvalidUserId start.");
+    bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
+    ExamModeManager::GetInstance().SetExamMode(false);
+    int32_t userId = OsAccountAdapter::INVALID_USER_ID;
+    MessageParcel *parcel = new (std::nothrow) MessageParcel();
+    ASSERT_NE(parcel, nullptr);
+    EXPECT_TRUE(ITypesUtil::Marshal(*parcel, userId));
+    auto msg = std::make_shared<Message>(MessageID::MSG_ID_EXAM_MODE_ON, parcel);
+    service_->OnExamModeOn(msg.get());
+    EXPECT_FALSE(ExamModeManager::GetInstance().IsExamMode());
+    ExamModeManager::GetInstance().SetExamMode(origExamMode);
+    ExamModeManager::GetInstance().ClearPreviousIme();
+}
+
+/**
+ * @tc.name: SA_OnExamModeOn_NoCurrentImeCfg
+ * @tc.desc: OnExamModeOn returns early when GetCurrentImeCfg returns nullptr, exam mode is not set
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_OnExamModeOn_NoCurrentImeCfg, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_OnExamModeOn_NoCurrentImeCfg start.");
+    bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
+    ExamModeManager::GetInstance().SetExamMode(false);
+    int32_t userId = 100;
+    // Ensure no imeEnabledCfg_ exists so GetCurrentImeCfg returns nullptr
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.erase(userId);
+    MessageParcel *parcel = new (std::nothrow) MessageParcel();
+    ASSERT_NE(parcel, nullptr);
+    EXPECT_TRUE(ITypesUtil::Marshal(*parcel, userId));
+    auto msg = std::make_shared<Message>(MessageID::MSG_ID_EXAM_MODE_ON, parcel);
+    service_->OnExamModeOn(msg.get());
+    // Exam mode should NOT be set (GetCurrentImeCfg returned nullptr)
+    EXPECT_FALSE(ExamModeManager::GetInstance().IsExamMode());
+    ExamModeManager::GetInstance().SetExamMode(origExamMode);
+    ExamModeManager::GetInstance().ClearPreviousIme();
+}
+
+/**
+ * @tc.name: SA_OnExamModeOff_NullMsgContent
+ * @tc.desc: OnExamModeOff returns early when msgContent is nullptr, exam mode is not cleared
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_OnExamModeOff_NullMsgContent, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_OnExamModeOff_NullMsgContent start.");
+    bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
+    ExamModeManager::GetInstance().SetExamMode(true);
+    Message msg(MessageID::MSG_ID_EXAM_MODE_OFF, nullptr);
+    service_->OnExamModeOff(&msg);
+    EXPECT_TRUE(ExamModeManager::GetInstance().IsExamMode());
+    ExamModeManager::GetInstance().SetExamMode(origExamMode);
+    ExamModeManager::GetInstance().ClearPreviousIme();
+}
+ 
+/**
+ * @tc.name: SA_OnExamModeOff_UnmarshalFail
+ * @tc.desc: OnExamModeOff returns early when Unmarshal fails, exam mode is not cleared
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_OnExamModeOff_UnmarshalFail, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_OnExamModeOff_UnmarshalFail start.");
+    bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
+    ExamModeManager::GetInstance().SetExamMode(true);
+    MessageParcel *parcel = new (std::nothrow) MessageParcel();
+    ASSERT_NE(parcel, nullptr);
+    auto msg = std::make_shared<Message>(MessageID::MSG_ID_EXAM_MODE_OFF, parcel);
+    service_->OnExamModeOff(msg.get());
+    EXPECT_TRUE(ExamModeManager::GetInstance().IsExamMode());
+    ExamModeManager::GetInstance().SetExamMode(origExamMode);
+    ExamModeManager::GetInstance().ClearPreviousIme();
+}
+ 
+/**
+ * @tc.name: SA_OnExamModeOff_NoPreviousIme
+ * @tc.desc: OnExamModeOff clears exam mode but does not call SwitchToPreviousIme when no previous IME saved
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_OnExamModeOff_NoPreviousIme, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_OnExamModeOff_NoPreviousIme start.");
+    bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
+    ExamModeManager::GetInstance().SetExamMode(true);
+    ExamModeManager::GetInstance().ClearPreviousIme();
+    int32_t userId = 100;
+    MessageParcel *parcel = new (std::nothrow) MessageParcel();
+    ASSERT_NE(parcel, nullptr);
+    EXPECT_TRUE(ITypesUtil::Marshal(*parcel, userId));
+    auto msg = std::make_shared<Message>(MessageID::MSG_ID_EXAM_MODE_OFF, parcel);
+    service_->OnExamModeOff(msg.get());
+    EXPECT_FALSE(ExamModeManager::GetInstance().IsExamMode());
+    EXPECT_EQ(ExamModeManager::GetInstance().GetPreviousImeBundleName(), "");
+    ExamModeManager::GetInstance().SetExamMode(origExamMode);
+    ExamModeManager::GetInstance().ClearPreviousIme();
+}
+
+/**
+ * @tc.name: SA_OnExamModeOff_InvalidUserId
+ * @tc.desc: OnExamModeOff returns early when userId is invalid, exam mode is not cleared
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_OnExamModeOff_InvalidUserId, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_OnExamModeOff_InvalidUserId start.");
+    bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
+    ExamModeManager::GetInstance().SetExamMode(true);
+    std::string prevBundleName = "com.example.thirdparty";
+    std::string prevSubName = "sub1";
+    ExamModeManager::GetInstance().SavePreviousIme(prevBundleName, prevSubName);
+    int32_t userId = OsAccountAdapter::INVALID_USER_ID;
+    MessageParcel *parcel = new (std::nothrow) MessageParcel();
+    ASSERT_NE(parcel, nullptr);
+    EXPECT_TRUE(ITypesUtil::Marshal(*parcel, userId));
+    auto msg = std::make_shared<Message>(MessageID::MSG_ID_EXAM_MODE_OFF, parcel);
+    service_->OnExamModeOff(msg.get());
+    // Exam mode should NOT be cleared (invalid userId early return)
+    EXPECT_TRUE(ExamModeManager::GetInstance().IsExamMode());
+    // Previous IME should NOT be cleared
+    EXPECT_EQ(ExamModeManager::GetInstance().GetPreviousImeBundleName(), prevBundleName);
+    // Cleanup
+    ExamModeManager::GetInstance().SetExamMode(origExamMode);
+    ExamModeManager::GetInstance().ClearPreviousIme();
+}
+
+/**
+ * @tc.name: SA_OnExamModeOff_WithPreviousIme_ImeNotEnabled
+ * @tc.desc: OnExamModeOff retains previous IME when SwitchToPreviousIme fails due to IME not enabled
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_OnExamModeOff_WithPreviousIme_ImeNotEnabled, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_OnExamModeOff_WithPreviousIme_ImeNotEnabled start.");
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
+    std::string origDefaultIme = inquirer.systemConfig_.defaultInputMethod;
+    ExamModeManager::GetInstance().SetExamMode(true);
+    std::string prevBundleName = "com.example.thirdparty";
+    std::string prevSubName = "sub1";
+    ExamModeManager::GetInstance().SavePreviousIme(prevBundleName, prevSubName);
+    int32_t userId = 100;
+    // Create a user session
+    UserSessionManager::GetInstance().userSessions_.insert_or_assign(
+        userId, std::make_shared<PerUserSession>(userId, nullptr));
+    // Set up imeEnabledCfg_ with a DIFFERENT IME (not the previous one)
+    ImeEnabledCfg cfg;
+    ImeEnabledInfo imeInfo;
+    imeInfo.bundleName = "com.example.otherime";
+    imeInfo.extensionName = "InputMethodExtAbility";
+    imeInfo.enabledStatus = EnabledStatus::BASIC_MODE;
+    imeInfo.extraInfo.isDefaultIme = true;
+    cfg.enabledInfos.emplace_back(imeInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(userId, cfg);
+    inquirer.systemConfig_.defaultInputMethod = "com.example.sysime/InputMethodExtAbility";
+    MessageParcel *parcel = new (std::nothrow) MessageParcel();
+    ASSERT_NE(parcel, nullptr);
+    EXPECT_TRUE(ITypesUtil::Marshal(*parcel, userId));
+    auto msg = std::make_shared<Message>(MessageID::MSG_ID_EXAM_MODE_OFF, parcel);
+    service_->OnExamModeOff(msg.get());
+    // Exam mode should be cleared
+    EXPECT_FALSE(ExamModeManager::GetInstance().IsExamMode());
+    // Previous IME should be retained (SwitchToPreviousIme failed with ERROR_ENABLE_IME)
+    EXPECT_EQ(ExamModeManager::GetInstance().GetPreviousImeBundleName(), prevBundleName);
+    EXPECT_EQ(ExamModeManager::GetInstance().GetPreviousImeSubName(), prevSubName);
+    // Cleanup
+    ExamModeManager::GetInstance().SetExamMode(origExamMode);
+    ExamModeManager::GetInstance().ClearPreviousIme();
+    inquirer.systemConfig_.defaultInputMethod = origDefaultIme;
+    UserSessionManager::GetInstance().userSessions_.erase(userId);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.erase(userId);
+}
+
+/**
+ * @tc.name: ImCommonEventManager_OnExamMode_ExamOnTypeOff
+ * @tc.desc: OnExamMode does not send message when action is ON but type is OFF (mismatched)
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, ImCommonEventManager_OnExamMode_ExamOnTypeOff, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::ImCommonEventManager_OnExamMode_ExamOnTypeOff start.");
+    EventFwk::MatchingSkills matchingSkills;
+    EventFwk::CommonEventSubscribeInfo subscriberInfo(matchingSkills);
+    auto subscriber = std::make_shared<ImCommonEventManager::EventSubscriber>(subscriberInfo);
+    auto msgHandler = MessageHandler::Instance();
+    ASSERT_NE(msgHandler, nullptr);
+    while (!msgHandler->mQueue.empty()) {
+        msgHandler->mQueue.pop();
+    }
+    AAFwk::Want want;
+    want.SetAction("usual.event.KIOSK_MODE_ON");
+    want.SetParam(COMMON_EVENT_PARAM_USER_ID, 100);
+    want.SetParam("type", 0); // EXAM_MODE_TYPE_OFF — mismatched with ON action
+    EventFwk::CommonEventData data;
+    data.SetWant(want);
+    subscriber->OnExamMode(data);
+    EXPECT_TRUE(msgHandler->mQueue.empty());
+}
+ 
+/**
+ * @tc.name: ImCommonEventManager_OnExamMode_ExamOffTypeOn
+ * @tc.desc: OnExamMode sends MSG_ID_EXAM_MODE_OFF when receiving KIOSK_MODE_OFF with type=1
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, ImCommonEventManager_OnExamMode_ExamOffTypeOn, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::ImCommonEventManager_OnExamMode_ExamOffTypeOn start.");
+    EventFwk::MatchingSkills matchingSkills;
+    EventFwk::CommonEventSubscribeInfo subscriberInfo(matchingSkills);
+    auto subscriber = std::make_shared<ImCommonEventManager::EventSubscriber>(subscriberInfo);
+    auto msgHandler = MessageHandler::Instance();
+    ASSERT_NE(msgHandler, nullptr);
+    while (!msgHandler->mQueue.empty()) {
+        msgHandler->mQueue.pop();
+    }
+    AAFwk::Want want;
+    want.SetAction("usual.event.KIOSK_MODE_OFF");
+    want.SetParam(COMMON_EVENT_PARAM_USER_ID, 100);
+    want.SetParam("type", 1); // EXAM_MODE_TYPE_ON
+    EventFwk::CommonEventData data;
+    data.SetWant(want);
+    subscriber->OnExamMode(data);
+    EXPECT_FALSE(msgHandler->mQueue.empty());
+    while (!msgHandler->mQueue.empty()) {
+        msgHandler->mQueue.pop();
+    }
+}
+ 
+/**
+ * @tc.name: ImCommonEventManager_OnExamMode_UnknownAction
+ * @tc.desc: OnExamMode does not send message when action is completely unknown
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, ImCommonEventManager_OnExamMode_UnknownAction, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::ImCommonEventManager_OnExamMode_UnknownAction start.");
+    EventFwk::MatchingSkills matchingSkills;
+    EventFwk::CommonEventSubscribeInfo subscriberInfo(matchingSkills);
+    auto subscriber = std::make_shared<ImCommonEventManager::EventSubscriber>(subscriberInfo);
+    auto msgHandler = MessageHandler::Instance();
+    ASSERT_NE(msgHandler, nullptr);
+    while (!msgHandler->mQueue.empty()) {
+        msgHandler->mQueue.pop();
+    }
+    AAFwk::Want want;
+    want.SetAction("usual.event.SOME_OTHER_EVENT");
+    want.SetParam(COMMON_EVENT_PARAM_USER_ID, 100);
+    want.SetParam("type", 1);
+    EventFwk::CommonEventData data;
+    data.SetWant(want);
+    subscriber->OnExamMode(data);
+    EXPECT_TRUE(msgHandler->mQueue.empty());
+}
+ 
+/**
+ * @tc.name: SA_SwitchInputMethodInner_BlockedByExamMode
+ * @tc.desc: SwitchInputMethodInner returns NO_ERROR when third-party IME switch is blocked by exam mode
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchInputMethodInner_BlockedByExamMode, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_SwitchInputMethodInner_BlockedByExamMode start.");
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
+    std::string origDefaultIme = inquirer.systemConfig_.defaultInputMethod;
+    int32_t userId = 100;
+    std::string sysBundleName = "com.example.sysime";
+    std::string sysExtName = "InputMethodExtAbility";
+    std::string thirdPartyBundleName = "com.example.thirdparty";
+    ExamModeManager::GetInstance().SetExamMode(true);
+    inquirer.systemConfig_.defaultInputMethod = sysBundleName + "/" + sysExtName;
+    service_->identityChecker_ = std::make_shared<IdentityCheckerImpl>();
+    // Create a user session
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_.insert_or_assign(userId, session);
+    // Set up imeEnabledCfg_ with the third-party IME enabled
+    ImeEnabledCfg cfg;
+    ImeEnabledInfo imeInfo;
+    imeInfo.bundleName = thirdPartyBundleName;
+    imeInfo.extensionName = "InputMethodExtAbility";
+    imeInfo.enabledStatus = EnabledStatus::BASIC_MODE;
+    imeInfo.extraInfo.isDefaultIme = false;
+    cfg.enabledInfos.emplace_back(imeInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(userId, cfg);
+    auto ret = service_->SwitchInputMethodInner(userId, thirdPartyBundleName, "", SwitchTrigger::IMSA);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    // Cleanup
+    ExamModeManager::GetInstance().SetExamMode(origExamMode);
+    inquirer.systemConfig_.defaultInputMethod = origDefaultIme;
+    UserSessionManager::GetInstance().userSessions_.erase(userId);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.erase(userId);
+}
+ 
+/**
+ * @tc.name: SA_SwitchType_BlockedByExamMode
+ * @tc.desc: SwitchType returns NO_ERROR when next switch target is third-party IME blocked by exam mode
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchType_BlockedByExamMode, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_SwitchType_BlockedByExamMode start.");
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
+    std::string origDefaultIme = inquirer.systemConfig_.defaultInputMethod;
+    int32_t userId = 100;
+    std::string sysBundleName = "com.example.sysime";
+    std::string sysExtName = "InputMethodExtAbility";
+    std::string thirdPartyBundleName = "com.example.thirdparty";
+    ExamModeManager::GetInstance().SetExamMode(true);
+    inquirer.systemConfig_.defaultInputMethod = sysBundleName + "/" + sysExtName;
+    UserSessionManager::GetInstance().userSessions_.insert_or_assign(
+        userId, std::make_shared<PerUserSession>(userId, nullptr));
+    auto makeFullImeInfo = [&sysExtName](const std::string &bundleName, const std::string &language) {
+        FullImeInfo info;
+        info.prop.name = bundleName;
+        SubProperty sub;
+        sub.id = sysExtName;
+        sub.language = language;
+        info.subProps.push_back(sub);
+        return info;
+    };
+    FullImeInfoManager::GetInstance().fullImeInfos_.insert_or_assign(userId,
+        std::vector<FullImeInfo>{ makeFullImeInfo(sysBundleName, "chinese"),
+                                   makeFullImeInfo(thirdPartyBundleName, "english") });
+    ImeEnabledCfg cfg;
+    cfg.enabledInfos.emplace_back(sysBundleName, sysExtName, EnabledStatus::BASIC_MODE);
+    cfg.enabledInfos.back().extraInfo.isDefaultIme = true;
+    cfg.enabledInfos.emplace_back(thirdPartyBundleName, sysExtName, EnabledStatus::BASIC_MODE);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(userId, cfg);
+    service_->targetSwitchCount_.store(1);
+    EXPECT_EQ(service_->SwitchType(userId), ErrorCode::NO_ERROR);
+    ExamModeManager::GetInstance().SetExamMode(origExamMode);
+    inquirer.systemConfig_.defaultInputMethod = origDefaultIme;
+    UserSessionManager::GetInstance().userSessions_.erase(userId);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.erase(userId);
+    FullImeInfoManager::GetInstance().fullImeInfos_.erase(userId);
+    service_->targetSwitchCount_.store(0);
+}
+ 
+/**
+ * @tc.name: SA_StartInputType_BlockedByExamMode
+ * @tc.desc: StartInputType returns NO_ERROR when input type maps to third-party IME blocked by exam mode
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_StartInputType_BlockedByExamMode, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_StartInputType_BlockedByExamMode start.");
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
+    std::string origDefaultIme = inquirer.systemConfig_.defaultInputMethod;
+    int32_t userId = 100;
+    std::string sysBundleName = "com.example.sysime";
+    std::string sysExtName = "InputMethodExtAbility";
+    std::string thirdPartyBundleName = "com.example.thirdparty";
+    ExamModeManager::GetInstance().SetExamMode(true);
+    inquirer.systemConfig_.defaultInputMethod = sysBundleName + "/" + sysExtName;
+    // Create a user session
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_.insert_or_assign(userId, session);
+    // Set up InputTypeManager with a third-party IME mapped to VOICE_INPUT
+    InputTypeManager::GetInstance().isTypeCfgReady_ = true;
+    ImeIdentification inputTypeIme { thirdPartyBundleName, "sub1" };
+    InputTypeManager::GetInstance().inputTypes_.insert_or_assign(InputType::VOICE_INPUT, inputTypeIme);
+    auto ret = service_->StartInputType(userId, InputType::VOICE_INPUT, false);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    // Cleanup
+    ExamModeManager::GetInstance().SetExamMode(origExamMode);
+    inquirer.systemConfig_.defaultInputMethod = origDefaultIme;
+    UserSessionManager::GetInstance().userSessions_.erase(userId);
+    InputTypeManager::GetInstance().inputTypes_.erase(InputType::VOICE_INPUT);
+    InputTypeManager::GetInstance().isTypeCfgReady_ = false;
+}
+
+/**
+ * @tc.name: SA_HandleDataShareReady_RestoresExamMode
+ * @tc.desc: HandleDataShareReady calls InitFromPersistedData without crash
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_HandleDataShareReady_RestoresExamMode, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_HandleDataShareReady_RestoresExamMode start.");
+    bool origExamMode = ExamModeManager::GetInstance().IsExamMode();
+    std::string origPreviousBundleName;
+    std::string origPreviousSubName;
+    ExamModeManager::GetInstance().GetPreviousIme(origPreviousBundleName, origPreviousSubName);
+    // Persist a known state, then reload it via InitFromPersistedData
+    ExamModeManager::GetInstance().SetExamMode(true);
+    ExamModeManager::GetInstance().SavePreviousIme("com.thirdparty", "sub1");
+    ExamModeManager::GetInstance().InitFromPersistedData();
+    // InitFromPersistedData should reload the persisted state
+    EXPECT_TRUE(ExamModeManager::GetInstance().IsExamMode());
+    EXPECT_EQ(ExamModeManager::GetInstance().GetPreviousImeBundleName(), "com.thirdparty");
+    EXPECT_EQ(ExamModeManager::GetInstance().GetPreviousImeSubName(), "sub1");
+    // Restore original state
+    ExamModeManager::GetInstance().SetExamMode(origExamMode);
+    ExamModeManager::GetInstance().SavePreviousIme(origPreviousBundleName, origPreviousSubName);
+}
 } // namespace MiscServices
 } // namespace OHOS
