@@ -1157,13 +1157,14 @@ int32_t InputMethodPanel::UpdateRegion(std::vector<Rosen::Rect> region)
     }
     SetHotAreas(hotAreas);
     if (isPortrait) {
-        IMSA_HILOGI("success, portrait: %{public}s", HotArea::ToString(hotAreas.portrait.keyboardHotArea).c_str());
-        IMSA_HILOGI("wmsHotAreas, portraitKeyboardHotAreas_: %{public}s, portraitPanelHotAreas_:%{public}s",
+        IMSA_HILOGI("success, portrait: %{public}s, wmsHotAreas, portraitKeyboardHotAreas_: %{public}s, "
+                    "portraitPanelHotAreas_:%{public}s", HotArea::ToString(hotAreas.portrait.keyboardHotArea).c_str(),
             HotArea::ToString(wmsHotAreas.portraitKeyboardHotAreas_).c_str(),
             HotArea::ToString(wmsHotAreas.portraitPanelHotAreas_).c_str());
     } else {
-        IMSA_HILOGI("success, landscape: %{public}s", HotArea::ToString(hotAreas.landscape.keyboardHotArea).c_str());
-        IMSA_HILOGI("wmsHotAreas, landscapeKeyboardHotAreas_: %{public}s, landscapePanelHotAreas_:%{public}s",
+        IMSA_HILOGI("success, landscape: %{public}s, wmsHotAreas, landscapeKeyboardHotAreas_: %{public}s, "
+                    "landscapePanelHotAreas_:%{public}s",
+            HotArea::ToString(hotAreas.landscape.keyboardHotArea).c_str(),
             HotArea::ToString(wmsHotAreas.landscapeKeyboardHotAreas_).c_str(),
             HotArea::ToString(wmsHotAreas.landscapePanelHotAreas_).c_str());
     }
@@ -2394,7 +2395,7 @@ KeyboardEffectOption InputMethodPanel::ConvertToWmEffect(ImmersiveMode mode, con
     option.viewMode_ = static_cast<KeyboardViewMode>(mode);
     option.gradientMode_ = static_cast<KeyboardGradientMode>(effect.gradientMode);
     option.flowLightMode_ = static_cast<KeyboardFlowLightMode>(effect.fluidLightMode);
-    IMSA_HILOGI("effect: %{public}s", effect.ToString().c_str());
+    IMSA_HILOGD("effect: %{public}s", effect.ToString().c_str());
     return option;
 }
 
@@ -2666,7 +2667,7 @@ int32_t InputMethodPanel::SetKeepScreenOn(bool isKeepScreenOn)
         IMSA_HILOGE("SetKeepScreenOn error: %{public}d!", ret);
         return ErrorCode::ERROR_WINDOW_MANAGER;
     }
-    IMSA_HILOGI("SetKeepScreenOn success");
+    IMSA_HILOGD("SetKeepScreenOn success");
     return ErrorCode::NO_ERROR;
 }
 

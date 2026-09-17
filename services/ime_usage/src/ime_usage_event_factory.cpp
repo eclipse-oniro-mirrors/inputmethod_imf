@@ -29,7 +29,7 @@ namespace MiscServices {
 ImeUsageEventFactory::ImeUsageEventFactory(std::shared_ptr<ImeUsageDbHelper> dbHelper)
 {
     dbHelper_ = dbHelper;
-    IMSA_HILOGI("ImeUsageEventFactory created, dbHelper=%{public}p", dbHelper_.get());
+    IMSA_HILOGI("ImeUsageEventFactory created.");
 }
 
 void ImeUsageEventFactory::Create(std::vector<ImeUsageInfo> &infos, uint64_t dayStartTime, uint64_t dayEndTime)

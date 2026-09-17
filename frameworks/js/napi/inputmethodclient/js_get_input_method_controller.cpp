@@ -398,7 +398,6 @@ void JsGetInputMethodController::RegisterListener(napi_value callback, std::stri
 
 void JsGetInputMethodController::UnRegisterListener(napi_value callback, std::string type)
 {
-    IMSA_HILOGI("unregister listener: %{public}s.", type.c_str());
     std::lock_guard<std::recursive_mutex> lock(mutex_);
     if (jsCbMap_.empty() || jsCbMap_.find(type) == jsCbMap_.end()) {
         IMSA_HILOGE("methodName: %{public}s already unRegistered!", type.c_str());
@@ -411,6 +410,7 @@ void JsGetInputMethodController::UnRegisterListener(napi_value callback, std::st
         return;
     }
 
+    IMSA_HILOGI("unregister listener: %{public}s.", type.c_str());
     for (auto item = jsCbMap_[type].begin(); item != jsCbMap_[type].end(); item++) {
         if ((JsUtils::Equals((*item)->env_, callback, (*item)->callback_, (*item)->threadId_))) {
             jsCbMap_[type].erase(item);
