@@ -237,8 +237,7 @@ ImeUsageEventCacher::ShowPrepareResult ImeUsageEventCacher::PrepareShowEvent(con
 ImeEventRecord ImeUsageEventCacher::PrepareHideRecord(const std::string &bundleName)
 {
     if (dbHelper_ == nullptr || !isKeyboardShowing_) {
-        IMSA_HILOGW(
-            "PrepareHideRecord: skip, dbHelper=%{public}p, isShowing=%{public}d", dbHelper_.get(), isKeyboardShowing_);
+        IMSA_HILOGW("PrepareHideRecord: skip, isShowing=%{public}d", isKeyboardShowing_);
         return {};
     }
     ImeEventRecord record;
@@ -262,8 +261,7 @@ ImeEventRecord ImeUsageEventCacher::PrepareHideRecord(const std::string &bundleN
 ImeEventRecord ImeUsageEventCacher::ProcessScreenChangedEvent(int32_t preScreenStatus, int32_t newScreenStatus)
 {
     if (dbHelper_ == nullptr || !isKeyboardShowing_) {
-        IMSA_HILOGW("ProcessScreenChangedEvent: skip, dbHelper=%{public}p, isShowing=%{public}d", dbHelper_.get(),
-            isKeyboardShowing_);
+        IMSA_HILOGW("ProcessScreenChangedEvent: skip, isShowing=%{public}d", isKeyboardShowing_);
         return {};
     }
     // Deduplicate: skip if new status is same as last recorded status

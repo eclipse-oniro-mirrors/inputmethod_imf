@@ -127,7 +127,7 @@ int ImeUsageReporter::Init(const std::string &workPath)
 
 void ImeUsageReporter::SetEventHandler(const std::shared_ptr<AppExecFwk::EventHandler> &handler)
 {
-    IMSA_HILOGI("SetEventHandler, handler=%{public}p", handler.get());
+    IMSA_HILOGI("SetEventHandler enter.");
     eventHandler_ = handler;
     StartTimer();
 }
