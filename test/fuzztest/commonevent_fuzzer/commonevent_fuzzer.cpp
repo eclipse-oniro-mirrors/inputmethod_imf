@@ -60,6 +60,10 @@ void FuzzOnDemandStartStopSa(FuzzedDataProvider &provider)
 
 void FuzzSwitchOperation(FuzzedDataProvider &provider)
 {
+    sptr<InputMethodSystemAbility> imsa = new (std::nothrow) InputMethodSystemAbility();
+    if (imsa == nullptr) {
+        return;
+    }
     auto fuzzedUint64 = provider.ConsumeIntegral<uint64_t>();
     auto fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
     sptr<IInputMethodCore> core = new InputMethodCoreServiceImpl();
@@ -72,15 +76,18 @@ void FuzzSwitchOperation(FuzzedDataProvider &provider)
     bool fuzzedBool = provider.ConsumeBool();
     std::string fuzzedString = provider.ConsumeRandomLengthString();
 
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->UpdateUserInfo(fuzzedInt32, fuzzedUint64);
- 
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->RegisterProxyIme(fuzzedUint64, core, remoteObject);
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->HandleFocusChanged(fuzzedBool,
-        fuzzedUint64, fuzzedInt32, fuzzedInt32);
+    imsa->UpdateUserInfo(fuzzedInt32, fuzzedUint64);
+  
+    imsa->RegisterProxyIme(fuzzedUint64, core, remoteObject);
+    imsa->HandleFocusChanged(fuzzedBool, fuzzedUint64, fuzzedInt32, fuzzedInt32);
 }
  
 void FuzzHandleOperation(FuzzedDataProvider &provider)
 {
+    sptr<InputMethodSystemAbility> imsa = new (std::nothrow) InputMethodSystemAbility();
+    if (imsa == nullptr) {
+        return;
+    }
     auto fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
     int32_t value = provider.ConsumeIntegralInRange<int32_t>(0, 1);
     InputType inputType = static_cast<InputType>(value);
@@ -89,9 +96,8 @@ void FuzzHandleOperation(FuzzedDataProvider &provider)
     bool fuzzedBool = provider.ConsumeBool();
     std::string fuzzedString = provider.ConsumeRandomLengthString();
  
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->HandleWmsDisconnected(fuzzedInt32, fuzzedInt32, 0);
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->NeedHideWhenSwitchInputType(fuzzedInt32, inputType,
-        fuzzedBool);
+    imsa->HandleWmsDisconnected(fuzzedInt32, fuzzedInt32, 0);
+    imsa->NeedHideWhenSwitchInputType(fuzzedInt32, inputType, fuzzedBool);
 }
 } // namespace OHOS
 /* Fuzzer entry point */

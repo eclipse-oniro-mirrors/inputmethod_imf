@@ -37,7 +37,7 @@ public:
 
 private:
     static void InitKeyboardDelegate();
-    static void Initialize();
+    static void Initialize(const sptr<InputMethodSystemAbility> &imsa);
     static void GrantNativePermission();
     static bool SwitchIpcCode(IInputMethodSystemAbilityIpcCode code, MessageParcel &datas, int32_t fuzzedInt32);
     static bool isInitialize_;

@@ -75,8 +75,13 @@ bool FuzzInputMethodSystemAbility(FuzzedDataProvider &provider)
     uint32_t code = provider.ConsumeIntegral<uint32_t>() % TARGET_REMOTE_CODE_NUMS;
     std::vector<uint8_t> bufferData = provider.ConsumeRemainingBytes<uint8_t>();
 
+    static sptr<InputMethodSystemAbility> imsa = new (std::nothrow) InputMethodSystemAbility();
+    if (imsa == nullptr) {
+        IMSA_HILOGE("failed to create InputMethodSystemAbility");
+        return false;
+    }
     if (!g_isInitialize.load()) {
-        DelayedSingleton<InputMethodSystemAbility>::GetInstance()->Initialize();
+        imsa->Initialize();
         g_isInitialize.store(true);
     }
 
@@ -90,18 +95,23 @@ bool FuzzInputMethodSystemAbility(FuzzedDataProvider &provider)
     datas.RewindRead(0);
     MessageParcel reply;
     MessageOption option;
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->OnRemoteRequest(code, datas, reply, option);
+    imsa->OnRemoteRequest(code, datas, reply, option);
     return true;
 }
 
 bool TestDump(FuzzedDataProvider &provider)
 {
+    static sptr<InputMethodSystemAbility> imsa = new (std::nothrow) InputMethodSystemAbility();
+    if (imsa == nullptr) {
+        IMSA_HILOGE("failed to create InputMethodSystemAbility");
+        return false;
+    }
     std::string fuzzedString = provider.ConsumeRandomLengthString();
     std::u16string u16Str(fuzzedString.begin(), fuzzedString.end());
     std::vector<std::u16string> args;
     args.push_back(u16Str);
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->Dump(provider.ConsumeIntegral<int32_t>(), args);
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->DumpAllMethod(provider.ConsumeIntegral<int32_t>());
+    imsa->Dump(provider.ConsumeIntegral<int32_t>(), args);
+    imsa->DumpAllMethod(provider.ConsumeIntegral<int32_t>());
     return true;
 }
 
