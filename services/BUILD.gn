@@ -176,14 +176,14 @@ ohos_shared_library("inputmethod_service") {
     defines += [ "IME_USAGE_ENABLE" ]
     sources += [
       "adapter/fold_status_adapter/src/fold_status_adapter.cpp",
-      "ime_usage/src/ime_usage_db_helper.cpp",
+      "ime_usage/src/ime_usage_data_helper.cpp",
       "ime_usage/src/ime_usage_event_cacher.cpp",
       "ime_usage/src/ime_usage_event_factory.cpp",
+      "ime_usage/src/ime_usage_file_store.cpp",
       "ime_usage/src/ime_usage_reporter.cpp",
     ]
     external_deps += [
       "hisysevent:libhisysevent",
-      "relational_store:native_rdb",
     ]
   }
   subsystem_name = "inputmethod"
@@ -310,14 +310,14 @@ ohos_static_library("inputmethod_service_static") {
     defines += [ "IME_USAGE_ENABLE" ]
     sources += [
       "adapter/fold_status_adapter/src/fold_status_adapter.cpp",
-      "ime_usage/src/ime_usage_db_helper.cpp",
+      "ime_usage/src/ime_usage_data_helper.cpp",
       "ime_usage/src/ime_usage_event_cacher.cpp",
       "ime_usage/src/ime_usage_event_factory.cpp",
+      "ime_usage/src/ime_usage_file_store.cpp",
       "ime_usage/src/ime_usage_reporter.cpp",
     ]
     external_deps += [
       "hisysevent:libhisysevent",
-      "relational_store:native_rdb",
     ]
   }
   subsystem_name = "inputmethod"

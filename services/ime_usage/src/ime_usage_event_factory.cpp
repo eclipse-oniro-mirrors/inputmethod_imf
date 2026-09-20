@@ -16,8 +16,6 @@
 #include "ime_usage_event_factory.h"
 
 #include <algorithm>
-#include <chrono>
-#include <ctime>
 
 #include "global.h"
 
@@ -26,19 +24,14 @@ using namespace OHOS::MiscServices::ImeUsageEventId;
 namespace OHOS {
 namespace MiscServices {
 
-ImeUsageEventFactory::ImeUsageEventFactory(std::shared_ptr<ImeUsageDbHelper> dbHelper)
+ImeUsageEventFactory::ImeUsageEventFactory(std::shared_ptr<ImeUsageDataHelper> dataHelper)
 {
-    dbHelper_ = dbHelper;
-    IMSA_HILOGI("ImeUsageEventFactory created, dbHelper=%{public}p", dbHelper_.get());
+    dataHelper_ = dataHelper;
+    IMSA_HILOGI("ImeUsageEventFactory created");
 }
 
 void ImeUsageEventFactory::Create(std::vector<ImeUsageInfo> &infos, uint64_t dayStartTime, uint64_t dayEndTime)
 {
-    if (dbHelper_ == nullptr) {
-        IMSA_HILOGE("dbHelper_ is nullptr");
-        return;
-    }
-
     IMSA_HILOGD("Create: dayStartTime=%{public}llu, dayEndTime=%{public}llu",
         static_cast<unsigned long long>(dayStartTime), static_cast<unsigned long long>(dayEndTime));
 
@@ -47,23 +40,15 @@ void ImeUsageEventFactory::Create(std::vector<ImeUsageInfo> &infos, uint64_t day
     IMSA_HILOGD("Daily aggregation: infoCount=%{public}zu", infos.size());
 }
 
-void ImeUsageEventFactory::CleanupOldData(uint64_t clearDataTime)
-{
-    if (dbHelper_ == nullptr) {
-        return;
-    }
-    dbHelper_->DeleteEventsByTime(clearDataTime);
-}
-
 void ImeUsageEventFactory::GetUsageInfo(std::vector<ImeUsageInfo> &infos, uint64_t startTime, uint64_t endTime)
 {
-    if (dbHelper_ == nullptr) {
+    // Channel 1: Query aggregated COUNT_DURATION records
+    if (dataHelper_ == nullptr) {
+        IMSA_HILOGE("dataHelper_ is nullptr");
         return;
     }
-
-    // Channel 1: Query aggregated COUNT_DURATION records
     std::unordered_map<std::string, ImeUsageInfo> statisticInfos;
-    dbHelper_->QueryStatisticEventsInPeriod(startTime, endTime, statisticInfos);
+    dataHelper_->QueryStatisticEventsInPeriod(startTime, endTime, statisticInfos);
     IMSA_HILOGD("GetUsageInfo: channel1(statistic) found %{public}zu IMEs", statisticInfos.size());
 
     // Channel 2+3: Merge foreground IME duration
@@ -76,8 +61,12 @@ void ImeUsageEventFactory::GetUsageInfo(std::vector<ImeUsageInfo> &infos, uint64
 void ImeUsageEventFactory::MergeForegroundInfo(
     std::unordered_map<std::string, ImeUsageInfo> &statisticInfos, uint64_t startTime, uint64_t endTime)
 {
+    if (dataHelper_ == nullptr) {
+        IMSA_HILOGE("MergeForegroundInfo: dataHelper_ is nullptr");
+        return;
+    }
     ImeUsageRawEvent lastEvent;
-    dbHelper_->QueryFinalEventInfo(endTime, lastEvent);
+    dataHelper_->QueryFinalEventInfo(endTime, lastEvent);
 
     if (lastEvent.rawId != EVENT_INPUT_START && lastEvent.rawId != EVENT_INPUT_STATUS_CHANGED) {
         IMSA_HILOGI("MergeForegroundInfo: no foreground IME, lastRawId=%{public}d", lastEvent.rawId);
@@ -86,11 +75,12 @@ void ImeUsageEventFactory::MergeForegroundInfo(
     IMSA_HILOGD(
         "MergeForegroundInfo: lastEvent rawId=%{public}d, pkg=%{public}s", lastEvent.rawId, lastEvent.package.c_str());
 
+    // showCount defaults to 0 via ImeUsageInfo's default member initializer;
+    // Channel1 already counts INPUT_START events, so no explicit assignment needed.
     ImeUsageInfo foregroundInfo;
     foregroundInfo.package = lastEvent.package;
-    foregroundInfo.showCount = 0; // Channel1 already counts INPUT_START events
 
-    dbHelper_->QueryForegroundImeInfo(startTime, endTime, lastEvent.screenStatusAfter, foregroundInfo);
+    dataHelper_->QueryForegroundImeInfo(startTime, endTime, lastEvent.screenStatusAfter, foregroundInfo);
     foregroundInfo.usage = foregroundInfo.GetAppUsage();
 
     auto it = statisticInfos.find(foregroundInfo.package);

@@ -23,27 +23,18 @@
 #include <vector>
 
 #include "ime_usage_common.h"
-#include "ime_usage_db_helper.h"
+#include "ime_usage_data_helper.h"
 
 namespace OHOS {
 namespace MiscServices {
 
 class ImeUsageEventFactory {
 public:
-    explicit ImeUsageEventFactory(std::shared_ptr<ImeUsageDbHelper> dbHelper);
+    explicit ImeUsageEventFactory(std::shared_ptr<ImeUsageDataHelper> dataHelper);
     ~ImeUsageEventFactory() = default;
 
     // Perform daily aggregation for a specific day: query DB, merge foreground apps, generate report events
     void Create(std::vector<ImeUsageInfo> &infos, uint64_t dayStartTime, uint64_t dayEndTime);
-
-    // Clean up data older than clearDataTime
-    void CleanupOldData(uint64_t clearDataTime);
-
-    // Get the shared dbHelper (for reporter to persist/load state and query earliest time)
-    std::shared_ptr<ImeUsageDbHelper> GetDbHelper() const
-    {
-        return dbHelper_;
-    }
 
 private:
     void GetUsageInfo(std::vector<ImeUsageInfo> &infos, uint64_t startTime, uint64_t endTime);
@@ -52,7 +43,7 @@ private:
     void CollectAndSortResults(
         std::unordered_map<std::string, ImeUsageInfo> &statisticInfos, std::vector<ImeUsageInfo> &infos);
 
-    std::shared_ptr<ImeUsageDbHelper> dbHelper_;
+    std::shared_ptr<ImeUsageDataHelper> dataHelper_;
 };
 
 } // namespace MiscServices

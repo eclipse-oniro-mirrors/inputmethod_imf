@@ -2895,7 +2895,6 @@ ohos_unittest("ImeUsageTest") {
     "hilog:libhilog",
     "init:libbegetutil",
     "ipc:ipc_single",
-    "relational_store:native_rdb",
   ]
 
   cflags = [
@@ -2937,7 +2936,6 @@ ohos_unittest("FoldStatusAdapterTest") {
     "hilog:libhilog",
     "init:libbegetutil",
     "ipc:ipc_single",
-    "relational_store:native_rdb",
     "window_manager:libdm_lite",
   ]
 
@@ -2980,7 +2978,6 @@ ohos_unittest("ImeUsageEventFactoryTest") {
     "hilog:libhilog",
     "init:libbegetutil",
     "ipc:ipc_single",
-    "relational_store:native_rdb",
   ]
 
   cflags = [
@@ -3022,7 +3019,6 @@ ohos_unittest("ImeUsageReporterTest") {
     "hilog:libhilog",
     "init:libbegetutil",
     "ipc:ipc_single",
-    "relational_store:native_rdb",
   ]
 
   cflags = [

@@ -20,7 +20,6 @@
 #include <chrono>
 #include <cstdint>
 #include <ctime>
-#include <map>
 #include <string>
 
 namespace OHOS {
@@ -94,7 +93,7 @@ inline constexpr int LM_PORTRAIT = LM * SCREEN_STATUS_ENCODE_BASE + PORTRAIT;
 } // namespace ImeScreenStatus
 
 // Index into the durations array in ImeUsageInfo.
-// Order matches DURATION_COLUMNS in ime_usage_db_helper.cpp.
+// Order matches DURATION_COLUMNS in ime_usage_data_helper.cpp.
 enum DurationIndex : size_t {
     IDX_UNFOLDED_LANDSCAPE = 0, // foldStatus=1, vhMode=1
     IDX_UNFOLDED_PORTRAIT = 1,  // foldStatus=1, vhMode=2
@@ -128,29 +127,8 @@ inline size_t ScreenStatusToIndex(int32_t screenStatus)
 // (e.g., SUB or V_MAIN fold modes where the IME panel cannot be shown).
 inline constexpr int32_t IME_SCREEN_STATUS_UNAVAILABLE = -1;
 
-// DB table field names
-namespace ImeUsageTable {
-inline constexpr char FIELD_ID[] = "id";
-inline constexpr char FIELD_RAWID[] = "rawid";
-inline constexpr char FIELD_TS[] = "ts";
-inline constexpr char FIELD_FOLD_STATUS[] = "fold_status";
-inline constexpr char FIELD_PRE_FOLD_STATUS[] = "pre_fold_status";
-inline constexpr char FIELD_BUNDLE_NAME[] = "bundle_name";
-inline constexpr char FIELD_HAPPEN_TIME[] = "happen_time";
-inline constexpr char FIELD_FOLD_PORTRAIT_DURATION[] = "fold_portrait_duration";
-inline constexpr char FIELD_FOLD_LANDSCAPE_DURATION[] = "fold_landscape_duration";
-inline constexpr char FIELD_EXPAND_PORTRAIT_DURATION[] = "expand_portrait_duration";
-inline constexpr char FIELD_EXPAND_LANDSCAPE_DURATION[] = "expand_landscape_duration";
-inline constexpr char FIELD_G_PORTRAIT_DURATION[] = "g_portrait_duration";
-inline constexpr char FIELD_G_LANDSCAPE_DURATION[] = "g_landscape_duration";
-inline constexpr char FIELD_UNFOLDED_PORTRAIT_DURATION[] = "unfolded_portrait_duration";
-inline constexpr char FIELD_UNFOLDED_LANDSCAPE_DURATION[] = "unfolded_landscape_duration";
-inline constexpr char FIELD_N_PORTRAIT_DURATION[] = "n_portrait_duration";
-inline constexpr char FIELD_N_LANDSCAPE_DURATION[] = "n_landscape_duration";
-inline constexpr char FIELD_LM_PORTRAIT_DURATION[] = "lm_portrait_duration";
-inline constexpr char FIELD_LM_LANDSCAPE_DURATION[] = "lm_landscape_duration";
-inline constexpr char FIELD_SHOW_COUNT[] = "show_count";
-} // namespace ImeUsageTable
+// JSON file name for ime_usage persistence
+inline constexpr const char *IME_USAGE_EVENTS_FILE_NAME = "ime_usage_events.json";
 
 // HiSysEvent field keys for reporting
 namespace ImeUsageEventSpace {
@@ -178,9 +156,6 @@ inline constexpr uint32_t DATA_KEEP_DAY = 3;
 inline constexpr uint64_t MILLISECS_PER_DAY = 24ULL * 60 * 60 * 1000;
 inline constexpr uint64_t MILLISECS_PER_SEC = 1000;
 inline constexpr uint64_t NANOSECS_PER_MILLISEC = 1000000;
-inline constexpr const char *IME_USAGE_DB_NAME = "ime_usage_log.db";
-inline constexpr const char *IME_USAGE_DB_TABLE = "ime_usage_events";
-inline constexpr const char *IME_USAGE_STATE_TABLE = "ime_usage_report_state";
 inline constexpr const char *STATE_KEY_LAST_REPORT_TIME = "last_report_time";
 
 // Common return codes for IME usage operations
@@ -205,6 +180,7 @@ struct ImeEventRecord {
     std::string bundleName;
     int32_t preScreenStatus = SCREEN_STATUS_UNINITIALIZED;
     int32_t screenStatus = SCREEN_STATUS_UNINITIALIZED;
+    uint32_t showCount = 0; // number of sessions accumulated (only meaningful for COUNT_DURATION)
 };
 
 // Raw event read from DB for foreground recovery
@@ -219,6 +195,8 @@ struct ImeUsageRawEvent {
 };
 
 // Aggregated usage info per IME package
+// durations use uint32_t (milliseconds): max ~49.7 days per bucket, sufficient
+// for per-day per-screen-status IME usage which is well under 24 hours.
 struct ImeUsageInfo {
     std::string package;
     std::array<uint32_t, DURATION_COUNT> durations {};
@@ -245,8 +223,38 @@ struct ImeUsageInfo {
     }
 };
 
-// Map from screen status code to duration (used in DB read/write)
-using DurationMap = std::map<int32_t, uint64_t>;
+// Duration array indexed by DurationIndex (used in DB read/write).
+// Replaces the previous std::map<int32_t, uint64_t> — eliminates per-element
+// heap allocation and O(log n) lookup for a fixed set of 12 screen statuses.
+using DurationMap = std::array<uint64_t, DURATION_COUNT>;
+
+// A single event row persisted to the JSON events file.
+// Combines the ImeEventRecord fields with the durations array and
+// the monotonically-increasing id assigned by ImeUsageDataHelper.
+// Defined here (not in ime_usage_file_store.h) so that the business layer
+// (ImeUsageDataHelper) does not need to include the storage-layer header.
+struct ImeUsageEventRow {
+    int64_t id = 0;
+    int32_t rawid = RAWID_NONE;
+    int64_t ts = 0;
+    int64_t happenTime = 0;
+    std::string bundleName;
+    int32_t preScreenStatus = SCREEN_STATUS_UNINITIALIZED;
+    int32_t screenStatus = SCREEN_STATUS_UNINITIALIZED;
+    DurationMap durations {};
+    uint32_t showCount = 0;
+};
+
+// Check whether a DurationMap contains only zero durations.
+inline bool IsDurationMapEmpty(const DurationMap &durations)
+{
+    for (size_t i = 0; i < DURATION_COUNT; i++) {
+        if (durations[i] != 0) {
+            return false;
+        }
+    }
+    return true;
+}
 
 inline uint64_t ZeroClockMsFromTimeT(std::time_t t)
 {

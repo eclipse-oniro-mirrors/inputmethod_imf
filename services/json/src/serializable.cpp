@@ -72,6 +72,16 @@ bool Serializable::GetValue(cJSON *node, const std::string &name, int32_t &value
     value = subNode->valueint;
     return true;
 }
+bool Serializable::GetValue(cJSON *node, const std::string &name, int64_t &value)
+{
+    auto subNode = GetSubNode(node, name);
+    if (subNode == nullptr || !cJSON_IsNumber(subNode)) {
+        IMSA_HILOGD("%{public}s not number!", name.c_str());
+        return false;
+    }
+    value = static_cast<int64_t>(subNode->valuedouble);
+    return true;
+}
 // LCOV_EXCL_START
 bool Serializable::GetValue(cJSON *node, const std::string &name, uint32_t &value)
 {
@@ -146,6 +156,18 @@ bool Serializable::SetValue(cJSON *node, const std::string &name, const std::str
 bool Serializable::SetValue(cJSON *node, const std::string &name, const int32_t &value)
 {
     auto item = cJSON_AddNumberToObject(node, name.c_str(), value);
+    return item != NULL;
+}
+
+bool Serializable::SetValue(cJSON *node, const std::string &name, const int64_t &value)
+{
+    auto item = cJSON_AddNumberToObject(node, name.c_str(), static_cast<double>(value));
+    return item != NULL;
+}
+
+bool Serializable::SetValue(cJSON *node, const std::string &name, const uint32_t &value)
+{
+    auto item = cJSON_AddNumberToObject(node, name.c_str(), static_cast<double>(value));
     return item != NULL;
 }
 
@@ -243,5 +265,49 @@ cJSON *Serializable::GetSubNode(cJSON *node, const std::string &name)
     }
     return cJSON_GetObjectItem(node, name.c_str());
 }
+
+// LCOV_EXCL_START
+bool Serializable::GetValue(cJSON *node, const std::string &name, std::vector<uint64_t> &values)
+{
+    auto subNode = GetSubNode(node, name);
+    if (!cJSON_IsArray(subNode)) {
+        IMSA_HILOGD("%{public}s not array", name.c_str());
+        return false;
+    }
+    auto size = cJSON_GetArraySize(subNode);
+    values.clear();
+    values.reserve(size);
+    for (int i = 0; i < size; i++) {
+        auto item = cJSON_GetArrayItem(subNode, i);
+        if (!cJSON_IsNumber(item)) {
+            IMSA_HILOGE("%{public}s[%{public}d] not number", name.c_str(), i);
+            return false;
+        }
+        values.push_back(static_cast<uint64_t>(item->valuedouble));
+    }
+    return true;
+}
+
+bool Serializable::SetValue(cJSON *node, const std::string &name, const std::vector<uint64_t> &values)
+{
+    cJSON *array = cJSON_CreateArray();
+    if (array == nullptr) {
+        return false;
+    }
+    for (const auto &value : values) {
+        auto item = cJSON_CreateNumber(static_cast<double>(value));
+        if (item == nullptr || !cJSON_AddItemToArray(array, item)) {
+            cJSON_Delete(item);
+            cJSON_Delete(array);
+            return false;
+        }
+    }
+    if (!cJSON_AddItemToObject(node, name.c_str(), array)) {
+        cJSON_Delete(array);
+        return false;
+    }
+    return true;
+}
+// LCOV_EXCL_STOP
 } // namespace MiscServices
 } // namespace OHOS

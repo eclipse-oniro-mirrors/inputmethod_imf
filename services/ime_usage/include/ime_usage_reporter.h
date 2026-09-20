@@ -53,18 +53,25 @@ private:
     void OnTimeout();
     void ReportDailyEvent();
     void InnerReportDailyEvent();
-    void ReportAndCleanupOldData(uint64_t clearDataTime, uint64_t alreadyReportedDay0);
+    void ReportAndCleanupOldData(uint64_t clearDataTime);
     bool ReportSingleDay(uint64_t dayStartTime, uint64_t dayEndTime, const std::string &dateStr);
     bool WriteImeUsageEvent(const ImeUsageInfo &info, const std::string &dateStr);
-    uint64_t GetToday0ClockMs() const;
     uint64_t GetNowMs() const;
     void PersistLastReportTime();
     uint64_t LoadLastReportTime();
-    uint64_t DayStartFromMs(uint64_t ms) const;
     uint64_t GetNextReportTimeMs() const;
+    // Helpers extracted from Init to keep each function under 50 lines.
+    int CreateComponents(const std::string &workPath);
+    void LoadReportStateAndCheckReport();
+    // Helpers extracted from InnerReportDailyEvent to keep each function under 50 lines.
+    // Returns REPORT_TIME_NEVER-tagged start (0 means no data / nothing to report).
+    bool CalcReportDayStart(uint64_t today0Time, uint64_t &reportDayStart);
+    bool ReportUnreportedDays(uint64_t reportDayStart, uint64_t yesterdayEnd);
+    void UpdateAndPersistReportTime(uint64_t reportEndTime);
 
     std::unique_ptr<ImeUsageEventCacher> eventCacher_;
     std::unique_ptr<ImeUsageEventFactory> eventFactory_;
+    std::shared_ptr<ImeUsageDataHelper> dataHelper_;
     std::shared_ptr<AppExecFwk::EventHandler> eventHandler_;
     std::atomic<bool> isRunning_ { false };
     uint64_t lastReportTime_ { 0 };

@@ -17,6 +17,7 @@
 #define INPUT_METHOD_SERIALIZABLE_H
 #include <string>
 #include <unordered_set>
+#include <vector>
 
 #include "cJSON.h"
 #include "global.h"
@@ -27,7 +28,7 @@ namespace MiscServices {
 #endif
 struct Serializable {
 public:
-    virtual ~Serializable(){};
+    virtual ~Serializable() {};
     bool Unmarshall(const std::string &content);
     bool Marshall(std::string &content) const;
     virtual bool Unmarshal(cJSON *node)
@@ -40,11 +41,12 @@ public:
     }
     static bool GetValue(cJSON *node, const std::string &name, std::string &value);
     static bool GetValue(cJSON *node, const std::string &name, int32_t &value);
+    static bool GetValue(cJSON *node, const std::string &name, int64_t &value);
     static bool GetValue(cJSON *node, const std::string &name, uint32_t &value);
     static bool GetValue(cJSON *node, const std::string &name, bool &value);
     static bool GetValue(cJSON *node, const std::string &name, Serializable &value);
     static bool GetValue(cJSON *node, const std::string &name, std::vector<std::vector<std::string>> &values);
-    template<typename T>
+    template <typename T>
     static bool GetKeys(cJSON *nodes, std::vector<std::string> &keys, const std::function<bool(T)> &filter = nullptr)
     {
         if (nodes == nullptr) {
@@ -65,7 +67,7 @@ public:
         }
         return result;
     }
-    template<typename T>
+    template <typename T>
     static bool GetValues(cJSON *nodes, std::vector<T> &values, const std::function<bool(T)> &filter = nullptr)
     {
         if (nodes == nullptr) {
@@ -86,7 +88,7 @@ public:
         }
         return result;
     }
-    template<typename T>
+    template <typename T>
     static bool GetValue(cJSON *node, const std::string &name, std::vector<T> &values, int32_t maxNum = 0)
     {
         auto subNode = GetSubNode(node, name);
@@ -110,7 +112,7 @@ public:
         }
         return ret;
     }
-    template<typename T>
+    template <typename T>
     static bool GetValue(cJSON *node, const std::string &name, std::unordered_set<T> &values, int32_t maxNum = 0)
     {
         auto subNode = GetSubNode(node, name);
@@ -140,11 +142,14 @@ public:
     }
     static bool SetValue(cJSON *node, const std::string &name, const std::string &value);
     static bool SetValue(cJSON *node, const std::string &name, const int32_t &value);
+    static bool SetValue(cJSON *node, const std::string &name, const int64_t &value);
+    static bool SetValue(cJSON *node, const std::string &name, const uint32_t &value);
     static bool SetValue(cJSON *node, const std::string &name, const bool &value);
     static bool SetValue(cJSON *node, const std::string &name, const Serializable &value);
     static bool SetValue(cJSON *node, const std::string &name, const std::vector<std::vector<std::string>> &values);
     static bool SetValue(cJSON *node, const std::string &name, const std::vector<std::string> &values);
-    template<typename T> static bool SetValue(cJSON *node, const std::string &name, const std::vector<T> &values)
+    template <typename T>
+    static bool SetValue(cJSON *node, const std::string &name, const std::vector<T> &values)
     {
         auto array = cJSON_CreateArray();
         for (const auto &value : values) {
@@ -161,6 +166,8 @@ public:
         return ret;
     }
     static cJSON *GetSubNode(cJSON *node, const std::string &name);
+    static bool GetValue(cJSON *node, const std::string &name, std::vector<uint64_t> &values);
+    static bool SetValue(cJSON *node, const std::string &name, const std::vector<uint64_t> &values);
 };
 } // namespace MiscServices
 } // namespace OHOS
