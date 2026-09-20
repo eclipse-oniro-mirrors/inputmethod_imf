@@ -262,15 +262,11 @@ inline uint64_t ZeroClockMsFromTimeT(std::time_t t)
     if (localtime_r(&t, &localTm) == nullptr) {
         return 0;
     }
-    localTm.tm_hour = 0;
-    localTm.tm_min = 0;
-    localTm.tm_sec = 0;
+    localTm.tm_hour = localTm.tm_min = localTm.tm_sec = 0;
     std::time_t midnight = std::mktime(&localTm);
-    if (midnight < 0) {
-        return 0;
-    }
-    return static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
-        std::chrono::system_clock::from_time_t(midnight).time_since_epoch()).count());
+    return midnight < 0 ? 0
+                        : static_cast<uint64_t>(std::chrono::duration_cast<std::chrono::milliseconds>(
+                              std::chrono::system_clock::from_time_t(midnight).time_since_epoch()).count());
 }
 
 inline uint64_t GetToday0ClockMs()
