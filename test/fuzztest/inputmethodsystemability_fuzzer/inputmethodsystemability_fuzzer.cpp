@@ -60,29 +60,38 @@ bool InitializeClientInfo(InputClientInfo &clientInfo)
 }
 void SystemAbility(FuzzedDataProvider &provider)
 {
+    sptr<InputMethodSystemAbility> imsa = new (std::nothrow) InputMethodSystemAbility();
+    if (imsa == nullptr) {
+        IMSA_HILOGE("failed to create InputMethodSystemAbility");
+        return;
+    }
     auto fuzzedUint32 = provider.ConsumeIntegral<uint32_t>();
     auto fuzzedInt32 = provider.ConsumeIntegral<int32_t>();
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->ReleaseInput(nullptr, fuzzedUint32, fuzzedInt32);
+    imsa->ReleaseInput(nullptr, fuzzedUint32, fuzzedInt32);
     InputClientInfo inputClientInfo;
     if (!OHOS::InitializeClientInfo(inputClientInfo)) {
         return;
     }
     InputClientInfoInner inner = InputMethodTools::GetInstance().InputClientInfoToInner(inputClientInfo);
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->UpdateListenEventFlag(inner, fuzzedUint32);
+    imsa->UpdateListenEventFlag(inner, fuzzedUint32);
 
     const std::string bundleName = provider.ConsumeRandomLengthString();
     const std::string subName = provider.ConsumeRandomLengthString();
     uint32_t trigger = provider.ConsumeIntegral<uint32_t>();
     auto fuzzedUserId = provider.ConsumeIntegral<int32_t>();
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->SwitchInputMethod(bundleName, subName,
-        trigger, fuzzedUserId);
+    imsa->SwitchInputMethod(bundleName, subName, trigger, fuzzedUserId);
 }
 void FuzzInputType(FuzzedDataProvider &provider)
 {
+    sptr<InputMethodSystemAbility> imsa = new (std::nothrow) InputMethodSystemAbility();
+    if (imsa == nullptr) {
+        IMSA_HILOGE("failed to create InputMethodSystemAbility");
+        return;
+    }
     const int32_t type = provider.ConsumeIntegral<int32_t>();
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->StartInputType(type, true);
+    imsa->StartInputType(type, true);
     bool resultValue = provider.ConsumeBool();
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->IsInputTypeSupported(type, resultValue);
+    imsa->IsInputTypeSupported(type, resultValue);
     sptr<IInputMethodCore> core = new InputMethodCoreServiceImpl();
 
     sptr<ISystemAbilityManager> systemAbilityManager =
@@ -96,11 +105,16 @@ void FuzzInputType(FuzzedDataProvider &provider)
         IMSA_HILOGE("remoteObject is nullptr!");
         return;
     }
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->SetCoreAndAgent(core, remoteObject);
+    imsa->SetCoreAndAgent(core, remoteObject);
 }
 
 void FuzzInterfaceCovage(FuzzedDataProvider &provider)
 {
+    sptr<InputMethodSystemAbility> imsa = new (std::nothrow) InputMethodSystemAbility();
+    if (imsa == nullptr) {
+        IMSA_HILOGE("failed to create InputMethodSystemAbility");
+        return;
+    }
     const uint32_t status = provider.ConsumeIntegralInRange<uint32_t>(0, 2);
     ImeWindowInfo info {};
     PanelInfo panelInfo {};
@@ -114,17 +128,17 @@ void FuzzInterfaceCovage(FuzzedDataProvider &provider)
     windowInfo.height = provider.ConsumeIntegral<uint32_t>();
     info.panelInfo = panelInfo;
     info.windowInfo = windowInfo;
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->PanelStatusChange(status, info);
+    imsa->PanelStatusChange(status, info);
 
     sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
     uint32_t type = provider.ConsumeIntegral<uint32_t>();
     int32_t requestKeyboardReason = provider.ConsumeIntegral<int32_t>();
     bool isShown = provider.ConsumeBool();
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->ShowInput(client, type, requestKeyboardReason);
+    imsa->ShowInput(client, type, requestKeyboardReason);
     uint64_t displayId = provider.ConsumeIntegral<uint64_t>();
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->IsPanelShown(displayId, panelInfo, isShown);
+    imsa->IsPanelShown(displayId, panelInfo, isShown);
     uint32_t windowId = provider.ConsumeIntegral<uint32_t>();
-    DelayedSingleton<InputMethodSystemAbility>::GetInstance()->HideInput(client, windowId);
+    imsa->HideInput(client, windowId);
 }
 } // namespace OHOS
 /* Fuzzer entry point */

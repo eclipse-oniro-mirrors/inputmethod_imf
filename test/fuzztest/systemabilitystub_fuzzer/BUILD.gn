@@ -66,6 +66,7 @@ ohos_fuzztest("SystemAbilityStubFuzzTest") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
     "window_manager:libdm_lite",
   ]
 

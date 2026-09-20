@@ -22,7 +22,7 @@
 #include "command_manager.h"
 namespace OHOS {
 namespace MiscServices {
-constexpr const char *TOOL_VERSION = "1.0.0"; // must same with the "version" in config.json
+constexpr const char *TOOL_VERSION = "1.0.0"; // must be the same as the "version" in config.json
 constexpr const char *TOOL_NAME = "ohos-imf";
 constexpr const char *TOOL_DESCRIPTION = "Input method framework CLI tool";
 constexpr int COLUMN_WIDTH = 18;
@@ -33,7 +33,7 @@ Executor::Executor(int argc, char *argv[])
         cmd_ = "--help";
         return;
     }
-    // 1 represent the second param
+    // 1 represents the second param
     cmd_ = argv[1];
     for (int i = 2; i < argc; i++) {
         argList_.emplace_back(argv[i]);
@@ -68,9 +68,9 @@ std::string Executor::GenerateFullHelp()
 
     oss << std::right;
     oss << "Examples:" << std::endl;
-    oss << "  # View version" << std::endl;
+    oss << "  # Show version information" << std::endl;
     oss << "  " << TOOL_NAME << " --version" << std::endl;
-    oss << "  # View the help of subCommand insert " << std::endl;
+    oss << "  # Show help for the insert command " << std::endl;
     oss << "  " << TOOL_NAME << " insert --help" << std::endl;
     oss << std::endl;
 

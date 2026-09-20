@@ -46,6 +46,7 @@
 #include "input_method_controller.h"
 #include "input_method_engine_listener_impl.h"
 #include "matching_skills.h"
+#include "mock_token.h"
 #include "panel_status_listener.h"
 #include "scene_board_judgement.h"
 #include "scope_utils.h"
@@ -158,6 +159,7 @@ public:
     static std::shared_ptr<AppExecFwk::EventHandler> panelHandler_;
     static int32_t currentImeUid_;
     static uint64_t currentImeTokenId_;
+    static uint64_t privacyTokenId_;
     static sptr<OnTextChangedListener> textListener_;
     static std::shared_ptr<InputMethodEngineListener> imeListener_;
     static bool isScbEnable_;
@@ -226,6 +228,7 @@ sptr<InputMethodSystemAbility> InputMethodPanelTest::imsa_ { nullptr };
 uint32_t InputMethodPanelTest::windowWidth_ = 0;
 uint32_t InputMethodPanelTest::windowHeight_ = 0;
 uint64_t InputMethodPanelTest::currentImeTokenId_ = 0;
+uint64_t InputMethodPanelTest::privacyTokenId_ = 0;
 int32_t InputMethodPanelTest::currentImeUid_ = 0;
 sptr<OnTextChangedListener> InputMethodPanelTest::textListener_ { nullptr };
 std::shared_ptr<InputMethodEngineListener> InputMethodPanelTest::imeListener_ { nullptr };
@@ -248,6 +251,7 @@ void InputMethodPanelTest::SetUpTestCase(void)
     std::string bundleName = property != nullptr ? property->name : "default.inputmethod.unittest";
     currentImeTokenId_ = TddUtil::GetTestTokenID(bundleName);
     currentImeUid_ = TddUtil::GetUid(bundleName);
+    privacyTokenId_ = TddUtil::AllocTestTokenID(true, "TestPrivacyWindow", { "ohos.permission.PRIVACY_WINDOW" });
 
     imsa_ = new (std::nothrow) InputMethodSystemAbility();
     if (imsa_ == nullptr) {
@@ -1903,8 +1907,11 @@ HWTEST_F(InputMethodPanelTest, testSetPrivacyMode, TestSize.Level0)
     panelInfo.panelType = SOFT_KEYBOARD;
     panelInfo.panelFlag = FLG_FLOATING;
     InputMethodPanelTest::ImaCreatePanel(panelInfo, inputMethodPanel);
-    auto ret = inputMethodPanel->SetPrivacyMode(true);
-    EXPECT_NE(ret, ErrorCode::NO_ERROR);
+    {
+        AccessScope scope(privacyTokenId_, currentImeUid_);
+        auto ret = inputMethodPanel->SetPrivacyMode(true);
+        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    }
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
     InputMethodPanelTest::imc_->Close();
     TddUtil::DestroyWindow();

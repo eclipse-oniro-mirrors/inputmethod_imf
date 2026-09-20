@@ -265,6 +265,25 @@ bool SettingsDataUtils::GetEDCBackupInputMethod(int32_t userId, std::string &bac
     return true;
 }
 
+void SettingsDataUtils::SetPushToTalkDialogPopped()
+{
+    bool ret = SetStringValue(SETTING_URI_PROXY, KBD_PUSH_TO_TALK_DIALOG_POP, "true");
+    if (!ret) {
+        IMSA_HILOGW("set pushToTalk setting failed");
+    }
+}
+
+bool SettingsDataUtils::GetPushToTalkDialogPopped()
+{
+    std::string value;
+    auto ret = GetStringValue(SETTING_URI_PROXY, KBD_PUSH_TO_TALK_DIALOG_POP, value);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGW("get pushToTalkfigured setting failed ret=%{public}d", ret);
+        return false;
+    }
+    return value == "true";
+}
+
 EnabledStatus SettingsDataUtils::ComputeEnabledStatus(
     const std::string &bundleName, bool isSystemSpecialIme, EnabledStatus initStatus)
 {

@@ -26,6 +26,7 @@
 #include "settings_data_utils.h"
 #include "system_ability_definition.h"
 #include "user_session_manager.h"
+#include "settings_data_utils.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -43,6 +44,11 @@ constexpr const char *EVENT_MEMORY_STATE = "memory_state";
 constexpr const char *EVENT_PARAM_UID = "uid";
 constexpr const char *COMMON_EVENT_NOTIFY_SA_MAKE_IMAGE = "NOTIFY_SA_MAKE_IMAGE";
 constexpr const char *EVENT_HYBRID_MODE_SWITCH = "HYBRID_MODE_SWITCH";
+constexpr const char *ENABLE_PUSH_TO_TALK = "accessory.manager.event.ENABLE_PUSH_TALK";
+constexpr const char *EVENT_EXAM_MODE_ON = "usual.event.KIOSK_MODE_ON";
+constexpr const char *EVENT_EXAM_MODE_OFF = "usual.event.KIOSK_MODE_OFF";
+constexpr const char *EVENT_PARAM_EXAM_TYPE = "type";
+constexpr int32_t EXAM_MODE_TYPE = 1;
 ImCommonEventManager::ImCommonEventManager()
 {
 }
@@ -72,6 +78,15 @@ std::shared_ptr<ImCommonEventManager::EventSubscriber> ImCommonEventManager::Cre
     return std::make_shared<EventSubscriber>(subscriberInfo);
 }
 
+std::shared_ptr<ImCommonEventManager::EventSubscriber> ImCommonEventManager::CreatePushToTalkSubscriber()
+{
+    EventFwk::MatchingSkills matchingSkills;
+    matchingSkills.AddEvent(ENABLE_PUSH_TO_TALK);
+    EventFwk::CommonEventSubscribeInfo subscriberInfo(matchingSkills);
+    subscriberInfo.SetPermission("ohos.permission.ACCESS_BLUETOOTH");
+    return std::make_shared<EventSubscriber>(subscriberInfo);
+}
+
 bool ImCommonEventManager::SubscribeEvent()
 {
     EventFwk::MatchingSkills matchingSkills;
@@ -85,6 +100,8 @@ bool ImCommonEventManager::SubscribeEvent()
     matchingSkills.AddEvent(CommonEventSupport::COMMON_EVENT_SCREEN_LOCKED);
     matchingSkills.AddEvent(CommonEventSupport::COMMON_EVENT_BUNDLE_RESOURCES_CHANGED);
     matchingSkills.AddEvent(COMMON_EVENT_NOTIFY_SA_MAKE_IMAGE);
+    matchingSkills.AddEvent(EVENT_EXAM_MODE_ON);
+    matchingSkills.AddEvent(EVENT_EXAM_MODE_OFF);
     if (ImeInfoInquirer::GetInstance().IsSupportPcMode()) {
         matchingSkills.AddEvent(EVENT_HYBRID_MODE_SWITCH);
     }
@@ -99,12 +116,15 @@ bool ImCommonEventManager::SubscribeEvent()
     }
 
     auto largeMemorySubscriber = CreateLargeMemorySubscriber();
+    auto pushTalkSubscriber = CreatePushToTalkSubscriber();
     sptr<ISystemAbilityStatusChange> listener =
-        new (std::nothrow) SystemAbilityStatusChangeListener([subscriber, largeMemorySubscriber]() {
+        new (std::nothrow) SystemAbilityStatusChangeListener([subscriber, largeMemorySubscriber, pushTalkSubscriber]() {
             bool subscribeResult = EventFwk::CommonEventManager::SubscribeCommonEvent(subscriber);
             IMSA_HILOGI("SubscribeCommonEvent ret: %{public}d", subscribeResult);
             subscribeResult = EventFwk::CommonEventManager::SubscribeCommonEvent(largeMemorySubscriber);
             IMSA_HILOGI("SubscribeCommonEvent largeMemorySubscriber ret: %{public}d", subscribeResult);
+            subscribeResult = EventFwk::CommonEventManager::SubscribeCommonEvent(pushTalkSubscriber);
+            IMSA_HILOGI("SubscribeCommonEvent pushTalkSubscriber ret: %{public}d", subscribeResult);
         });
     if (listener == nullptr) {
         IMSA_HILOGE("SubscribeEvent listener is nullptr!");
@@ -206,6 +226,12 @@ ImCommonEventManager::EventSubscriber::EventSubscriber(const EventFwk::CommonEve
         [](EventSubscriber *that, const CommonEventData &data) { return that->HandleNotifyMakeImage(data); };
     EventManagerFunc_[EVENT_HYBRID_MODE_SWITCH] =
         [](EventSubscriber *that, const CommonEventData &data) { return that->OnHybridModeSwitch(data); };
+    EventManagerFunc_[ENABLE_PUSH_TO_TALK] =
+        [](EventSubscriber *that, const CommonEventData &data) { return that->OnPushToTalk(data); };
+    EventManagerFunc_[EVENT_EXAM_MODE_ON] =
+        [](EventSubscriber *that, const CommonEventData &data) { return that->OnExamMode(data); };
+    EventManagerFunc_[EVENT_EXAM_MODE_OFF] =
+        [](EventSubscriber *that, const CommonEventData &data) { return that->OnExamMode(data); };
 }
 
 void ImCommonEventManager::EventSubscriber::OnBundleResChanged(const CommonEventData &data)
@@ -484,6 +510,53 @@ void ImCommonEventManager::EventSubscriber::OnScreenLock(const EventFwk::CommonE
         return;
     }
     Message *msg = new (std::nothrow) Message(MessageID::MSG_ID_SCREEN_LOCK, parcel);
+    if (msg == nullptr) {
+        IMSA_HILOGE("failed to create Message!");
+        delete parcel;
+        return;
+    }
+    MessageHandler::Instance()->SendMessage(msg);
+}
+
+void ImCommonEventManager::EventSubscriber::OnPushToTalk(const EventFwk::CommonEventData &data)
+{
+    int32_t ret = SettingsDataUtils::GetInstance().SetStringValue(
+        SETTING_URI_PROXY, SettingsDataUtils::KBD_PUSH_TO_TALK_SWITCH, "true");
+    if (!ret) {
+        IMSA_HILOGW("set pushToTalk setting failed");
+    }
+}
+
+void ImCommonEventManager::EventSubscriber::OnExamMode(const EventFwk::CommonEventData &data)
+{
+    auto const &want = data.GetWant();
+    std::string action = want.GetAction();
+    int32_t userId = want.GetIntParam(COMMON_EVENT_PARAM_USER_ID, OsAccountAdapter::INVALID_USER_ID);
+    int32_t type = want.GetIntParam(EVENT_PARAM_EXAM_TYPE, -1);
+    IMSA_HILOGI("OnExamMode action: %{public}s, userId: %{public}d, type: %{public}d", action.c_str(), userId, type);
+ 
+    bool isExamModeOn = false;
+    if (action == EVENT_EXAM_MODE_ON && type == EXAM_MODE_TYPE) {
+        isExamModeOn = true;
+    } else if (action == EVENT_EXAM_MODE_OFF && type == EXAM_MODE_TYPE) {
+        isExamModeOn = false;
+    } else {
+        IMSA_HILOGW("OnExamMode unexpected action or type, skip");
+        return;
+    }
+ 
+    int32_t msgId = isExamModeOn ? MessageID::MSG_ID_EXAM_MODE_ON : MessageID::MSG_ID_EXAM_MODE_OFF;
+    MessageParcel *parcel = new (std::nothrow) MessageParcel();
+    if (parcel == nullptr) {
+        IMSA_HILOGE("parcel is nullptr!");
+        return;
+    }
+    if (!ITypesUtil::Marshal(*parcel, userId)) {
+        IMSA_HILOGE("Failed to write message parcel!");
+        delete parcel;
+        return;
+    }
+    Message *msg = new (std::nothrow) Message(msgId, parcel);
     if (msg == nullptr) {
         IMSA_HILOGE("failed to create Message!");
         delete parcel;

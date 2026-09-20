@@ -42,6 +42,10 @@ struct SystemConfig : public Serializable {
     EnabledStatus initEnabledState{ EnabledStatus::DISABLED };
     bool enableAppAgentFeature = false;
     bool enableNumKeyFeature = false;
+    bool enablePushToTalk = false;
+    uint32_t pushToTalkLongPressMs { 0 };
+    std::string pushToTalkDialogBundleName;
+    std::string pushToTalkDialogAbilityName;
     std::unordered_set<std::string> disableNumKeyAppDeviceTypes;
     std::unordered_set<int32_t> proxyImeUidList;
     std::unordered_set<int32_t> specialSaUidList;
@@ -52,6 +56,7 @@ struct SystemConfig : public Serializable {
     std::string systemPanelAppIdentifier;
     bool disableImmersiveMode = false;
     bool enableImeUsageFeature =  false;
+    std::string permissionCliChecked;
 
     bool Unmarshal(cJSON *node) override
     {
@@ -65,6 +70,10 @@ struct SystemConfig : public Serializable {
         GetValue(node, GET_NAME(enableAppAgentFeature), enableAppAgentFeature);
         GetValue(node, GET_NAME(enableNumKeyFeature), enableNumKeyFeature);
         GetValue(node, GET_NAME(disableNumKeyAppDeviceTypes), disableNumKeyAppDeviceTypes);
+        GetValue(node, GET_NAME(enablePushToTalk), enablePushToTalk);
+        GetValue(node, GET_NAME(pushToTalkLongPressMs), pushToTalkLongPressMs);
+        GetValue(node, GET_NAME(pushToTalkDialogBundleName), pushToTalkDialogBundleName);
+        GetValue(node, GET_NAME(pushToTalkDialogAbilityName), pushToTalkDialogAbilityName);
         GetValue(node, GET_NAME(proxyImeUidList), proxyImeUidList);
         GetValue(node, GET_NAME(specialSaUidList), specialSaUidList);
         GetValue(node, GET_NAME(defaultImeScreenList), defaultImeScreenList);
@@ -74,6 +83,7 @@ struct SystemConfig : public Serializable {
         GetValue(node, GET_NAME(systemPanelAppIdentifier), systemPanelAppIdentifier);
         GetValue(node, GET_NAME(disableImmersiveMode), disableImmersiveMode);
         GetValue(node, GET_NAME(enableImeUsageFeature), enableImeUsageFeature);
+        GetValue(node, GET_NAME(permissionCliChecked), permissionCliChecked);
         return true;
     }
 };

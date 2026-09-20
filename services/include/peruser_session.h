@@ -97,6 +97,14 @@ struct ImeData {
 };
 
 enum class StartPreDefaultImeStatus : uint32_t { NO_NEED, HAS_STARTED, TO_START };
+struct FocusedRealImeClientSnapshot {
+    sptr<IRemoteObject> client { nullptr };
+    sptr<IRemoteObject> channel { nullptr };
+    uint64_t clientGroupId { 0 };
+    uint32_t editorWindowId { 0 };
+    uint64_t editorDisplayId { 0 };
+};
+
 /**@class PerUserSession
  *
  * @brief The class provides session management in input method management service
@@ -177,6 +185,7 @@ public:
     bool SpecialScenarioCheck();
     int32_t SpecialSendPrivateData(const std::unordered_map<std::string, PrivateDataValue> &privateCommand);
     int32_t SendVoicePrivateCommand(const bool isPersistence);
+    int32_t SendPttStopPrivateCommand();
     bool IsNumkeyAutoInputApp(const std::string &bundleName);
     bool IsPreconfiguredDefaultImeSpecified(const InputClientInfo &inputClientInfo);
     bool IsImeSwitchForbidden();
@@ -202,6 +211,12 @@ public:
     void OnImeDisconnect(sptr<ImeConnection> connection);
     void SetAttachFailedByUnavailableImeFlag(bool flag);
     int32_t ExecTextInteraction(const std::string &text);
+    int32_t NotifyRollbackSpace();
+    int32_t NotifyPttGestureCancelled();
+    // Returns the service-side snapshot of the ACTIVE current client bound to a real IME.
+    // This reuses focus state maintained by PerUserSession and does not synchronously query WMS.
+    bool GetFocusedRealImeClient(FocusedRealImeClientSnapshot &snapshot);
+
 private:
     struct ResetManager {
         uint32_t num{ 0 };

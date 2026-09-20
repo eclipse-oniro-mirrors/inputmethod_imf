@@ -86,6 +86,7 @@ ohos_shared_library("inputmethod_service") {
     "adapter/os_account_adapter/src/os_account_adapter.cpp",
     "adapter/os_account_adapter/src/os_account_listener.cpp",
     "src/client_group.cpp",
+    "src/exam_mode_manager.cpp",
     "src/freeze_manager.cpp",
     "src/full_ime_info_manager.cpp",
     "src/im_common_event_manager.cpp",
@@ -99,8 +100,11 @@ ohos_shared_library("inputmethod_service") {
     "src/input_type_manager.cpp",
     "src/notify_service_impl.cpp",
     "src/peruser_session.cpp",
+    "src/ptt_controller.cpp",
+    "src/push_to_talk_manager.cpp",
     "src/sys_cfg_parser.cpp",
     "src/user_session_manager.cpp",
+    "src/push_to_talk_connection.cpp",
   ]
 
   configs = [ ":inputmethod_services_native_config" ]
@@ -130,6 +134,7 @@ ohos_shared_library("inputmethod_service") {
     "ability_runtime:app_manager",
     "access_token:libaccesstoken_sdk",
     "access_token:libtokenid_sdk",
+    "c_utils:utils",
     "cJSON:cjson",
     "config_policy:configpolicy_util",
     "data_share:datashare_consumer",
@@ -222,6 +227,7 @@ ohos_static_library("inputmethod_service_static") {
     "identity_checker/src/identity_checker_impl.cpp",
     "module/src/imf_module_manager.cpp",
     "src/client_group.cpp",
+    "src/exam_mode_manager.cpp",
     "src/freeze_manager.cpp",
     "src/full_ime_info_manager.cpp",
     "src/im_common_event_manager.cpp",
@@ -235,8 +241,11 @@ ohos_static_library("inputmethod_service_static") {
     "src/input_type_manager.cpp",
     "src/notify_service_impl.cpp",
     "src/peruser_session.cpp",
+    "src/ptt_controller.cpp",
+    "src/push_to_talk_manager.cpp",
     "src/sys_cfg_parser.cpp",
     "src/user_session_manager.cpp",
+    "src/push_to_talk_connection.cpp",
   ]
 
   public_configs = [ ":inputmethod_services_native_config" ]

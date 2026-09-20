@@ -146,6 +146,26 @@ bool ImeInfoInquirer::IsEnableNumKey()
     return systemConfig_.enableNumKeyFeature;
 }
 
+bool ImeInfoInquirer::IsEnablePushToTalkDialog()
+{
+    return systemConfig_.enablePushToTalk;
+}
+
+uint32_t ImeInfoInquirer::GetPushToTalkLongPressMs()
+{
+    return systemConfig_.pushToTalkLongPressMs;
+}
+
+std::string ImeInfoInquirer::GetPushToTalkDialogBundleName()
+{
+    return systemConfig_.pushToTalkDialogBundleName;
+}
+
+std::string ImeInfoInquirer::GetPushToTalkDialogAbilityName()
+{
+    return systemConfig_.pushToTalkDialogAbilityName;
+}
+
 std::unordered_set<std::string> ImeInfoInquirer::GetDisableNumKeyAppDeviceTypes()
 {
     return systemConfig_.disableNumKeyAppDeviceTypes;
@@ -164,6 +184,11 @@ bool ImeInfoInquirer::IsSpecialSaUid(int32_t callingUid)
 bool ImeInfoInquirer::IsMemoryWatermarkEnabled()
 {
     return !productConfig_.disabledMemoryWatermark;
+}
+
+std::string ImeInfoInquirer::GetPermissionCliChecked()
+{
+    return systemConfig_.permissionCliChecked;
 }
 
 SystemConfig ImeInfoInquirer::GetSystemConfig()

@@ -42,6 +42,7 @@ ohos_static_library("inputmethod_tdd_util") {
   }
   sources = [
     "src/key_event_util.cpp",
+    "src/mock_token.cpp",
     "src/tdd_util.cpp",
   ]
   configs = [
@@ -61,6 +62,7 @@ ohos_static_library("inputmethod_tdd_util") {
     "ability_runtime:ability_connect_callback_stub",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
     "cJSON:cjson",
     "data_share:datashare_common",
     "data_share:datashare_consumer",

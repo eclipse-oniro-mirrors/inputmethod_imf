@@ -27,26 +27,53 @@ KeyboardEvent &KeyboardEvent::GetInstance()
 
 int32_t KeyboardEvent::AddKeyEventMonitor(KeyHandle handle)
 {
+    return AddKeyEventMonitor(std::move(handle), nullptr);
+}
+
+int32_t KeyboardEvent::AddKeyEventMonitor(KeyHandle handle, KeyEventMonitorHandler keyEventHandler)
+{
     IMSA_HILOGI("KeyboardEvent::AddKeyEventMonitor start.");
+    bool hasPttHandler = keyEventHandler != nullptr;
+    if (hasPttHandler) {
+        IMSA_HILOGI("PTT: add keyboard monitor, handlerValid=%{public}d.", hasPttHandler);
+    }
     std::shared_ptr<InputEventCallback> callback = std::make_shared<InputEventCallback>();
     if (callback == nullptr) {
+        if (hasPttHandler) {
+            IMSA_HILOGE("PTT: create input event callback failed.");
+        }
         IMSA_HILOGE("callback is nullptr!");
         return ErrorCode::ERROR_NULL_POINTER;
     }
     callback->SetKeyHandle(handle);
+    callback->SetKeyEventMonitorHandler(std::move(keyEventHandler));
     auto manager = InputManager::GetInstance();
     if (manager == nullptr) {
+        if (hasPttHandler) {
+            IMSA_HILOGE("PTT: input manager is nullptr.");
+        }
         return ErrorCode::ERROR_NULL_POINTER;
     }
     int32_t monitorId = manager->AddMonitor([callback](std::shared_ptr<MMI::KeyEvent> keyEvent) {
         callback->OnInputEvent(keyEvent);
     });
     if (monitorId < 0) {
+        if (hasPttHandler) {
+            IMSA_HILOGE("PTT: add keyboard monitor failed, monitorId=%{public}d.", monitorId);
+        }
         IMSA_HILOGE("add monitor failed, id: %{public}d!", monitorId);
         return ErrorCode::ERROR_SUBSCRIBE_KEYBOARD_EVENT;
     }
+    if (hasPttHandler) {
+        IMSA_HILOGI("PTT: keyboard monitor registered, monitorId=%{public}d.", monitorId);
+    }
     IMSA_HILOGD("add monitor success, id: %{public}d.", monitorId);
+    SubscribeSwitchCombinationKeys(callback);
+    return ErrorCode::NO_ERROR;
+}
 
+void KeyboardEvent::SubscribeSwitchCombinationKeys(const std::shared_ptr<InputEventCallback> &callback)
+{
     CombinationKeyCallBack combinationKeyCallBack = [callback](std::shared_ptr<MMI::KeyEvent> keyEvent) {
         InputMethodSysEvent::GetInstance().ReportSystemShortCut("usual.event.WIN_SPACE");
         if (callback == nullptr) {
@@ -77,7 +104,6 @@ int32_t KeyboardEvent::AddKeyEventMonitor(KeyHandle handle)
     SubscribeCombinationKey(MMI::KeyEvent::KEYCODE_SHIFT_RIGHT, MMI::KeyEvent::KEYCODE_CTRL_LEFT, ctrlShiftCallBack);
     SubscribeCombinationKey(MMI::KeyEvent::KEYCODE_SHIFT_LEFT, MMI::KeyEvent::KEYCODE_CTRL_RIGHT, ctrlShiftCallBack);
     SubscribeCombinationKey(MMI::KeyEvent::KEYCODE_SHIFT_RIGHT, MMI::KeyEvent::KEYCODE_CTRL_RIGHT, ctrlShiftCallBack);
-    return ErrorCode::NO_ERROR;
 }
 
 void KeyboardEvent::SubscribeCombinationKey(

@@ -36,6 +36,7 @@
 #include "if_system_ability_manager.h"
 #include "input_method_controller.h"
 #include "iservice_registry.h"
+#include "mock_token.h"
 #include "nativetoken_kit.h"
 #include "os_account_manager.h"
 #include "scope_utils.h"
@@ -52,14 +53,6 @@ using namespace Rosen;
 constexpr int32_t INVALID_USER_ID = -1;
 constexpr int32_t MAIN_USER_ID = 100;
 constexpr const uint16_t EACH_LINE_LENGTH = 500;
-constexpr int32_t PERMISSION_NUM = 7;
-constexpr int32_t FIRST_PARAM_INDEX = 0;
-constexpr int32_t SECOND_PARAM_INDEX = 1;
-constexpr int32_t THIRD_PARAM_INDEX = 2;
-constexpr int32_t FOURTH_PARAM_INDEX = 3;
-constexpr int32_t FIFTH_PARAM_INDEX = 4;
-constexpr int32_t SIXTH_PARAM_INDEX = 5;
-constexpr int32_t SEVENTH_PARAM_INDEX = 6;
 static constexpr int32_t MAX_TIMEOUT_WAIT_FOCUS = 2000;
 constexpr int32_t WAIT_CLICK_COMPLETE = 100;
 uint64_t TddUtil::selfTokenID_ = 0;
@@ -110,12 +103,16 @@ int32_t TddUtil::GetCurrentUserId()
 void TddUtil::StorageSelfTokenID()
 {
     selfTokenID_ = GetSelfTokenID();
+    // 保存 shell 进程的 tokenId，供 MockToken 在 user 版本 mock 权限时使用
+    MockToken::SetTestEnvironment(selfTokenID_);
 }
 
 uint64_t TddUtil::AllocTestTokenID(
     bool isSystemApp, const std::string &bundleName, const std::vector<std::string> &premission)
 {
     IMSA_HILOGI("bundleName: %{public}s", bundleName.c_str());
+    // 优先尝试 AllocHapToken（debug/root 版本可用），失败则通过 mock foundation 进程
+    // 调用 InitHapToken（user 版本兼容方案）。参考 wiki WIKI202506197190466。
     HapInfoParams infoParams = { .userID = GetCurrentUserId(),
         .bundleName = bundleName,
         .instIndex = 0,
@@ -137,7 +134,48 @@ uint64_t TddUtil::AllocTestTokenID(
         policyParams = { .apl = APL_NORMAL, .domain = bundleName, .permList = {}, .permStateList = {} };
     }
     auto tokenInfo = AccessTokenKit::AllocHapToken(infoParams, policyParams);
-    return tokenInfo.tokenIDEx;
+    if (tokenInfo.tokenIDEx != 0) {
+        return tokenInfo.tokenIDEx;
+    }
+    // User 版本 fallback：通过 mock foundation 进程调用 InitHapToken
+    HapInfoParams wikiInfoParams = {
+        .userID = GetCurrentUserId(),
+        .bundleName = bundleName,
+        .instIndex = 0,
+        .appIDDesc = "AccessTokenTestAppID",
+        .apiVersion = MockToken::DEFAULT_API_VERSION,
+        .isSystemApp = isSystemApp,
+        .appDistributionType = "",
+    };
+    HapPolicyParams wikiPolicyParams = {
+        .apl = APL_NORMAL,
+        .domain = "accesstoken_test_domain",
+    };
+    for (const auto &prem : premission) {
+        PermissionDef permDefResult;
+        if (AccessTokenKit::GetDefPermission(prem, permDefResult) != RET_SUCCESS) {
+            continue;
+        }
+        PermissionStateFull permState = { .permissionName = prem,
+            .isGeneral = true,
+            .resDeviceID = { "local" },
+            .grantStatus = { PermissionState::PERMISSION_GRANTED },
+            .grantFlags = { 1 } };
+        wikiPolicyParams.permStateList.emplace_back(permState);
+        if (permDefResult.availableLevel > wikiPolicyParams.apl) {
+            wikiPolicyParams.aclRequestedList.emplace_back(prem);
+        }
+    }
+    AccessTokenIDEx tokenIdEx = { 0 };
+    uint64_t selfTokenId = GetSelfTokenID();
+    if (MockToken::GetNativeTokenIdFromProcess("foundation") == selfTokenId) {
+        AccessTokenKit::InitHapToken(wikiInfoParams, wikiPolicyParams, tokenIdEx);
+    } else {
+        MockNativeToken mock("foundation");
+        AccessTokenKit::InitHapToken(wikiInfoParams, wikiPolicyParams, tokenIdEx);
+        SetSelfTokenID(selfTokenId);
+    }
+    return tokenIdEx.tokenIDEx;
 }
 
 uint64_t TddUtil::GetTestTokenID(const std::string &bundleName)
@@ -150,7 +188,12 @@ uint64_t TddUtil::GetTestTokenID(const std::string &bundleName)
 
 void TddUtil::DeleteTestTokenID(uint64_t tokenId)
 {
-    AccessTokenKit::DeleteToken(tokenId);
+    AccessTokenID accessTokenId = static_cast<AccessTokenID>(tokenId & 0xFFFFFFFF);
+    int32_t ret = AccessTokenKit::DeleteToken(accessTokenId);
+    if (ret != 0) {
+        // Fallback: use wiki approach for user version
+        MockToken::DeleteTestHapToken(tokenId);
+    }
 }
 
 void TddUtil::SetTestTokenID(uint64_t tokenId)
@@ -276,17 +319,21 @@ int TddUtil::GetUserIdByBundleName(const std::string &bundleName, const int curr
 
 void TddUtil::GrantNativePermission()
 {
-    const char **perms = new const char *[PERMISSION_NUM];
-    perms[FIRST_PARAM_INDEX] = "ohos.permission.MANAGE_SECURE_SETTINGS";
-    perms[SECOND_PARAM_INDEX] = "ohos.permission.CONNECT_IME_ABILITY";
-    perms[THIRD_PARAM_INDEX] = "ohos.permission.MANAGE_SETTINGS";
-    perms[FOURTH_PARAM_INDEX] = "ohos.permission.INJECT_INPUT_EVENT";
-    perms[FIFTH_PARAM_INDEX] = "ohos.permission.GET_BUNDLE_INFO_PRIVILEGED";
-    perms[SIXTH_PARAM_INDEX] = "ohos.permission.GET_RUNNING_INFO";
-    perms[SEVENTH_PARAM_INDEX] = "ohos.permission.MANAGE_LOCAL_ACCOUNTS";
+    // 优先尝试通过 GetAccessTokenId 创建 system_core native token（debug/root 版本可用）。
+    // 如果失败（user 版本不生效），则通过 mock 已有 SA 进程的 tokenId 获取系统权限。
+    // 参考 wiki WIKI202506197190466。
+    const char *perms[] = {
+        "ohos.permission.MANAGE_SECURE_SETTINGS",
+        "ohos.permission.CONNECT_IME_ABILITY",
+        "ohos.permission.MANAGE_SETTINGS",
+        "ohos.permission.INJECT_INPUT_EVENT",
+        "ohos.permission.GET_BUNDLE_INFO_PRIVILEGED",
+        "ohos.permission.GET_RUNNING_INFO",
+        "ohos.permission.MANAGE_LOCAL_ACCOUNTS",
+    };
     TokenInfoParams infoInstance = {
         .dcapsNum = 0,
-        .permsNum = PERMISSION_NUM,
+        .permsNum = sizeof(perms) / sizeof(perms[0]),
         .aclsNum = 0,
         .dcaps = nullptr,
         .perms = perms,
@@ -295,14 +342,27 @@ void TddUtil::GrantNativePermission()
         .aplStr = "system_core",
     };
     uint64_t tokenId = GetAccessTokenId(&infoInstance);
+    if (tokenId != 0) {
+        int res = SetSelfTokenID(tokenId);
+        if (res == 0) {
+            AccessTokenKit::ReloadNativeTokenInfo();
+            IMSA_HILOGI("GrantNativePermission via GetAccessTokenId success, tokenId: %{public}" PRIu64, tokenId);
+            return;
+        }
+        IMSA_HILOGE("SetSelfTokenID fail via GetAccessTokenId, res: %{public}d, fallback to wiki", res);
+    }
+    // User 版本 fallback：mock 已有 SA 进程的 tokenId
+    tokenId = MockToken::GetNativeTokenIdFromProcess("inputmethod_service");
+    if (tokenId == 0) {
+        IMSA_HILOGE("failed to get inputmethod_service tokenId, fallback to foundation");
+        tokenId = MockToken::GetNativeTokenIdFromProcess("foundation");
+    }
     int res = SetSelfTokenID(tokenId);
     if (res == 0) {
-        IMSA_HILOGI("SetSelfTokenID success!");
+        IMSA_HILOGI("GrantNativePermission via wiki fallback success, tokenId: %{public}" PRIu64, tokenId);
     } else {
-        IMSA_HILOGE("SetSelfTokenID fail!");
+        IMSA_HILOGE("SetSelfTokenID fail, res: %{public}d", res);
     }
-    AccessTokenKit::ReloadNativeTokenInfo();
-    delete[] perms;
 }
 
 void TddUtil::PushEnableImeValue(const std::string &key, const std::string &value)

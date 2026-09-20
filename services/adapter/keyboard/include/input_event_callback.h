@@ -16,6 +16,9 @@
 #ifndef INPUTMETHOD_IMF_INPUT_EVENT_CALLBACK_H
 #define INPUTMETHOD_IMF_INPUT_EVENT_CALLBACK_H
 
+#include <cstdint>
+#include <mutex>
+
 #include "input_manager.h"
 #include "keyboard_event.h"
 
@@ -27,10 +30,21 @@ public:
     virtual void OnInputEvent(std::shared_ptr<MMI::PointerEvent> pointerEvent) const;
     virtual void OnInputEvent(std::shared_ptr<MMI::AxisEvent> axisEvent) const;
     void SetKeyHandle(KeyHandle handle);
+    void SetKeyEventMonitorHandler(KeyEventMonitorHandler keyEventHandler);
     void TriggerSwitch();
 
 private:
+    enum class PttRoutingState : uint8_t {
+        IDLE = 0,
+        TRACKING,
+        SUPPRESSED,
+    };
+
+    bool ShouldForwardPttKeyEvent(const std::shared_ptr<MMI::KeyEvent> &keyEvent) const;
     KeyHandle keyHandler_ = nullptr;
+    KeyEventMonitorHandler keyEventHandler_ = nullptr;
+    mutable std::mutex pttRoutingMutex_;
+    mutable PttRoutingState pttRoutingState_ { PttRoutingState::IDLE };
     static uint32_t keyState_;
     static bool isKeyHandled_;
 };

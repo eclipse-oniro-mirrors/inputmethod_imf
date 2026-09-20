@@ -18,6 +18,7 @@
 
 #include <memory>
 #include <string>
+#include <unordered_map>
 #include <vector>
 
 #include "peruser_session.h"
@@ -29,6 +30,7 @@
 #include "input_client_proxy.h"
 #include "input_client_service_impl.h"
 #include "input_death_recipient.h"
+#include "input_method_ability.h"
 #include "input_method_agent_proxy.h"
 #include "input_method_agent_service_impl.h"
 #include "input_method_core_proxy.h"
@@ -45,6 +47,33 @@ constexpr uint64_t TEST_DISPLAY_ID = 0;
 constexpr uint64_t TEST_DISPLAY_GROUP_ID = 0;
 constexpr pid_t TEST_PID = 1234;
 constexpr pid_t TEST_UID = 5678;
+
+class PttImeStateManager : public ImeStateManager {
+public:
+    PttImeStateManager() : ImeStateManager(TEST_PID, TEST_UID) { }
+
+private:
+    void ControlIme(bool) override { }
+};
+
+class PttPrivateCommandListener : public InputMethodEngineListener {
+public:
+    void OnKeyboardStatus(bool) override { }
+    void OnInputStart() override { }
+    int32_t OnInputStop() override
+    {
+        return ErrorCode::NO_ERROR;
+    }
+    void OnSetCallingWindow(uint32_t) override { }
+    void OnSetSubtype(const SubProperty &) override { }
+    void ReceivePrivateCommand(
+        const std::unordered_map<std::string, PrivateDataValue> &privateCommand) override
+    {
+        privateCommand_ = privateCommand;
+    }
+
+    std::unordered_map<std::string, PrivateDataValue> privateCommand_;
+};
 
 class PerUserSessionTest : public testing::Test {
 public:
@@ -1869,6 +1898,43 @@ HWTEST_F(PerUserSessionTest, TestSendVoicePrivateCommand_NoIme_001, TestSize.Lev
 }
 
 /**
+* @tc.name: TestSendPttStopPrivateCommand_001
+* @tc.desc: Test the exact PTT stop system private-command protocol and missing-IME error.
+* @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestSendPttStopPrivateCommand_001, TestSize.Level0)
+{
+    EXPECT_EQ(session_->SendPttStopPrivateCommand(), ErrorCode::ERROR_IME_NOT_STARTED);
+
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    imeData->imeStateManager = std::make_shared<PttImeStateManager>();
+    ASSERT_NE(imeData->imeStateManager, nullptr);
+    session_->realImeData_ = imeData;
+
+    auto listener = std::make_shared<PttPrivateCommandListener>();
+    ASSERT_NE(listener, nullptr);
+    auto &ability = InputMethodAbility::GetInstance();
+    auto originalListener = ability.imeListener_;
+    ability.imeListener_ = listener;
+    int32_t ret = session_->SendPttStopPrivateCommand();
+    ability.imeListener_ = originalListener;
+
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_EQ(listener->privateCommand_.size(), 2U);
+    auto systemCommand = listener->privateCommand_.find(SYSTEM_CMD_KEY);
+    ASSERT_NE(systemCommand, listener->privateCommand_.end());
+    auto systemCommandValue = std::get_if<int32_t>(&systemCommand->second);
+    ASSERT_NE(systemCommandValue, nullptr);
+    EXPECT_EQ(*systemCommandValue, 1);
+    auto pttCommand = listener->privateCommand_.find("pushToTalk");
+    ASSERT_NE(pttCommand, listener->privateCommand_.end());
+    auto pttCommandValue = std::get_if<std::string>(&pttCommand->second);
+    ASSERT_NE(pttCommandValue, nullptr);
+    EXPECT_EQ(*pttCommandValue, "stop");
+}
+
+/**
 * @tc.name: TestTryStartIme_NotBlocked_001
 * @tc.desc: Test TryStartIme when not blocked by low memory
 * @tc.type: FUNC
@@ -2188,6 +2254,81 @@ HWTEST_F(PerUserSessionTest, TestRemoveClient_NullClient_001, TestSize.Level0)
     DetachOptions options = { .sessionId = 0, .isUnbindFromClient = true };
     auto ret = session_->RemoveClient(nullptr, nullptr, options);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
+}
+
+/**
+ * @tc.name: TestGetFocusedRealImeClient_001
+ * @tc.desc: Test focused real-IME client snapshot validation and field copying.
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetFocusedRealImeClient_001, TestSize.Level0)
+{
+    sptr<InputMethodCoreServiceImpl> channelStub = new (std::nothrow) InputMethodCoreServiceImpl();
+    ASSERT_NE(channelStub, nullptr);
+    FocusedRealImeClientSnapshot snapshot;
+    snapshot.client = channelStub->AsObject();
+    EXPECT_FALSE(session_->GetFocusedRealImeClient(snapshot));
+    EXPECT_EQ(snapshot.client, nullptr);
+    EXPECT_EQ(snapshot.channel, nullptr);
+
+    auto info = MakeClientInfo(TEST_PID);
+    info.channel = channelStub->AsObject();
+    info.state = ClientState::ACTIVE;
+    info.bindImeData = std::make_shared<BindImeData>(TEST_PID, ImeType::IME);
+    info.config.inputAttribute.editorWindowId = 123;
+    info.config.inputAttribute.editorDisplayId = 456;
+    ASSERT_EQ(session_->OnPrepareInput(info), ErrorCode::NO_ERROR);
+    auto group = session_->GetClientGroupByGroupId(TEST_DISPLAY_GROUP_ID);
+    ASSERT_NE(group, nullptr);
+    group->SetCurrentClient(info.client);
+
+    EXPECT_TRUE(session_->GetFocusedRealImeClient(snapshot));
+    EXPECT_EQ(snapshot.client, info.client->AsObject());
+    EXPECT_EQ(snapshot.channel, info.channel);
+    EXPECT_EQ(snapshot.clientGroupId, TEST_DISPLAY_GROUP_ID);
+    EXPECT_EQ(snapshot.editorWindowId, 123U);
+    EXPECT_EQ(snapshot.editorDisplayId, 456U);
+
+    auto storedInfo = group->GetClientInfo(info.client->AsObject());
+    ASSERT_NE(storedInfo, nullptr);
+    storedInfo->state = ClientState::INACTIVE;
+    EXPECT_FALSE(session_->GetFocusedRealImeClient(snapshot));
+    storedInfo->state = ClientState::ACTIVE;
+    storedInfo->userID = TEST_USER_ID + 1;
+    EXPECT_FALSE(session_->GetFocusedRealImeClient(snapshot));
+    storedInfo->userID = TEST_USER_ID;
+    storedInfo->channel = nullptr;
+    EXPECT_FALSE(session_->GetFocusedRealImeClient(snapshot));
+    storedInfo->channel = info.channel;
+    storedInfo->client = nullptr;
+    EXPECT_FALSE(session_->GetFocusedRealImeClient(snapshot));
+}
+
+/**
+ * @tc.name: TestPttImeNotifications_001
+ * @tc.desc: Test rollback and cancellation notifications with missing, invalid, and ready IME data.
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestPttImeNotifications_001, TestSize.Level0)
+{
+    EXPECT_EQ(session_->NotifyRollbackSpace(), ErrorCode::ERROR_IME_NOT_STARTED);
+    EXPECT_EQ(session_->NotifyPttGestureCancelled(), ErrorCode::ERROR_IME_NOT_STARTED);
+
+    auto nullCoreData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, TEST_PID);
+    ASSERT_NE(nullCoreData, nullptr);
+    nullCoreData->type = ImeType::IME;
+    nullCoreData->imeStatus = ImeStatus::READY;
+    session_->realImeData_ = nullCoreData;
+    EXPECT_EQ(session_->NotifyRollbackSpace(), ErrorCode::ERROR_IME_NOT_STARTED);
+    EXPECT_EQ(session_->NotifyPttGestureCancelled(), ErrorCode::ERROR_IME_NOT_STARTED);
+
+    auto readyImeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(readyImeData, nullptr);
+    readyImeData->imeStateManager = std::make_shared<PttImeStateManager>();
+    ASSERT_NE(readyImeData->imeStateManager, nullptr);
+    session_->realImeData_ = readyImeData;
+    EXPECT_EQ(session_->NotifyRollbackSpace(), ErrorCode::ERROR_CLIENT_NULL_POINTER);
+    EXPECT_EQ(session_->NotifyPttGestureCancelled(), ErrorCode::NO_ERROR);
 }
 } // namespace MiscServices
 } // namespace OHOS

@@ -54,6 +54,7 @@ const PATTERN_USER_NAME: int = 10;
 const PATTERN_NEW_PASSWORD: int = 11;
 const PATTERN_NUMBER_DECIMAL: int = 12;
 const PATTERN_ONE_TIME_CODE: int = 13;
+const PATTERN_ONE_TIME_CODE_NUMBER: int = 15;
 
 const FLAG_SELECTING: int = 2;
 const FLAG_SINGLE_LINE: int = 1;

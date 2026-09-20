@@ -61,6 +61,7 @@ ohos_shared_library("inputmethodextensioncontext_napi") {
   ]
 
   external_deps = [
+    "c_utils:utils",
     "libuv:uv",
     "napi:ace_napi",
     "node:node_header_notice",

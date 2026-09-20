@@ -52,7 +52,6 @@ HWTEST_F(InputMethodToolsTest, Attribute_RoundTrip, TestSize.Level0)
     original.enterKeyType = 3;
     original.inputOption = 1;
     original.isTextPreviewSupported = true;
-    original.isOneTimeCodeNumberFlag = false;
     original.bundleName = "com.test.ime";
     original.immersiveMode = 2;
     original.gradientMode = 1;
@@ -75,7 +74,6 @@ HWTEST_F(InputMethodToolsTest, Attribute_RoundTrip, TestSize.Level0)
     EXPECT_EQ(result.enterKeyType, original.enterKeyType);
     EXPECT_EQ(result.inputOption, original.inputOption);
     EXPECT_EQ(result.isTextPreviewSupported, original.isTextPreviewSupported);
-    EXPECT_EQ(result.isOneTimeCodeNumberFlag, original.isOneTimeCodeNumberFlag);
     EXPECT_EQ(result.bundleName, original.bundleName);
     EXPECT_EQ(result.immersiveMode, original.immersiveMode);
     EXPECT_EQ(result.gradientMode, original.gradientMode);

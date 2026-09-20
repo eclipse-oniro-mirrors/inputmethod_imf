@@ -417,6 +417,7 @@ int32_t InputMethodAbility::StopInput(
 
 void InputMethodAbility::ClearBindInfo(const sptr<IRemoteObject> &channel)
 {
+    ResetPttKeyEventTracking();
     ClearDataChannel(channel);
     ClearInputAttribute();
     ClearAttachOptions();
@@ -430,12 +431,16 @@ int32_t InputMethodAbility::DispatchKeyEvent(
         IMSA_HILOGE("keyEvent is nullptr!");
         return ErrorCode::ERROR_CLIENT_NULL_POINTER;
     }
+    IMSA_HILOGD("InputMethodAbility, start.");
+
+    int32_t pttResult = ErrorCode::NO_ERROR;
+    if (HandlePttKeyEvent(keyEvent, cbId, channelObject, pttResult)) {
+        return pttResult;
+    }
     if (kdListener_ == nullptr) {
         IMSA_HILOGE("kdListener_ is nullptr!");
         return ErrorCode::ERROR_CLIENT_NULL_POINTER;
     }
-    IMSA_HILOGD("InputMethodAbility, start.");
-
     if (!kdListener_->OnDealKeyEvent(keyEvent, cbId, channelObject)) {
         IMSA_HILOGE("keyEvent not deal!");
         return ErrorCode::ERROR_DISPATCH_KEY_EVENT;
@@ -514,6 +519,7 @@ void InputMethodAbility::OnFunctionKey(int32_t funcKey)
 int32_t InputMethodAbility::OnStopInputService(bool isTerminateIme)
 {
     IMSA_HILOGI("isTerminateIme: %{public}d.", isTerminateIme);
+    ResetPttKeyEventTracking();
     isBound_.store(false);
     auto imeListener = GetImeListener();
     if (imeListener == nullptr) {
@@ -1028,6 +1034,7 @@ void InputMethodAbility::SetInputDataChannel(const sptr<IRemoteObject> &object)
 void InputMethodAbility::OnInputDataChannelDied(const sptr<IRemoteObject> &dataChannelObject)
 {
     IMSA_HILOGW("data channel died!");
+    ResetPttKeyEventTracking();
     ClearDataChannel(dataChannelObject);
 }
 
@@ -1098,6 +1105,7 @@ std::shared_ptr<InputControlChannelProxy> InputMethodAbility::GetInputControlCha
 void InputMethodAbility::OnRemoteSaDied(const wptr<IRemoteObject> &object)
 {
     IMSA_HILOGI("input method service died.");
+    ResetPttKeyEventTracking();
     isBound_.store(false);
     ClearDataChannel(dataChannelObject_);
     ClearInputControlChannel();
@@ -1579,6 +1587,7 @@ int32_t InputMethodAbility::IsPanelShown(const PanelInfo &panelInfo, bool &isSho
 void InputMethodAbility::OnClientInactive(const sptr<IRemoteObject> &channel)
 {
     IMSA_HILOGI("client inactive.");
+    ResetPttKeyEventTracking();
     if (imeListener_ != nullptr) {
         imeListener_->OnInputFinish();
     }

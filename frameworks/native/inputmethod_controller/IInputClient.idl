@@ -36,4 +36,5 @@ interface OHOS.MiscServices.IInputClient {
     void OnImeMirrorStop([in] IRemoteObject object);
     void GetCurrentCursorInfo([out] CursorInfoInner cursorInfo);
     void OnExecTextInteraction([in] String text);
+    void StartPttSpaceKeyEventBlock();
 }
