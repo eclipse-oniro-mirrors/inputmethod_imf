@@ -21,11 +21,8 @@
 #include "input_method_agent_service_impl.h"
 #include "string_utils.h"
 #include "message_parcel.h"
-#define private public
-#define protected public
 #include "on_demand_start_stop_sa.h"
 #include "input_method_system_ability.h"
-#undef private
 #include "fuzzer/FuzzedDataProvider.h"
 #include "input_method_controller.h"
 #include "input_method_core_service_impl.h"

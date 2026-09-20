@@ -13,11 +13,9 @@
  * limitations under the License.
  */
 
-#define private public
 #include "input_data_channel_proxy_wrap.h"
 #include "input_method_ability.h"
 #include "task_manager.h"
-#undef private
 
 #include <gtest/gtest.h>
 

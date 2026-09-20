@@ -13,13 +13,10 @@
  * limitations under the License.
  */
 
-#define private public
-#define protected public
 #include "ime_enabled_info_manager.h"
 #include "ime_info_inquirer.h"
 #include "enable_upgrade_manager.h"
 #include "settings_data_utils.h"
-#undef private
 
 #include <gtest/gtest.h>
 

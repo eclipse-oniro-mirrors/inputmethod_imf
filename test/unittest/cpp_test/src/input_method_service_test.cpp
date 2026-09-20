@@ -22,7 +22,6 @@
 #include <thread>
 #include <vector>
 
-#define private public
 #include "global.h"
 #include "im_common_event_manager.h"
 #include "input_manager.h"
@@ -42,7 +41,6 @@
 #include "window_adapter.h"
 #include "tdd_util.h"
 #include "scene_board_judgement.h"
-#undef private
 
 namespace OHOS {
 namespace MiscServices {

@@ -23,6 +23,7 @@ config("imf_sa_stub_fuzztest_common_config") {
     "${inputmethod_path}/test/fuzztest/systemabilitystubfuzztest",
   ]
   cflags = [
+    "-fno-access-control",
     "-g",
     "-O0",
     "-Wno-unused-variable",

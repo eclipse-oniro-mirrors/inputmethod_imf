@@ -19,6 +19,7 @@ config("inputmethod_tdd_util_config") {
   include_dirs = [ "./" ]
   ldflags = [ "-Wl,--exclude-libs=ALL" ]
   cflags = [
+    "-fno-access-control",
     "-fdata-sections",
     "-ffunction-sections",
     "-fvisibility=hidden",

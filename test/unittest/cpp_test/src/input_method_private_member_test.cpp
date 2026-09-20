@@ -12,8 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define private public
-#define protected public
 #include "../mock/datashare_helper.h"
 #include "app_mgr_adapter.h"
 #include "exam_mode_manager.h"
@@ -36,7 +34,6 @@
 #include "identity_checker_mock.h"
 #include "client_group.h"
 #include "window_adapter.h"
-#undef private
 #include <gtest/gtest.h>
 #include <gtest/hwext/gtest-multithread.h>
 #include <sys/time.h>

@@ -25,10 +25,7 @@
 #include "ime_usage_db_helper.h"
 
 #define private   public
-#define protected public
 #include "ime_usage_reporter.h"
-#undef private
-#undef protected
 
 #include "global.h"
 

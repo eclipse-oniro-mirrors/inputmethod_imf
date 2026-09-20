@@ -34,6 +34,7 @@ ohos_fuzztest("SettingsDataUtilsFuzzTest") {
   ]
 
   cflags = [
+    "-fno-access-control",
     "-g",
     "-O0",
     "-Wno-unused-variable",

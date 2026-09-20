@@ -13,9 +13,7 @@
  * limitations under the License.
  */
 
-#define private public
 #include "settings_data_utils.h"
-#undef private
 
 #include "settingsdatautils_fuzzer.h"
 #include "fuzzer/FuzzedDataProvider.h"

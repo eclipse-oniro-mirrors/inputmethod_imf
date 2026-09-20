@@ -29,6 +29,7 @@ ohos_fuzztest("ImeEnabledInfoManagerFuzzTest") {
       [ "${inputmethod_path}/services/adapter/settings_data_provider/include" ]
 
   cflags = [
+    "-fno-access-control",
     "-g",
     "-O0",
     "-Wno-unused-variable",

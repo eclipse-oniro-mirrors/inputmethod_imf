@@ -13,8 +13,6 @@
  * limitations under the License.
  */
 
-#define private public
-#define protected public
 #include "ima_hisysevent_reporter.h"
 #include "imc_hisysevent_reporter.h"
 #include "imf_hisysevent_info.h"
@@ -22,7 +20,6 @@
 #include "imf_hisysevent_util.h"
 #include "imsa_hisysevent_reporter.h"
 #include "inputmethod_sysevent.h"
-#undef private
 
 #include <sys/time.h>
 #include <unistd.h>

@@ -12,11 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define private public
-#define protected public
 #include "ime_system_channel.h"
 #include "input_method_system_ability_proxy.h"
-#undef private
 
 #include "imesystemchannel_fuzzer.h"
 #include "system_cmd_channel_service_impl.h"

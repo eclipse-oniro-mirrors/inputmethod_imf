@@ -25,11 +25,7 @@
 #include "ime_usage_event_cacher.h"
 
 #define private   public
-#define protected public
 #include "ime_usage_event_cacher.h"
-#undef private
-#undef protected
-
 #include "global.h"
 
 namespace OHOS {

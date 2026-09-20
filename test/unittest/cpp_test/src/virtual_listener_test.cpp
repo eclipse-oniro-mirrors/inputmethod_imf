@@ -12,10 +12,7 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define private public
-#define protected public
 #include "input_method_controller.h"
-#undef private
 #include <gtest/gtest.h>
 #include <gtest/hwext/gtest-multithread.h>
 #include <string_ex.h>

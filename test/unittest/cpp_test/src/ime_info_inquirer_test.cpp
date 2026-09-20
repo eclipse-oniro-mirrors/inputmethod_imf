@@ -12,11 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define private public
-#define protected public
 #include "exam_mode_manager.h"
 #include "ime_info_inquirer.h"
-#undef private
 
 #include <gtest/gtest.h>
 #include <sys/time.h>

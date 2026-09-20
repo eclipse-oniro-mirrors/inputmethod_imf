@@ -12,11 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define private public
-#define protected public
 #include "imf_hook_manager.h"
 #include "imf_module_manager.h"
-#undef private
 #include <gtest/gtest.h>
 #include <sys/time.h>
 #include <unistd.h>

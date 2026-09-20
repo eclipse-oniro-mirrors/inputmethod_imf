@@ -12,12 +12,9 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define private public
-#define protected public
 #include "input_method_controller.h"
 #include "input_method_system_ability_proxy.h"
 #include "input_client_service_impl.h"
-#undef private
 
 #include "fuzzcovered_fuzzer.h"
 

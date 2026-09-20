@@ -24,10 +24,7 @@
 #include "ime_usage_common.h"
 
 #define private   public
-#define protected public
 #include "fold_status_adapter.h"
-#undef private
-#undef protected
 
 #include "global.h"
 

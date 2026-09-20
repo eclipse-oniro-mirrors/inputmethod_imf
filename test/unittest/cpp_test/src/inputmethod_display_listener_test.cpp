@@ -13,11 +13,8 @@
  * limitations under the License.
  */
 
-#define private public
-#define protected public
 #include "inputmethod_display_listener.h"
 #include "input_method_ability.h"
-#undef private
 #include <gtest/gtest.h>
 #include <sys/time.h>
 #include <unistd.h>
