@@ -233,10 +233,11 @@ int ImeUsageDataHelper::DeleteEventsByBundleAndStartIndex(const std::string &bun
     }
     size_t oldSize = events_.size();
     auto eventsBackup = events_;
-    events_.erase(std::remove_if(events_.begin(), events_.end(),
-                      [&](const ImeUsageEventRow &row) {
-                          return row.bundleName == bundleName && row.id >= startIndex;
-                      }),
+    events_.erase(
+        std::remove_if(events_.begin(), events_.end(),
+            [&](const ImeUsageEventRow &row) {
+                return row.bundleName == bundleName && row.id >= startIndex;
+            }),
         events_.end());
     if (events_.size() == oldSize) {
         IMSA_HILOGI("DeleteEventsByBundleAndStartIndex: no rows matched, bundle=%{public}s, from id=%{public}d",
@@ -266,10 +267,11 @@ int ImeUsageDataHelper::DeleteAndUpsertTransactional(const std::string &bundleNa
     int64_t nextIdBackup = nextId_;
 
     // Delete old session events from startIndex onwards
-    events_.erase(std::remove_if(events_.begin(), events_.end(),
-                      [&](const ImeUsageEventRow &row) {
-                          return row.bundleName == bundleName && row.id >= startIndex;
-                      }),
+    events_.erase(
+        std::remove_if(events_.begin(), events_.end(),
+            [&](const ImeUsageEventRow &row) {
+                return row.bundleName == bundleName && row.id >= startIndex;
+            }),
         events_.end());
 
     int64_t upsertedId = UpsertCountDurationLocked(bundleName, dayStartTime, countRecord, durations);
@@ -462,10 +464,11 @@ int ImeUsageDataHelper::DeleteEventsByTime(uint64_t clearDataTime)
     }
     size_t oldSize = events_.size();
     auto eventsBackup = events_;
-    events_.erase(std::remove_if(events_.begin(), events_.end(),
-                      [&](const ImeUsageEventRow &row) {
-                          return static_cast<uint64_t>(row.happenTime) < clearDataTime;
-                      }),
+    events_.erase(
+        std::remove_if(events_.begin(), events_.end(),
+            [&](const ImeUsageEventRow &row) {
+                return row.bundleName == bundleName && row.id >= startIndex;
+            }),
         events_.end());
     if (events_.size() == oldSize) {
         IMSA_HILOGI(
