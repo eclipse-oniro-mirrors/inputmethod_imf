@@ -467,7 +467,7 @@ int ImeUsageDataHelper::DeleteEventsByTime(uint64_t clearDataTime)
     events_.erase(
         std::remove_if(events_.begin(), events_.end(),
             [&](const ImeUsageEventRow &row) {
-                return row.bundleName == bundleName && row.id >= startIndex;
+                return static_cast<uint64_t>(row.happenTime) < clearDataTime;
             }),
         events_.end());
     if (events_.size() == oldSize) {
