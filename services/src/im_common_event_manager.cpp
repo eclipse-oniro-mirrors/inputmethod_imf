@@ -45,6 +45,10 @@ constexpr const char *EVENT_PARAM_UID = "uid";
 constexpr const char *COMMON_EVENT_NOTIFY_SA_MAKE_IMAGE = "NOTIFY_SA_MAKE_IMAGE";
 constexpr const char *EVENT_HYBRID_MODE_SWITCH = "HYBRID_MODE_SWITCH";
 constexpr const char *ENABLE_PUSH_TO_TALK = "accessory.manager.event.ENABLE_PUSH_TALK";
+constexpr const char *EVENT_EXAM_MODE_ON = "usual.event.KIOSK_MODE_ON";
+constexpr const char *EVENT_EXAM_MODE_OFF = "usual.event.KIOSK_MODE_OFF";
+constexpr const char *EVENT_PARAM_EXAM_TYPE = "type";
+constexpr int32_t EXAM_MODE_TYPE = 1;
 ImCommonEventManager::ImCommonEventManager()
 {
 }
@@ -96,6 +100,8 @@ bool ImCommonEventManager::SubscribeEvent()
     matchingSkills.AddEvent(CommonEventSupport::COMMON_EVENT_SCREEN_LOCKED);
     matchingSkills.AddEvent(CommonEventSupport::COMMON_EVENT_BUNDLE_RESOURCES_CHANGED);
     matchingSkills.AddEvent(COMMON_EVENT_NOTIFY_SA_MAKE_IMAGE);
+    matchingSkills.AddEvent(EVENT_EXAM_MODE_ON);
+    matchingSkills.AddEvent(EVENT_EXAM_MODE_OFF);
     if (ImeInfoInquirer::GetInstance().IsSupportPcMode()) {
         matchingSkills.AddEvent(EVENT_HYBRID_MODE_SWITCH);
     }
@@ -222,6 +228,10 @@ ImCommonEventManager::EventSubscriber::EventSubscriber(const EventFwk::CommonEve
         [](EventSubscriber *that, const CommonEventData &data) { return that->OnHybridModeSwitch(data); };
     EventManagerFunc_[ENABLE_PUSH_TO_TALK] =
         [](EventSubscriber *that, const CommonEventData &data) { return that->OnPushToTalk(data); };
+    EventManagerFunc_[EVENT_EXAM_MODE_ON] =
+        [](EventSubscriber *that, const CommonEventData &data) { return that->OnExamMode(data); };
+    EventManagerFunc_[EVENT_EXAM_MODE_OFF] =
+        [](EventSubscriber *that, const CommonEventData &data) { return that->OnExamMode(data); };
 }
 
 void ImCommonEventManager::EventSubscriber::OnBundleResChanged(const CommonEventData &data)
@@ -515,6 +525,44 @@ void ImCommonEventManager::EventSubscriber::OnPushToTalk(const EventFwk::CommonE
     if (!ret) {
         IMSA_HILOGW("set pushToTalk setting failed");
     }
+}
+
+void ImCommonEventManager::EventSubscriber::OnExamMode(const EventFwk::CommonEventData &data)
+{
+    auto const &want = data.GetWant();
+    std::string action = want.GetAction();
+    int32_t userId = want.GetIntParam(COMMON_EVENT_PARAM_USER_ID, OsAccountAdapter::INVALID_USER_ID);
+    int32_t type = want.GetIntParam(EVENT_PARAM_EXAM_TYPE, -1);
+    IMSA_HILOGI("OnExamMode action: %{public}s, userId: %{public}d, type: %{public}d", action.c_str(), userId, type);
+ 
+    bool isExamModeOn = false;
+    if (action == EVENT_EXAM_MODE_ON && type == EXAM_MODE_TYPE) {
+        isExamModeOn = true;
+    } else if (action == EVENT_EXAM_MODE_OFF && type == EXAM_MODE_TYPE) {
+        isExamModeOn = false;
+    } else {
+        IMSA_HILOGW("OnExamMode unexpected action or type, skip");
+        return;
+    }
+ 
+    int32_t msgId = isExamModeOn ? MessageID::MSG_ID_EXAM_MODE_ON : MessageID::MSG_ID_EXAM_MODE_OFF;
+    MessageParcel *parcel = new (std::nothrow) MessageParcel();
+    if (parcel == nullptr) {
+        IMSA_HILOGE("parcel is nullptr!");
+        return;
+    }
+    if (!ITypesUtil::Marshal(*parcel, userId)) {
+        IMSA_HILOGE("Failed to write message parcel!");
+        delete parcel;
+        return;
+    }
+    Message *msg = new (std::nothrow) Message(msgId, parcel);
+    if (msg == nullptr) {
+        IMSA_HILOGE("failed to create Message!");
+        delete parcel;
+        return;
+    }
+    MessageHandler::Instance()->SendMessage(msg);
 }
 
 ImCommonEventManager::SystemAbilityStatusChangeListener::SystemAbilityStatusChangeListener(std::function<void()> func)

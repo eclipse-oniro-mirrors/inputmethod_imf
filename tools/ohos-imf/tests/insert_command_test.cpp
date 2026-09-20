@@ -56,7 +56,7 @@ HWTEST_F(InsertCommandTest, Execute_001, TestSize.Level0)
     std::vector<std::string> argList;
     auto ret = cmd.Execute(argList);
     EXPECT_EQ(ret, CliUtils::GenerateError({ "ERR_ARG_COUNT_MISMATCH", "Invalid argument count",
-                       "Only '--text <content>' is supported. Please execute 'ohos-imf insert --help' for usage" }));
+                       "Only '--text <text>' is supported. Please execute 'ohos-imf insert --help' for usage" }));
 }
 
 /**

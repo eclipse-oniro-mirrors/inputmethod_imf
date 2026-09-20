@@ -75,7 +75,7 @@ std::string InsertCommand::GetInsertedText(const std::vector<std::string> &argLi
 {
     if (argList.size() != ARG_NUM) {
         return CliUtils::GenerateError({ "ERR_ARG_COUNT_MISMATCH", "Invalid argument count",
-            "Only '--text <content>' is supported. Please execute 'ohos-imf insert --help' for usage" });
+            "Only '--text <text>' is supported. Please execute 'ohos-imf insert --help' for usage" });
     }
     text = ParamParse::GetParam(argList, "--text");
     if (text.empty()) {

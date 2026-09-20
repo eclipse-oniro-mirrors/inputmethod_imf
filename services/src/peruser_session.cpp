@@ -3803,7 +3803,7 @@ void PerUserSession::SetAttachFailedByUnavailableImeFlag(bool flag)
 int32_t PerUserSession::ExecTextInteraction(const std::string &text)
 {
     auto [clientGroup, clientInfo] = GetCurrentClientBoundRealIme();
-    if (clientInfo == nullptr || clientInfo->client == nullptr || clientInfo->bindImeData == nullptr) {
+    if (clientInfo == nullptr || clientInfo->client == nullptr) {
         IMSA_HILOGD("current client not exists.");
         return ErrorCode::ERROR_CLIENT_NOT_BOUND;
     }

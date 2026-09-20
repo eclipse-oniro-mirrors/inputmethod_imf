@@ -289,6 +289,11 @@ private:
     std::unique_ptr<ImeUsageReporter> imeUsageReporter_;
 #endif
     std::shared_ptr<PushToTalkManager> pushToTalkManager_;
+    void OnExamModeOn(const Message *msg);
+    void OnExamModeOff(const Message *msg);
+    int32_t SwitchToDefaultIme(int32_t userId);
+    int32_t SwitchToPreviousIme(int32_t userId);
+    bool IsSwitchingAllow(int32_t userId, const std::string &targetBundleName);
 };
 } // namespace MiscServices
 } // namespace OHOS
