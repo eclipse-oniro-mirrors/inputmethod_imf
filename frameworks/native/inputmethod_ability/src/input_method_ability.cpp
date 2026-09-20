@@ -2119,5 +2119,15 @@ int32_t InputMethodAbility::GetSoftKeyboardInfo(BoundImeInfo &imeInfo)
     IMSA_HILOGD("show status: %{public}s.", imeInfo.ToString().c_str());
     return ErrorCode::NO_ERROR;
 }
+
+Ace::UIContent *InputMethodAbility::GetSoftKeyboardUIContent()
+{
+    auto panel = GetSoftKeyboardPanel();
+    if (panel == nullptr) {
+        IMSA_HILOGE("panel does not exist");
+        return nullptr;
+    }
+    return panel->GetUIContent();
+}
 } // namespace MiscServices
 } // namespace OHOS

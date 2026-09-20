@@ -90,6 +90,7 @@ ohos_shared_library("cj_inputmethod_extension_ffi") {
     "ability_runtime:napi_common",
     "ability_runtime:runtime",
     "ability_runtime:cj_ability_context_native",
+    "ace_engine:ace_uicontent",
     "c_utils:utils",
     "eventhandler:libeventhandler",
     "hilog:libhilog",

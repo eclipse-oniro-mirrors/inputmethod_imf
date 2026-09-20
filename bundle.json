@@ -170,6 +170,15 @@
                       ],
                       "header_base": "//base/inputmethod/imf/interfaces/inner_api/imf_hook/include"
                   }
+              },
+              {
+                  "name": "//base/inputmethod/imf/frameworks/kits/extension:inputmethod_extension",
+                  "header": {
+                      "header_files": [
+                          "inputmethod_extension_context.h"
+                      ],
+                      "header_base": "//base/inputmethod/imf/frameworks/kits/extension/include"
+                  }
               }
           ], 
           "test": [

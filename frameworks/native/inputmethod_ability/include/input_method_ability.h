@@ -122,6 +122,7 @@ public:
     int32_t HandleKeyEventResult(uint64_t cbId, bool consumeResult, const sptr<IRemoteObject> &channelObject);
     void RemoveDeathRecipient();
     void SetConfigurationUpdate(std::function<void(Rosen::DisplayId displayId)> configurationUpdate);
+    Ace::UIContent *GetSoftKeyboardUIContent();
 
 public:
     /* called from TaskManager worker thread */

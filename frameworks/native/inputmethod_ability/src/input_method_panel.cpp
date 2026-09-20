@@ -1802,6 +1802,15 @@ int32_t InputMethodPanel::SetUiContentAni(
     return ret == WMError::WM_ERROR_INVALID_PARAM ? ErrorCode::ERROR_PARAMETER_CHECK_FAILED : ErrorCode::NO_ERROR;
 }
 
+Ace::UIContent *InputMethodPanel::GetUIContent()
+{
+    if (window_ == nullptr) {
+        IMSA_HILOGE("window is nullptr");
+        return nullptr;
+    }
+    return window_->GetUIContent();
+}
+
 bool InputMethodPanel::SetPanelStatusListener(
     std::shared_ptr<PanelStatusListener> statusListener, const std::string &type)
 {
