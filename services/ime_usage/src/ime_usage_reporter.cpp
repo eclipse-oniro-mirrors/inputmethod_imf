@@ -71,6 +71,7 @@ int ImeUsageReporter::Init(const std::string &workPath)
         // are simply not cached until the retry succeeds.
         IMSA_HILOGW("CreateComponents failed, will retry on timer, ret=%{public}d", ret);
     } else {
+        eventCacher_->RecoverActiveSession();
         LoadReportStateAndCheckReport();
     }
 
@@ -176,6 +177,7 @@ void ImeUsageReporter::OnTimeout()
     if (dataHelper_ == nullptr) {
         IMSA_HILOGI("OnTimeout: retrying CreateComponents");
         if (CreateComponents(workPath_) == 0) {
+            eventCacher_->RecoverActiveSession();
             LoadReportStateAndCheckReport();
         }
         StartTimer();
@@ -559,7 +561,7 @@ uint64_t ImeUsageReporter::LoadLastReportTime()
 uint64_t ImeUsageReporter::GetNextReportTimeMs() const
 {
     uint64_t today0 = OHOS::MiscServices::GetToday0ClockMs();
-    if (today0 == REPORT_TIME_NEVER) {
+    if (today0 == REPORT_TIME_NEVER || today0 > (UINT64_MAX - MILLISECS_PER_DAY)) {
         return GetNowMs() + MILLISECS_PER_DAY;
     }
     // Next midnight = today's 0:00 + 1 day

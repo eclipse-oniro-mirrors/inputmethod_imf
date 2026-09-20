@@ -352,8 +352,8 @@ void ImeUsageEventCacher::CalculateDuration(
         if (CanCalcDuration(preIt->rawid, it->rawid)) {
             // Use boot time (ts) for inter-event duration — monotonic, immune to
             // wall-clock adjustments (NTP, manual time change).
-            uint64_t duration =
-                (it->ts > static_cast<uint64_t>(preIt->ts)) ? static_cast<uint64_t>(it->ts - preIt->ts) : 0;
+            uint64_t duration = (static_cast<uint64_t>(it->ts) > static_cast<uint64_t>(preIt->ts)) ?
+                static_cast<uint64_t>(it->ts - preIt->ts) : 0;
             // Fallback: screenStatus=0 means uninitialized; treat as UNFOLDED_PORTRAIT(12)
             int32_t status = preIt->screenStatus;
             if (status == SCREEN_STATUS_UNINITIALIZED) {
