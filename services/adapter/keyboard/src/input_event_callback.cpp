@@ -126,10 +126,8 @@ void InputEventCallback::SetKeyHandle(KeyHandle handle)
 
 void InputEventCallback::SetKeyEventMonitorHandler(KeyEventMonitorHandler keyEventHandler)
 {
-    if (keyEventHandler != nullptr) {
-        IMSA_HILOGI("PTT: set key event monitor handler, valid=%{public}d.", true);
-    }
     keyEventHandler_ = std::move(keyEventHandler);
+    IMSA_HILOGI("PTT: set key event monitor handler, valid=%{public}d.", keyEventHandler_ != nullptr);
 }
 
 void InputEventCallback::TriggerSwitch()

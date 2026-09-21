@@ -104,6 +104,7 @@ struct FocusedRealImeClientSnapshot {
     uint32_t editorWindowId { 0 };
     uint64_t editorDisplayId { 0 };
     bool isSecurityIme { false };
+    bool isOneTimeCode { false };
 };
 
 /**@class PerUserSession

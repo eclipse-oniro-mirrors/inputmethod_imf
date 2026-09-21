@@ -16,6 +16,7 @@
 #include "push_to_talk_connection.h"
 
 #include <mutex>
+#include <utility>
 
 #include "global.h"
 #include "message_option.h"
@@ -25,16 +26,12 @@
 namespace OHOS {
 namespace MiscServices {
 
-static std::recursive_mutex g_servicesConnectionMutex;
-
-PushToTalkConnection::PushToTalkConnection(void) {}
+PushToTalkConnection::PushToTalkConnection() = default;
 
 PushToTalkConnection::PushToTalkConnection(
     const std::string &bundleName, const std::string &abilityName, const std::string &paramStr)
+    : bundleName_(bundleName), abilityName_(abilityName), paramStr_(paramStr)
 {
-    bundleName_ = bundleName;
-    abilityName_ = abilityName;
-    paramStr_ = paramStr;
 }
 
 void PushToTalkConnection::OnAbilityConnectDone(
@@ -42,8 +39,11 @@ void PushToTalkConnection::OnAbilityConnectDone(
 {
     IMSA_HILOGI("PTT: Ability Connect enter");
     {
-        std::unique_lock<std::recursive_mutex> lock(g_servicesConnectionMutex);
+        std::lock_guard<std::mutex> lock(remoteObjMutex_);
         remoteObj_ = remoteObject;
+    }
+    if (remoteObject == nullptr) {
+        return;
     }
     if (bundleName_.empty()) {
         return;
@@ -51,18 +51,18 @@ void PushToTalkConnection::OnAbilityConnectDone(
     MessageParcel data;
     MessageParcel reply;
     MessageOption option;
-    const int32_t keySize = 3;
-    data.WriteInt32(keySize);
-    data.WriteString16(u"bundleName");
-    data.WriteString16(Str8ToStr16(bundleName_));
-    data.WriteString16(u"abilityName");
-    data.WriteString16(Str8ToStr16(abilityName_));
-    data.WriteString16(u"parameters");
-    data.WriteString16(Str8ToStr16(paramStr_));
-    const uint32_t cmdCode = 1;
-    if (remoteObject == nullptr) {
-        return;
+    const std::pair<std::u16string, std::u16string> params[] = {
+        { u"bundleName", Str8ToStr16(bundleName_) },
+        { u"abilityName", Str8ToStr16(abilityName_) },
+        { u"parameters", Str8ToStr16(paramStr_) },
+    };
+    const int32_t paramCount = static_cast<int32_t>(sizeof(params) / sizeof(params[0]));
+    data.WriteInt32(paramCount);
+    for (const auto &[key, value] : params) {
+        data.WriteString16(key);
+        data.WriteString16(value);
     }
+    const uint32_t cmdCode = 1;
     int32_t ret = remoteObject->SendRequest(cmdCode, data, reply, option);
     int32_t result = 0;
     int32_t replyRet = reply.ReadInt32(result);
@@ -72,7 +72,7 @@ void PushToTalkConnection::OnAbilityConnectDone(
 void PushToTalkConnection::OnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int32_t resultCode)
 {
     IMSA_HILOGI("enter");
-    std::unique_lock<std::recursive_mutex> lock(g_servicesConnectionMutex);
+    std::lock_guard<std::mutex> lock(remoteObjMutex_);
     remoteObj_ = nullptr;
 }
 

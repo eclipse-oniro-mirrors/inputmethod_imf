@@ -15,7 +15,10 @@
 
 #include <gtest/gtest.h>
 
+#include <atomic>
+#include <chrono>
 #include <functional>
+#include <future>
 #include <memory>
 #include <mutex>
 #include <string>
@@ -25,8 +28,12 @@
 
 #include "../mock/datashare_helper.h"
 #include "full_ime_info_manager.h"
+#include "identity_checker_impl.h"
 #include "ime_info_inquirer.h"
+#include "input_method_ability.h"
 #include "input_method_controller.h"
+#include "input_method_agent_service_impl.h"
+#include "input_method_engine_listener.h"
 #include "input_method_system_ability.h"
 #include "push_to_talk_manager.h"
 #include "settings_data_utils.h"
@@ -53,6 +60,95 @@ constexpr uint64_t PTT_TEST_GROUP_ID = 91;
 constexpr uint32_t PTT_TEST_WINDOW_ID = 92;
 constexpr uint64_t PTT_TEST_DISPLAY_ID = 93;
 constexpr const char *PTT_TEST_IME_BUNDLE = "com.test.ptt.ime";
+constexpr const char *PTT_DIALOG_TASK_NAME = "PushToTalkDialogTask";
+
+class PttEnabledInputMethodEngineListener final : public InputMethodEngineListener {
+public:
+    void OnKeyboardStatus(bool) override { }
+    void OnInputStart() override { }
+    int32_t OnInputStop() override { return ErrorCode::NO_ERROR; }
+    void OnSetCallingWindow(uint32_t) override { }
+    void OnSetSubtype(const SubProperty &) override { }
+    void ReceivePrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &) override { }
+};
+
+class PttFocusedIdentityChecker final : public IdentityCheckerImpl {
+public:
+    std::pair<bool, FocusedInfo> IsFocused(
+        int64_t, uint32_t, int32_t, uint32_t, const sptr<IRemoteObject> &) override
+    {
+        return { true, {} };
+    }
+
+    std::string GetBundleNameByToken(uint32_t) override
+    {
+        return PTT_TEST_IME_BUNDLE;
+    }
+
+    uint64_t GetDisplayIdByWindowId(int32_t, int32_t) override
+    {
+        return ImfCommonConst::DEFAULT_DISPLAY_ID;
+    }
+};
+
+struct PttStartInputContext {
+    std::shared_ptr<PerUserSession> session;
+    sptr<InputMethodCoreServiceImpl> core;
+    sptr<InputClientServiceImpl> firstClient;
+    sptr<InputClientServiceImpl> secondClient;
+};
+
+PttStartInputContext CreatePttStartInputContext(int32_t userId)
+{
+    PttStartInputContext context;
+    context.session = std::make_shared<PerUserSession>(userId, nullptr);
+    context.core = new (std::nothrow) InputMethodCoreServiceImpl();
+    sptr<InputMethodAgentServiceImpl> agent = new (std::nothrow) InputMethodAgentServiceImpl();
+    context.firstClient = new (std::nothrow) InputClientServiceImpl();
+    context.secondClient = new (std::nothrow) InputClientServiceImpl();
+    if (context.session == nullptr || context.core == nullptr || agent == nullptr || context.firstClient == nullptr ||
+        context.secondClient == nullptr) {
+        return { };
+    }
+    auto imeData = context.session->AddProxyImeData(
+        ImfCommonConst::DEFAULT_DISPLAY_ID, context.core, agent->AsObject(), PTT_TEST_IME_PID, PTT_TEST_IME_PID);
+    if (imeData == nullptr) {
+        return { };
+    }
+    return context;
+}
+
+int32_t StartPttInput(const sptr<InputMethodSystemAbility> &ability, const sptr<IInputClient> &client,
+    const sptr<InputMethodCoreServiceImpl> &core, bool &failedByUnavailableIme)
+{
+    InputClientInfo input;
+    input.client = client;
+    input.channel = core->AsObject();
+    std::vector<sptr<IRemoteObject>> agents;
+    std::vector<BindImeInfo> imeInfos;
+    return ability->StartInputInner(input, agents, imeInfos, failedByUnavailableIme);
+}
+
+bool BlockEventHandler(const std::shared_ptr<AppExecFwk::EventHandler> &handler,
+    const std::shared_ptr<std::promise<void>> &releaseBlock)
+{
+    auto blockReleased = releaseBlock->get_future().share();
+    auto blockStarted = std::make_shared<std::promise<void>>();
+    auto blockStartedFuture = blockStarted->get_future();
+    if (!handler->PostTask(
+        [blockReleased, blockStarted]() {
+            blockStarted->set_value();
+            blockReleased.wait();
+        },
+        "PttDialogTaskBlocker", 0)) {
+        return false;
+    }
+    bool isStarted = blockStartedFuture.wait_for(std::chrono::seconds(1)) == std::future_status::ready;
+    if (!isStarted) {
+        releaseBlock->set_value();
+    }
+    return isStarted;
+}
 
 KeyboardEventInfo MakePttSpaceDownEvent()
 {
@@ -275,6 +371,8 @@ public:
         InputMethodSystemAbility::serviceHandler_ = nullptr;
         ability_ = new (std::nothrow) InputMethodSystemAbility();
         ASSERT_NE(ability_, nullptr);
+        ability_->identityChecker_ = std::make_shared<IdentityCheckerImpl>();
+        ASSERT_NE(ability_->identityChecker_, nullptr);
     }
 
     void TearDown() override
@@ -303,6 +401,153 @@ HWTEST_F(PttServiceTest, PttService_IpcGuards_001, TestSize.Level0)
 
     EXPECT_EQ(ability_->StartInputType(PTT_MISSING_USER_ID, InputType::PUSH_TO_TALK_INPUT, true),
         ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND);
+}
+
+/**
+ * @tc.name: PttService_IdentityCheckerGuard_001
+ * @tc.desc: Reject a ready PTT availability query when the identity checker is unavailable.
+ * @tc.type: FUNC
+ */
+HWTEST_F(PttServiceTest, PttService_IdentityCheckerGuard_001, TestSize.Level0)
+{
+    auto runner = AppExecFwk::EventRunner::Create("PttIdentityCheckerGuard");
+    ASSERT_NE(runner, nullptr);
+    auto handler = std::make_shared<AppExecFwk::EventHandler>(runner);
+    ASSERT_NE(handler, nullptr);
+    ability_->serviceHandler_ = handler;
+    ability_->pushToTalkManager_->SetKeyEventMonitorReady(true);
+    ability_->identityChecker_ = nullptr;
+
+    bool isAvailable = true;
+    EXPECT_EQ(ability_->IsPttGestureAvailable(settingsToken_->AsObject(), isAvailable), ErrorCode::ERROR_NULL_POINTER);
+    EXPECT_FALSE(isAvailable);
+}
+
+/**
+ * @tc.name: PttService_StartInputPostsSingleDialogTask_001
+ * @tc.desc: Bind succeeds without waiting for the dialog, and consecutive binds replace the pending dialog task.
+ * @tc.type: FUNC
+ */
+HWTEST_F(PttServiceTest, PttService_StartInputPostsSingleDialogTask_001, TestSize.Level0)
+{
+    auto runner = AppExecFwk::EventRunner::Create("PttStartInputDialogTask");
+    ASSERT_NE(runner, nullptr);
+    auto handler = std::make_shared<AppExecFwk::EventHandler>(runner);
+    ASSERT_NE(handler, nullptr);
+    auto userId = ability_->GetCallingUserId();
+    auto context = CreatePttStartInputContext(userId);
+    ASSERT_NE(context.session, nullptr);
+    ASSERT_NE(context.core, nullptr);
+    ASSERT_NE(context.firstClient, nullptr);
+    ASSERT_NE(context.secondClient, nullptr);
+    InstallSessionForTest(userId, context.session);
+    ability_->serviceHandler_ = handler;
+    ability_->identityChecker_ = std::make_shared<PttFocusedIdentityChecker>();
+    auto &inputMethodAbility = InputMethodAbility::GetInstance();
+    auto originalImeListener = inputMethodAbility.imeListener_;
+    inputMethodAbility.imeListener_ = std::make_shared<PttEnabledInputMethodEngineListener>();
+
+    auto &config = ImeInfoInquirer::GetInstance().systemConfig_;
+    SystemConfig originalConfig = config;
+    config.enablePushToTalk = true;
+    config.pushToTalkDialogBundleName.clear();
+    config.pushToTalkDialogAbilityName.clear();
+
+    auto releaseBlock = std::make_shared<std::promise<void>>();
+    if (!BlockEventHandler(handler, releaseBlock)) {
+        inputMethodAbility.imeListener_ = originalImeListener;
+        config = originalConfig;
+        ADD_FAILURE() << "failed to block the service handler";
+        return;
+    }
+    auto replacedTaskRan = std::make_shared<std::atomic_bool>(false);
+    EXPECT_TRUE(handler->PostTask(
+        [replacedTaskRan]() { replacedTaskRan->store(true); }, PTT_DIALOG_TASK_NAME, 0));
+
+    bool failedByUnavailableIme = true;
+    EXPECT_EQ(StartPttInput(ability_, context.firstClient, context.core, failedByUnavailableIme), ErrorCode::NO_ERROR);
+    EXPECT_FALSE(failedByUnavailableIme);
+    EXPECT_EQ(StartPttInput(ability_, context.secondClient, context.core, failedByUnavailableIme), ErrorCode::NO_ERROR);
+    EXPECT_FALSE(failedByUnavailableIme);
+
+    releaseBlock->set_value();
+    EXPECT_TRUE(handler->PostSyncTask([]() { }, "PttDialogTaskDrain"));
+    EXPECT_FALSE(replacedTaskRan->load());
+    inputMethodAbility.imeListener_ = originalImeListener;
+    config = originalConfig;
+}
+
+/**
+ * @tc.name: PttService_PostPttDialogTaskConfigDisabled_001
+ * @tc.desc: Verify that a disabled dialog configuration leaves queued work unchanged.
+ * @tc.type: FUNC
+ */
+HWTEST_F(PttServiceTest, PttService_PostPttDialogTaskConfigDisabled_001, TestSize.Level0)
+{
+    auto runner = AppExecFwk::EventRunner::Create("PttDialogConfigDisabled");
+    ASSERT_NE(runner, nullptr);
+    auto handler = std::make_shared<AppExecFwk::EventHandler>(runner);
+    ASSERT_NE(handler, nullptr);
+    ability_->serviceHandler_ = handler;
+    auto &config = ImeInfoInquirer::GetInstance().systemConfig_;
+    SystemConfig originalConfig = config;
+    config.enablePushToTalk = false;
+
+    auto releaseBlock = std::make_shared<std::promise<void>>();
+    if (!BlockEventHandler(handler, releaseBlock)) {
+        config = originalConfig;
+        ADD_FAILURE() << "failed to block the service handler";
+        return;
+    }
+    auto pendingTaskRan = std::make_shared<std::atomic_bool>(false);
+    EXPECT_TRUE(handler->PostTask(
+        [pendingTaskRan]() { pendingTaskRan->store(true); }, PTT_DIALOG_TASK_NAME, 0));
+    ability_->PostPttDialogTask(PTT_TEST_USER_ID);
+
+    releaseBlock->set_value();
+    EXPECT_TRUE(handler->PostSyncTask([]() { }, "PttDialogConfigDisabledDrain"));
+    EXPECT_TRUE(pendingTaskRan->load());
+    config = originalConfig;
+}
+
+/**
+ * @tc.name: PttService_PostPttDialogTaskMissingDependencies_001
+ * @tc.desc: Verify that absent handler or manager leaves queued dialog work unchanged.
+ * @tc.type: FUNC
+ */
+HWTEST_F(PttServiceTest, PttService_PostPttDialogTaskMissingDependencies_001, TestSize.Level0)
+{
+    auto runner = AppExecFwk::EventRunner::Create("PttDialogMissingDependency");
+    ASSERT_NE(runner, nullptr);
+    auto handler = std::make_shared<AppExecFwk::EventHandler>(runner);
+    ASSERT_NE(handler, nullptr);
+    auto manager = ability_->pushToTalkManager_;
+    ASSERT_NE(manager, nullptr);
+    auto &config = ImeInfoInquirer::GetInstance().systemConfig_;
+    SystemConfig originalConfig = config;
+    config.enablePushToTalk = true;
+    ability_->serviceHandler_ = nullptr;
+    ability_->PostPttDialogTask(PTT_TEST_USER_ID);
+    ability_->serviceHandler_ = handler;
+    ability_->pushToTalkManager_ = nullptr;
+
+    auto releaseBlock = std::make_shared<std::promise<void>>();
+    if (!BlockEventHandler(handler, releaseBlock)) {
+        ability_->pushToTalkManager_ = manager;
+        config = originalConfig;
+        ADD_FAILURE() << "failed to block the service handler";
+        return;
+    }
+    auto pendingTaskRan = std::make_shared<std::atomic_bool>(false);
+    EXPECT_TRUE(handler->PostTask(
+        [pendingTaskRan]() { pendingTaskRan->store(true); }, PTT_DIALOG_TASK_NAME, 0));
+    ability_->PostPttDialogTask(PTT_TEST_USER_ID);
+
+    releaseBlock->set_value();
+    EXPECT_TRUE(handler->PostSyncTask([]() { }, "PttDialogMissingDependencyDrain"));
+    EXPECT_TRUE(pendingTaskRan->load());
+    ability_->pushToTalkManager_ = manager;
+    config = originalConfig;
 }
 
 /**

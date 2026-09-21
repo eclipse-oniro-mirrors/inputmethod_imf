@@ -221,6 +221,7 @@ private:
     void HandleBundleScanFinished();
     int32_t StartInputInner(InputClientInfo &inputClientInfo, std::vector<sptr<IRemoteObject>> &agents,
         std::vector<BindImeInfo> &imeInfos, bool &failedByUnavailableIme);
+    void PostPttDialogTask(int32_t userId);
     std::pair<bool, FocusedInfo> IsFocusedOrBroker(int64_t callingPid, uint32_t callingTokenId, int32_t userId,
         uint32_t windowId = 0, const sptr<IRemoteObject> &abilityToken = nullptr);
     int32_t ShowInputInner(sptr<IInputClient> client, uint32_t windowId, int32_t requestKeyboardReason = 0);
