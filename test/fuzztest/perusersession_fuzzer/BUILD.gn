@@ -70,6 +70,7 @@ ohos_fuzztest("PerUserSessionFuzzTest") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {

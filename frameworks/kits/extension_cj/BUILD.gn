@@ -102,6 +102,7 @@ ohos_shared_library("cj_inputmethod_extension_ffi") {
     "ipc:ipc_napi",
     "ipc:ipc_single",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 
   innerapi_tags = [ "platformsdk" ]

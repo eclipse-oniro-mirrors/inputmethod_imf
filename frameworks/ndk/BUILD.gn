@@ -118,6 +118,7 @@ ohos_static_library("ohinputmethod_static") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 
   subsystem_name = "inputmethod"

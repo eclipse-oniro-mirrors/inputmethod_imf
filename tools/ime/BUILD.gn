@@ -41,6 +41,7 @@ ohos_executable("ime") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 
   install_enable = true

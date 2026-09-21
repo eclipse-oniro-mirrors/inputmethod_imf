@@ -47,6 +47,7 @@ ohos_static_library("keboard_event_static") {
     "hilog:libhilog",
     "input:libmmi-client",
     "ipc:ipc_single",
+    "icu:shared_icuuc",
   ]
 
   subsystem_name = "inputmethod"

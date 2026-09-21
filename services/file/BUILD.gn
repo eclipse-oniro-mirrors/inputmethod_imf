@@ -37,6 +37,7 @@ ohos_static_library("imf_file_static") {
     "c_utils:utils",
     "config_policy:configpolicy_util",
     "hilog:libhilog",
+    "icu:shared_icuuc",
   ]
   subsystem_name = "inputmethod"
   part_name = "imf"

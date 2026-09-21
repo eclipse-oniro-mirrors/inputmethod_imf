@@ -95,6 +95,7 @@ ohos_unittest("InputMethodControllerTest") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -166,6 +167,7 @@ ohos_unittest("InputMethodAttachTest") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -245,6 +247,7 @@ ohos_unittest("InputMethodAbilityTest") {
     "samgr:samgr_proxy",
     "window_manager:libdm",
     "window_manager:libwsutils",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -301,6 +304,7 @@ ohos_unittest("InputMethodServiceTest") {
     "window_manager:libwsutils",
     "data_share:datashare_common",
     "data_share:datashare_consumer",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -375,6 +379,7 @@ ohos_unittest("InputMethodDfxTest") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -447,6 +452,7 @@ ohos_unittest("InputMethodPanelTest") {
     "samgr:samgr_proxy",
     "window_manager:libdm",
     "window_manager:libwsutils",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -515,6 +521,7 @@ ohos_unittest("InputMethodPanelAdjustTest") {
     "samgr:samgr_proxy",
     "window_manager:libdm",
     "window_manager:libwsutils",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -571,6 +578,7 @@ ohos_unittest("InputMethodSwitchTest") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "safwk:system_ability_fwk",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -659,6 +667,7 @@ ohos_unittest("InputMethodPrivateMemberTest") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
   defines = []
   if (window_manager_use_sceneboard) {
@@ -727,6 +736,7 @@ ohos_unittest("PushToTalkManagerUnitTest") {
     "os_account:os_account_innerkits",
     "safwk:system_ability_fwk",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
   defines = []
   if (window_manager_use_sceneboard) {
@@ -807,6 +817,7 @@ ohos_unittest("InputMethodEditorTest") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -863,6 +874,7 @@ ohos_unittest("NewImeSwitchTest") {
     "ipc:ipc_single",
     "safwk:system_ability_fwk",
     "window_manager:libwm",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -915,6 +927,7 @@ ohos_unittest("NumKeyAppsManagerTest") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "resource_management:global_resmgr",
+    "icu:shared_icuuc",
   ]
   defines = []
   if (imf_compatibility_config_center_enable) {
@@ -972,6 +985,7 @@ ohos_unittest("IdentityCheckerTest") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -1025,6 +1039,7 @@ ohos_unittest("TextListenerInnerApiTest") {
     "napi:ace_napi",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -1082,6 +1097,7 @@ ohos_unittest("TextListenerInnerApiTest") {
       "input:libmmi-client",
       "ipc:ipc_single",
       "safwk:system_ability_fwk",
+    "icu:shared_icuuc",
     ]
 
     if (window_manager_use_sceneboard) {
@@ -1146,6 +1162,7 @@ ohos_unittest("ImeProxyAgentImeTest") {
     "node:node_header_notice",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -1191,6 +1208,7 @@ ohos_executable("ImeProxyDemo") {
     "hilog:libhilog",
     "input:libmmi-client",
     "ipc:ipc_single",
+    "icu:shared_icuuc",
   ]
 
   install_enable = false
@@ -1259,6 +1277,7 @@ ohos_unittest("ImeProxyTest") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -1301,6 +1320,7 @@ ohos_unittest("TaskManagerTest") {
     "eventhandler:libeventhandler",
     "googletest:gtest_main",
     "hilog:libhilog",
+    "icu:shared_icuuc",
   ]
 }
 
@@ -1350,6 +1370,7 @@ ohos_unittest("ImeFreezeManagerTest") {
     "os_account:os_account_innerkits",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -1390,6 +1411,7 @@ ohos_unittest("JsonOperateTest") {
     "ipc:ipc_single",
     "resource_management:global_resmgr",
     "init:libbegetutil",
+    "icu:shared_icuuc",
   ]
 }
 
@@ -1431,6 +1453,7 @@ ohos_unittest("VirtualListenerTest") {
     "node:node_header_notice",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -1483,6 +1506,7 @@ ohos_unittest("ImeSystemChannelTest") {
     "node:node_header_notice",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -1548,6 +1572,7 @@ ohos_unittest("ImeControllerCpaiTest") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 }
 
@@ -1585,6 +1610,7 @@ ohos_unittest("FullImeInfoManagerTest") {
     "ipc:ipc_single",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
+    "icu:shared_icuuc",
   ]
 }
 
@@ -1658,6 +1684,7 @@ ohos_unittest("InputMethodMessageHandlerTest") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -1693,6 +1720,7 @@ ohos_unittest("OnDemandStartStopSaTest") {
     "ipc:ipc_single",
     "samgr:samgr_proxy",
     "googletest:gmock",
+    "icu:shared_icuuc",
   ]
 }
 
@@ -1733,6 +1761,7 @@ ohos_unittest("ResSchedAdapterTest") {
     "safwk:system_ability_fwk",
     "resource_management:global_resmgr",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 }
 
@@ -1769,6 +1798,7 @@ ohos_unittest("ImfHisysEventReporterTest") {
     "hisysevent:libhisyseventmanager",
     "input:libmmi-client",
     "ipc:ipc_core",
+    "icu:shared_icuuc",
   ]
 }
 
@@ -1811,6 +1841,7 @@ ohos_unittest("WindowAdapterTest") {
     "ipc:ipc_single",
     "safwk:system_ability_fwk",
     "os_account:os_account_innerkits",
+    "icu:shared_icuuc",
   ]
   defines = []
   if (window_manager_use_sceneboard) {
@@ -1876,6 +1907,7 @@ ohos_unittest("ImaTextEditTest") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -1910,6 +1942,7 @@ ohos_unittest("StringUtilsTest") {
     "c_utils:utils",
     "googletest:gtest_main",
     "hilog:libhilog",
+    "icu:shared_icuuc",
   ]
 }
 
@@ -1948,6 +1981,7 @@ ohos_unittest("InputMethodManagerCommandTest") {
     "hilog:libhilog",
     "input:libmmi-client",
     "ipc:ipc_single",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -1997,6 +2031,7 @@ ohos_unittest("ImeEnabledInfoManagerTest") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "resource_management:global_resmgr",
+    "icu:shared_icuuc",
   ]
   if (window_manager_use_sceneboard) {
     external_deps += [ "window_manager:libwm_lite" ]
@@ -2071,6 +2106,7 @@ ohos_unittest("ImeMirrorTest") {
     "samgr:samgr_proxy",
     "window_manager:libdm",
     "window_manager:libwsutils",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -2116,6 +2152,7 @@ ohos_executable("ImeMirrorDemo") {
     "hilog:libhilog",
     "input:libmmi-client",
     "ipc:ipc_single",
+    "icu:shared_icuuc",
   ]
 
   install_enable = false
@@ -2153,6 +2190,7 @@ ohos_executable("ImcInnerTestDemo") {
     "c_utils:utils",
     "hilog:libhilog",
     "input:libmmi-client",
+    "icu:shared_icuuc",
   ]
 
   install_enable = false
@@ -2193,6 +2231,7 @@ ohos_executable("ProxyImeTestDemo") {
     "hilog:libhilog",
     "input:libmmi-client",
     "ipc:ipc_single",
+    "icu:shared_icuuc",
   ]
 
   install_enable = false
@@ -2234,6 +2273,7 @@ ohos_unittest("ImfExtMockTest") {
     "hilog:libhilog",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
+    "icu:shared_icuuc",
   ]
 }
 
@@ -2297,6 +2337,7 @@ ohos_unittest("InputMethodDisplayAttributeListenerTest") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (imf_hiviewdfx_api_metrics_ext_enable) {
@@ -2351,6 +2392,7 @@ ohos_unittest("ImeEventListenerManagerTest") {
     "data_share:datashare_common",
     "data_share:datashare_consumer",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -2393,6 +2435,7 @@ ohos_executable("PublishCommonEventDemo") {
     "hilog:libhilog",
     "common_event_service:cesfwk_innerkits",
     "input:libmmi-client",
+    "icu:shared_icuuc",
   ]
 
   install_enable = false
@@ -2425,6 +2468,7 @@ ohos_unittest("SamgrAdapterTest") {
     "hilog:libhilog",
     "ipc:ipc_single",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 
   cflags = [
@@ -2458,6 +2502,7 @@ ohos_unittest("DisplayAdapterTest") {
     "hilog:libhilog",
     "ipc:ipc_single",
     "window_manager:libdm_lite",
+    "icu:shared_icuuc",
   ]
 
   cflags = [
@@ -2497,6 +2542,7 @@ ohos_unittest("OsAccountListenerTest") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "os_account:os_account_innerkits",
+    "icu:shared_icuuc",
   ]
 
   cflags = [
@@ -2547,6 +2593,7 @@ ohos_unittest("ImeInfoInquirerTest") {
     "samgr:samgr_proxy",
     "window_manager:libwm",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 }
 
@@ -2604,6 +2651,7 @@ ohos_unittest("InputMethodExtensionContextTest") {
     "napi:cj_bind_ffi",
     "node:node_header_notice",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (imf_hiviewdfx_api_metrics_ext_enable) {
@@ -2674,6 +2722,7 @@ ohos_unittest("InputMethodExtensionTest") {
     "napi:cj_bind_ffi",
     "node:node_header_notice",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (imf_hiviewdfx_api_metrics_ext_enable) {
@@ -2745,6 +2794,7 @@ ohos_unittest("InputMethodExtensionModuleLoaderTest") {
     "napi:cj_bind_ffi",
     "node:node_header_notice",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (imf_hiviewdfx_api_metrics_ext_enable) {
@@ -2796,6 +2846,7 @@ ohos_unittest("WmsConnectionMonitorTest") {
     "ipc:ipc_single",
     "window_manager:libdm",
     "window_manager:libwm",
+    "icu:shared_icuuc",
   ]
   if (window_manager_use_sceneboard) {
     external_deps += [ "window_manager:libwm_lite" ]
@@ -2846,6 +2897,7 @@ ohos_unittest("KeyboardEventTest") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "icu:shared_icuuc",
   ]
 
   cflags = [
@@ -2891,6 +2943,7 @@ ohos_unittest("InputEventCallbackTest") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "icu:shared_icuuc",
   ]
 
   cflags = [
@@ -2951,6 +3004,7 @@ ohos_unittest("EnableUpgradeManagerTest") {
     "os_account:os_account_innerkits",
     "resource_management:global_resmgr",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
   if (window_manager_use_sceneboard) {
     external_deps += [ "window_manager:libwm_lite" ]
@@ -2999,6 +3053,7 @@ ohos_unittest("ImeUsageTest") {
     "init:libbegetutil",
     "ipc:ipc_single",
     "relational_store:native_rdb",
+    "icu:shared_icuuc",
   ]
 
   cflags = [
@@ -3042,6 +3097,7 @@ ohos_unittest("FoldStatusAdapterTest") {
     "ipc:ipc_single",
     "relational_store:native_rdb",
     "window_manager:libdm_lite",
+    "icu:shared_icuuc",
   ]
 
   cflags = [
@@ -3084,6 +3140,7 @@ ohos_unittest("ImeUsageEventFactoryTest") {
     "init:libbegetutil",
     "ipc:ipc_single",
     "relational_store:native_rdb",
+    "icu:shared_icuuc",
   ]
 
   cflags = [
@@ -3126,6 +3183,7 @@ ohos_unittest("ImeUsageReporterTest") {
     "init:libbegetutil",
     "ipc:ipc_single",
     "relational_store:native_rdb",
+    "icu:shared_icuuc",
   ]
 
   cflags = [
@@ -3201,6 +3259,7 @@ ohos_unittest("PerUserSessionTest") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -3250,6 +3309,7 @@ ohos_unittest("InputMethodToolsTest") {
     "hilog:libhilog",
     "input:libmmi-client",
     "ipc:ipc_single",
+    "icu:shared_icuuc",
   ]
 }
 
@@ -3299,6 +3359,7 @@ ohos_unittest("NotifyServiceImplTest") {
     "napi:ace_napi",
     "os_account:os_account_innerkits",
     "safwk:system_ability_fwk",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -3348,6 +3409,7 @@ ohos_unittest("SystemCmdChannelServiceImplTest") {
     "eventhandler:libeventhandler",
     "googletest:gtest_main",
     "hilog:libhilog",
+    "icu:shared_icuuc",
     "input:libmmi-client",
     "ipc:ipc_single",
     "safwk:system_ability_fwk",
@@ -3395,5 +3457,6 @@ ohos_unittest("OhosImfToolTest") {
     "hilog:libhilog",
     "input:libmmi-client",
     "ipc:ipc_single",
+    "icu:shared_icuuc",
   ]
 }

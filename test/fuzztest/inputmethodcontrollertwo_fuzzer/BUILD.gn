@@ -52,6 +52,7 @@ ohos_fuzztest("InputMethodControllerTwoFuzzTest") {
     "hilog:libhilog",
     "input:libmmi-client",
     "ipc:ipc_single",
+    "icu:shared_icuuc",
   ]
 }
 

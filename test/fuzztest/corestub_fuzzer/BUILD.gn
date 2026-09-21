@@ -49,6 +49,7 @@ ohos_fuzztest("CoreStubFuzzTest") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "safwk:system_ability_fwk",
+    "icu:shared_icuuc",
   ]
 }
 

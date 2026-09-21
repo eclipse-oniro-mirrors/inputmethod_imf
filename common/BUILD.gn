@@ -84,6 +84,7 @@ ohos_shared_library("inputmethod_common") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 
   subsystem_name = "inputmethod"

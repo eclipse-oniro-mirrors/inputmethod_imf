@@ -60,6 +60,7 @@ ohos_fuzztest("ImeEnableStatusFuzzTest") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "resource_management:global_resmgr",
+    "icu:shared_icuuc",
   ]
 }
 
