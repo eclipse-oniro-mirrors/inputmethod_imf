@@ -15,11 +15,8 @@
 #include <gtest/gtest.h>
 #include <sys/time.h>
 
-#define private public
-#define protected public
 #include "ime_event_listener_manager.h"
 #include "input_client_service_impl.h"
-#undef private
 #include <cstdint>
 #include <functional>
 #include <string>

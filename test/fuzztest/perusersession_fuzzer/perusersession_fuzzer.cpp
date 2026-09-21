@@ -15,10 +15,7 @@
 
 #include "perusersession_fuzzer.h"
 
-#define private public
-#define protected public
 #include "peruser_session.h"
-#undef private
 
 #include <cstddef>
 #include <cstdint>

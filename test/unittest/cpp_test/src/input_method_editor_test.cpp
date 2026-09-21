@@ -13,13 +13,10 @@
  * limitations under the License.
  */
 
-#define private public
-#define protected public
 #include "input_method_ability.h"
 #include "input_method_controller.h"
 #include "input_method_system_ability.h"
 #include "task_manager.h"
-#undef private
 #include <event_handler.h>
 #include <gtest/gtest.h>
 #include <string_ex.h>

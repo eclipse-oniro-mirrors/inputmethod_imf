@@ -13,10 +13,7 @@
  * limitations under the License.
  */
 
-#define private   public
-#define protected public
 #include "notify_service_impl.h"
-#undef private
 
 #include <gtest/gtest.h>
 

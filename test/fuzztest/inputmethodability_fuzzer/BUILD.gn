@@ -28,6 +28,7 @@ ohos_fuzztest("InputMethodAbilityFuzzTest") {
   include_dirs = [ "${inputmethod_path}/services/include" ]
 
   cflags = [
+    "-fno-access-control",
     "-g",
     "-O0",
     "-Wno-unused-variable",

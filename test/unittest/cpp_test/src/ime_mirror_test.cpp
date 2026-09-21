@@ -54,11 +54,9 @@ public:
 // Prevent window.h from redefining these types when included via input_method_panel.h
 #define OHOS_ROSEN_WINDOW_H
 
-#define private public
 #include "input_method_ability.h"
 #include "input_method_controller.h"
 #include "task_manager.h"
-#undef private
 
 #include <gtest/gtest.h>
 #include <gmock/gmock.h>

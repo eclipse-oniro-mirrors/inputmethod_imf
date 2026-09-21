@@ -33,6 +33,7 @@ ohos_fuzztest("PerUserSessionFuzzTest") {
   ]
 
   cflags = [
+    "-fno-access-control",
     "-g",
     "-O0",
     "-Wno-unused-variable",

@@ -13,10 +13,7 @@
  * limitations under the License.
  */
 
-#define private public
-#define protected public
 #include "insert_command.h"
-#undef private
 #include <gtest/gtest.h>
 
 #include "cli_utils.h"

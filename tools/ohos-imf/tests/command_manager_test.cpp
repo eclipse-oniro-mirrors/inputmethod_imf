@@ -13,10 +13,7 @@
  * limitations under the License.
  */
 
-#define private public
-#define protected public
 #include "command_manager.h"
-#undef private
 #include <gtest/gtest.h>
 
 #include "global.h"

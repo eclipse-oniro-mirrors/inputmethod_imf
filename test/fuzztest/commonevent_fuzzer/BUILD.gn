@@ -34,6 +34,7 @@ ohos_fuzztest("CommonEventFuzzTest") {
   ]
 
   cflags = [
+    "-fno-access-control",
     "-g",
     "-O0",
     "-Wno-unused-variable",

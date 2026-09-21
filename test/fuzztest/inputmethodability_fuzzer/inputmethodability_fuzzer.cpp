@@ -17,10 +17,7 @@
 
 #include <utility>
 
-#define private public
-#define protected public
 #include "input_method_ability.h"
-#undef private
 
 #include "fuzzer/FuzzedDataProvider.h"
 #include "input_client_service_impl.h"

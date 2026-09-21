@@ -12,8 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define private public
-#define protected public
 #include "ime_info_inquirer.h"
 #include "input_method_ability.h"
 #include "input_method_ability_utils.h"
@@ -21,7 +19,6 @@
 #include "input_method_panel.h"
 #include "input_method_system_ability.h"
 #include "task_manager.h"
-#undef private
 
 #include <gtest/gtest.h>
 #include <sys/time.h>

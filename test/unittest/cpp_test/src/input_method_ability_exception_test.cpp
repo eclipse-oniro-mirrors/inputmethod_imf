@@ -14,10 +14,7 @@
  */
 
 #include <gtest/gtest.h>
-#define private public
-#define protected public
 #include "input_method_ability.h"
-#undef private
 #include "iinput_method_agent.h"
 #include "input_data_channel_service_impl.h"
 #include "input_method_agent_service_impl.h"

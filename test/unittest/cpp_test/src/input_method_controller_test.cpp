@@ -12,8 +12,6 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define private public
-#define protected public
 #include "input_method_controller.h"
 
 #include "ime_enabled_info_manager.h"
@@ -26,7 +24,6 @@
 #include "task_manager.h"
 #include "input_data_channel_service_impl.h"
 #include "window_adapter.h"
-#undef private
 
 #include <event_handler.h>
 #include <gtest/gtest.h>

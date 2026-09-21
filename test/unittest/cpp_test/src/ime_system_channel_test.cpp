@@ -13,11 +13,8 @@
  * limitations under the License.
  */
 
-#define private public
-#define protected public
 #include "ime_system_channel.h"
 #include "system_cmd_channel_service_impl.h"
-#undef private
 #include <gtest/gtest.h>
 
 #include "identity_checker_mock.h"

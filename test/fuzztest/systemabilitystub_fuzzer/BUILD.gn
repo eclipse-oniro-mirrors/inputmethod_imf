@@ -32,6 +32,7 @@ ohos_fuzztest("SystemAbilityStubFuzzTest") {
   ]
 
   cflags = [
+    "-fno-access-control",
     "-g",
     "-O0",
     "-Wno-unused-variable",

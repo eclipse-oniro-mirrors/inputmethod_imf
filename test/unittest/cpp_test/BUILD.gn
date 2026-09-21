@@ -38,6 +38,8 @@ ohos_unittest("InputMethodControllerTest") {
   }
   module_out_path = module_output_path
 
+  cflags = [ "-fno-access-control" ]
+
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_ability/src/input_method_agent_service_impl.cpp",
     "${inputmethod_path}/frameworks/native/inputmethod_ability/src/input_method_core_service_impl.cpp",
@@ -105,7 +107,7 @@ ohos_unittest("InputMethodControllerTest") {
 
   if (build_selinux) {
     external_deps += [ "selinux_adapter:librestorecon" ]
-    cflags = [ "-DWITH_SELINUX" ]
+    cflags += [ "-DWITH_SELINUX" ]
   }
 }
 
@@ -117,6 +119,8 @@ ohos_unittest("InputMethodAttachTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_client_info.cpp",
@@ -182,6 +186,8 @@ ohos_unittest("InputMethodAbilityTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_ability/src/input_method_agent_service_impl.cpp",
@@ -263,6 +269,8 @@ ohos_unittest("InputMethodServiceTest") {
   }
   module_out_path = module_output_path
 
+  cflags = [ "-fno-access-control" ]
+
   sources = [
     "src/input_method_service_test.cpp"
   ]
@@ -318,6 +326,8 @@ ohos_unittest("InputMethodDfxTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_ability/src/input_method_agent_service_impl.cpp",
@@ -393,6 +403,8 @@ ohos_unittest("InputMethodPanelTest") {
   }
   module_out_path = module_output_path
 
+  cflags = [ "-fno-access-control" ]
+
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_ability/src/input_method_agent_service_impl.cpp",
     "${inputmethod_path}/frameworks/native/inputmethod_ability/src/input_method_core_service_impl.cpp",
@@ -464,6 +476,8 @@ ohos_unittest("InputMethodPanelAdjustTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_ability/src/input_method_agent_service_impl.cpp",
@@ -758,6 +772,8 @@ ohos_unittest("InputMethodEditorTest") {
   }
   module_out_path = module_output_path
 
+  cflags = [ "-fno-access-control" ]
+
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_client_info.cpp",
     "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_client_service_impl.cpp",
@@ -885,6 +901,8 @@ ohos_unittest("NumKeyAppsManagerTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
   include_dirs = [ "${inputmethod_path}/common/include" ]
   sources = [ "src/numkey_apps_manager_test.cpp" ]
 
@@ -931,6 +949,8 @@ ohos_unittest("IdentityCheckerTest") {
     blocklist = "./inputmethod_blocklist.txt"
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_client_info.cpp",
@@ -989,6 +1009,8 @@ ohos_unittest("TextListenerInnerApiTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_client_info.cpp",
@@ -1105,6 +1127,8 @@ ohos_unittest("ImeProxyAgentImeTest") {
   }
   module_out_path = module_output_path
 
+  cflags = [ "-fno-access-control" ]
+
   sources = [
     "${inputmethod_path}/services/src/sys_cfg_parser.cpp",
     "src/ime_proxy_agent_ime_test.cpp",
@@ -1156,7 +1180,7 @@ ohos_unittest("ImeProxyAgentImeTest") {
 
   if (build_selinux) {
     external_deps += [ "selinux_adapter:librestorecon" ]
-    cflags = [ "-DWITH_SELINUX" ]
+    cflags += [ "-DWITH_SELINUX" ]
   }
 }
 
@@ -1206,6 +1230,8 @@ ohos_unittest("ImeProxyTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_client_info.cpp",
@@ -1268,7 +1294,7 @@ ohos_unittest("ImeProxyTest") {
   }
   if (build_selinux) {
     external_deps += [ "selinux_adapter:librestorecon" ]
-    cflags = [ "-DWITH_SELINUX" ]
+    cflags += [ "-DWITH_SELINUX" ]
   }
 }
 
@@ -1280,6 +1306,8 @@ ohos_unittest("TaskManagerTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_ability/src/task_manager.cpp",
@@ -1312,6 +1340,8 @@ ohos_unittest("ImeFreezeManagerTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_client_info.cpp",
@@ -1368,6 +1398,8 @@ ohos_unittest("JsonOperateTest") {
   }
   module_out_path = module_output_path
 
+  cflags = [ "-fno-access-control" ]
+
   sources = [ "src/json_operate_test.cpp" ]
 
   deps = [
@@ -1401,6 +1433,8 @@ ohos_unittest("VirtualListenerTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [ "src/virtual_listener_test.cpp" ]
 
@@ -1449,6 +1483,8 @@ ohos_unittest("ImeSystemChannelTest") {
     blocklist = "./inputmethod_blocklist.txt"
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_controller/src/system_cmd_channel_service_impl.cpp",
@@ -1560,6 +1596,8 @@ ohos_unittest("FullImeInfoManagerTest") {
   }
   module_out_path = module_output_path
 
+  cflags = [ "-fno-access-control" ]
+
   sources = [
     "${inputmethod_path}/services/src/full_ime_info_manager.cpp",
     "mock/ime_enabled_info_manager.cpp",
@@ -1597,6 +1635,8 @@ ohos_unittest("InputMethodMessageHandlerTest") {
     blocklist = "./inputmethod_blocklist.txt"
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_ability/src/input_method_agent_service_impl.cpp",
@@ -1676,6 +1716,8 @@ ohos_unittest("OnDemandStartStopSaTest") {
   }
   module_out_path = module_output_path
 
+  cflags = [ "-fno-access-control" ]
+
   sources = [
     "${inputmethod_path}/common/src/on_demand_start_stop_sa.cpp",
     "src/on_demand_start_stop_sa_test.cpp",
@@ -1704,6 +1746,8 @@ ohos_unittest("ResSchedAdapterTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   include_dirs = [
     "${inputmethod_path}/common/include",
@@ -1744,6 +1788,8 @@ ohos_unittest("ImfHisysEventReporterTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
   include_dirs = [ "${inputmethod_path}/common/include" ]
   sources = [ "src/imf_hisysevent_report_test.cpp" ]
 
@@ -1780,6 +1826,8 @@ ohos_unittest("WindowAdapterTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   include_dirs = [
     "${inputmethod_path}/common/include",
@@ -1829,6 +1877,8 @@ ohos_unittest("ImaTextEditTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_client_info.cpp",
@@ -1885,7 +1935,7 @@ ohos_unittest("ImaTextEditTest") {
   }
   if (build_selinux) {
     external_deps += [ "selinux_adapter:librestorecon" ]
-    cflags = [ "-DWITH_SELINUX" ]
+    cflags += [ "-DWITH_SELINUX" ]
   }
 }
 
@@ -1965,6 +2015,9 @@ ohos_unittest("ImeEnabledInfoManagerTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
+
   include_dirs = [ "${inputmethod_path}/common/include" ]
   sources = [ "src/ime_enabled_info_manager_test.cpp" ]
 
@@ -2005,7 +2058,7 @@ ohos_unittest("ImeEnabledInfoManagerTest") {
   }
   if (build_selinux) {
     external_deps += [ "selinux_adapter:librestorecon" ]
-    cflags = [ "-DWITH_SELINUX" ]
+    cflags += [ "-DWITH_SELINUX" ]
   }
 }
 
@@ -2017,6 +2070,8 @@ ohos_unittest("ImeMirrorTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/test/unittest/cpp_test/mock/mock_input_method_system_ability_proxy.cpp",
@@ -2081,7 +2136,7 @@ ohos_unittest("ImeMirrorTest") {
 
   if (build_selinux) {
     external_deps += [ "selinux_adapter:librestorecon" ]
-    cflags = [ "-DWITH_SELINUX" ]
+    cflags += [ "-DWITH_SELINUX" ]
   }
 }
 
@@ -2209,6 +2264,8 @@ ohos_unittest("ImfExtMockTest") {
   }
   module_out_path = module_output_path
 
+  cflags = [ "-fno-access-control" ]
+
   sources = [
     "${inputmethod_path}/services/hook/src/imf_hook_manager.cpp",
     "${inputmethod_path}/services/module/src/imf_module_manager.cpp",
@@ -2245,6 +2302,8 @@ ohos_unittest("InputMethodDisplayAttributeListenerTest") {
     blocklist = "./inputmethod_blocklist.txt"
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/common/src/inputmethod_display_listener.cpp",
@@ -2317,6 +2376,8 @@ ohos_unittest("ImeEventListenerManagerTest") {
     blocklist = "./inputmethod_blocklist.txt"
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/services/src/ime_event_listener_manager.cpp",
@@ -2512,6 +2573,8 @@ ohos_unittest("ImeInfoInquirerTest") {
     blocklist = "./inputmethod_blocklist.txt"
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "src/ime_info_inquirer_test.cpp",
@@ -3015,6 +3078,8 @@ ohos_unittest("FoldStatusAdapterTest") {
   }
   module_out_path = module_output_path
 
+  cflags = [ "-fno-access-control" ]
+
   include_dirs = [
     "${inputmethod_path}/common/include",
     "${inputmethod_path}/services/include",
@@ -3043,10 +3108,6 @@ ohos_unittest("FoldStatusAdapterTest") {
     "relational_store:native_rdb",
     "window_manager:libdm_lite",
   ]
-
-  cflags = [
-    "-fno-access-control",
-  ]
 }
 
 ohos_unittest("ImeUsageEventFactoryTest") {
@@ -3057,6 +3118,8 @@ ohos_unittest("ImeUsageEventFactoryTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   include_dirs = [
     "${inputmethod_path}/common/include",
@@ -3085,10 +3148,6 @@ ohos_unittest("ImeUsageEventFactoryTest") {
     "ipc:ipc_single",
     "relational_store:native_rdb",
   ]
-
-  cflags = [
-    "-fno-access-control",
-  ]
 }
 
 ohos_unittest("ImeUsageReporterTest") {
@@ -3099,6 +3158,8 @@ ohos_unittest("ImeUsageReporterTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   include_dirs = [
     "${inputmethod_path}/common/include",
@@ -3126,10 +3187,6 @@ ohos_unittest("ImeUsageReporterTest") {
     "init:libbegetutil",
     "ipc:ipc_single",
     "relational_store:native_rdb",
-  ]
-
-  cflags = [
-    "-fno-access-control",
   ]
 }
 }
@@ -3263,6 +3320,8 @@ ohos_unittest("NotifyServiceImplTest") {
   }
   module_out_path = module_output_path
 
+  cflags = [ "-fno-access-control" ]
+
   sources = [
     "${inputmethod_path}/services/src/notify_service_impl.cpp",
     "src/notify_service_impl_test.cpp",
@@ -3306,10 +3365,6 @@ ohos_unittest("NotifyServiceImplTest") {
   } else {
     external_deps += [ "window_manager:libwm" ]
   }
-
-  cflags = [
-    "-fno-access-control",
-  ]
 }
 
 ohos_unittest("SystemCmdChannelServiceImplTest") {
@@ -3368,6 +3423,8 @@ ohos_unittest("OhosImfToolTest") {
   }
 
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/tools/ohos-imf/src/cli_utils.cpp",

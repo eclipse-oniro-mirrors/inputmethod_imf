@@ -13,10 +13,7 @@
  * limitations under the License.
  */
 
-#define private public
-#define protected public
 #include "input_method_controller.h"
-#undef private
 #include <gtest/gtest.h>
 #include <sys/time.h>
 #include <unistd.h>

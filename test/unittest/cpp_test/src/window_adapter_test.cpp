@@ -13,11 +13,8 @@
  * limitations under the License.
  */
 
-#define private public
-#define protected public
 #include "window_adapter.h"
 #include "window_monitors_manager.h"
-#undef private
 
 #include <gtest/gtest.h>
 
