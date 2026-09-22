@@ -3115,6 +3115,7 @@ ohos_unittest("ImeUsageTest") {
     "hilog:libhilog",
     "init:libbegetutil",
     "ipc:ipc_single",
+    "icu:shared_icuuc",
   ]
 
   cflags = [
@@ -3199,10 +3200,7 @@ ohos_unittest("ImeUsageEventFactoryTest") {
     "hilog:libhilog",
     "init:libbegetutil",
     "ipc:ipc_single",
-  ]
-
-  cflags = [
-    "-fno-access-control",
+    "icu:shared_icuuc",
   ]
 }
 
@@ -3242,10 +3240,7 @@ ohos_unittest("ImeUsageReporterTest") {
     "hilog:libhilog",
     "init:libbegetutil",
     "ipc:ipc_single",
-  ]
-
-  cflags = [
-    "-fno-access-control",
+    "icu:shared_icuuc",
   ]
 }
 }
