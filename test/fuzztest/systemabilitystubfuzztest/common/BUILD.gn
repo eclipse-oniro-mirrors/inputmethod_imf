@@ -70,6 +70,7 @@ ohos_static_library("imf_sa_stub_fuzztest_common_static") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm_lite",
+    "icu:shared_icuuc",
   ]
 
   defines = []

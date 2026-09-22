@@ -66,6 +66,7 @@ common_external_deps = [
   "data_share:datashare_consumer",
   "graphic_2d:librender_service_base",
   "hilog:libhilog",
+  "icu:shared_icuuc",
   "input:libmmi-client",
   "safwk:system_ability_fwk",
   "window_manager:libdm_lite",

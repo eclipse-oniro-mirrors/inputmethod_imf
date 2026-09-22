@@ -66,6 +66,7 @@ ohos_cli_executable("ohos-imf") {
     "hilog:libhilog",
     "input:libmmi-client",
     "ipc:ipc_single",
+    "icu:shared_icuuc",
   ]
 
   cli_config_file = "config.json"

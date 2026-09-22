@@ -110,6 +110,7 @@ ohos_shared_library("inputmethod_extension") {
     "runtime_core:ani_helpers",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (imf_hiviewdfx_api_metrics_ext_enable) {
@@ -162,6 +163,7 @@ ohos_shared_library("inputmethod_extension_module") {
     "ipc:ipc_single",
     "napi:ace_napi",
     "node:node_header_notice",
+    "icu:shared_icuuc",
   ]
 
   relative_install_dir = "extensionability/"

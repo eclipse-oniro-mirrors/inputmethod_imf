@@ -57,6 +57,7 @@ ohos_static_library("inputmethod_test_common") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 
   subsystem_name = "inputmethod"
@@ -85,6 +86,7 @@ ohos_static_library("inputmethod_fuzztest_common") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 
   subsystem_name = "inputmethod"

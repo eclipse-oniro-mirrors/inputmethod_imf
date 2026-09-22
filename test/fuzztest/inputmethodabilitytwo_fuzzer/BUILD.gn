@@ -57,6 +57,7 @@ ohos_fuzztest("InputMethodAbilityTwoFuzzTest") {
     "node:node_header_notice",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {

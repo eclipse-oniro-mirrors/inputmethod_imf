@@ -61,6 +61,7 @@ ohos_fuzztest("EnableUpgradeManagerFuzzTest") {
     "hilog:libhilog",
     "input:libmmi-client",
     "ipc:ipc_single",
+    "icu:shared_icuuc",
   ]
 }
 

@@ -83,6 +83,7 @@ ohos_shared_library("inputmethod") {
     "ipc:ipc_single",
     "napi:ace_napi",
     "node:node_header_notice",
+    "icu:shared_icuuc",
   ]
 
   public_configs = [ ":imf_public_config" ]

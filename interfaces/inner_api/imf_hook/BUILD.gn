@@ -45,6 +45,7 @@ ohos_shared_library("imf_hook") {
   external_deps = [
     "c_utils:utils",
     "init:libbegetutil",
+    "icu:shared_icuuc",
   ]
 
   subsystem_name = "inputmethod"

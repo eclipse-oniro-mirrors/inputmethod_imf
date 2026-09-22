@@ -99,6 +99,7 @@ ohos_shared_library("inputmethodengine") {
     "eventhandler:libeventhandler",
     "ffrt:libffrt",
     "hilog:libhilog",
+    "icu:shared_icuuc",
     "input:libmmi-client",
     "input:libmmi-napi",
     "ipc:ipc_core",

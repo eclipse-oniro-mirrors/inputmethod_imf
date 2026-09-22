@@ -35,6 +35,7 @@ copy_taihe_idl("inputMethodEngine_taihe") {
     "input:input_event_taihe",
     "input:key_code_taihe",
     "input:key_event_taihe",
+    "icu:shared_icuuc",
   ]
 }
 

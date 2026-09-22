@@ -78,6 +78,7 @@ ohos_source_set("input_client_proxy") {
   external_deps = [
     "c_utils:utils",
     "hilog:libhilog",
+    "icu:shared_icuuc",
     "input:libmmi-client",
     "ipc:ipc_single",
     "samgr:samgr_proxy",
@@ -103,6 +104,7 @@ ohos_source_set("input_client_stub") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
   subsystem_name = "inputmethod"
   part_name = "imf"
@@ -128,6 +130,7 @@ ohos_source_set("input_method_agent_stub") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
   subsystem_name = "inputmethod"
   part_name = "imf"
@@ -153,6 +156,7 @@ ohos_source_set("input_method_agent_proxy") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
   subsystem_name = "inputmethod"
   part_name = "imf"
@@ -172,6 +176,7 @@ ohos_source_set("oninputstop_notify_stub") {
   external_deps = [
     "c_utils:utils",
     "ipc:ipc_single",
+    "icu:shared_icuuc",
   ]
   subsystem_name = "inputmethod"
   part_name = "imf"
@@ -193,6 +198,7 @@ ohos_source_set("oninputstop_notify_proxy") {
     "ipc:ipc_single",
     "samgr:samgr_proxy",
     "safwk:system_ability_fwk",
+    "icu:shared_icuuc",
   ]
   subsystem_name = "inputmethod"
   part_name = "imf"
@@ -282,6 +288,7 @@ ohos_shared_library("inputmethod_client") {
     "ipc:ipc_single",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 
   if (imf_hiviewdfx_api_metrics_ext_enable) {
@@ -368,6 +375,7 @@ ohos_static_library("inputmethod_client_static") {
     "ipc:ipc_single",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 
   if (imf_hiviewdfx_api_metrics_ext_enable) {
@@ -455,6 +463,7 @@ ohos_static_library("inputmethod_client_fuzz_static") {
     "ipc:ipc_single",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 
   if (imf_hiviewdfx_api_metrics_ext_enable) {
