@@ -76,6 +76,18 @@ public:
     ~TaskImsaHideKeyboard() = default;
 };
 
+class TaskImsaHideCandidatePanel : public Task {
+public:
+    explicit TaskImsaHideCandidatePanel() : Task(TASK_TYPE_IMSA_HIDE_CANDIDATE_PANEL)
+    {
+        auto func = []() {
+            InputMethodAbility::GetInstance().HideCandidatePanel();
+        };
+        actions_.emplace_back(std::make_unique<Action>(func));
+    }
+    ~TaskImsaHideCandidatePanel() = default;
+};
+
 class TaskImsaOnClientInactive : public Task {
 public:
     explicit TaskImsaOnClientInactive(sptr<IRemoteObject> channel) : Task(TASK_TYPE_IMSA_CLIENT_INACTIVE)

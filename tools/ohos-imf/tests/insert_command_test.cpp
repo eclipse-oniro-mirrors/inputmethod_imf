@@ -53,7 +53,7 @@ HWTEST_F(InsertCommandTest, Execute_001, TestSize.Level0)
     std::vector<std::string> argList;
     auto ret = cmd.Execute(argList);
     EXPECT_EQ(ret, CliUtils::GenerateError({ "ERR_ARG_COUNT_MISMATCH", "Invalid argument count",
-                       "Only '--text <content>' is supported. Please execute 'ohos-imf insert --help' for usage" }));
+                       "Only '--text <text>' is supported. Please execute 'ohos-imf insert --help' for usage" }));
 }
 
 /**
@@ -121,8 +121,8 @@ HWTEST_F(InsertCommandTest, Execute_005, TestSize.Level0)
     std::vector<std::string> argList = { "--text", "dgg" };
     auto ret = cmd.Execute(argList);
     EXPECT_EQ(ret, CliUtils::GenerateError({ "ERR_PERMISSION_DENIED",
-                       "Permission denied: missing ohos.permission.CONTROL_DEVICE permission",
-                       "Please add ohos.permission.CONTROL_DEVICE in the requestPermissions field of module.json5" }));
+                       "Permission denied: ohos.permission.CONTROL_DEVICE is not granted",
+                       "Please declare the permission in module.json5 and manually enable it in system settings" }));
 }
 
 /**
@@ -138,11 +138,9 @@ HWTEST_F(InsertCommandTest, Execute_006, TestSize.Level0)
     InsertCommand cmd;
     std::vector<std::string> argList = { "--text", "dgg" };
     auto ret = cmd.Execute(argList);
-    EXPECT_EQ(ret, CliUtils::GenerateError(
-                       { "ERR_EDIT_BOX_NOT_BOUND_WITH_IME_APP", "No focused edit box or not bound to the IME app",
-                           "Please click the edit box in the current focused window to trigger the binding operation "
-                           "first and "
-                           "try again" }));
+    EXPECT_EQ(ret, CliUtils::GenerateError({ "ERR_NO_EDIT_BOX_BOUND_TO_IME_APP", "No edit box bound to the IME app",
+                       "Please click the edit box in the current focused window to trigger the binding operation, "
+                       "then retry" }));
 }
 
 /**

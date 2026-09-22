@@ -60,13 +60,12 @@ std::string InsertCommand::Execute(const std::vector<std::string> &argList)
     if (ret != ErrorCode::NO_ERROR) {
         if (ret == ErrorCode::ERROR_STATUS_PERMISSION_DENIED) {
             return CliUtils::GenerateError(
-                { "ERR_PERMISSION_DENIED", "Permission denied: missing ohos.permission.CONTROL_DEVICE permission",
-                    "Please add ohos.permission.CONTROL_DEVICE in the requestPermissions field of module.json5" });
+                { "ERR_PERMISSION_DENIED", "Permission denied: ohos.permission.CONTROL_DEVICE is not granted",
+                    "Please declare the permission in module.json5 and manually enable it in system settings" });
         } else {
-            return CliUtils::GenerateError({ "ERR_EDIT_BOX_NOT_BOUND_WITH_IME_APP",
-                "No focused edit box or not bound to the IME app",
-                "Please click the edit box in the current focused window to trigger the binding operation first and "
-                "try again" });
+            return CliUtils::GenerateError({ "ERR_NO_EDIT_BOX_BOUND_TO_IME_APP", "No edit box bound to the IME app",
+                "Please click the edit box in the current focused window to trigger the binding operation, then "
+                "retry" });
         }
     }
     return CliUtils::GenerateSuccess(std::make_shared<CommonSuccessInfo>());
@@ -76,7 +75,7 @@ std::string InsertCommand::GetInsertedText(const std::vector<std::string> &argLi
 {
     if (argList.size() != ARG_NUM) {
         return CliUtils::GenerateError({ "ERR_ARG_COUNT_MISMATCH", "Invalid argument count",
-            "Only '--text <content>' is supported. Please execute 'ohos-imf insert --help' for usage" });
+            "Only '--text <text>' is supported. Please execute 'ohos-imf insert --help' for usage" });
     }
     text = ParamParse::GetParam(argList, "--text");
     if (text.empty()) {

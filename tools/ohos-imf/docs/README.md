@@ -20,7 +20,7 @@ ohos-imf <command> --help
 
 | 命令 | 说明 | 参数 | 权限 | 前置依赖 |
 |---------|-------------|------------|-------------|--------------|
-| insert | 向绑定输入法的焦点编辑框插入文本 | `--text <string>`（必填），文本大小限制最大 512 字节 | ohos.permission.CONTROL_DEVICE | 编辑框与输入法应用已绑定 |
+| insert | 向绑定输入法的焦点编辑框插入文本 | `--text <text>`（必填），文本大小限制最大 512 字节 | ohos.permission.CONTROL_DEVICE | 编辑框与输入法应用已绑定 |
 
 
 ## 输出格式
@@ -59,7 +59,7 @@ ohos-imf <command> --help
 | `ERR_ARG_OUT_OF_RANGE` | 参数值超出范围 |
 | `ERR_INTERNAL_ERROR` | 内部错误 |
 | `ERR_PERMISSION_DENIED` | 权限不足 |
-| `ERR_EDIT_BOX_NOT_BOUND_WITH_IME_APP` | 不存在与输入法应用绑定的编辑框 |
+| `ERR_NO_EDIT_BOX_BOUND_TO_IME_APP` | 不存在与输入法应用绑定的编辑框 |
 
 ## 示例
 

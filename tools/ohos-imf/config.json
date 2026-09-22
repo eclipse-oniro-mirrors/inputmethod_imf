@@ -16,7 +16,7 @@
   "hasSubCommand": true,
   "subcommands": {
     "insert": {
-      "description": "Insert text into the focused edit box bound to the input method application. Used for simulating real-user input. Only '--text <content>' is supported.",
+      "description": "Insert text into the focused edit box bound to the input method application. Used for simulating real-user input. Only '--text <text>' is supported.",
       "requirePermissions": [
         "ohos.permission.CONTROL_DEVICE"
       ],
