@@ -13,11 +13,8 @@
  * limitations under the License.
  */
 
-#define private public
-#define protected public
 #include "ime_info_inquirer.h"
 #include "sys_cfg_parser.h"
-#undef private
 
 #include <gtest/gtest.h>
 #include <unistd.h>

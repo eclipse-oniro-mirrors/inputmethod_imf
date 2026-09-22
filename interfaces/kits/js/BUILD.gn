@@ -59,6 +59,7 @@ ohos_shared_library("extra_config_napi") {
     "hilog:libhilog",
     "napi:ace_napi",
     "node:node_header_notice",
+    "icu:shared_icuuc",
   ]
 
   public_configs = [ ":extra_config" ]
@@ -108,6 +109,7 @@ ohos_shared_library("extra_config_ani") {
     "hilog:libhilog",
     "runtime_core:ani",
     "runtime_core:ani_helpers",
+    "icu:shared_icuuc",
   ]
 
   public_configs = [ ":extra_ani_config" ]

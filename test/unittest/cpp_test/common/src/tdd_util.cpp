@@ -12,13 +12,10 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define private public
-#define protected public
 #include "full_ime_info_manager.h"
 #include "settings_data_utils.h"
 #include "user_session_manager.h"
 #include "task_manager.h"
-#undef private
 
 #include <unistd.h>
 

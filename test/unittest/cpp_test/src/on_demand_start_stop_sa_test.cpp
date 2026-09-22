@@ -15,7 +15,6 @@
 
 #include <gtest/gtest.h>
 
-#define private public
 #include "mock_iremote_object.h"
 #include "on_demand_start_stop_sa.h"
 #include "system_ability_definition.h"

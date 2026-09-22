@@ -61,6 +61,7 @@ ohos_static_library("inputmethod_js_common") {
     "libuv:uv",
     "napi:ace_napi",
     "node:node_header_notice",
+    "icu:shared_icuuc",
   ]
   subsystem_name = "inputmethod"
   part_name = "imf"

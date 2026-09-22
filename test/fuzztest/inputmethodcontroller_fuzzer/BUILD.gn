@@ -31,6 +31,7 @@ ohos_fuzztest("InputMethodControllerFuzzTest") {
   ]
 
   cflags = [
+    "-fno-access-control",
     "-g",
     "-O0",
     "-Wno-unused-variable",
@@ -52,6 +53,7 @@ ohos_fuzztest("InputMethodControllerFuzzTest") {
     "hilog:libhilog",
     "input:libmmi-client",
     "ipc:ipc_single",
+    "icu:shared_icuuc",
   ]
 }
 

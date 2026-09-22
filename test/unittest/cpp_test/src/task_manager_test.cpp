@@ -13,14 +13,11 @@
  * limitations under the License.
  */
 #define private   public
-#define protected public
 #include "task_manager.h"
 
 #include "actions/action_wait.h"
 #include "tasks/task_ams.h"
 #include "tasks/task_inner.h"
-#undef private
-#undef protected
 
 #include <chrono>
 #include <gtest/gtest.h>

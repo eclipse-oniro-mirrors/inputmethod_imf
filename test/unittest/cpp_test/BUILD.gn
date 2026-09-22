@@ -38,6 +38,8 @@ ohos_unittest("InputMethodControllerTest") {
   }
   module_out_path = module_output_path
 
+  cflags = [ "-fno-access-control" ]
+
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_ability/src/input_method_agent_service_impl.cpp",
     "${inputmethod_path}/frameworks/native/inputmethod_ability/src/input_method_core_service_impl.cpp",
@@ -95,6 +97,7 @@ ohos_unittest("InputMethodControllerTest") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -105,7 +108,7 @@ ohos_unittest("InputMethodControllerTest") {
 
   if (build_selinux) {
     external_deps += [ "selinux_adapter:librestorecon" ]
-    cflags = [ "-DWITH_SELINUX" ]
+    cflags += [ "-DWITH_SELINUX" ]
   }
 }
 
@@ -117,6 +120,8 @@ ohos_unittest("InputMethodAttachTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_client_info.cpp",
@@ -166,6 +171,7 @@ ohos_unittest("InputMethodAttachTest") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -182,6 +188,8 @@ ohos_unittest("InputMethodAbilityTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_ability/src/input_method_agent_service_impl.cpp",
@@ -245,6 +253,7 @@ ohos_unittest("InputMethodAbilityTest") {
     "samgr:samgr_proxy",
     "window_manager:libdm",
     "window_manager:libwsutils",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -262,6 +271,8 @@ ohos_unittest("InputMethodServiceTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "src/input_method_service_test.cpp"
@@ -301,6 +312,7 @@ ohos_unittest("InputMethodServiceTest") {
     "window_manager:libwsutils",
     "data_share:datashare_common",
     "data_share:datashare_consumer",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -318,6 +330,8 @@ ohos_unittest("InputMethodDfxTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_ability/src/input_method_agent_service_impl.cpp",
@@ -375,6 +389,7 @@ ohos_unittest("InputMethodDfxTest") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -392,6 +407,8 @@ ohos_unittest("InputMethodPanelTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_ability/src/input_method_agent_service_impl.cpp",
@@ -447,6 +464,7 @@ ohos_unittest("InputMethodPanelTest") {
     "samgr:samgr_proxy",
     "window_manager:libdm",
     "window_manager:libwsutils",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -464,6 +482,8 @@ ohos_unittest("InputMethodPanelAdjustTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_ability/src/input_method_agent_service_impl.cpp",
@@ -515,6 +535,7 @@ ohos_unittest("InputMethodPanelAdjustTest") {
     "samgr:samgr_proxy",
     "window_manager:libdm",
     "window_manager:libwsutils",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -571,6 +592,7 @@ ohos_unittest("InputMethodSwitchTest") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "safwk:system_ability_fwk",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -659,6 +681,7 @@ ohos_unittest("InputMethodPrivateMemberTest") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
   defines = []
   if (window_manager_use_sceneboard) {
@@ -727,6 +750,7 @@ ohos_unittest("PushToTalkManagerUnitTest") {
     "os_account:os_account_innerkits",
     "safwk:system_ability_fwk",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
   defines = []
   if (window_manager_use_sceneboard) {
@@ -757,6 +781,8 @@ ohos_unittest("InputMethodEditorTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_client_info.cpp",
@@ -807,6 +833,7 @@ ohos_unittest("InputMethodEditorTest") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -863,6 +890,7 @@ ohos_unittest("NewImeSwitchTest") {
     "ipc:ipc_single",
     "safwk:system_ability_fwk",
     "window_manager:libwm",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -885,6 +913,8 @@ ohos_unittest("NumKeyAppsManagerTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
   include_dirs = [ "${inputmethod_path}/common/include" ]
   sources = [ "src/numkey_apps_manager_test.cpp" ]
 
@@ -915,6 +945,7 @@ ohos_unittest("NumKeyAppsManagerTest") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "resource_management:global_resmgr",
+    "icu:shared_icuuc",
   ]
   defines = []
   if (imf_compatibility_config_center_enable) {
@@ -931,6 +962,8 @@ ohos_unittest("IdentityCheckerTest") {
     blocklist = "./inputmethod_blocklist.txt"
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_client_info.cpp",
@@ -972,6 +1005,7 @@ ohos_unittest("IdentityCheckerTest") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -989,6 +1023,8 @@ ohos_unittest("TextListenerInnerApiTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_client_info.cpp",
@@ -1025,6 +1061,7 @@ ohos_unittest("TextListenerInnerApiTest") {
     "napi:ace_napi",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -1082,6 +1119,7 @@ ohos_unittest("TextListenerInnerApiTest") {
       "input:libmmi-client",
       "ipc:ipc_single",
       "safwk:system_ability_fwk",
+    "icu:shared_icuuc",
     ]
 
     if (window_manager_use_sceneboard) {
@@ -1104,6 +1142,8 @@ ohos_unittest("ImeProxyAgentImeTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/services/src/sys_cfg_parser.cpp",
@@ -1146,6 +1186,7 @@ ohos_unittest("ImeProxyAgentImeTest") {
     "node:node_header_notice",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -1156,7 +1197,7 @@ ohos_unittest("ImeProxyAgentImeTest") {
 
   if (build_selinux) {
     external_deps += [ "selinux_adapter:librestorecon" ]
-    cflags = [ "-DWITH_SELINUX" ]
+    cflags += [ "-DWITH_SELINUX" ]
   }
 }
 
@@ -1191,6 +1232,7 @@ ohos_executable("ImeProxyDemo") {
     "hilog:libhilog",
     "input:libmmi-client",
     "ipc:ipc_single",
+    "icu:shared_icuuc",
   ]
 
   install_enable = false
@@ -1206,6 +1248,8 @@ ohos_unittest("ImeProxyTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_client_info.cpp",
@@ -1259,6 +1303,7 @@ ohos_unittest("ImeProxyTest") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -1268,7 +1313,7 @@ ohos_unittest("ImeProxyTest") {
   }
   if (build_selinux) {
     external_deps += [ "selinux_adapter:librestorecon" ]
-    cflags = [ "-DWITH_SELINUX" ]
+    cflags += [ "-DWITH_SELINUX" ]
   }
 }
 
@@ -1280,6 +1325,8 @@ ohos_unittest("TaskManagerTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_ability/src/task_manager.cpp",
@@ -1301,6 +1348,7 @@ ohos_unittest("TaskManagerTest") {
     "eventhandler:libeventhandler",
     "googletest:gtest_main",
     "hilog:libhilog",
+    "icu:shared_icuuc",
   ]
 }
 
@@ -1312,6 +1360,8 @@ ohos_unittest("ImeFreezeManagerTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_client_info.cpp",
@@ -1350,6 +1400,7 @@ ohos_unittest("ImeFreezeManagerTest") {
     "os_account:os_account_innerkits",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -1367,6 +1418,8 @@ ohos_unittest("JsonOperateTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [ "src/json_operate_test.cpp" ]
 
@@ -1390,6 +1443,7 @@ ohos_unittest("JsonOperateTest") {
     "ipc:ipc_single",
     "resource_management:global_resmgr",
     "init:libbegetutil",
+    "icu:shared_icuuc",
   ]
 }
 
@@ -1401,6 +1455,8 @@ ohos_unittest("VirtualListenerTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [ "src/virtual_listener_test.cpp" ]
 
@@ -1431,6 +1487,7 @@ ohos_unittest("VirtualListenerTest") {
     "node:node_header_notice",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -1449,6 +1506,8 @@ ohos_unittest("ImeSystemChannelTest") {
     blocklist = "./inputmethod_blocklist.txt"
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_controller/src/system_cmd_channel_service_impl.cpp",
@@ -1483,6 +1542,7 @@ ohos_unittest("ImeSystemChannelTest") {
     "node:node_header_notice",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -1548,6 +1608,7 @@ ohos_unittest("ImeControllerCpaiTest") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 }
 
@@ -1559,6 +1620,8 @@ ohos_unittest("FullImeInfoManagerTest") {
     blocklist = "./inputmethod_blocklist.txt"
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/services/src/full_ime_info_manager.cpp",
@@ -1585,6 +1648,7 @@ ohos_unittest("FullImeInfoManagerTest") {
     "ipc:ipc_single",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
+    "icu:shared_icuuc",
   ]
 }
 
@@ -1597,6 +1661,8 @@ ohos_unittest("InputMethodMessageHandlerTest") {
     blocklist = "./inputmethod_blocklist.txt"
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_ability/src/input_method_agent_service_impl.cpp",
@@ -1658,6 +1724,7 @@ ohos_unittest("InputMethodMessageHandlerTest") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -1676,6 +1743,8 @@ ohos_unittest("OnDemandStartStopSaTest") {
   }
   module_out_path = module_output_path
 
+  cflags = [ "-fno-access-control" ]
+
   sources = [
     "${inputmethod_path}/common/src/on_demand_start_stop_sa.cpp",
     "src/on_demand_start_stop_sa_test.cpp",
@@ -1693,6 +1762,7 @@ ohos_unittest("OnDemandStartStopSaTest") {
     "ipc:ipc_single",
     "samgr:samgr_proxy",
     "googletest:gmock",
+    "icu:shared_icuuc",
   ]
 }
 
@@ -1704,6 +1774,8 @@ ohos_unittest("ResSchedAdapterTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   include_dirs = [
     "${inputmethod_path}/common/include",
@@ -1733,6 +1805,7 @@ ohos_unittest("ResSchedAdapterTest") {
     "safwk:system_ability_fwk",
     "resource_management:global_resmgr",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 }
 
@@ -1744,6 +1817,8 @@ ohos_unittest("ImfHisysEventReporterTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
   include_dirs = [ "${inputmethod_path}/common/include" ]
   sources = [ "src/imf_hisysevent_report_test.cpp" ]
 
@@ -1769,6 +1844,7 @@ ohos_unittest("ImfHisysEventReporterTest") {
     "hisysevent:libhisyseventmanager",
     "input:libmmi-client",
     "ipc:ipc_core",
+    "icu:shared_icuuc",
   ]
 }
 
@@ -1780,6 +1856,8 @@ ohos_unittest("WindowAdapterTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   include_dirs = [
     "${inputmethod_path}/common/include",
@@ -1811,6 +1889,7 @@ ohos_unittest("WindowAdapterTest") {
     "ipc:ipc_single",
     "safwk:system_ability_fwk",
     "os_account:os_account_innerkits",
+    "icu:shared_icuuc",
   ]
   defines = []
   if (window_manager_use_sceneboard) {
@@ -1829,6 +1908,8 @@ ohos_unittest("ImaTextEditTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_client_info.cpp",
@@ -1876,6 +1957,7 @@ ohos_unittest("ImaTextEditTest") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -1885,7 +1967,7 @@ ohos_unittest("ImaTextEditTest") {
   }
   if (build_selinux) {
     external_deps += [ "selinux_adapter:librestorecon" ]
-    cflags = [ "-DWITH_SELINUX" ]
+    cflags += [ "-DWITH_SELINUX" ]
   }
 }
 
@@ -1910,6 +1992,7 @@ ohos_unittest("StringUtilsTest") {
     "c_utils:utils",
     "googletest:gtest_main",
     "hilog:libhilog",
+    "icu:shared_icuuc",
   ]
 }
 
@@ -1948,6 +2031,7 @@ ohos_unittest("InputMethodManagerCommandTest") {
     "hilog:libhilog",
     "input:libmmi-client",
     "ipc:ipc_single",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -1965,6 +2049,9 @@ ohos_unittest("ImeEnabledInfoManagerTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
+
   include_dirs = [ "${inputmethod_path}/common/include" ]
   sources = [ "src/ime_enabled_info_manager_test.cpp" ]
 
@@ -1997,6 +2084,7 @@ ohos_unittest("ImeEnabledInfoManagerTest") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "resource_management:global_resmgr",
+    "icu:shared_icuuc",
   ]
   if (window_manager_use_sceneboard) {
     external_deps += [ "window_manager:libwm_lite" ]
@@ -2005,7 +2093,7 @@ ohos_unittest("ImeEnabledInfoManagerTest") {
   }
   if (build_selinux) {
     external_deps += [ "selinux_adapter:librestorecon" ]
-    cflags = [ "-DWITH_SELINUX" ]
+    cflags += [ "-DWITH_SELINUX" ]
   }
 }
 
@@ -2017,6 +2105,8 @@ ohos_unittest("ImeMirrorTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/test/unittest/cpp_test/mock/mock_input_method_system_ability_proxy.cpp",
@@ -2071,6 +2161,7 @@ ohos_unittest("ImeMirrorTest") {
     "samgr:samgr_proxy",
     "window_manager:libdm",
     "window_manager:libwsutils",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -2081,7 +2172,7 @@ ohos_unittest("ImeMirrorTest") {
 
   if (build_selinux) {
     external_deps += [ "selinux_adapter:librestorecon" ]
-    cflags = [ "-DWITH_SELINUX" ]
+    cflags += [ "-DWITH_SELINUX" ]
   }
 }
 
@@ -2116,6 +2207,7 @@ ohos_executable("ImeMirrorDemo") {
     "hilog:libhilog",
     "input:libmmi-client",
     "ipc:ipc_single",
+    "icu:shared_icuuc",
   ]
 
   install_enable = false
@@ -2153,6 +2245,7 @@ ohos_executable("ImcInnerTestDemo") {
     "c_utils:utils",
     "hilog:libhilog",
     "input:libmmi-client",
+    "icu:shared_icuuc",
   ]
 
   install_enable = false
@@ -2193,6 +2286,7 @@ ohos_executable("ProxyImeTestDemo") {
     "hilog:libhilog",
     "input:libmmi-client",
     "ipc:ipc_single",
+    "icu:shared_icuuc",
   ]
 
   install_enable = false
@@ -2208,6 +2302,8 @@ ohos_unittest("ImfExtMockTest") {
     blocklist = "./inputmethod_blocklist.txt"
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/services/hook/src/imf_hook_manager.cpp",
@@ -2234,6 +2330,7 @@ ohos_unittest("ImfExtMockTest") {
     "hilog:libhilog",
     "bundle_framework:appexecfwk_base",
     "bundle_framework:appexecfwk_core",
+    "icu:shared_icuuc",
   ]
 }
 
@@ -2245,6 +2342,8 @@ ohos_unittest("InputMethodDisplayAttributeListenerTest") {
     blocklist = "./inputmethod_blocklist.txt"
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/frameworks/common/src/inputmethod_display_listener.cpp",
@@ -2297,6 +2396,7 @@ ohos_unittest("InputMethodDisplayAttributeListenerTest") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (imf_hiviewdfx_api_metrics_ext_enable) {
@@ -2317,6 +2417,8 @@ ohos_unittest("ImeEventListenerManagerTest") {
     blocklist = "./inputmethod_blocklist.txt"
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/services/src/ime_event_listener_manager.cpp",
@@ -2351,6 +2453,7 @@ ohos_unittest("ImeEventListenerManagerTest") {
     "data_share:datashare_common",
     "data_share:datashare_consumer",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -2393,6 +2496,7 @@ ohos_executable("PublishCommonEventDemo") {
     "hilog:libhilog",
     "common_event_service:cesfwk_innerkits",
     "input:libmmi-client",
+    "icu:shared_icuuc",
   ]
 
   install_enable = false
@@ -2425,6 +2529,7 @@ ohos_unittest("SamgrAdapterTest") {
     "hilog:libhilog",
     "ipc:ipc_single",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 
   cflags = [
@@ -2458,6 +2563,7 @@ ohos_unittest("DisplayAdapterTest") {
     "hilog:libhilog",
     "ipc:ipc_single",
     "window_manager:libdm_lite",
+    "icu:shared_icuuc",
   ]
 
   cflags = [
@@ -2497,6 +2603,7 @@ ohos_unittest("OsAccountListenerTest") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "os_account:os_account_innerkits",
+    "icu:shared_icuuc",
   ]
 
   cflags = [
@@ -2512,6 +2619,8 @@ ohos_unittest("ImeInfoInquirerTest") {
     blocklist = "./inputmethod_blocklist.txt"
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "src/ime_info_inquirer_test.cpp",
@@ -2547,6 +2656,7 @@ ohos_unittest("ImeInfoInquirerTest") {
     "samgr:samgr_proxy",
     "window_manager:libwm",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 }
 
@@ -2604,6 +2714,7 @@ ohos_unittest("InputMethodExtensionContextTest") {
     "napi:cj_bind_ffi",
     "node:node_header_notice",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (imf_hiviewdfx_api_metrics_ext_enable) {
@@ -2674,6 +2785,7 @@ ohos_unittest("InputMethodExtensionTest") {
     "napi:cj_bind_ffi",
     "node:node_header_notice",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (imf_hiviewdfx_api_metrics_ext_enable) {
@@ -2745,6 +2857,7 @@ ohos_unittest("InputMethodExtensionModuleLoaderTest") {
     "napi:cj_bind_ffi",
     "node:node_header_notice",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (imf_hiviewdfx_api_metrics_ext_enable) {
@@ -2796,6 +2909,7 @@ ohos_unittest("WmsConnectionMonitorTest") {
     "ipc:ipc_single",
     "window_manager:libdm",
     "window_manager:libwm",
+    "icu:shared_icuuc",
   ]
   if (window_manager_use_sceneboard) {
     external_deps += [ "window_manager:libwm_lite" ]
@@ -2846,6 +2960,7 @@ ohos_unittest("KeyboardEventTest") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "icu:shared_icuuc",
   ]
 
   cflags = [
@@ -2891,6 +3006,7 @@ ohos_unittest("InputEventCallbackTest") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "napi:ace_napi",
+    "icu:shared_icuuc",
   ]
 
   cflags = [
@@ -2951,6 +3067,7 @@ ohos_unittest("EnableUpgradeManagerTest") {
     "os_account:os_account_innerkits",
     "resource_management:global_resmgr",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
   if (window_manager_use_sceneboard) {
     external_deps += [ "window_manager:libwm_lite" ]
@@ -3014,6 +3131,8 @@ ohos_unittest("FoldStatusAdapterTest") {
   }
   module_out_path = module_output_path
 
+  cflags = [ "-fno-access-control" ]
+
   include_dirs = [
     "${inputmethod_path}/common/include",
     "${inputmethod_path}/services/include",
@@ -3040,10 +3159,7 @@ ohos_unittest("FoldStatusAdapterTest") {
     "init:libbegetutil",
     "ipc:ipc_single",
     "window_manager:libdm_lite",
-  ]
-
-  cflags = [
-    "-fno-access-control",
+    "icu:shared_icuuc",
   ]
 }
 
@@ -3055,6 +3171,8 @@ ohos_unittest("ImeUsageEventFactoryTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   include_dirs = [
     "${inputmethod_path}/common/include",
@@ -3096,6 +3214,8 @@ ohos_unittest("ImeUsageReporterTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   include_dirs = [
     "${inputmethod_path}/common/include",
@@ -3197,6 +3317,7 @@ ohos_unittest("PerUserSessionTest") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -3246,6 +3367,7 @@ ohos_unittest("InputMethodToolsTest") {
     "hilog:libhilog",
     "input:libmmi-client",
     "ipc:ipc_single",
+    "icu:shared_icuuc",
   ]
 }
 
@@ -3258,6 +3380,8 @@ ohos_unittest("NotifyServiceImplTest") {
     blocklist = "./inputmethod_blocklist.txt"
   }
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/services/src/notify_service_impl.cpp",
@@ -3295,6 +3419,7 @@ ohos_unittest("NotifyServiceImplTest") {
     "napi:ace_napi",
     "os_account:os_account_innerkits",
     "safwk:system_ability_fwk",
+    "icu:shared_icuuc",
   ]
 
   if (window_manager_use_sceneboard) {
@@ -3302,10 +3427,6 @@ ohos_unittest("NotifyServiceImplTest") {
   } else {
     external_deps += [ "window_manager:libwm" ]
   }
-
-  cflags = [
-    "-fno-access-control",
-  ]
 }
 
 ohos_unittest("SystemCmdChannelServiceImplTest") {
@@ -3344,6 +3465,7 @@ ohos_unittest("SystemCmdChannelServiceImplTest") {
     "eventhandler:libeventhandler",
     "googletest:gtest_main",
     "hilog:libhilog",
+    "icu:shared_icuuc",
     "input:libmmi-client",
     "ipc:ipc_single",
     "safwk:system_ability_fwk",
@@ -3364,6 +3486,8 @@ ohos_unittest("OhosImfToolTest") {
   }
 
   module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
 
   sources = [
     "${inputmethod_path}/tools/ohos-imf/src/cli_utils.cpp",
@@ -3391,5 +3515,6 @@ ohos_unittest("OhosImfToolTest") {
     "hilog:libhilog",
     "input:libmmi-client",
     "ipc:ipc_single",
+    "icu:shared_icuuc",
   ]
 }

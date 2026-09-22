@@ -27,10 +27,7 @@
 #include "ime_usage_data_helper.h"
 
 #define private   public
-#define protected public
 #include "ime_usage_event_factory.h"
-#undef private
-#undef protected
 
 #include "global.h"
 

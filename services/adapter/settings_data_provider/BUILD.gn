@@ -69,6 +69,7 @@ ohos_static_library("settings_data_static") {
     "os_account:os_account_innerkits",
     "resource_management:global_resmgr",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
   defines = []
   if (imf_compatibility_config_center_enable) {

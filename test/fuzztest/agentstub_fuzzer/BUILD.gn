@@ -47,6 +47,7 @@ ohos_fuzztest("AgentStubFuzzTest") {
     "hilog:libhilog",
     "input:libmmi-client",
     "ipc:ipc_single",
+    "icu:shared_icuuc",
   ]
 }
 

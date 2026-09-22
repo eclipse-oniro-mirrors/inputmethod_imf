@@ -13,12 +13,9 @@
  * limitations under the License.
  */
 
-#define private public
-#define protected public
 #include "ime_info_inquirer.h"
 #include "input_method_system_ability.h"
 #include "window_adapter.h"
-#undef private
 
 #include <gmock/gmock.h>
 #include <gtest/gtest.h>

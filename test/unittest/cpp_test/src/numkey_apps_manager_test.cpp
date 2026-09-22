@@ -13,13 +13,10 @@
  * limitations under the License.
  */
 
-#define private public
-#define protected public
 #include "numkey_apps_manager.h"
 
 #include "ime_info_inquirer.h"
 
-#undef private
 
 #include <gtest/gtest.h>
 

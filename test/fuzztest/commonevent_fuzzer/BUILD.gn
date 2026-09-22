@@ -34,6 +34,7 @@ ohos_fuzztest("CommonEventFuzzTest") {
   ]
 
   cflags = [
+    "-fno-access-control",
     "-g",
     "-O0",
     "-Wno-unused-variable",
@@ -68,6 +69,7 @@ ohos_fuzztest("CommonEventFuzzTest") {
     "os_account:os_account_innerkits",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 }
 

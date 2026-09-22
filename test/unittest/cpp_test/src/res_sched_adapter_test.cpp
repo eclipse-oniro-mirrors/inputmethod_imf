@@ -13,10 +13,7 @@
  * limitations under the License.
  */
 
-#define private public
-#define protected public
 #include "res_sched_adapter.h"
-#undef private
 
 #include <gtest/gtest.h>
 

@@ -3807,6 +3807,14 @@ int32_t PerUserSession::ExecTextInteraction(const std::string &text)
         IMSA_HILOGD("current client not exists.");
         return ErrorCode::ERROR_CLIENT_NOT_BOUND;
     }
+    auto imeData = GetImeData(clientInfo->bindImeData);
+    if (imeData != nullptr && imeData->core != nullptr) {
+        auto hideRet =
+            RequestIme(imeData, RequestType::NORMAL, [&imeData] { return imeData->core->HideCandidatePanel(); });
+        if (hideRet != ErrorCode::NO_ERROR) {
+            IMSA_HILOGD("HideCandidatePanel ret: %{public}d", hideRet);
+        }
+    }
     auto ret = clientInfo->client->OnExecTextInteraction(text);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("OnExecTextInteraction failed, ret: %{public}d", ret);

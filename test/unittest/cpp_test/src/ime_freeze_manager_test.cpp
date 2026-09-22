@@ -12,11 +12,8 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#define private public
-#define protected public
 #include "freeze_manager.h"
 #include "peruser_session.h"
-#undef private
 #include <gtest/gtest.h>
 #include <gtest/hwext/gtest-multithread.h>
 #include <sys/time.h>

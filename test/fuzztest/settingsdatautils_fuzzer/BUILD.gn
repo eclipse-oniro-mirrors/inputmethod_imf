@@ -34,6 +34,7 @@ ohos_fuzztest("SettingsDataUtilsFuzzTest") {
   ]
 
   cflags = [
+    "-fno-access-control",
     "-g",
     "-O0",
     "-Wno-unused-variable",
@@ -66,6 +67,7 @@ ohos_fuzztest("SettingsDataUtilsFuzzTest") {
     "ipc:ipc_single",
     "resource_management:global_resmgr",
     "samgr:samgr_proxy",
+    "icu:shared_icuuc",
   ]
 }
 

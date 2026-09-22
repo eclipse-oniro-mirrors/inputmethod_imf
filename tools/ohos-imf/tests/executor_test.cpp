@@ -13,10 +13,7 @@
  * limitations under the License.
  */
 #include "insert_command.h"
-#define private public
-#define protected public
 #include "executor.h"
-#undef private
 #include <gtest/gtest.h>
 
 #include "cli_utils.h"
@@ -178,7 +175,7 @@ HWTEST_F(ExecutorTest, Execute_005, TestSize.Level0)
     Executor executor(argc, argv);
     auto info = executor.Execute();
     EXPECT_EQ(info, CliUtils::GenerateError({ "ERR_ARG_COUNT_MISMATCH", "Invalid argument count",
-                        "Only '--text <content>' is supported. Please execute 'ohos-imf insert --help' for usage" }));
+                        "Only '--text <text>' is supported. Please execute 'ohos-imf insert --help' for usage" }));
 }
 } // namespace MiscServices
 } // namespace OHOS

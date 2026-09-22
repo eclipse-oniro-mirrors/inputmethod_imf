@@ -15,10 +15,7 @@
 
 #include "imesetmode_fuzzer.h"
 
-#define private public
-#define protected public
 #include "ime_enabled_info_manager.h"
-#undef private
 #include "fuzzer/FuzzedDataProvider.h"
 
 using namespace OHOS::MiscServices;

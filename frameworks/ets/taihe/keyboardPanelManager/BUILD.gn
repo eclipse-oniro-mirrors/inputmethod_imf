@@ -81,6 +81,7 @@ taihe_shared_library("imf_syspanel_mgr_taihe_native") {
     "ipc:ipc_core",
     "napi:ace_napi",
     "node:node_header_notice",
+    "icu:shared_icuuc",
   ]
   shlib_type = "ani"
 }

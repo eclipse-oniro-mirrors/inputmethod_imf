@@ -18,10 +18,28 @@ import("//build/ohos.gni")
 ohos_cli_executable("ohos-imf") {
   branch_protector_ret = "pac_ret"
   sanitize = {
+    boundary_sanitize = true
+    integer_overflow = true
+    ubsan = true
     cfi = true
     cfi_cross_dso = true
     debug = false
   }
+
+  ldflags = [
+    "-Wl,--exclude-libs=ALL",
+    "-Wl,--gc-sections",
+  ]
+
+  cflags_cc = [
+    "-fexceptions",
+    "-fvisibility=hidden",
+    "-fvisibility-inlines-hidden",
+    "-fdata-sections",
+    "-ffunction-sections",
+    "-Oz",
+    "-Wno-c99-designator",
+  ]
 
   sources = [
     "src/cli_utils.cpp",
@@ -48,14 +66,11 @@ ohos_cli_executable("ohos-imf") {
     "hilog:libhilog",
     "input:libmmi-client",
     "ipc:ipc_single",
+    "icu:shared_icuuc",
   ]
 
   cli_config_file = "config.json"
-  if (imf_cli_enable) {
-    install_enable = true
-  } else {
-    install_enable = false
-  }
+  install_enable = true
   install_images = [ "system" ]
   relative_install_dir = "cli_tool/executable"
   subsystem_name = "inputmethod"

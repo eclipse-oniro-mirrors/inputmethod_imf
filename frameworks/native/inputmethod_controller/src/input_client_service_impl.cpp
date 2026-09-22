@@ -125,7 +125,7 @@ ErrCode InputClientServiceImpl::GetCurrentCursorInfo(CursorInfoInner &cursorInfo
     return ERR_OK;
 }
 
-int32_t InputClientServiceImpl::OnExecTextInteraction(const std::string &text)
+ErrCode InputClientServiceImpl::OnExecTextInteraction(const std::string &text)
 {
     IMSA_HILOGD("InputClientServiceImpl::OnExecTextInteraction start.");
     auto instance = InputMethodController::GetInstance();

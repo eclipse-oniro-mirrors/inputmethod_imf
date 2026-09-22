@@ -14,10 +14,7 @@
  */
 
 #include <gtest/gtest.h>
-#define private public
-#define protected public
 #include "input_method_ability.h"
-#undef private
 #include "iinput_method_agent.h"
 #include "input_data_channel_service_impl.h"
 #include "input_method_agent_service_impl.h"
@@ -320,6 +317,44 @@ HWTEST_F(InputMethodAbilityExceptionTest, testHideKeyboard_001, TestSize.Level1)
     panel->panelFlag_ = FLG_FIXED;
     inputMethodAbility_.panels_.Insert(SOFT_KEYBOARD, panel);
     ret = inputMethodAbility_.HideKeyboard();
+    EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
+
+    ResetMemberVar();
+}
+
+/**
+ * @tc.name: testHideCandidatePanel_001
+ * @tc.desc: HideCandidatePanel branch coverage
+ * @tc.type: FUNC
+ * @tc.require:
+ * @tc.author: chenyu
+ */
+HWTEST_F(InputMethodAbilityExceptionTest, testHideCandidatePanel_001, TestSize.Level1)
+{
+    IMSA_HILOGI("InputMethodAbilityExceptionTest testHideCandidatePanel_001 START");
+    // branch: no panel -> GetSoftKeyboardPanel returns nullptr
+    auto ret = inputMethodAbility_.HideCandidatePanel();
+    EXPECT_EQ(ret, ErrorCode::ERROR_IME);
+
+    // set imeListener and data channel for HidePanel path
+    auto imeListener = std::make_shared<InputMethodEngineListenerImpl>();
+    inputMethodAbility_.SetImeListener(imeListener);
+    sptr<InputDataChannelStub> channelObject = new InputDataChannelServiceImpl();
+    inputMethodAbility_.SetInputDataChannel(channelObject->AsObject());
+
+    // branch: panel flag != FLG_CANDIDATE_COLUMN, no need to hide
+    auto panel = std::make_shared<InputMethodPanel>();
+    panel->windowId_ = 2;
+    panel->panelFlag_ = FLG_FIXED;
+    inputMethodAbility_.panels_.Insert(SOFT_KEYBOARD, panel);
+    ret = inputMethodAbility_.HideCandidatePanel();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    // branch: panel flag == FLG_CANDIDATE_COLUMN, hide candidate panel (HidePanel reached)
+    panel->panelFlag_ = FLG_CANDIDATE_COLUMN;
+    inputMethodAbility_.panels_.Clear();
+    inputMethodAbility_.panels_.Insert(SOFT_KEYBOARD, panel);
+    ret = inputMethodAbility_.HideCandidatePanel();
     EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
 
     ResetMemberVar();

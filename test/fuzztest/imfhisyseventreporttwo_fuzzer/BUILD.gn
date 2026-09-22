@@ -33,6 +33,7 @@ ohos_fuzztest("ImfHisyseventReportTwoFuzzTest") {
   ]
 
   cflags = [
+    "-fno-access-control",
     "-g",
     "-O0",
     "-Wno-unused-variable",
@@ -59,6 +60,7 @@ ohos_fuzztest("ImfHisyseventReportTwoFuzzTest") {
     "hisysevent:libhisyseventmanager",
     "input:libmmi-client",
     "ipc:ipc_core",
+    "icu:shared_icuuc",
   ]
 }
 

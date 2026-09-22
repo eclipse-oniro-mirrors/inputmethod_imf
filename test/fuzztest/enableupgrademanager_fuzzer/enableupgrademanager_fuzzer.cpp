@@ -17,11 +17,8 @@
 
 #include <cstddef>
 #include <cstdint>
-#define private public
-#define protected public
 #include "enable_upgrade_manager.h"
 #include "full_ime_info_manager.h"
-#undef private
 #include "fuzzer/FuzzedDataProvider.h"
 
 using namespace OHOS::MiscServices;

@@ -32,6 +32,7 @@ ohos_fuzztest("SystemAbilityStubFuzzTest") {
   ]
 
   cflags = [
+    "-fno-access-control",
     "-g",
     "-O0",
     "-Wno-unused-variable",
@@ -68,6 +69,7 @@ ohos_fuzztest("SystemAbilityStubFuzzTest") {
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
     "window_manager:libdm_lite",
+    "icu:shared_icuuc",
   ]
 
   defines = []

@@ -29,6 +29,7 @@ ohos_fuzztest("ImeSetModeFuzzTest") {
       [ "${inputmethod_path}/services/adapter/settings_data_provider/include" ]
 
   cflags = [
+    "-fno-access-control",
     "-g",
     "-O0",
     "-Wno-unused-variable",
@@ -60,6 +61,7 @@ ohos_fuzztest("ImeSetModeFuzzTest") {
     "input:libmmi-client",
     "ipc:ipc_single",
     "resource_management:global_resmgr",
+    "icu:shared_icuuc",
   ]
 }
 

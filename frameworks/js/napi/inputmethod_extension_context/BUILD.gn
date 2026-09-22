@@ -65,6 +65,7 @@ ohos_shared_library("inputmethodextensioncontext_napi") {
     "libuv:uv",
     "napi:ace_napi",
     "node:node_header_notice",
+    "icu:shared_icuuc",
   ]
 
   relative_install_dir = "module"
