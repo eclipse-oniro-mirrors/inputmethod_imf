@@ -60,13 +60,18 @@ std::chrono::system_clock::time_point InputMethodController::startLogTime_ = sys
 std::mutex InputMethodController::printTextChangeMutex_;
 int32_t InputMethodController::textChangeCountInPeriod_ = 0;
 std::chrono::steady_clock::time_point InputMethodController::textChangeStartLogTime_ = steady_clock::now();
+std::mutex InputMethodController::dispatchKeyLogMutex_;
+uint32_t InputMethodController::dispatchKeyEntryCount_ = 0;
+uint32_t InputMethodController::dispatchKeyToImeCount_ = 0;
+uint32_t InputMethodController::dispatchKeyToImeFailCount_ = 0;
+uint32_t InputMethodController::dispatchKeyToImeSuccessCount_ = 0;
 std::atomic<InputMethodController::PttSpaceKeyEventState> InputMethodController::pttSpaceKeyEventState_ {
     InputMethodController::PttSpaceKeyEventState::UP
 };
 constexpr uint32_t MAX_ATTACH_TIMEOUT = 2500; // 2.5s
 BlockQueue<InputMethodController::CtrlEventInfo> InputMethodController::ctrlEventQueue_ { MAX_ATTACH_TIMEOUT };
 constexpr int32_t LOOP_COUNT = 5;
-constexpr int32_t LOG_MAX_TIME = 20;
+constexpr int32_t KEY_EVENT_LOG_COUNT_THRESHOLD = 100;    // 100
 constexpr int32_t LOG_INSERT_MAX_TIME = 20;    // 20s
 constexpr int32_t LOG_INSERT_MIN_TIME = 5;     // 5s
 constexpr int32_t ATTACH_RETRY_INTERVAL = 50;  // 50ms
@@ -495,16 +500,9 @@ int32_t InputMethodController::Attach(sptr<OnTextChangedListener> listener, cons
     return ret;
 }
 
-int32_t InputMethodController::AttachExec(sptr<OnTextChangedListener> listener, const AttachOptions &attachOptions,
+void InputMethodController::PrepareAttach(sptr<OnTextChangedListener> listener, const AttachOptions &attachOptions,
     const TextConfig &textConfig, ClientType type)
 {
-    QueueGuard guard(__func__);
-    IMSA_HILOGI("isShowKeyboard %{public}d.", attachOptions.isShowKeyboard);
-    InputMethodSyncTrace tracer("InputMethodController Attach with textConfig trace.");
-    if (IsValidTextConfig(textConfig) != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("invalid textConfig.");
-        return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
-    }
     auto lastListener = GetTextListener();
     clientInfo_.isNotifyInputStart = lastListener != listener;
     if (clientInfo_.isNotifyInputStart) {
@@ -518,14 +516,27 @@ int32_t InputMethodController::AttachExec(sptr<OnTextChangedListener> listener, 
     SetTextListener(listener);
     SaveTextConfig(textConfig);
     GetTextConfig(clientInfo_.config);
-    std::vector<sptr<IRemoteObject>> agents;
-    std::vector<BindImeInfo> imeInfos;
     {
         std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
         clientInfo_.isShowKeyboard = attachOptions.isShowKeyboard;
         clientInfo_.type = type;
         clientInfo_.config.requestKeyboardReason = attachOptions.requestKeyboardReason;
     }
+}
+
+int32_t InputMethodController::AttachExec(sptr<OnTextChangedListener> listener, const AttachOptions &attachOptions,
+    const TextConfig &textConfig, ClientType type)
+{
+    QueueGuard guard(__func__);
+    IMSA_HILOGI("isShowKeyboard %{public}d.", attachOptions.isShowKeyboard);
+    InputMethodSyncTrace tracer("InputMethodController Attach with textConfig trace.");
+    if (IsValidTextConfig(textConfig) != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("invalid textConfig.");
+        return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+    }
+    PrepareAttach(listener, attachOptions, textConfig, type);
+    std::vector<sptr<IRemoteObject>> agents;
+    std::vector<BindImeInfo> imeInfos;
     int32_t ret = StartInput(clientInfo_, agents, imeInfos);
     if (ret != ErrorCode::NO_ERROR) {
         auto evenInfo = HiSysOriginalInfo::Builder()
@@ -544,7 +555,20 @@ int32_t InputMethodController::AttachExec(sptr<OnTextChangedListener> listener, 
         InputMethodSysEvent::GetInstance().OperateSoftkeyboardBehaviour(OperateIMEInfoCode::IME_SHOW_ATTACH);
     }
     IMSA_HILOGI("bind imf successfully.");
+    ResetKeyEventCount();
     return ErrorCode::NO_ERROR;
+}
+
+void InputMethodController::ResetKeyEventCount()
+{
+    IMSA_HILOGI("dispatchKeyEntryCount_ / dispatchKeyToImeCount_ / dispatchKeyToImeFailCount_ : %{public}d / "
+                "%{public}d / %{public}d",
+        dispatchKeyEntryCount_, dispatchKeyToImeCount_, dispatchKeyToImeFailCount_);
+    std::lock_guard<std::mutex> lock(dispatchKeyLogMutex_);
+    dispatchKeyEntryCount_ = 0;
+    dispatchKeyToImeCount_ = 0;
+    dispatchKeyToImeFailCount_ = 0;
+    dispatchKeyToImeSuccessCount_ = 0;
 }
 
 bool InputMethodController::IsKeyboardCallingProcess(int32_t pid, uint32_t windowId)
@@ -1205,27 +1229,17 @@ int32_t InputMethodController::GetTextIndexAtCursor(int32_t &index)
     return ErrorCode::NO_ERROR;
 }
 
-void InputMethodController::PrintKeyEventLog()
-{
-    std::lock_guard<std::mutex> lock(logLock_);
-    auto now = system_clock::now();
-    if (keyEventCountInPeriod_ == 0) {
-        startLogTime_ = now;
-    }
-    keyEventCountInPeriod_++;
-    if (std::chrono::duration_cast<seconds>(now - startLogTime_).count() >= LOG_MAX_TIME) {
-        auto start = std::chrono::duration_cast<seconds>(startLogTime_.time_since_epoch()).count();
-        auto end = std::chrono::duration_cast<seconds>(now.time_since_epoch()).count();
-        IMSA_HILOGI("KeyEventCountInPeriod: %{public}d, startTime: %{public}lld, endTime: %{public}lld",
-            keyEventCountInPeriod_, start, end);
-        keyEventCountInPeriod_ = 0;
-    }
-}
-
 int32_t InputMethodController::DispatchKeyEvent(std::shared_ptr<MMI::KeyEvent> keyEvent, KeyEventCallback callback)
 {
     int64_t startTime = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
-    PrintKeyEventLog();
+    {
+        std::lock_guard<std::mutex> lock(dispatchKeyLogMutex_);
+        dispatchKeyEntryCount_++;
+        if (dispatchKeyEntryCount_ >= KEY_EVENT_LOG_COUNT_THRESHOLD) {
+            IMSA_HILOGI("DispatchKeyEvent entry count: %{public}d", dispatchKeyEntryCount_);
+            dispatchKeyEntryCount_ = 0;
+        }
+    }
     KeyEventInfo keyEventInfo = { std::chrono::system_clock::now(), keyEvent };
     keyEventQueue_.Push(keyEventInfo);
     InputMethodSyncTrace tracer("DispatchKeyEvent trace");
@@ -1272,9 +1286,24 @@ int32_t InputMethodController::DispatchKeyEventInner(
     KeyEventValue keyEventValue;
     keyEventValue.event = keyEvent;
     auto ret = agent->DispatchKeyEvent(keyEventValue, cbId, channelObject);
-    if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("failed to DispatchKeyEvent: %{public}d", ret);
-        keyEventRetHandler_.RemoveKeyEventCbInfo(cbId);
+    {
+        std::lock_guard<std::mutex> lock(dispatchKeyLogMutex_);
+        if (ret != ErrorCode::NO_ERROR) {
+            dispatchKeyToImeFailCount_++;
+            IMSA_HILOGE("failed to DispatchKeyEvent: %{public}d", ret);
+            keyEventRetHandler_.RemoveKeyEventCbInfo(cbId);
+        } else {
+            dispatchKeyToImeSuccessCount_++;
+        }
+        dispatchKeyToImeCount_ = dispatchKeyToImeFailCount_ + dispatchKeyToImeSuccessCount_;
+        if (dispatchKeyToImeCount_ >= KEY_EVENT_LOG_COUNT_THRESHOLD) {
+            IMSA_HILOGI(
+                "DispatchKeyEvent entry dispatchKeyToImeCount_ / dispatchKeyToImeFailCount_: %{public}d / %{public}d",
+                dispatchKeyToImeCount_, dispatchKeyToImeFailCount_);
+            dispatchKeyToImeCount_ = 0;
+            dispatchKeyToImeFailCount_ = 0;
+            dispatchKeyToImeSuccessCount_ = 0;
+        }
     }
     return ret;
 }
@@ -1692,6 +1721,9 @@ void InputMethodController::OnTmpInputStop(const sptr<IRemoteObject> &proxy)
         }
     }
     isBound_.store(false);
+    if (isEditable_.load()) {
+        ResetKeyEventCount();
+    }
     isEditable_.store(false);
     isTextNotified_.store(false);
     LogPttSpaceKeyEventBlockState("temporary input stop");
@@ -1725,6 +1757,9 @@ void InputMethodController::OnInputStop(bool isStopInactiveClient, const sptr<IR
         }
     }
     isBound_.store(false);
+    if (isEditable_.load()) {
+        ResetKeyEventCount();
+    }
     isEditable_.store(false);
     isTextNotified_.store(false);
     // Keep the PTT space latch across this IME handoff. SPACE UP or client teardown resets it.
