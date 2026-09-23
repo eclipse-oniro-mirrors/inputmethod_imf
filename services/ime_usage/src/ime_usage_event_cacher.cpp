@@ -17,13 +17,13 @@
 
 #include <chrono>
 #include <ctime>
-#include <sys/time.h>
 
 #include "global.h"
 
 using namespace OHOS::MiscServices::ImeUsageEventId;
 using namespace OHOS::MiscServices::ImeScreenStatus;
 using namespace OHOS::MiscServices::ImeFoldStatusBase;
+using OHOS::MiscServices::IME_INDEX_NOT_FOUND;
 using OHOS::MiscServices::IME_USAGE_SUCCESS;
 using OHOS::MiscServices::RAWID_NONE;
 using OHOS::MiscServices::SCREEN_STATUS_UNINITIALIZED;
@@ -31,13 +31,13 @@ using OHOS::MiscServices::SCREEN_STATUS_UNINITIALIZED;
 namespace OHOS {
 namespace MiscServices {
 
-int ImeUsageEventCacher::Init(std::shared_ptr<ImeUsageDbHelper> dbHelper, int32_t foldStatus, int32_t vhMode)
+int ImeUsageEventCacher::Init(std::shared_ptr<ImeUsageDataHelper> dataHelper, int32_t foldStatus, int32_t vhMode)
 {
-    if (dbHelper == nullptr) {
-        IMSA_HILOGE("Init: dbHelper is nullptr");
+    if (dataHelper == nullptr) {
+        IMSA_HILOGE("Init: dataHelper is nullptr");
         return IME_USAGE_FAILED;
     }
-    dbHelper_ = dbHelper;
+    dataHelper_ = dataHelper;
     foldStatus_ = foldStatus;
     vhMode_ = vhMode;
     lastScreenStatus_ = GetScreenStatus();
@@ -79,103 +79,52 @@ void ImeUsageEventCacher::OnImeBind(const std::string &bundleName)
         result = PrepareShowEvent(bundleName);
     }
     // DB writes outside the lock to avoid holding mutex_ during I/O.
-    if (result.hideRecord.rawid != RAWID_NONE && result.showRecord.rawid != RAWID_NONE) {
-        // IME switch: split into two independent operations to avoid
-        // partial-write inconsistency on transaction failure.
-        // Writing old IME's STOP+COUNT and new IME's START in one
-        // transaction is risky: if the combined transaction fails and
-        // the fallback also partially fails (STOP written but START
-        // lost), the old IME's session becomes permanently unclosed.
-
-        // Step 1: Write old IME's STOP + COUNT_DURATION atomically.
-        // This must succeed before START to maintain row-ID ordering
-        // (QueryFinalEventInfo relies on START having a higher row ID
-        // than the preceding STOP).
-        DurationMap hideDurations = CalculateDurationForRecord(result.hideRecord);
-        ImeEventRecord countRecord;
-        countRecord.rawid = EVENT_COUNT_DURATION;
-        countRecord.ts = static_cast<int64_t>(GetBootTimeMs());
-        countRecord.happenTime = static_cast<int64_t>(GetWallClockMs());
-        countRecord.bundleName = result.hideRecord.bundleName;
-        countRecord.preScreenStatus = result.hideRecord.preScreenStatus;
-        countRecord.screenStatus = result.hideRecord.screenStatus;
-
-        std::vector<std::pair<ImeEventRecord, DurationMap>> hideEvents;
-        hideEvents.emplace_back(result.hideRecord, DurationMap {});
-        hideEvents.emplace_back(countRecord, hideDurations);
-
-        int hideRet = dbHelper_->AddEventsTransactional(hideEvents);
-        if (hideRet != IME_USAGE_SUCCESS) {
-            IMSA_HILOGE("OnImeBind: STOP+COUNT transaction failed, falling back to separate writes");
-            dbHelper_->AddEvent(result.hideRecord);
-            dbHelper_->AddEvent(countRecord, hideDurations);
-        }
-
-        // Step 2: Write new IME's START. Single-row insert is inherently
-        // atomic. If this fails, the in-memory state (isKeyboardShowing_=true,
+    // IME switch and only-hide paths share the same STOP+COUNT write logic.
+    // The two operations are intentionally split (not merged into one
+    // transaction) to avoid partial-write inconsistency: if a combined
+    // transaction fails and the fallback also partially fails (STOP written
+    // but START lost), the old IME's session becomes permanently unclosed.
+    if (result.hideRecord.rawid != RAWID_NONE) {
+        // Close previous IME's session: delete raw events (START, STATUS_CHANGED)
+        // and insert a single COUNT_DURATION record atomically.
+        // hideDurations was computed incrementally in PrepareShowEvent — no DB query needed.
+        SettleSession(result.hideRecord, result.hideDurations, result.hideStartIndex);
+    }
+    if (result.showRecord.rawid != RAWID_NONE) {
+        // Write new IME's START. Single-row insert is inherently atomic.
+        // If this fails, the in-memory state (isKeyboardShowing_=true,
         // currentImeBundle_) remains correct; daily aggregation's foreground-
         // recovery channel will compensate for the missing START.
-        int showRet = dbHelper_->AddEvent(result.showRecord);
+        int showRet = dataHelper_->AddEvent(result.showRecord);
         if (showRet != IME_USAGE_SUCCESS) {
             IMSA_HILOGE("OnImeBind: START AddEvent failed for %{public}s", result.showRecord.bundleName.c_str());
         }
-    } else if (result.hideRecord.rawid != RAWID_NONE) {
-        // Only hide (no show): use transactional write for STOP + COUNT_DURATION
-        DurationMap hideDurations = CalculateDurationForRecord(result.hideRecord);
-        ImeEventRecord countRecord;
-        countRecord.rawid = EVENT_COUNT_DURATION;
-        countRecord.ts = static_cast<int64_t>(GetBootTimeMs());
-        countRecord.happenTime = static_cast<int64_t>(GetWallClockMs());
-        countRecord.bundleName = result.hideRecord.bundleName;
-        countRecord.preScreenStatus = result.hideRecord.preScreenStatus;
-        countRecord.screenStatus = result.hideRecord.screenStatus;
-
-        std::vector<std::pair<ImeEventRecord, DurationMap>> hideEvents;
-        hideEvents.emplace_back(result.hideRecord, DurationMap {});
-        hideEvents.emplace_back(countRecord, hideDurations);
-
-        int hideRet = dbHelper_->AddEventsTransactional(hideEvents);
-        if (hideRet != IME_USAGE_SUCCESS) {
-            IMSA_HILOGE("OnImeBind: STOP+COUNT transaction failed, falling back to separate writes");
-            dbHelper_->AddEvent(result.hideRecord);
-            dbHelper_->AddEvent(countRecord, hideDurations);
-        }
-    } else if (result.showRecord.rawid != RAWID_NONE) {
-        dbHelper_->AddEvent(result.showRecord);
     }
 }
 
 void ImeUsageEventCacher::OnImeUnbind(const std::string &bundleName)
 {
     ImeEventRecord record;
+    DurationMap durations {};
+    int32_t startIndex = IME_INDEX_NOT_FOUND;
     {
         std::lock_guard<std::mutex> lock(mutex_);
         record = PrepareHideRecord(bundleName);
+        if (record.rawid != RAWID_NONE) {
+            if (isSessionDurationsReady_) {
+                // Incremental durations already accumulated — no DB query needed.
+                durations = sessionDurations_;
+                startIndex = GetStartIndex(record.bundleName);
+            } else {
+                // Fallback: session was recovered from DB, durations not tracked.
+                // Use the DB-based calculation to compute durations from scratch.
+                durations = CalculateDurationForRecord(record, startIndex);
+            }
+        }
     }
     // DB writes outside the lock to avoid holding mutex_ during I/O.
-    // Write STOP and COUNT_DURATION atomically in a single transaction
-    // to guarantee no data loss on process crash.
     if (record.rawid != RAWID_NONE) {
-        DurationMap durations = CalculateDurationForRecord(record);
-
-        ImeEventRecord countRecord;
-        countRecord.rawid = EVENT_COUNT_DURATION;
-        countRecord.ts = static_cast<int64_t>(GetBootTimeMs());
-        countRecord.happenTime = static_cast<int64_t>(GetWallClockMs());
-        countRecord.bundleName = record.bundleName;
-        countRecord.preScreenStatus = record.preScreenStatus;
-        countRecord.screenStatus = record.screenStatus;
-
-        std::vector<std::pair<ImeEventRecord, DurationMap>> events;
-        events.emplace_back(record, DurationMap {});
-        events.emplace_back(countRecord, durations);
-
-        int ret = dbHelper_->AddEventsTransactional(events);
-        if (ret != IME_USAGE_SUCCESS) {
-            IMSA_HILOGE("OnImeUnbind: AddEventsTransactional failed, falling back to separate writes");
-            dbHelper_->AddEvent(record);
-            dbHelper_->AddEvent(countRecord, durations);
-        }
+        SettleSession(record, durations, startIndex);
     }
 }
 
@@ -191,15 +140,19 @@ void ImeUsageEventCacher::OnScreenStatusChanged(int32_t preScreenStatus, int32_t
     }
     // DB write outside the lock to avoid holding mutex_ during I/O
     if (statusRecord.rawid != RAWID_NONE) {
-        dbHelper_->AddEvent(statusRecord);
+        int ret = dataHelper_->AddEvent(statusRecord);
+        if (ret != IME_USAGE_SUCCESS) {
+            IMSA_HILOGE("OnScreenStatusChanged: AddEvent failed for %{public}s, rawId=%{public}d",
+                statusRecord.bundleName.c_str(), statusRecord.rawid);
+        }
     }
 }
 
 ImeUsageEventCacher::ShowPrepareResult ImeUsageEventCacher::PrepareShowEvent(const std::string &bundleName)
 {
     ShowPrepareResult result;
-    if (dbHelper_ == nullptr) {
-        IMSA_HILOGE("dbHelper_ is nullptr");
+    if (dataHelper_ == nullptr) {
+        IMSA_HILOGE("dataHelper_ is nullptr");
         return result;
     }
     // Same IME already showing: skip duplicate show (caused by screen rotation/fold
@@ -213,6 +166,15 @@ ImeUsageEventCacher::ShowPrepareResult ImeUsageEventCacher::PrepareShowEvent(con
         IMSA_HILOGD("PrepareShowEvent: switching IME from %{public}s to %{public}s", currentImeBundle_.c_str(),
             bundleName.c_str());
         result.hideRecord = PrepareHideRecord(currentImeBundle_);
+        // Copy the incrementally accumulated durations for the old session.
+        // PrepareHideRecord already finalized the last segment into sessionDurations_.
+        if (isSessionDurationsReady_) {
+            result.hideDurations = sessionDurations_;
+            result.hideStartIndex = GetStartIndex(result.hideRecord.bundleName);
+        } else {
+            // Fallback: session was recovered from DB, durations not tracked incrementally.
+            result.hideDurations = CalculateDurationForRecord(result.hideRecord, result.hideStartIndex);
+        }
     }
 
     result.showRecord.rawid = EVENT_INPUT_START;
@@ -226,6 +188,12 @@ ImeUsageEventCacher::ShowPrepareResult ImeUsageEventCacher::PrepareShowEvent(con
     isKeyboardShowing_ = true;
     lastScreenStatus_ = result.showRecord.screenStatus;
 
+    // Reset incremental duration tracking for the new session.
+    sessionDurations_ = {};
+    segmentStartBootTime_ = result.showRecord.ts;
+    segmentScreenStatus_ = result.showRecord.screenStatus;
+    isSessionDurationsReady_ = true;
+
     IMSA_HILOGD("EVENT_INPUT_START: bundle=%{public}s, "
                 "screenStatus=%{public}d, ts=%{public}lld, happenTime=%{public}lld",
         bundleName.c_str(), result.showRecord.screenStatus, static_cast<long long>(result.showRecord.ts),
@@ -236,14 +204,22 @@ ImeUsageEventCacher::ShowPrepareResult ImeUsageEventCacher::PrepareShowEvent(con
 
 ImeEventRecord ImeUsageEventCacher::PrepareHideRecord(const std::string &bundleName)
 {
-    if (dbHelper_ == nullptr || !isKeyboardShowing_) {
+    if (dataHelper_ == nullptr || !isKeyboardShowing_) {
         IMSA_HILOGW("PrepareHideRecord: skip, isShowing=%{public}d", isKeyboardShowing_);
         return {};
     }
+    uint64_t nowBoot = GetBootTimeMs();
+    uint64_t nowWall = GetWallClockMs();
+
+    // Accumulate duration for the final segment before closing the session.
+    if (isSessionDurationsReady_ && nowBoot > static_cast<uint64_t>(segmentStartBootTime_)) {
+        Accumulate(segmentScreenStatus_, nowBoot - segmentStartBootTime_, sessionDurations_);
+    }
+
     ImeEventRecord record;
     record.rawid = EVENT_INPUT_STOP;
-    record.ts = static_cast<int64_t>(GetBootTimeMs());
-    record.happenTime = static_cast<int64_t>(GetWallClockMs());
+    record.ts = static_cast<int64_t>(nowBoot);
+    record.happenTime = static_cast<int64_t>(nowWall);
     record.bundleName = bundleName;
     record.preScreenStatus = GetScreenStatus();
     record.screenStatus = GetScreenStatus();
@@ -260,7 +236,7 @@ ImeEventRecord ImeUsageEventCacher::PrepareHideRecord(const std::string &bundleN
 
 ImeEventRecord ImeUsageEventCacher::ProcessScreenChangedEvent(int32_t preScreenStatus, int32_t newScreenStatus)
 {
-    if (dbHelper_ == nullptr || !isKeyboardShowing_) {
+    if (dataHelper_ == nullptr || !isKeyboardShowing_) {
         IMSA_HILOGW("ProcessScreenChangedEvent: skip, isShowing=%{public}d", isKeyboardShowing_);
         return {};
     }
@@ -269,10 +245,22 @@ ImeEventRecord ImeUsageEventCacher::ProcessScreenChangedEvent(int32_t preScreenS
         IMSA_HILOGD("ProcessScreenChangedEvent: skip duplicate, screenStatus=%{public}d unchanged", newScreenStatus);
         return {};
     }
+    uint64_t nowBoot = GetBootTimeMs();
+    uint64_t nowWall = GetWallClockMs();
+
+    // Accumulate duration for the segment just ended.
+    if (isSessionDurationsReady_ && nowBoot > static_cast<uint64_t>(segmentStartBootTime_)) {
+        Accumulate(segmentScreenStatus_, nowBoot - segmentStartBootTime_, sessionDurations_);
+    }
+
+    // Start a new segment with the new screen status.
+    segmentStartBootTime_ = static_cast<int64_t>(nowBoot);
+    segmentScreenStatus_ = newScreenStatus;
+
     ImeEventRecord record;
     record.rawid = EVENT_INPUT_STATUS_CHANGED;
-    record.ts = static_cast<int64_t>(GetBootTimeMs());
-    record.happenTime = static_cast<int64_t>(GetWallClockMs());
+    record.ts = static_cast<int64_t>(nowBoot);
+    record.happenTime = static_cast<int64_t>(nowWall);
     record.bundleName = currentImeBundle_;
     record.preScreenStatus = preScreenStatus;
     record.screenStatus = newScreenStatus;
@@ -287,29 +275,21 @@ ImeEventRecord ImeUsageEventCacher::ProcessScreenChangedEvent(int32_t preScreenS
     return record;
 }
 
-void ImeUsageEventCacher::CountDuration(ImeEventRecord &record)
-{
-    if (dbHelper_ == nullptr) {
-        return;
-    }
-    DurationMap durations = CalculateDurationForRecord(record);
-    ProcessCountDurationEvent(record, durations);
-}
-
-DurationMap ImeUsageEventCacher::CalculateDurationForRecord(const ImeEventRecord &record)
+DurationMap ImeUsageEventCacher::CalculateDurationForRecord(const ImeEventRecord &record, int32_t &startIndex)
 {
     DurationMap durations;
-    if (dbHelper_ == nullptr) {
+    startIndex = IME_INDEX_NOT_FOUND;
+    if (dataHelper_ == nullptr) {
         return durations;
     }
-    int32_t startIndex = GetStartIndex(record.bundleName);
+    startIndex = GetStartIndex(record.bundleName);
     if (startIndex < 0) {
         IMSA_HILOGW("CalculateDurationForRecord: No START event found for %{public}s", record.bundleName.c_str());
         return durations;
     }
     uint64_t dayStartTime = OHOS::MiscServices::GetToday0ClockMs();
     std::vector<ImeEventRecord> records;
-    dbHelper_->QueryEventRecords(startIndex, static_cast<int64_t>(dayStartTime), record.bundleName, records);
+    dataHelper_->QueryEventRecords(startIndex, static_cast<int64_t>(dayStartTime), record.bundleName, records);
 
     // Append the current STOP event to the records for duration calculation.
     records.push_back(record);
@@ -321,9 +301,11 @@ DurationMap ImeUsageEventCacher::CalculateDurationForRecord(const ImeEventRecord
     CalculateDuration(dayStartTime, records, durations);
 
     // Log each duration entry
-    for (const auto &[status, duration] : durations) {
-        IMSA_HILOGD("CalculateDurationForRecord: screenStatus=%{public}d, duration=%{public}llu ms", status,
-            static_cast<unsigned long long>(duration));
+    for (size_t i = 0; i < DURATION_COUNT; i++) {
+        if (durations[i] > 0) {
+            IMSA_HILOGD("CalculateDurationForRecord: idx=%{public}zu, duration=%{public}llu ms", i,
+                static_cast<unsigned long long>(durations[i]));
+        }
     }
 
     return durations;
@@ -331,10 +313,10 @@ DurationMap ImeUsageEventCacher::CalculateDurationForRecord(const ImeEventRecord
 
 int ImeUsageEventCacher::GetStartIndex(const std::string &bundleName)
 {
-    if (dbHelper_ == nullptr) {
+    if (dataHelper_ == nullptr) {
         return IME_INDEX_NOT_FOUND;
     }
-    return dbHelper_->QueryRawEventIndex(bundleName, EVENT_INPUT_START);
+    return dataHelper_->QueryRawEventIndex(bundleName, EVENT_INPUT_START);
 }
 
 void ImeUsageEventCacher::CalculateDuration(
@@ -370,8 +352,8 @@ void ImeUsageEventCacher::CalculateDuration(
         if (CanCalcDuration(preIt->rawid, it->rawid)) {
             // Use boot time (ts) for inter-event duration — monotonic, immune to
             // wall-clock adjustments (NTP, manual time change).
-            uint64_t duration =
-                (it->ts > static_cast<uint64_t>(preIt->ts)) ? static_cast<uint64_t>(it->ts - preIt->ts) : 0;
+            uint64_t duration = (static_cast<uint64_t>(it->ts) > static_cast<uint64_t>(preIt->ts)) ?
+                static_cast<uint64_t>(it->ts - preIt->ts) : 0;
             // Fallback: screenStatus=0 means uninitialized; treat as UNFOLDED_PORTRAIT(12)
             int32_t status = preIt->screenStatus;
             if (status == SCREEN_STATUS_UNINITIALIZED) {
@@ -406,57 +388,84 @@ bool ImeUsageEventCacher::CanCalcDuration(int32_t preRawId, int32_t rawId) const
 
 void ImeUsageEventCacher::Accumulate(int32_t screenStatus, uint64_t duration, DurationMap &durations) const
 {
-    durations[screenStatus] += duration;
+    size_t idx = ScreenStatusToIndex(screenStatus);
+    if (idx < DURATION_COUNT) {
+        durations[idx] += duration;
+    }
 }
 
-void ImeUsageEventCacher::ProcessCountDurationEvent(ImeEventRecord &record, const DurationMap &durations)
+void ImeUsageEventCacher::SettleSession(
+    const ImeEventRecord &stopRecord, const DurationMap &durations, int32_t startIndex)
 {
-    if (dbHelper_ == nullptr) {
-        return;
-    }
-    // Skip writing COUNT_DURATION when there are no durations to report
-    // (e.g., no START event found for this bundle). Writing an empty
-    // COUNT_DURATION wastes DB space and confuses downstream queries.
-    if (durations.empty()) {
-        IMSA_HILOGW("ProcessCountDurationEvent: skip, no durations for %{public}s", record.bundleName.c_str());
+    if (dataHelper_ == nullptr) {
         return;
     }
     ImeEventRecord countRecord;
     countRecord.rawid = EVENT_COUNT_DURATION;
     countRecord.ts = static_cast<int64_t>(GetBootTimeMs());
     countRecord.happenTime = static_cast<int64_t>(GetWallClockMs());
-    countRecord.bundleName = record.bundleName;
-    countRecord.preScreenStatus = record.preScreenStatus;
-    countRecord.screenStatus = record.screenStatus;
+    countRecord.bundleName = stopRecord.bundleName;
+    countRecord.preScreenStatus = stopRecord.preScreenStatus;
+    countRecord.screenStatus = stopRecord.screenStatus;
 
-    dbHelper_->AddEvent(countRecord, durations);
+    int64_t dayStartTime = static_cast<int64_t>(GetToday0ClockMs());
 
-    IMSA_HILOGD("EVENT_COUNT_DURATION: bundle=%{public}s, durationCount=%{public}zu", record.bundleName.c_str(),
-        durations.size());
+    if (startIndex >= 0) {
+        // Atomic path: delete raw session events and upsert COUNT_DURATION in one transaction.
+        // If an existing COUNT_DURATION for the same bundle exists within today,
+        // durations are accumulated and show_count is incremented; otherwise a new
+        // record with show_count = 1 is inserted.
+        int ret = dataHelper_->DeleteAndUpsertTransactional(
+            stopRecord.bundleName, startIndex, dayStartTime, countRecord, durations);
+        if (ret == IME_USAGE_SUCCESS) {
+            return;
+        }
+        IMSA_HILOGE("SettleSession: DeleteAndUpsertTransactional failed, falling back to separate operations");
+        // Fallback: delete raw events then upsert COUNT_DURATION separately.
+        dataHelper_->DeleteEventsByBundleAndStartIndex(stopRecord.bundleName, startIndex);
+    }
+
+    int ret = dataHelper_->UpsertCountDuration(stopRecord.bundleName, dayStartTime, countRecord, durations);
+    if (ret != IME_USAGE_SUCCESS) {
+        IMSA_HILOGE("SettleSession: UpsertCountDuration failed for %{public}s", stopRecord.bundleName.c_str());
+    }
 }
 
 void ImeUsageEventCacher::RecoverActiveSession()
 {
-    if (dbHelper_ == nullptr) {
-        IMSA_HILOGE("RecoverActiveSession: dbHelper is nullptr");
+    if (dataHelper_ == nullptr) {
+        IMSA_HILOGE("RecoverActiveSession: dataHelper is nullptr");
         return;
     }
     // Query the last event in DB to determine if an IME session was active
-    // when the service was restarted.
+    // when the service was restarted. DB I/O is performed outside the lock
+    // (consistent with OnImeBind/OnImeUnbind pattern); state mutation below
+    // takes the lock.
     ImeUsageRawEvent lastEvent;
-    dbHelper_->QueryFinalEventInfo(GetWallClockMs(), lastEvent);
+    dataHelper_->QueryFinalEventInfo(GetWallClockMs(), lastEvent);
 
+    std::lock_guard<std::mutex> lock(mutex_);
     if (lastEvent.rawId == EVENT_INPUT_START || lastEvent.rawId == EVENT_INPUT_STATUS_CHANGED) {
         isKeyboardShowing_ = true;
         currentImeBundle_ = lastEvent.package;
         DecodeScreenStatus(lastEvent.screenStatusAfter, foldStatus_, vhMode_);
         lastScreenStatus_ = lastEvent.screenStatusAfter;
+        // Initialize incremental tracking from the recovered event.
+        // Durations accumulated before the crash are not available in memory;
+        // on the next STOP event, the DB-based CalculateDurationForRecord
+        // fallback will be used (isSessionDurationsReady_ = false).
+        segmentStartBootTime_ = lastEvent.ts;
+        segmentScreenStatus_ = lastEvent.screenStatusAfter;
+        sessionDurations_ = {};
+        isSessionDurationsReady_ = false;
         IMSA_HILOGD("RecoverActiveSession: recovered active session, "
                     "bundle=%{public}s, screenStatus=%{public}d",
             currentImeBundle_.c_str(), lastScreenStatus_);
     } else {
         isKeyboardShowing_ = false;
         currentImeBundle_.clear();
+        sessionDurations_ = {};
+        isSessionDurationsReady_ = false;
         IMSA_HILOGD("RecoverActiveSession: no active session (lastRawId=%{public}d)", lastEvent.rawId);
     }
 }
