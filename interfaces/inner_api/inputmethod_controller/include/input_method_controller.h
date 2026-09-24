@@ -47,6 +47,7 @@
 #include "msg_handler_callback_interface.h"
 #include "panel_info.h"
 #include "private_command_interface.h"
+#include "stylus_activation_callback.h"
 #include "visibility.h"
 
 namespace OHOS {
@@ -150,6 +151,7 @@ private:
 using PrivateDataValue = std::variant<std::string, bool, int32_t>;
 using KeyEventCallback = std::function<void(std::shared_ptr<MMI::KeyEvent> &keyEvent, bool isConsumed)>;
 using WindowScaleCallback = std::function<int32_t(uint32_t windowId, CursorInfo &cursorInfo)>;
+using StylusActivationCallback = std::function<int32_t()>;
 class InputMethodController : public RefBase, public PrivateCommandInterface {
 public:
     /**
@@ -1073,6 +1075,18 @@ public:
     IMF_API int32_t RegisterWindowScaleCallbackHandler(WindowScaleCallback&& callback);
 
     /**
+     * @brief Register a stylus activation callback handler.
+     *
+     * The stylus service client registers a callback that is invoked when
+     * the input method framework needs to determine whether to activate
+     * the stylus input method. The callback returns a StylusActivationType value.
+     *
+     * @param callback Indicates the stylus activation callback
+     * @return Returns 0 for success, others for failure.
+     */
+    IMF_API int32_t RegisterStylusActivationCallbackHandler(StylusActivationCallback&& callback);
+
+    /**
      * @brief Get the type of the current client.
      *
      * @param type Indicates the type of current client.
@@ -1172,6 +1186,7 @@ private:
     int32_t ShowSoftKeyboardInner(uint64_t displayId, ClientType type);
     void ReportClientShow(int32_t eventCode, int32_t errCode, ClientType type);
     void GetWindowScaleCoordinate(uint32_t windowId, CursorInfo &cursorInfo);
+    StylusActivationType GetStylusActivationType();
     void CalibrateImmersiveParam(InputAttribute &inputAttribute, bool shouldOverrideImmersiveMode = false);
     bool IsDisableImmersiveMode();
     bool IsPcMode();
@@ -1298,6 +1313,8 @@ private:
 
     std::mutex windowScaleCallbackMutex_;
     WindowScaleCallback windowScaleCallback_ = nullptr;
+    std::mutex stylusActivationCallbackMutex_;
+    StylusActivationCallback stylusActivationCallback_ = nullptr;
     KeyEventResultHandler keyEventRetHandler_;
     std::mutex imcInnerListenerLock_;
     std::shared_ptr<ImcInnerListener> imcInnerListener_{ nullptr };

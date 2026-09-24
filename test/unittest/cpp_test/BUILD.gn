@@ -308,6 +308,7 @@ ohos_unittest("InputMethodServiceTest") {
     "node:node_header_notice",
     "safwk:system_ability_fwk",
     "samgr:samgr_proxy",
+    "window_manager:libwm",
     "window_manager:libdm",
     "window_manager:libwsutils",
     "data_share:datashare_common",

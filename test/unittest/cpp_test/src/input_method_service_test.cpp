@@ -38,6 +38,9 @@
 #include "peruser_session.h"
 #include "input_method_core_service_impl.h"
 #include "input_method_agent_service_impl.h"
+#include "input_client_service_impl.h"
+#include "input_type_manager.h"
+#include "ipc_skeleton.h"
 #include "window_adapter.h"
 #include "tdd_util.h"
 #include "scene_board_judgement.h"
@@ -690,6 +693,173 @@ HWTEST_F(InputMethodServiceTest, PerUserSession_MultipleGetDisplayGroupIdWithRet
     // Verify session state remains consistent after handling multiple errors
     EXPECT_NE(session, nullptr);
     EXPECT_EQ(session->clientGroupMap_.size(), 1);
+    UserSessionManager::GetInstance().userSessions_.clear();
+}
+
+/**
+ * @tc.name: ShowInputInner_StylusActivation_ClientInfoNull_001
+ * @tc.desc: ShowInputInner with stylus activation but no matching client info, cover 915 false branch
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodServiceTest, ShowInputInner_StylusActivation_ClientInfoNull_001, TestSize.Level1)
+{
+    IMSA_HILOGI("ShowInputInner_StylusActivation_ClientInfoNull_001 TEST START");
+    InputMethodSystemAbility imsa;
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetFocused(true);
+    imsa.identityChecker_ = std::make_shared<IdentityCheckerMock>();
+
+    int32_t userId = TddUtil::GetCurrentUserId();
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+
+    InputTypeManager::GetInstance().Set(false);
+    auto ret = imsa.ShowInputInner(client, 0, 0, true);
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOCUSED);
+
+    UserSessionManager::GetInstance().userSessions_.clear();
+}
+
+/**
+ * @tc.name: ShowInputInner_StylusActivation_StartSuccess_002
+ * @tc.desc: ShowInputInner with stylus activation and stylus ime already started, cover 918 false branch
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodServiceTest, ShowInputInner_StylusActivation_StartSuccess_002, TestSize.Level1)
+{
+    IMSA_HILOGI("ShowInputInner_StylusActivation_StartSuccess_002 TEST START");
+    InputMethodSystemAbility imsa;
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetFocused(true);
+    imsa.identityChecker_ = std::make_shared<IdentityCheckerMock>();
+
+    int32_t userId = TddUtil::GetCurrentUserId();
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+
+    auto clientGroup = std::make_shared<ClientGroup>(0, nullptr);
+    session->clientGroupMap_[0] = clientGroup;
+    auto clientInfo = std::make_shared<InputClientInfo>();
+    clientInfo->pid = IPCSkeleton::GetCallingPid();
+    clientInfo->isNotifyInputStart = false;
+    clientGroup->mapClients_[nullptr] = clientInfo;
+
+    ImeIdentification stylusIme{ "stylusBundle", "stylusSub" };
+    InputTypeManager::GetInstance().inputTypes_.insert_or_assign(InputType::STYLUS_INPUT, stylusIme);
+    InputTypeManager::GetInstance().Set(true, stylusIme);
+
+    auto ret = imsa.ShowInputInner(client, 0, 0, true);
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOCUSED);
+
+    InputTypeManager::GetInstance().inputTypes_.erase(InputType::STYLUS_INPUT);
+    InputTypeManager::GetInstance().Set(false);
+    UserSessionManager::GetInstance().userSessions_.clear();
+}
+
+/**
+ * @tc.name: ShowInputInner_StylusActivation_StartFailed_003
+ * @tc.desc: ShowInputInner with stylus activation but start stylus ime failed, cover 918 true branch
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodServiceTest, ShowInputInner_StylusActivation_StartFailed_003, TestSize.Level1)
+{
+    IMSA_HILOGI("ShowInputInner_StylusActivation_StartFailed_003 TEST START");
+    InputMethodSystemAbility imsa;
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetFocused(true);
+    imsa.identityChecker_ = std::make_shared<IdentityCheckerMock>();
+
+    int32_t userId = TddUtil::GetCurrentUserId();
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+
+    auto clientGroup = std::make_shared<ClientGroup>(0, nullptr);
+    session->clientGroupMap_[0] = clientGroup;
+    auto clientInfo = std::make_shared<InputClientInfo>();
+    clientInfo->pid = IPCSkeleton::GetCallingPid();
+    clientInfo->isNotifyInputStart = true;
+    clientGroup->mapClients_[nullptr] = clientInfo;
+
+    InputTypeManager::GetInstance().inputTypes_.erase(InputType::STYLUS_INPUT);
+    InputTypeManager::GetInstance().Set(false);
+    session->imeStartLock_.lock();
+    auto ret = imsa.ShowInputInner(client, 0, 0, true);
+    session->imeStartLock_.unlock();
+    EXPECT_EQ(ret, ErrorCode::ERROR_TRY_IME_START_FAILED);
+
+    InputTypeManager::GetInstance().Set(false);
+    UserSessionManager::GetInstance().userSessions_.clear();
+}
+
+/**
+ * @tc.name: ShowInputInner_NotStylus_ExitStylusIme_004
+ * @tc.desc: ShowInputInner without stylus activation while stylus ime is started, cover 923 to 927 branch
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodServiceTest, ShowInputInner_NotStylus_ExitStylusIme_004, TestSize.Level1)
+{
+    IMSA_HILOGI("ShowInputInner_NotStylus_ExitStylusIme_004 TEST START");
+    InputMethodSystemAbility imsa;
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetFocused(true);
+    imsa.identityChecker_ = std::make_shared<IdentityCheckerMock>();
+
+    int32_t userId = TddUtil::GetCurrentUserId();
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+
+    ImeIdentification stylusIme{ "stylusBundle", "stylusSub" };
+    InputTypeManager::GetInstance().inputTypes_.insert_or_assign(InputType::STYLUS_INPUT, stylusIme);
+    InputTypeManager::GetInstance().Set(true, stylusIme);
+
+    session->imeStartLock_.lock();
+    auto ret = imsa.ShowInputInner(client, 0, 0, false);
+    session->imeStartLock_.unlock();
+    EXPECT_FALSE(InputTypeManager::GetInstance().IsStylusImeStarted());
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOCUSED);
+
+    InputTypeManager::GetInstance().inputTypes_.erase(InputType::STYLUS_INPUT);
+    InputTypeManager::GetInstance().Set(false);
+    UserSessionManager::GetInstance().userSessions_.clear();
+}
+
+/**
+ * @tc.name: ShowInputInner_NotStylus_NoStylusIme_005
+ * @tc.desc: ShowInputInner without stylus activation and stylus ime not started, cover 923 false branch
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodServiceTest, ShowInputInner_NotStylus_NoStylusIme_005, TestSize.Level1)
+{
+    IMSA_HILOGI("ShowInputInner_NotStylus_NoStylusIme_005 TEST START");
+    InputMethodSystemAbility imsa;
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetFocused(true);
+    imsa.identityChecker_ = std::make_shared<IdentityCheckerMock>();
+
+    int32_t userId = TddUtil::GetCurrentUserId();
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+
+    InputTypeManager::GetInstance().inputTypes_.erase(InputType::STYLUS_INPUT);
+    InputTypeManager::GetInstance().Set(false);
+    auto ret = imsa.ShowInputInner(client, 0, 0, false);
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOCUSED);
+
     UserSessionManager::GetInstance().userSessions_.clear();
 }
 

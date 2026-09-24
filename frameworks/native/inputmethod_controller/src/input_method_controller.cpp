@@ -525,6 +525,7 @@ int32_t InputMethodController::AttachExec(sptr<OnTextChangedListener> listener, 
         clientInfo_.isShowKeyboard = attachOptions.isShowKeyboard;
         clientInfo_.type = type;
         clientInfo_.config.requestKeyboardReason = attachOptions.requestKeyboardReason;
+        clientInfo_.isStylusActivation = GetStylusActivationType() == StylusActivationType::STYLUS;
     }
     int32_t ret = StartInput(clientInfo_, agents, imeInfos);
     if (ret != ErrorCode::NO_ERROR) {
@@ -644,14 +645,17 @@ int32_t InputMethodController::ShowCurrentInput()
     {
         std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
         clientInfo_.isShowKeyboard = true;
+        clientInfo_.isStylusActivation = GetStylusActivationType() == StylusActivationType::STYLUS;
     }
     InputMethodSysEvent::GetInstance().OperateSoftkeyboardBehaviour(OperateIMEInfoCode::IME_SHOW_NORMAL);
     uint32_t windowId = ImfCommonConst::INVALID_WINDOW_ID;
+    bool isStylusActivation = false;
     {
         std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
         windowId = clientInfo_.config.windowId;
+        isStylusActivation = clientInfo_.isStylusActivation;
     }
-    return proxy->ShowCurrentInputDeprecated(windowId);
+    return proxy->ShowCurrentInputDeprecated(windowId, isStylusActivation);
 }
 
 int32_t InputMethodController::Close()
@@ -904,11 +908,14 @@ int32_t InputMethodController::ShowInput(sptr<IInputClient> &client, ClientType 
         return ErrorCode::ERROR_SERVICE_START_FAILED;
     }
     uint32_t windowId = ImfCommonConst::INVALID_WINDOW_ID;
+    bool isStylusActivation = false;
     {
         std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
         windowId = clientInfo_.config.windowId;
+        clientInfo_.isStylusActivation = GetStylusActivationType() == StylusActivationType::STYLUS;
+        isStylusActivation = clientInfo_.isStylusActivation;
     }
-    return proxy->ShowInput(client, windowId, type, requestKeyboardReason);
+    return proxy->ShowInput(client, windowId, type, requestKeyboardReason, isStylusActivation);
 }
 // LCOV_EXCL_STOP
 int32_t InputMethodController::HideInput(sptr<IInputClient> &client)
@@ -1484,13 +1491,16 @@ int32_t InputMethodController::ShowSoftKeyboardInner(ClientType type)
         IMSA_HILOGE("proxy is nullptr!");
         return ErrorCode::ERROR_SERVICE_START_FAILED;
     }
+    bool isStylusActivation = false;
     IMSA_HILOGI("clientType:%{public}d.", type);
     {
         std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
         clientInfo_.isShowKeyboard = true;
+        clientInfo_.isStylusActivation = GetStylusActivationType() == StylusActivationType::STYLUS;
+        isStylusActivation = clientInfo_.isStylusActivation;
     }
     InputMethodSysEvent::GetInstance().OperateSoftkeyboardBehaviour(OperateIMEInfoCode::IME_SHOW_NORMAL);
-    return proxy->ShowCurrentInput(type);
+    return proxy->ShowCurrentInput(type, isStylusActivation);
 }
 
 int32_t InputMethodController::ShowSoftKeyboardInner(uint64_t displayId, ClientType type)
@@ -1500,9 +1510,16 @@ int32_t InputMethodController::ShowSoftKeyboardInner(uint64_t displayId, ClientT
         IMSA_HILOGE("proxy is nullptr!");
         return ErrorCode::ERROR_SERVICE_START_FAILED;
     }
+    bool isStylusActivation = false;
     IMSA_HILOGI("displayId/clientType:%{public}" PRIu64 "/%{public}d.", displayId, type);
+    {
+        std::lock_guard<std::recursive_mutex> lock(clientInfoLock_);
+        clientInfo_.isShowKeyboard = true;
+        clientInfo_.isStylusActivation = GetStylusActivationType() == StylusActivationType::STYLUS;
+        isStylusActivation = clientInfo_.isStylusActivation;
+    }
     InputMethodSysEvent::GetInstance().OperateSoftkeyboardBehaviour(OperateIMEInfoCode::IME_SHOW_NORMAL);
-    return proxy->ShowCurrentInput(displayId, type);
+    return proxy->ShowCurrentInput(displayId, type, isStylusActivation);
 }
 
 int32_t InputMethodController::HideSoftKeyboard()
@@ -2447,6 +2464,34 @@ int32_t InputMethodController::RegisterWindowScaleCallbackHandler(WindowScaleCal
     std::lock_guard<std::mutex> lock(windowScaleCallbackMutex_);
     windowScaleCallback_ = std::move(callback);
     return static_cast<int32_t>(ErrorCode::NO_ERROR);
+}
+
+int32_t InputMethodController::RegisterStylusActivationCallbackHandler(StylusActivationCallback &&callback)
+{
+    IMSA_HILOGD("isRegister: %{public}d", callback != nullptr);
+    std::lock_guard<std::mutex> lock(stylusActivationCallbackMutex_);
+    stylusActivationCallback_ = std::move(callback);
+    return static_cast<int32_t>(ErrorCode::NO_ERROR);
+}
+
+StylusActivationType InputMethodController::GetStylusActivationType()
+{
+    StylusActivationCallback handler = nullptr;
+    {
+        std::lock_guard<std::mutex> lock(stylusActivationCallbackMutex_);
+        handler = stylusActivationCallback_;
+    }
+    if (handler == nullptr) {
+        IMSA_HILOGD("stylus activation callback is not registered, return NONE.");
+        return StylusActivationType::NONE;
+    }
+    int32_t typeValue = handler();
+    StylusActivationType type = StylusActivationType::NONE;
+    if (typeValue == static_cast<int32_t>(StylusActivationType::STYLUS)) {
+        type = StylusActivationType::STYLUS;
+    }
+    IMSA_HILOGD("stylus activation type: %{public}d", static_cast<int32_t>(type));
+    return type;
 }
 // LCOV_EXCL_START
 void InputMethodController::GetWindowScaleCoordinate(uint32_t windowId, CursorInfo &cursorInfo)

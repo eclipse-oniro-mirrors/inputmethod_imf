@@ -42,11 +42,13 @@ public:
     static InputTypeManager &GetInstance();
     bool IsSupported(InputType type);
     bool IsInputType(const ImeIdentification &ime);
+    bool IsInputTypeBundle(const std::string &bundleName);
     bool IsStarted();
     bool IsSecurityImeStarted();
     bool IsCameraImeStarted();
     bool IsVoiceImeStarted();
     bool IsVoiceKbImeStarted();
+    bool IsStylusImeStarted();
     bool IsVoiceKbIme(const ImeIdentification &ime);
     bool IsInputTypeImeStarted(InputType type);
     InputType GetCurrentInputType();

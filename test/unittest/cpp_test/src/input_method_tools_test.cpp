@@ -168,6 +168,7 @@ HWTEST_F(InputMethodToolsTest, InputClientInfo_RoundTrip, TestSize.Level0)
     original.attribute.inputPattern = 5;
     original.state = ClientState::ACTIVE;
     original.isNotifyInputStart = false;
+    original.isStylusActivation = true;
     original.needHide = true;
     original.uiExtensionTokenId = 42;
     original.type = ClientType::JS;
@@ -183,6 +184,7 @@ HWTEST_F(InputMethodToolsTest, InputClientInfo_RoundTrip, TestSize.Level0)
     EXPECT_EQ(result.attribute.inputPattern, original.attribute.inputPattern);
     EXPECT_EQ(result.state, original.state);
     EXPECT_EQ(result.isNotifyInputStart, original.isNotifyInputStart);
+    EXPECT_EQ(result.isStylusActivation, original.isStylusActivation);
     EXPECT_EQ(result.needHide, original.needHide);
     EXPECT_EQ(result.uiExtensionTokenId, original.uiExtensionTokenId);
     EXPECT_EQ(result.type, original.type);

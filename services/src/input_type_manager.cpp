@@ -44,6 +44,21 @@ bool InputTypeManager::IsInputType(const ImeIdentification &ime)
     return inputTypeImeList_.find(ime) != inputTypeImeList_.end();
 }
 
+bool InputTypeManager::IsInputTypeBundle(const std::string &bundleName)
+{
+    if (!isTypeCfgReady_.load() && !Init()) {
+        IMSA_HILOGD("init cfg failed.");
+        return false;
+    }
+    std::lock_guard<std::mutex> lock(listLock_);
+    for (const auto &ime : inputTypeImeList_) {
+        if (ime.bundleName == bundleName) {
+            return true;
+        }
+    }
+    return false;
+}
+
 int32_t InputTypeManager::GetImeByInputType(InputType type, ImeIdentification &ime)
 {
     if (!isTypeCfgReady_.load() && !Init()) {
@@ -99,6 +114,12 @@ bool InputTypeManager::IsVoiceKbImeStarted()
     return IsInputTypeImeStarted(type);
 }
 
+bool InputTypeManager::IsStylusImeStarted()
+{
+    InputType type = InputType::STYLUS_INPUT;
+    return IsInputTypeImeStarted(type);
+}
+
 bool InputTypeManager::IsVoiceKbIme(const ImeIdentification &ime)
 {
     ImeIdentification voiceKbIme;
@@ -128,6 +149,9 @@ InputType InputTypeManager::GetCurrentInputType()
     }
     if (IsVoiceKbImeStarted()) {
         return InputType::VOICEKB_INPUT;
+    }
+    if (IsStylusImeStarted()) {
+        return InputType::STYLUS_INPUT;
     }
     return InputType::NONE;
 }

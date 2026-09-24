@@ -193,6 +193,7 @@ InputClientInfoInner InputMethodTools::InputClientInfoToInner(const InputClientI
     inner.deathRecipient = inputClientInfo.deathRecipient;
     inner.state = inputClientInfo.state;
     inner.isNotifyInputStart = inputClientInfo.isNotifyInputStart;
+    inner.isStylusActivation = inputClientInfo.isStylusActivation;
     inner.needHide = inputClientInfo.needHide;
     inner.uiExtensionTokenId = inputClientInfo.uiExtensionTokenId;
     inner.type = inputClientInfo.type;
@@ -215,6 +216,7 @@ InputClientInfo InputMethodTools::InnerToInputClientInfo(const InputClientInfoIn
     inputClientInfo.deathRecipient = inner.deathRecipient;
     inputClientInfo.state = inner.state;
     inputClientInfo.isNotifyInputStart = inner.isNotifyInputStart;
+    inputClientInfo.isStylusActivation = inner.isStylusActivation;
     inputClientInfo.needHide = inner.needHide;
     inputClientInfo.uiExtensionTokenId = inner.uiExtensionTokenId;
     inputClientInfo.type = inner.type;

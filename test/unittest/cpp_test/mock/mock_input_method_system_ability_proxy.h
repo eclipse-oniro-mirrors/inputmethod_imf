@@ -27,8 +27,10 @@ public:
     MOCK_METHOD3(StartInput,
         int32_t(const InputClientInfoInner &, std::vector<sptr<IRemoteObject>> &, std::vector<BindImeInfo> &));
     MOCK_METHOD3(ReleaseInput, int32_t(const sptr<IInputClient> &, uint32_t, int32_t));
-    MOCK_METHOD1(ShowCurrentInputDeprecated, int32_t(uint32_t));
-    MOCK_METHOD4(ShowInput, int32_t(const sptr<IInputClient> &, uint32_t, uint32_t, int32_t));
+    MOCK_METHOD2(ShowCurrentInputDeprecated, int32_t(uint32_t, bool));
+    MOCK_METHOD2(ShowCurrentInput, int32_t(uint32_t, bool));
+    MOCK_METHOD3(ShowCurrentInput, int32_t(uint64_t, uint32_t, bool));
+    MOCK_METHOD5(ShowInput, int32_t(const sptr<IInputClient> &, uint32_t, uint32_t, int32_t, bool));
     MOCK_METHOD1(HideCurrentInputDeprecated, int32_t(uint32_t));
     MOCK_METHOD2(BindImeMirror, int32_t(const sptr<IInputMethodCore> &, const sptr<IRemoteObject> &));
     MOCK_METHOD0(UnbindImeMirror, int32_t());
