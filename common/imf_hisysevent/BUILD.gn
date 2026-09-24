@@ -73,6 +73,7 @@ ohos_shared_library("imf_hisysevent") {
     "hisysevent:libhisysevent",
     "input:libmmi-client",
     "ipc:ipc_single",
+    "icu:shared_icuuc",
   ]
 
   subsystem_name = "inputmethod"

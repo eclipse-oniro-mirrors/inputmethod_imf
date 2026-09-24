@@ -1135,6 +1135,9 @@ private:
         int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
     int32_t AttachExec(sptr<OnTextChangedListener> listener, const AttachOptions &attachOptions,
         const TextConfig &textConfig, ClientType type);
+    void PrepareAttach(sptr<OnTextChangedListener> listener, const AttachOptions &attachOptions,
+        const TextConfig &textConfig, ClientType type);
+    void ResetKeyEventCount();
     void ClearEditorCache(bool isNewEditor, sptr<OnTextChangedListener> lastListener);
     void OnRemoteSaDied(const wptr<IRemoteObject> &object);
     void RestoreListenInfoInSaDied();
@@ -1149,7 +1152,6 @@ private:
     std::shared_ptr<IInputMethodAgent> GetAgent();
     void PrintLogIfAceTimeout(int64_t start);
     void PrintTextChangeLog();
-    void PrintKeyEventLog();
     int32_t DispatchKeyEventInner(
         std::shared_ptr<MMI::KeyEvent> &keyEvent, const KeyEventCallback &callback);
     enum class PttSpaceKeyEventState : uint8_t {
@@ -1249,6 +1251,11 @@ private:
     static int32_t textChangeCountInPeriod_;
     static std::chrono::steady_clock::time_point textChangeStartLogTime_;
     static std::atomic<PttSpaceKeyEventState> pttSpaceKeyEventState_;
+    static std::mutex dispatchKeyLogMutex_;
+    static uint32_t dispatchKeyEntryCount_;
+    static uint32_t dispatchKeyToImeCount_;
+    static uint32_t dispatchKeyToImeFailCount_;
+    static uint32_t dispatchKeyToImeSuccessCount_;
 
     std::atomic_bool isEditable_{ false };
     std::atomic_bool isBound_{ false };
