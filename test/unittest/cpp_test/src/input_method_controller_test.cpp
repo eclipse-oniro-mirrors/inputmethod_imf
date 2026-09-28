@@ -2358,6 +2358,46 @@ HWTEST_F(InputMethodControllerTest, GetWindowScaleCoordinate, TestSize.Level0)
 }
 
 /**
+ * @tc.name: RegisterStylusActivationCallbackHandler
+ * @tc.desc: test IMC stylus activation callback register
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, RegisterStylusActivationCallbackHandler, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC RegisterStylusActivationCallbackHandler Test START");
+    ASSERT_NE(inputMethodController_, nullptr);
+    inputMethodController_->stylusActivationCallback_ = nullptr;
+    auto callback = []() { return static_cast<int32_t>(StylusActivationType::STYLUS); };
+    auto res = inputMethodController_->RegisterStylusActivationCallbackHandler(std::move(callback));
+    EXPECT_EQ(res, static_cast<int32_t>(ErrorCode::NO_ERROR));
+    EXPECT_NE(inputMethodController_->stylusActivationCallback_, nullptr);
+    EXPECT_EQ(inputMethodController_->GetStylusActivationType(), StylusActivationType::STYLUS);
+    inputMethodController_->stylusActivationCallback_ = nullptr;
+}
+
+/**
+ * @tc.name: GetStylusActivationType
+ * @tc.desc: test IMC get stylus activation type with/without callback
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodControllerTest, GetStylusActivationType, TestSize.Level0)
+{
+    IMSA_HILOGI("IMC GetStylusActivationType Test START");
+    ASSERT_NE(inputMethodController_, nullptr);
+    inputMethodController_->stylusActivationCallback_ = nullptr;
+    EXPECT_EQ(inputMethodController_->GetStylusActivationType(), StylusActivationType::NONE);
+    inputMethodController_->stylusActivationCallback_ =
+        []() { return static_cast<int32_t>(StylusActivationType::NONE); };
+    EXPECT_EQ(inputMethodController_->GetStylusActivationType(), StylusActivationType::NONE);
+    inputMethodController_->stylusActivationCallback_ =
+        []() { return static_cast<int32_t>(StylusActivationType::STYLUS); };
+    EXPECT_EQ(inputMethodController_->GetStylusActivationType(), StylusActivationType::STYLUS);
+    inputMethodController_->stylusActivationCallback_ = nullptr;
+}
+
+/**
  * @tc.name: TestImcOptionalInputMethod
  * @tc.desc: Test ImcOptionalInputMethod
  * @tc.type: FUNC

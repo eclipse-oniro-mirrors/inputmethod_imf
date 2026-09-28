@@ -775,7 +775,7 @@ HWTEST_F(IdentityCheckerTest, testShowCurrentInputDeprecated_001, TestSize.Level
 {
     IMSA_HILOGI("IdentityCheckerTest testShowCurrentInputDeprecated_001 start");
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = true;
-    int32_t ret = IdentityCheckerTest::service_->ShowCurrentInputDeprecated(windowId_);
+    int32_t ret = IdentityCheckerTest::service_->ShowCurrentInputDeprecated(windowId_, false);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOUND);
 }
 
@@ -791,7 +791,7 @@ HWTEST_F(IdentityCheckerTest, testShowCurrentInputDeprecated_002, TestSize.Level
     IMSA_HILOGI("IdentityCheckerTest testShowCurrentInputDeprecated_002 start");
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = false;
     IdentityCheckerTest::IdentityCheckerMock::isFocused_ = false;
-    int32_t ret = IdentityCheckerTest::service_->ShowCurrentInputDeprecated(windowId_);
+    int32_t ret = IdentityCheckerTest::service_->ShowCurrentInputDeprecated(windowId_, false);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOCUSED);
 }
 
@@ -807,7 +807,7 @@ HWTEST_F(IdentityCheckerTest, testShowCurrentInputDeprecated_003, TestSize.Level
     IMSA_HILOGI("IdentityCheckerTest testShowCurrentInputDeprecated_003 start");
     IdentityCheckerTest::IdentityCheckerMock::isBroker_ = false;
     IdentityCheckerTest::IdentityCheckerMock::isFocused_ = true;
-    int32_t ret = IdentityCheckerTest::service_->ShowCurrentInputDeprecated(windowId_);
+    int32_t ret = IdentityCheckerTest::service_->ShowCurrentInputDeprecated(windowId_, false);
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOUND);
 }
 

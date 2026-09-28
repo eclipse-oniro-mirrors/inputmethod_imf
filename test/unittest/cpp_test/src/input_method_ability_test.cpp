@@ -424,8 +424,10 @@ HWTEST_F(InputMethodAbilityTest, testShowKeyboardInputMethodCoreProxy, TestSize.
 HWTEST_F(InputMethodAbilityTest, testExitCurrentInputType, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbilityTest testExitCurrentInputType start.");
+    IdentityCheckerMock::SetBundleName("");
     auto ret = inputMethodAbility_.ExitCurrentInputType();
     EXPECT_EQ(ret, ErrorCode::ERROR_NOT_DEFAULT_IME);
+    IdentityCheckerMock::SetBundleName("TddUtil::currentBundleNameMock_");
 
     InputMethodAbilityTest::GetIMCDetachIMA();
     IdentityCheckerMock::SetBundleNameValid(true);

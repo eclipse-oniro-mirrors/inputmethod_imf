@@ -86,6 +86,7 @@ public:
     void SetImeListener(std::shared_ptr<InputMethodEngineListener> imeListener);
     void SetKdListener(std::shared_ptr<KeyboardListener> kdListener);
     int32_t SelectByRange(int32_t start, int32_t end);
+    int32_t ExitCurrentInputType();
 
 private:
     InputMethodAbilityInterface() = default;

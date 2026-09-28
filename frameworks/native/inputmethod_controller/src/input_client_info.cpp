@@ -49,6 +49,7 @@ bool InputClientInfoInner::ReadFromParcel(Parcel &in)
     uint32_t stateData = in.ReadUint32();
     state = static_cast<ClientState>(stateData);
     isNotifyInputStart = in.ReadBool();
+    isStylusActivation = in.ReadBool();
     needHide = in.ReadBool();
     uiExtensionTokenId = in.ReadUint32();
     uint32_t typeData = in.ReadUint32();
@@ -134,6 +135,9 @@ bool InputClientInfoInner::MarshallingOne(Parcel &out) const
         return false;
     }
     if (!out.WriteBool(isNotifyInputStart)) {
+        return false;
+    }
+    if (!out.WriteBool(isStylusActivation)) {
         return false;
     }
     if (!out.WriteBool(needHide)) {

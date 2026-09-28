@@ -20,6 +20,7 @@
 
 #include "identity_checker_impl.h"
 #include "ime_info_inquirer.h"
+#include "input_death_recipient.h"
 #include "input_method_system_ability_stub.h"
 #include "input_method_types.h"
 #include "input_status_info.h"
@@ -47,12 +48,13 @@ public:
     int32_t OnRemoteRequest(uint32_t code, MessageParcel &data, MessageParcel &reply, MessageOption &option) override;
     ErrCode StartInput(const InputClientInfoInner &inputClientInfoInner, std::vector<sptr<IRemoteObject>> &agents,
         std::vector<BindImeInfo> &imeInfos) override;
-    ErrCode ShowCurrentInput(uint32_t type) override;
-    ErrCode ShowCurrentInput(uint64_t displayId, uint32_t type) override;
+    ErrCode ShowCurrentInput(uint32_t type, bool isStylusActivation = false) override;
+    ErrCode ShowCurrentInput(uint64_t displayId, uint32_t type, bool isStylusActivation = false) override;
     ErrCode HideCurrentInput() override;
     ErrCode HideCurrentInput(uint64_t displayId) override;
     ErrCode ShowInput(const sptr<IInputClient> &client, uint32_t windowId,
-        uint32_t type = static_cast<uint32_t>(ClientType::INNER_KIT), int32_t requestKeyboardReason = 0) override;
+        uint32_t type = static_cast<uint32_t>(ClientType::INNER_KIT), int32_t requestKeyboardReason = 0,
+        bool isStylusActivation = false) override;
     ErrCode HideInput(const sptr<IInputClient> &client, uint32_t windowId) override;
     ErrCode StopInputSession(uint32_t windowId) override;
     ErrCode ReleaseInput(const sptr<IInputClient> &client, uint32_t sessionId, int32_t clientSessionId) override;
@@ -92,7 +94,7 @@ public:
     ErrCode ConnectSystemCmd(const sptr<IRemoteObject> &channel, sptr<IRemoteObject> &agent) override;
     // Deprecated because of no permission check, kept for compatibility
     ErrCode HideCurrentInputDeprecated(uint32_t windowId) override;
-    ErrCode ShowCurrentInputDeprecated(uint32_t windowId) override;
+    ErrCode ShowCurrentInputDeprecated(uint32_t windowId, bool isStylusActivation) override;
     int Dump(int fd, const std::vector<std::u16string> &args) override;
     void DumpAllMethod(int fd);
     ErrCode IsDefaultIme() override;
@@ -213,6 +215,7 @@ private:
     int32_t IsDefaultImeFromTokenId(int32_t userId, uint32_t tokenId);
     void DealSwitchRequest(int32_t userId);
     bool IsCurrentIme(int32_t userId, uint32_t tokenId);
+    bool IsInputTypeCaller(int32_t userId, const std::string &bundleName);
     int32_t StartInputType(int32_t userId, InputType type, bool isPersistence = true);
     // if switch input type need to switch ime, then no need to hide panel first.
     void NeedHideWhenSwitchInputType(int32_t userId, InputType type, bool &needHide);
@@ -223,14 +226,17 @@ private:
         std::vector<BindImeInfo> &imeInfos, bool &failedByUnavailableIme);
     std::pair<bool, FocusedInfo> IsFocusedOrBroker(int64_t callingPid, uint32_t callingTokenId, int32_t userId,
         uint32_t windowId = 0, const sptr<IRemoteObject> &abilityToken = nullptr);
-    int32_t ShowInputInner(sptr<IInputClient> client, uint32_t windowId, int32_t requestKeyboardReason = 0);
-    int32_t ShowCurrentInputInner();
-    int32_t ShowCurrentInputInner(uint64_t displayId);
+    int32_t ShowInputInner(sptr<IInputClient> client, uint32_t windowId, int32_t requestKeyboardReason = 0,
+        bool isStylusActivation = false);
+    int32_t ShowCurrentInputInner(bool isStylusActivation = false);
+    int32_t ShowCurrentInputInner(uint64_t displayId, bool isStylusActivation = false);
     std::pair<int64_t, std::string> GetCurrentImeInfoForHiSysEvent(int32_t userId);
     int32_t GetScreenLockIme(int32_t userId, std::string &ime);
     int32_t GetAlternativeIme(int32_t userId, std::string &ime);
     static InputType GetSecurityInputType(const InputClientInfo &inputClientInfo);
     int32_t StartSecurityIme(int32_t &userId, InputClientInfo &inputClientInfo);
+    int32_t StartStylusIme(int32_t userId, InputClientInfo &inputClientInfo);
+    bool IsOneTimeCodeInput(const InputClientInfo &inputClientInfo);
 #ifdef IMF_ON_DEMAND_START_STOP_SA_ENABLE
     int64_t GetTickCount();
     void ResetDelayUnloadTask(uint32_t code = 0);

@@ -235,6 +235,7 @@ enum class InputType : int32_t {
     VOICE_INPUT,
     VOICEKB_INPUT,
     PUSH_TO_TALK_INPUT,
+    STYLUS_INPUT,
     END
 };
 

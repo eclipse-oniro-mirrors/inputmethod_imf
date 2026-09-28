@@ -2494,6 +2494,141 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_TestGetSecurityInputType, TestSize.Lev
     ret = InputMethodPrivateMemberTest::service_->GetSecurityInputType(inputClientInfo);
     EXPECT_EQ(ret, InputType::NONE);
 }
+
+/**
+ * @tc.name: SA_TestIsStylusImeStarted
+ * @tc.desc: verify IsStylusImeStarted under not-started / not-configured / not-matched / matched states
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_TestIsStylusImeStarted, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_TestIsStylusImeStarted start.");
+    // not started
+    InputTypeManager::GetInstance().isStarted_ = false;
+    EXPECT_FALSE(InputTypeManager::GetInstance().IsStylusImeStarted());
+
+    // started but stylus ime not configured
+    InputTypeManager::GetInstance().isStarted_ = true;
+    InputTypeManager::GetInstance().inputTypes_.clear();
+    EXPECT_FALSE(InputTypeManager::GetInstance().IsStylusImeStarted());
+
+    // started, stylus ime configured, but current ime not matched
+    ImeIdentification stylusIme{ "stylusBundle", "stylusSub" };
+    InputTypeManager::GetInstance().inputTypes_.insert_or_assign(InputType::STYLUS_INPUT, stylusIme);
+    InputTypeManager::GetInstance().currentTypeIme_ = { "otherBundle", "otherSub" };
+    EXPECT_FALSE(InputTypeManager::GetInstance().IsStylusImeStarted());
+
+    // started, stylus ime configured and current ime matched
+    InputTypeManager::GetInstance().currentTypeIme_ = stylusIme;
+    EXPECT_TRUE(InputTypeManager::GetInstance().IsStylusImeStarted());
+
+    // cleanup
+    InputTypeManager::GetInstance().inputTypes_.erase(InputType::STYLUS_INPUT);
+    InputTypeManager::GetInstance().isStarted_ = false;
+    InputTypeManager::GetInstance().currentTypeIme_ = {};
+}
+
+/**
+ * @tc.name: SA_TestGetCurrentInputType_Stylus
+ * @tc.desc: verify GetCurrentInputType returns STYLUS_INPUT when stylus ime is started
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_TestGetCurrentInputType_Stylus, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_TestGetCurrentInputType_Stylus start.");
+    InputTypeManager::GetInstance().isStarted_ = true;
+    InputTypeManager::GetInstance().inputTypes_.clear();
+    ImeIdentification stylusIme{ "stylusBundle", "stylusSub" };
+    InputTypeManager::GetInstance().inputTypes_.insert_or_assign(InputType::STYLUS_INPUT, stylusIme);
+    InputTypeManager::GetInstance().currentTypeIme_ = stylusIme;
+    EXPECT_EQ(InputTypeManager::GetInstance().GetCurrentInputType(), InputType::STYLUS_INPUT);
+
+    // cleanup
+    InputTypeManager::GetInstance().inputTypes_.erase(InputType::STYLUS_INPUT);
+    InputTypeManager::GetInstance().isStarted_ = false;
+    InputTypeManager::GetInstance().currentTypeIme_ = {};
+}
+
+/**
+ * @tc.name: SA_TestStartStylusIme
+ * @tc.desc: verify StartStylusIme branching: not-started / same-textfield / diff-textfield
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_TestStartStylusIme, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_TestStartStylusIme start.");
+    InputClientInfo clientInfo;
+    clientInfo.needHide = false;
+
+    // not started -> StartInputType -> session(INVALID_USER_ID) is null
+    InputTypeManager::GetInstance().Set(false);
+    clientInfo.isNotifyInputStart = true;
+    auto ret = service_->StartStylusIme(INVALID_USER_ID, clientInfo);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND);
+
+    // started, same textField -> NO_ERROR
+    ImeIdentification stylusIme{ "stylusBundle", "stylusSub" };
+    InputTypeManager::GetInstance().Set(true, stylusIme);
+    clientInfo.isNotifyInputStart = false;
+    ret = service_->StartStylusIme(INVALID_USER_ID, clientInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    // started, diff textField, stylus ime already current -> NO_ERROR
+    InputTypeManager::GetInstance().inputTypes_.insert_or_assign(InputType::STYLUS_INPUT, stylusIme);
+    clientInfo.isNotifyInputStart = true;
+    ret = service_->StartStylusIme(INVALID_USER_ID, clientInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    // started, diff textField, stylus ime not current -> switch -> session null
+    InputTypeManager::GetInstance().currentTypeIme_ = { "otherBundle", "otherSub" };
+    ret = service_->StartStylusIme(INVALID_USER_ID, clientInfo);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND);
+
+    // cleanup
+    InputTypeManager::GetInstance().inputTypes_.erase(InputType::STYLUS_INPUT);
+    InputTypeManager::GetInstance().Set(false);
+}
+
+/**
+ * @tc.name: SA_TestEnsureImeAvailableStylus
+ * @tc.desc: verify EnsureImeAvailable stylus activation delegation and exit stylus ime branch
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SA_TestEnsureImeAvailableStylus, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::SA_TestEnsureImeAvailableStylus start.");
+    InputMethodSystemAbility systemAbility;
+    InputClientInfo info;
+    info.needHide = false;
+    info.isNotifyInputStart = true;
+
+    // isStylusActivation=true -> StartStylusIme -> not started -> StartInputType -> session null
+    info.isStylusActivation = true;
+    InputTypeManager::GetInstance().Set(false);
+    auto ret = systemAbility.EnsureImeAvailable(INVALID_USER_ID, info);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND);
+
+    // stylus ime started but isStylusActivation=false -> exit stylus ime (Set(false))
+    constexpr int32_t stylusTestUserId = 200;
+    info.isStylusActivation = false;
+    auto session = std::make_shared<PerUserSession>(stylusTestUserId, nullptr);
+    UserSessionManager::GetInstance().userSessions_.insert_or_assign(stylusTestUserId, session);
+    ImeIdentification stylusIme{ "stylusBundle", "stylusSub" };
+    InputTypeManager::GetInstance().Set(true, stylusIme);
+    InputTypeManager::GetInstance().inputTypes_.insert_or_assign(InputType::STYLUS_INPUT, stylusIme);
+    systemAbility.EnsureImeAvailable(stylusTestUserId, info);
+    EXPECT_FALSE(InputTypeManager::GetInstance().IsStylusImeStarted());
+
+    // cleanup
+    InputTypeManager::GetInstance().inputTypes_.erase(InputType::STYLUS_INPUT);
+    InputTypeManager::GetInstance().Set(false);
+    UserSessionManager::GetInstance().userSessions_.erase(stylusTestUserId);
+}
+
 /**
  * @tc.name: SA_TestRestartIme001
  * @tc.desc: restart request will be discarded, and reartTasks will be reset
@@ -7201,6 +7336,282 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_HandleDataShareReady_RestoresExamMode,
     // Restore original state
     ExamModeManager::GetInstance().SetExamMode(origExamMode);
     ExamModeManager::GetInstance().SavePreviousIme(origPreviousBundleName, origPreviousSubName);
+}
+
+/**
+ * @tc.name: IMSA_ShowCurrentInputInner_NoArg_001
+ * @tc.desc: ShowCurrentInputInner() session is nullptr, return ERROR_IMSA_USER_SESSION_NOT_FOUND
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, IMSA_ShowCurrentInputInner_NoArg_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::IMSA_ShowCurrentInputInner_NoArg_001 start.");
+    InputMethodSystemAbility imsa;
+    UserSessionManager::GetInstance().userSessions_.clear();
+    // session not found
+    auto ret = imsa.ShowCurrentInputInner();
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND);
+}
+
+/**
+ * @tc.name: IMSA_ShowCurrentInputInner_NoArg_002
+ * @tc.desc: ShowCurrentInputInner() IsBroker is false and HasPermission is false, return ERROR_STATUS_PERMISSION_DENIED
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, IMSA_ShowCurrentInputInner_NoArg_002, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::IMSA_ShowCurrentInputInner_NoArg_002 start.");
+    InputMethodSystemAbility imsa;
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetBroker(false);
+    IdentityCheckerMock::SetPermission(false);
+    imsa.identityChecker_ = std::make_shared<IdentityCheckerMock>();
+
+    auto userId = TddUtil::GetCurrentUserId();
+    auto userSession = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_.insert_or_assign(userId, userSession);
+    // not broker and no permission
+    auto ret = imsa.ShowCurrentInputInner();
+    EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
+
+    UserSessionManager::GetInstance().userSessions_.clear();
+}
+
+/**
+ * @tc.name: IMSA_ShowCurrentInputInner_NoArg_003
+ * @tc.desc: ShowCurrentInputInner() IsBroker is true, skip permission check and reach OnShowCurrentInput
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, IMSA_ShowCurrentInputInner_NoArg_003, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::IMSA_ShowCurrentInputInner_NoArg_003 start.");
+    InputMethodSystemAbility imsa;
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetBroker(true);
+    IdentityCheckerMock::SetPermission(false);
+    imsa.identityChecker_ = std::make_shared<IdentityCheckerMock>();
+
+    auto userId = TddUtil::GetCurrentUserId();
+    auto userSession = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_.clear();
+    UserSessionManager::GetInstance().userSessions_.insert_or_assign(userId, userSession);
+    // broker,permission check skipped, OnShowCurrentInput returns ERROR_CLIENT_NOT_FOUND (no clinet bound)
+    auto ret = imsa.ShowCurrentInputInner();
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOUND);
+
+    UserSessionManager::GetInstance().userSessions_.clear();
+}
+
+/**
+ * @tc.name: IMSA_ShowCurrentInputInner_NoArg_004
+ * @tc.desc: ShowCurrentInputInner() IsBroker is false, HasPermission is true, reach OnShowCurrentInput
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, IMSA_ShowCurrentInputInner_NoArg_004, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::IMSA_ShowCurrentInputInner_NoArg_004 start.");
+    InputMethodSystemAbility imsa;
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetBroker(false);
+    IdentityCheckerMock::SetPermission(true);
+    imsa.identityChecker_ = std::make_shared<IdentityCheckerMock>();
+
+    auto userId = TddUtil::GetCurrentUserId();
+    auto userSession = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_.clear();
+    UserSessionManager::GetInstance().userSessions_.insert_or_assign(userId, userSession);
+    // not broker, permission check passed, OnShowCurrentInput returns ERROR_CLIENT_NOT_FOUND (no clinet bound)
+    auto ret = imsa.ShowCurrentInputInner();
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOUND);
+
+    UserSessionManager::GetInstance().userSessions_.clear();
+}
+
+/**
+ * @tc.name: IMSA_ShowCurrentInputInner_NoArg_005
+ * @tc.desc: ShowCurrentInputInner(true) isStylusActivation=true and clientInfo is nullptr, skip stylus and
+ * reach OnShowCurrentInput
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, IMSA_ShowCurrentInputInner_NoArg_005, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::IMSA_ShowCurrentInputInner_NoArg_005 start.");
+    InputMethodSystemAbility imsa;
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetBroker(true);
+    IdentityCheckerMock::SetPermission(false);
+    imsa.identityChecker_ = std::make_shared<IdentityCheckerMock>();
+
+    auto userId = TddUtil::GetCurrentUserId();
+    auto userSession = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_.clear();
+    UserSessionManager::GetInstance().userSessions_.insert_or_assign(userId, userSession);
+    // isStylusActivation=true, but no client bound to calling pid -> clientInfo is nullptr, skip stylus branch
+    auto ret = imsa.ShowCurrentInputInner(true);
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOUND);
+
+    UserSessionManager::GetInstance().userSessions_.clear();
+}
+
+/**
+ * @tc.name: IMSA_ShowCurrentInputInner_NoArg_006
+ * @tc.desc: ShowCurrentInputInner(true) isStylusActivation=true, clientInfo found but is one-time-code input,
+ * skip stylus
+ * and reach OnShowCurrentInput
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, IMSA_ShowCurrentInputInner_NoArg_006, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::IMSA_ShowCurrentInputInner_NoArg_006 start.");
+    InputMethodSystemAbility imsa;
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetBroker(true);
+    IdentityCheckerMock::SetPermission(false);
+    imsa.identityChecker_ = std::make_shared<IdentityCheckerMock>();
+
+    auto userId = TddUtil::GetCurrentUserId();
+    auto userSession = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_.clear();
+    UserSessionManager::GetInstance().userSessions_.insert_or_assign(userId, userSession);
+    // inject a client info with one-time-code flag so IsoneTimeCodeInput returns true
+    auto pid = IPCSkeleton::GetCallingPid();
+    auto group = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    auto info = std::make_shared<InputClientInfo>();
+    info->pid = pid;
+    info->client = client;
+    info->config.inputAttribute.inputPattern = InputAttribute::PATTERN_ONE_TIME_CODE;
+    group->mapClients_.insert_or_assign(client->AsObject(), info);
+    userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
+    auto ret = imsa.ShowCurrentInputInner(true);
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOUND);
+
+    UserSessionManager::GetInstance().userSessions_.clear();
+}
+
+/**
+ * @tc.name: IMSA_ShowCurrentInputInner_NoArg_007
+ * @tc.desc: ShowCurrentInputInner(true) isStylusActivation=true, clientInfo found and not one-time-code, StartStylusIme
+ * returns NO_ERROR, reach OnShowCurrentInput
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, IMSA_ShowCurrentInputInner_NoArg_007, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::IMSA_ShowCurrentInputInner_NoArg_007 start.");
+    InputMethodSystemAbility imsa;
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetBroker(true);
+    IdentityCheckerMock::SetPermission(false);
+    imsa.identityChecker_ = std::make_shared<IdentityCheckerMock>();
+
+    auto userId = TddUtil::GetCurrentUserId();
+    auto userSession = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_.clear();
+    UserSessionManager::GetInstance().userSessions_.insert_or_assign(userId, userSession);
+    // inject a client info with normal pattern so IsoneTimeCodeInput returns false
+    auto pid = IPCSkeleton::GetCallingPid();
+    auto group = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    auto info = std::make_shared<InputClientInfo>();
+    info->pid = pid;
+    info->client = client;
+    info->isNotifyInputStart = false;
+    group->mapClients_.insert_or_assign(client->AsObject(), info);
+    userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
+    // StartStylusIme returns NO_ERROR when IsStarted=true, isNotifyInputStart=false, currentTypeIme is stylus
+    ImeIdentification stylysIme{ "stylusBundle", "stylusSub" };
+    InputTypeManager::GetInstance().inputTypes_.insert_or_assign(InputType::STYLUS_INPUT, stylysIme);
+    InputTypeManager::GetInstance().Set(true, stylysIme);
+    auto ret = imsa.ShowCurrentInputInner(true);
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOUND);
+
+    UserSessionManager::GetInstance().userSessions_.clear();
+}
+
+/**
+ * @tc.name: IMSA_ShowCurrentInputInner_NoArg_008
+ * @tc.desc: ShowCurrentInputInner(true) isStylusActivation=true, clientInfo found and not one-time-code, StartStylusIme
+ * returns error(not NO_ERROR), reach OnShowCurrentInput
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, IMSA_ShowCurrentInputInner_NoArg_008, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::IMSA_ShowCurrentInputInner_NoArg_008 start.");
+    InputMethodSystemAbility imsa;
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetBroker(true);
+    IdentityCheckerMock::SetPermission(false);
+    imsa.identityChecker_ = std::make_shared<IdentityCheckerMock>();
+
+    auto userId = TddUtil::GetCurrentUserId();
+    auto userSession = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_.clear();
+    UserSessionManager::GetInstance().userSessions_.insert_or_assign(userId, userSession);
+    // inject a client info with normal pattern so IsoneTimeCodeInput returns false
+    auto pid = IPCSkeleton::GetCallingPid();
+    auto group = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    auto info = std::make_shared<InputClientInfo>();
+    info->pid = pid;
+    info->client = client;
+    info->isNotifyInputStart = false;
+    group->mapClients_.insert_or_assign(client->AsObject(), info);
+    userSession->clientGroupMap_.insert_or_assign(DEFAULT_DISPLAY_ID, group);
+    // IsStarted=false -> StartStylusIme->StartInputType->GetImeByInputType fails (no stylus type configured)
+    //-> StartUserSpecifiedIme->StartIme->StartInputService->ConnectExtensionAbility fails in test env
+    InputTypeManager::GetInstance().Set(false);
+    InputTypeManager::GetInstance().inputTypes_.clear();
+    auto ret = imsa.ShowCurrentInputInner(true);
+    // StartStylusIme should return a non-NO_ERROR value in the test environment
+    EXPECT_NE(ret, ErrorCode::NO_ERROR);
+
+    // cleanup
+    InputTypeManager::GetInstance().Set(false);
+    UserSessionManager::GetInstance().userSessions_.clear();
+}
+
+/**
+ * @tc.name: IMSA_ShowCurrentInputInner_NoArg_009
+ * @tc.desc: ShowCurrentInputInner(false) isStylusActivation=false and stylus ime is started, exit stylus ime
+ * and reach OnShowCurrentInput
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, IMSA_ShowCurrentInputInner_NoArg_009, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::IMSA_ShowCurrentInputInner_NoArg_009 start.");
+    InputMethodSystemAbility imsa;
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetBroker(true);
+    IdentityCheckerMock::SetPermission(false);
+    imsa.identityChecker_ = std::make_shared<IdentityCheckerMock>();
+
+    auto userId = TddUtil::GetCurrentUserId();
+    auto userSession = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_.clear();
+    UserSessionManager::GetInstance().userSessions_.insert_or_assign(userId, userSession);
+    // stylus ime is started, isStylusActivation=false-> exit stylus ime branch
+    ImeIdentification stylysIme{ "stylusBundle", "stylusSub" };
+    InputTypeManager::GetInstance().inputTypes_.insert_or_assign(InputType::STYLUS_INPUT, stylysIme);
+    InputTypeManager::GetInstance().Set(true, stylysIme);
+    EXPECT_TRUE(InputTypeManager::GetInstance().IsStylusImeStarted());
+    auto ret = imsa.ShowCurrentInputInner(false);
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_FOUND);
+    // stylus ime should be exited (Set(false) called inside the branch)
+    EXPECT_FALSE(InputTypeManager::GetInstance().IsStylusImeStarted());
+
+    // cleanup
+    InputTypeManager::GetInstance().inputTypes_.erase(InputType::STYLUS_INPUT);
+    InputTypeManager::GetInstance().Set(false);
+    UserSessionManager::GetInstance().userSessions_.clear();
 }
 } // namespace MiscServices
 } // namespace OHOS

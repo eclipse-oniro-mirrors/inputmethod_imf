@@ -102,5 +102,10 @@ int32_t InputMethodAbilityInterface::SelectByRange(int32_t start, int32_t end)
 {
     return InputMethodAbility::GetInstance().SelectByRange(start, end);
 }
+
+int32_t InputMethodAbilityInterface::ExitCurrentInputType()
+{
+    return InputMethodAbility::GetInstance().ExitCurrentInputType();
+}
 } // namespace MiscServices
 } // namespace OHOS

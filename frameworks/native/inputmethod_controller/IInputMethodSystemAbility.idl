@@ -30,10 +30,10 @@ interface OHOS.MiscServices.IInputClient;
 interface OHOS.MiscServices.IInputMethodCore;
 interface OHOS.MiscServices.IInputMethodSystemAbility {
     void StartInput([in] InputClientInfoInner inputClientInfoInner, [out] IRemoteObject[] agents, [out] BindImeInfo[] imeInfos);
-    void ShowCurrentInput([in] unsigned int type);
+    void ShowCurrentInput([in] unsigned int type, [in] boolean isStylusActivation);
     void HideCurrentInput();
     void StopInputSession([in] unsigned int windowId);
-    void ShowInput([in] IInputClient client, [in] unsigned int windowId, [in] unsigned int type, [in] int requestKeyboardReason);
+    void ShowInput([in] IInputClient client, [in] unsigned int windowId, [in] unsigned int type, [in] int requestKeyboardReason, [in] boolean isStylusActivation);
     void HideInput([in] IInputClient client, [in] unsigned int windowId);
     void ReleaseInput([in] IInputClient client, [in] unsigned int sessionId, [in] int clientSessionId);
     void RequestHideInput([in] unsigned int windowId, [in]unsigned long displayId, [in] boolean isFocusTriggered, [in] int userId);
@@ -65,7 +65,7 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void GetInputMethodState([out] int state);
     void IsSystemApp([out] boolean resultValue);
     void HideCurrentInputDeprecated([in] unsigned int windowId);
-    void ShowCurrentInputDeprecated([in] unsigned int windowId);
+    void ShowCurrentInputDeprecated([in] unsigned int windowId, [in] boolean isStylusActivation);
     void SetCallingWindow([in] unsigned int windowId, [in] IInputClient client);
     void GetInputStartInfo([out] InputStartInfo inputStartInfo);
     void GetSoftKeyboardInfo([in] int userId, [out] BoundImeInfo imeInfo);
@@ -80,7 +80,7 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void IsCapacitySupport([in] int capacity, [out] boolean isSupport);
     void BindImeMirror([in] IInputMethodCore core, [in] IRemoteObject agent);
     void UnbindImeMirror();
-    void ShowCurrentInput([in]unsigned long displayId, [in] unsigned int type);
+    void ShowCurrentInput([in]unsigned long displayId, [in] unsigned int type, [in] boolean isStylusActivation);
     void HideCurrentInput([in]unsigned long displayId);
     void IsPanelShown([in]unsigned long displayId, [in] PanelInfo panelInfo, [out] boolean isShown);
     void GetCursorInfo([in] int userId, [out] CursorInfoInner cursorInfo);

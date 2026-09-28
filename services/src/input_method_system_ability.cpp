@@ -866,7 +866,8 @@ int32_t InputMethodSystemAbility::EnsureImeAvailable(int32_t userId, InputClient
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
     }
-    if (!inputClientInfo.isNotifyInputStart && InputTypeManager::GetInstance().IsStarted()) {
+    if (!inputClientInfo.isNotifyInputStart && InputTypeManager::GetInstance().IsStarted() &&
+        InputTypeManager::GetInstance().GetCurrentInputType() != InputType::STYLUS_INPUT) {
         IMSA_HILOGD("NormalFlag, same textField, input type started, not deal.");
         return ErrorCode::NO_ERROR;
     }
@@ -892,6 +893,12 @@ int32_t InputMethodSystemAbility::EnsureImeAvailable(int32_t userId, InputClient
         auto [ret, status] = session->StartPreconfiguredDefaultIme();
         return ret;
     }
+    if (inputClientInfo.isStylusActivation) {
+        return StartStylusIme(userId, inputClientInfo);
+    }
+    if (InputTypeManager::GetInstance().IsStylusImeStarted()) {
+        InputTypeManager::GetInstance().Set(false);
+    }
     return session->StartUserSpecifiedIme();
 }
 
@@ -902,7 +909,7 @@ ErrCode InputMethodSystemAbility::IsRestrictedDefaultImeByDisplay(uint64_t displ
 }
 // LCOV_EXCL_STOP
 int32_t InputMethodSystemAbility::ShowInputInner(
-    sptr<IInputClient> client, uint32_t windowId, int32_t requestKeyboardReason)
+    sptr<IInputClient> client, uint32_t windowId, int32_t requestKeyboardReason, bool isStylusActivation)
 {
     std::shared_ptr<PerUserSession> session = nullptr;
     auto result = PrepareForOperateKeyboard(session, windowId);
@@ -913,6 +920,25 @@ int32_t InputMethodSystemAbility::ShowInputInner(
     if (client == nullptr) {
         IMSA_HILOGE("client is nullptr!");
         return ErrorCode::ERROR_CLIENT_NULL_POINTER;
+    }
+    auto userId = GetCallingUserId();
+    if (isStylusActivation) {
+        auto pid = IPCSkeleton::GetCallingPid();
+        auto [clientGroup, clientInfo] = session->GetClientBySelfPidOrHostPid(pid);
+        IMSA_HILOGD("StylusActivation, ShowInputInner isStylusAction=true, clientInfo:%{public}d.",
+            clientInfo != nullptr);
+        if (clientInfo != nullptr && !IsOneTimeCodeInput(*clientInfo)) {
+            IMSA_HILOGI("StylusActivation, ShowInputInner start stylus ime.");
+            auto ret = StartStylusIme(userId, *clientInfo);
+            if (ret != ErrorCode::NO_ERROR) {
+                IMSA_HILOGE("StylusActivation, ShowInputInner start stylus ime failed.");
+                return ret;
+            }
+        }
+    } else if (InputTypeManager::GetInstance().IsStylusImeStarted()) {
+        IMSA_HILOGI("StylusActivation, current is stylus ime but isStylusActivation = false, exit stylus ime.");
+        InputTypeManager::GetInstance().Set(false);
+        session->StartUserSpecifiedIme();
     }
     return session->OnShowInput(client, requestKeyboardReason);
 }
@@ -1164,7 +1190,7 @@ ErrCode InputMethodSystemAbility::HideCurrentInput(uint64_t displayId)
     return session->OnHideCurrentInputInTargetDisplay(displayId);
 }
 
-ErrCode InputMethodSystemAbility::ShowCurrentInputInner()
+ErrCode InputMethodSystemAbility::ShowCurrentInputInner(bool isStylusActivation)
 {
     AccessTokenID tokenId = IPCSkeleton::GetCallingTokenID();
     auto userId = GetCallingUserId();
@@ -1180,10 +1206,28 @@ ErrCode InputMethodSystemAbility::ShowCurrentInputInner()
             return ErrorCode::ERROR_STATUS_PERMISSION_DENIED;
         }
     }
+    if (isStylusActivation) {
+        auto pid = IPCSkeleton::GetCallingPid();
+        auto [clientGroup, clientInfo] = session->GetClientBySelfPidOrHostPid(pid);
+        IMSA_HILOGD("StylusActivation, ShowCurrentInputInner isStylusAction=true, clientInfo:%{public}d.",
+            clientInfo != nullptr);
+        if (clientInfo != nullptr && !IsOneTimeCodeInput(*clientInfo)) {
+            IMSA_HILOGI("StylusActivation, ShowInputInner start stylus ime.");
+            auto stylusRet = StartStylusIme(userId, *clientInfo);
+            if (stylusRet != ErrorCode::NO_ERROR) {
+                IMSA_HILOGE("StylusActivation, ShowInputInner start stylus ime failed.");
+                return stylusRet;
+            }
+        }
+    } else if (InputTypeManager::GetInstance().IsStylusImeStarted()) {
+        IMSA_HILOGI("StylusActivation, current is stylus ime but isStylusActivation = false, exit stylus ime.");
+        InputTypeManager::GetInstance().Set(false);
+        session->StartUserSpecifiedIme();
+    }
     return session->OnShowCurrentInput(ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID);
 }
 
-int32_t InputMethodSystemAbility::ShowCurrentInputInner(uint64_t displayId)
+int32_t InputMethodSystemAbility::ShowCurrentInputInner(uint64_t displayId, bool isStylusActivation)
 {
     AccessTokenID tokenId = IPCSkeleton::GetCallingTokenID();
     auto userId = GetCallingUserId();
@@ -1199,6 +1243,24 @@ int32_t InputMethodSystemAbility::ShowCurrentInputInner(uint64_t displayId)
     if (identityChecker_ == nullptr) {
         IMSA_HILOGE("identityChecker_ is nullptr!");
         return ErrorCode::ERROR_NULL_POINTER;
+    }
+    if (isStylusActivation) {
+        auto pid = IPCSkeleton::GetCallingPid();
+        auto [clientGroup, clientInfo] = session->GetClientBySelfPidOrHostPid(pid);
+        IMSA_HILOGD("StylusActivation, ShowCurrentInputInner displayId isStylusAction=true, clientInfo:%{public}d.",
+            clientInfo != nullptr);
+        if (clientInfo != nullptr && !IsOneTimeCodeInput(*clientInfo)) {
+            IMSA_HILOGI("StylusActivation, ShowInputInner displayId start stylus ime.");
+            auto stylusRet = StartStylusIme(userId, *clientInfo);
+            if (stylusRet != ErrorCode::NO_ERROR) {
+                IMSA_HILOGE("StylusActivation, ShowInputInner displayId start stylus ime failed.");
+                return stylusRet;
+            }
+        }
+    } else if (InputTypeManager::GetInstance().IsStylusImeStarted()) {
+        IMSA_HILOGI("StylusActivation, current is stylus ime but isStylusActivation = false, exit stylus ime.");
+        InputTypeManager::GetInstance().Set(false);
+        session->StartUserSpecifiedIme();
     }
     if (identityChecker_->IsBroker(tokenId)) {
         return session->OnShowCurrentInputInTargetDisplay(displayId);
@@ -1403,10 +1465,14 @@ ErrCode InputMethodSystemAbility::StartInputTypeAsync(int32_t type, bool isPersi
 ErrCode InputMethodSystemAbility::ExitCurrentInputType()
 {
     auto userId = GetCallingUserId();
-    auto ret = IsDefaultImeFromTokenId(userId, IPCSkeleton::GetCallingTokenID());
+    auto tokenId = IPCSkeleton::GetCallingTokenID();
+    auto ret = IsDefaultImeFromTokenId(userId, tokenId);
     if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("not default ime!");
-        return ErrorCode::ERROR_NOT_DEFAULT_IME;
+        auto bundleName = identityChecker_->GetBundleNameByToken(tokenId);
+        if ((!identityChecker_->IsNativeSa(tokenId)) &&  !IsInputTypeCaller(userId, bundleName)) {
+            IMSA_HILOGE("not default ime, caller is not input type ime or system app/native sa!");
+            return ErrorCode::ERROR_NOT_DEFAULT_IME;
+        }
     }
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
@@ -1415,6 +1481,14 @@ ErrCode InputMethodSystemAbility::ExitCurrentInputType()
     }
     InputTypeManager::GetInstance().Set(false);
     return session->StartCurrentIme();
+}
+
+bool InputMethodSystemAbility::IsInputTypeCaller(int32_t userId, const std::string &bundleName)
+{
+    if (!bundleName.empty()) {
+        return InputTypeManager::GetInstance().IsInputTypeBundle(bundleName);
+    }
+    return false;
 }
 
 ErrCode InputMethodSystemAbility::IsDefaultIme()
@@ -1870,7 +1944,7 @@ int32_t InputMethodSystemAbility::HideCurrentInputDeprecated(uint32_t windowId)
     return session->OnHideCurrentInput(clientInfo->clientGroupId);
 }
 
-int32_t InputMethodSystemAbility::ShowCurrentInputDeprecated(uint32_t windowId)
+int32_t InputMethodSystemAbility::ShowCurrentInputDeprecated(uint32_t windowId, bool isStylusActivation)
 {
     auto pid = IPCSkeleton::GetCallingPid();
     std::shared_ptr<PerUserSession> session = nullptr;
@@ -1882,6 +1956,19 @@ int32_t InputMethodSystemAbility::ShowCurrentInputDeprecated(uint32_t windowId)
     if (clientInfo == nullptr) {
         IMSA_HILOGE("client group not found");
         return ErrorCode::ERROR_CLIENT_NOT_FOUND;
+    }
+    auto userId = GetCallingUserId();
+    if (isStylusActivation && !IsOneTimeCodeInput(*clientInfo)) {
+        IMSA_HILOGI("StylusActivation, ShowCurrentInputDeprecated isStylusAction=true.");
+        auto ret = StartStylusIme(userId, *clientInfo);
+        if (ret != ErrorCode::NO_ERROR) {
+            IMSA_HILOGE("StylusActivation, ShowCurrentInputDeprecated start stylus ime failed.");
+            return ret;
+        }
+    } else if (InputTypeManager::GetInstance().IsStylusImeStarted()) {
+        IMSA_HILOGI("StylusActivation, current is stylus ime but isStylusActivation = false, exit stylus ime.");
+        InputTypeManager::GetInstance().Set(false);
+        session->StartUserSpecifiedIme();
     }
     return session->OnShowCurrentInput(clientInfo->clientGroupId);
 }
@@ -3324,7 +3411,7 @@ int32_t InputMethodSystemAbility::StartInputType(int32_t userId, InputType type,
         }
         IMSA_HILOGW("not find input type: %{public}d.", type);
         // add for not adapter for SECURITY_INPUT
-        if (type == InputType::SECURITY_INPUT) {
+        if (type == InputType::SECURITY_INPUT || type == InputType::STYLUS_INPUT) {
             return session->StartUserSpecifiedIme();
         }
         return ret;
@@ -3341,8 +3428,8 @@ int32_t InputMethodSystemAbility::StartInputType(int32_t userId, InputType type,
             userId, static_cast<int32_t>(type), ret);
         return ret;
     }
-    return (type == InputType::SECURITY_INPUT) ? OnStartInputType(userId, switchInfo, false) :
-        OnStartInputType(userId, switchInfo, true, isPersistence);
+    return (type == InputType::SECURITY_INPUT || type == InputType::STYLUS_INPUT)
+        ? OnStartInputType(userId, switchInfo, false) : OnStartInputType(userId, switchInfo, true, isPersistence);
 }
 
 void InputMethodSystemAbility::NeedHideWhenSwitchInputType(int32_t userId, InputType type, bool &needHide)
@@ -3552,13 +3639,13 @@ int32_t InputMethodSystemAbility::SwitchToEDCBackupInputMethod(int32_t userId, c
 }
 
 // LCOV_EXCL_STOP
-ErrCode InputMethodSystemAbility::ShowCurrentInput(uint64_t displayId, uint32_t type)
+ErrCode InputMethodSystemAbility::ShowCurrentInput(uint64_t displayId, uint32_t type, bool isStylusActivation)
 {
     auto name = ImfHiSysEventUtil::GetAppName(IPCSkeleton::GetCallingTokenID());
     auto pid = IPCSkeleton::GetCallingPid();
     auto userId = GetCallingUserId();
     auto imeInfo = GetCurrentImeInfoForHiSysEvent(userId);
-    auto ret = ShowCurrentInputInner(displayId);
+    auto ret = ShowCurrentInputInner(displayId, isStylusActivation);
     IMSA_HILOGD("HiSysEvent report start!");
     auto evenInfo = HiSysOriginalInfo::Builder()
                         .SetPeerName(name)
@@ -3575,13 +3662,13 @@ ErrCode InputMethodSystemAbility::ShowCurrentInput(uint64_t displayId, uint32_t 
     return ret;
 }
 
-ErrCode InputMethodSystemAbility::ShowCurrentInput(uint32_t type)
+ErrCode InputMethodSystemAbility::ShowCurrentInput(uint32_t type, bool isStylusActivation)
 {
     auto name = ImfHiSysEventUtil::GetAppName(IPCSkeleton::GetCallingTokenID());
     auto pid = IPCSkeleton::GetCallingPid();
     auto userId = GetCallingUserId();
     auto imeInfo = GetCurrentImeInfoForHiSysEvent(userId);
-    auto ret = ShowCurrentInputInner();
+    auto ret = ShowCurrentInputInner(isStylusActivation);
     IMSA_HILOGD("HiSysEvent report start!");
     auto evenInfo =
         HiSysOriginalInfo::Builder()
@@ -3598,14 +3685,14 @@ ErrCode InputMethodSystemAbility::ShowCurrentInput(uint32_t type)
     return ret;
 }
 
-ErrCode InputMethodSystemAbility::ShowInput(
-    const sptr<IInputClient> &client, uint32_t windowId, uint32_t type, int32_t requestKeyboardReason)
+ErrCode InputMethodSystemAbility::ShowInput(const sptr<IInputClient> &client, uint32_t windowId, uint32_t type,
+    int32_t requestKeyboardReason, bool isStylusActivation)
 {
     auto name = ImfHiSysEventUtil::GetAppName(IPCSkeleton::GetCallingTokenID());
     auto pid = IPCSkeleton::GetCallingPid();
     auto userId = GetCallingUserId();
     auto imeInfo = GetCurrentImeInfoForHiSysEvent(userId);
-    auto ret = ShowInputInner(client, windowId, requestKeyboardReason);
+    auto ret = ShowInputInner(client, windowId, requestKeyboardReason, isStylusActivation);
     IMSA_HILOGD("HiSysEvent report start!");
     auto evenInfo = HiSysOriginalInfo::Builder()
                         .SetPeerName(name)
@@ -3863,6 +3950,39 @@ int32_t InputMethodSystemAbility::StartSecurityIme(int32_t &userId, InputClientI
         return StartInputType(userId, type);
     }
     return ErrorCode::NO_ERROR;
+}
+
+int32_t InputMethodSystemAbility::StartStylusIme(int32_t userId, InputClientInfo &inputClientInfo)
+{
+    InputType type = InputType::STYLUS_INPUT;
+    IMSA_HILOGI("StylusActivation, InputType:[%{public}d.", type);
+    if (!InputTypeManager::GetInstance().IsStarted()) {
+        IMSA_HILOGD("StylusActivation, input type is not started, start.");
+        // if need to switch ime, no need to hide panel first.
+        NeedHideWhenSwitchInputType(userId, type, inputClientInfo.needHide);
+        return StartInputType(userId, type);
+    }
+    if (!inputClientInfo.isNotifyInputStart &&
+        InputTypeManager::GetInstance().GetCurrentInputType() == type) {
+        IMSA_HILOGD("StylusActivation, same textField, input type is started, not deal.");
+        return ErrorCode::NO_ERROR;
+    }
+    if (!InputTypeManager::GetInstance().IsInputTypeImeStarted(type)) {
+        IMSA_HILOGD("StylusActivation, diff textField, input type is started, but it is not target, switch.");
+        NeedHideWhenSwitchInputType(userId, type, inputClientInfo.needHide);
+        return StartInputType(userId, type);
+    }
+    return ErrorCode::NO_ERROR;
+}
+
+bool InputMethodSystemAbility::IsOneTimeCodeInput(const InputClientInfo &inputClientInfo)
+{
+    bool isOneTimeCode = inputClientInfo.config.inputAttribute.IsOneTimeCodeFlag() ||
+                        inputClientInfo.config.inputAttribute.IsSecurityImeFlag();
+    if (isOneTimeCode) {
+        IMSA_HILOGI("StylusActivation, is one time code or security input, not start stylus ime.");
+    }
+    return isOneTimeCode;
 }
 
 int32_t InputMethodSystemAbility::OnSysImeImageCreated(const Message *msg)
