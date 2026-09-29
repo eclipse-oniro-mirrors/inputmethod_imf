@@ -29,6 +29,7 @@
 #include "cJSON.h"
 #include "event_runner.h"
 #include "ime_info_inquirer.h"
+#include "input_attribute.h"
 #include "input_death_recipient.h"
 #include "input_type_manager.h"
 #include "ptt_settings_manager.h"
@@ -269,6 +270,8 @@ public:
         EXPECT_EQ(snapshot.clientGroupId, 0);
         EXPECT_EQ(snapshot.editorWindowId, 0);
         EXPECT_EQ(snapshot.editorDisplayId, 0);
+        EXPECT_FALSE(snapshot.isSecurityIme);
+        EXPECT_FALSE(snapshot.isOneTimeCode);
     }
 
     PttTestState &state_ { GetPttTestState() };
@@ -317,6 +320,15 @@ HWTEST_F(PushToTalkManagerUnitTest, GestureEligibility, TestSize.Level0)
 {
     ASSERT_TRUE(PttSettingsManager::IsEnabled(PTT_UNIT_TEST_USER_ID));
     EXPECT_TRUE(manager_->IsGestureAvailable(PTT_UNIT_TEST_USER_ID, channel_->AsObject()));
+    auto info = group_->GetClientInfo(client_->AsObject());
+    ASSERT_NE(info, nullptr);
+    info->config.inputAttribute.inputPattern = InputAttribute::PATTERN_PASSWORD;
+    EXPECT_FALSE(manager_->IsGestureAvailable(PTT_UNIT_TEST_USER_ID, channel_->AsObject()));
+    info->config.inputAttribute.inputPattern = InputAttribute::PATTERN_ONE_TIME_CODE;
+    EXPECT_FALSE(manager_->IsGestureAvailable(PTT_UNIT_TEST_USER_ID, channel_->AsObject()));
+    info->config.inputAttribute.inputPattern = InputAttribute::PATTERN_ONE_TIME_CODE_NUMBER;
+    EXPECT_FALSE(manager_->IsGestureAvailable(PTT_UNIT_TEST_USER_ID, channel_->AsObject()));
+    info->config.inputAttribute.inputPattern = InputAttribute::PATTERN_TEXT;
     EXPECT_FALSE(manager_->IsGestureAvailable(PTT_UNIT_TEST_USER_ID, client_->AsObject()));
     EXPECT_FALSE(manager_->IsGestureAvailable(PTT_UNIT_TEST_USER_ID, nullptr));
     EXPECT_FALSE(manager_->IsGestureAvailable(PTT_UNIT_MISSING_USER_ID, channel_->AsObject()));
@@ -623,6 +635,42 @@ HWTEST_F(PushToTalkManagerUnitTest, SettingDisabledDuringGestureCancelsVoice, Te
 }
 
 /**
+ * @tc.name: SecurityInputDuringGestureCancelsVoice
+ * @tc.desc: Recheck the security-input flag at timeout before starting voice.
+ * @tc.type: FUNC
+ */
+HWTEST_F(PushToTalkManagerUnitTest, SecurityInputDuringGestureCancelsVoice, TestSize.Level0)
+{
+    ASSERT_TRUE(PrepareVoice());
+    auto info = group_->GetClientInfo(client_->AsObject());
+    ASSERT_NE(info, nullptr);
+    info->config.inputAttribute.inputPattern = InputAttribute::PATTERN_PASSWORD;
+    EXPECT_FALSE(manager_->IsGestureContextValid(PTT_UNIT_TEST_USER_ID));
+    manager_->HandleStartVoice();
+    EXPECT_EQ(state_.calls, (std::vector<std::string> { "cancel" }));
+    EXPECT_EQ(manager_->controller_.GetState(), PttState::SUPPRESSED);
+    ExpectContextCleared();
+}
+
+/**
+ * @tc.name: OneTimeCodeInputDuringGestureCancelsVoice
+ * @tc.desc: Recheck the OTP input flag at timeout before starting voice.
+ * @tc.type: FUNC
+ */
+HWTEST_F(PushToTalkManagerUnitTest, OneTimeCodeInputDuringGestureCancelsVoice, TestSize.Level0)
+{
+    ASSERT_TRUE(PrepareVoice());
+    auto info = group_->GetClientInfo(client_->AsObject());
+    ASSERT_NE(info, nullptr);
+    info->config.inputAttribute.inputPattern = InputAttribute::PATTERN_ONE_TIME_CODE;
+    EXPECT_FALSE(manager_->IsGestureContextValid(PTT_UNIT_TEST_USER_ID));
+    manager_->HandleStartVoice();
+    EXPECT_EQ(state_.calls, (std::vector<std::string> { "cancel" }));
+    EXPECT_EQ(manager_->controller_.GetState(), PttState::SUPPRESSED);
+    ExpectContextCleared();
+}
+
+/**
  * @tc.name: SpaceBlockFailurePreventsRollbackAndStart
  * @tc.desc: A client-side blocking error must cancel before rollback or voice startup.
  * @tc.type: FUNC
@@ -803,7 +851,6 @@ HWTEST_F(PushToTalkManagerUnitTest, NoActionPreservesLiveGesture, TestSize.Level
 HWTEST_F(PushToTalkManagerUnitTest, DialogPrerequisites, TestSize.Level0)
 {
     auto &dialog = GetPttDialogTestState();
-    const auto reads = dialog.reads;
     const auto writes = dialog.writes;
     const auto connections = dialog.connections;
     auto &config = ImeInfoInquirer::GetInstance().systemConfig_;
@@ -824,9 +871,10 @@ HWTEST_F(PushToTalkManagerUnitTest, DialogPrerequisites, TestSize.Level0)
     config.pushToTalkDialogAbilityName.clear();
     manager_->StartDialogAbility(PTT_UNIT_TEST_USER_ID);
     EXPECT_EQ(state_.currentImeQueries, 4);
-    const bool hasDialogSideEffect =
-        dialog.reads != reads || dialog.writes != writes || dialog.connections != connections;
-    EXPECT_FALSE(hasDialogSideEffect);
+    // Reading the persisted one-time dialog state is expected before checking the IME prerequisites.
+    // Only writing that state or connecting the dialog ability means a dialog was actually launched.
+    const bool hasDialogLaunchSideEffect = dialog.writes != writes || dialog.connections != connections;
+    EXPECT_FALSE(hasDialogLaunchSideEffect);
 }
 
 /**
@@ -851,7 +899,9 @@ HWTEST_F(PushToTalkManagerUnitTest, DialogFailuresRetryAndConnectOnce, TestSize.
     EXPECT_EQ(dialog.writes, 0);
     EXPECT_EQ(dialog.connections, 0);
     manager_->StartDialogAbility(PTT_UNIT_TEST_USER_ID);
+    const auto currentImeQueriesAfterDialog = state_.currentImeQueries;
     manager_->StartDialogAbility(PTT_UNIT_TEST_USER_ID);
+    EXPECT_EQ(state_.currentImeQueries, currentImeQueriesAfterDialog);
     EXPECT_EQ(state_.dialogUserId, PTT_UNIT_TEST_USER_ID);
     EXPECT_EQ(dialog.reads, PTT_SINGLE_DIALOG_ACTION_COUNT);
     EXPECT_EQ(dialog.writes, PTT_SINGLE_DIALOG_ACTION_COUNT);

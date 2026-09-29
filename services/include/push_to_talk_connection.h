@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 
-#ifndef INPUTMETHOD_IMF_PUSHTOTALKCONNECTION_H
-#define INPUTMETHOD_IMF_PUSHTOTALKCONNECTION_H
+#ifndef INPUTMETHOD_IMF_PUSH_TO_TALK_CONNECTION_H
+#define INPUTMETHOD_IMF_PUSH_TO_TALK_CONNECTION_H
 
+#include <mutex>
 #include <string>
 
 #include "ability_connect_callback_stub.h"
@@ -24,14 +25,15 @@ namespace OHOS {
 namespace MiscServices {
 class PushToTalkConnection : public AAFwk::AbilityConnectionStub {
 public:
-    PushToTalkConnection(void);
+    PushToTalkConnection();
     PushToTalkConnection(const std::string &bundleName, const std::string &abilityName, const std::string &paramStr);
-    virtual ~PushToTalkConnection() override = default;
+    ~PushToTalkConnection() override = default;
     void OnAbilityConnectDone(
         const AppExecFwk::ElementName &element, const sptr<IRemoteObject> &remoteObject, int32_t resultCode) override;
     void OnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int32_t resultCode) override;
 
 private:
+    std::mutex remoteObjMutex_;
     sptr<IRemoteObject> remoteObj_ = nullptr;
     std::string bundleName_;
     std::string abilityName_;

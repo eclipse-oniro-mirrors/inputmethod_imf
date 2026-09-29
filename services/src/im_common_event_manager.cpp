@@ -26,7 +26,6 @@
 #include "settings_data_utils.h"
 #include "system_ability_definition.h"
 #include "user_session_manager.h"
-#include "settings_data_utils.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -520,7 +519,7 @@ void ImCommonEventManager::EventSubscriber::OnScreenLock(const EventFwk::CommonE
 
 void ImCommonEventManager::EventSubscriber::OnPushToTalk(const EventFwk::CommonEventData &data)
 {
-    int32_t ret = SettingsDataUtils::GetInstance().SetStringValue(
+    bool ret = SettingsDataUtils::GetInstance().SetStringValue(
         SETTING_URI_PROXY, SettingsDataUtils::KBD_PUSH_TO_TALK_SWITCH, "true");
     if (!ret) {
         IMSA_HILOGW("set pushToTalk setting failed");

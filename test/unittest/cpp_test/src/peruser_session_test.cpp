@@ -26,6 +26,7 @@
 #include "global.h"
 #include "iinput_method_agent.h"
 #include "iinput_method_core.h"
+#include "input_attribute.h"
 #include "input_client_info.h"
 #include "input_client_proxy.h"
 #include "input_client_service_impl.h"
@@ -2339,9 +2340,22 @@ HWTEST_F(PerUserSessionTest, TestGetFocusedRealImeClient_001, TestSize.Level0)
     EXPECT_EQ(snapshot.clientGroupId, TEST_DISPLAY_GROUP_ID);
     EXPECT_EQ(snapshot.editorWindowId, 123U);
     EXPECT_EQ(snapshot.editorDisplayId, 456U);
+    EXPECT_FALSE(snapshot.isSecurityIme);
+    EXPECT_FALSE(snapshot.isOneTimeCode);
 
     auto storedInfo = group->GetClientInfo(info.client->AsObject());
     ASSERT_NE(storedInfo, nullptr);
+    storedInfo->config.inputAttribute.inputPattern = InputAttribute::PATTERN_PASSWORD;
+    EXPECT_TRUE(session_->GetFocusedRealImeClient(snapshot));
+    EXPECT_TRUE(snapshot.isSecurityIme);
+    EXPECT_FALSE(snapshot.isOneTimeCode);
+
+    storedInfo->config.inputAttribute.inputPattern = InputAttribute::PATTERN_ONE_TIME_CODE;
+    EXPECT_TRUE(session_->GetFocusedRealImeClient(snapshot));
+    EXPECT_FALSE(snapshot.isSecurityIme);
+    EXPECT_TRUE(snapshot.isOneTimeCode);
+
+    storedInfo->config.inputAttribute.inputPattern = InputAttribute::PATTERN_TEXT;
     storedInfo->state = ClientState::INACTIVE;
     EXPECT_FALSE(session_->GetFocusedRealImeClient(snapshot));
     storedInfo->state = ClientState::ACTIVE;

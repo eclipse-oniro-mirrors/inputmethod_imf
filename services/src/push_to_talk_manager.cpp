@@ -404,6 +404,10 @@ bool PushToTalkManager::GetEligibleClient(int32_t userId, FocusedRealImeClientSn
         IMSA_HILOGI("PTT: no input client is focused, userId=%{public}d.", userId);
         return false;
     }
+    if (snapshot.isSecurityIme || snapshot.isOneTimeCode) {
+        IMSA_HILOGI("PTT: restricted input is focused, skip gesture, userId=%{public}d.", userId);
+        return false;
+    }
     if (!PttSettingsManager::IsEnabled(userId)) {
         IMSA_HILOGI("PTT: setting is disabled, userId=%{public}d.", userId);
         return false;
@@ -493,7 +497,12 @@ void PushToTalkManager::StartDialogAbility(int32_t userId)
     auto &inquirer = ImeInfoInquirer::GetInstance();
     auto flag = inquirer.IsEnablePushToTalkDialog();
     if (!flag) {
-        IMSA_HILOGI("push-to-talk dialog is disabled by config, skip");
+        return;
+    }
+
+    static std::atomic_bool isDialogPopped { SettingsDataUtils::GetInstance().GetPushToTalkDialogPopped() };
+    // Avoid querying the current IME again after the one-time dialog has already been shown.
+    if (isDialogPopped.load()) {
         return;
     }
 
@@ -515,10 +524,8 @@ void PushToTalkManager::StartDialogAbility(int32_t userId)
     }
 
     // Atomically reserve the one-time dialog pop before connecting so concurrent callers cannot duplicate it.
-    static std::atomic_bool isDialogPopped { SettingsDataUtils::GetInstance().GetPushToTalkDialogPopped() };
     bool expected = false;
     if (!isDialogPopped.compare_exchange_strong(expected, true)) {
-        IMSA_HILOGI("Dialog popped already, not pop again");
         return;
     }
     if (!ConnectPushToTalkDialog(dialogBundleName, dialogAbilityName)) {

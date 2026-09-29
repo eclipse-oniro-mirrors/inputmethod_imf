@@ -19,6 +19,10 @@
 
 namespace OHOS {
 namespace MiscServices {
+namespace {
+constexpr int32_t PTT_SPACE_ROLLBACK_LENGTH = 1;
+}
+
 bool InputMethodAbility::IsOnlySpacePressed(const std::shared_ptr<MMI::KeyEvent> &keyEvent)
 {
     if (keyEvent == nullptr) {
@@ -126,7 +130,7 @@ int32_t InputMethodAbility::OnPttLongPress()
 {
     IMSA_HILOGI("PTT: begin rolling back the space before the cursor.");
     std::u16string text;
-    int32_t ret = GetTextBeforeCursor(1, text);
+    int32_t ret = GetTextBeforeCursor(PTT_SPACE_ROLLBACK_LENGTH, text);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("PTT: get text before cursor failed, ret=%{public}d.", ret);
         return ret;
@@ -141,7 +145,7 @@ int32_t InputMethodAbility::OnPttLongPress()
         return ErrorCode::NO_ERROR;
     }
     // By IMF API definition, DeleteForward removes text on the left of the cursor.
-    ret = DeleteForward(1);
+    ret = DeleteForward(PTT_SPACE_ROLLBACK_LENGTH);
     IMSA_HILOGI("PTT: roll back space finished, ret=%{public}d.", ret);
     return ret;
 }

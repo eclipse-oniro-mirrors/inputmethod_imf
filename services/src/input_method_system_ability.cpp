@@ -105,6 +105,7 @@ constexpr int32_t REFUSE_UNLOAD_DELAY_TIME = 1000; // 1s
 #endif
 const constexpr char *IMMERSIVE_EFFECT_CAP_NAME = "immersive_effect";
 const constexpr char *SYSTEM_PANEL_CAP_NAME = "system_panel";
+constexpr const char *PTT_DIALOG_TASK = "PushToTalkDialogTask";
 #ifdef IMF_RESTORE_IN_HIGH_CPU_USAGE
 const constexpr double PERCENTAGE_MULTIPLIER = 100.0;
 const constexpr int32_t CPU_USAGE_HIGH_PERCENT = 70;
@@ -838,8 +839,33 @@ int32_t InputMethodSystemAbility::StartInputInner(InputClientInfo &inputClientIn
             return ret;
         }
     }
-    pushToTalkManager_->StartDialogAbility(userId);
-    return session->OnStartInput(inputClientInfo, agents, imeInfos);
+    ret = session->OnStartInput(inputClientInfo, agents, imeInfos);
+    if (ret == ErrorCode::NO_ERROR) {
+        PostPttDialogTask(userId);
+    }
+    return ret;
+}
+
+void InputMethodSystemAbility::PostPttDialogTask(int32_t userId)
+{
+    if (!ImeInfoInquirer::GetInstance().IsEnablePushToTalkDialog() || serviceHandler_ == nullptr ||
+        pushToTalkManager_ == nullptr) {
+        return;
+    }
+    // Dialog preparation can query IME information and connect an ability, so keep it off the binding path.
+    std::weak_ptr<PushToTalkManager> weakManager = pushToTalkManager_;
+    auto task = [weakManager, userId]() {
+        auto manager = weakManager.lock();
+        if (manager != nullptr) {
+            manager->StartDialogAbility(userId);
+        }
+    };
+    serviceHandler_->RemoveTask(std::string(PTT_DIALOG_TASK));
+    auto isPosted = serviceHandler_->PostTask(
+        task, std::string(PTT_DIALOG_TASK), 0, AppExecFwk::EventQueue::Priority::IMMEDIATE);
+    if (!isPosted) {
+        IMSA_HILOGE("post push-to-talk dialog task failed.");
+    }
 }
 
 std::pair<bool, FocusedInfo> InputMethodSystemAbility::IsFocusedOrBroker(int64_t callingPid, uint32_t callingTokenId,
@@ -1435,6 +1461,10 @@ ErrCode InputMethodSystemAbility::IsPttGestureAvailable(
     if (!pushToTalkManager_->IsReady()) {
         IMSA_HILOGW("PTT: gesture availability query rejected because PTT event handling is not ready.");
         return ERR_OK;
+    }
+    if (identityChecker_ == nullptr) {
+        IMSA_HILOGE("PTT:identityChecker_ is nullptr!");
+        return ErrorCode::ERROR_NULL_POINTER;
     }
     int32_t userId = GetCallingUserId();
     if (!IsCurrentIme(userId, GetCallingTokenID())) {
@@ -3389,10 +3419,6 @@ bool InputMethodSystemAbility::IsCurrentIme(int32_t userId, uint32_t tokenId)
 int32_t InputMethodSystemAbility::StartInputType(int32_t userId, InputType type, bool isPersistence)
 {
     bool isPttType = type == InputType::PUSH_TO_TALK_INPUT;
-    if (isPttType) {
-        IMSA_HILOGI("PTT: start input type request, userId=%{public}d, type=%{public}d, "
-            "isPersistence=%{public}d.", userId, static_cast<int32_t>(type), isPersistence);
-    }
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
     if (session == nullptr) {
         if (isPttType) {

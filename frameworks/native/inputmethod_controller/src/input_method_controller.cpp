@@ -1252,6 +1252,9 @@ int32_t InputMethodController::DispatchKeyEvent(std::shared_ptr<MMI::KeyEvent> k
     InputMethodSyncTrace tracer("DispatchKeyEvent trace");
     keyEventQueue_.Wait(keyEventInfo);
     if (HandlePttSpaceKeyEventBlock(keyEvent, callback)) {
+        // Report the immediate consumed result synchronously, but release the queue first so callback re-entry is safe.
+        keyEventQueue_.Pop();
+        callback(keyEvent, true);
         return ErrorCode::NO_ERROR;
     }
     int32_t ret = DispatchKeyEventInner(keyEvent, callback);
@@ -1339,9 +1342,6 @@ bool InputMethodController::HandlePttSpaceKeyEventBlock(
         IMSA_HILOGW("PTT: cannot block repeated space down because callback is nullptr.");
         return false;
     }
-    // Report the immediate consumed result synchronously, but release the queue first so callback re-entry is safe.
-    keyEventQueue_.Pop();
-    callback(keyEvent, true);
     return true;
 }
 
