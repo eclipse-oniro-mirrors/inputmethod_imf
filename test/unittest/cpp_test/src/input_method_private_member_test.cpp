@@ -34,6 +34,7 @@
 #include "identity_checker_mock.h"
 #include "client_group.h"
 #include "window_adapter.h"
+#include "parameters.h"
 #include <gtest/gtest.h>
 #include <gtest/hwext/gtest-multithread.h>
 #include <sys/time.h>
@@ -7328,12 +7329,16 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_HandleDataShareReady_RestoresExamMode,
     // Persist a known state, then reload it via InitFromPersistedData
     ExamModeManager::GetInstance().SetExamMode(true);
     ExamModeManager::GetInstance().SavePreviousIme("com.thirdparty", "sub1");
+    // Enable assessment mode so LoadFromPersistedData reads the persisted state
+    std::string origAssessment = system::GetParameter("persist.assessment.is_active", "");
+    system::SetParameter("persist.assessment.is_active", "true");
     ExamModeManager::GetInstance().InitFromPersistedData();
     // InitFromPersistedData should reload the persisted state
     EXPECT_TRUE(ExamModeManager::GetInstance().IsExamMode());
     EXPECT_EQ(ExamModeManager::GetInstance().GetPreviousImeBundleName(), "com.thirdparty");
     EXPECT_EQ(ExamModeManager::GetInstance().GetPreviousImeSubName(), "sub1");
     // Restore original state
+    system::SetParameter("persist.assessment.is_active", origAssessment);
     ExamModeManager::GetInstance().SetExamMode(origExamMode);
     ExamModeManager::GetInstance().SavePreviousIme(origPreviousBundleName, origPreviousSubName);
 }

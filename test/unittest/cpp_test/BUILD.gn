@@ -3237,6 +3237,7 @@ ohos_unittest("ImeUsageReporterTest") {
     "c_utils:utils",
     "data_share:datashare_common",
     "data_share:datashare_consumer",
+    "eventhandler:libeventhandler",
     "googletest:gtest_main",
     "hilog:libhilog",
     "init:libbegetutil",
