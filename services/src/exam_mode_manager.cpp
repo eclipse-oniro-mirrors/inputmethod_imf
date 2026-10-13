@@ -17,6 +17,7 @@
 
 #include "cJSON.h"
 #include "settings_data_utils.h"
+#include "system_param_adapter.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -24,6 +25,7 @@ namespace {
 constexpr const char *FIELD_IS_EXAM_MODE = "isExamMode";
 constexpr const char *FIELD_PREVIOUS_BUNDLE_NAME = "previousBundleName";
 constexpr const char *FIELD_PREVIOUS_SUB_NAME = "previousSubName";
+constexpr const char *ASSESSMENT_IS_ACTIVE_KEY = "persist.assessment.is_active";
 }
 
 ExamModeManager &ExamModeManager::GetInstance()
@@ -47,6 +49,12 @@ void ExamModeManager::InitFromPersistedData()
 
 bool ExamModeManager::LoadFromPersistedData()
 {
+    bool isAssessmentActive = SystemParamAdapter::GetInstance().GetBoolParam(ASSESSMENT_IS_ACTIVE_KEY);
+    if (!isAssessmentActive) {
+        IMSA_HILOGI("assessment is not active, clearing persisted exam mode data");
+        SettingsDataUtils::GetInstance().SetStringValue(SETTING_URI_PROXY, EXAM_MODE_KEY, "");
+        return false;
+    }
     std::string value;
     auto ret = SettingsDataUtils::GetInstance().GetStringValue(SETTING_URI_PROXY, EXAM_MODE_KEY, value);
     if (ret != ErrorCode::NO_ERROR || value.empty()) {
