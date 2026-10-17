@@ -105,6 +105,8 @@ ohos_shared_library("cj_inputmethod_extension_ffi") {
     "icu:shared_icuuc",
   ]
 
+  version_script = "libcj_inputmethod_extension_ffi.map"
+
   innerapi_tags = [ "platformsdk" ]
   subsystem_name = "inputmethod"
   part_name = "imf"
