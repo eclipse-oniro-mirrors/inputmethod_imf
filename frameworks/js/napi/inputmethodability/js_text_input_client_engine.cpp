@@ -70,6 +70,10 @@ napi_value JsTextInputClientEngine::Init(napi_env env, napi_value info)
         DECLARE_NAPI_FUNCTION("deleteBackwardSync", DeleteBackwardSync),
         DECLARE_NAPI_FUNCTION("getForwardSync", GetForwardSync),
         DECLARE_NAPI_FUNCTION("getBackwardSync", GetBackwardSync),
+        DECLARE_NAPI_FUNCTION("getLeftRichText", GetLeftRichText),
+        DECLARE_NAPI_FUNCTION("getRightRichText", GetRightRichText),
+        DECLARE_NAPI_FUNCTION("getLeftRichTextSync", GetLeftRichTextSync),
+        DECLARE_NAPI_FUNCTION("getRightRichTextSync", GetRightRichTextSync),
         DECLARE_NAPI_FUNCTION("sendPrivateCommand", SendPrivateCommand),
         DECLARE_NAPI_FUNCTION("getCallingWindowInfo", GetCallingWindowInfo),
         DECLARE_NAPI_FUNCTION("setPreviewText", SetPreviewText),
@@ -662,6 +666,298 @@ napi_value JsTextInputClientEngine::GetBackward(napi_env env, napi_callback_info
     };
     ctxt->SetAction(std::move(input), std::move(output));
     // 2 means JsAPI:getBackward has 2 params at most.
+    EditAsyncCall asyncCall(env, info, ctxt, 2);
+    return asyncCall.Call(env, exec, __FUNCTION__);
+}
+
+napi_value JsTextInputClientEngine::CreateSpanType(napi_env env)
+{
+    napi_value spanTypeObj = nullptr;
+    IMF_CALL(napi_create_object(env, &spanTypeObj));
+    napi_value textVal = nullptr;
+    IMF_CALL(napi_create_uint32(env, static_cast<uint32_t>(SpanType::TEXT), &textVal));
+    IMF_CALL(napi_set_named_property(env, spanTypeObj, "TEXT", textVal));
+    napi_value imageVal = nullptr;
+    IMF_CALL(napi_create_uint32(env, static_cast<uint32_t>(SpanType::IMAGE), &imageVal));
+    IMF_CALL(napi_set_named_property(env, spanTypeObj, "IMAGE", imageVal));
+    napi_value symbolVal = nullptr;
+    IMF_CALL(napi_create_uint32(env, static_cast<uint32_t>(SpanType::SYMBOL), &symbolVal));
+    IMF_CALL(napi_set_named_property(env, spanTypeObj, "SYMBOL", symbolVal));
+    napi_value customVal = nullptr;
+    IMF_CALL(napi_create_uint32(env, static_cast<uint32_t>(SpanType::CUSTOM), &customVal));
+    IMF_CALL(napi_set_named_property(env, spanTypeObj, "CUSTOM", customVal));
+    return spanTypeObj;
+}
+
+napi_value JsTextInputClientEngine::CreateRichTextSpan(napi_env env, const RichTextSpan &span)
+{
+    napi_value spanObj = nullptr;
+    IMF_CALL(napi_create_object(env, &spanObj));
+    // getType(): returns SpanType number
+    napi_value typeVal = nullptr;
+    IMF_CALL(napi_create_uint32(env, static_cast<uint32_t>(span.type), &typeVal));
+    IMF_CALL(napi_set_named_property(env, spanObj, "_type", typeVal));
+    auto getTypeCb = [](napi_env env, napi_callback_info info) -> napi_value {
+        napi_value thisVar = nullptr;
+        IMF_CALL(napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr));
+        napi_value val = nullptr;
+        IMF_CALL(napi_get_named_property(env, thisVar, "_type", &val));
+        return val;
+    };
+    napi_value getTypeFn = nullptr;
+    IMF_CALL(napi_create_function(env, "getType", NAPI_AUTO_LENGTH, getTypeCb, nullptr, &getTypeFn));
+    IMF_CALL(napi_set_named_property(env, spanObj, "getType", getTypeFn));
+    // getContent(): returns string
+    napi_value contentVal = nullptr;
+    IMF_CALL(napi_create_string_utf8(env, span.content.c_str(), span.content.size(), &contentVal));
+    IMF_CALL(napi_set_named_property(env, spanObj, "_content", contentVal));
+    auto getContentCb = [](napi_env env, napi_callback_info info) -> napi_value {
+        napi_value thisVar = nullptr;
+        IMF_CALL(napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr));
+        napi_value val = nullptr;
+        IMF_CALL(napi_get_named_property(env, thisVar, "_content", &val));
+        return val;
+    };
+    napi_value getContentFn = nullptr;
+    IMF_CALL(napi_create_function(env, "getContent", NAPI_AUTO_LENGTH, getContentCb, nullptr, &getContentFn));
+    IMF_CALL(napi_set_named_property(env, spanObj, "getContent", getContentFn));
+    // getRange(): returns { start: number, end: number }
+    napi_value rangeObj = nullptr;
+    IMF_CALL(napi_create_object(env, &rangeObj));
+    napi_value startVal = nullptr;
+    IMF_CALL(napi_create_int32(env, span.range.start, &startVal));
+    IMF_CALL(napi_set_named_property(env, rangeObj, "start", startVal));
+    napi_value endVal = nullptr;
+    IMF_CALL(napi_create_int32(env, span.range.end, &endVal));
+    IMF_CALL(napi_set_named_property(env, rangeObj, "end", endVal));
+    IMF_CALL(napi_set_named_property(env, spanObj, "_range", rangeObj));
+    auto getRangeCb = [](napi_env env, napi_callback_info info) -> napi_value {
+        napi_value thisVar = nullptr;
+        IMF_CALL(napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr));
+        napi_value val = nullptr;
+        IMF_CALL(napi_get_named_property(env, thisVar, "_range", &val));
+        return val;
+    };
+    napi_value getRangeFn = nullptr;
+    IMF_CALL(napi_create_function(env, "getRange", NAPI_AUTO_LENGTH, getRangeCb, nullptr, &getRangeFn));
+    IMF_CALL(napi_set_named_property(env, spanObj, "getRange", getRangeFn));
+    return spanObj;
+}
+
+napi_value JsTextInputClientEngine::CreateRichTextResult(napi_env env, const RichTextData &richText)
+{
+    napi_value richTextObj = nullptr;
+    IMF_CALL(napi_create_object(env, &richTextObj));
+    // getSpans(): returns Array<RichTextSpan>
+    napi_value spansArray = nullptr;
+    IMF_CALL(napi_create_array(env, &spansArray));
+    std::string plainText;
+    for (size_t i = 0; i < richText.spans.size(); i++) {
+        const auto &span = richText.spans[i];
+        napi_value spanObj = CreateRichTextSpan(env, span);
+        IMF_CALL(napi_set_element(env, spansArray, static_cast<uint32_t>(i), spanObj));
+        if (span.type == SpanType::TEXT) {
+            plainText += span.content;
+        } else {
+            plainText += " ";
+        }
+    }
+    IMF_CALL(napi_set_named_property(env, richTextObj, "_spans", spansArray));
+    auto getSpansCb = [](napi_env env, napi_callback_info info) -> napi_value {
+        napi_value thisVar = nullptr;
+        IMF_CALL(napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr));
+        napi_value val = nullptr;
+        IMF_CALL(napi_get_named_property(env, thisVar, "_spans", &val));
+        return val;
+    };
+    napi_value getSpansFn = nullptr;
+    IMF_CALL(napi_create_function(env, "getSpans", NAPI_AUTO_LENGTH, getSpansCb, nullptr, &getSpansFn));
+    IMF_CALL(napi_set_named_property(env, richTextObj, "getSpans", getSpansFn));
+    // getString(): returns plain text (concatenation of TEXT span contents)
+    napi_value stringVal = nullptr;
+    IMF_CALL(napi_create_string_utf8(env, plainText.c_str(), plainText.size(), &stringVal));
+    IMF_CALL(napi_set_named_property(env, richTextObj, "_string", stringVal));
+    auto getStringCb = [](napi_env env, napi_callback_info info) -> napi_value {
+        napi_value thisVar = nullptr;
+        IMF_CALL(napi_get_cb_info(env, info, nullptr, nullptr, &thisVar, nullptr));
+        napi_value val = nullptr;
+        IMF_CALL(napi_get_named_property(env, thisVar, "_string", &val));
+        return val;
+    };
+    napi_value getStringFn = nullptr;
+    IMF_CALL(napi_create_function(env, "getString", NAPI_AUTO_LENGTH, getStringCb, nullptr, &getStringFn));
+    IMF_CALL(napi_set_named_property(env, richTextObj, "getString", getStringFn));
+    return richTextObj;
+}
+
+napi_value JsTextInputClientEngine::GetLeftRichTextSync(napi_env env, napi_callback_info info)
+{
+    InputMethodSyncTrace tracer("JS_GetLeftRichTextSync", GenerateTraceId());
+    size_t argc = 1;
+    napi_value argv[1] = { nullptr };
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    int32_t length = 0;
+    // 1 means least param num.
+    PARAM_CHECK_RETURN(env, argc >= 1, "at least one parameter is required!", TYPE_NONE, HandleParamCheckFailure(env));
+    PARAM_CHECK_RETURN(env, JsUtil::GetType(env, argv[0]) == napi_number, "length must be number!", TYPE_NUMBER,
+        HandleParamCheckFailure(env));
+    PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, argv[0], length), "length covert failed!", TYPE_NONE,
+        HandleParamCheckFailure(env));
+    PARAM_CHECK_RETURN(env, length >= 0, "length should not less than 0!", TYPE_NONE, HandleParamCheckFailure(env));
+    PARAM_CHECK_RETURN(env, length <= MAX_RICH_TEXT_LENGTH, "length should not greater than 4096!", TYPE_NONE,
+        HandleParamCheckFailure(env));
+    RichTextData richText;
+    int32_t ret = InputMethodAbility::GetInstance().GetRichBeforeCursor(length, richText);
+    if (ret != ErrorCode::NO_ERROR) {
+        JsUtils::ThrowException(env, JsUtils::Convert(ret), "failed to get left rich text!", TYPE_NONE);
+        return JsUtil::Const::Null(env);
+    }
+    return CreateRichTextResult(env, richText);
+}
+
+napi_value JsTextInputClientEngine::GetRightRichTextSync(napi_env env, napi_callback_info info)
+{
+    InputMethodSyncTrace tracer("JS_GetRightRichTextSync", GenerateTraceId());
+    size_t argc = 1;
+    napi_value argv[1] = { nullptr };
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    int32_t length = 0;
+    // 1 means least param num.
+    PARAM_CHECK_RETURN(env, argc >= 1, "at least one parameter is required!", TYPE_NONE, HandleParamCheckFailure(env));
+    PARAM_CHECK_RETURN(env, JsUtil::GetType(env, argv[0]) == napi_number, "length must be number!", TYPE_NUMBER,
+        HandleParamCheckFailure(env));
+    PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, argv[0], length), "length covert failed!", TYPE_NONE,
+        HandleParamCheckFailure(env));
+    PARAM_CHECK_RETURN(env, length >= 0, "length should not less than 0!", TYPE_NONE, HandleParamCheckFailure(env));
+    PARAM_CHECK_RETURN(env, length <= MAX_RICH_TEXT_LENGTH, "length should not greater than 4096!", TYPE_NONE,
+        HandleParamCheckFailure(env));
+    RichTextData richText;
+    int32_t ret = InputMethodAbility::GetInstance().GetRichAfterCursor(length, richText);
+    if (ret != ErrorCode::NO_ERROR) {
+        JsUtils::ThrowException(env, JsUtils::Convert(ret), "failed to get right rich text!", TYPE_NONE);
+        return JsUtil::Const::Null(env);
+    }
+    return CreateRichTextResult(env, richText);
+}
+
+namespace {
+bool CheckRichTextParam(napi_env env, size_t argc, napi_value *argv, GetRichTextContext &ctxt)
+{
+    if (argc == 0) {
+        ctxt.paramError = true;
+        ctxt.SetErrorCode(ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+        ctxt.SetErrorMessage("at least one parameter is required!");
+        return false;
+    }
+    if (JsUtil::GetType(env, argv[0]) != napi_number) {
+        ctxt.paramError = true;
+        ctxt.SetErrorCode(ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+        ctxt.SetErrorMessage("length type must be number!");
+        return false;
+    }
+    auto status = JsUtils::GetValue(env, argv[0], ctxt.length);
+    if (status != napi_ok) {
+        ctxt.paramError = true;
+        ctxt.SetErrorCode(ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+        ctxt.SetErrorMessage("length convert failed!");
+        return false;
+    }
+    if (ctxt.length < 0 || ctxt.length > MAX_RICH_TEXT_LENGTH) {
+        ctxt.paramError = true;
+        ctxt.SetErrorCode(ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+        ctxt.SetErrorMessage("length should be in [0, 4096]!");
+        return false;
+    }
+    return true;
+}
+} // namespace
+
+napi_value JsTextInputClientEngine::GetLeftRichText(napi_env env, napi_callback_info info)
+{
+    auto traceId = GenerateTraceId();
+    InputMethodSyncTrace tracer("JS_GetLeftRichText_Start", traceId);
+    auto ctxt = std::make_shared<GetRichTextContext>();
+    auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
+        CHECK_RETURN(self != nullptr, "self is nullptr", napi_invalid_arg);
+        CheckRichTextParam(env, argc, argv, *ctxt);
+        return napi_ok;
+    };
+    auto output = [ctxt, traceId](napi_env env, napi_value *result) -> napi_status {
+        InputMethodSyncTrace tracer("JS_GetLeftRichText_Complete", traceId);
+        *result = CreateRichTextResult(env, ctxt->richText);
+        return napi_ok;
+    };
+    auto exec = [ctxt, traceId](AsyncCall::Context *ctx, AsyncCall::Context::CallBackAction completeFunc) {
+        InputMethodSyncTrace tracer("JS_GetLeftRichText_Exec", traceId);
+        if (ctxt->paramError) {
+            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
+            return;
+        }
+        auto rspCallBack = [ctxt, completeFunc](int32_t code, const ResponseData &data) -> void {
+            if (code == ErrorCode::NO_ERROR) {
+                VariantUtil::GetValue(data, ctxt->richText);
+                ctxt->status = napi_ok;
+                ctxt->SetState(ctxt->status);
+            } else {
+                ctxt->SetErrorCode(code);
+            }
+            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
+        };
+        RichTextData temp;
+        int32_t code = InputMethodAbility::GetInstance().GetRichBeforeCursor(ctxt->length, temp, rspCallBack);
+        if (code != ErrorCode::NO_ERROR) {
+            IMSA_HILOGE("async get left rich text failed, code: %{public}d", code);
+            ctxt->SetErrorCode(code);
+            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
+        }
+    };
+    ctxt->SetAction(std::move(input), std::move(output));
+    // 2 means JsAPI:getLeftRichText has 2 params at most (length + callback).
+    EditAsyncCall asyncCall(env, info, ctxt, 2);
+    return asyncCall.Call(env, exec, __FUNCTION__);
+}
+
+napi_value JsTextInputClientEngine::GetRightRichText(napi_env env, napi_callback_info info)
+{
+    auto traceId = GenerateTraceId();
+    InputMethodSyncTrace tracer("JS_GetRightRichText_Start", traceId);
+    auto ctxt = std::make_shared<GetRichTextContext>();
+    auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
+        CHECK_RETURN(self != nullptr, "self is nullptr", napi_invalid_arg);
+        CheckRichTextParam(env, argc, argv, *ctxt);
+        return napi_ok;
+    };
+    auto output = [ctxt, traceId](napi_env env, napi_value *result) -> napi_status {
+        InputMethodSyncTrace tracer("JS_GetRightRichText_Complete", traceId);
+        *result = CreateRichTextResult(env, ctxt->richText);
+        return napi_ok;
+    };
+    auto exec = [ctxt, traceId](AsyncCall::Context *ctx, AsyncCall::Context::CallBackAction completeFunc) {
+        InputMethodSyncTrace tracer("JS_GetRightRichText_Exec", traceId);
+        if (ctxt->paramError) {
+            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
+            return;
+        }
+        auto rspCallBack = [ctxt, completeFunc](int32_t code, const ResponseData &data) -> void {
+            if (code == ErrorCode::NO_ERROR) {
+                VariantUtil::GetValue(data, ctxt->richText);
+                ctxt->status = napi_ok;
+                ctxt->SetState(ctxt->status);
+            } else {
+                ctxt->SetErrorCode(code);
+            }
+            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
+        };
+        RichTextData temp;
+        int32_t code = InputMethodAbility::GetInstance().GetRichAfterCursor(ctxt->length, temp, rspCallBack);
+        if (code != ErrorCode::NO_ERROR) {
+            IMSA_HILOGE("async get right rich text failed, code: %{public}d", code);
+            ctxt->SetErrorCode(code);
+            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
+        }
+    };
+    ctxt->SetAction(std::move(input), std::move(output));
+    // 2 means JsAPI:getRightRichText has 2 params at most (length + callback).
     EditAsyncCall asyncCall(env, info, ctxt, 2);
     return asyncCall.Call(env, exec, __FUNCTION__);
 }

@@ -1072,6 +1072,62 @@ ohos_unittest("TextListenerInnerApiTest") {
   }
 }
 
+ohos_unittest("RichTextTest") {
+  branch_protector_ret = "pac_ret"
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+  }
+  module_out_path = module_output_path
+
+  cflags = [ "-fno-access-control" ]
+
+  sources = [
+    "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_client_info.cpp",
+    "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_client_service_impl.cpp",
+    "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_data_channel_service_impl.cpp",
+    "${inputmethod_path}/frameworks/native/inputmethod_controller/src/input_method_tools.cpp",
+    "src/rich_text_test.cpp",
+  ]
+
+  configs = [ ":module_private_config" ]
+
+  deps = [
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability:inputmethod_ability_static",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_method_agent_proxy",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
+    "${inputmethod_path}/services:inputmethod_service_static",
+    "${inputmethod_path}/test/common:inputmethod_test_common",
+    "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
+  ]
+
+  external_deps = [
+    "ability_base:want",
+    "ability_runtime:ability_context_native",
+    "ability_runtime:ability_manager",
+    "access_token:libaccesstoken_sdk",
+    "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
+    "eventhandler:libeventhandler",
+    "googletest:gmock",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "input:libmmi-client",
+    "ipc:ipc_single",
+    "napi:ace_napi",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+    "icu:shared_icuuc",
+  ]
+
+  if (window_manager_use_sceneboard) {
+    external_deps += [ "window_manager:libwm_lite" ]
+  } else {
+    external_deps += [ "window_manager:libwm" ]
+  }
+}
+
   ohos_unittest("ImeMultiUserTest") {
     branch_protector_ret = "pac_ret"
     sanitize = {

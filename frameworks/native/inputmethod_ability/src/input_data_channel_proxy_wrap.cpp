@@ -168,6 +168,44 @@ int32_t InputDataChannelProxyWrap::GetTextIndexAtCursor(int32_t &index, const As
         static_cast<int32_t>(IInputDataChannelIpcCode::COMMAND_GET_TEXT_INDEX_AT_CURSOR), output);
 }
 
+int32_t InputDataChannelProxyWrap::GetRichBeforeCursor(
+    int32_t number, RichTextData &richText, const AsyncIpcCallBack &callback)
+{
+    IMSA_HILOGD("start, number: %{public}d, isSync: %{public}d", number, callback == nullptr);
+    auto work = [agentObject = agentObject_, number](
+                    uint64_t msgId, const std::shared_ptr<InputDataChannelProxy> &channel) -> int32_t {
+        return channel->GetRichBeforeCursor(number, msgId, agentObject);
+    };
+    SyncOutput output = nullptr;
+    if (callback == nullptr) {
+        output = [&richText](const ResponseData &data) -> void {
+            VariantUtil::GetValue(data, richText);
+            IMSA_HILOGD("sync response, spans size: %{public}zu", richText.spans.size());
+        };
+    }
+    return Request(callback, work, callback == nullptr,
+        static_cast<int32_t>(IInputDataChannelIpcCode::COMMAND_GET_RICH_BEFORE_CURSOR), output);
+}
+
+int32_t InputDataChannelProxyWrap::GetRichAfterCursor(
+    int32_t number, RichTextData &richText, const AsyncIpcCallBack &callback)
+{
+    IMSA_HILOGD("start, number: %{public}d, isSync: %{public}d", number, callback == nullptr);
+    auto work = [agentObject = agentObject_, number](
+                    uint64_t msgId, const std::shared_ptr<InputDataChannelProxy> &channel) -> int32_t {
+        return channel->GetRichAfterCursor(number, msgId, agentObject);
+    };
+    SyncOutput output = nullptr;
+    if (callback == nullptr) {
+        output = [&richText](const ResponseData &data) -> void {
+            VariantUtil::GetValue(data, richText);
+            IMSA_HILOGD("sync response, spans size: %{public}zu", richText.spans.size());
+        };
+    }
+    return Request(callback, work, callback == nullptr,
+        static_cast<int32_t>(IInputDataChannelIpcCode::COMMAND_GET_RICH_AFTER_CURSOR), output);
+}
+
 int32_t InputDataChannelProxyWrap::SetPreviewText(
     const std::string &text, const RangeInner &range, const AsyncIpcCallBack &callback)
 {

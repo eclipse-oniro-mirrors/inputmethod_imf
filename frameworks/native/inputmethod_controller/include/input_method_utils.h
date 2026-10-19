@@ -18,7 +18,9 @@
 
 #include <stdint.h>
 
+#include <string>
 #include <variant>
+#include <vector>
 
 #include "global.h"
 #include "input_attribute.h"
@@ -37,6 +39,10 @@ constexpr size_t MAX_SYS_PRIVATE_COMMAND_COUNT = MAX_PRIVATE_COMMAND_COUNT + 1;
 constexpr size_t MAX_VALUE_MAP_COUNT = 256;
 constexpr size_t MAX_ARRAY_BUFFER_MSG_ID_SIZE = 256; // 256B
 constexpr size_t MAX_ARRAY_BUFFER_MSG_PARAM_SIZE = 128 * 1024; // 128KB
+constexpr size_t MAX_RICH_TEXT_SIZE = 128 * 1024; // 128KB
+constexpr int32_t MAX_RICH_TEXT_LENGTH = 4096;
+constexpr size_t SPAN_HEADER_SIZE = sizeof(uint32_t) + sizeof(int32_t) + sizeof(int32_t);
+constexpr uint32_t SPAN_TYPE_COUNT = 4;
 static constexpr uint64_t INVALID_DISPLAY_ID = -1ULL;
 const constexpr char *SYSTEM_CMD_KEY = "sys_cmd";
 enum class EnterKeyType {
@@ -585,9 +591,60 @@ struct DetachOptions {
     bool isStopByMultiPreemptInProc{ false };
 };
 
-enum class ResponseDataType : uint64_t { NONE_TYPE = 0, STRING_TYPE, INT32_TYPE };
+enum class SpanType : uint32_t {
+    TEXT = 0,
+    IMAGE = 1,
+    SYMBOL = 2,
+    CUSTOM = 3,
+};
 
-using ResponseData = std::variant<std::monostate, std::string, int32_t>;
+struct RichTextSpan {
+    SpanType type{ SpanType::TEXT };
+    Range range;
+    std::string content;
+};
+
+struct RichTextData {
+    std::vector<RichTextSpan> spans;
+    bool IsEmpty() const
+    {
+        return spans.empty();
+    }
+    size_t GetIpcSize() const
+    {
+        size_t totalSize = 0;
+        for (const auto &span : spans) {
+            totalSize += sizeof(uint32_t); // type
+            totalSize += sizeof(int32_t);  // range.start
+            totalSize += sizeof(int32_t);  // range.end
+            totalSize += span.content.size();
+        }
+        return totalSize;
+    }
+    bool IsSizeValid() const
+    {
+        return GetIpcSize() <= MAX_RICH_TEXT_SIZE;
+    }
+};
+
+struct RichTextDataInner : public Parcelable {
+    bool ReadFromParcel(Parcel &in);
+    bool Marshalling(Parcel &out) const override;
+    static RichTextDataInner *Unmarshalling(Parcel &in)
+    {
+        RichTextDataInner *data = new (std::nothrow) RichTextDataInner();
+        if (data != nullptr && !data->ReadFromParcel(in)) {
+            delete data;
+            data = nullptr;
+        }
+        return data;
+    }
+    RichTextData richTextData;
+};
+
+enum class ResponseDataType : uint64_t { NONE_TYPE = 0, STRING_TYPE, INT32_TYPE, RICH_TEXT_TYPE };
+
+using ResponseData = std::variant<std::monostate, std::string, int32_t, RichTextData>;
 
 struct ResponseDataInner : public Parcelable {
     bool ReadFromParcel(Parcel &in);

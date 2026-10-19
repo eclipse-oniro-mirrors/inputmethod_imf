@@ -75,6 +75,14 @@ public:
     virtual std::u16string GetLeftTextOfCursor(int32_t number) = 0;
     virtual std::u16string GetRightTextOfCursor(int32_t number) = 0;
     virtual int32_t GetTextIndexAtCursor() = 0;
+    virtual RichTextData GetLeftRichTextOfCursor(int32_t number)
+    {
+        return {};
+    }
+    virtual RichTextData GetRightRichTextOfCursor(int32_t number)
+    {
+        return {};
+    }
     virtual int32_t ReceivePrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand)
     {
         return ErrorCode::NO_ERROR;
@@ -137,6 +145,8 @@ private:
     std::u16string GetLeftTextOfCursorV2(int32_t number);
     std::u16string GetRightTextOfCursorV2(int32_t number);
     int32_t GetTextIndexAtCursorV2();
+    RichTextData GetLeftRichTextOfCursorV2(int32_t number);
+    RichTextData GetRightRichTextOfCursorV2(int32_t number);
     void SendKeyEventFromInputMethodV2(const KeyEvent &event);
     void NotifyPanelStatusInfoV2(const PanelStatusInfo &info);
     void NotifyKeyboardHeightV2(uint32_t height);
@@ -767,6 +777,30 @@ public:
      * @since 10
      */
     int32_t GetRight(int32_t length, std::u16string &text);
+
+    /**
+     * @brief Get rich text at the left of cursor.
+     *
+     * This function is used to get rich text at the left of cursor. If the current component is
+     * not a rich text component, it falls back to plain text and wraps as a single TEXT span.
+     *
+     * @param length Indicates the length of text.
+     * @param richText Indicates the rich text data which will be get.
+     * @return Returns 0 for success, others for failure.
+     */
+    IMF_API int32_t GetLeftRich(int32_t length, RichTextData &richText);
+
+    /**
+     * @brief Get rich text at the right of cursor.
+     *
+     * This function is used to get rich text at the right of cursor. If the current component is
+     * not a rich text component, it falls back to plain text and wraps as a single TEXT span.
+     *
+     * @param length Indicates the length of text.
+     * @param richText Indicates the rich text data which will be get.
+     * @return Returns 0 for success, others for failure.
+     */
+    IMF_API int32_t GetRightRich(int32_t length, RichTextData &richText);
 
     /**
      * @brief Select text in editor by range.

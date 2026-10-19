@@ -28,7 +28,7 @@ namespace OHOS {
 constexpr size_t THRESHOLD = 10;
 const std::u16string DATACHANNEL_INTERFACE_TOKEN = u"OHOS.MiscServices.IInputDataChannel";
 constexpr uint32_t CODE_MIN = 0;
-constexpr uint32_t CODE_MAX = static_cast<uint32_t>(IInputDataChannelIpcCode::COMMAND_SEND_MESSAGE) + 1;
+constexpr uint32_t CODE_MAX = static_cast<uint32_t>(IInputDataChannelIpcCode::COMMAND_GET_RICH_AFTER_CURSOR) + 1;
 
 bool FuzzDataChannelStub(FuzzedDataProvider &provider)
 {

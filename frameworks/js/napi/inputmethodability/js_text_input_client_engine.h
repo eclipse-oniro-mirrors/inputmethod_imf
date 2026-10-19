@@ -227,6 +227,29 @@ struct GetBackwardContext : public AsyncCall::Context {
     }
 };
 
+struct GetRichTextContext : public AsyncCall::Context {
+    int32_t length = 0;
+    RichTextData richText;
+    napi_status status = napi_generic_failure;
+    bool paramError = false;
+    GetRichTextContext() : Context(nullptr, nullptr){};
+    GetRichTextContext(InputAction input, OutputAction output)
+        : Context(std::move(input), std::move(output)){};
+    napi_status operator()(napi_env env, size_t argc, napi_value *argv, napi_value self) override
+    {
+        CHECK_RETURN(self != nullptr, "self is nullptr", napi_invalid_arg);
+        return Context::operator()(env, argc, argv, self);
+    }
+    napi_status operator()(napi_env env, napi_value *result) override
+    {
+        if (status != napi_ok) {
+            output_ = nullptr;
+            return status;
+        }
+        return Context::operator()(env, result);
+    }
+};
+
 struct GetEditorAttributeContext : public AsyncCall::Context {
     InputAttribute inputAttribute;
     GetEditorAttributeContext() : Context(nullptr, nullptr){};
@@ -404,6 +427,13 @@ public:
     static napi_value DeleteBackwardSync(napi_env env, napi_callback_info info);
     static napi_value GetForwardSync(napi_env env, napi_callback_info info);
     static napi_value GetBackwardSync(napi_env env, napi_callback_info info);
+    static napi_value GetLeftRichText(napi_env env, napi_callback_info info);
+    static napi_value GetRightRichText(napi_env env, napi_callback_info info);
+    static napi_value GetLeftRichTextSync(napi_env env, napi_callback_info info);
+    static napi_value GetRightRichTextSync(napi_env env, napi_callback_info info);
+    static napi_value CreateSpanType(napi_env env);
+    static napi_value CreateRichTextSpan(napi_env env, const RichTextSpan &span);
+    static napi_value CreateRichTextResult(napi_env env, const RichTextData &richText);
     static napi_value GetCallingWindowInfo(napi_env env, napi_callback_info info);
     static napi_value SendPrivateCommand(napi_env env, napi_callback_info info);
     static napi_value SetPreviewText(napi_env env, napi_callback_info info);

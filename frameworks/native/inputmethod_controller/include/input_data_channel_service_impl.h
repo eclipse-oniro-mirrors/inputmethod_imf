@@ -55,6 +55,8 @@ public:
     ErrCode FinishTextPreview(uint64_t msgId, const sptr<IRemoteObject> &agent) override;
     ErrCode SendMessage(const ArrayBuffer &arraybuffer) override;
     ErrCode HandleKeyEventResult(uint64_t cbId, bool consumeResult) override;
+    ErrCode GetRichBeforeCursor(int32_t number, uint64_t msgId, const sptr<IRemoteObject> &agent) override;
+    ErrCode GetRichAfterCursor(int32_t number, uint64_t msgId, const sptr<IRemoteObject> &agent) override;
 
 private:
     int32_t ResponseDataChannel(const sptr<IRemoteObject> &agentObject, uint64_t msgId, int32_t code,

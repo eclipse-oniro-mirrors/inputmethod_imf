@@ -149,6 +149,46 @@ int32_t TextListener::GetTextIndexAtCursor()
     return TEXT_INDEX;
 }
 
+RichTextData TextListener::GetLeftRichTextOfCursor(int32_t number)
+{
+    IMSA_HILOGI("TextListener GetLeftRichTextOfCursor number: %{public}d", number);
+    RichTextData data;
+    RichTextSpan textSpan1;
+    textSpan1.type = SpanType::TEXT;
+    textSpan1.range.start = 0;
+    textSpan1.range.end = static_cast<int32_t>(std::string(TEXT_BEFORE_CURSOR).length());
+    textSpan1.content = TEXT_BEFORE_CURSOR;
+    data.spans.push_back(textSpan1);
+
+    RichTextSpan imageSpan;
+    imageSpan.type = SpanType::IMAGE;
+    imageSpan.range.start = static_cast<int32_t>(std::string(TEXT_BEFORE_CURSOR).length());
+    imageSpan.range.end = imageSpan.range.start + 1;
+    imageSpan.content = "img_tag_left";
+    data.spans.push_back(imageSpan);
+    return data;
+}
+
+RichTextData TextListener::GetRightRichTextOfCursor(int32_t number)
+{
+    IMSA_HILOGI("TextListener GetRightRichTextOfCursor number: %{public}d", number);
+    RichTextData data;
+    RichTextSpan imageSpan;
+    imageSpan.type = SpanType::IMAGE;
+    imageSpan.range.start = 0;
+    imageSpan.range.end = 1;
+    imageSpan.content = "img_tag_right";
+    data.spans.push_back(imageSpan);
+
+    RichTextSpan textSpan;
+    textSpan.type = SpanType::TEXT;
+    textSpan.range.start = 1;
+    textSpan.range.end = static_cast<int32_t>(std::string(TEXT_AFTER_CURSOR).length()) + 1;
+    textSpan.content = TEXT_AFTER_CURSOR;
+    data.spans.push_back(textSpan);
+    return data;
+}
+
 int32_t TextListener::ReceivePrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand)
 {
     privateCommand_ = privateCommand;

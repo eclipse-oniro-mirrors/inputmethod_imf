@@ -94,6 +94,29 @@ struct Range {
     end: i32;
 }
 
+enum SpanType: u32 {
+    TEXT = 0,
+    IMAGE = 1,
+    SYMBOL = 2,
+    CUSTOM = 3
+}
+
+interface RichTextSpan {
+    GetType(): SpanType;
+    GetContent(): String;
+    GetRange(): Range;
+}
+
+interface InputMethodRichText {
+    GetString(): String;
+    GetSpans(): Array<RichTextSpan>;
+}
+
+union InputMethodRichTextCallback {
+    type_InputMethodRichText: InputMethodRichText;
+    @null type_null;
+}
+
 enum ImmersiveMode: i32 {
     NONE_IMMERSIVE = 0,
     IMMERSIVE = 1,
@@ -346,6 +369,12 @@ interface InputClient {
     @gen_promise("getBackward")
     GetBackwardAsync(length: i32): String;
 
+    @gen_promise("getLeftRichText")
+    GetLeftRichTextAsync(length: i32): InputMethodRichTextCallback;
+
+    @gen_promise("getRightRichText")
+    GetRightRichTextAsync(length: i32): InputMethodRichTextCallback;
+
     @gen_async("getEditorAttribute")
     @gen_promise("getEditorAttribute")
     GetEditorAttributeAsync(): EditorAttributeCallback;
@@ -393,6 +422,8 @@ interface InputClient {
     MoveCursorSync(direction: i32): void;
     GetBackwardSync(length: i32): String;
     GetForwardSync(length: i32): String;
+    GetLeftRichTextSync(length: i32): InputMethodRichTextCallback;
+    GetRightRichTextSync(length: i32): InputMethodRichTextCallback;
     InsertTextSync(text: String): void;
     DeleteBackwardSync(length: i32): void;
     DeleteForwardSync(length: i32): void;

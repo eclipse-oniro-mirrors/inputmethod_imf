@@ -60,6 +60,7 @@ InputAttributeInner InputMethodTools::AttributeToInner(const InputAttribute &att
     inner.needAutoInputNumkey = attribute.needAutoInputNumkey;
     inner.extraConfig = ExtraConfigToInner(attribute.extraConfig);
     inner.consumeKeyEvents = attribute.consumeKeyEvents;
+    inner.isRichText = attribute.isRichText;
     return inner;
 }
 
@@ -85,6 +86,7 @@ InputAttribute InputMethodTools::InnerToAttribute(const InputAttributeInner &inn
     inputAttribute.needAutoInputNumkey = inner.needAutoInputNumkey;
     inputAttribute.extraConfig = InnerToExtraConfig(inner.extraConfig);
     inputAttribute.consumeKeyEvents = inner.consumeKeyEvents;
+    inputAttribute.isRichText = inner.isRichText;
     return inputAttribute;
 }
 

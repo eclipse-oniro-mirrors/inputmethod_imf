@@ -319,6 +319,44 @@ ErrCode InputDataChannelServiceImpl::HandleKeyEventResult(uint64_t cbId, bool co
     instance->HandleKeyEventResult(cbId, consumeResult);
     return ERR_OK;
 }
+
+ErrCode InputDataChannelServiceImpl::GetRichBeforeCursor(
+    int32_t number, uint64_t msgId, const sptr<IRemoteObject> &agent)
+{
+    IMSA_HILOGD("start, number: %{public}d, msgId: %{public}lu", number, static_cast<unsigned long>(msgId));
+    RichTextData richText;
+    ResponseData data = richText;
+    auto instance = InputMethodController::GetInstance();
+    if (instance == nullptr) {
+        IMSA_HILOGE("failed to get InputMethodController instance!");
+        ResponseDataChannel(agent, msgId, ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL, data);
+        return ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL;
+    }
+    int32_t ret = instance->GetLeftRich(number, richText);
+    IMSA_HILOGD("GetLeftRich ret: %{public}d, spans size: %{public}zu", ret, richText.spans.size());
+    data = richText;
+    ResponseDataChannel(agent, msgId, ret, data);
+    return ret;
+}
+
+ErrCode InputDataChannelServiceImpl::GetRichAfterCursor(
+    int32_t number, uint64_t msgId, const sptr<IRemoteObject> &agent)
+{
+    IMSA_HILOGD("start, number: %{public}d, msgId: %{public}lu", number, static_cast<unsigned long>(msgId));
+    RichTextData richText;
+    ResponseData data = richText;
+    auto instance = InputMethodController::GetInstance();
+    if (instance == nullptr) {
+        IMSA_HILOGE("failed to get InputMethodController instance!");
+        ResponseDataChannel(agent, msgId, ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL, data);
+        return ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL;
+    }
+    int32_t ret = instance->GetRightRich(number, richText);
+    IMSA_HILOGD("GetRightRich ret: %{public}d, spans size: %{public}zu", ret, richText.spans.size());
+    data = richText;
+    ResponseDataChannel(agent, msgId, ret, data);
+    return ret;
+}
 // LCOV_EXCL_START
 int32_t InputDataChannelServiceImpl::ResponseDataChannel(
     const sptr<IRemoteObject> &agentObject, uint64_t msgId, int32_t code, const ResponseData &data)
