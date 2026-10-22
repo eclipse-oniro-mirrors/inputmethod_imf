@@ -30,6 +30,8 @@ static napi_value Init(napi_env env, napi_value exports)
     OHOS::MiscServices::JsKeyboardControllerEngine::Init(env, exports);
     OHOS::MiscServices::JsTextInputClientEngine::Init(env, exports);
     OHOS::MiscServices::JsKeyboardDelegateSetting::Init(env, exports);
+    napi_value spanType = OHOS::MiscServices::JsTextInputClientEngine::CreateSpanType(env);
+    napi_set_named_property(env, exports, "SpanType", spanType);
     return exports;
 }
 EXTERN_C_END

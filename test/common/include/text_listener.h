@@ -46,6 +46,8 @@ public:
     std::u16string GetLeftTextOfCursor(int32_t number) override;
     std::u16string GetRightTextOfCursor(int32_t number) override;
     int32_t GetTextIndexAtCursor() override;
+    RichTextData GetLeftRichTextOfCursor(int32_t number) override;
+    RichTextData GetRightRichTextOfCursor(int32_t number) override;
     int32_t ReceivePrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand) override;
     int32_t SetPreviewText(const std::u16string &text, const Range &range) override;
     void FinishTextPreview() override;

@@ -88,6 +88,7 @@ taihe_shared_library("inputmethod_engine_taihe_native") {
     "src/input_method_ability_impl.cpp",
     "src/input_method_client_impl.cpp",
     "src/input_method_keyboard_delegate_impl.cpp",
+    "src/input_method_rich_text_impl.cpp",
     "src/input_method_panel_impl.cpp",
     "src/input_method_panel_listener.cpp",
     "src/keyboard_controller_impl.cpp",

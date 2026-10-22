@@ -80,6 +80,8 @@ public:
     int32_t GetEnterKeyType(int32_t &keyType);
     int32_t GetInputPattern(int32_t &inputPattern);
     int32_t GetTextIndexAtCursor(int32_t &index, const AsyncIpcCallBack &callback = nullptr);
+    int32_t GetRichBeforeCursor(int32_t number, RichTextData &richText, const AsyncIpcCallBack &callback = nullptr);
+    int32_t GetRichAfterCursor(int32_t number, RichTextData &richText, const AsyncIpcCallBack &callback = nullptr);
     int32_t GetTextConfig(TextTotalConfig &textConfig);
     int32_t AdjustKeyboard();
     int32_t CreatePanel(const std::shared_ptr<AbilityRuntime::Context> &context, const PanelInfo &panelInfo,

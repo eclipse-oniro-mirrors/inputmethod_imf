@@ -976,6 +976,34 @@ int32_t InputMethodAbility::GetTextIndexAtCursor(int32_t &index, const AsyncIpcC
     return channel->GetTextIndexAtCursor(index, callback);
 }
 
+int32_t InputMethodAbility::GetRichBeforeCursor(
+    int32_t number, RichTextData &richText, const AsyncIpcCallBack &callback)
+{
+    IMSA_HILOGD("InputMethodAbility, number: %{public}d, isAsync: %{public}d", number, callback != nullptr);
+    auto channel = GetInputDataChannelProxyWrap();
+    if (channel == nullptr) {
+        IMSA_HILOGE("channel is nullptr!");
+        return ErrorCode::ERROR_CLIENT_NULL_POINTER;
+    }
+    int32_t ret = channel->GetRichBeforeCursor(number, richText, callback);
+    IMSA_HILOGD("ret: %{public}d, spans size: %{public}zu", ret, richText.spans.size());
+    return ret;
+}
+
+int32_t InputMethodAbility::GetRichAfterCursor(
+    int32_t number, RichTextData &richText, const AsyncIpcCallBack &callback)
+{
+    IMSA_HILOGD("InputMethodAbility, number: %{public}d, isAsync: %{public}d", number, callback != nullptr);
+    auto channel = GetInputDataChannelProxyWrap();
+    if (channel == nullptr) {
+        IMSA_HILOGE("channel is nullptr!");
+        return ErrorCode::ERROR_CLIENT_NULL_POINTER;
+    }
+    int32_t ret = channel->GetRichAfterCursor(number, richText, callback);
+    IMSA_HILOGD("ret: %{public}d, spans size: %{public}zu", ret, richText.spans.size());
+    return ret;
+}
+
 int32_t InputMethodAbility::GetTextConfig(TextTotalConfig &textConfig)
 {
     IMSA_HILOGI("InputMethodAbility start.");

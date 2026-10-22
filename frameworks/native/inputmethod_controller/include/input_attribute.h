@@ -155,6 +155,7 @@ struct InputAttribute {
     bool needAutoInputNumkey { false }; // number keys need to be automatically handled by imf
     ExtraConfig extraConfig = {};
     bool consumeKeyEvents { false };
+    bool isRichText { false };
 
     bool GetSecurityFlag() const
     {
@@ -186,7 +187,7 @@ struct InputAttribute {
         << "enterKeyType:" << enterKeyType << "inputOption:" << inputOption
         << "isTextPreviewSupported:" << isTextPreviewSupported << "bundleName:" << bundleName
         << "immersiveMode:" << immersiveMode << "windowId:" << windowId
-        << "callingDisplayId:" << callingDisplayId
+        << "isRichText:" << isRichText << "callingDisplayId:" << callingDisplayId
         << "needNumInput: " << needAutoInputNumkey << "consumeKeyEvents: " << consumeKeyEvents
         << "extraConfig.customSettings.size: " << extraConfig.customSettings.size()
         << "]";
@@ -233,6 +234,7 @@ struct InputAttributeInner : public Parcelable {
     bool needAutoInputNumkey { false }; // number keys need to be automatically handled by imf
     ExtraConfigInner extraConfig;
     bool consumeKeyEvents { false };
+    bool isRichText { false };
 
     bool ReadFromParcel(Parcel &in)
     {
@@ -264,6 +266,7 @@ struct InputAttributeInner : public Parcelable {
         }
         extraConfig = *extraConfigInfo;
         consumeKeyEvents = in.ReadBool();
+        isRichText = in.ReadBool();
         return true;
     }
 
@@ -311,6 +314,9 @@ struct InputAttributeInner : public Parcelable {
             return false;
         }
         if (!out.WriteBool(consumeKeyEvents)) {
+            return false;
+        }
+        if (!out.WriteBool(isRichText)) {
             return false;
         }
         return ret;

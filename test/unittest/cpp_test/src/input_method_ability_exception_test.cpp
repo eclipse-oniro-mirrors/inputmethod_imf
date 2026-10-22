@@ -16,6 +16,8 @@
 #include <gtest/gtest.h>
 #include "input_method_ability.h"
 #include "iinput_method_agent.h"
+#include "input_data_channel_proxy.h"
+#include "input_data_channel_proxy_wrap.h"
 #include "input_data_channel_service_impl.h"
 #include "input_method_agent_service_impl.h"
 #include "input_method_engine_listener_impl.h"
@@ -441,6 +443,201 @@ HWTEST_F(InputMethodAbilityExceptionTest, HandleKeyEventResult_001, TestSize.Lev
     bool consumeResult = true;
     auto ret = inputMethodAbility_.HandleKeyEventResult(cbId, consumeResult, nullptr);
     EXPECT_EQ(ret, ErrorCode::ERROR_IMA_CHANNEL_NULLPTR);
+}
+
+/**
+ * @tc.name: testGetRichBeforeCursorException
+ * @tc.desc: InputMethodAbility GetRichBeforeCursor with nullptr data channel proxy wrap.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodAbilityExceptionTest, testGetRichBeforeCursorException, TestSize.Level1)
+{
+    IMSA_HILOGI("InputMethodAbilityExceptionTest testGetRichBeforeCursorException START");
+    // Ensure dataChannelProxyWrap_ is nullptr to cover channel == nullptr branch.
+    inputMethodAbility_.dataChannelProxyWrap_ = nullptr;
+    RichTextData richText;
+    int32_t number = 5;
+    // sync branch: callback is nullptr
+    auto ret = inputMethodAbility_.GetRichBeforeCursor(number, richText);
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
+    EXPECT_TRUE(richText.spans.empty());
+
+    // async branch: callback is non-null, still fails at channel == nullptr check before Request.
+    AsyncIpcCallBack callback = [](int32_t code, const ResponseData &data) {};
+    RichTextData asyncRichText;
+    ret = inputMethodAbility_.GetRichBeforeCursor(number, asyncRichText, callback);
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
+    EXPECT_TRUE(asyncRichText.spans.empty());
+}
+
+/**
+ * @tc.name: testGetRichAfterCursorException
+ * @tc.desc: InputMethodAbility GetRichAfterCursor with nullptr data channel proxy wrap.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodAbilityExceptionTest, testGetRichAfterCursorException, TestSize.Level1)
+{
+    IMSA_HILOGI("InputMethodAbilityExceptionTest testGetRichAfterCursorException START");
+    // Ensure dataChannelProxyWrap_ is nullptr to cover channel == nullptr branch.
+    inputMethodAbility_.dataChannelProxyWrap_ = nullptr;
+    RichTextData richText;
+    int32_t number = 5;
+    // sync branch: callback is nullptr
+    auto ret = inputMethodAbility_.GetRichAfterCursor(number, richText);
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
+    EXPECT_TRUE(richText.spans.empty());
+
+    // async branch: callback is non-null, still fails at channel == nullptr check before Request.
+    AsyncIpcCallBack callback = [](int32_t code, const ResponseData &data) {};
+    RichTextData asyncRichText;
+    ret = inputMethodAbility_.GetRichAfterCursor(number, asyncRichText, callback);
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
+    EXPECT_TRUE(asyncRichText.spans.empty());
+}
+
+/**
+ * @tc.name: testGetRichBeforeCursorNormalBranch
+ * @tc.desc: InputMethodAbility GetRichBeforeCursor with non-null data channel proxy wrap.
+ *           Directly set dataChannelProxyWrap_ to a wrap constructed with a local
+ *           InputDataChannelServiceImpl stub so GetInputDataChannelProxyWrap() returns
+ *           non-null and the normal branch (channel->GetRichBeforeCursor) is executed.
+ *           IPC fails on local stub, expecting ERROR_IMA_DATA_CHANNEL_ABNORMAL.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodAbilityExceptionTest, testGetRichBeforeCursorNormalBranch, TestSize.Level1)
+{
+    IMSA_HILOGI("InputMethodAbilityExceptionTest testGetRichBeforeCursorNormalBranch START");
+    // Construct a non-null channel wrap with a local stub. GetDataChannel() will return
+    // a non-null InputDataChannelProxy, so Request() proceeds to call work() which does
+    // channel->GetRichBeforeCursor. The IPC transaction fails on the local stub, so
+    // Request() returns ERROR_IMA_DATA_CHANNEL_ABNORMAL.
+    sptr<InputDataChannelStub> channelObject = new InputDataChannelServiceImpl();
+    auto channelProxy = std::make_shared<InputDataChannelProxy>(channelObject->AsObject());
+    inputMethodAbility_.dataChannelProxyWrap_ =
+        std::make_shared<InputDataChannelProxyWrap>(channelProxy, nullptr);
+    ASSERT_NE(inputMethodAbility_.dataChannelProxyWrap_, nullptr);
+
+    // sync branch: callback == nullptr, covers InputMethodAbility line 973 + ProxyWrap sync path.
+    RichTextData syncRichText;
+    int32_t number = 5;
+    auto ret = inputMethodAbility_.GetRichBeforeCursor(number, syncRichText);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL);
+    EXPECT_TRUE(syncRichText.spans.empty());
+
+    // async branch: callback != nullptr, covers InputMethodAbility line 973 + ProxyWrap async path.
+    AsyncIpcCallBack callback = [](int32_t code, const ResponseData &data) {};
+    RichTextData asyncRichText;
+    ret = inputMethodAbility_.GetRichBeforeCursor(number, asyncRichText, callback);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL);
+    EXPECT_TRUE(asyncRichText.spans.empty());
+}
+
+/**
+ * @tc.name: testGetRichAfterCursorNormalBranch
+ * @tc.desc: InputMethodAbility GetRichAfterCursor with non-null data channel proxy wrap.
+ *           Same approach as testGetRichBeforeCursorNormalBranch but for GetRichAfterCursor.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodAbilityExceptionTest, testGetRichAfterCursorNormalBranch, TestSize.Level1)
+{
+    IMSA_HILOGI("InputMethodAbilityExceptionTest testGetRichAfterCursorNormalBranch START");
+    sptr<InputDataChannelStub> channelObject = new InputDataChannelServiceImpl();
+    auto channelProxy = std::make_shared<InputDataChannelProxy>(channelObject->AsObject());
+    inputMethodAbility_.dataChannelProxyWrap_ =
+        std::make_shared<InputDataChannelProxyWrap>(channelProxy, nullptr);
+    ASSERT_NE(inputMethodAbility_.dataChannelProxyWrap_, nullptr);
+
+    // sync branch: callback == nullptr, covers InputMethodAbility line 987 + ProxyWrap sync path.
+    RichTextData syncRichText;
+    int32_t number = 5;
+    auto ret = inputMethodAbility_.GetRichAfterCursor(number, syncRichText);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL);
+    EXPECT_TRUE(syncRichText.spans.empty());
+
+    // async branch: callback != nullptr, covers InputMethodAbility line 987 + ProxyWrap async path.
+    AsyncIpcCallBack callback = [](int32_t code, const ResponseData &data) {};
+    RichTextData asyncRichText;
+    ret = inputMethodAbility_.GetRichAfterCursor(number, asyncRichText, callback);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL);
+    EXPECT_TRUE(asyncRichText.spans.empty());
+}
+
+/**
+ * @tc.name: testProxyWrapGetRichBeforeCursorDirect
+ * @tc.desc: Directly call InputDataChannelProxyWrap::GetRichBeforeCursor (bypassing
+ *           InputMethodAbility) to guarantee ProxyWrap branch coverage without device.
+ *           Sync (callback==nullptr) + async (callback!=nullptr) + channel==nullptr.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodAbilityExceptionTest, testProxyWrapGetRichBeforeCursorDirect, TestSize.Level1)
+{
+    IMSA_HILOGI("InputMethodAbilityExceptionTest testProxyWrapGetRichBeforeCursorDirect START");
+    int32_t number = 5;
+
+    // Case 1: sync call with nullptr remote channel -> work fails -> ERROR_IMA_DATA_CHANNEL_ABNORMAL.
+    auto channelProxy = std::make_shared<InputDataChannelProxy>(nullptr);
+    auto channelWrap = std::make_shared<InputDataChannelProxyWrap>(channelProxy, nullptr);
+    ASSERT_NE(channelWrap, nullptr);
+    RichTextData syncRichText;
+    auto ret = channelWrap->GetRichBeforeCursor(number, syncRichText, nullptr);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL);
+    EXPECT_TRUE(syncRichText.spans.empty());
+
+    // Case 2: async call with nullptr remote channel -> work fails -> ERROR_IMA_DATA_CHANNEL_ABNORMAL.
+    RichTextData asyncRichText;
+    AsyncIpcCallBack cb = [](int32_t code, const ResponseData &data) {};
+    ret = channelWrap->GetRichBeforeCursor(number, asyncRichText, cb);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL);
+    EXPECT_TRUE(asyncRichText.spans.empty());
+
+    // Case 3: channel is nullptr -> Request returns ERROR_IMA_CHANNEL_NULLPTR.
+    auto nullChannelWrap = std::make_shared<InputDataChannelProxyWrap>(nullptr, nullptr);
+    RichTextData nullRichText;
+    ret = nullChannelWrap->GetRichBeforeCursor(number, nullRichText, nullptr);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMA_CHANNEL_NULLPTR);
+    EXPECT_TRUE(nullRichText.spans.empty());
+}
+
+/**
+ * @tc.name: testProxyWrapGetRichAfterCursorDirect
+ * @tc.desc: Directly call InputDataChannelProxyWrap::GetRichAfterCursor (bypassing
+ *           InputMethodAbility) to guarantee ProxyWrap branch coverage without device.
+ *           Sync (callback==nullptr) + async (callback!=nullptr) + channel==nullptr.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodAbilityExceptionTest, testProxyWrapGetRichAfterCursorDirect, TestSize.Level1)
+{
+    IMSA_HILOGI("InputMethodAbilityExceptionTest testProxyWrapGetRichAfterCursorDirect START");
+    int32_t number = 5;
+
+    // Case 1: sync call with nullptr remote channel -> work fails -> ERROR_IMA_DATA_CHANNEL_ABNORMAL.
+    auto channelProxy = std::make_shared<InputDataChannelProxy>(nullptr);
+    auto channelWrap = std::make_shared<InputDataChannelProxyWrap>(channelProxy, nullptr);
+    ASSERT_NE(channelWrap, nullptr);
+    RichTextData syncRichText;
+    auto ret = channelWrap->GetRichAfterCursor(number, syncRichText, nullptr);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL);
+    EXPECT_TRUE(syncRichText.spans.empty());
+
+    // Case 2: async call with nullptr remote channel -> work fails -> ERROR_IMA_DATA_CHANNEL_ABNORMAL.
+    RichTextData asyncRichText;
+    AsyncIpcCallBack cb = [](int32_t code, const ResponseData &data) {};
+    ret = channelWrap->GetRichAfterCursor(number, asyncRichText, cb);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL);
+    EXPECT_TRUE(asyncRichText.spans.empty());
+
+    // Case 3: channel is nullptr -> Request returns ERROR_IMA_CHANNEL_NULLPTR.
+    auto nullChannelWrap = std::make_shared<InputDataChannelProxyWrap>(nullptr, nullptr);
+    RichTextData nullRichText;
+    ret = nullChannelWrap->GetRichAfterCursor(number, nullRichText, nullptr);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMA_CHANNEL_NULLPTR);
+    EXPECT_TRUE(nullRichText.spans.empty());
 }
 } // namespace MiscServices
 } // namespace OHOS

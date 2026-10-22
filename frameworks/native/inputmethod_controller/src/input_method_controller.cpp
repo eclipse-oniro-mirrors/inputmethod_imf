@@ -1222,6 +1222,68 @@ int32_t InputMethodController::GetRight(int32_t length, std::u16string &text)
     return ErrorCode::NO_ERROR;
 }
 
+int32_t InputMethodController::GetLeftRich(int32_t length, RichTextData &richText)
+{
+    auto listener = GetTextListener();
+    if (!IsEditable() || listener == nullptr) {
+        IMSA_HILOGE("not editable or listener is nullptr!");
+        return ErrorCode::ERROR_CLIENT_NOT_EDITABLE;
+    }
+    bool isRichText = false;
+    {
+        std::lock_guard<std::mutex> lock(textConfigLock_);
+        isRichText = textConfig_.inputAttribute.isRichText;
+    }
+    if (isRichText) {
+        richText = listener->GetLeftRichTextOfCursorV2(length);
+    } else {
+        std::u16string text = listener->GetLeftTextOfCursorV2(length);
+        RichTextSpan span;
+        span.type = SpanType::TEXT;
+        span.range.start = 0;
+        span.range.end = static_cast<int32_t>(text.size());
+        span.content = Str16ToStr8(text);
+        richText.spans.push_back(span);
+    }
+    if (!richText.IsSizeValid()) {
+        IMSA_HILOGE("rich text size exceeds limit, size: %{public}zu", richText.GetIpcSize());
+        richText.spans.clear();
+        return ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL;
+    }
+    return ErrorCode::NO_ERROR;
+}
+
+int32_t InputMethodController::GetRightRich(int32_t length, RichTextData &richText)
+{
+    auto listener = GetTextListener();
+    if (!IsEditable() || listener == nullptr) {
+        IMSA_HILOGE("not editable or listener is nullptr!");
+        return ErrorCode::ERROR_CLIENT_NOT_EDITABLE;
+    }
+    bool isRichText = false;
+    {
+        std::lock_guard<std::mutex> lock(textConfigLock_);
+        isRichText = textConfig_.inputAttribute.isRichText;
+    }
+    if (isRichText) {
+        richText = listener->GetRightRichTextOfCursorV2(length);
+    } else {
+        std::u16string text = listener->GetRightTextOfCursorV2(length);
+        RichTextSpan span;
+        span.type = SpanType::TEXT;
+        span.range.start = 0;
+        span.range.end = static_cast<int32_t>(text.size());
+        span.content = Str16ToStr8(text);
+        richText.spans.push_back(span);
+    }
+    if (!richText.IsSizeValid()) {
+        IMSA_HILOGE("rich text size exceeds limit, size: %{public}zu", richText.GetIpcSize());
+        richText.spans.clear();
+        return ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL;
+    }
+    return ErrorCode::NO_ERROR;
+}
+
 int32_t InputMethodController::GetTextIndexAtCursor(int32_t &index)
 {
     IMSA_HILOGD("start.");
@@ -2855,6 +2917,62 @@ int32_t OnTextChangedListener::GetTextIndexAtCursorV2()
         IMSA_HILOGW("GetTextIndexAtCursorV2 timeout");
     }
     return index;
+}
+
+RichTextData OnTextChangedListener::GetLeftRichTextOfCursorV2(int32_t number)
+{
+    auto eventHandler = GetEventHandler();
+    if (eventHandler == nullptr) {
+        return GetLeftRichTextOfCursor(number);
+    }
+    auto richResultHandler = std::make_shared<BlockData<RichTextData>>(MAX_TIMEOUT);
+    auto weakPtr = wptr<OnTextChangedListener>(this);
+    auto task = [weakPtr, richResultHandler, number]() {
+        RichTextData richText;
+        auto listener = weakPtr.promote();
+        if (listener == nullptr) {
+            IMSA_HILOGE("GetLeftRichTextOfCursorV2 listener is nullptr!");
+        } else {
+            richText = listener->GetLeftRichTextOfCursor(number);
+        }
+        if (richResultHandler != nullptr) {
+            richResultHandler->SetValue(richText);
+        }
+    };
+    eventHandler->PostTask(task, "GetLeftRichTextOfCursorV2", 0, AppExecFwk::EventQueue::Priority::VIP);
+    RichTextData richText;
+    if (richResultHandler != nullptr && !richResultHandler->GetValue(richText)) {
+        IMSA_HILOGW("GetLeftRichTextOfCursorV2 timeout");
+    }
+    return richText;
+}
+
+RichTextData OnTextChangedListener::GetRightRichTextOfCursorV2(int32_t number)
+{
+    auto eventHandler = GetEventHandler();
+    if (eventHandler == nullptr) {
+        return GetRightRichTextOfCursor(number);
+    }
+    auto richResultHandler = std::make_shared<BlockData<RichTextData>>(MAX_TIMEOUT);
+    auto weakPtr = wptr<OnTextChangedListener>(this);
+    auto task = [weakPtr, richResultHandler, number]() {
+        RichTextData richText;
+        auto listener = weakPtr.promote();
+        if (listener == nullptr) {
+            IMSA_HILOGE("GetRightRichTextOfCursorV2 listener is nullptr!");
+        } else {
+            richText = listener->GetRightRichTextOfCursor(number);
+        }
+        if (richResultHandler != nullptr) {
+            richResultHandler->SetValue(richText);
+        }
+    };
+    eventHandler->PostTask(task, "GetRightRichTextOfCursorV2", 0, AppExecFwk::EventQueue::Priority::VIP);
+    RichTextData richText;
+    if (richResultHandler != nullptr && !richResultHandler->GetValue(richText)) {
+        IMSA_HILOGW("GetRightRichTextOfCursorV2 timeout");
+    }
+    return richText;
 }
 
 void OnTextChangedListener::SendKeyEventFromInputMethodV2(const KeyEvent &event)

@@ -370,6 +370,22 @@ bool ResponseDataInner::ReadFromParcel(Parcel &in)
             rspData = in.ReadInt32();
             break;
         }
+        case static_cast<uint64_t>(ResponseDataType::RICH_TEXT_TYPE): {
+            RichTextData richTextData;
+            uint32_t spanCount = in.ReadUint32();
+            IMSA_HILOGD("RICH_TEXT_TYPE unmarshalling, spanCount: %{public}u", spanCount);
+            for (uint32_t i = 0; i < spanCount; i++) {
+                RichTextSpan span;
+                span.type = static_cast<SpanType>(in.ReadUint32());
+                span.range.start = in.ReadInt32();
+                span.range.end = in.ReadInt32();
+                span.content = in.ReadString();
+                richTextData.spans.push_back(span);
+            }
+            IMSA_HILOGD("unmarshalling done, spans size: %{public}zu", richTextData.spans.size());
+            rspData = std::move(richTextData);
+            break;
+        }
         default: {
             IMSA_HILOGE("bad parameter index: %{public}" PRIu64 "", index);
             return false;
@@ -377,6 +393,31 @@ bool ResponseDataInner::ReadFromParcel(Parcel &in)
     }
     return true;
 }
+
+namespace {
+bool WriteRichTextSpans(Parcel &out, const RichTextData &richTextData)
+{
+    IMSA_HILOGD("RICH_TEXT_TYPE marshalling, spans size: %{public}zu", richTextData.spans.size());
+    if (!out.WriteUint32(static_cast<uint32_t>(richTextData.spans.size()))) {
+        return false;
+    }
+    for (const auto &span : richTextData.spans) {
+        if (!out.WriteUint32(static_cast<uint32_t>(span.type))) {
+            return false;
+        }
+        if (!out.WriteInt32(span.range.start)) {
+            return false;
+        }
+        if (!out.WriteInt32(span.range.end)) {
+            return false;
+        }
+        if (!out.WriteString(span.content)) {
+            return false;
+        }
+    }
+    return true;
+}
+} // namespace
 
 bool ResponseDataInner::Marshalling(Parcel &out) const
 {
@@ -400,10 +441,54 @@ bool ResponseDataInner::Marshalling(Parcel &out) const
             }
             return out.WriteInt32(std::get<int32_t>(rspData));
         }
+        case static_cast<uint64_t>(ResponseDataType::RICH_TEXT_TYPE): {
+            if (!std::holds_alternative<RichTextData>(rspData)) {
+                return false;
+            }
+            return WriteRichTextSpans(out, std::get<RichTextData>(rspData));
+        }
         default: {
             return false;
         }
     }
+}
+
+bool RichTextDataInner::ReadFromParcel(Parcel &in)
+{
+    uint32_t spanCount = in.ReadUint32();
+    IMSA_HILOGD("RichTextDataInner read, spanCount: %{public}u", spanCount);
+    for (uint32_t i = 0; i < spanCount; i++) {
+        RichTextSpan span;
+        span.type = static_cast<SpanType>(in.ReadUint32());
+        span.range.start = in.ReadInt32();
+        span.range.end = in.ReadInt32();
+        span.content = in.ReadString();
+        richTextData.spans.push_back(span);
+    }
+    return true;
+}
+
+bool RichTextDataInner::Marshalling(Parcel &out) const
+{
+    IMSA_HILOGD("RichTextDataInner write, spans size: %{public}zu", richTextData.spans.size());
+    if (!out.WriteUint32(static_cast<uint32_t>(richTextData.spans.size()))) {
+        return false;
+    }
+    for (const auto &span : richTextData.spans) {
+        if (!out.WriteUint32(static_cast<uint32_t>(span.type))) {
+            return false;
+        }
+        if (!out.WriteInt32(span.range.start)) {
+            return false;
+        }
+        if (!out.WriteInt32(span.range.end)) {
+            return false;
+        }
+        if (!out.WriteString(span.content)) {
+            return false;
+        }
+    }
+    return true;
 }
 // LCOV_EXCL_STOP
 } // namespace MiscServices
