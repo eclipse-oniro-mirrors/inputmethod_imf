@@ -15,6 +15,8 @@
 
 #include "js_utils.h"
 
+#include <algorithm>
+
 #include "js_util.h"
 
 namespace OHOS {
@@ -65,7 +67,9 @@ const std::map<int32_t, std::string> JsUtils::ERROR_CODE_CONVERT_MESSAGE_MAP = {
     { EXCEPTION_SYSTEM_PANEL_ERROR, "input method system panel error. Possible causes:"
         "1. the system panel not connected."
         "2. ipc failed due to the large amount of data transferred or other reasons."
-        "3. the caller is not system panel." }
+        "3. the caller is not system panel." },
+    { EXCEPTION_NOT_FOCUSED, "not focused app." },
+    { EXCEPTION_IME_EXTENSION_NOT_ALLOWED, "input method extension is not allowed." },
 };
 
 const std::map<int32_t, std::string> JsUtils::PARAMETER_TYPE = {
@@ -441,6 +445,27 @@ napi_status JsUtils::GetValue(napi_env env, napi_value in, Rosen::Rect &out)
     ret = ret && JsUtil::Object::ReadProperty(env, in, "width", out.width_);
     ret = ret && JsUtil::Object::ReadProperty(env, in, "height", out.height_);
     return ret ? napi_ok : napi_generic_failure;
+}
+
+napi_status JsUtils::GetValue(napi_env env, napi_value in, RegisterOptions &out)
+{
+    if (!JsUtil::HasProperty(env, in, "inputPatternTypes")) {
+        return napi_ok;
+    }
+    napi_value patternTypes = nullptr;
+    napi_get_named_property(env, in, "inputPatternTypes", &patternTypes);
+    bool isArray = false;
+    napi_is_array(env, patternTypes, &isArray);
+    PARAM_CHECK_RETURN(env, isArray, "inputPatternTypes must be an array!", TYPE_NONE, napi_generic_failure);
+    std::vector<int32_t> types;
+    PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, patternTypes, types) && !types.empty(),
+        "inputPatternTypes must be a non-empty int array!", TYPE_NONE, napi_generic_failure);
+    for (int32_t pattern : types) {
+        PARAM_CHECK_RETURN(env, IsValidInputPattern(pattern),
+            "inputPatternTypes contains invalid pattern!", TYPE_NONE, napi_generic_failure);
+    }
+    out.inputPatternTypes = std::move(types);
+    return napi_ok;
 }
 
 napi_value JsUtils::GetValue(napi_env env, const Rosen::Rect &in)

@@ -43,6 +43,7 @@ config("inputmethodengine_native_public_config") {
     "${inputmethod_path}/frameworks/common",
     "${inputmethod_path}/frameworks/js/napi/inputmethodclient",
     "${inputmethod_path}/frameworks/js/napi/inputmethodability",
+    "${inputmethod_path}/frameworks/js/napi/inputmethodability/proxy/include",
   ]
 }
 
@@ -68,6 +69,11 @@ ohos_shared_library("inputmethodengine") {
     "js_panel.cpp",
     "js_text_input_client_engine.cpp",
     "panel_listener_impl.cpp",
+    "${inputmethod_path}/frameworks/js/napi/inputmethodability/proxy/src/js_proxy_listener_base.cpp",
+    "${inputmethod_path}/frameworks/js/napi/inputmethodability/proxy/src/js_proxy_input_method_ability.cpp",
+    "${inputmethod_path}/frameworks/js/napi/inputmethodability/proxy/src/js_proxy_keyboard_controller.cpp",
+    "${inputmethod_path}/frameworks/js/napi/inputmethodability/proxy/src/js_proxy_keyboard_delegate.cpp",
+    "${inputmethod_path}/frameworks/js/napi/inputmethodability/proxy/src/js_proxy_text_input_client.cpp",
   ]
 
   cflags_cc = [

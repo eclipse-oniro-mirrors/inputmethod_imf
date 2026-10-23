@@ -17,6 +17,10 @@
 #include "js_keyboard_controller_engine.h"
 #include "js_keyboard_delegate_setting.h"
 #include "js_text_input_client_engine.h"
+#include "js_proxy_input_method_ability.h"
+#include "js_proxy_keyboard_controller.h"
+#include "js_proxy_keyboard_delegate.h"
+#include "js_proxy_text_input_client.h"
 #include "napi/native_api.h"
 #include "napi/native_node_api.h"
 
@@ -30,6 +34,10 @@ static napi_value Init(napi_env env, napi_value exports)
     OHOS::MiscServices::JsKeyboardControllerEngine::Init(env, exports);
     OHOS::MiscServices::JsTextInputClientEngine::Init(env, exports);
     OHOS::MiscServices::JsKeyboardDelegateSetting::Init(env, exports);
+    OHOS::MiscServices::JsProxyInputMethodAbility::Init(env, exports);
+    OHOS::MiscServices::JsProxyKeyboardController::Init(env, exports);
+    OHOS::MiscServices::JsProxyKeyboardDelegate::Init(env, exports);
+    OHOS::MiscServices::JsProxyTextInputClient::Init(env, exports);
     napi_value spanType = OHOS::MiscServices::JsTextInputClientEngine::CreateSpanType(env);
     napi_set_named_property(env, exports, "SpanType", spanType);
     return exports;

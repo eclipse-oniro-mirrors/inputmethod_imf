@@ -655,3 +655,114 @@ struct MessageHandler {
 function GetInputMethodAbility(): Ability;
 
 function GetKeyboardDelegate(): Delegate;
+
+struct RegisterOptions {
+    inputPatternTypes: Optional<Array<i32>>;
+}
+
+interface ProxyKeyboardController {
+    @gen_async("hideSelf")
+    @gen_promise("hideSelf")
+    HideSelfAsync(): void;
+}
+
+interface ProxyTextInputClient {
+    @gen_async("sendKeyFunction")
+    @gen_promise("sendKeyFunction")
+    SendKeyFunctionAsync(action: i32): void;
+
+    @gen_async("deleteForward")
+    @gen_promise("deleteForward")
+    DeleteForwardAsync(length: i32): void;
+
+    @gen_async("deleteBackward")
+    @gen_promise("deleteBackward")
+    DeleteBackwardAsync(length: i32): void;
+
+    @gen_async("insertText")
+    @gen_promise("insertText")
+    InsertTextAsync(text: String): void;
+
+    @gen_async("getForward")
+    @gen_promise("getForward")
+    GetForwardAsync(length: i32): String;
+
+    @gen_async("getBackward")
+    @gen_promise("getBackward")
+    GetBackwardAsync(length: i32): String;
+
+    @gen_async("getEditorAttribute")
+    @gen_promise("getEditorAttribute")
+    GetEditorAttributeAsync(): EditorAttributeCallback;
+
+    @gen_async("moveCursor")
+    @gen_promise("moveCursor")
+    MoveCursorAsync(direction: i32): void;
+
+    @gen_async("selectByRange")
+    @gen_promise("selectByRange")
+    SelectByRangeAsync(range: Range): void;
+
+    @gen_async("selectByMovement")
+    @gen_promise("selectByMovement")
+    SelectByMovementAsync(movement: Movement): void;
+
+    @gen_async("getTextIndexAtCursor")
+    @gen_promise("getTextIndexAtCursor")
+    GetTextIndexAtCursorAsync(): i32;
+
+    @gen_async("sendExtendAction")
+    @gen_promise("sendExtendAction")
+    SendExtendActionAsync(action: ExtendAction): void;
+}
+
+interface ProxyInputMethodAbility {
+    OnInputStart(callback: (inputClient: ProxyTextInputClient, keyboardController: ProxyKeyboardController) => void, @sts_last opq: Opaque): void;
+    OffInputStart(opq: Optional<Opaque>): void;
+
+    OnKeyboardShow(callback: (data: UndefinedType) => void, @sts_last opq: Opaque): void;
+    OffKeyboardShow(opq: Optional<Opaque>): void;
+
+    OnKeyboardHide(callback: (data: UndefinedType) => void, @sts_last opq: Opaque): void;
+    OffKeyboardHide(opq: Optional<Opaque>): void;
+
+    OnUnregister(callback: (data: UndefinedType) => void, @sts_last opq: Opaque): void;
+    OffUnregister(opq: Optional<Opaque>): void;
+}
+
+interface ProxyKeyboardDelegate {
+    OnKeyEvent(callback: (event: InputKeyEvent) => bool, @sts_last opq: Opaque): void;
+    OffKeyEvent(opq: Optional<Opaque>): void;
+
+    OnCursorContextChange(callback: (x: f64, y: f64, height: f64) => void, @sts_last opq: Opaque): void;
+    OffCursorContextChange(opq: Optional<Opaque>): void;
+
+    OnSelectionChange(callback: (oldBegin: i32, oldEnd: i32, newBegin: i32, newEnd: i32) => void, @sts_last opq: Opaque): void;
+    OffSelectionChange(opq: Optional<Opaque>): void;
+
+    OnTextChange(callback: (text: String) => void, @sts_last opq: Opaque): void;
+    OffTextChange(opq: Optional<Opaque>): void;
+
+    OnEditorAttributeChanged(callback: (attr: EditorAttribute) => void, @sts_last opq: Opaque): void;
+    OffEditorAttributeChanged(opq: Optional<Opaque>): void;
+}
+
+union ProxyAbility {
+    type_ProxyAbility: ProxyInputMethodAbility;
+    @null type_null;
+}
+
+union ProxyDelegate {
+    type_ProxyDelegate: ProxyKeyboardDelegate;
+    @null type_null;
+}
+
+function GetProxyInputMethodAbility(): ProxyAbility;
+
+function GetProxyKeyboardDelegate(): ProxyDelegate;
+
+@gen_promise("registerInAppProxyIme")
+function RegisterInAppProxyImeAsync(options: Optional<RegisterOptions>): void;
+
+@gen_promise("unregisterInAppProxyIme")
+function UnregisterInAppProxyImeAsync(): void;

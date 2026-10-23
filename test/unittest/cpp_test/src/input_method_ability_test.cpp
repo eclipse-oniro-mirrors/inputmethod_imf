@@ -2887,5 +2887,202 @@ HWTEST_F(InputMethodAbilityTest, testOnPttLongPress_001, TestSize.Level0)
     imc_->SetTextListener(originalListener);
     GetIMCDetachIMA();
 }
+
+/**
+ * @tc.name: testRegisterInAppProxyIme_001
+ * @tc.desc: InputMethodAbility::RegisterInAppProxyIme with null imsa proxy
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testRegisterInAppProxyIme_001, TestSize.Level0)
+{
+    auto saved = InputMethodAbilityTest::inputMethodAbility_.abilityManager_;
+    InputMethodAbilityTest::inputMethodAbility_.abilityManager_ = nullptr;
+    EXPECT_EQ(InputMethodAbilityTest::inputMethodAbility_.RegisterInAppProxyIme({}),
+        ErrorCode::ERROR_SERVICE_START_FAILED);
+    InputMethodAbilityTest::inputMethodAbility_.abilityManager_ = saved;
+}
+
+/**
+ * @tc.name: testRegisterInAppProxyIme_002
+ * @tc.desc: InputMethodAbility::RegisterInAppProxyIme with null agent stub
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testRegisterInAppProxyIme_002, TestSize.Level0)
+{
+    auto saved = InputMethodAbilityTest::inputMethodAbility_.agentStub_;
+    InputMethodAbilityTest::inputMethodAbility_.agentStub_ = nullptr;
+    EXPECT_EQ(InputMethodAbilityTest::inputMethodAbility_.RegisterInAppProxyIme({}),
+        ErrorCode::ERROR_NULL_POINTER);
+    InputMethodAbilityTest::inputMethodAbility_.agentStub_ = saved;
+}
+
+/**
+ * @tc.name: testUnregisterInAppProxyIme_001
+ * @tc.desc: InputMethodAbility::UnregisterInAppProxyIme with null imsa proxy
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testUnregisterInAppProxyIme_001, TestSize.Level0)
+{
+    auto saved = InputMethodAbilityTest::inputMethodAbility_.abilityManager_;
+    InputMethodAbilityTest::inputMethodAbility_.abilityManager_ = nullptr;
+    EXPECT_EQ(InputMethodAbilityTest::inputMethodAbility_.UnregisterInAppProxyIme(),
+        ErrorCode::ERROR_SERVICE_START_FAILED);
+    InputMethodAbilityTest::inputMethodAbility_.abilityManager_ = saved;
+}
+
+/**
+ * @tc.name: testIsImeExtension_001
+ * @tc.desc: InputMethodAbility::IsImeExtension returns memoized value
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testIsImeExtension_001, TestSize.Level0)
+{
+    InputMethodAbilityTest::inputMethodAbility_.isImeExtensionChecked_ = true;
+    InputMethodAbilityTest::inputMethodAbility_.isImeExtension_ = true;
+    EXPECT_TRUE(InputMethodAbilityTest::inputMethodAbility_.IsImeExtension());
+    InputMethodAbilityTest::inputMethodAbility_.isImeExtensionChecked_ = false;
+}
+
+/**
+ * @tc.name: testIsImeExtension_002
+ * @tc.desc: InputMethodAbility::IsImeExtension returns false when proxy is null
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testIsImeExtension_002, TestSize.Level0)
+{
+    InputMethodAbilityTest::inputMethodAbility_.isImeExtensionChecked_ = false;
+    auto saved = InputMethodAbilityTest::inputMethodAbility_.abilityManager_;
+    InputMethodAbilityTest::inputMethodAbility_.abilityManager_ = nullptr;
+    EXPECT_FALSE(InputMethodAbilityTest::inputMethodAbility_.IsImeExtension());
+    InputMethodAbilityTest::inputMethodAbility_.abilityManager_ = saved;
+}
+
+/**
+ * @tc.name: testRegisterInAppProxyIme_ServiceNotFocused_001
+ * @tc.desc: InputMethodSystemAbility::RegisterInAppProxyIme returns ERROR_NOT_FOCUSED when not focused
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testRegisterInAppProxyIme_ServiceNotFocused_001, TestSize.Level0)
+{
+    ASSERT_NE(InputMethodAbilityTest::imsa_, nullptr);
+    sptr<InputMethodCoreServiceImpl> core = new (std::nothrow) InputMethodCoreServiceImpl();
+    sptr<InputMethodAgentServiceImpl> agent = new (std::nothrow) InputMethodAgentServiceImpl();
+    ASSERT_NE(core, nullptr);
+    ASSERT_NE(agent, nullptr);
+    IdentityCheckerMock::SetFocused(false);
+    auto ret = InputMethodAbilityTest::imsa_->RegisterInAppProxyIme({}, core, agent->AsObject());
+    EXPECT_EQ(ret, ErrorCode::ERROR_NOT_FOCUSED);
+    IdentityCheckerMock::SetFocused(true);
+}
+
+/**
+ * @tc.name: testRegisterInAppProxyIme_003
+ * @tc.desc: InputMethodAbility::RegisterInAppProxyIme success path (real service)
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testRegisterInAppProxyIme_003, TestSize.Level0)
+{
+    IdentityCheckerMock::SetFocused(true);
+    InputMethodAbilityTest::inputMethodAbility_.isProxyIme_.store(false);
+    auto ret = InputMethodAbilityTest::inputMethodAbility_.RegisterInAppProxyIme({});
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_TRUE(InputMethodAbilityTest::inputMethodAbility_.isProxyIme_.load());
+    InputMethodAbilityTest::inputMethodAbility_.UnregisterInAppProxyIme();
+    InputMethodAbilityTest::inputMethodAbility_.isProxyIme_.store(false);
+}
+
+/**
+ * @tc.name: testRegisterInAppProxyIme_004
+ * @tc.desc: InputMethodAbility::RegisterInAppProxyIme propagates ERROR_NOT_FOCUSED from service
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testRegisterInAppProxyIme_004, TestSize.Level0)
+{
+    IdentityCheckerMock::SetFocused(false);
+    auto ret = InputMethodAbilityTest::inputMethodAbility_.RegisterInAppProxyIme({});
+    EXPECT_EQ(ret, ErrorCode::ERROR_NOT_FOCUSED);
+    EXPECT_FALSE(InputMethodAbilityTest::inputMethodAbility_.isProxyIme_.load());
+    IdentityCheckerMock::SetFocused(true);
+}
+
+/**
+ * @tc.name: testUnregisterInAppProxyIme_002
+ * @tc.desc: InputMethodAbility::UnregisterInAppProxyIme success path (real service)
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testUnregisterInAppProxyIme_002, TestSize.Level0)
+{
+    IdentityCheckerMock::SetFocused(true);
+    InputMethodAbilityTest::inputMethodAbility_.RegisterInAppProxyIme({});
+    auto ret = InputMethodAbilityTest::inputMethodAbility_.UnregisterInAppProxyIme();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    InputMethodAbilityTest::inputMethodAbility_.isProxyIme_.store(false);
+}
+
+/**
+ * @tc.name: testIsImeExtension_003
+ * @tc.desc: InputMethodAbility::IsImeExtension queries proxy then memoizes
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testIsImeExtension_003, TestSize.Level0)
+{
+    InputMethodAbilityTest::inputMethodAbility_.isImeExtensionChecked_ = false;
+    InputMethodAbilityTest::inputMethodAbility_.isImeExtension_ = false;
+    auto val = InputMethodAbilityTest::inputMethodAbility_.IsImeExtension();
+    (void)val;
+    EXPECT_TRUE(InputMethodAbilityTest::inputMethodAbility_.isImeExtensionChecked_);
+    InputMethodAbilityTest::inputMethodAbility_.isImeExtensionChecked_ = false;
+}
+
+/**
+ * @tc.name: testRegisterInAppProxyIme_ServiceIdentityNull_001
+ * @tc.desc: InputMethodSystemAbility::RegisterInAppProxyIme with null identityChecker
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testRegisterInAppProxyIme_ServiceIdentityNull_001, TestSize.Level0)
+{
+    ASSERT_NE(InputMethodAbilityTest::imsa_, nullptr);
+    auto saved = InputMethodAbilityTest::imsa_->identityChecker_;
+    InputMethodAbilityTest::imsa_->identityChecker_ = nullptr;
+    sptr<InputMethodCoreServiceImpl> core = new (std::nothrow) InputMethodCoreServiceImpl();
+    sptr<InputMethodAgentServiceImpl> agent = new (std::nothrow) InputMethodAgentServiceImpl();
+    ASSERT_NE(core, nullptr);
+    ASSERT_NE(agent, nullptr);
+    auto ret = InputMethodAbilityTest::imsa_->RegisterInAppProxyIme({}, core, agent->AsObject());
+    EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
+    InputMethodAbilityTest::imsa_->identityChecker_ = saved;
+}
+
+/**
+ * @tc.name: testRegisterInAppProxyIme_005
+ * @tc.desc: InputMethodAbility::RegisterInAppProxyIme with null coreStub_
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testRegisterInAppProxyIme_005, TestSize.Level0)
+{
+    auto savedCore = InputMethodAbilityTest::inputMethodAbility_.coreStub_;
+    InputMethodAbilityTest::inputMethodAbility_.coreStub_ = nullptr;
+    EXPECT_EQ(InputMethodAbilityTest::inputMethodAbility_.RegisterInAppProxyIme({}),
+        ErrorCode::ERROR_NULL_POINTER);
+    InputMethodAbilityTest::inputMethodAbility_.coreStub_ = savedCore;
+}
+
+/**
+ * @tc.name: testUnregisterInAppProxyIme_003
+ * @tc.desc: InputMethodAbility::UnregisterInAppProxyIme propagates error when session is null
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testUnregisterInAppProxyIme_003, TestSize.Level0)
+{
+    auto sessions = UserSessionManager::GetInstance().GetUserSessions();
+    for (const auto &[userId, _] : sessions) {
+        UserSessionManager::GetInstance().RemoveUserSession(userId);
+    }
+    auto ret = InputMethodAbilityTest::inputMethodAbility_.UnregisterInAppProxyIme();
+    EXPECT_NE(ret, ErrorCode::NO_ERROR);
+    for (const auto &[userId, _] : sessions) {
+        UserSessionManager::GetInstance().AddUserSession(userId);
+    }
+}
 } // namespace MiscServices
 } // namespace OHOS

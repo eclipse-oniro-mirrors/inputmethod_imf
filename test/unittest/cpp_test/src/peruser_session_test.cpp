@@ -771,7 +771,7 @@ HWTEST_F(PerUserSessionTest, TestExecTextInteraction_NoClient_001, TestSize.Leve
 
 /**
  * @tc.name: TestExecTextInteraction_NoImeData_001
- * @tc.desc: ExecTextInteraction with bound client but no IME data skips hide path
+ * @tc.desc: ExecTextInteraction with bound client but no IME data skips start input path
  * @tc.type: FUNC
  */
 HWTEST_F(PerUserSessionTest, TestExecTextInteraction_NoImeData_001, TestSize.Level0)
@@ -783,14 +783,14 @@ HWTEST_F(PerUserSessionTest, TestExecTextInteraction_NoImeData_001, TestSize.Lev
     auto group = session_->GetClientGroupByGroupId(TEST_DISPLAY_GROUP_ID);
     ASSERT_NE(group, nullptr);
     group->currentClient_ = info.client;
-    // realImeData_ stays nullptr -> hide path skipped
+    // realImeData_ stays nullptr -> start input path skipped
     ret = session_->ExecTextInteraction("text");
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_EDITABLE);
 }
 
 /**
  * @tc.name: TestExecTextInteraction_WithImeData_001
- * @tc.desc: ExecTextInteraction with bound client and IME data enters hide path
+ * @tc.desc: ExecTextInteraction with bound client and IME data enters start input path
  * @tc.type: FUNC
  */
 HWTEST_F(PerUserSessionTest, TestExecTextInteraction_WithImeData_001, TestSize.Level0)
@@ -1572,7 +1572,7 @@ HWTEST_F(PerUserSessionTest, TestRequestAllIme_NullData_001, TestSize.Level0)
  */
 HWTEST_F(PerUserSessionTest, TestGetReadyImeDataToBind_NoIme_001, TestSize.Level0)
 {
-    auto data = session_->GetReadyImeDataToBind(TEST_DISPLAY_ID);
+    auto data = session_->GetReadyImeDataToBind(TEST_PID, 0, TEST_DISPLAY_ID);
     EXPECT_EQ(data, nullptr);
 }
 
@@ -1586,7 +1586,7 @@ HWTEST_F(PerUserSessionTest, TestGetReadyImeDataToBind_RealImeReady_001, TestSiz
     auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
     ASSERT_NE(imeData, nullptr);
     session_->realImeData_ = imeData;
-    auto data = session_->GetReadyImeDataToBind(TEST_DISPLAY_ID);
+    auto data = session_->GetReadyImeDataToBind(TEST_PID, 0, TEST_DISPLAY_ID);
     ASSERT_NE(data, nullptr);
     EXPECT_EQ(data->pid, TEST_PID);
 }
@@ -2394,6 +2394,350 @@ HWTEST_F(PerUserSessionTest, TestPttImeNotifications_001, TestSize.Level0)
     session_->realImeData_ = readyImeData;
     EXPECT_EQ(session_->NotifyRollbackSpace(), ErrorCode::ERROR_CLIENT_NULL_POINTER);
     EXPECT_EQ(session_->NotifyPttGestureCancelled(), ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: testRegisterInAppProxyImeData_001
+ * @tc.desc: PerUserSession::RegisterInAppProxyImeData with null core/agent
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testRegisterInAppProxyImeData_001, TestSize.Level0)
+{
+    EXPECT_EQ(session_->RegisterInAppProxyImeData(TEST_PID, TEST_UID, {}, nullptr, nullptr),
+        ErrorCode::ERROR_NULL_POINTER);
+}
+
+/**
+ * @tc.name: testRegisterInAppProxyImeData_002
+ * @tc.desc: PerUserSession::RegisterInAppProxyImeData success
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testRegisterInAppProxyImeData_002, TestSize.Level0)
+{
+    sptr<InputMethodCoreStub> coreStub = new (std::nothrow) InputMethodCoreServiceImpl();
+    sptr<InputMethodAgentStub> agentStub = new (std::nothrow) InputMethodAgentServiceImpl();
+    ASSERT_NE(coreStub, nullptr);
+    ASSERT_NE(agentStub, nullptr);
+    auto core = iface_cast<IInputMethodCore>(coreStub->AsObject());
+    sptr<IRemoteObject> agent = agentStub->AsObject();
+    EXPECT_EQ(session_->RegisterInAppProxyImeData(TEST_PID, TEST_UID, {}, core, agent), ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: testRegisterInAppProxyImeData_003
+ * @tc.desc: PerUserSession::RegisterInAppProxyImeData duplicate pid updates options
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testRegisterInAppProxyImeData_003, TestSize.Level0)
+{
+    sptr<InputMethodCoreStub> coreStub = new (std::nothrow) InputMethodCoreServiceImpl();
+    sptr<InputMethodAgentStub> agentStub = new (std::nothrow) InputMethodAgentServiceImpl();
+    ASSERT_NE(coreStub, nullptr);
+    ASSERT_NE(agentStub, nullptr);
+    auto core = iface_cast<IInputMethodCore>(coreStub->AsObject());
+    sptr<IRemoteObject> agent = agentStub->AsObject();
+    EXPECT_EQ(session_->RegisterInAppProxyImeData(TEST_PID, TEST_UID, {}, core, agent), ErrorCode::NO_ERROR);
+    EXPECT_EQ(session_->RegisterInAppProxyImeData(TEST_PID, TEST_UID, {}, core, agent), ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: testOnRegisterInAppProxyIme_001
+ * @tc.desc: PerUserSession::OnRegisterInAppProxyIme propagates data error
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testOnRegisterInAppProxyIme_001, TestSize.Level0)
+{
+    EXPECT_EQ(session_->OnRegisterInAppProxyIme(TEST_PID, TEST_UID, {}, nullptr, nullptr),
+        ErrorCode::ERROR_NULL_POINTER);
+}
+
+/**
+ * @tc.name: testOnRegisterInAppProxyIme_002
+ * @tc.desc: PerUserSession::OnRegisterInAppProxyIme success without client
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testOnRegisterInAppProxyIme_002, TestSize.Level0)
+{
+    sptr<InputMethodCoreStub> coreStub = new (std::nothrow) InputMethodCoreServiceImpl();
+    sptr<InputMethodAgentStub> agentStub = new (std::nothrow) InputMethodAgentServiceImpl();
+    ASSERT_NE(coreStub, nullptr);
+    ASSERT_NE(agentStub, nullptr);
+    auto core = iface_cast<IInputMethodCore>(coreStub->AsObject());
+    sptr<IRemoteObject> agent = agentStub->AsObject();
+    EXPECT_EQ(session_->OnRegisterInAppProxyIme(TEST_PID, TEST_UID, {}, core, agent), ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: testOnUnregisterInAppProxyIme_001
+ * @tc.desc: PerUserSession::OnUnregisterInAppProxyIme with no client
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testOnUnregisterInAppProxyIme_001, TestSize.Level0)
+{
+    EXPECT_EQ(session_->OnUnregisterInAppProxyIme(TEST_PID), ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: testOnUnregisterInAppProxyIme_002
+ * @tc.desc: PerUserSession::OnUnregisterInAppProxyIme after registration (no client bound)
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testOnUnregisterInAppProxyIme_002, TestSize.Level0)
+{
+    sptr<InputMethodCoreStub> coreStub = new (std::nothrow) InputMethodCoreServiceImpl();
+    sptr<InputMethodAgentStub> agentStub = new (std::nothrow) InputMethodAgentServiceImpl();
+    ASSERT_NE(coreStub, nullptr);
+    ASSERT_NE(agentStub, nullptr);
+    auto core = iface_cast<IInputMethodCore>(coreStub->AsObject());
+    sptr<IRemoteObject> agent = agentStub->AsObject();
+    EXPECT_EQ(session_->RegisterInAppProxyImeData(TEST_PID, TEST_UID, {}, core, agent), ErrorCode::NO_ERROR);
+    EXPECT_EQ(session_->OnUnregisterInAppProxyIme(TEST_PID), ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: testOnUnregisterInAppProxyIme_003
+ * @tc.desc: PerUserSession::OnUnregisterInAppProxyIme reselect path with bound client
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testOnUnregisterInAppProxyIme_003, TestSize.Level0)
+{
+    sptr<InputMethodCoreServiceImpl> channelStub = new (std::nothrow) InputMethodCoreServiceImpl();
+    ASSERT_NE(channelStub, nullptr);
+    auto info = MakeClientInfo(TEST_PID);
+    info.channel = channelStub->AsObject();
+    info.state = ClientState::ACTIVE;
+    info.bindImeData = std::make_shared<BindImeData>(TEST_PID, ImeType::IME);
+    ASSERT_EQ(session_->OnPrepareInput(info), ErrorCode::NO_ERROR);
+    auto group = session_->GetClientGroupByGroupId(TEST_DISPLAY_GROUP_ID);
+    ASSERT_NE(group, nullptr);
+    group->SetCurrentClient(info.client);
+    session_->realImeData_ = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    sptr<InputMethodCoreStub> coreStub = new (std::nothrow) InputMethodCoreServiceImpl();
+    sptr<InputMethodAgentStub> agentStub = new (std::nothrow) InputMethodAgentServiceImpl();
+    ASSERT_NE(coreStub, nullptr);
+    ASSERT_NE(agentStub, nullptr);
+    auto core = iface_cast<IInputMethodCore>(coreStub->AsObject());
+    sptr<IRemoteObject> agent = agentStub->AsObject();
+    ASSERT_EQ(session_->RegisterInAppProxyImeData(TEST_PID, TEST_UID, {}, core, agent), ErrorCode::NO_ERROR);
+    EXPECT_EQ(session_->OnUnregisterInAppProxyIme(TEST_PID), ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: testGetInAppProxyImeData_001
+ * @tc.desc: PerUserSession::GetInAppProxyImeData returns nullptr when not registered
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testGetInAppProxyImeData_001, TestSize.Level0)
+{
+    EXPECT_EQ(session_->GetInAppProxyImeData(TEST_PID), nullptr);
+}
+
+/**
+ * @tc.name: testGetInAppProxyImeData_002
+ * @tc.desc: PerUserSession::GetInAppProxyImeData returns data after registration
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testGetInAppProxyImeData_002, TestSize.Level0)
+{
+    sptr<InputMethodCoreStub> coreStub = new (std::nothrow) InputMethodCoreServiceImpl();
+    sptr<InputMethodAgentStub> agentStub = new (std::nothrow) InputMethodAgentServiceImpl();
+    ASSERT_NE(coreStub, nullptr);
+    ASSERT_NE(agentStub, nullptr);
+    auto core = iface_cast<IInputMethodCore>(coreStub->AsObject());
+    sptr<IRemoteObject> agent = agentStub->AsObject();
+    ASSERT_EQ(session_->RegisterInAppProxyImeData(TEST_PID, TEST_UID, {}, core, agent), ErrorCode::NO_ERROR);
+    EXPECT_NE(session_->GetInAppProxyImeData(TEST_PID), nullptr);
+}
+
+/**
+ * @tc.name: testGetMatchedInAppProxyIme_001
+ * @tc.desc: PerUserSession::GetMatchedInAppProxyIme returns nullptr when not registered
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testGetMatchedInAppProxyIme_001, TestSize.Level0)
+{
+    EXPECT_EQ(session_->GetMatchedInAppProxyIme(TEST_PID, 0), nullptr);
+}
+
+/**
+ * @tc.name: testGetMatchedInAppProxyIme_002
+ * @tc.desc: PerUserSession::GetMatchedInAppProxyIme matches any pattern when options has no filter
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testGetMatchedInAppProxyIme_002, TestSize.Level0)
+{
+    sptr<InputMethodCoreStub> coreStub = new (std::nothrow) InputMethodCoreServiceImpl();
+    sptr<InputMethodAgentStub> agentStub = new (std::nothrow) InputMethodAgentServiceImpl();
+    ASSERT_NE(coreStub, nullptr);
+    ASSERT_NE(agentStub, nullptr);
+    auto core = iface_cast<IInputMethodCore>(coreStub->AsObject());
+    sptr<IRemoteObject> agent = agentStub->AsObject();
+    ASSERT_EQ(session_->RegisterInAppProxyImeData(TEST_PID, TEST_UID, {}, core, agent), ErrorCode::NO_ERROR);
+    EXPECT_NE(session_->GetMatchedInAppProxyIme(TEST_PID, 0), nullptr);
+    EXPECT_NE(session_->GetMatchedInAppProxyIme(TEST_PID, 1), nullptr);
+}
+
+/**
+ * @tc.name: testGetMatchedInAppProxyIme_003
+ * @tc.desc: PerUserSession::GetMatchedInAppProxyIme matches specific pattern
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testGetMatchedInAppProxyIme_003, TestSize.Level0)
+{
+    RegisterOptions opts;
+    opts.inputPatternTypes = std::vector<int32_t>{ 0 };
+    sptr<InputMethodCoreStub> coreStub = new (std::nothrow) InputMethodCoreServiceImpl();
+    sptr<InputMethodAgentStub> agentStub = new (std::nothrow) InputMethodAgentServiceImpl();
+    ASSERT_NE(coreStub, nullptr);
+    ASSERT_NE(agentStub, nullptr);
+    auto core = iface_cast<IInputMethodCore>(coreStub->AsObject());
+    sptr<IRemoteObject> agent = agentStub->AsObject();
+    ASSERT_EQ(session_->RegisterInAppProxyImeData(TEST_PID, TEST_UID, opts, core, agent), ErrorCode::NO_ERROR);
+    EXPECT_NE(session_->GetMatchedInAppProxyIme(TEST_PID, 0), nullptr);
+}
+
+/**
+ * @tc.name: testGetMatchedInAppProxyIme_004
+ * @tc.desc: PerUserSession::GetMatchedInAppProxyIme returns nullptr when pattern not matched
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testGetMatchedInAppProxyIme_004, TestSize.Level0)
+{
+    RegisterOptions opts;
+    opts.inputPatternTypes = std::vector<int32_t>{ 0 };
+    sptr<InputMethodCoreStub> coreStub = new (std::nothrow) InputMethodCoreServiceImpl();
+    sptr<InputMethodAgentStub> agentStub = new (std::nothrow) InputMethodAgentServiceImpl();
+    ASSERT_NE(coreStub, nullptr);
+    ASSERT_NE(agentStub, nullptr);
+    auto core = iface_cast<IInputMethodCore>(coreStub->AsObject());
+    sptr<IRemoteObject> agent = agentStub->AsObject();
+    ASSERT_EQ(session_->RegisterInAppProxyImeData(TEST_PID, TEST_UID, opts, core, agent), ErrorCode::NO_ERROR);
+    EXPECT_EQ(session_->GetMatchedInAppProxyIme(TEST_PID, 1), nullptr);
+}
+
+/**
+ * @tc.name: testOnUnregisterInAppProxyIme_004
+ * @tc.desc: PerUserSession::OnUnregisterInAppProxyIme with client but null bindImeData
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testOnUnregisterInAppProxyIme_004, TestSize.Level0)
+{
+    auto info = MakeClientInfo(TEST_PID);
+    info.state = ClientState::ACTIVE;
+    ASSERT_EQ(session_->OnPrepareInput(info), ErrorCode::NO_ERROR);
+    auto group = session_->GetClientGroupByGroupId(TEST_DISPLAY_GROUP_ID);
+    ASSERT_NE(group, nullptr);
+    group->SetCurrentClient(info.client);
+    EXPECT_EQ(session_->OnUnregisterInAppProxyIme(TEST_PID), ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: testOnUnregisterInAppProxyIme_005
+ * @tc.desc: PerUserSession::OnUnregisterInAppProxyIme with client bound to different pid
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testOnUnregisterInAppProxyIme_005, TestSize.Level0)
+{
+    auto info = MakeClientInfo(TEST_PID);
+    info.state = ClientState::ACTIVE;
+    info.bindImeData = std::make_shared<BindImeData>(TEST_PID + 1, ImeType::IME);
+    ASSERT_EQ(session_->OnPrepareInput(info), ErrorCode::NO_ERROR);
+    auto group = session_->GetClientGroupByGroupId(TEST_DISPLAY_GROUP_ID);
+    ASSERT_NE(group, nullptr);
+    group->SetCurrentClient(info.client);
+    EXPECT_EQ(session_->OnUnregisterInAppProxyIme(TEST_PID), ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: testOnRegisterInAppProxyIme_003
+ * @tc.desc: PerUserSession::OnRegisterInAppProxyIme rebinds client to InApp proxy
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testOnRegisterInAppProxyIme_003, TestSize.Level0)
+{
+    sptr<InputMethodCoreServiceImpl> channelStub = new (std::nothrow) InputMethodCoreServiceImpl();
+    ASSERT_NE(channelStub, nullptr);
+    auto info = MakeClientInfo(TEST_PID);
+    info.channel = channelStub->AsObject();
+    info.state = ClientState::ACTIVE;
+    info.bindImeData = std::make_shared<BindImeData>(TEST_PID, ImeType::IME);
+    ASSERT_EQ(session_->OnPrepareInput(info), ErrorCode::NO_ERROR);
+    auto group = session_->GetClientGroupByGroupId(TEST_DISPLAY_GROUP_ID);
+    ASSERT_NE(group, nullptr);
+    group->SetCurrentClient(info.client);
+    session_->realImeData_ = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    sptr<InputMethodCoreStub> coreStub = new (std::nothrow) InputMethodCoreServiceImpl();
+    sptr<InputMethodAgentStub> agentStub = new (std::nothrow) InputMethodAgentServiceImpl();
+    ASSERT_NE(coreStub, nullptr);
+    ASSERT_NE(agentStub, nullptr);
+    auto core = iface_cast<IInputMethodCore>(coreStub->AsObject());
+    sptr<IRemoteObject> agent = agentStub->AsObject();
+    EXPECT_EQ(session_->OnRegisterInAppProxyIme(TEST_PID, TEST_UID, {}, core, agent), ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: testRemoveInAppProxyImeData_001
+ * @tc.desc: PerUserSession::RemoveInAppProxyImeData with null entry in map
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testRemoveInAppProxyImeData_001, TestSize.Level0)
+{
+    session_->inAppProxyImeData_[TEST_PID] = nullptr;
+    session_->RemoveInAppProxyImeData(TEST_PID);
+    EXPECT_EQ(session_->inAppProxyImeData_.find(TEST_PID), session_->inAppProxyImeData_.end());
+}
+
+/**
+ * @tc.name: testRemoveInAppProxyImeData_002
+ * @tc.desc: PerUserSession::RemoveInAppProxyImeData with ImeData whose core is null
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testRemoveInAppProxyImeData_002, TestSize.Level0)
+{
+    auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, TEST_PID);
+    session_->inAppProxyImeData_[TEST_PID] = imeData;
+    session_->RemoveInAppProxyImeData(TEST_PID);
+    EXPECT_EQ(session_->inAppProxyImeData_.find(TEST_PID), session_->inAppProxyImeData_.end());
+}
+
+/**
+ * @tc.name: testUpdateInAppProxyImeOptions_001
+ * @tc.desc: PerUserSession::UpdateInAppProxyImeOptions returns false when entry value is null
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testUpdateInAppProxyImeOptions_001, TestSize.Level0)
+{
+    session_->inAppProxyImeData_[TEST_PID] = nullptr;
+    EXPECT_FALSE(session_->UpdateInAppProxyImeOptions(TEST_PID, {}));
+}
+
+/**
+ * @tc.name: testEvictInAppProxyIme_001
+ * @tc.desc: PerUserSession::EvictInAppProxyIme evicts oldest non-focused entry when over limit
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testEvictInAppProxyIme_001, TestSize.Level0)
+{
+    for (int32_t i = 0; i <= static_cast<int32_t>(MAX_INAPP_PROXY_IME_COUNT); i++) {
+        auto imeData = MakeImeData(i, ImeType::INAPP_PROXY_IME, ImeStatus::READY);
+        ASSERT_NE(imeData, nullptr);
+        imeData->startTime = i;
+        session_->inAppProxyImeData_[i] = imeData;
+    }
+    session_->EvictInAppProxyIme();
+    EXPECT_LE(session_->inAppProxyImeData_.size(), MAX_INAPP_PROXY_IME_COUNT);
+}
+
+/**
+ * @tc.name: testEvictInAppProxyIme_002
+ * @tc.desc: PerUserSession::EvictInAppProxyIme removes null entries during cleanup
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testEvictInAppProxyIme_002, TestSize.Level0)
+{
+    session_->inAppProxyImeData_[TEST_PID] = nullptr;
+    session_->EvictInAppProxyIme();
+    EXPECT_EQ(session_->inAppProxyImeData_.find(TEST_PID), session_->inAppProxyImeData_.end());
 }
 } // namespace MiscServices
 } // namespace OHOS

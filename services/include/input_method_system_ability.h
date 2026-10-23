@@ -83,6 +83,7 @@ public:
     ErrCode SendPrivateData(const Value &value) override;
 
     ErrCode IsCurrentIme(bool &resultValue) override;
+    ErrCode IsInputMethodExtension(bool &resultValue) override;
     ErrCode IsInputTypeSupported(int32_t type, bool &resultValue) override;
     ErrCode IsCurrentImeByPid(int32_t pid, bool &resultValue, int32_t userId) override;
     ErrCode StartInputType(int32_t type, bool isPersistence) override;
@@ -114,6 +115,9 @@ public:
     ErrCode GetCursorInfo(int32_t userId, CursorInfoInner &cursorInfo) override;
     int32_t SetEDCDefaultInputMethod(const std::string &edcBackupImeName) override;
     ErrCode IsPttGestureAvailable(const sptr<IRemoteObject> &channel, bool &resultValue) override;
+    ErrCode RegisterInAppProxyIme(const RegisterOptions &options,
+        const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent) override;
+    ErrCode UnregisterInAppProxyIme() override;
     int32_t GetCallingUserId();
     int32_t GetCallingUserId(int32_t &outputUserId, int32_t inputUserId = -1);
     int32_t ExecTextInteraction(const std::string &text) override;

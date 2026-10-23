@@ -3661,7 +3661,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_GetReadyImeDataToBind, Tes
     userSession->realImeData_ = realImeData;
     userSession->proxyImeData_.clear();
     // proxyImeData_ is empty
-    auto getImeData = userSession->GetReadyImeDataToBind(displayId);
+    auto getImeData = userSession->GetReadyImeDataToBind(pid, 0, displayId);
     ASSERT_NE(getImeData, nullptr);
     ASSERT_TRUE(getImeData->IsRealIme());
     // proxyImeData_ is not empty, but uid is not same
@@ -3670,7 +3670,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_GetReadyImeDataToBind, Tes
     std::vector<std::shared_ptr<ImeData>> imeDataVec;
     imeDataVec.push_back(imeData);
     userSession->proxyImeData_.insert_or_assign(displayId, imeDataVec);
-    getImeData = userSession->GetReadyImeDataToBind(displayId);
+    getImeData = userSession->GetReadyImeDataToBind(pid, 0, displayId);
     ASSERT_NE(getImeData, nullptr);
     ASSERT_TRUE(getImeData->IsRealIme());
     // proxyImeData_ is not empty, uid is same, but not enable
@@ -3678,7 +3678,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_GetReadyImeDataToBind, Tes
     imeDataVec.clear();
     imeDataVec.push_back(imeData);
     userSession->proxyImeData_.insert_or_assign(displayId, imeDataVec);
-    getImeData = userSession->GetReadyImeDataToBind(displayId);
+    getImeData = userSession->GetReadyImeDataToBind(pid, 0, displayId);
     ASSERT_NE(getImeData, nullptr);
     ASSERT_TRUE(getImeData->IsRealIme());
 }

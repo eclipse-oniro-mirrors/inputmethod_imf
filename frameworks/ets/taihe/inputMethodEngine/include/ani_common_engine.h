@@ -71,6 +71,9 @@ using FillColorData_t = ohos::inputMethodEngine::FillColorData;
 using BackgroundColorData_t = ohos::inputMethodEngine::BackgroundColorData;
 using CustomValueType_t = ohos::inputMethod::ExtraConfig::CustomValueType;
 using InputMethodExtraConfig_t = ohos::inputMethod::ExtraConfig::InputMethodExtraConfig;
+using ProxyTextInputClient_t = ohos::inputMethodEngine::weak::ProxyTextInputClient;
+using ProxyKeyboardController_t = ohos::inputMethodEngine::weak::ProxyKeyboardController;
+using RegisterOptions_t = ohos::inputMethodEngine::RegisterOptions;
 namespace OHOS {
 namespace MiscServices {
 using ValueMap = std::unordered_map<std::string, PrivateDataValue>;
@@ -107,6 +110,7 @@ using callbackTypes = std::variant<taihe::callback<void(int32_t)>,
     taihe::callback<void(taihe::string_view)>, taihe::callback<void(EditorAttribute_t const&)>,
     taihe::callback<void(uintptr_t, taihe::optional_view<KeyboardArea_t>)>,
     taihe::callback<void(uintptr_t, KeyboardArea_t const&)>, taihe::callback<void(AttachOptions_t const&)>,
+    taihe::callback<void(ProxyTextInputClient_t, ProxyKeyboardController_t)>,
     taihe::callback<void(UndefinedType_t const&)>>;
 
 struct CallbackObjects {

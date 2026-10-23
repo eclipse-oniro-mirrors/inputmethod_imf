@@ -56,16 +56,20 @@ public:
     int32_t InitConnect();
     int32_t RegisterProxyIme(uint64_t displayId);
     int32_t UnregisterProxyIme(uint64_t displayId, UnRegisteredType type = UnRegisteredType::REMOVE_PROXY_IME);
+    int32_t RegisterInAppProxyIme(const RegisterOptions &options);
+    int32_t UnregisterInAppProxyIme();
     int32_t BindImeMirror();
     int32_t UnbindImeMirror();
     int32_t InsertText(const std::string &text, const AsyncIpcCallBack &callback = nullptr);
     void SetImeListener(std::shared_ptr<InputMethodEngineListener> imeListener);
     std::shared_ptr<InputMethodEngineListener> GetImeListener();
     void SetKdListener(std::shared_ptr<KeyboardListener> kdListener);
+    std::shared_ptr<KeyboardListener> GetKdListener();
     void SetTextInputClientListener(std::shared_ptr<TextInputClientListener> textInputClientListener);
     int32_t DeleteForward(int32_t length, const AsyncIpcCallBack &callback = nullptr);
     int32_t DeleteBackward(int32_t length, const AsyncIpcCallBack &callback = nullptr);
     int32_t HideKeyboardSelf();
+    int32_t HideCustomKeyboardSelf();
 
     int32_t SendExtendAction(int32_t action, const AsyncIpcCallBack &callback = nullptr);
     int32_t GetTextBeforeCursor(int32_t number, std::u16string &text, const AsyncIpcCallBack &callback = nullptr);
@@ -90,6 +94,7 @@ public:
     int32_t ShowPanel(const std::shared_ptr<InputMethodPanel> &inputMethodPanel);
     int32_t HidePanel(const std::shared_ptr<InputMethodPanel> &inputMethodPanel);
     bool IsCurrentIme();
+    bool IsImeExtension();
     bool IsEnable(uint64_t displayId);
     bool IsCallbackRegistered(const std::string &type);
     bool IsSystemApp();
@@ -131,9 +136,9 @@ public:
     int32_t StopInput(sptr<IRemoteObject> channelObj, uint32_t sessionId, int32_t clientSessionId = -1);
     int32_t ShowKeyboard(int32_t requestKeyboardReason);
     int32_t HideKeyboard();
-    int32_t HideCandidatePanel();
     int32_t OnDiscardTypingText();
     int32_t OnNotifyPreemption();
+    int32_t OnPassiveUnregister();
 
     void OnInitInputControlChannel(sptr<IRemoteObject> channelObj);
     void OnSetSubtype(SubProperty subProperty);
@@ -166,6 +171,7 @@ private:
     std::mutex systemCmdChannelLock_;
     sptr<SystemCmdChannelProxy> systemCmdChannelProxy_ = nullptr;
 
+    std::mutex listenerLock_;
     std::shared_ptr<InputMethodEngineListener> imeListener_;
     std::shared_ptr<KeyboardListener> kdListener_;
     std::shared_ptr<TextInputClientListener> textInputClientListener_;
@@ -244,7 +250,9 @@ private:
     sptr<IInputMethodAgent> agentStub_ { nullptr };
     std::mutex imeCheckMutex_;
     bool isCurrentIme_ = false;
-
+    std::mutex imeExtensionCheckMutex_;
+    bool isImeExtensionChecked_ = false;
+    bool isImeExtension_ = false;
     double positionY_ = 0;
     double height_ = 0;
 

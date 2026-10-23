@@ -72,6 +72,7 @@ taihe_shared_library("inputmethod_engine_taihe_native") {
   part_name = "$part_name"
   include_dirs = [
     "include",
+    "proxy/include",
     "${inputmethod_path}/frameworks/ets/taihe/include",
     "${inputmethod_path}/frameworks/ets/taihe/inputMethod/include",
     "${inputmethod_path}/frameworks/js/napi/inputmethodability",
@@ -92,6 +93,11 @@ taihe_shared_library("inputmethod_engine_taihe_native") {
     "src/input_method_panel_impl.cpp",
     "src/input_method_panel_listener.cpp",
     "src/keyboard_controller_impl.cpp",
+    "proxy/src/proxy_listener_base.cpp",
+    "proxy/src/proxy_input_method_ability_impl.cpp",
+    "proxy/src/proxy_keyboard_delegate_impl.cpp",
+    "proxy/src/proxy_keyboard_controller_impl.cpp",
+    "proxy/src/proxy_text_input_client_impl.cpp",
     "src/ohos.inputMethodEngine.impl.cpp",
   ]
   deps = [

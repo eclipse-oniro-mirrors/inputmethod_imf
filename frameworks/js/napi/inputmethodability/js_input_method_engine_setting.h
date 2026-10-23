@@ -43,6 +43,8 @@ public:
     static napi_value InitProperty(napi_env env, napi_value exports);
     static napi_value GetInputMethodEngine(napi_env env, napi_callback_info info);
     static napi_value GetInputMethodAbility(napi_env env, napi_callback_info info);
+    static napi_value RegisterInAppProxyIme(napi_env env, napi_callback_info info);
+    static napi_value UnregisterInAppProxyIme(napi_env env, napi_callback_info info);
     static napi_value Subscribe(napi_env env, napi_callback_info info);
     static napi_value UnSubscribe(napi_env env, napi_callback_info info);
     static napi_value CreatePanel(napi_env env, napi_callback_info info);
@@ -83,6 +85,19 @@ private:
                 return status_;
             }
             return Context::operator()(env, result);
+        }
+    };
+
+    struct RegisterInAppProxyImeContext : public AsyncCall::Context {
+        RegisterOptions options;
+        RegisterInAppProxyImeContext() : Context(nullptr, nullptr){};
+        RegisterInAppProxyImeContext(InputAction input, OutputAction output)
+            : Context(std::move(input), std::move(output)){};
+
+        napi_status operator()(napi_env env, size_t argc, napi_value *argv, napi_value self) override
+        {
+            CHECK_RETURN(self != nullptr, "self is nullptr", napi_invalid_arg);
+            return Context::operator()(env, argc, argv, self);
         }
     };
 

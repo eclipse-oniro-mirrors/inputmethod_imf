@@ -827,7 +827,7 @@ int32_t InputMethodSystemAbility::StartInputInner(InputClientInfo &inputClientIn
         IMSA_HILOGE("failed to PrepareInput!");
         return ret;
     }
-    auto imeToBind = session->GetReadyImeDataToBind(displayId);
+    auto imeToBind = session->GetReadyImeDataToBind(pid, inputClientInfo.config.inputAttribute.inputPattern, displayId);
     if (imeToBind == nullptr || imeToBind->IsRealIme()) {
         if (imeToBind == nullptr) {
             InputTypeManager::GetInstance().Set(false);
@@ -1099,6 +1099,59 @@ ErrCode InputMethodSystemAbility::UnregisterProxyIme(uint64_t displayId, int32_t
     }
     return session->OnUnregisterProxyIme(displayId, IPCSkeleton::GetCallingPid(),
         static_cast<UnRegisteredType>(type));
+}
+
+ErrCode InputMethodSystemAbility::RegisterInAppProxyIme(const RegisterOptions &options,
+    const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent)
+{
+    if (identityChecker_ == nullptr) {
+        IMSA_HILOGE("identityChecker_ is nullptr!");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    auto pid = IPCSkeleton::GetCallingPid();
+    auto uid = IPCSkeleton::GetCallingUid();
+    auto tokenId = IPCSkeleton::GetCallingTokenID();
+    auto userId = GetCallingUserId();
+    if (ImeInfoInquirer::GetInstance().IsInputMethodExtension(pid)) {
+        IMSA_HILOGE("IME extension not allowed, pid: %{public}d", pid);
+        return ErrorCode::ERROR_IME_EXTENSION_NOT_ALLOWED;
+    }
+    uint32_t windowId = 0;
+    auto [isFocused, focusedInfo] = identityChecker_->IsFocused(pid, tokenId, userId, windowId);
+    if (!isFocused) {
+        IMSA_HILOGE("not focused, pid: %{public}d", pid);
+        return ErrorCode::ERROR_NOT_FOCUSED;
+    }
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+    if (session == nullptr) {
+        IMSA_HILOGE("%{public}d session is nullptr!", userId);
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    return session->OnRegisterInAppProxyIme(pid, uid, options, core, agent);
+}
+
+ErrCode InputMethodSystemAbility::UnregisterInAppProxyIme()
+{
+    auto pid = IPCSkeleton::GetCallingPid();
+    auto userId = GetCallingUserId();
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+    if (session == nullptr) {
+        IMSA_HILOGE("%{public}d session is nullptr!", userId);
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    auto [group, clientInfo] = session->GetCurrentClientInfoByPid(pid);
+    if (clientInfo != nullptr && clientInfo->bindImeData != nullptr && clientInfo->bindImeData->pid == pid) {
+        auto newImeData = session->GetReadyImeDataToBind(pid, clientInfo->config.inputAttribute.inputPattern,
+            clientInfo->config.inputAttribute.editorDisplayId, true);
+        if (newImeData == nullptr || newImeData->IsRealIme()) {
+            InputTypeManager::GetInstance().Set(false);
+            auto ret = EnsureImeAvailable(userId, *clientInfo);
+            if (ret != ErrorCode::NO_ERROR) {
+                IMSA_HILOGE("%{public}d failed to EnsureImeAvailable!", userId);
+            }
+        }
+    }
+    return session->OnUnregisterInAppProxyIme(pid);
 }
 
 ErrCode InputMethodSystemAbility::BindImeMirror(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent)
@@ -1447,6 +1500,13 @@ ErrCode InputMethodSystemAbility::IsCurrentIme(bool& resultValue)
     auto userId = GetCallingUserId();
     auto tokenId = GetCallingTokenID();
     resultValue = IsCurrentIme(userId, tokenId);
+    return ERR_OK;
+}
+
+ErrCode InputMethodSystemAbility::IsInputMethodExtension(bool& resultValue)
+{
+    auto callingPid = GetCallingPid();
+    resultValue = ImeInfoInquirer::GetInstance().IsInputMethodExtension(callingPid);
     return ERR_OK;
 }
 

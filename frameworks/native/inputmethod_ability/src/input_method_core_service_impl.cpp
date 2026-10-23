@@ -56,13 +56,6 @@ ErrCode InputMethodCoreServiceImpl::HideKeyboard()
     return ERR_OK;
 }
 
-ErrCode InputMethodCoreServiceImpl::HideCandidatePanel()
-{
-    auto task = std::make_shared<TaskImsaHideCandidatePanel>();
-    TaskManager::GetInstance().PostTask(task);
-    return ERR_OK;
-}
-
 ErrCode InputMethodCoreServiceImpl::StopInputService(bool isTerminateIme)
 {
     auto task = std::make_shared<TaskImsaStopInputService>(isTerminateIme);
@@ -168,6 +161,12 @@ ErrCode InputMethodCoreServiceImpl::OnPttGestureCancelled()
 {
     InputMethodAbility::GetInstance().OnPttGestureCancelled();
     return ERR_OK;
+}
+
+ErrCode InputMethodCoreServiceImpl::NotifyPassiveUnregister()
+{
+    IMSA_HILOGI("NotifyPassiveUnregister");
+    return InputMethodAbility::GetInstance().OnPassiveUnregister();
 }
 } // namespace MiscServices
 } // namespace OHOS
