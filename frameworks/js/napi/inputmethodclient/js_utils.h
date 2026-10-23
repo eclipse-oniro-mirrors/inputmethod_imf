@@ -151,6 +151,7 @@ public:
     static napi_value GetJsPrivateCommand(napi_env env, const std::unordered_map<std::string, PrivateDataValue> &in);
     static napi_value GetValue(napi_env env, const std::vector<uint8_t> &in);
     static napi_status GetValue(napi_env env, const std::string &in, napi_value &out);
+    static napi_status GetValue(napi_env env, napi_value in, RegisterOptions &out);
     static napi_status GetMessageHandlerCallbackParam(napi_value *argv,
         const std::shared_ptr<JSMsgHandlerCallbackObject> &jsMessageHandler, const ArrayBuffer &arrayBuffer,
             size_t size);

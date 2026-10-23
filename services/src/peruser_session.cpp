@@ -670,7 +670,8 @@ int32_t PerUserSession::OnStartInput(
     InputClientInfo &inputClientInfo, std::vector<sptr<IRemoteObject>> &agents, std::vector<BindImeInfo> &imeInfos)
 {
     IMSA_HILOGD("start input with keyboard[%{public}d].", inputClientInfo.isShowKeyboard);
-    auto data = GetReadyImeDataToBind(inputClientInfo.config.inputAttribute.editorDisplayId);
+    auto data = GetReadyImeDataToBind(inputClientInfo.pid, inputClientInfo.config.inputAttribute.inputPattern,
+        inputClientInfo.config.inputAttribute.editorDisplayId);
     if (data == nullptr || data->agent == nullptr) {
         IMSA_HILOGE("data or agent is nullptr!");
         return ErrorCode::ERROR_IME_NOT_STARTED;
@@ -765,8 +766,16 @@ void PerUserSession::RemoveProxyImeData(pid_t pid)
     }
 }
 
-std::shared_ptr<ImeData> PerUserSession::GetReadyImeDataToBind(uint64_t displayId)
+std::shared_ptr<ImeData> PerUserSession::GetReadyImeDataToBind(
+    pid_t pid, int32_t inputPattern, uint64_t displayId, bool skipInAppProxy)
 {
+    if (!skipInAppProxy) {
+        auto inAppProxy = GetMatchedInAppProxyIme(pid, inputPattern);
+        if (inAppProxy != nullptr) {
+            IMSA_HILOGI("select in-app proxy ime, pid: %{public}d", pid);
+            return inAppProxy;
+        }
+    }
     auto proxyIme = GetProxyImeData(displayId);
     if (proxyIme != nullptr && IsEnable(proxyIme, displayId)) {
         return proxyIme;
@@ -1289,9 +1298,197 @@ int32_t PerUserSession::OnRegisterProxyIme(
     if (clientInfo == nullptr) {
         return ErrorCode::NO_ERROR;
     }
+    if (clientInfo->bindImeData != nullptr && clientInfo->bindImeData->IsInAppIme()) {
+        IMSA_HILOGI("current binding is INAPP_PROXY_IME, skip PROXY_IME rebind");
+        return ErrorCode::NO_ERROR;
+    }
     if (!IsSameIme(clientInfo->bindImeData, newImeData)) {
         UnBindClientWithIme(clientInfo, { .sessionId = 0 });
     }
+    BindClientWithIme(clientInfo, newImeData);
+    return ErrorCode::NO_ERROR;
+}
+
+void PerUserSession::AddInAppProxyImeData(pid_t pid, const std::shared_ptr<ImeData> &data)
+{
+    std::lock_guard<std::mutex> lock(inAppProxyImeDataLock_);
+    data->startTime = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    inAppProxyImeData_[pid] = data;
+}
+
+void PerUserSession::RemoveInAppProxyImeData(pid_t pid)
+{
+    std::lock_guard<std::mutex> lock(inAppProxyImeDataLock_);
+    auto it = inAppProxyImeData_.find(pid);
+    if (it == inAppProxyImeData_.end()) {
+        return;
+    }
+    if (it->second != nullptr && it->second->core != nullptr) {
+        RemoveDeathRecipient(it->second->deathRecipient, it->second->core->AsObject());
+    }
+    inAppProxyImeData_.erase(it);
+}
+
+std::shared_ptr<ImeData> PerUserSession::GetInAppProxyImeData(pid_t pid)
+{
+    std::lock_guard<std::mutex> lock(inAppProxyImeDataLock_);
+    auto it = inAppProxyImeData_.find(pid);
+    if (it == inAppProxyImeData_.end()) {
+        return nullptr;
+    }
+    return it->second;
+}
+
+bool PerUserSession::UpdateInAppProxyImeOptions(pid_t pid, const RegisterOptions &options)
+{
+    std::lock_guard<std::mutex> lock(inAppProxyImeDataLock_);
+    auto it = inAppProxyImeData_.find(pid);
+    if (it == inAppProxyImeData_.end() || it->second == nullptr) {
+        return false;
+    }
+    it->second->inAppImeInfo.options = options;
+    return true;
+}
+
+std::shared_ptr<ImeData> PerUserSession::GetMatchedInAppProxyIme(pid_t pid, int32_t inputPattern)
+{
+    std::lock_guard<std::mutex> lock(inAppProxyImeDataLock_);
+    auto it = inAppProxyImeData_.find(pid);
+    if (it == inAppProxyImeData_.end() || it->second == nullptr) {
+        return nullptr;
+    }
+    return it->second->inAppImeInfo.options.IsInputPatternMatched(inputPattern) ? it->second : nullptr;
+}
+
+void PerUserSession::EvictInAppProxyIme()
+{
+    auto focusedPids = GetCurrentClientPids();
+    std::shared_ptr<ImeData> imeDataToNotify = nullptr;
+    pid_t evictedPid = 0;
+    int64_t evictedStartTime = 0;
+    {
+        std::lock_guard<std::mutex> lock(inAppProxyImeDataLock_);
+        for (auto it = inAppProxyImeData_.begin(); it != inAppProxyImeData_.end();) {
+            if (it->second == nullptr) {
+                IMSA_HILOGW("inAppProxyImeData null entry removed, pid: %{public}d", it->first);
+                it = inAppProxyImeData_.erase(it);
+            } else {
+                ++it;
+            }
+        }
+        if (inAppProxyImeData_.size() <= MAX_INAPP_PROXY_IME_COUNT) {
+            return;
+        }
+        auto oldest = inAppProxyImeData_.end();
+        for (auto it = inAppProxyImeData_.begin(); it != inAppProxyImeData_.end(); ++it) {
+            if (std::find(focusedPids.begin(), focusedPids.end(), it->second->pid) != focusedPids.end()) {
+                continue;
+            }
+            if (oldest == inAppProxyImeData_.end() || it->second->startTime < oldest->second->startTime) {
+                oldest = it;
+            }
+        }
+        if (oldest == inAppProxyImeData_.end()) {
+            return;
+        }
+        evictedPid = oldest->first;
+        evictedStartTime = oldest->second->startTime;
+        imeDataToNotify = oldest->second;
+        if (imeDataToNotify->core != nullptr) {
+            RemoveDeathRecipient(imeDataToNotify->deathRecipient, imeDataToNotify->core->AsObject());
+        }
+        inAppProxyImeData_.erase(oldest);
+        IMSA_HILOGI("evicted pid: %{public}d, startTime: %{public}" PRId64, evictedPid, evictedStartTime);
+    }
+    RequestIme(imeDataToNotify, RequestType::NORMAL,
+               [imeDataToNotify] { return imeDataToNotify->core->NotifyPassiveUnregister(); });
+}
+
+std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> PerUserSession::GetCurrentClientInfoByPid(
+    pid_t clientPid)
+{
+    std::lock_guard<std::mutex> lock(clientGroupLock_);
+    for (const auto &[groupId, group] : clientGroupMap_) {
+        if (group == nullptr) {
+            continue;
+        }
+        auto clientInfo = group->GetCurrentClientInfo();
+        if (clientInfo != nullptr && clientInfo->pid == clientPid) {
+            return { group, clientInfo };
+        }
+    }
+    return { nullptr, nullptr };
+}
+
+std::vector<pid_t> PerUserSession::GetCurrentClientPids()
+{
+    std::vector<pid_t> pids;
+    std::lock_guard<std::mutex> lock(clientGroupLock_);
+    for (const auto &[groupId, group] : clientGroupMap_) {
+        if (group != nullptr) {
+            pids.push_back(static_cast<pid_t>(group->GetCurrentClientPid()));
+        }
+    }
+    return pids;
+}
+
+int32_t PerUserSession::OnRegisterInAppProxyIme(pid_t pid, int32_t uid, const RegisterOptions &options,
+    const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent)
+{
+    auto ret = RegisterInAppProxyImeData(pid, uid, options, core, agent);
+    if (ret != ErrorCode::NO_ERROR) {
+        return ret;
+    }
+    auto [group, clientInfo] = GetCurrentClientInfoByPid(pid);
+    if (clientInfo == nullptr) {
+        return ErrorCode::NO_ERROR;
+    }
+    auto newImeData = GetReadyImeDataToBind(
+        pid, clientInfo->config.inputAttribute.inputPattern, clientInfo->config.inputAttribute.editorDisplayId);
+    if (newImeData != nullptr && !IsSameIme(clientInfo->bindImeData, newImeData)) {
+        UnBindClientWithIme(clientInfo, { .sessionId = 0 });
+        BindClientWithIme(clientInfo, newImeData);
+    }
+    return ErrorCode::NO_ERROR;
+}
+
+int32_t PerUserSession::RegisterInAppProxyImeData(pid_t pid, int32_t uid, const RegisterOptions &options,
+    const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent)
+{
+    IMSA_HILOGI("pid: %{public}d, uid: %{public}d", pid, uid);
+    if (core == nullptr || agent == nullptr) {
+        IMSA_HILOGE("core or agent is nullptr!");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    if (UpdateInAppProxyImeOptions(pid, options)) {
+        IMSA_HILOGI("in-app proxy ime already exists, pid: %{public}d, options updated", pid);
+        return ErrorCode::NO_ERROR;
+    }
+    auto imeData = std::make_shared<ImeData>(nullptr, nullptr, nullptr, -1);
+    auto ret = FillImeData(core, agent, pid, ImeType::INAPP_PROXY_IME, imeData, uid);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("FillImeData failed: %{public}d", ret);
+        return ret;
+    }
+    imeData->inAppImeInfo.options = options;
+    AddInAppProxyImeData(pid, imeData);
+    EvictInAppProxyIme();
+    return ErrorCode::NO_ERROR;
+}
+
+int32_t PerUserSession::OnUnregisterInAppProxyIme(pid_t pid)
+{
+    IMSA_HILOGD("pid: %{public}d", pid);
+    auto [group, clientInfo] = GetCurrentClientInfoByPid(pid);
+    if (clientInfo == nullptr || clientInfo->bindImeData == nullptr || clientInfo->bindImeData->pid != pid) {
+        RemoveInAppProxyImeData(pid);
+        return ErrorCode::NO_ERROR;
+    }
+    IMSA_HILOGI("in app proxy unregister, reselect");
+    UnBindClientWithIme(clientInfo, { .sessionId = 0 });
+    RemoveInAppProxyImeData(pid);
+    auto newImeData = GetReadyImeDataToBind(
+        pid, clientInfo->config.inputAttribute.inputPattern, clientInfo->config.inputAttribute.editorDisplayId);
     BindClientWithIme(clientInfo, newImeData);
     return ErrorCode::NO_ERROR;
 }
@@ -1618,6 +1815,7 @@ void PerUserSession::RemoveImeData(pid_t pid)
     RemoveRealImeData(pid);
     RemoveMirrorImeData(pid);
     RemoveProxyImeData(pid);
+    RemoveInAppProxyImeData(pid);
 }
 
 void PerUserSession::RemoveDeathRecipient(
@@ -2340,13 +2538,17 @@ int32_t PerUserSession::IsPanelShown(const PanelInfo &panelInfo, bool &isShown)
 
 int32_t PerUserSession::RequestIme(const std::shared_ptr<ImeData> &data, RequestType type, const IpcExec &exec)
 {
-    if (data == nullptr || data->core == nullptr || data->imeStateManager == nullptr) {
+    if (data == nullptr || data->core == nullptr) {
         IMSA_HILOGE("data is nullptr!");
         return ErrorCode::NO_ERROR;
     }
     if (!data->IsRealIme()) {
         IMSA_HILOGD("proxy enable.");
         return exec();
+    }
+    if (data->imeStateManager == nullptr) {
+        IMSA_HILOGE("imeStateManager is nullptr!");
+        return ErrorCode::NO_ERROR;
     }
     if (!data->imeStateManager->IsIpcNeeded(type)) {
         IMSA_HILOGD("no need to request, type: %{public}d.", type);
@@ -3811,10 +4013,12 @@ int32_t PerUserSession::ExecTextInteraction(const std::string &text)
     }
     auto imeData = GetImeData(clientInfo->bindImeData);
     if (imeData != nullptr && imeData->core != nullptr) {
-        auto hideRet =
-            RequestIme(imeData, RequestType::NORMAL, [&imeData] { return imeData->core->HideCandidatePanel(); });
-        if (hideRet != ErrorCode::NO_ERROR) {
-            IMSA_HILOGD("HideCandidatePanel ret: %{public}d", hideRet);
+        InputClientInfoInner inputClientInfoInner = InputMethodTools::GetInstance().InputClientInfoToInner(*clientInfo);
+        inputClientInfoInner.isNotifyInputStart = true;
+        auto startRet = RequestIme(imeData, RequestType::START_INPUT,
+            [&inputClientInfoInner, &imeData] { return imeData->core->StartInput(inputClientInfoInner, false); });
+        if (startRet != ErrorCode::NO_ERROR) {
+            IMSA_HILOGE("StartInput ret: %{public}d", startRet);
         }
     }
     auto ret = clientInfo->client->OnExecTextInteraction(text);

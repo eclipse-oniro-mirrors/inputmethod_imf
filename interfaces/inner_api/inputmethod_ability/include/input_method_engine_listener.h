@@ -24,22 +24,46 @@ namespace MiscServices {
 class InputMethodEngineListener {
 public:
     virtual ~InputMethodEngineListener() = default;
-    virtual void OnKeyboardStatus(bool isShow) = 0;
-    virtual void OnInputStart() = 0;
-    virtual int32_t OnInputStop() = 0;
+    virtual void OnKeyboardStatus(bool isShow)
+    {
+    }
+    virtual void OnInputStart()
+    {
+    }
+    virtual int32_t OnInputStop()
+    {
+        return ErrorCode::NO_ERROR;
+    }
     virtual int32_t OnDiscardTypingText()
     {
         return ErrorCode::NO_ERROR;
     }
     virtual void OnSecurityChange(int32_t security)
     {
-    };
-    virtual void OnSetCallingWindow(uint32_t windowId) = 0;
-    virtual void OnSetSubtype(const SubProperty &property) = 0;
-    virtual void ReceivePrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand) = 0;
+    }
+    virtual void OnSetCallingWindow(uint32_t windowId)
+    {
+    }
+    virtual void OnSetSubtype(const SubProperty &property)
+    {
+    }
+    virtual void ReceivePrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand)
+    {
+    }
     virtual void OnInputFinish()
     {
     }
+    /**
+     * @brief Whether to enable SA Proxy.
+     *
+     * If the SA has registered a global proxy input method.
+     * This function will be invoked during the binding process when the edit box gains focus.
+     *
+     * @param displayId Indicates the screen whether to enable the SA Proxy
+     * @return
+     *     Returns true if SA Proxy needs to be enabled.
+     *     Returns false if SA Proxy does not need to be enabled.
+     */
     virtual bool IsEnable(uint64_t displayId)
     {
         return true;
@@ -52,9 +76,21 @@ public:
     {
         return false;
     }
-    virtual void OnCallingDisplayIdChanged(uint64_t callingDisplayId) {};
-
-    virtual void NotifyPreemption() {};
+    virtual void OnCallingDisplayIdChanged(uint64_t callingDisplayId)
+    {
+    }
+    /**
+     * @brief Notify the SA Proxy that it has been preempted.
+     *
+     * If an SA Proxy is already bound to the edit box that gains focus and a new SA Proxy is registered,
+     * this function will be invoked.
+     */
+    virtual void NotifyPreemption()
+    {
+    }
+    virtual void OnUnregister()
+    {
+    }
 };
 } // namespace MiscServices
 } // namespace OHOS

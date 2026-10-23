@@ -23,6 +23,8 @@
 #include "input_method_utils.h"
 #include "js_callback_handler.h"
 #include "js_keyboard_controller_engine.h"
+#include "js_proxy_input_method_ability.h"
+#include "js_proxy_keyboard_delegate.h"
 #include "js_runtime_utils.h"
 #include "js_text_input_client_engine.h"
 #include "js_util.h"
@@ -86,9 +88,14 @@ napi_value JsInputMethodEngineSetting::Init(napi_env env, napi_value exports)
         DECLARE_NAPI_PROPERTY(
             "PATTERN_ONE_TIME_CODE", GetJsConstProperty(env, static_cast<uint32_t>(TextInputType::ONE_TIME_CODE))),
         DECLARE_NAPI_PROPERTY("PATTERN_ONE_TIME_CODE_NUMBER",
-            GetJsConstProperty(env, static_cast<uint32_t>(InputAttribute::PATTERN_ONE_TIME_CODE_NUMBER))),
+            GetJsConstProperty(env, static_cast<uint32_t>(TextInputType::ONE_TIME_CODE_NUMBER))),
         DECLARE_NAPI_FUNCTION("getInputMethodEngine", GetInputMethodEngine),
         DECLARE_NAPI_FUNCTION("getInputMethodAbility", GetInputMethodAbility),
+        DECLARE_NAPI_FUNCTION("registerInAppProxyIme", RegisterInAppProxyIme),
+        DECLARE_NAPI_FUNCTION("unregisterInAppProxyIme", UnregisterInAppProxyIme),
+        DECLARE_NAPI_FUNCTION("getProxyInputMethodAbility", JsProxyInputMethodAbility::GetProxyInputMethodAbility),
+        DECLARE_NAPI_FUNCTION(
+            "getProxyInputMethodKeyboardDelegate", JsProxyKeyboardDelegate::GetProxyInputMethodKeyboardDelegate),
         DECLARE_NAPI_STATIC_PROPERTY("PanelType", GetJsPanelTypeProperty(env)),
         DECLARE_NAPI_STATIC_PROPERTY("PanelFlag", GetJsPanelFlagProperty(env)),
         DECLARE_NAPI_STATIC_PROPERTY("Direction", GetJsDirectionProperty(env)),
@@ -348,6 +355,41 @@ napi_value JsInputMethodEngineSetting::GetInputMethodAbility(napi_env env, napi_
 napi_value JsInputMethodEngineSetting::GetInputMethodEngine(napi_env env, napi_callback_info info)
 {
     return GetIMEInstance(env, info);
+}
+
+napi_value JsInputMethodEngineSetting::RegisterInAppProxyIme(napi_env env, napi_callback_info info)
+{
+    IMSA_HILOGD("run in.");
+    auto ctxt = std::make_shared<RegisterInAppProxyImeContext>();
+    auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
+        if (argc == 0) {
+            return napi_ok;
+        }
+        return JsUtils::GetValue(env, argv[0], ctxt->options);
+    };
+    auto exec = [ctxt](AsyncCall::Context *ctx) {
+        int32_t status = InputMethodAbility::GetInstance().RegisterInAppProxyIme(ctxt->options);
+        ctxt->SetErrorCode(status);
+        CHECK_RETURN_VOID(status == ErrorCode::NO_ERROR, "registerInAppProxyIme return error!");
+        ctxt->SetState(napi_ok);
+    };
+    ctxt->SetAction(std::move(input));
+    AsyncCall asyncCall(env, info, ctxt, 1);
+    return asyncCall.Call(env, exec, "registerInAppProxyIme");
+}
+
+napi_value JsInputMethodEngineSetting::UnregisterInAppProxyIme(napi_env env, napi_callback_info info)
+{
+    IMSA_HILOGI("run in.");
+    auto ctxt = std::make_shared<AsyncCall::Context>(nullptr, nullptr);
+    auto exec = [ctxt](AsyncCall::Context *ctx) {
+        int32_t status = InputMethodAbility::GetInstance().UnregisterInAppProxyIme();
+        ctxt->SetErrorCode(status);
+        CHECK_RETURN_VOID(status == ErrorCode::NO_ERROR, "unregisterInAppProxyIme return error!");
+        ctxt->SetState(napi_ok);
+    };
+    AsyncCall asyncCall(env, info, ctxt, 0);
+    return asyncCall.Call(env, exec, "unregisterInAppProxyIme");
 }
 
 napi_value JsInputMethodEngineSetting::GetIMEInstance(napi_env env, napi_callback_info info)

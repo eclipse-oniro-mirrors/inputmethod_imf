@@ -173,7 +173,8 @@ enum TextInputType : i32 {
     USER_NAME = 10,
     NEW_PASSWORD = 11,
     NUMBER_DECIMAL = 12,
-    ONE_TIME_CODE = 13
+    ONE_TIME_CODE = 13,
+    ONE_TIME_CODE_NUMBER = 15
 }
 
 enum EnterKeyType : i32 {

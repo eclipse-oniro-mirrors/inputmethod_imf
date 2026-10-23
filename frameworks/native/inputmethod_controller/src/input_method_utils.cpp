@@ -340,6 +340,57 @@ bool TextTotalConfigInner::Marshalling(Parcel &out) const
     return true;
 }
 // LCOV_EXCL_START
+bool RegisterOptions::ReadFromParcel(Parcel &in)
+{
+    bool hasValue = in.ReadBool();
+    if (!hasValue) {
+        inputPatternTypes = std::nullopt;
+        return true;
+    }
+    uint32_t size = in.ReadUint32();
+    if (size > MAX_INPUT_PATTERN_TYPES_SIZE) {
+        return false;
+    }
+    std::vector<int32_t> types;
+    types.reserve(size);
+    for (uint32_t i = 0; i < size; i++) {
+        types.push_back(in.ReadInt32());
+    }
+    inputPatternTypes = std::move(types);
+    return true;
+}
+
+bool RegisterOptions::Marshalling(Parcel &out) const
+{
+    bool hasValue = inputPatternTypes.has_value();
+    if (!out.WriteBool(hasValue)) {
+        return false;
+    }
+    if (!hasValue) {
+        return true;
+    }
+    const auto &types = inputPatternTypes.value();
+    if (!out.WriteUint32(static_cast<uint32_t>(types.size()))) {
+        return false;
+    }
+    for (int32_t type : types) {
+        if (!out.WriteInt32(type)) {
+            return false;
+        }
+    }
+    return true;
+}
+
+RegisterOptions *RegisterOptions::Unmarshalling(Parcel &in)
+{
+    RegisterOptions *data = new (std::nothrow) RegisterOptions();
+    if (data && !data->ReadFromParcel(in)) {
+        delete data;
+        data = nullptr;
+    }
+    return data;
+}
+
 bool ArrayBuffer::Marshalling(Parcel &out) const
 {
     if (!out.WriteUint64(static_cast<uint64_t>(jsArgc))) {

@@ -16,6 +16,8 @@
 #ifndef INPUTMETHOD_IMF_INPUT__CLIENT_INFO_H
 #define INPUTMETHOD_IMF_INPUT__CLIENT_INFO_H
 
+#include <vector>
+
 #include "iinput_client.h"
 #include "iinput_data_channel.h"
 #include "input_attribute.h"
@@ -40,8 +42,10 @@ enum class ImeType : int32_t {
     IME = 0,
     PROXY_IME,
     IME_MIRROR,
-    NONE
+    NONE,
+    INAPP_PROXY_IME
 };
+
 enum class ClientState : uint32_t {
     INACTIVE = 0,
     ACTIVE
@@ -65,6 +69,10 @@ struct BindImeData {
     bool IsRealIme() const
     {
         return type == ImeType::IME;
+    }
+    bool IsInAppIme() const
+    {
+        return type == ImeType::INAPP_PROXY_IME;
     }
 };
 

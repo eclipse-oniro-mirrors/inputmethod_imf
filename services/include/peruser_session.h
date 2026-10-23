@@ -41,6 +41,7 @@ namespace OHOS {
 namespace MiscServices {
 const std::string IME_MIRROR_NAME = "proxyIme_IME_MIRROR";
 const std::string PROXY_IME_NAME = "proxyIme";
+constexpr uint64_t MAX_INAPP_PROXY_IME_COUNT = 100;
 enum class ImeStartScene : uint32_t { MAKE_IMAGE, NORMAL_START };
 enum class ImageFailedReason : uint32_t { FAILED_HAS_RUNNING_IME, FAILED_OTHERS, FAILED_NONE};
 enum class ImeStatus : uint32_t { STARTING, READY, EXITING };
@@ -64,6 +65,11 @@ enum class ImeAction : uint32_t {
     DO_ACTION_IN_NULL_IME_DATA,
     DO_ACTION_IN_IME_EVENT_CONVERT_FAILED,
 };
+
+struct InAppImeInfo {
+    RegisterOptions options;
+};
+
 struct ImeData {
     static constexpr int64_t START_TIME_OUT = 18000;
     sptr<IInputMethodCore> core{ nullptr };
@@ -92,8 +98,13 @@ struct ImeData {
     {
         return type == ImeType::IME;
     }
+    bool IsInAppIme() const
+    {
+        return type == ImeType::INAPP_PROXY_IME;
+    }
     ImeExtendInfo imeExtendInfo;
     bool isDisconnected = false;
+    InAppImeInfo inAppImeInfo;
 };
 
 enum class StartPreDefaultImeStatus : uint32_t { NO_NEED, HAS_STARTED, TO_START };
@@ -153,6 +164,9 @@ public:
     int32_t OnUnbindImeMirror();
     int32_t UpdateLargeMemorySceneState(const int32_t memoryState);
     int32_t OnUnregisterProxyIme(uint64_t displayId, int32_t pid, UnRegisteredType type);
+    int32_t OnRegisterInAppProxyIme(pid_t pid, int32_t uid, const RegisterOptions &options,
+        const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent);
+    int32_t OnUnregisterInAppProxyIme(pid_t pid);
     int32_t InitConnect(pid_t pid);
 
     int32_t StartCurrentIme(bool isStopCurrentIme = false, StartReason startReason = StartReason::DEFAULT_START);
@@ -169,7 +183,8 @@ public:
     int32_t IsPanelShown(uint64_t displayId, const PanelInfo &panelInfo, bool &isShown);
     int32_t OnConnectSystemCmd(const sptr<IRemoteObject> &channel, sptr<IRemoteObject> &agent);
     int32_t RemoveAllCurrentClient();
-    std::shared_ptr<ImeData> GetReadyImeDataToBind(uint64_t displayId);
+    std::shared_ptr<ImeData> GetReadyImeDataToBind(
+        pid_t pid, int32_t inputPattern, uint64_t displayId, bool skipInAppProxy = false);
     std::shared_ptr<ImeData> GetRealImeData(bool isReady = false);
     BlockQueue<SwitchInfo>& GetSwitchQueue();
     bool IsWmsReady();
@@ -202,6 +217,8 @@ public:
     int32_t TryDisconnectIme();
     bool IsDeviceLockAndScreenLocked();
     std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> GetClientBySelfPid(pid_t clientPid);
+    std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> GetCurrentClientInfoByPid(
+        pid_t clientPid);
     std::pair<std::shared_ptr<ClientGroup>, std::shared_ptr<InputClientInfo>> GetClientBySelfPidOrHostPid(
         pid_t clientPid);
     void OnSysImeImageCreated();
@@ -356,6 +373,7 @@ private:
         InputClientInfo &newClientInfo, const std::shared_ptr<InputClientInfo> &oldClientInfo);
     bool IsSameImeType(const std::shared_ptr<BindImeData> &oldIme, const std::shared_ptr<ImeData> &newIme);
     bool IsSameClientGroup(uint64_t oldGroupId, uint64_t newGroupId);
+    std::vector<pid_t> GetCurrentClientPids();
     void HandleSameClientInMultiGroup(const InputClientInfo &newClientInfo);
     void HandleRealImeInMultiGroup(const InputClientInfo &newClientInfo, const std::shared_ptr<ImeData> &newImeData);
     void HandleSameImeInMultiGroup(const InputClientInfo &newClientInfo, const std::shared_ptr<ImeData> &newImeData);
@@ -445,6 +463,16 @@ private:
     bool isFirstPreemption_ = false;
     std::mutex proxyImeDataLock_;
     std::map<uint64_t, std::vector<std::shared_ptr<ImeData>>> proxyImeData_;
+    std::mutex inAppProxyImeDataLock_;
+    std::map<int32_t, std::shared_ptr<ImeData>> inAppProxyImeData_;
+    void AddInAppProxyImeData(pid_t pid, const std::shared_ptr<ImeData> &data);
+    void RemoveInAppProxyImeData(pid_t pid);
+    std::shared_ptr<ImeData> GetInAppProxyImeData(pid_t pid);
+    bool UpdateInAppProxyImeOptions(pid_t pid, const RegisterOptions &options);
+    std::shared_ptr<ImeData> GetMatchedInAppProxyIme(pid_t pid, int32_t inputPattern);
+    void EvictInAppProxyIme();
+    int32_t RegisterInAppProxyImeData(pid_t pid, int32_t uid, const RegisterOptions &options,
+        const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent);
     std::mutex mirrorImeDataLock_;
     std::shared_ptr<ImeData> mirrorImeData_;
     std::mutex realImeDataLock_;

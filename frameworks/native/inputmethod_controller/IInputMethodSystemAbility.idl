@@ -14,6 +14,7 @@
  */
 
 sequenceable input_client_info..OHOS.MiscServices.InputClientInfoInner;
+sequenceable input_method_utils..OHOS.MiscServices.RegisterOptions;
 sequenceable input_method_property..OHOS.MiscServices.Property;
 sequenceable input_method_property..OHOS.MiscServices.SubProperty;
 sequenceable input_window_info..OHOS.MiscServices.ImeWindowInfo;
@@ -51,6 +52,7 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     [oneway] void PanelStatusChange([in] unsigned int status, [in] ImeWindowInfo info);
     void UpdateListenEventFlag([in] InputClientInfoInner clientInfoInner, [in] unsigned int eventFlag);
     void IsCurrentIme([out] boolean resultValue);
+    void IsInputMethodExtension([out] boolean resultValue);
     void IsInputTypeSupported([in] int type, [out] boolean resultValue);
     void IsCurrentImeByPid([in] int pid, [out] boolean resultValue, [in] int userId);
     void StartInputType([in] int type, [in] boolean isPersistence);
@@ -87,4 +89,6 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void SetEDCDefaultInputMethod([in] String edcBackupImeName);
     void ExecTextInteraction([in] String text);
     void IsPttGestureAvailable([in] IRemoteObject channel, [out] boolean resultValue);
+    void RegisterInAppProxyIme([in] RegisterOptions options, [in] IInputMethodCore core, [in] IRemoteObject agent);
+    void UnregisterInAppProxyIme();
 }

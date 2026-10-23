@@ -179,6 +179,54 @@ int32_t InputMethodAbility::UnregisterProxyIme(uint64_t displayId, UnRegisteredT
     return proxy->UnregisterProxyIme(displayId, static_cast<int32_t>(type));
 }
 
+int32_t InputMethodAbility::RegisterInAppProxyIme(const RegisterOptions &options)
+{
+    IMSA_HILOGD("IMA RegisterInAppProxyIme");
+    TaskManager::GetInstance().SetInited(true);
+    auto proxy = GetImsaProxy();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("imsa proxy is nullptr!");
+        return ErrorCode::ERROR_SERVICE_START_FAILED;
+    }
+    if (agentStub_ == nullptr || coreStub_ == nullptr) {
+        IMSA_HILOGE("agent or core nullptr");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    int32_t ret = proxy->RegisterInAppProxyIme(options, coreStub_, agentStub_->AsObject());
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("failed, ret: %{public}d!", ret);
+        return ret;
+    }
+    isProxyIme_.store(true);
+    return ErrorCode::NO_ERROR;
+}
+
+int32_t InputMethodAbility::UnregisterInAppProxyIme()
+{
+    IMSA_HILOGD("IMA UnregisterInAppProxyIme");
+    auto proxy = GetImsaProxy();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("imsa proxy is nullptr!");
+        return ErrorCode::ERROR_SERVICE_START_FAILED;
+    }
+    int32_t ret = proxy->UnregisterInAppProxyIme();
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("failed, ret: %{public}d!", ret);
+        return ret;
+    }
+    return ErrorCode::NO_ERROR;
+}
+
+int32_t InputMethodAbility::HideCustomKeyboardSelf()
+{
+    auto channel = GetInputDataChannelProxy();
+    if (channel == nullptr) {
+        return ErrorCode::ERROR_CLIENT_NULL_POINTER;
+    }
+    auto ret = HideKeyboard(Trigger::IME_APP, 0);
+    return ret == ErrorCode::ERROR_CLIENT_NULL_POINTER ? ret : ErrorCode::NO_ERROR;
+}
+
 int32_t InputMethodAbility::BindImeMirror()
 {
     TaskManager::GetInstance().SetInited(true);
@@ -264,22 +312,33 @@ void InputMethodAbility::ConfigurationUpdate(Rosen::DisplayId displayId)
 void InputMethodAbility::SetImeListener(std::shared_ptr<InputMethodEngineListener> imeListener)
 {
     IMSA_HILOGD("InputMethodAbility start.");
-    if (imeListener_ == nullptr) {
-        imeListener_ = std::move(imeListener);
+    std::lock_guard<std::mutex> lock(listenerLock_);
+    if (imeListener_ != nullptr) {
+        return;
     }
+    imeListener_ = std::move(imeListener);
 }
 
 std::shared_ptr<InputMethodEngineListener> InputMethodAbility::GetImeListener()
 {
+    std::lock_guard<std::mutex> lock(listenerLock_);
     return imeListener_;
 }
 
 void InputMethodAbility::SetKdListener(std::shared_ptr<KeyboardListener> kdListener)
 {
     IMSA_HILOGD("InputMethodAbility start.");
-    if (kdListener_ == nullptr) {
-        kdListener_ = std::move(kdListener);
+    std::lock_guard<std::mutex> lock(listenerLock_);
+    if (kdListener_ != nullptr) {
+        return;
     }
+    kdListener_ = std::move(kdListener);
+}
+
+std::shared_ptr<KeyboardListener> InputMethodAbility::GetKdListener()
+{
+    std::lock_guard<std::mutex> lock(listenerLock_);
+    return kdListener_;
 }
 
 void InputMethodAbility::SetTextInputClientListener(std::shared_ptr<TextInputClientListener> textInputClientListener)
@@ -336,7 +395,8 @@ int32_t InputMethodAbility::StartInputInner(const InputClientInfo &clientInfo, b
         isImeTerminating_.store(false);
     };
     uint64_t seqId = Task::GetNextSeqId();
-    if (imeListener_ == nullptr || !imeListener_->PostTaskToEventHandler(
+    auto imeListener = GetImeListener();
+    if (imeListener == nullptr || !imeListener->PostTaskToEventHandler(
         [seqId] { TaskManager::GetInstance().Complete(seqId); }, "task_manager_complete")) {
         showPanel();
         return ErrorCode::NO_ERROR;
@@ -357,8 +417,9 @@ bool InputMethodAbility::IsDisplayChanged(uint64_t oldDisplayId, uint64_t newDis
 
 void InputMethodAbility::OnSetSubtype(SubProperty subProperty)
 {
-    if (imeListener_ != nullptr) {
-        imeListener_->OnSetSubtype(subProperty);
+    auto imeListener = GetImeListener();
+    if (imeListener != nullptr) {
+        imeListener->OnSetSubtype(subProperty);
     }
 }
 
@@ -409,8 +470,9 @@ int32_t InputMethodAbility::StopInput(
     HideKeyboardImplWithoutLock(cmdCount, sessionId, clientSessionId);
     ClearBindInfo(channelObject);
     ClearInputType();
-    if (imeListener_ != nullptr) {
-        imeListener_->OnInputFinish();
+    auto imeListener = GetImeListener();
+    if (imeListener != nullptr) {
+        imeListener->OnInputFinish();
     }
     return ErrorCode::NO_ERROR;
 }
@@ -437,11 +499,12 @@ int32_t InputMethodAbility::DispatchKeyEvent(
     if (HandlePttKeyEvent(keyEvent, cbId, channelObject, pttResult)) {
         return pttResult;
     }
-    if (kdListener_ == nullptr) {
-        IMSA_HILOGE("kdListener_ is nullptr!");
+    auto kdListener = GetKdListener();
+    if (kdListener == nullptr) {
+        IMSA_HILOGE("kdListener is nullptr!");
         return ErrorCode::ERROR_CLIENT_NULL_POINTER;
     }
-    if (!kdListener_->OnDealKeyEvent(keyEvent, cbId, channelObject)) {
+    if (!kdListener->OnDealKeyEvent(keyEvent, cbId, channelObject)) {
         IMSA_HILOGE("keyEvent not deal!");
         return ErrorCode::ERROR_DISPATCH_KEY_EVENT;
     }
@@ -462,8 +525,9 @@ void InputMethodAbility::SetCallingWindow(uint32_t rawEditorWindowId, const Focu
         panel->SetCallingWindow(keyboardWindowId);
         return false;
     });
-    if (imeListener_ != nullptr) {
-        imeListener_->OnSetCallingWindow(rawEditorWindowId);
+    auto imeListener = GetImeListener();
+    if (imeListener != nullptr) {
+        imeListener->OnSetCallingWindow(rawEditorWindowId);
     }
     NotifyInputStartToClients(InputStartScene::WINDOW_CHANGED);
     OnCallingDisplayIdChanged(focusedInfo.displayId, focusedInfo.keyboardDisplayId);
@@ -471,29 +535,32 @@ void InputMethodAbility::SetCallingWindow(uint32_t rawEditorWindowId, const Focu
 
 void InputMethodAbility::OnCursorUpdate(int32_t positionX, int32_t positionY, int32_t height)
 {
-    if (kdListener_ == nullptr) {
-        IMSA_HILOGE("kdListener_ is nullptr!");
+    auto kdListener = GetKdListener();
+    if (kdListener == nullptr) {
+        IMSA_HILOGE("kdListener is nullptr!");
         return;
     }
     IMSA_HILOGD("IMA, x: %{public}d, y: %{public}d, height: %{public}d.", positionX, positionY, height);
-    kdListener_->OnCursorUpdate(positionX, positionY, height);
+    kdListener->OnCursorUpdate(positionX, positionY, height);
 }
 
 void InputMethodAbility::OnSelectionChange(
     std::u16string text, int32_t oldBegin, int32_t oldEnd, int32_t newBegin, int32_t newEnd)
 {
-    if (kdListener_ == nullptr) {
-        IMSA_HILOGE("kdListener_ is nullptr!");
+    auto kdListener = GetKdListener();
+    if (kdListener == nullptr) {
+        IMSA_HILOGE("kdListener is nullptr!");
         return;
     }
-    kdListener_->OnTextChange(Str16ToStr8(text));
-    kdListener_->OnSelectionChange(oldBegin, oldEnd, newBegin, newEnd);
+    kdListener->OnTextChange(Str16ToStr8(text));
+    kdListener->OnSelectionChange(oldBegin, oldEnd, newBegin, newEnd);
 }
 
 void InputMethodAbility::OnAttributeChange(InputAttribute attribute)
 {
-    if (kdListener_ == nullptr) {
-        IMSA_HILOGE("kdListener_ is nullptr!");
+    auto kdListener = GetKdListener();
+    if (kdListener == nullptr) {
+        IMSA_HILOGE("kdListener is nullptr!");
         return;
     }
     IMSA_HILOGD("enterKeyType: %{public}d, inputPattern: %{public}d, consumeKeyEvents: %{public}d.",
@@ -504,16 +571,17 @@ void InputMethodAbility::OnAttributeChange(InputAttribute attribute)
     SetInputAttribute(attribute);
     // add for mod inputPattern when panel show
     NotifyPanelStatus(false);
-    kdListener_->OnEditorAttributeChange(attribute);
+    kdListener->OnEditorAttributeChange(attribute);
 }
 
 void InputMethodAbility::OnFunctionKey(int32_t funcKey)
 {
-    if (kdListener_ == nullptr) {
-        IMSA_HILOGE("kdListener_ is nullptr!");
+    auto kdListener = GetKdListener();
+    if (kdListener == nullptr) {
+        IMSA_HILOGE("kdListener is nullptr!");
         return;
     }
-    kdListener_->OnFunctionKey(funcKey);
+    kdListener->OnFunctionKey(funcKey);
 }
 
 int32_t InputMethodAbility::OnStopInputService(bool isTerminateIme)
@@ -539,7 +607,7 @@ int32_t InputMethodAbility::OnDiscardTypingText()
         IMSA_HILOGE("imeListener is nullptr!");
         return ErrorCode::ERROR_IME_NOT_STARTED;
     }
-    return imeListener_->OnDiscardTypingText();
+    return imeListener->OnDiscardTypingText();
 }
 
 int32_t InputMethodAbility::HideKeyboard()
@@ -547,21 +615,6 @@ int32_t InputMethodAbility::HideKeyboard()
     std::lock_guard<std::recursive_mutex> lock(keyboardCmdLock_);
     int32_t cmdCount = ++cmdId_;
     return HideKeyboardImplWithoutLock(cmdCount, 0);
-}
-
-int32_t InputMethodAbility::HideCandidatePanel()
-{
-    auto panel = GetSoftKeyboardPanel();
-    if (panel == nullptr) {
-        IMSA_HILOGE("panel is nullptr!");
-        return ErrorCode::ERROR_IME;
-    }
-    auto flag = panel->GetPanelFlag();
-    if (flag != FLG_CANDIDATE_COLUMN) {
-        IMSA_HILOGD("panel flag is not candidate, no need to hide.");
-        return ErrorCode::NO_ERROR;
-    }
-    return HidePanel(panel, flag, Trigger::IMF, 0);
 }
 
 int32_t InputMethodAbility::HideKeyboardImplWithoutLock(int32_t cmdId, uint32_t sessionId, int32_t clientSessionId)
@@ -595,7 +648,8 @@ int32_t InputMethodAbility::ShowKeyboardImplWithoutLock(int32_t cmdId)
         IMSA_HILOGE("current is not last cmd cur: %{public}d, cmdId_: %{public}d!", cmdId, cmdId_);
         return ErrorCode::NO_ERROR;
     }
-    if (imeListener_ == nullptr) {
+    auto imeListener = GetImeListener();
+    if (imeListener == nullptr) {
         IMSA_HILOGE("imeListener is nullptr!");
         return ErrorCode::ERROR_IME;
     }
@@ -607,7 +661,7 @@ int32_t InputMethodAbility::ShowKeyboardImplWithoutLock(int32_t cmdId)
             return ErrorCode::ERROR_IME;
         }
         auto flag = panel->GetPanelFlag();
-        imeListener_->OnKeyboardStatus(true);
+        imeListener->OnKeyboardStatus(true);
         if (flag == FLG_CANDIDATE_COLUMN) {
             IMSA_HILOGI("panel flag is candidate, no need to show.");
             NotifyKeyboardHeight(0, flag);
@@ -621,7 +675,7 @@ int32_t InputMethodAbility::ShowKeyboardImplWithoutLock(int32_t cmdId)
     if (channel != nullptr) {
         channel->SendKeyboardStatus(static_cast<int32_t>(KeyboardStatus::SHOW));
     }
-    imeListener_->OnKeyboardStatus(true);
+    imeListener->OnKeyboardStatus(true);
     return ErrorCode::NO_ERROR;
 }
 
@@ -705,20 +759,22 @@ int32_t InputMethodAbility::InvokeStartInputCallbackWithInfoRestruct(
         return InvokeStartInputCallback(newTextConfig, isNotifyInputStart);
     }
     IMSA_HILOGW("failed to get text config, ret: %{public}d.", ret);
-    if (imeListener_ == nullptr) {
-        IMSA_HILOGE("imeListener_ is nullptr!");
+    auto imeListener = GetImeListener();
+    if (imeListener == nullptr) {
+        IMSA_HILOGE("imeListener is nullptr!");
         return ErrorCode::ERROR_IME;
     }
     if (isNotifyInputStart) {
-        imeListener_->OnInputStart();
+        imeListener->OnInputStart();
     }
     return ErrorCode::NO_ERROR;
 }
 
 int32_t InputMethodAbility::InvokeStartInputCallback(const TextTotalConfig &textConfig, bool isNotifyInputStart)
 {
-    if (imeListener_ == nullptr) {
-        IMSA_HILOGE("imeListener_ is nullptr!");
+    auto imeListener = GetImeListener();
+    if (imeListener == nullptr) {
+        IMSA_HILOGE("imeListener is nullptr!");
         return ErrorCode::ERROR_IME;
     }
     positionY_ = textConfig.positionY;
@@ -727,8 +783,9 @@ int32_t InputMethodAbility::InvokeStartInputCallback(const TextTotalConfig &text
     IMSA_HILOGI("attributeInfo:%{public}s, isNotifyInputStartInfo:%{public}d/%{public}d.",
         textConfig.inputAttribute.InfoLog().c_str(), isNotifyInputStart, isInputStartNotified_);
     SetInputAttribute(textConfig.inputAttribute);
-    if (kdListener_ != nullptr) {
-        kdListener_->OnEditorAttributeChange(textConfig.inputAttribute);
+    auto kdListener = GetKdListener();
+    if (kdListener != nullptr) {
+        kdListener->OnEditorAttributeChange(textConfig.inputAttribute);
     }
     AttachOptions options;
     options.requestKeyboardReason = textConfig.requestKeyboardReason;
@@ -737,14 +794,14 @@ int32_t InputMethodAbility::InvokeStartInputCallback(const TextTotalConfig &text
     if (isNotifyInputStart || !isInputStartNotified_) {
         isInputStartNotified_ = true;
         IMSA_HILOGD("OnInputStart begin");
-        imeListener_->OnInputStart();
+        imeListener->OnInputStart();
     }
     if (TextConfig::IsPrivateCommandValid(textConfig.privateCommand) && IsDefaultIme()) {
-        imeListener_->ReceivePrivateCommand(textConfig.privateCommand);
+        imeListener->ReceivePrivateCommand(textConfig.privateCommand);
     }
-    if (kdListener_ != nullptr) {
+    if (kdListener != nullptr) {
         if (textConfig.cursorInfo.left != INVALID_CURSOR_VALUE) {
-            kdListener_->OnCursorUpdate(
+            kdListener->OnCursorUpdate(
                 textConfig.cursorInfo.left, textConfig.cursorInfo.top, textConfig.cursorInfo.height);
         }
         if (textConfig.textSelection.newBegin == INVALID_SELECTION_VALUE ||
@@ -752,12 +809,12 @@ int32_t InputMethodAbility::InvokeStartInputCallback(const TextTotalConfig &text
                 textConfig.textSelection.newEnd == textConfig.textSelection.oldEnd)) {
             IMSA_HILOGD("invalid selection or no selection change");
         } else {
-            kdListener_->OnSelectionChange(textConfig.textSelection.oldBegin, textConfig.textSelection.oldEnd,
+            kdListener->OnSelectionChange(textConfig.textSelection.oldBegin, textConfig.textSelection.oldEnd,
                 textConfig.textSelection.newBegin, textConfig.textSelection.newEnd);
         }
     }
     if (textConfig.windowId != INVALID_WINDOW_ID) {
-        imeListener_->OnSetCallingWindow(textConfig.windowId);
+        imeListener->OnSetCallingWindow(textConfig.windowId);
     }
     return ErrorCode::NO_ERROR;
 }
@@ -1157,8 +1214,9 @@ void InputMethodAbility::OnRemoteSaDied(const wptr<IRemoteObject> &object)
         std::lock_guard<std::mutex> lock(abilityLock_);
         abilityManager_ = nullptr;
     }
-    if (imeListener_ != nullptr) {
-        imeListener_->OnInputStop();
+    auto imeListener = GetImeListener();
+    if (imeListener != nullptr) {
+        imeListener->OnInputStop();
     }
 }
 
@@ -1224,11 +1282,12 @@ int32_t InputMethodAbility::OnSecurityChange(int32_t security)
 {
     IMSA_HILOGI("InputMethodAbility start.");
     securityMode_.store(security);
-    if (imeListener_ == nullptr) {
-        IMSA_HILOGE("imeListener_ is nullptr!");
+    auto imeListener = GetImeListener();
+    if (imeListener == nullptr) {
+        IMSA_HILOGE("imeListener is nullptr!");
         return ErrorCode::ERROR_BAD_PARAMETERS;
     }
-    imeListener_->OnSecurityChange(security);
+    imeListener->OnSecurityChange(security);
     return ErrorCode::NO_ERROR;
 }
 
@@ -1446,8 +1505,9 @@ int32_t InputMethodAbility::HideKeyboard(Trigger trigger, uint32_t sessionId, in
 {
     isShowAfterCreate_.store(false);
     InputMethodSyncTrace tracer("IMA_HideKeyboard");
-    if (imeListener_ == nullptr) {
-        IMSA_HILOGE("imeListener_ is nullptr!");
+    auto imeListener = GetImeListener();
+    if (imeListener == nullptr) {
+        IMSA_HILOGE("imeListener is nullptr!");
         return ErrorCode::ERROR_IME;
     }
     IMSA_HILOGD("IMA, trigger: %{public}d.", static_cast<int32_t>(trigger));
@@ -1458,7 +1518,7 @@ int32_t InputMethodAbility::HideKeyboard(Trigger trigger, uint32_t sessionId, in
             return ErrorCode::ERROR_IME;
         }
         auto flag = panel->GetPanelFlag();
-        imeListener_->OnKeyboardStatus(false);
+        imeListener->OnKeyboardStatus(false);
         if (flag == FLG_CANDIDATE_COLUMN && inputType_ != InputType::VOICEKB_INPUT) {
             IMSA_HILOGI("panel flag is candidate, no need to hide.");
             return ErrorCode::NO_ERROR;
@@ -1466,7 +1526,7 @@ int32_t InputMethodAbility::HideKeyboard(Trigger trigger, uint32_t sessionId, in
         return HidePanel(panel, flag, trigger, sessionId, clientSessionId);
     }
     IMSA_HILOGI("panel is not created.");
-    imeListener_->OnKeyboardStatus(false);
+    imeListener->OnKeyboardStatus(false);
     auto channel = GetInputDataChannelProxy();
     if (channel != nullptr) {
         channel->SendKeyboardStatus(static_cast<int32_t>(KeyboardStatus::HIDE));
@@ -1517,6 +1577,25 @@ bool InputMethodAbility::IsCurrentIme()
     return ret;
 }
 
+bool InputMethodAbility::IsImeExtension()
+{
+    if (isImeExtensionChecked_) {
+        return isImeExtension_;
+    }
+    std::lock_guard<std::mutex> lock(imeExtensionCheckMutex_);
+    if (isImeExtensionChecked_) {
+        return isImeExtension_;
+    }
+    auto proxy = GetImsaProxy();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("failed to get imsa proxy!");
+        return false;
+    }
+    proxy->IsInputMethodExtension(isImeExtension_);
+    isImeExtensionChecked_ = true;
+    return isImeExtension_;
+}
+
 bool InputMethodAbility::IsDefaultIme()
 {
     IMSA_HILOGD("InputMethodAbility start");
@@ -1543,18 +1622,20 @@ bool InputMethodAbility::IsDefaultIme()
 
 bool InputMethodAbility::IsEnable(uint64_t displayId)
 {
-    if (imeListener_ == nullptr) {
+    auto imeListener = GetImeListener();
+    if (imeListener == nullptr) {
         return false;
     }
-    return imeListener_->IsEnable(displayId);
+    return imeListener->IsEnable(displayId);
 }
 
 bool InputMethodAbility::IsCallbackRegistered(const std::string &type)
 {
-    if (imeListener_ == nullptr) {
+    auto imeListener = GetImeListener();
+    if (imeListener == nullptr) {
         return false;
     }
-    return imeListener_->IsCallbackRegistered(type);
+    return imeListener->IsCallbackRegistered(type);
 }
 
 bool InputMethodAbility::IsSystemApp()
@@ -1631,8 +1712,9 @@ void InputMethodAbility::OnClientInactive(const sptr<IRemoteObject> &channel)
 {
     IMSA_HILOGI("client inactive.");
     ResetPttKeyEventTracking();
-    if (imeListener_ != nullptr) {
-        imeListener_->OnInputFinish();
+    auto imeListener = GetImeListener();
+    if (imeListener != nullptr) {
+        imeListener->OnInputFinish();
     }
     auto channelProxy = std::make_shared<InputDataChannelProxy>(channel);
     if (channelProxy == nullptr) {
@@ -1640,8 +1722,8 @@ void InputMethodAbility::OnClientInactive(const sptr<IRemoteObject> &channel)
         return;
     }
     auto panel = GetSoftKeyboardPanel();
-    if (imeListener_ != nullptr && panel != nullptr && panel->GetPanelFlag() != PanelFlag::FLG_FIXED) {
-        imeListener_->OnKeyboardStatus(false);
+    if (imeListener != nullptr && panel != nullptr && panel->GetPanelFlag() != PanelFlag::FLG_FIXED) {
+        imeListener->OnKeyboardStatus(false);
     }
     panels_.ForEach([this, &channelProxy](const PanelType &panelType, const std::shared_ptr<InputMethodPanel> &panel) {
         if (panel == nullptr) {
@@ -1759,11 +1841,12 @@ void InputMethodAbility::UpdatePrivateCommand(
 int32_t InputMethodAbility::ReceivePrivateCommand(
     const std::unordered_map<std::string, PrivateDataValue> &privateCommand)
 {
-    if (imeListener_ == nullptr) {
+    auto imeListener = GetImeListener();
+    if (imeListener == nullptr) {
         IMSA_HILOGE("imeListener is nullptr!");
         return ErrorCode::ERROR_IME;
     }
-    imeListener_->ReceivePrivateCommand(privateCommand);
+    imeListener->ReceivePrivateCommand(privateCommand);
     return ErrorCode::NO_ERROR;
 }
 
@@ -1985,11 +2068,12 @@ int32_t InputMethodAbility::OnCallingDisplayIdChanged(uint64_t editorDisplayId, 
         HidePanel(panel, PanelFlag::FLG_FIXED, Trigger::IMF, 0);
     }
     ConfigurationUpdate(keyboardDisplayId);
-    if (imeListener_ == nullptr) {
-        IMSA_HILOGD("imeListener_ is nullptr!");
+    auto imeListener = GetImeListener();
+    if (imeListener == nullptr) {
+        IMSA_HILOGD("imeListener is nullptr!");
         return ErrorCode::NO_ERROR;
     }
-    imeListener_->OnCallingDisplayIdChanged(keyboardDisplayId);
+    imeListener->OnCallingDisplayIdChanged(keyboardDisplayId);
     return ErrorCode::NO_ERROR;
 }
 
@@ -2095,6 +2179,16 @@ int32_t InputMethodAbility::OnNotifyPreemption()
     }
     IMSA_HILOGD("notifyPreemption begin.");
     imeListener->NotifyPreemption();
+    return ErrorCode::NO_ERROR;
+}
+
+int32_t InputMethodAbility::OnPassiveUnregister()
+{
+    IMSA_HILOGI("OnPassiveUnregister.");
+    auto imeListener = GetImeListener();
+    if (imeListener != nullptr) {
+        imeListener->OnUnregister();
+    }
     return ErrorCode::NO_ERROR;
 }
 

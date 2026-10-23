@@ -16,6 +16,8 @@
 #ifndef FRAMEWORKS_INPUTMETHOD_CONTROLLER_INCLUDE_INPUT_METHOD_UTILS_H
 #define FRAMEWORKS_INPUTMETHOD_CONTROLLER_INCLUDE_INPUT_METHOD_UTILS_H
 
+#include <algorithm>
+#include <optional>
 #include <stdint.h>
 
 #include <string>
@@ -57,22 +59,57 @@ enum class EnterKeyType {
     NEW_LINE,
 };
 
+#define IMF_TEXT_INPUT_TYPE_LIST(X) \
+    X(NONE, -1) \
+    X(TEXT, 0) \
+    X(NUMBER, 2) \
+    X(PHONE, 3) \
+    X(DATETIME, 4) \
+    X(EMAIL_ADDRESS, 5) \
+    X(URL, 6) \
+    X(VISIBLE_PASSWORD, 7) \
+    X(NUMBER_PASSWORD, 8) \
+    X(SCREEN_LOCK_PASSWORD, 9) \
+    X(USER_NAME, 10) \
+    X(NEW_PASSWORD, 11) \
+    X(NUMBER_DECIMAL, 12) \
+    X(ONE_TIME_CODE, 13) \
+    X(ONE_TIME_CODE_NUMBER, 15)
+
 enum class TextInputType {
-    NONE = -1,
-    TEXT = 0,
-    MULTILINE,
-    NUMBER,
-    PHONE,
-    DATETIME,
-    EMAIL_ADDRESS,
-    URL,
-    VISIBLE_PASSWORD,
-    NUMBER_PASSWORD,
-    SCREEN_LOCK_PASSWORD,
-    USER_NAME,
-    NEW_PASSWORD,
-    NUMBER_DECIMAL,
-    ONE_TIME_CODE,
+#define X(name, val) name = val,
+    IMF_TEXT_INPUT_TYPE_LIST(X)
+#undef X
+    MULTILINE = 1,
+};
+
+inline bool IsValidInputPattern(int32_t pattern)
+{
+    switch (pattern) {
+#define X(name, val) case static_cast<int32_t>(TextInputType::name):
+        IMF_TEXT_INPUT_TYPE_LIST(X)
+#undef X
+        return true;
+    default:
+        return false;
+    }
+}
+
+constexpr uint32_t MAX_INPUT_PATTERN_TYPES_SIZE = 128;
+struct RegisterOptions : public Parcelable {
+    std::optional<std::vector<int32_t>> inputPatternTypes;
+    bool IsInputPatternMatched(int32_t inputPattern) const
+    {
+        if (!inputPatternTypes.has_value()) {
+            return true;
+        }
+        const auto &types = inputPatternTypes.value();
+        return std::find(types.begin(), types.end(), inputPattern) != types.end();
+    }
+
+    bool ReadFromParcel(Parcel &in);
+    bool Marshalling(Parcel &out) const;
+    static RegisterOptions *Unmarshalling(Parcel &in);
 };
 
 enum class Direction {
