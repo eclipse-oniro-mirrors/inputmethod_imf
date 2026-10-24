@@ -21,6 +21,7 @@
 #include "extension_context.h"
 #include "start_options.h"
 #include "want.h"
+#include "ui_content.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
@@ -117,6 +118,8 @@ public:
    * @return errCode ERR_OK on success, others on failure.
    */
     ErrCode TerminateAbility();
+
+    Ace::UIContent *GetUIContent();
 
     using SelfType = InputMethodExtensionContext;
     static const size_t CONTEXT_TYPE_ID;

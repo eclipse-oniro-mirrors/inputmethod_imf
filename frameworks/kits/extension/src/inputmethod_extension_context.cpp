@@ -21,9 +21,11 @@
 #ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
 #include "histogram_plugin_macros.h"
 #endif
+#include "input_method_ability.h"
 
 namespace OHOS {
 namespace AbilityRuntime {
+using namespace MiscServices;
 const size_t InputMethodExtensionContext::CONTEXT_TYPE_ID(std::hash<const char *>{}("InputMethodExtensionContext"));
 int InputMethodExtensionContext::ILLEGAL_REQUEST_CODE(-1);
 
@@ -157,6 +159,17 @@ AppExecFwk::AbilityType InputMethodExtensionContext::GetAbilityInfoType() const
         return AppExecFwk::AbilityType::UNKNOWN;
     }
     return info->type;
+}
+
+Ace::UIContent *InputMethodExtensionContext::GetUIContent()
+{
+    auto uiContent = InputMethodAbility::GetInstance().GetSoftKeyboardUIContent();
+    if (uiContent == nullptr) {
+        IMSA_HILOGE("failed to get ui content");
+        return nullptr;
+    }
+    IMSA_HILOGD("success");
+    return uiContent;
 }
 } // namespace AbilityRuntime
 } // namespace OHOS
