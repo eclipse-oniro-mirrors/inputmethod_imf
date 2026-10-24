@@ -84,6 +84,7 @@ group("unittest") {
       "cpp_test:RichTextTest",
       "cpp_test:SystemCmdChannelServiceImplTest",
       "cpp_test:OhosImfToolTest",
+      "cpp_test:ImeSystemChannelNewTest",
     ]
     if (target_platform == "phone") {
       deps += [

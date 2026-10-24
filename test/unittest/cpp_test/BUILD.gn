@@ -3576,3 +3576,63 @@ ohos_unittest("OhosImfToolTest") {
     "icu:shared_icuuc",
   ]
 }
+
+ohos_unittest("ImeSystemChannelNewTest") {
+  sanitize = {
+    cfi = true
+    cfi_cross_dso = true
+    debug = false
+    blocklist = "./inputmethod_blocklist.txt"
+  }
+  module_out_path = module_output_path
+
+  sources = [
+    "${inputmethod_path}/frameworks/native/inputmethod_controller/src/system_cmd_channel_service_impl.cpp",
+    "src/ime_system_channel_test_new.cpp",
+  ]
+
+  configs = [
+    ":module_private_config",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_native_public_config",
+  ]
+
+  deps = [
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_ability",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:input_method_agent_proxy",
+    "${inputmethod_path}/interfaces/inner_api/inputmethod_controller:inputmethod_client_static",
+    "${inputmethod_path}/services:inputmethod_service",
+    "${inputmethod_path}/test/common:inputmethod_test_common",
+    "${inputmethod_path}/test/unittest/cpp_test/common:inputmethod_tdd_util",
+  ]
+
+  external_deps = [
+    "ability_base:want",
+    "ability_runtime:ability_context_native",
+    "ability_runtime:ability_manager",
+    "access_token:libaccesstoken_sdk",
+    "bundle_framework:appexecfwk_base",
+    "bundle_framework:appexecfwk_core",
+    "bundle_framework:appexecfwk_core",
+    "c_utils:utils",
+    "eventhandler:libeventhandler",
+    "googletest:gtest_main",
+    "hilog:libhilog",
+    "input:libmmi-client",
+    "ipc:ipc_single",
+    "libuv:uv",
+    "napi:ace_napi",
+    "node:node_header_notice",
+    "safwk:system_ability_fwk",
+    "samgr:samgr_proxy",
+  ]
+
+  if (window_manager_use_sceneboard) {
+    external_deps += [ "window_manager:libwm_lite" ]
+  } else {
+    external_deps += [ "window_manager:libwm" ]
+  }
+
+  cflags = [
+    "-fno-access-control",
+  ]
+}
