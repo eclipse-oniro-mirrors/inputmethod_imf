@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -14,12 +14,17 @@
  */
 #include "proxy_keyboard_delegate_impl.h"
 
+#include <algorithm>
+
 namespace OHOS {
 namespace MiscServices {
-std::mutex ProxyKeyboardDelegateImpl::handlerMutex_;
 std::mutex ProxyKeyboardDelegateImpl::keyboardMutex_;
+std::mutex ProxyKeyboardDelegateImpl::handlerMutex_;
 std::shared_ptr<ProxyKeyboardDelegateImpl> ProxyKeyboardDelegateImpl::keyboardDelegate_ = nullptr;
 std::shared_ptr<AppExecFwk::EventHandler> ProxyKeyboardDelegateImpl::handler_ = nullptr;
+std::mutex ProxyKeyboardDelegateImpl::eventMutex_;
+std::map<std::string, std::vector<taihe::callback<bool(KeyEvent_t const &event)>>>
+    ProxyKeyboardDelegateImpl::eventCbMap_;
 
 std::shared_ptr<ProxyKeyboardDelegateImpl> ProxyKeyboardDelegateImpl::GetInstance()
 {
@@ -27,8 +32,6 @@ std::shared_ptr<ProxyKeyboardDelegateImpl> ProxyKeyboardDelegateImpl::GetInstanc
         std::lock_guard<std::mutex> lock(keyboardMutex_);
         if (keyboardDelegate_ == nullptr) {
             keyboardDelegate_ = std::make_shared<ProxyKeyboardDelegateImpl>();
-            handler_ = std::make_shared<AppExecFwk::EventHandler>(AppExecFwk::EventRunner::Create("ProxyKeyboardDelega"
-                                                                                                  "teHandler"));
         }
     }
     return keyboardDelegate_;
@@ -38,10 +41,67 @@ std::shared_ptr<AppExecFwk::EventHandler> ProxyKeyboardDelegateImpl::GetHandler(
 {
     std::lock_guard<std::mutex> lock(handlerMutex_);
     if (handler_ == nullptr) {
+        auto runner = AppExecFwk::EventRunner::GetMainEventRunner();
+        if (runner != nullptr) {
+            handler_ = std::make_shared<AppExecFwk::EventHandler>(runner);
+        }
+    }
+    if (handler_ == nullptr) {
         IMSA_HILOGE("handler_ is nullptr");
         return nullptr;
     }
     return handler_;
+}
+
+void ProxyKeyboardDelegateImpl::RegisterListenerEvent(std::string const &type,
+    taihe::callback_view<bool(KeyEvent_t const &event)> callback)
+{
+    if (type != "keyEvent") {
+        IMSA_HILOGE("subscribe failed, type: %{public}s.", type.c_str());
+        return;
+    }
+    std::lock_guard<std::mutex> lock(eventMutex_);
+    auto &cbVec = eventCbMap_[type];
+    auto it = std::find_if(cbVec.begin(), cbVec.end(),
+        [&callback](const auto &existingCb) { return callback == existingCb; });
+    if (it == cbVec.end()) {
+        cbVec.emplace_back(callback);
+        IMSA_HILOGD("callback registered success");
+    } else {
+        IMSA_HILOGD("%{public}s is already registered", type.c_str());
+    }
+}
+
+void ProxyKeyboardDelegateImpl::UnRegisterListenerEvent(std::string const &type,
+    taihe::optional_view<taihe::callback<bool(KeyEvent_t const &event)>> callback)
+{
+    if (type != "keyEvent") {
+        IMSA_HILOGE("subscribe failed, type: %{public}s.", type.c_str());
+        return;
+    }
+    std::lock_guard<std::mutex> lock(eventMutex_);
+    const auto iter = eventCbMap_.find(type);
+    if (iter == eventCbMap_.end()) {
+        IMSA_HILOGE("%{public}s is not registered", type.c_str());
+        return;
+    }
+    if (!callback.has_value()) {
+        eventCbMap_.erase(iter);
+        IMSA_HILOGD("unregistered all %{public}s callback", type.c_str());
+        return;
+    }
+    auto &callbacks = iter->second;
+    auto onceCallback = callback.value();
+    auto it = std::find_if(callbacks.begin(), callbacks.end(),
+        [&onceCallback](const auto &existingCb) { return onceCallback == existingCb; });
+    if (it != callbacks.end()) {
+        IMSA_HILOGD("unregistered callback success");
+        callbacks.erase(it);
+    }
+    if (callbacks.empty()) {
+        eventCbMap_.erase(iter);
+        IMSA_HILOGD("callback is empty");
+    }
 }
 
 void ProxyKeyboardDelegateImpl::OnCursorUpdate(int32_t positionX, int32_t positionY, int32_t height)
@@ -111,12 +171,22 @@ bool ProxyKeyboardDelegateImpl::OnDealKeyEvent(
         IMSA_HILOGE("keyEvent or channelObject is nullptr");
         return false;
     }
-    if (GetCallbacks("keyEvent").empty()) {
+    std::vector<taihe::callback<bool(KeyEvent_t const &event)>> eventCallbacks;
+    {
+        std::lock_guard<std::mutex> lock(eventMutex_);
+        auto it = eventCbMap_.find("keyEvent");
+        if (it != eventCbMap_.end()) {
+            eventCallbacks = it->second;
+        }
+    }
+    if (eventCallbacks.empty()) {
         IMSA_HILOGW("key event callback is not registered.");
         return false;
     }
     IMSA_HILOGD("run in.");
-    auto task = [this, keyEvent, cbId, channelObject]() { DealKeyEvent(keyEvent, cbId, channelObject); };
+    auto task = [eventCallbacks = std::move(eventCallbacks), keyEvent, cbId, channelObject]() {
+        DealKeyEvent(std::move(eventCallbacks), keyEvent, cbId, channelObject);
+    };
     auto handler = GetHandler();
     if (handler == nullptr) {
         return false;
@@ -126,6 +196,7 @@ bool ProxyKeyboardDelegateImpl::OnDealKeyEvent(
 }
 
 void ProxyKeyboardDelegateImpl::DealKeyEvent(
+    std::vector<taihe::callback<bool(KeyEvent_t const &event)>> eventCallbacks,
     const std::shared_ptr<MMI::KeyEvent> &keyEvent, uint64_t cbId, const sptr<IRemoteObject> &channelObject)
 {
     if (keyEvent == nullptr) {
@@ -133,13 +204,9 @@ void ProxyKeyboardDelegateImpl::DealKeyEvent(
         return;
     }
     bool consumeResult = false;
-    auto eventCallbacks = GetCallbacks("keyEvent");
-    for (auto &item : eventCallbacks) {
-        if (item != nullptr) {
-            consumeResult = std::get<taihe::callback<bool(KeyEvent_t const &)>>(item->callback)(
-                CommonConvert::ToTaiheKeyEvent(keyEvent));
-            break;
-        }
+    for (auto &cb : eventCallbacks) {
+        consumeResult = cb(CommonConvert::ToTaiheKeyEvent(keyEvent));
+        break;
     }
     if (!consumeResult) {
         if (keyEvent->GetKeyAction() == MMI::KeyEvent::KEY_ACTION_DOWN) {

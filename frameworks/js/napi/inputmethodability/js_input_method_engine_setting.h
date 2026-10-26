@@ -99,6 +99,28 @@ private:
             CHECK_RETURN(self != nullptr, "self is nullptr", napi_invalid_arg);
             return Context::operator()(env, argc, argv, self);
         }
+
+        napi_status operator()(napi_env env, napi_value *result) override
+        {
+            if (status_ != napi_ok) {
+                output_ = nullptr;
+                return status_;
+            }
+            return Context::operator()(env, result);
+        }
+    };
+
+    struct UnregisterInAppProxyImeContext : public AsyncCall::Context {
+        UnregisterInAppProxyImeContext() : Context(nullptr, nullptr){};
+
+        napi_status operator()(napi_env env, napi_value *result) override
+        {
+            if (status_ != napi_ok) {
+                output_ = nullptr;
+                return status_;
+            }
+            return Context::operator()(env, result);
+        }
     };
 
     static napi_value JsConstructor(napi_env env, napi_callback_info cbinfo);

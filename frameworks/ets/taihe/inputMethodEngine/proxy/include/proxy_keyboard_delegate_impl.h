@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -43,17 +43,23 @@ public:
     void OnEditorAttributeChange(const InputAttribute &inputAttribute) override;
     bool OnDealKeyEvent(const std::shared_ptr<MMI::KeyEvent> &keyEvent, uint64_t cbId,
         const sptr<IRemoteObject> &channelObject) override;
+    void RegisterListenerEvent(std::string const &type,
+        taihe::callback_view<bool(KeyEvent_t const &event)> callback);
+    void UnRegisterListenerEvent(std::string const &type,
+        taihe::optional_view<taihe::callback<bool(KeyEvent_t const &event)>> callback);
 
 protected:
-    void DealKeyEvent(
+    static void DealKeyEvent(std::vector<taihe::callback<bool(KeyEvent_t const &event)>> eventCallbacks,
         const std::shared_ptr<MMI::KeyEvent> &keyEvent, uint64_t cbId, const sptr<IRemoteObject> &channelObject);
 
 private:
     static std::shared_ptr<AppExecFwk::EventHandler> GetHandler();
-    static std::mutex handlerMutex_;
     static std::mutex keyboardMutex_;
+    static std::mutex handlerMutex_;
     static std::shared_ptr<ProxyKeyboardDelegateImpl> keyboardDelegate_;
     static std::shared_ptr<AppExecFwk::EventHandler> handler_;
+    static std::mutex eventMutex_;
+    static std::map<std::string, std::vector<taihe::callback<bool(KeyEvent_t const &event)>>> eventCbMap_;
 };
 
 class IMFProxyKeyboardDelegateImpl {
@@ -63,14 +69,14 @@ public:
         InputMethodAbility::GetInstance().SetKdListener(ProxyKeyboardDelegateImpl::GetInstance());
     }
 
-    void OnKeyEvent(taihe::callback_view<bool(KeyEvent_t const &event)> callback, uintptr_t opq)
+    void OnKeyEvent(taihe::callback_view<bool(KeyEvent_t const &event)> callback)
     {
-        ProxyKeyboardDelegateImpl::GetInstance()->RegisterListener("keyEvent", callback, opq);
+        ProxyKeyboardDelegateImpl::GetInstance()->RegisterListenerEvent("keyEvent", callback);
     }
 
-    void OffKeyEvent(taihe::optional_view<uintptr_t> opq)
+    void OffKeyEvent(taihe::optional_view<taihe::callback<bool(KeyEvent_t const &event)>> callback)
     {
-        ProxyKeyboardDelegateImpl::GetInstance()->UnRegisterListener("keyEvent", opq);
+        ProxyKeyboardDelegateImpl::GetInstance()->UnRegisterListenerEvent("keyEvent", callback);
     }
 
     void OnCursorContextChange(taihe::callback_view<void(double, double, double)> callback, uintptr_t opq)

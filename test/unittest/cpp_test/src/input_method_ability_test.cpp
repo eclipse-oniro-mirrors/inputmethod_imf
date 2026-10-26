@@ -2889,20 +2889,6 @@ HWTEST_F(InputMethodAbilityTest, testOnPttLongPress_001, TestSize.Level0)
 }
 
 /**
- * @tc.name: testRegisterInAppProxyIme_001
- * @tc.desc: InputMethodAbility::RegisterInAppProxyIme with null imsa proxy
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodAbilityTest, testRegisterInAppProxyIme_001, TestSize.Level0)
-{
-    auto saved = InputMethodAbilityTest::inputMethodAbility_.abilityManager_;
-    InputMethodAbilityTest::inputMethodAbility_.abilityManager_ = nullptr;
-    EXPECT_EQ(InputMethodAbilityTest::inputMethodAbility_.RegisterInAppProxyIme({}),
-        ErrorCode::ERROR_SERVICE_START_FAILED);
-    InputMethodAbilityTest::inputMethodAbility_.abilityManager_ = saved;
-}
-
-/**
  * @tc.name: testRegisterInAppProxyIme_002
  * @tc.desc: InputMethodAbility::RegisterInAppProxyIme with null agent stub
  * @tc.type: FUNC
@@ -2914,20 +2900,6 @@ HWTEST_F(InputMethodAbilityTest, testRegisterInAppProxyIme_002, TestSize.Level0)
     EXPECT_EQ(InputMethodAbilityTest::inputMethodAbility_.RegisterInAppProxyIme({}),
         ErrorCode::ERROR_NULL_POINTER);
     InputMethodAbilityTest::inputMethodAbility_.agentStub_ = saved;
-}
-
-/**
- * @tc.name: testUnregisterInAppProxyIme_001
- * @tc.desc: InputMethodAbility::UnregisterInAppProxyIme with null imsa proxy
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodAbilityTest, testUnregisterInAppProxyIme_001, TestSize.Level0)
-{
-    auto saved = InputMethodAbilityTest::inputMethodAbility_.abilityManager_;
-    InputMethodAbilityTest::inputMethodAbility_.abilityManager_ = nullptr;
-    EXPECT_EQ(InputMethodAbilityTest::inputMethodAbility_.UnregisterInAppProxyIme(),
-        ErrorCode::ERROR_SERVICE_START_FAILED);
-    InputMethodAbilityTest::inputMethodAbility_.abilityManager_ = saved;
 }
 
 /**

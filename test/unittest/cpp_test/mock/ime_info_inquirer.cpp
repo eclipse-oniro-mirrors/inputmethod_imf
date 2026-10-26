@@ -302,6 +302,12 @@ uint32_t ImeInfoInquirer::GetPushToTalkLongPressMs()
     return sysCfg_.pushToTalkLongPressMs;
 }
 
+uint32_t ImeInfoInquirer::GetInAppRegisterNum()
+{
+    std::lock_guard<std::mutex> lock(sysCfgLock_);
+    return sysCfg_.inAppRegisterNum;
+}
+
 std::string ImeInfoInquirer::GetPushToTalkDialogBundleName()
 {
     std::lock_guard<std::mutex> lock(sysCfgLock_);
