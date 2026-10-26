@@ -21,6 +21,9 @@ typedef struct AniEnv ani_env;
 class AniObject;
 typedef AniObject *ani_object;
 namespace OHOS {
+namespace Ace {
+class UIContent;
+}
 namespace Rosen {
 class RSTransaction;
 class Window : virtual public RefBase {};
