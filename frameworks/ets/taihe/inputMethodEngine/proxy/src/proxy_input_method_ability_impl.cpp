@@ -35,7 +35,7 @@ std::shared_ptr<ProxyInputMethodAbilityImpl> ProxyInputMethodAbilityImpl::GetIns
 void ProxyInputMethodAbilityImpl::OnKeyboardStatus(bool isShow)
 {
     std::string type = isShow ? "keyboardShow" : "keyboardHide";
-    IMSA_HILOGI("OnKeyboardStatus: %{public}s.", type.c_str());
+    IMSA_HILOGD("OnKeyboardStatus: %{public}s.", type.c_str());
     auto callbacks = GetCallbacks(type);
     if (callbacks.empty()) {
         return;

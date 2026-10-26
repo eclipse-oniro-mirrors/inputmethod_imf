@@ -1486,7 +1486,7 @@ int32_t PerUserSession::RegisterInAppProxyImeData(pid_t pid, int32_t uid, const 
 
 int32_t PerUserSession::OnUnregisterInAppProxyIme(pid_t pid)
 {
-    IMSA_HILOGD("pid: %{public}d", pid);
+    IMSA_HILOGI("pid: %{public}d", pid);
     auto [group, clientInfo] = GetCurrentClientInfoByPid(pid);
     if (clientInfo == nullptr || clientInfo->bindImeData == nullptr || clientInfo->bindImeData->pid != pid) {
         RemoveInAppProxyImeData(pid);

@@ -273,7 +273,7 @@ KeyEvent_t CommonConvert::ToTaiheKeyEvent(const std::shared_ptr<OHOS::MMI::KeyEv
     int32_t unicodeChar = (key == std::nullopt) ? 0 : static_cast<int32_t>(key->GetUnicode());
     KeyEvent_t out = {
         .base = ToTaiheInputEvent(in),
-        .action = Action_t::from_value(in->GetKeyAction()),
+        .action = Action_t::from_value(in->GetKeyAction() - MMI::KeyEvent::KEY_ACTION_CANCEL),
         .key = ToTaiheKey(key),
         .unicodeChar = unicodeChar,
         .keys = ToTaiheKeys(in->GetKeyItems()),
