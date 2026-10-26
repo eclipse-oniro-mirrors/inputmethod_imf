@@ -989,6 +989,9 @@ std::shared_ptr<ImeData> PerUserSession::GetImeData(pid_t pid, ImeType type)
         case ImeType::PROXY_IME: {
             return GetProxyImeData(pid);
         }
+        case ImeType::INAPP_PROXY_IME: {
+            return GetInAppProxyImeData(pid);
+        }
         default: {
             return nullptr;
         }
@@ -1376,7 +1379,12 @@ void PerUserSession::EvictInAppProxyIme()
                 ++it;
             }
         }
-        if (inAppProxyImeData_.size() <= MAX_INAPP_PROXY_IME_COUNT) {
+        auto maxCount = MAX_INAPP_PROXY_IME_COUNT;
+        auto inAppRegisterNum = ImeInfoInquirer::GetInstance().GetInAppRegisterNum();
+        if (inAppRegisterNum != 0) {
+            maxCount = inAppRegisterNum;
+        }
+        if (inAppProxyImeData_.size() <= maxCount) {
             return;
         }
         auto oldest = inAppProxyImeData_.end();

@@ -68,7 +68,7 @@ const std::map<int32_t, std::string> JsUtils::ERROR_CODE_CONVERT_MESSAGE_MAP = {
         "1. the system panel not connected."
         "2. ipc failed due to the large amount of data transferred or other reasons."
         "3. the caller is not system panel." },
-    { EXCEPTION_NOT_FOCUSED, "not focused app." },
+    { EXCEPTION_NOT_FOCUSED, "the caller is not a focused application." },
     { EXCEPTION_IME_EXTENSION_NOT_ALLOWED, "input method extension is not allowed." },
 };
 

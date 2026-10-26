@@ -26,6 +26,7 @@ KeyEventConsumerServiceImpl::~KeyEventConsumerServiceImpl() {}
 
 ErrCode KeyEventConsumerServiceImpl::OnKeyEventResult(bool isConsumed)
 {
+    IMSA_HILOGD("isConsumed: %{public}d!", isConsumed);
     if (callback_ != nullptr) {
         callback_(keyEvent_, isConsumed);
     } else {

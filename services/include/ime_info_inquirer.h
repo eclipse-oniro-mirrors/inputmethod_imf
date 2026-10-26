@@ -92,6 +92,7 @@ public:
     bool IsEnableNumKey();
     bool IsEnablePushToTalkDialog();
     uint32_t GetPushToTalkLongPressMs();
+    uint32_t GetInAppRegisterNum();
     std::string GetPushToTalkDialogBundleName();
     std::string GetPushToTalkDialogAbilityName();
     bool IsProxyIme(int32_t callingUid);

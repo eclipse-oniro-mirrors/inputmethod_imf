@@ -156,6 +156,11 @@ uint32_t ImeInfoInquirer::GetPushToTalkLongPressMs()
     return systemConfig_.pushToTalkLongPressMs;
 }
 
+uint32_t ImeInfoInquirer::GetInAppRegisterNum()
+{
+    return systemConfig_.inAppRegisterNum;
+}
+
 std::string ImeInfoInquirer::GetPushToTalkDialogBundleName()
 {
     return systemConfig_.pushToTalkDialogBundleName;

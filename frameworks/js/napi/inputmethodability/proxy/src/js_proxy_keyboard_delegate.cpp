@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -87,10 +87,6 @@ napi_value JsProxyKeyboardDelegate::JsConstructor(napi_env env, napi_callback_in
 
 bool JsProxyKeyboardDelegate::InitProxyKeyboardDelegate()
 {
-    if (InputMethodAbility::GetInstance().IsImeExtension()) {
-        IMSA_HILOGE("ime ext is not allowed.");
-        return false;
-    }
     auto listener = GetInstance();
     if (listener == nullptr) {
         return false;
@@ -140,7 +136,7 @@ napi_value JsProxyKeyboardDelegate::UnsubscribeEditorAttributeChanged(napi_env e
     return JsProxyListenerBase::UnsubscribeByType(env, info, "editorAttributeChanged");
 }
 
-napi_value JsProxyKeyboardDelegate::GetProxyInputMethodKeyboardDelegate(napi_env env, napi_callback_info info)
+napi_value JsProxyKeyboardDelegate::GetProxyKeyboardDelegate(napi_env env, napi_callback_info info)
 {
     napi_value instance = nullptr;
     napi_get_null(env, &instance);
