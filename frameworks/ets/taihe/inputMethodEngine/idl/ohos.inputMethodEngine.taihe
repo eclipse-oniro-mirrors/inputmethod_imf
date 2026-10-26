@@ -718,33 +718,33 @@ interface ProxyTextInputClient {
 
 interface ProxyInputMethodAbility {
     OnInputStart(callback: (inputClient: ProxyTextInputClient, keyboardController: ProxyKeyboardController) => void, @sts_last opq: Opaque): void;
-    OffInputStart(opq: Optional<Opaque>): void;
+    OffInputStart(opq: Optional<@sts_type("Function2<ProxyTextInputClient, ProxyKeyboardController, void>") Opaque>): void;
 
     OnKeyboardShow(callback: (data: UndefinedType) => void, @sts_last opq: Opaque): void;
-    OffKeyboardShow(opq: Optional<Opaque>): void;
+    OffKeyboardShow(opq: Optional<@sts_type("Function1<void, void>") Opaque>): void;
 
     OnKeyboardHide(callback: (data: UndefinedType) => void, @sts_last opq: Opaque): void;
-    OffKeyboardHide(opq: Optional<Opaque>): void;
+    OffKeyboardHide(opq: Optional<@sts_type("Function1<void, void>") Opaque>): void;
 
     OnUnregister(callback: (data: UndefinedType) => void, @sts_last opq: Opaque): void;
-    OffUnregister(opq: Optional<Opaque>): void;
+    OffUnregister(opq: Optional<@sts_type("Function1<void, void>") Opaque>): void;
 }
 
 interface ProxyKeyboardDelegate {
-    OnKeyEvent(callback: (event: InputKeyEvent) => bool, @sts_last opq: Opaque): void;
-    OffKeyEvent(opq: Optional<Opaque>): void;
+    OnKeyEvent(callback: (event: InputKeyEvent) => bool): void;
+    OffKeyEvent(callback: Optional<(event: InputKeyEvent) => bool>): void;
 
     OnCursorContextChange(callback: (x: f64, y: f64, height: f64) => void, @sts_last opq: Opaque): void;
-    OffCursorContextChange(opq: Optional<Opaque>): void;
+    OffCursorContextChange(opq: Optional<@sts_type("Function3<double, double, double, void>") Opaque>): void;
 
     OnSelectionChange(callback: (oldBegin: i32, oldEnd: i32, newBegin: i32, newEnd: i32) => void, @sts_last opq: Opaque): void;
-    OffSelectionChange(opq: Optional<Opaque>): void;
+    OffSelectionChange(opq: Optional<@sts_type("Function4<int, int, int, int, void>") Opaque>): void;
 
     OnTextChange(callback: (text: String) => void, @sts_last opq: Opaque): void;
-    OffTextChange(opq: Optional<Opaque>): void;
+    OffTextChange(opq: Optional<@sts_type("Function1<string, void>") Opaque>): void;
 
     OnEditorAttributeChanged(callback: (attr: EditorAttribute) => void, @sts_last opq: Opaque): void;
-    OffEditorAttributeChanged(opq: Optional<Opaque>): void;
+    OffEditorAttributeChanged(opq: Optional<@sts_type("Function1<EditorAttribute, void>") Opaque>): void;
 }
 
 union ProxyAbility {

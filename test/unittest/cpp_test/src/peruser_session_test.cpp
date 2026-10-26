@@ -2739,5 +2739,67 @@ HWTEST_F(PerUserSessionTest, testEvictInAppProxyIme_002, TestSize.Level0)
     session_->EvictInAppProxyIme();
     EXPECT_EQ(session_->inAppProxyImeData_.find(TEST_PID), session_->inAppProxyImeData_.end());
 }
+
+/**
+ * @tc.name: testEvictInAppProxyIme_003
+ * @tc.desc: PerUserSession::EvictInAppProxyIme keeps all entries when size equals maxCount (inAppRegisterNum 0)
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testEvictInAppProxyIme_003, TestSize.Level0)
+{
+    for (int32_t i = 0; i < static_cast<int32_t>(MAX_INAPP_PROXY_IME_COUNT); i++) {
+        auto imeData = MakeImeData(i, ImeType::INAPP_PROXY_IME, ImeStatus::READY);
+        ASSERT_NE(imeData, nullptr);
+        imeData->startTime = i;
+        session_->inAppProxyImeData_[i] = imeData;
+    }
+    EXPECT_EQ(session_->inAppProxyImeData_.size(), MAX_INAPP_PROXY_IME_COUNT);
+    session_->EvictInAppProxyIme();
+    EXPECT_EQ(session_->inAppProxyImeData_.size(), MAX_INAPP_PROXY_IME_COUNT);
+    EXPECT_NE(session_->inAppProxyImeData_.find(0), session_->inAppProxyImeData_.end());
+}
+
+/**
+ * @tc.name: testEvictInAppProxyIme_004
+ * @tc.desc: PerUserSession::EvictInAppProxyIme evicts oldest non-focused entry when size exceeds maxCount
+ * (inAppRegisterNum 0)
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testEvictInAppProxyIme_004, TestSize.Level0)
+{
+    for (int32_t i = 0; i <= static_cast<int32_t>(MAX_INAPP_PROXY_IME_COUNT); i++) {
+        auto imeData = MakeImeData(i, ImeType::INAPP_PROXY_IME, ImeStatus::READY);
+        ASSERT_NE(imeData, nullptr);
+        imeData->startTime = i;
+        session_->inAppProxyImeData_[i] = imeData;
+    }
+    EXPECT_EQ(session_->inAppProxyImeData_.size(), MAX_INAPP_PROXY_IME_COUNT + 1);
+    session_->EvictInAppProxyIme();
+    EXPECT_EQ(session_->inAppProxyImeData_.size(), MAX_INAPP_PROXY_IME_COUNT);
+    EXPECT_EQ(session_->inAppProxyImeData_.find(0), session_->inAppProxyImeData_.end());
+}
+
+/**
+ * @tc.name: testGetImeData_InAppProxyIme_001
+ * @tc.desc: PerUserSession::GetImeData returns nullptr for INAPP_PROXY_IME when not registered
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testGetImeData_InAppProxyIme_001, TestSize.Level0)
+{
+    EXPECT_EQ(session_->GetImeData(TEST_PID, ImeType::INAPP_PROXY_IME), nullptr);
+}
+
+/**
+ * @tc.name: testGetImeData_InAppProxyIme_002
+ * @tc.desc: PerUserSession::GetImeData returns data for INAPP_PROXY_IME after registration
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testGetImeData_InAppProxyIme_002, TestSize.Level0)
+{
+    auto imeData = MakeImeData(TEST_PID, ImeType::INAPP_PROXY_IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    session_->inAppProxyImeData_[TEST_PID] = imeData;
+    EXPECT_EQ(session_->GetImeData(TEST_PID, ImeType::INAPP_PROXY_IME), imeData);
+}
 } // namespace MiscServices
 } // namespace OHOS

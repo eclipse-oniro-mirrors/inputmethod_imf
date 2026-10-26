@@ -94,8 +94,7 @@ napi_value JsInputMethodEngineSetting::Init(napi_env env, napi_value exports)
         DECLARE_NAPI_FUNCTION("registerInAppProxyIme", RegisterInAppProxyIme),
         DECLARE_NAPI_FUNCTION("unregisterInAppProxyIme", UnregisterInAppProxyIme),
         DECLARE_NAPI_FUNCTION("getProxyInputMethodAbility", JsProxyInputMethodAbility::GetProxyInputMethodAbility),
-        DECLARE_NAPI_FUNCTION(
-            "getProxyInputMethodKeyboardDelegate", JsProxyKeyboardDelegate::GetProxyInputMethodKeyboardDelegate),
+        DECLARE_NAPI_FUNCTION("getProxyKeyboardDelegate", JsProxyKeyboardDelegate::GetProxyKeyboardDelegate),
         DECLARE_NAPI_STATIC_PROPERTY("PanelType", GetJsPanelTypeProperty(env)),
         DECLARE_NAPI_STATIC_PROPERTY("PanelFlag", GetJsPanelFlagProperty(env)),
         DECLARE_NAPI_STATIC_PROPERTY("Direction", GetJsDirectionProperty(env)),
@@ -381,7 +380,7 @@ napi_value JsInputMethodEngineSetting::RegisterInAppProxyIme(napi_env env, napi_
 napi_value JsInputMethodEngineSetting::UnregisterInAppProxyIme(napi_env env, napi_callback_info info)
 {
     IMSA_HILOGI("run in.");
-    auto ctxt = std::make_shared<AsyncCall::Context>(nullptr, nullptr);
+    auto ctxt = std::make_shared<UnregisterInAppProxyImeContext>();
     auto exec = [ctxt](AsyncCall::Context *ctx) {
         int32_t status = InputMethodAbility::GetInstance().UnregisterInAppProxyIme();
         ctxt->SetErrorCode(status);

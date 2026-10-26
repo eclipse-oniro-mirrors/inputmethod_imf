@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2025 Huawei Device Co., Ltd.
+ * Copyright (c) 2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -51,7 +51,7 @@ public:
     static napi_value UnsubscribeTextChange(napi_env env, napi_callback_info info);
     static napi_value SubscribeEditorAttributeChanged(napi_env env, napi_callback_info info);
     static napi_value UnsubscribeEditorAttributeChanged(napi_env env, napi_callback_info info);
-    static napi_value GetProxyInputMethodKeyboardDelegate(napi_env env, napi_callback_info info);
+    static napi_value GetProxyKeyboardDelegate(napi_env env, napi_callback_info info);
 
 protected:
     static void DealKeyEvent(const std::shared_ptr<MMI::KeyEvent> &keyEvent,

@@ -57,6 +57,7 @@ struct SystemConfig {
     std::string dynamicStartImeSysParam;
     std::string dynamicStartImeValue;
     bool enableImeUsageFeature = true;
+    uint32_t inAppRegisterNum { 0 };
 };
 
 enum class Condition {
@@ -100,6 +101,7 @@ public:
     bool IsEnableNumKey();
     bool IsEnablePushToTalkDialog();
     uint32_t GetPushToTalkLongPressMs();
+    uint32_t GetInAppRegisterNum();
     std::string GetPushToTalkDialogBundleName();
     std::string GetPushToTalkDialogAbilityName();
     bool IsProxyIme(int32_t callingUid);
