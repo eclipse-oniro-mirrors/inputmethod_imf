@@ -20,14 +20,14 @@ namespace MiscServices {
 
 void IMFProxyKeyboardControllerImpl::HideSelfAsync()
 {
-    IMSA_HILOGI("HideSelfAsync start");
+    IMSA_HILOGD("HideSelfAsync start");
     int32_t status = InputMethodAbility::GetInstance().HideCustomKeyboardSelf();
     if (status != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("HideSelfAsync return error: %{public}d", status);
         taihe::set_business_error(JsUtils::Convert(status), JsUtils::ToMessage(JsUtils::Convert(status)));
         return;
     }
-    IMSA_HILOGI("HideSelfAsync success");
+    IMSA_HILOGD("HideSelfAsync success");
 }
 
 } // namespace MiscServices

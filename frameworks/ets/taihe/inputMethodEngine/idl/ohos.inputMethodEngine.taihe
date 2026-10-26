@@ -21,6 +21,7 @@ import { LocalStorage } from '@ohos.arkui.stateManagement';
 import { BusinessError, AsyncCallback, Callback } from '@ohos.base';
 """)
 @!sts_inject_into_module("import * as ohos_InputMethodSubtype from './@ohos.InputMethodSubtype';")
+@!sts_inject_into_module("import { KeyEvent as InputKeyEvent } from './@ohos.multimodalInput.keyEvent.ets';")
 
 from ohos.InputMethodSubtype use InputMethodSubtype;
 from ohos.multimodalInput.keyEvent use KeyEvent as InputKeyEvent;
@@ -661,57 +662,44 @@ struct RegisterOptions {
 }
 
 interface ProxyKeyboardController {
-    @gen_async("hideSelf")
     @gen_promise("hideSelf")
     HideSelfAsync(): void;
 }
 
 interface ProxyTextInputClient {
-    @gen_async("sendKeyFunction")
     @gen_promise("sendKeyFunction")
     SendKeyFunctionAsync(action: i32): void;
 
-    @gen_async("deleteForward")
     @gen_promise("deleteForward")
     DeleteForwardAsync(length: i32): void;
 
-    @gen_async("deleteBackward")
     @gen_promise("deleteBackward")
     DeleteBackwardAsync(length: i32): void;
 
-    @gen_async("insertText")
     @gen_promise("insertText")
     InsertTextAsync(text: String): void;
 
-    @gen_async("getForward")
     @gen_promise("getForward")
     GetForwardAsync(length: i32): String;
 
-    @gen_async("getBackward")
     @gen_promise("getBackward")
     GetBackwardAsync(length: i32): String;
 
-    @gen_async("getEditorAttribute")
     @gen_promise("getEditorAttribute")
     GetEditorAttributeAsync(): EditorAttributeCallback;
 
-    @gen_async("moveCursor")
     @gen_promise("moveCursor")
     MoveCursorAsync(direction: i32): void;
 
-    @gen_async("selectByRange")
     @gen_promise("selectByRange")
     SelectByRangeAsync(range: Range): void;
 
-    @gen_async("selectByMovement")
     @gen_promise("selectByMovement")
     SelectByMovementAsync(movement: Movement): void;
 
-    @gen_async("getTextIndexAtCursor")
     @gen_promise("getTextIndexAtCursor")
     GetTextIndexAtCursorAsync(): i32;
 
-    @gen_async("sendExtendAction")
     @gen_promise("sendExtendAction")
     SendExtendActionAsync(action: ExtendAction): void;
 }
@@ -731,8 +719,8 @@ interface ProxyInputMethodAbility {
 }
 
 interface ProxyKeyboardDelegate {
-    OnKeyEvent(callback: (event: InputKeyEvent) => bool): void;
-    OffKeyEvent(callback: Optional<(event: InputKeyEvent) => bool>): void;
+    OnKeyEvent(callback: (event: InputKeyEvent) => bool, @sts_last opq: Opaque): void;
+    OffKeyEvent(opq: Optional<@sts_type("Function1<KeyEvent, boolean>") Opaque>): void;
 
     OnCursorContextChange(callback: (x: f64, y: f64, height: f64) => void, @sts_last opq: Opaque): void;
     OffCursorContextChange(opq: Optional<@sts_type("Function3<double, double, double, void>") Opaque>): void;

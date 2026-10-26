@@ -63,9 +63,9 @@ void ProxyListenerBase::RegisterListener(
 void ProxyListenerBase::UnRegisterListener(
     std::string const &type, taihe::optional_view<uintptr_t> opq)
 {
+    IMSA_HILOGI("unregister listener: %{public}s.", type.c_str());
     ani_env *env = taihe::get_env();
     if (env == nullptr) {
-        IMSA_HILOGE("Failed to unregister %{public}s, env is nullptr", type.c_str());
         return;
     }
     ani_ref targetRef = nullptr;
@@ -82,7 +82,7 @@ void ProxyListenerBase::UnRegisterListener(
         std::lock_guard<std::mutex> lock(mutex_);
         const auto iter = jsCbMap_.find(type);
         if (iter == jsCbMap_.end()) {
-            IMSA_HILOGE("%{public}s is not registered", type.c_str());
+            IMSA_HILOGD("%{public}s is not registered", type.c_str());
         } else if (!hasTarget) {
             bulkRelease = std::move(iter->second);
             jsCbMap_.erase(iter);

@@ -49,7 +49,7 @@ napi_value JsProxyKeyboardController::JsConstructor(napi_env env, napi_callback_
 
 napi_value JsProxyKeyboardController::HideSelf(napi_env env, napi_callback_info info)
 {
-    IMSA_HILOGI("HideSelf start");
+    IMSA_HILOGD("HideSelf start");
     auto ctxt = std::make_shared<HideSelfContext>();
     auto input = [](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
         return napi_ok;
