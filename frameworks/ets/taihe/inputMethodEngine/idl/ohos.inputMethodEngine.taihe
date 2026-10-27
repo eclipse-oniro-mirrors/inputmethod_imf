@@ -113,11 +113,6 @@ interface InputMethodRichText {
     GetSpans(): Array<RichTextSpan>;
 }
 
-union InputMethodRichTextCallback {
-    type_InputMethodRichText: InputMethodRichText;
-    @null type_null;
-}
-
 enum ImmersiveMode: i32 {
     NONE_IMMERSIVE = 0,
     IMMERSIVE = 1,
@@ -371,10 +366,10 @@ interface InputClient {
     GetBackwardAsync(length: i32): String;
 
     @gen_promise("getLeftRichText")
-    GetLeftRichTextAsync(length: i32): InputMethodRichTextCallback;
+    GetLeftRichTextAsync(length: i32): InputMethodRichText;
 
     @gen_promise("getRightRichText")
-    GetRightRichTextAsync(length: i32): InputMethodRichTextCallback;
+    GetRightRichTextAsync(length: i32): InputMethodRichText;
 
     @gen_async("getEditorAttribute")
     @gen_promise("getEditorAttribute")
@@ -423,8 +418,8 @@ interface InputClient {
     MoveCursorSync(direction: i32): void;
     GetBackwardSync(length: i32): String;
     GetForwardSync(length: i32): String;
-    GetLeftRichTextSync(length: i32): InputMethodRichTextCallback;
-    GetRightRichTextSync(length: i32): InputMethodRichTextCallback;
+    GetLeftRichTextSync(length: i32): InputMethodRichText;
+    GetRightRichTextSync(length: i32): InputMethodRichText;
     InsertTextSync(text: String): void;
     DeleteBackwardSync(length: i32): void;
     DeleteForwardSync(length: i32): void;

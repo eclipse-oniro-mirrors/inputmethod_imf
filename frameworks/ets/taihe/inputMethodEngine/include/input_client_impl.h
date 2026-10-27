@@ -39,9 +39,9 @@ public:
 
     taihe::string GetBackwardAsync(int32_t length);
 
-    ohos::inputMethodEngine::InputMethodRichTextCallback GetLeftRichTextAsync(int32_t length);
+    ohos::inputMethodEngine::InputMethodRichText GetLeftRichTextAsync(int32_t length);
 
-    ohos::inputMethodEngine::InputMethodRichTextCallback GetRightRichTextAsync(int32_t length);
+    ohos::inputMethodEngine::InputMethodRichText GetRightRichTextAsync(int32_t length);
 
     ohos::inputMethodEngine::EditorAttributeCallback GetEditorAttributeAsync();
 
@@ -81,9 +81,9 @@ public:
 
     taihe::string GetForwardSync(int32_t length);
 
-    ohos::inputMethodEngine::InputMethodRichTextCallback GetLeftRichTextSync(int32_t length);
+    ohos::inputMethodEngine::InputMethodRichText GetLeftRichTextSync(int32_t length);
 
-    ohos::inputMethodEngine::InputMethodRichTextCallback GetRightRichTextSync(int32_t length);
+    ohos::inputMethodEngine::InputMethodRichText GetRightRichTextSync(int32_t length);
 
     void InsertTextSync(taihe::string_view text);
 

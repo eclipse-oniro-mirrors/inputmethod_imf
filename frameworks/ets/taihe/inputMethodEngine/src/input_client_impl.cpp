@@ -136,13 +136,14 @@ taihe::string InputClientImpl::GetBackwardAsync(int32_t length)
     return text;
 }
 
-ohos::inputMethodEngine::InputMethodRichTextCallback InputClientImpl::GetLeftRichTextAsync(int32_t length)
+ohos::inputMethodEngine::InputMethodRichText InputClientImpl::GetLeftRichTextAsync(int32_t length)
 {
     if (length < 0 || length > MAX_RICH_TEXT_LENGTH) {
         IMSA_HILOGE("length should be in [0, 4096], length: %{public}d", length);
         taihe::set_business_error(
             JsUtils::Convert(ErrorCode::ERROR_PARAMETER_CHECK_FAILED), "length should be in [0, 4096]!");
-        return ohos::inputMethodEngine::InputMethodRichTextCallback::make_type_null();
+        return taihe::make_holder<InputMethodRichTextImpl, ohos::inputMethodEngine::InputMethodRichText>(
+            RichTextData{});
     }
     IMSA_HILOGD("get left rich text async, length: %{public}d", length);
     RichTextData richText;
@@ -150,21 +151,21 @@ ohos::inputMethodEngine::InputMethodRichTextCallback InputClientImpl::GetLeftRic
     if (code != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("get left rich text failed, code: %{public}d", code);
         taihe::set_business_error(JsUtils::Convert(code), JsUtils::ToMessage(JsUtils::Convert(code)));
-        return ohos::inputMethodEngine::InputMethodRichTextCallback::make_type_null();
+        return taihe::make_holder<InputMethodRichTextImpl, ohos::inputMethodEngine::InputMethodRichText>(
+            RichTextData{});
     }
     IMSA_HILOGD("get left rich text success, spans size: %{public}zu", richText.spans.size());
-    auto richTextImpl = taihe::make_holder<InputMethodRichTextImpl, ohos::inputMethodEngine::InputMethodRichText>(
-        richText);
-    return ohos::inputMethodEngine::InputMethodRichTextCallback::make_type_InputMethodRichText(richTextImpl);
+    return taihe::make_holder<InputMethodRichTextImpl, ohos::inputMethodEngine::InputMethodRichText>(richText);
 }
 
-ohos::inputMethodEngine::InputMethodRichTextCallback InputClientImpl::GetRightRichTextAsync(int32_t length)
+ohos::inputMethodEngine::InputMethodRichText InputClientImpl::GetRightRichTextAsync(int32_t length)
 {
     if (length < 0 || length > MAX_RICH_TEXT_LENGTH) {
         IMSA_HILOGE("length should be in [0, 4096], length: %{public}d", length);
         taihe::set_business_error(
             JsUtils::Convert(ErrorCode::ERROR_PARAMETER_CHECK_FAILED), "length should be in [0, 4096]!");
-        return ohos::inputMethodEngine::InputMethodRichTextCallback::make_type_null();
+        return taihe::make_holder<InputMethodRichTextImpl, ohos::inputMethodEngine::InputMethodRichText>(
+            RichTextData{});
     }
     IMSA_HILOGD("get right rich text async, length: %{public}d", length);
     RichTextData richText;
@@ -172,12 +173,11 @@ ohos::inputMethodEngine::InputMethodRichTextCallback InputClientImpl::GetRightRi
     if (code != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("get right rich text failed, code: %{public}d", code);
         taihe::set_business_error(JsUtils::Convert(code), JsUtils::ToMessage(JsUtils::Convert(code)));
-        return ohos::inputMethodEngine::InputMethodRichTextCallback::make_type_null();
+        return taihe::make_holder<InputMethodRichTextImpl, ohos::inputMethodEngine::InputMethodRichText>(
+            RichTextData{});
     }
     IMSA_HILOGD("get right rich text success, spans size: %{public}zu", richText.spans.size());
-    auto richTextImpl = taihe::make_holder<InputMethodRichTextImpl, ohos::inputMethodEngine::InputMethodRichText>(
-        richText);
-    return ohos::inputMethodEngine::InputMethodRichTextCallback::make_type_InputMethodRichText(richTextImpl);
+    return taihe::make_holder<InputMethodRichTextImpl, ohos::inputMethodEngine::InputMethodRichText>(richText);
 }
 
 ohos::inputMethodEngine::EditorAttributeCallback InputClientImpl::GetEditorAttributeAsync()
@@ -501,44 +501,44 @@ taihe::string InputClientImpl::GetForwardSync(int32_t length)
     return result;
 }
 
-ohos::inputMethodEngine::InputMethodRichTextCallback InputClientImpl::GetLeftRichTextSync(int32_t length)
+ohos::inputMethodEngine::InputMethodRichText InputClientImpl::GetLeftRichTextSync(int32_t length)
 {
     if (length < 0 || length > MAX_RICH_TEXT_LENGTH) {
         IMSA_HILOGE("length should be in [0, 4096], length: %{public}d", length);
         taihe::set_business_error(
             JsUtils::Convert(ErrorCode::ERROR_PARAMETER_CHECK_FAILED), "length should be in [0, 4096]!");
-        return ohos::inputMethodEngine::InputMethodRichTextCallback::make_type_null();
+        return taihe::make_holder<InputMethodRichTextImpl, ohos::inputMethodEngine::InputMethodRichText>(
+            RichTextData{});
     }
     RichTextData richText;
     int32_t ret = InputMethodAbility::GetInstance().GetRichBeforeCursor(length, richText);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("GetLeftRichTextSync failed, code: %{public}d", ret);
         taihe::set_business_error(JsUtils::Convert(ret), JsUtils::ToMessage(JsUtils::Convert(ret)));
-        return ohos::inputMethodEngine::InputMethodRichTextCallback::make_type_null();
+        return taihe::make_holder<InputMethodRichTextImpl, ohos::inputMethodEngine::InputMethodRichText>(
+            RichTextData{});
     }
-    auto richTextImpl = taihe::make_holder<InputMethodRichTextImpl, ohos::inputMethodEngine::InputMethodRichText>(
-        richText);
-    return ohos::inputMethodEngine::InputMethodRichTextCallback::make_type_InputMethodRichText(richTextImpl);
+    return taihe::make_holder<InputMethodRichTextImpl, ohos::inputMethodEngine::InputMethodRichText>(richText);
 }
 
-ohos::inputMethodEngine::InputMethodRichTextCallback InputClientImpl::GetRightRichTextSync(int32_t length)
+ohos::inputMethodEngine::InputMethodRichText InputClientImpl::GetRightRichTextSync(int32_t length)
 {
     if (length < 0 || length > MAX_RICH_TEXT_LENGTH) {
         IMSA_HILOGE("length should be in [0, 4096], length: %{public}d", length);
         taihe::set_business_error(
             JsUtils::Convert(ErrorCode::ERROR_PARAMETER_CHECK_FAILED), "length should be in [0, 4096]!");
-        return ohos::inputMethodEngine::InputMethodRichTextCallback::make_type_null();
+        return taihe::make_holder<InputMethodRichTextImpl, ohos::inputMethodEngine::InputMethodRichText>(
+            RichTextData{});
     }
     RichTextData richText;
     int32_t ret = InputMethodAbility::GetInstance().GetRichAfterCursor(length, richText);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("GetRightRichTextSync failed, code: %{public}d", ret);
         taihe::set_business_error(JsUtils::Convert(ret), JsUtils::ToMessage(JsUtils::Convert(ret)));
-        return ohos::inputMethodEngine::InputMethodRichTextCallback::make_type_null();
+        return taihe::make_holder<InputMethodRichTextImpl, ohos::inputMethodEngine::InputMethodRichText>(
+            RichTextData{});
     }
-    auto richTextImpl = taihe::make_holder<InputMethodRichTextImpl, ohos::inputMethodEngine::InputMethodRichText>(
-        richText);
-    return ohos::inputMethodEngine::InputMethodRichTextCallback::make_type_InputMethodRichText(richTextImpl);
+    return taihe::make_holder<InputMethodRichTextImpl, ohos::inputMethodEngine::InputMethodRichText>(richText);
 }
 
 void InputClientImpl::InsertTextSync(taihe::string_view text)
