@@ -3367,6 +3367,7 @@ void SaMgrListener::OnAddSystemAbility(int32_t systemAbilityId, const std::strin
 
 int32_t InputMethodController::ExecTextInteraction(const std::string &text)
 {
+#ifdef IMF_INJECT_TEXT_ENABLE
     IMSA_HILOGD("IMC start.");
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
@@ -3374,6 +3375,10 @@ int32_t InputMethodController::ExecTextInteraction(const std::string &text)
         return ErrorCode::ERROR_SERVICE_START_FAILED;
     }
     return proxy->ExecTextInteraction(text);
+#else
+    IMSA_HILOGE("inject text is not supported in current product config.");
+    return ErrorCode::ERROR_DEVICE_UNSUPPORTED;
+#endif
 }
 
 int32_t InputMethodController::OnExecTextInteraction(const std::string &text)

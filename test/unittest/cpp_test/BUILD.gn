@@ -100,6 +100,14 @@ ohos_unittest("InputMethodControllerTest") {
     "icu:shared_icuuc",
   ]
 
+  if (imf_cli_enable) {
+    if (defined(defines)) {
+      defines += [ "IMF_INJECT_TEXT_ENABLE" ]
+    } else {
+      defines = [ "IMF_INJECT_TEXT_ENABLE" ]
+    }
+  }
+
   if (window_manager_use_sceneboard) {
     external_deps += [ "window_manager:libwm_lite" ]
   } else {
@@ -1668,6 +1676,14 @@ ohos_unittest("ImeControllerCpaiTest") {
     "samgr:samgr_proxy",
     "icu:shared_icuuc",
   ]
+
+  if (imf_cli_enable) {
+    if (defined(defines)) {
+      defines += [ "IMF_INJECT_TEXT_ENABLE" ]
+    } else {
+      defines = [ "IMF_INJECT_TEXT_ENABLE" ]
+    }
+  }
 }
 
 ohos_unittest("FullImeInfoManagerTest") {

@@ -26,6 +26,8 @@
 #include "native_session_guard.h"
 #include "text_editor_proxy_manager.h"
 
+#include "inputmethod_controller_capi.h"
+
 using namespace testing::ext;
 using namespace OHOS;
 using namespace OHOS::MiscServices;
@@ -2790,6 +2792,59 @@ HWTEST_F(InputMethodControllerCapiTest, NativeMessageHandler_DestroyDuringMessag
     EXPECT_EQ(ErrorCode::NO_ERROR, callback.OnMessage(ArrayBuffer {}));
     EXPECT_TRUE(storage.expired());
     EXPECT_EQ(ErrorCode::ERROR_CLIENT_NULL_POINTER, callback.OnMessage(ArrayBuffer {}));
+}
+
+HWTEST_F(InputMethodControllerCapiTest, InjectText_ParametersAndBytes, TestSize.Level0)
+{
+    EXPECT_CALL(*systemAbilityProxyMock_, InjectText(_)).Times(0);
+    EXPECT_EQ(OH_InputMethodController_InjectText(nullptr, 0), IME_ERR_PARAMCHECK);
+    EXPECT_EQ(OH_InputMethodController_InjectText("a", 513), IME_ERR_PARAMCHECK);
+    Mock::VerifyAndClearExpectations(systemAbilityProxyMock_.GetRefPtr());
+    for (const auto &text : { std::string(), std::string("a"), std::string(512, 'a'),
+        std::string("a\0b", 3), std::string("\xff", 1) }) {
+#ifdef IMF_INJECT_TEXT_ENABLE
+        EXPECT_CALL(*systemAbilityProxyMock_, InjectText(text)).WillOnce(Return(ErrorCode::NO_ERROR));
+        EXPECT_EQ(OH_InputMethodController_InjectText(text.data(), text.size()), IME_ERR_OK);
+#else
+        // Without IMF_INJECT_TEXT_ENABLE the controller short-circuits to
+        // ERROR_DEVICE_UNSUPPORTED (83) before the proxy is ever reached.
+        EXPECT_CALL(*systemAbilityProxyMock_, InjectText(_)).Times(0);
+        EXPECT_EQ(OH_InputMethodController_InjectText(text.data(), text.size()), IME_ERR_UNSUPPORTED);
+#endif
+        Mock::VerifyAndClearExpectations(systemAbilityProxyMock_.GetRefPtr());
+    }
+#ifdef IMF_INJECT_TEXT_ENABLE
+    EXPECT_CALL(*systemAbilityProxyMock_, InjectText(std::string("a"))).WillOnce(Return(ErrorCode::NO_ERROR));
+    EXPECT_EQ(OH_InputMethodController_InjectText("abc", 1), IME_ERR_OK);
+#endif
+    Mock::VerifyAndClearExpectations(systemAbilityProxyMock_.GetRefPtr());
+}
+
+HWTEST_F(InputMethodControllerCapiTest, InjectText_ErrorMapping, TestSize.Level0)
+{
+#ifdef IMF_INJECT_TEXT_ENABLE
+    const std::pair<int32_t, InputMethod_ErrorCode> errors[] = {
+        { ErrorCode::ERROR_STATUS_PERMISSION_DENIED, IME_ERR_PERMISSION_DENIED },
+        { ErrorCode::ERROR_DEVICE_UNSUPPORTED, IME_ERR_UNSUPPORTED },
+        { ErrorCode::ERROR_CLIENT_NOT_FOUND, IME_ERR_IMCLIENT },
+        { ErrorCode::ERROR_REMOTE_CLIENT_DIED, IME_ERR_IMCLIENT },
+        { ErrorCode::ERROR_SERVICE_START_FAILED, IME_ERR_IMMS },
+        { ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND, IME_ERR_IMMS },
+        { ErrorCode::ERROR_PARAMETER_CHECK_FAILED, IME_ERR_PARAMCHECK },
+    };
+    for (const auto &[internal, expected] : errors) {
+        EXPECT_CALL(*systemAbilityProxyMock_, InjectText(std::string())).WillOnce(Return(internal));
+        EXPECT_EQ(OH_InputMethodController_InjectText("", 0), expected);
+        Mock::VerifyAndClearExpectations(systemAbilityProxyMock_.GetRefPtr());
+    }
+#else
+    // Every input short-circuits to ERROR_DEVICE_UNSUPPORTED, mapped to
+    // IME_ERR_UNSUPPORTED; the proxy is never invoked, so no error mapping
+    // can be exercised in this build config.
+    EXPECT_CALL(*systemAbilityProxyMock_, InjectText(_)).Times(0);
+    EXPECT_EQ(OH_InputMethodController_InjectText("", 0), IME_ERR_UNSUPPORTED);
+#endif
+    Mock::VerifyAndClearExpectations(systemAbilityProxyMock_.GetRefPtr());
 }
 } // namespace MiscServices
 } // namespace OHOS

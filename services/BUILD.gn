@@ -175,6 +175,10 @@ ohos_shared_library("inputmethod_service") {
   if (imf_restore_in_high_cpu_usage) {
     defines += [ "IMF_RESTORE_IN_HIGH_CPU_USAGE" ]
   }
+  if (imf_cli_enable) {
+    external_deps += [ "access_token:libprivacy_sdk" ]
+    defines += [ "IMF_INJECT_TEXT_ENABLE" ]
+  }
   if (imf_compatibility_config_center_enable) {
     defines += [ "COMPATIBILITY_CONFIG_CENTER_ENABLE" ]
   }

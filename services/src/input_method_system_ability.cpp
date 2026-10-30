@@ -61,6 +61,9 @@
 #include "input_method_tools.h"
 #include "window_adapter.h"
 #include "os_account_manager.h"
+#ifdef IMF_INJECT_TEXT_ENABLE
+#include "privacy_kit.h"
+#endif
 #include "res_sched_adapter.h"
 #include "ime_info_inquirer.h"
 #include "exam_mode_manager.h"
@@ -91,6 +94,9 @@ constexpr std::int32_t WMS_RETRY_INTERVAL = 60000;  // 1min
 constexpr const char *UNDEFINED = "undefined";
 static const char *PERMISSION_CONNECT_IME_ABILITY = "ohos.permission.CONNECT_IME_ABILITY";
 static const char *PERMISSION_CONTROL_DEVICE = "ohos.permission.CONTROL_DEVICE";
+#ifdef IMF_INJECT_TEXT_ENABLE
+static const char *PERMISSION_OPERATE_TEXT_ACROSS_APPLICATION = "ohos.permission.OPERATE_TEXT_ACROSS_APPLICATION";
+#endif
 std::shared_ptr<AppExecFwk::EventHandler> InputMethodSystemAbility::serviceHandler_;
 constexpr uint32_t START_SA_TIMEOUT = 6; // 6s
 constexpr const char *SELECT_DIALOG_ACTION = "action.system.inputmethodchoose";
@@ -4325,10 +4331,24 @@ int32_t InputMethodSystemAbility::ExecTextInteraction(const std::string &text)
     auto uid = IPCSkeleton::GetCallingUid();
     auto pid = IPCSkeleton::GetCallingPid();
     auto tokenId = IPCSkeleton::GetCallingTokenID();
+#ifdef IMF_INJECT_TEXT_ENABLE
+    if (text.size() > ImfCommonConst::MAX_INJECT_TEXT_SIZE) {
+        IMSA_HILOGE("text size exceeds the limit.");
+        return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+    }
+    bool controlGranted = identityChecker_->HasPermission(tokenId, std::string(PERMISSION_CONTROL_DEVICE));
+    bool hasPermission = controlGranted ||
+        identityChecker_->HasPermission(tokenId, std::string(PERMISSION_OPERATE_TEXT_ACROSS_APPLICATION));
+    if (!hasPermission) {
+        IMSA_HILOGE("permission denied.");
+        return ErrorCode::ERROR_STATUS_PERMISSION_DENIED;
+    }
+#else
     if (!identityChecker_->HasPermission(tokenId, std::string(PERMISSION_CONTROL_DEVICE))) {
         IMSA_HILOGE("permission denied");
         return ErrorCode::ERROR_STATUS_PERMISSION_DENIED;
     }
+#endif
     IMSA_HILOGD("uid/pid:%{public}d/%{public}d", uid, pid);
     auto userId = GetCallingUserId();
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
@@ -4336,7 +4356,15 @@ int32_t InputMethodSystemAbility::ExecTextInteraction(const std::string &text)
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
     }
-    return session->ExecTextInteraction(text);
+    auto ret = session->ExecTextInteraction(text);
+#ifdef IMF_INJECT_TEXT_ENABLE
+    if (ErrorCode::NO_ERROR == ret) {
+        const char *usedPermission =
+            controlGranted ? PERMISSION_CONTROL_DEVICE : PERMISSION_OPERATE_TEXT_ACROSS_APPLICATION;
+        Security::AccessToken::PrivacyKit::AddPermissionUsedRecord(tokenId, usedPermission, 1, 0);
+    }
+#endif
+    return ret;
 }
 } // namespace MiscServices
 } // namespace OHOS

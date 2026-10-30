@@ -308,6 +308,14 @@ ohos_shared_library("inputmethod_client") {
     }
   }
 
+  if (imf_cli_enable) {
+    if (defined(defines)) {
+      defines += [ "IMF_INJECT_TEXT_ENABLE" ]
+    } else {
+      defines = [ "IMF_INJECT_TEXT_ENABLE" ]
+    }
+  }
+
   configs = [ ":inputmethod_client_native_config" ]
 
   public_configs = [
@@ -384,6 +392,14 @@ ohos_static_library("inputmethod_client_static") {
       defines += [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
     } else {
       defines = [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
+    }
+  }
+
+  if (imf_cli_enable) {
+    if (defined(defines)) {
+      defines += [ "IMF_INJECT_TEXT_ENABLE" ]
+    } else {
+      defines = [ "IMF_INJECT_TEXT_ENABLE" ]
     }
   }
 
@@ -472,6 +488,14 @@ ohos_static_library("inputmethod_client_fuzz_static") {
       defines += [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
     } else {
       defines = [ "HIVIEWDFX_API_METRICS_EXT_ENABLE" ]
+    }
+  }
+
+  if (imf_cli_enable) {
+    if (defined(defines)) {
+      defines += [ "IMF_INJECT_TEXT_ENABLE" ]
+    } else {
+      defines = [ "IMF_INJECT_TEXT_ENABLE" ]
     }
   }
 

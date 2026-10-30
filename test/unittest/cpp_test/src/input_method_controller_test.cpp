@@ -3257,7 +3257,11 @@ HWTEST_F(InputMethodControllerTest, testExecTextInteraction, TestSize.Level0)
     std::string text = "adg";
     // has no permisson
     auto ret = inputMethodController_->ExecTextInteraction(text);
+#ifdef IMF_INJECT_TEXT_ENABLE
     EXPECT_EQ(ret, ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
+#else
+    EXPECT_EQ(ret, ErrorCode::ERROR_DEVICE_UNSUPPORTED);
+#endif
 }
 
 /**

@@ -261,9 +261,19 @@ typedef enum InputMethod_ErrorCode {
      */
     IME_ERR_UNDEFINED = 1,
     /**
+     * @error Neither of the permissions required by the API is granted.
+     * @since 26.1.0
+     */
+    IME_ERR_PERMISSION_DENIED = 201,
+    /**
      * @error The error code when parameter check failed.
      */
     IME_ERR_PARAMCHECK = 401,
+    /**
+     * @error The device does not support the API.
+     * @since 26.1.0
+     */
+    IME_ERR_UNSUPPORTED = 801,
     /**
      * @error The error code when the bundle manager error.
      */

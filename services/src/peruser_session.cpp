@@ -4023,7 +4023,7 @@ int32_t PerUserSession::ExecTextInteraction(const std::string &text)
     auto [clientGroup, clientInfo] = GetCurrentClientBoundRealIme();
     if (clientInfo == nullptr || clientInfo->client == nullptr) {
         IMSA_HILOGD("current client not exists.");
-        return ErrorCode::ERROR_CLIENT_NOT_BOUND;
+        return ErrorCode::ERROR_CLIENT_NULL_POINTER;
     }
     auto imeData = GetImeData(clientInfo->bindImeData);
     if (imeData != nullptr && imeData->core != nullptr) {

@@ -45,6 +45,15 @@ void InputMethodImpl::SetImcInnerListener()
     instance->SetImcInnerListener(listener_);
 }
 
+int32_t InputMethodImpl::InjectText(const std::string &text)
+{
+    auto controller = InputMethodController::GetInstance();
+    if (controller == nullptr) {
+        return ErrorCode::ERROR_IMSA_NULLPTR;
+    }
+    return controller->ExecTextInteraction(text);
+}
+
 void InputMethodImpl::RegisterListener(std::string const &type,
     taihe::callback_view<void(AttachFailureReason_t data)> callback)
 {
