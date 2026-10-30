@@ -51,6 +51,8 @@ napi_value JsInputMethodEngineSetting::Init(napi_env env, napi_value exports)
     napi_property_descriptor descriptor[] = {
         DECLARE_NAPI_PROPERTY(
             "ENTER_KEY_TYPE_UNSPECIFIED", GetJsConstProperty(env, static_cast<uint32_t>(EnterKeyType::UNSPECIFIED))),
+        DECLARE_NAPI_PROPERTY("ENTER_KEY_TYPE_NONE",
+            GetJsConstProperty(env, static_cast<uint32_t>(EnterKeyType::NONE))),
         DECLARE_NAPI_PROPERTY("ENTER_KEY_TYPE_GO", GetJsConstProperty(env, static_cast<uint32_t>(EnterKeyType::GO))),
         DECLARE_NAPI_PROPERTY(
             "ENTER_KEY_TYPE_SEARCH", GetJsConstProperty(env, static_cast<uint32_t>(EnterKeyType::SEARCH))),
@@ -66,6 +68,8 @@ napi_value JsInputMethodEngineSetting::Init(napi_env env, napi_value exports)
             "ENTER_KEY_TYPE_NEWLINE", GetJsConstProperty(env, static_cast<uint32_t>(EnterKeyType::NEW_LINE))),
         DECLARE_NAPI_PROPERTY("PATTERN_NULL", GetIntJsConstProperty(env, static_cast<int32_t>(TextInputType::NONE))),
         DECLARE_NAPI_PROPERTY("PATTERN_TEXT", GetJsConstProperty(env, static_cast<uint32_t>(TextInputType::TEXT))),
+        DECLARE_NAPI_PROPERTY("PATTERN_MULTILINE",
+            GetJsConstProperty(env, static_cast<uint32_t>(TextInputType::MULTILINE))),
         DECLARE_NAPI_PROPERTY("PATTERN_NUMBER", GetJsConstProperty(env, static_cast<uint32_t>(TextInputType::NUMBER))),
         DECLARE_NAPI_PROPERTY("PATTERN_PHONE", GetJsConstProperty(env, static_cast<uint32_t>(TextInputType::PHONE))),
         DECLARE_NAPI_PROPERTY(

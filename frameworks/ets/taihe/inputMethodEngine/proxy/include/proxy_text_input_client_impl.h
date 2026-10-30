@@ -15,7 +15,7 @@
 #ifndef TAIHE_PROXY_TEXT_INPUT_CLIENT_IMPL_H
 #define TAIHE_PROXY_TEXT_INPUT_CLIENT_IMPL_H
 
-#include "input_client_impl.h"
+#include "ani_common_engine.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -31,14 +31,11 @@ public:
     taihe::string GetForwardAsync(int32_t length);
     taihe::string GetBackwardAsync(int32_t length);
     ohos::inputMethodEngine::EditorAttributeCallback GetEditorAttributeAsync();
-    void MoveCursorAsync(int32_t direction);
+    void MoveCursorAsync(ohos::inputMethodEngine::Direction direction);
     void SelectByRangeAsync(Range_t const& range);
     void SelectByMovementAsync(Movement_t const& movement);
     int32_t GetTextIndexAtCursorAsync();
     void SendExtendActionAsync(ohos::inputMethodEngine::ExtendAction action);
-
-private:
-    InputClientImpl delegate_;
 };
 } // namespace MiscServices
 } // namespace OHOS

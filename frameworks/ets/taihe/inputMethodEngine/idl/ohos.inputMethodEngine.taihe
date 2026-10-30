@@ -33,6 +33,7 @@ static { loadLibrary("inputmethod_engine_taihe_native.z") }
 
 @!sts_inject("""
 const ENTER_KEY_TYPE_UNSPECIFIED: int = 0;
+const ENTER_KEY_TYPE_NONE: int = 1;
 const ENTER_KEY_TYPE_GO: int = 2;
 const ENTER_KEY_TYPE_SEARCH: int = 3;
 const ENTER_KEY_TYPE_SEND: int = 4;
@@ -43,6 +44,7 @@ const ENTER_KEY_TYPE_NEWLINE: int = 8;
 
 const PATTERN_NULL: int = -1;
 const PATTERN_TEXT: int = 0;
+const PATTERN_MULTILINE: int = 1;
 const PATTERN_NUMBER: int = 2;
 const PATTERN_PHONE: int = 3;
 const PATTERN_DATETIME: int = 4;
@@ -684,7 +686,7 @@ interface ProxyTextInputClient {
     GetEditorAttributeAsync(): EditorAttributeCallback;
 
     @gen_promise("moveCursor")
-    MoveCursorAsync(direction: i32): void;
+    MoveCursorAsync(direction: Direction): void;
 
     @gen_promise("selectByRange")
     SelectByRangeAsync(range: Range): void;

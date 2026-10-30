@@ -38,6 +38,7 @@
 #include "input_control_channel_stub.h"
 #include "input_data_channel_proxy.h"
 #include "input_data_channel_service_impl.h"
+#include "keyboard_listener_test_impl.h"
 #include "input_method_core_proxy.h"
 #include "input_method_ability_interface.h"
 #include "input_method_agent_service_impl.h"
@@ -73,6 +74,7 @@ public:
     static constexpr int32_t MAXRUNCOUNT = 100;
     static constexpr int32_t THREAD_NUM = 5;
     static void TestOnConnectSystemCmd();
+    static void TestIsImeExtensionConcurrent();
     static std::atomic<int32_t> multiThreadExecTotalNum_;
     static constexpr int32_t waitTaskEmptyTimes_ = 100;
     static constexpr int32_t waitTaskEmptyInterval_ = 20;
@@ -149,6 +151,25 @@ public:
         void OnAttachOptionsChanged(const AttachOptions &options)
         {
             IMSA_HILOGI("TextInputClientListenerImpl OnAttachOptionsChanged");
+        }
+    };
+
+    class InputStartTrackingListener : public InputMethodEngineListener {
+    public:
+        InputStartTrackingListener() = default;
+        ~InputStartTrackingListener() = default;
+        int32_t startCount = 0;
+
+        void OnInputStart() override
+        {
+            startCount++;
+            IMSA_HILOGI("InputStartTrackingListener OnInputStart count:%{public}d", startCount);
+        }
+
+        bool PostTaskToEventHandler(std::function<void()> task, const std::string &taskName) override
+        {
+            task();
+            return true;
         }
     };
 
@@ -317,6 +338,16 @@ void InputMethodAbilityTest::TestOnConnectSystemCmd()
         EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     }
     IMSA_HILOGI("TestOnConnectSystemCmd finished!");
+}
+
+void InputMethodAbilityTest::TestIsImeExtensionConcurrent()
+{
+    IMSA_HILOGI("TestIsImeExtensionConcurrent start!");
+    for (int32_t count = 0; count < MAXRUNCOUNT; count++) {
+        inputMethodAbility_.IsImeExtension();
+        multiThreadExecTotalNum_++;
+    }
+    IMSA_HILOGI("TestIsImeExtensionConcurrent finished!");
 }
 
 /**
@@ -3055,6 +3086,372 @@ HWTEST_F(InputMethodAbilityTest, testUnregisterInAppProxyIme_003, TestSize.Level
     for (const auto &[userId, _] : sessions) {
         UserSessionManager::GetInstance().AddUserSession(userId);
     }
+}
+
+/**
+ * @tc.name: testIsImeExtension_004
+ * @tc.desc: InputMethodAbility::IsImeExtension under concurrency exercises the double-checked locking path
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testIsImeExtension_004, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testIsImeExtension_004 START");
+    InputMethodAbilityTest::inputMethodAbility_.isImeExtensionChecked_ = false;
+    InputMethodAbilityTest::inputMethodAbility_.isImeExtension_ = false;
+    multiThreadExecTotalNum_.store(0);
+    SET_THREAD_NUM(THREAD_NUM);
+    GTEST_RUN_TASK(TestIsImeExtensionConcurrent);
+    EXPECT_EQ(multiThreadExecTotalNum_.load(), THREAD_NUM * MAXRUNCOUNT);
+    EXPECT_TRUE(InputMethodAbilityTest::inputMethodAbility_.isImeExtensionChecked_);
+    InputMethodAbilityTest::inputMethodAbility_.isImeExtensionChecked_ = false;
+}
+
+/**
+ * @tc.name: testHideCustomKeyboardSelf_002
+ * @tc.desc: InputMethodAbility::HideCustomKeyboardSelf returns ERROR_CLIENT_NULL_POINTER when channel is null
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testHideCustomKeyboardSelf_002, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testHideCustomKeyboardSelf_002 START");
+    auto &ima = InputMethodAbilityTest::inputMethodAbility_;
+    auto savedWrap = ima.dataChannelProxyWrap_;
+    auto savedObject = ima.dataChannelObject_;
+    auto savedDeath = ima.dataChannelDeathRecipient_;
+    ima.dataChannelProxyWrap_ = nullptr;
+    ima.dataChannelObject_ = nullptr;
+    auto ret = ima.HideCustomKeyboardSelf();
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
+    ima.dataChannelProxyWrap_ = savedWrap;
+    ima.dataChannelObject_ = savedObject;
+    ima.dataChannelDeathRecipient_ = savedDeath;
+}
+
+/**
+ * @tc.name: testHideCustomKeyboardSelf_003
+ * @tc.desc: InputMethodAbility::HideCustomKeyboardSelf returns NO_ERROR when channel is set and no panel created
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testHideCustomKeyboardSelf_003, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testHideCustomKeyboardSelf_003 START");
+    auto &ima = InputMethodAbilityTest::inputMethodAbility_;
+    auto savedWrap = ima.dataChannelProxyWrap_;
+    auto savedObject = ima.dataChannelObject_;
+    auto savedDeath = ima.dataChannelDeathRecipient_;
+    auto savedListener = ima.imeListener_;
+    sptr<InputDataChannelServiceImpl> channelSvc = new (std::nothrow) InputDataChannelServiceImpl();
+    ASSERT_NE(channelSvc, nullptr);
+    auto channelProxy = std::make_shared<InputDataChannelProxy>(channelSvc->AsObject());
+    ima.dataChannelProxyWrap_ = std::make_shared<InputDataChannelProxyWrap>(channelProxy, nullptr);
+    ima.dataChannelObject_ = channelSvc->AsObject();
+    ima.imeListener_ = std::make_shared<InputMethodEngineListenerImpl>();
+    auto ret = ima.HideCustomKeyboardSelf();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ima.dataChannelProxyWrap_ = savedWrap;
+    ima.dataChannelObject_ = savedObject;
+    ima.dataChannelDeathRecipient_ = savedDeath;
+    ima.imeListener_ = savedListener;
+}
+
+/**
+ * @tc.name: testOnFunctionKey_001
+ * @tc.desc: InputMethodAbility::OnFunctionKey early returns when kdListener is nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testOnFunctionKey_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testOnFunctionKey_001 START");
+    auto &ima = InputMethodAbilityTest::inputMethodAbility_;
+    auto savedListener = ima.kdListener_;
+    ima.kdListener_ = nullptr;
+    KeyboardListenerTestImpl::ResetParam();
+    ima.OnFunctionKey(1);
+    EXPECT_EQ(KeyboardListenerTestImpl::funcKey_, -1);
+    ima.kdListener_ = savedListener;
+}
+
+/**
+ * @tc.name: testOnFunctionKey_002
+ * @tc.desc: InputMethodAbility::OnFunctionKey forwards funcKey to the keyboard listener
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testOnFunctionKey_002, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testOnFunctionKey_002 START");
+    auto &ima = InputMethodAbilityTest::inputMethodAbility_;
+    auto savedListener = ima.kdListener_;
+    constexpr int32_t FUNC_KEY = 2049;
+    ima.kdListener_ = std::make_shared<KeyboardListenerTestImpl>();
+    KeyboardListenerTestImpl::ResetParam();
+    ima.OnFunctionKey(FUNC_KEY);
+    EXPECT_EQ(KeyboardListenerTestImpl::funcKey_, FUNC_KEY);
+    ima.kdListener_ = savedListener;
+}
+
+/**
+ * @tc.name: testInvokeStartInputCallbackWithInfoRestruct_001
+ * @tc.desc: InputMethodAbility::InvokeStartInputCallbackWithInfoRestruct success path when GetTextConfig succeeds
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testInvokeStartInputCallbackWithInfoRestruct_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testInvokeStartInputCallbackWithInfoRestruct_001 START");
+    auto &ima = InputMethodAbilityTest::inputMethodAbility_;
+    auto savedWrap = ima.dataChannelProxyWrap_;
+    auto savedObject = ima.dataChannelObject_;
+    auto savedDeath = ima.dataChannelDeathRecipient_;
+    auto savedListener = ima.imeListener_;
+    auto savedNotified = ima.isInputStartNotified_;
+    sptr<InputDataChannelServiceImpl> channelSvc = new (std::nothrow) InputDataChannelServiceImpl();
+    ASSERT_NE(channelSvc, nullptr);
+    auto channelProxy = std::make_shared<InputDataChannelProxy>(channelSvc->AsObject());
+    ima.dataChannelProxyWrap_ = std::make_shared<InputDataChannelProxyWrap>(channelProxy, nullptr);
+    ima.dataChannelObject_ = channelSvc->AsObject();
+    auto listener = std::make_shared<InputStartTrackingListener>();
+    ima.imeListener_ = listener;
+    ima.isInputStartNotified_ = false;
+    TextTotalConfig textConfig = {};
+    textConfig.inputAttribute.bundleName = "com.test.ime";
+    textConfig.inputAttribute.callingDisplayId = 0;
+    textConfig.inputAttribute.windowId = 0;
+    textConfig.isSimpleKeyboardEnabled = false;
+    auto ret = ima.InvokeStartInputCallbackWithInfoRestruct(textConfig, true);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_GE(listener->startCount, 1);
+    ima.dataChannelProxyWrap_ = savedWrap;
+    ima.dataChannelObject_ = savedObject;
+    ima.dataChannelDeathRecipient_ = savedDeath;
+    ima.imeListener_ = savedListener;
+    ima.isInputStartNotified_ = savedNotified;
+}
+
+/**
+ * @tc.name: testInvokeStartInputCallbackWithInfoRestruct_002
+ * @tc.desc: InputMethodAbility::InvokeStartInputCallbackWithInfoRestruct returns ERROR_IME when GetTextConfig fails
+ *          and imeListener is nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testInvokeStartInputCallbackWithInfoRestruct_002, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testInvokeStartInputCallbackWithInfoRestruct_002 START");
+    auto &ima = InputMethodAbilityTest::inputMethodAbility_;
+    auto savedWrap = ima.dataChannelProxyWrap_;
+    auto savedObject = ima.dataChannelObject_;
+    auto savedDeath = ima.dataChannelDeathRecipient_;
+    auto savedListener = ima.imeListener_;
+    ima.dataChannelProxyWrap_ = nullptr;
+    ima.dataChannelObject_ = nullptr;
+    ima.imeListener_ = nullptr;
+    TextTotalConfig textConfig = {};
+    auto ret = ima.InvokeStartInputCallbackWithInfoRestruct(textConfig, true);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IME);
+    ima.dataChannelProxyWrap_ = savedWrap;
+    ima.dataChannelObject_ = savedObject;
+    ima.dataChannelDeathRecipient_ = savedDeath;
+    ima.imeListener_ = savedListener;
+}
+
+/**
+ * @tc.name: testInvokeStartInputCallbackWithInfoRestruct_003
+ * @tc.desc: InputMethodAbility::InvokeStartInputCallbackWithInfoRestruct notifies OnInputStart when GetTextConfig
+ *          fails, imeListener is set, and isNotifyInputStart is true
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testInvokeStartInputCallbackWithInfoRestruct_003, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testInvokeStartInputCallbackWithInfoRestruct_003 START");
+    auto &ima = InputMethodAbilityTest::inputMethodAbility_;
+    auto savedWrap = ima.dataChannelProxyWrap_;
+    auto savedObject = ima.dataChannelObject_;
+    auto savedDeath = ima.dataChannelDeathRecipient_;
+    auto savedListener = ima.imeListener_;
+    ima.dataChannelProxyWrap_ = nullptr;
+    ima.dataChannelObject_ = nullptr;
+    auto listener = std::make_shared<InputStartTrackingListener>();
+    ima.imeListener_ = listener;
+    TextTotalConfig textConfig = {};
+    auto ret = ima.InvokeStartInputCallbackWithInfoRestruct(textConfig, true);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_EQ(listener->startCount, 1);
+    ima.dataChannelProxyWrap_ = savedWrap;
+    ima.dataChannelObject_ = savedObject;
+    ima.dataChannelDeathRecipient_ = savedDeath;
+    ima.imeListener_ = savedListener;
+}
+
+/**
+ * @tc.name: testInvokeStartInputCallbackWithInfoRestruct_004
+ * @tc.desc: InputMethodAbility::InvokeStartInputCallbackWithInfoRestruct skips OnInputStart when GetTextConfig fails
+ *          and isNotifyInputStart is false
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testInvokeStartInputCallbackWithInfoRestruct_004, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testInvokeStartInputCallbackWithInfoRestruct_004 START");
+    auto &ima = InputMethodAbilityTest::inputMethodAbility_;
+    auto savedWrap = ima.dataChannelProxyWrap_;
+    auto savedObject = ima.dataChannelObject_;
+    auto savedDeath = ima.dataChannelDeathRecipient_;
+    auto savedListener = ima.imeListener_;
+    ima.dataChannelProxyWrap_ = nullptr;
+    ima.dataChannelObject_ = nullptr;
+    auto listener = std::make_shared<InputStartTrackingListener>();
+    ima.imeListener_ = listener;
+    TextTotalConfig textConfig = {};
+    auto ret = ima.InvokeStartInputCallbackWithInfoRestruct(textConfig, false);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_EQ(listener->startCount, 0);
+    ima.dataChannelProxyWrap_ = savedWrap;
+    ima.dataChannelObject_ = savedObject;
+    ima.dataChannelDeathRecipient_ = savedDeath;
+    ima.imeListener_ = savedListener;
+}
+
+/**
+ * @tc.name: testOnPassiveUnregister_001
+ * @tc.desc: InputMethodAbility::OnPassiveUnregister notifies imeListener OnUnregister
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testOnPassiveUnregister_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testOnPassiveUnregister_001 START");
+    auto &ima = InputMethodAbilityTest::inputMethodAbility_;
+    auto savedListener = ima.imeListener_;
+    ima.imeListener_ = std::make_shared<InputMethodEngineListenerImpl>();
+    EXPECT_EQ(ima.OnPassiveUnregister(), ErrorCode::NO_ERROR);
+    ima.imeListener_ = savedListener;
+}
+
+/**
+ * @tc.name: testOnPassiveUnregister_002
+ * @tc.desc: InputMethodAbility::OnPassiveUnregister returns NO_ERROR when imeListener is nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testOnPassiveUnregister_002, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testOnPassiveUnregister_002 START");
+    auto &ima = InputMethodAbilityTest::inputMethodAbility_;
+    auto savedListener = ima.imeListener_;
+    ima.imeListener_ = nullptr;
+    EXPECT_EQ(ima.OnPassiveUnregister(), ErrorCode::NO_ERROR);
+    ima.imeListener_ = savedListener;
+}
+
+/**
+ * @tc.name: testDispatchKeyEvent_001
+ * @tc.desc: InputMethodAbility::DispatchKeyEvent returns error when keyEvent is nullptr
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testDispatchKeyEvent_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testDispatchKeyEvent_001 START");
+    auto &ima = InputMethodAbilityTest::inputMethodAbility_;
+    EXPECT_EQ(ima.DispatchKeyEvent(nullptr, 0, nullptr), ErrorCode::ERROR_CLIENT_NULL_POINTER);
+}
+
+/**
+ * @tc.name: testOnClientInactive_002
+ * @tc.desc: InputMethodAbility::OnClientInactive skips OnInputFinish/OnKeyboardStatus when imeListener is null
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testOnClientInactive_002, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testOnClientInactive_002 START");
+    auto &ima = InputMethodAbilityTest::inputMethodAbility_;
+    auto savedListener = ima.imeListener_;
+    ima.imeListener_ = nullptr;
+    ima.panels_.Clear();
+    ima.OnClientInactive(nullptr);
+    EXPECT_TRUE(ima.GetBindClientInfo().name.empty());
+    ima.imeListener_ = savedListener;
+}
+
+/**
+ * @tc.name: testOnClientInactive_003
+ * @tc.desc: InputMethodAbility::OnClientInactive skips OnKeyboardStatus and ForEach-hide for FLG_FIXED soft keyboard
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testOnClientInactive_003, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testOnClientInactive_003 START");
+    auto &ima = InputMethodAbilityTest::inputMethodAbility_;
+    auto savedListener = ima.imeListener_;
+    ima.panels_.Clear();
+    ima.imeListener_ = std::make_shared<InputMethodEngineListenerImpl>();
+    std::shared_ptr<InputMethodPanel> panel;
+    PanelInfo info;
+    info.panelType = SOFT_KEYBOARD;
+    info.panelFlag = FLG_FIXED;
+    ASSERT_EQ(ima.CreatePanel(nullptr, info, panel), ErrorCode::NO_ERROR);
+    ima.OnClientInactive(nullptr);
+    EXPECT_TRUE(ima.GetBindClientInfo().name.empty());
+    ima.imeListener_ = savedListener;
+    ima.panels_.Clear();
+}
+
+/**
+ * @tc.name: testOnClientInactive_004
+ * @tc.desc: InputMethodAbility::OnClientInactive notifies OnKeyboardStatus and hides FLG_FLOATING soft keyboard
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testOnClientInactive_004, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testOnClientInactive_004 START");
+    auto &ima = InputMethodAbilityTest::inputMethodAbility_;
+    auto savedListener = ima.imeListener_;
+    ima.panels_.Clear();
+    ima.imeListener_ = std::make_shared<InputMethodEngineListenerImpl>();
+    std::shared_ptr<InputMethodPanel> panel;
+    PanelInfo info;
+    info.panelType = SOFT_KEYBOARD;
+    info.panelFlag = FLG_FLOATING;
+    ASSERT_EQ(ima.CreatePanel(nullptr, info, panel), ErrorCode::NO_ERROR);
+    ima.OnClientInactive(nullptr);
+    EXPECT_TRUE(ima.GetBindClientInfo().name.empty());
+    ima.imeListener_ = savedListener;
+    ima.panels_.Clear();
+}
+
+/**
+ * @tc.name: testOnClientInactive_005
+ * @tc.desc: InputMethodAbility::OnClientInactive hides STATUS_BAR panel and skips FinishTextPreview
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testOnClientInactive_005, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testOnClientInactive_005 START");
+    auto &ima = InputMethodAbilityTest::inputMethodAbility_;
+    auto savedListener = ima.imeListener_;
+    ima.panels_.Clear();
+    ima.imeListener_ = std::make_shared<InputMethodEngineListenerImpl>();
+    std::shared_ptr<InputMethodPanel> panel;
+    PanelInfo info;
+    info.panelType = STATUS_BAR;
+    ASSERT_EQ(ima.CreatePanel(nullptr, info, panel), ErrorCode::NO_ERROR);
+    ima.OnClientInactive(nullptr);
+    EXPECT_TRUE(ima.GetBindClientInfo().name.empty());
+    ima.imeListener_ = savedListener;
+    ima.panels_.Clear();
+}
+
+/**
+ * @tc.name: testOnClientInactive_006
+ * @tc.desc: InputMethodAbility::OnClientInactive skips null panel entry in ForEach
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testOnClientInactive_006, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testOnClientInactive_006 START");
+    auto &ima = InputMethodAbilityTest::inputMethodAbility_;
+    auto savedListener = ima.imeListener_;
+    ima.panels_.Clear();
+    ima.imeListener_ = std::make_shared<InputMethodEngineListenerImpl>();
+    ima.panels_.Insert(PanelType::STATUS_BAR, nullptr);
+    ima.OnClientInactive(nullptr);
+    EXPECT_TRUE(ima.GetBindClientInfo().name.empty());
+    ima.imeListener_ = savedListener;
+    ima.panels_.Clear();
 }
 } // namespace MiscServices
 } // namespace OHOS

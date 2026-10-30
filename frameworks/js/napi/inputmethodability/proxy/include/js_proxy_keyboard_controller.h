@@ -33,19 +33,13 @@ public:
 
 private:
     struct HideSelfContext : public AsyncCall::Context {
-        napi_status status = napi_generic_failure;
         HideSelfContext() : Context(nullptr, nullptr){};
-        HideSelfContext(InputAction input, OutputAction output) : Context(std::move(input), std::move(output)){};
 
-        napi_status operator()(napi_env env, size_t argc, napi_value *argv, napi_value self) override
-        {
-            status = napi_ok;
-            return napi_ok;
-        }
         napi_status operator()(napi_env env, napi_value *result) override
         {
-            if (status != napi_ok) {
-                return status;
+            if (status_ != napi_ok) {
+                output_ = nullptr;
+                return status_;
             }
             return Context::operator()(env, result);
         }
