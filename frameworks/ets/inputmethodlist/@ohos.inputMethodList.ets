@@ -313,8 +313,8 @@ export struct InputMethodListDialog {
         }
         .width('100%')
       }
-      .margin({ top: this.inputMethodConfig && this.inputMethodConfig!.bundleName.length > 0 ? 0 : this.columnPadding as
-        number } as Margin)
+      .margin({ top: this.inputMethodConfig && this.inputMethodConfig!.bundleName.length > 0
+        ? 0.0 : this.columnPadding as number } as Margin)
       .width('100%')
       .constraintSize({ maxHeight: this.maxListNum > 0 ? this.maxListNum * this.listItemHeight : '100%' })
       .scrollBar(BarState.Off)
