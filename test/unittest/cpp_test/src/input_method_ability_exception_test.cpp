@@ -529,6 +529,111 @@ HWTEST_F(InputMethodAbilityExceptionTest, testGetRichAfterCursorNormalBranch, Te
 }
 
 /**
+ * @tc.name: testGetRichBeforeCursorZeroLength
+ * @tc.desc: InputMethodAbility GetRichBeforeCursor with number=0 returns empty RichTextData
+ *           immediately without IPC, regardless of channel state (nullptr here).
+ *           Covers the MIN_RICH_TEXT_LENGTH short-circuit for the sync path.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodAbilityExceptionTest, testGetRichBeforeCursorZeroLength, TestSize.Level1)
+{
+    IMSA_HILOGI("InputMethodAbilityExceptionTest testGetRichBeforeCursorZeroLength START");
+    // channel is nullptr to prove the short-circuit happens before channel check.
+    inputMethodAbility_.dataChannelProxyWrap_ = nullptr;
+    RichTextData richText;
+    // Pre-fill a span to verify it gets cleared by the short-circuit.
+    RichTextSpan span;
+    span.type = SpanType::TEXT;
+    span.content = "dummy";
+    richText.spans.push_back(span);
+    auto ret = inputMethodAbility_.GetRichBeforeCursor(MIN_RICH_TEXT_LENGTH, richText);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_TRUE(richText.spans.empty());
+}
+
+/**
+ * @tc.name: testGetRichBeforeCursorZeroLengthAsync
+ * @tc.desc: InputMethodAbility GetRichBeforeCursor with number=0 and async callback.
+ *           The callback is invoked synchronously with NO_ERROR and empty RichTextData.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodAbilityExceptionTest, testGetRichBeforeCursorZeroLengthAsync, TestSize.Level1)
+{
+    IMSA_HILOGI("InputMethodAbilityExceptionTest testGetRichBeforeCursorZeroLengthAsync START");
+    inputMethodAbility_.dataChannelProxyWrap_ = nullptr;
+    bool callbackInvoked = false;
+    int32_t callbackCode = -1;
+    AsyncIpcCallBack callback = [&callbackInvoked, &callbackCode](int32_t code, const ResponseData &data) {
+        callbackInvoked = true;
+        callbackCode = code;
+        EXPECT_TRUE(std::holds_alternative<RichTextData>(data));
+        if (std::holds_alternative<RichTextData>(data)) {
+            EXPECT_TRUE(std::get<RichTextData>(data).spans.empty());
+        }
+    };
+    RichTextData richText;
+    auto ret = inputMethodAbility_.GetRichBeforeCursor(MIN_RICH_TEXT_LENGTH, richText, callback);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_TRUE(richText.spans.empty());
+    EXPECT_TRUE(callbackInvoked);
+    EXPECT_EQ(callbackCode, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: testGetRichAfterCursorZeroLength
+ * @tc.desc: InputMethodAbility GetRichAfterCursor with number=0 returns empty RichTextData
+ *           immediately without IPC, regardless of channel state (nullptr here).
+ *           Covers the MIN_RICH_TEXT_LENGTH short-circuit for the sync path.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodAbilityExceptionTest, testGetRichAfterCursorZeroLength, TestSize.Level1)
+{
+    IMSA_HILOGI("InputMethodAbilityExceptionTest testGetRichAfterCursorZeroLength START");
+    inputMethodAbility_.dataChannelProxyWrap_ = nullptr;
+    RichTextData richText;
+    // Pre-fill a span to verify it gets cleared by the short-circuit.
+    RichTextSpan span;
+    span.type = SpanType::TEXT;
+    span.content = "dummy";
+    richText.spans.push_back(span);
+    auto ret = inputMethodAbility_.GetRichAfterCursor(MIN_RICH_TEXT_LENGTH, richText);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_TRUE(richText.spans.empty());
+}
+
+/**
+ * @tc.name: testGetRichAfterCursorZeroLengthAsync
+ * @tc.desc: InputMethodAbility GetRichAfterCursor with number=0 and async callback.
+ *           The callback is invoked synchronously with NO_ERROR and empty RichTextData.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodAbilityExceptionTest, testGetRichAfterCursorZeroLengthAsync, TestSize.Level1)
+{
+    IMSA_HILOGI("InputMethodAbilityExceptionTest testGetRichAfterCursorZeroLengthAsync START");
+    inputMethodAbility_.dataChannelProxyWrap_ = nullptr;
+    bool callbackInvoked = false;
+    int32_t callbackCode = -1;
+    AsyncIpcCallBack callback = [&callbackInvoked, &callbackCode](int32_t code, const ResponseData &data) {
+        callbackInvoked = true;
+        callbackCode = code;
+        EXPECT_TRUE(std::holds_alternative<RichTextData>(data));
+        if (std::holds_alternative<RichTextData>(data)) {
+            EXPECT_TRUE(std::get<RichTextData>(data).spans.empty());
+        }
+    };
+    RichTextData richText;
+    auto ret = inputMethodAbility_.GetRichAfterCursor(MIN_RICH_TEXT_LENGTH, richText, callback);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_TRUE(richText.spans.empty());
+    EXPECT_TRUE(callbackInvoked);
+    EXPECT_EQ(callbackCode, ErrorCode::NO_ERROR);
+}
+
+/**
  * @tc.name: testProxyWrapGetRichBeforeCursorDirect
  * @tc.desc: Directly call InputDataChannelProxyWrap::GetRichBeforeCursor (bypassing
  *           InputMethodAbility) to guarantee ProxyWrap branch coverage without device.
