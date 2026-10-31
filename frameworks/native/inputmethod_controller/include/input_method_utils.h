@@ -58,10 +58,16 @@ enum class EnterKeyType {
     PREVIOUS,
     NEW_LINE,
 };
+inline bool IsValidEnterKeyType(int32_t type)
+{
+    return type >= static_cast<int32_t>(EnterKeyType::UNSPECIFIED) &&
+        type <= static_cast<int32_t>(EnterKeyType::NEW_LINE);
+}
 
 #define IMF_TEXT_INPUT_TYPE_LIST(X) \
     X(NONE, -1) \
     X(TEXT, 0) \
+    X(MULTILINE, 1) \
     X(NUMBER, 2) \
     X(PHONE, 3) \
     X(DATETIME, 4) \
@@ -80,9 +86,7 @@ enum class TextInputType {
 #define X(name, val) name = val,
     IMF_TEXT_INPUT_TYPE_LIST(X)
 #undef X
-    MULTILINE = 1,
 };
-
 inline bool IsValidInputPattern(int32_t pattern)
 {
     switch (pattern) {
@@ -119,6 +123,10 @@ enum class Direction {
     LEFT,
     RIGHT,
 };
+inline bool IsValidCursorDirection(int32_t direction)
+{
+    return direction >= static_cast<int32_t>(Direction::UP) && direction <= static_cast<int32_t>(Direction::RIGHT);
+}
 
 enum class SecurityMode : int32_t {
     BASIC = 0,
@@ -131,6 +139,18 @@ enum class ExtendAction {
     COPY,
     PASTE,
 };
+inline bool IsValidExtendAction(int32_t action)
+{
+    switch (static_cast<ExtendAction>(action)) {
+        case ExtendAction::SELECT_ALL:
+        case ExtendAction::CUT:
+        case ExtendAction::COPY:
+        case ExtendAction::PASTE:
+            return true;
+        default:
+            return false;
+    }
+}
 
 enum class CapacityType: int32_t {
     IMMERSIVE_EFFECT,

@@ -3062,6 +3062,45 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnRegisterProxyIme, TestSi
 }
 
 /**
+ * @tc.name: PerUserSession_OnRegisterProxyIme_InAppProxyImeSkipRebind
+ * @tc.desc: When current binding is INAPP_PROXY_IME, OnRegisterProxyIme skips PROXY_IME rebind.
+ * @tc.type: FUNC
+ * @tc.require:
+ */
+HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnRegisterProxyIme_InAppProxyImeSkipRebind, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_OnRegisterProxyIme_InAppProxyImeSkipRebind start.");
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
+    uint64_t displayId = ImfCommonConst::DEFAULT_DISPLAY_ID;
+    int32_t pid = 10;
+    int32_t uid = 100;
+    // set up a current client whose bindImeData is INAPP_PROXY_IME
+    auto group = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+    group->SetCurrentClient(client);
+    auto info = std::make_shared<InputClientInfo>();
+    info->client = client;
+    info->bindImeData = std::make_shared<BindImeData>(pid, ImeType::INAPP_PROXY_IME);
+    group->mapClients_.insert_or_assign(client->AsObject(), info);
+    userSession->clientGroupMap_.insert_or_assign(ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID, group);
+    // register a proxy IME; current binding is INAPP_PROXY_IME, so rebind is skipped
+    auto core = new (std::nothrow) InputMethodCoreServiceImpl();
+    auto agent = new (std::nothrow) InputMethodAgentServiceImpl();
+    ASSERT_NE(core, nullptr);
+    ASSERT_NE(agent, nullptr);
+    auto ret = userSession->OnRegisterProxyIme(displayId, core, agent->AsObject(), pid, uid);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    // proxy IME data is still added before the skip branch
+    EXPECT_EQ(userSession->proxyImeData_[displayId].size(), 1);
+    // bindImeData unchanged (still INAPP_PROXY_IME), proving rebind was skipped
+    auto clientInfo = userSession->GetCurrentClientInfo(displayId);
+    ASSERT_NE(clientInfo, nullptr);
+    ASSERT_NE(clientInfo->bindImeData, nullptr);
+    EXPECT_TRUE(clientInfo->bindImeData->IsInAppIme());
+}
+
+/**
  * @tc.name: IMSA_IsTmpIme
  * @tc.desc: IMSA_IsTmpIme
  * @tc.type: FUNC

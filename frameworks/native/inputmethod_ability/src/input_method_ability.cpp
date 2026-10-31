@@ -1722,7 +1722,8 @@ void InputMethodAbility::OnClientInactive(const sptr<IRemoteObject> &channel)
         return;
     }
     auto panel = GetSoftKeyboardPanel();
-    if (imeListener != nullptr && panel != nullptr && panel->GetPanelFlag() != PanelFlag::FLG_FIXED) {
+    bool needNotifyHide = panel == nullptr || (panel->GetPanelFlag() != PanelFlag::FLG_FIXED);
+    if (imeListener != nullptr && needNotifyHide) {
         imeListener->OnKeyboardStatus(false);
     }
     panels_.ForEach([this, &channelProxy](const PanelType &panelType, const std::shared_ptr<InputMethodPanel> &panel) {

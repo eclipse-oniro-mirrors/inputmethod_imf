@@ -69,7 +69,7 @@ const std::map<int32_t, std::string> JsUtils::ERROR_CODE_CONVERT_MESSAGE_MAP = {
         "2. ipc failed due to the large amount of data transferred or other reasons."
         "3. the caller is not system panel." },
     { EXCEPTION_NOT_FOCUSED, "the caller is not a focused application." },
-    { EXCEPTION_IME_EXTENSION_NOT_ALLOWED, "input method extension is not allowed." },
+    { EXCEPTION_IME_EXTENSION_NOT_ALLOWED, "the input method extension is not allowed." },
 };
 
 const std::map<int32_t, std::string> JsUtils::PARAMETER_TYPE = {
@@ -465,6 +465,42 @@ napi_status JsUtils::GetValue(napi_env env, napi_value in, RegisterOptions &out)
             "inputPatternTypes contains invalid pattern!", TYPE_NONE, napi_generic_failure);
     }
     out.inputPatternTypes = std::move(types);
+    return napi_ok;
+}
+
+napi_status JsUtils::GetSelectRange(napi_env env, napi_value in, int32_t &start, int32_t &end)
+{
+    napi_valuetype valueType = napi_undefined;
+    napi_typeof(env, in, &valueType);
+    PARAM_CHECK_RETURN(env, valueType == napi_object, "range type must be Range!", TYPE_NONE, napi_generic_failure);
+    napi_value napiValue = nullptr;
+    auto status = napi_get_named_property(env, in, "start", &napiValue);
+    PARAM_CHECK_RETURN(env, status == napi_ok, "start of range cannot empty and must be number.", TYPE_NONE, status);
+    status = JsUtils::GetValue(env, napiValue, start);
+    PARAM_CHECK_RETURN(env, status == napi_ok, "failed to get start value!", TYPE_NONE, status);
+    status = napi_get_named_property(env, in, "end", &napiValue);
+    PARAM_CHECK_RETURN(env, status == napi_ok, "end of range cannot empty and must be number.", TYPE_NONE, status);
+    status = JsUtils::GetValue(env, napiValue, end);
+    PARAM_CHECK_RETURN(env, status == napi_ok, "failed to get end value!", TYPE_NONE, status);
+    PARAM_CHECK_RETURN(env, start >= 0 && end >= 0, "start and end cannot be less than 0!", TYPE_NONE,
+        napi_generic_failure);
+    PARAM_CHECK_RETURN(env, end >= start, "end cannot be less than start!", TYPE_NONE, napi_generic_failure);
+    return napi_ok;
+}
+
+napi_status JsUtils::GetSelectMovement(napi_env env, napi_value in, int32_t &direction)
+{
+    napi_valuetype valueType = napi_undefined;
+    napi_typeof(env, in, &valueType);
+    PARAM_CHECK_RETURN(env, valueType == napi_object, "movement type must be Movement!", TYPE_NONE,
+        napi_generic_failure);
+    napi_value napiValue = nullptr;
+    auto status = napi_get_named_property(env, in, "direction", &napiValue);
+    PARAM_CHECK_RETURN(env, status == napi_ok, "direction must be exist!", TYPE_NONE, status);
+    status = JsUtils::GetValue(env, napiValue, direction);
+    PARAM_CHECK_RETURN(env, status == napi_ok, "direction type must be Direction!", TYPE_NONE, status);
+    PARAM_CHECK_RETURN(env, OHOS::MiscServices::IsValidCursorDirection(direction), "direction is out of valid range!",
+        TYPE_NONE, napi_generic_failure);
     return napi_ok;
 }
 

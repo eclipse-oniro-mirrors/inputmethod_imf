@@ -2801,5 +2801,152 @@ HWTEST_F(PerUserSessionTest, testGetImeData_InAppProxyIme_002, TestSize.Level0)
     session_->inAppProxyImeData_[TEST_PID] = imeData;
     EXPECT_EQ(session_->GetImeData(TEST_PID, ImeType::INAPP_PROXY_IME), imeData);
 }
+
+/**
+ * @tc.name: testEvictInAppProxyIme_005
+ * @tc.desc: PerUserSession::EvictInAppProxyIme removes null entries without eviction (inAppRegisterNum 0)
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testEvictInAppProxyIme_005, TestSize.Level0)
+{
+    session_->inAppProxyImeData_[TEST_PID] = nullptr;
+    auto imeData = MakeImeData(TEST_PID + 1, ImeType::INAPP_PROXY_IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    session_->inAppProxyImeData_[TEST_PID + 1] = imeData;
+    EXPECT_EQ(session_->inAppProxyImeData_.size(), 2);
+    session_->EvictInAppProxyIme();
+    EXPECT_EQ(session_->inAppProxyImeData_.find(TEST_PID), session_->inAppProxyImeData_.end());
+    EXPECT_NE(session_->inAppProxyImeData_.find(TEST_PID + 1), session_->inAppProxyImeData_.end());
+    EXPECT_EQ(session_->inAppProxyImeData_.size(), 1);
+}
+
+/**
+ * @tc.name: testEvictInAppProxyIme_006
+ * @tc.desc: PerUserSession::EvictInAppProxyIme evicts oldest entry with null core without crash
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testEvictInAppProxyIme_006, TestSize.Level0)
+{
+    auto nullCoreImeData = MakeImeData(0, ImeType::INAPP_PROXY_IME, ImeStatus::READY);
+    ASSERT_NE(nullCoreImeData, nullptr);
+    nullCoreImeData->core = nullptr;
+    nullCoreImeData->startTime = 0;
+    session_->inAppProxyImeData_[0] = nullCoreImeData;
+    for (int32_t i = 1; i <= static_cast<int32_t>(MAX_INAPP_PROXY_IME_COUNT); i++) {
+        auto imeData = MakeImeData(i, ImeType::INAPP_PROXY_IME, ImeStatus::READY);
+        ASSERT_NE(imeData, nullptr);
+        imeData->startTime = i;
+        session_->inAppProxyImeData_[i] = imeData;
+    }
+    EXPECT_EQ(session_->inAppProxyImeData_.size(), MAX_INAPP_PROXY_IME_COUNT + 1);
+    session_->EvictInAppProxyIme();
+    EXPECT_EQ(session_->inAppProxyImeData_.size(), MAX_INAPP_PROXY_IME_COUNT);
+    EXPECT_EQ(session_->inAppProxyImeData_.find(0), session_->inAppProxyImeData_.end());
+}
+
+/**
+ * @tc.name: testEvictInAppProxyIme_007
+ * @tc.desc: PerUserSession::EvictInAppProxyIme skips eviction when all entries are focused (oldest==end)
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testEvictInAppProxyIme_007, TestSize.Level0)
+{
+    for (int32_t i = 0; i <= static_cast<int32_t>(MAX_INAPP_PROXY_IME_COUNT); i++) {
+        auto imeData = MakeImeData(i, ImeType::INAPP_PROXY_IME, ImeStatus::READY);
+        ASSERT_NE(imeData, nullptr);
+        imeData->startTime = i;
+        session_->inAppProxyImeData_[i] = imeData;
+        uint64_t gid = TEST_DISPLAY_GROUP_ID + static_cast<uint64_t>(i) + 1;
+        auto group = std::make_shared<ClientGroup>(gid, [](const sptr<IInputClient> &) {});
+        ASSERT_NE(group, nullptr);
+        auto info = MakeClientInfo(i, gid);
+        ASSERT_EQ(group->AddClientInfo(info.client->AsObject(), info), ErrorCode::NO_ERROR);
+        group->SetCurrentClient(info.client);
+        session_->clientGroupMap_[gid] = group;
+    }
+    EXPECT_EQ(session_->inAppProxyImeData_.size(), MAX_INAPP_PROXY_IME_COUNT + 1);
+    session_->EvictInAppProxyIme();
+    EXPECT_EQ(session_->inAppProxyImeData_.size(), MAX_INAPP_PROXY_IME_COUNT + 1);
+}
+
+/**
+ * @tc.name: testGetCurrentClientInfoByPid_001
+ * @tc.desc: PerUserSession::GetCurrentClientInfoByPid returns nulls when no client group exists
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testGetCurrentClientInfoByPid_001, TestSize.Level0)
+{
+    auto [group, clientInfo] = session_->GetCurrentClientInfoByPid(TEST_PID);
+    EXPECT_EQ(group, nullptr);
+    EXPECT_EQ(clientInfo, nullptr);
+}
+
+/**
+ * @tc.name: testGetCurrentClientInfoByPid_002
+ * @tc.desc: PerUserSession::GetCurrentClientInfoByPid skips null group, null clientInfo, matches/mismatches pid
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testGetCurrentClientInfoByPid_002, TestSize.Level0)
+{
+    session_->clientGroupMap_[TEST_DISPLAY_GROUP_ID + 1] = nullptr;
+    auto info = MakeClientInfo(TEST_PID);
+    info.state = ClientState::ACTIVE;
+    ASSERT_EQ(session_->OnPrepareInput(info), ErrorCode::NO_ERROR);
+    auto group = session_->GetClientGroupByGroupId(TEST_DISPLAY_GROUP_ID);
+    ASSERT_NE(group, nullptr);
+    auto [g1, c1] = session_->GetCurrentClientInfoByPid(TEST_PID);
+    EXPECT_EQ(c1, nullptr);
+    group->SetCurrentClient(info.client);
+    auto [g2, c2] = session_->GetCurrentClientInfoByPid(TEST_PID);
+    EXPECT_EQ(g2, group);
+    EXPECT_NE(c2, nullptr);
+    EXPECT_EQ(c2->pid, TEST_PID);
+    auto [g3, c3] = session_->GetCurrentClientInfoByPid(TEST_PID + 999);
+    EXPECT_EQ(g3, nullptr);
+    EXPECT_EQ(c3, nullptr);
+}
+
+/**
+ * @tc.name: testGetCurrentClientPids_001
+ * @tc.desc: PerUserSession::GetCurrentClientPids skips null group and collects current client pids
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testGetCurrentClientPids_001, TestSize.Level0)
+{
+    EXPECT_TRUE(session_->GetCurrentClientPids().empty());
+    session_->clientGroupMap_[TEST_DISPLAY_GROUP_ID + 2] = nullptr;
+    EXPECT_TRUE(session_->GetCurrentClientPids().empty());
+    auto info = MakeClientInfo(TEST_PID);
+    info.state = ClientState::ACTIVE;
+    ASSERT_EQ(session_->OnPrepareInput(info), ErrorCode::NO_ERROR);
+    auto group = session_->GetClientGroupByGroupId(TEST_DISPLAY_GROUP_ID);
+    ASSERT_NE(group, nullptr);
+    group->SetCurrentClient(info.client);
+    auto pids = session_->GetCurrentClientPids();
+    ASSERT_EQ(pids.size(), 1);
+    EXPECT_EQ(pids[0], TEST_PID);
+}
+
+/**
+ * @tc.name: testOnRegisterInAppProxyIme_004
+ * @tc.desc: PerUserSession::OnRegisterInAppProxyIme skips rebind when no ready ime data to bind
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, testOnRegisterInAppProxyIme_004, TestSize.Level0)
+{
+    auto info = MakeClientInfo(TEST_PID);
+    info.state = ClientState::ACTIVE;
+    ASSERT_EQ(session_->OnPrepareInput(info), ErrorCode::NO_ERROR);
+    auto group = session_->GetClientGroupByGroupId(TEST_DISPLAY_GROUP_ID);
+    ASSERT_NE(group, nullptr);
+    group->SetCurrentClient(info.client);
+    sptr<InputMethodCoreStub> coreStub = new (std::nothrow) InputMethodCoreServiceImpl();
+    sptr<InputMethodAgentStub> agentStub = new (std::nothrow) InputMethodAgentServiceImpl();
+    ASSERT_NE(coreStub, nullptr);
+    ASSERT_NE(agentStub, nullptr);
+    auto core = iface_cast<IInputMethodCore>(coreStub->AsObject());
+    sptr<IRemoteObject> agent = agentStub->AsObject();
+    EXPECT_EQ(session_->OnRegisterInAppProxyIme(TEST_PID, TEST_UID, {}, core, agent), ErrorCode::NO_ERROR);
+}
 } // namespace MiscServices
 } // namespace OHOS

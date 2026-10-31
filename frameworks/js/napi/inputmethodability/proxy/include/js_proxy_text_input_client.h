@@ -34,6 +34,14 @@ public:
     static napi_value DeleteForward(napi_env env, napi_callback_info info);
     static napi_value DeleteBackward(napi_env env, napi_callback_info info);
     static napi_value InsertText(napi_env env, napi_callback_info info);
+    static napi_value GetForward(napi_env env, napi_callback_info info);
+    static napi_value GetBackward(napi_env env, napi_callback_info info);
+    static napi_value MoveCursor(napi_env env, napi_callback_info info);
+    static napi_value SendExtendAction(napi_env env, napi_callback_info info);
+    static napi_value SelectByRange(napi_env env, napi_callback_info info);
+    static napi_value SelectByMovement(napi_env env, napi_callback_info info);
+    static napi_value GetEditorAttribute(napi_env env, napi_callback_info info);
+    static napi_value GetTextIndexAtCursor(napi_env env, napi_callback_info info);
 
 private:
     struct ProxySendKeyFunctionContext : public AsyncCall::Context {

@@ -51,16 +51,12 @@ napi_value JsProxyKeyboardController::HideSelf(napi_env env, napi_callback_info 
 {
     IMSA_HILOGD("HideSelf start");
     auto ctxt = std::make_shared<HideSelfContext>();
-    auto input = [](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
-        return napi_ok;
-    };
     auto exec = [ctxt](AsyncCall::Context *ctx) {
         int32_t status = InputMethodAbility::GetInstance().HideCustomKeyboardSelf();
         ctxt->SetErrorCode(status);
         CHECK_RETURN_VOID(status == ErrorCode::NO_ERROR, "hideSelf return error!");
         ctxt->SetState(napi_ok);
     };
-    ctxt->SetAction(std::move(input));
     AsyncCall asyncCall(env, info, ctxt, 0);
     return asyncCall.Call(env, exec, "hideSelf");
 }
