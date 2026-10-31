@@ -1037,6 +1037,14 @@ int32_t InputMethodAbility::GetRichBeforeCursor(
     int32_t number, RichTextData &richText, const AsyncIpcCallBack &callback)
 {
     IMSA_HILOGD("InputMethodAbility, number: %{public}d, isAsync: %{public}d", number, callback != nullptr);
+    if (number == MIN_RICH_TEXT_LENGTH) {
+        IMSA_HILOGD("number is 0, return empty rich text");
+        richText.spans.clear();
+        if (callback != nullptr) {
+            callback(ErrorCode::NO_ERROR, ResponseData{richText});
+        }
+        return ErrorCode::NO_ERROR;
+    }
     auto channel = GetInputDataChannelProxyWrap();
     if (channel == nullptr) {
         IMSA_HILOGE("channel is nullptr!");
@@ -1051,6 +1059,14 @@ int32_t InputMethodAbility::GetRichAfterCursor(
     int32_t number, RichTextData &richText, const AsyncIpcCallBack &callback)
 {
     IMSA_HILOGD("InputMethodAbility, number: %{public}d, isAsync: %{public}d", number, callback != nullptr);
+    if (number == MIN_RICH_TEXT_LENGTH) {
+        IMSA_HILOGD("number is 0, return empty rich text");
+        richText.spans.clear();
+        if (callback != nullptr) {
+            callback(ErrorCode::NO_ERROR, ResponseData{richText});
+        }
+        return ErrorCode::NO_ERROR;
+    }
     auto channel = GetInputDataChannelProxyWrap();
     if (channel == nullptr) {
         IMSA_HILOGE("channel is nullptr!");

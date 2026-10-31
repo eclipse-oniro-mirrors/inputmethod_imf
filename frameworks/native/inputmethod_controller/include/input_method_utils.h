@@ -43,6 +43,7 @@ constexpr size_t MAX_ARRAY_BUFFER_MSG_ID_SIZE = 256; // 256B
 constexpr size_t MAX_ARRAY_BUFFER_MSG_PARAM_SIZE = 128 * 1024; // 128KB
 constexpr size_t MAX_RICH_TEXT_SIZE = 128 * 1024; // 128KB
 constexpr int32_t MAX_RICH_TEXT_LENGTH = 4096;
+constexpr int32_t MIN_RICH_TEXT_LENGTH = 0;
 constexpr size_t SPAN_HEADER_SIZE = sizeof(uint32_t) + sizeof(int32_t) + sizeof(int32_t);
 constexpr uint32_t SPAN_TYPE_COUNT = 4;
 static constexpr uint64_t INVALID_DISPLAY_ID = -1ULL;
