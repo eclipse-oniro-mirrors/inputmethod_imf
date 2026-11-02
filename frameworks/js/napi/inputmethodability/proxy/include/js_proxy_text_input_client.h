@@ -46,7 +46,6 @@ public:
 private:
     struct ProxySendKeyFunctionContext : public AsyncCall::Context {
         int32_t action = 0;
-        napi_status status = napi_generic_failure;
         ProxySendKeyFunctionContext() : Context(nullptr, nullptr){};
         ProxySendKeyFunctionContext(InputAction input, OutputAction output)
             : Context(std::move(input), std::move(output)){};
@@ -56,11 +55,18 @@ private:
             CHECK_RETURN(self != nullptr, "self is nullptr", napi_invalid_arg);
             return Context::operator()(env, argc, argv, self);
         }
+        napi_status operator()(napi_env env, napi_value *result) override
+        {
+            if (status_ != napi_ok) {
+                output_ = nullptr;
+                return status_;
+            }
+            return Context::operator()(env, result);
+        }
     };
 
     struct ProxyDeleteContext : public AsyncCall::Context {
         int32_t length = 0;
-        napi_status status = napi_generic_failure;
         ProxyDeleteContext() : Context(nullptr, nullptr){};
         ProxyDeleteContext(InputAction input, OutputAction output) : Context(std::move(input), std::move(output)){};
 
@@ -69,11 +75,18 @@ private:
             CHECK_RETURN(self != nullptr, "self is nullptr", napi_invalid_arg);
             return Context::operator()(env, argc, argv, self);
         }
+        napi_status operator()(napi_env env, napi_value *result) override
+        {
+            if (status_ != napi_ok) {
+                output_ = nullptr;
+                return status_;
+            }
+            return Context::operator()(env, result);
+        }
     };
 
     struct ProxyInsertTextContext : public AsyncCall::Context {
         std::string text;
-        napi_status status = napi_generic_failure;
         ProxyInsertTextContext() : Context(nullptr, nullptr){};
         ProxyInsertTextContext(InputAction input, OutputAction output)
             : Context(std::move(input), std::move(output)){};
@@ -83,10 +96,19 @@ private:
             CHECK_RETURN(self != nullptr, "self is nullptr", napi_invalid_arg);
             return Context::operator()(env, argc, argv, self);
         }
+        napi_status operator()(napi_env env, napi_value *result) override
+        {
+            if (status_ != napi_ok) {
+                output_ = nullptr;
+                return status_;
+            }
+            return Context::operator()(env, result);
+        }
     };
 
     static const std::string PIC_CLASS_NAME;
     static thread_local napi_ref PICRef_;
+    static std::shared_ptr<AsyncCall::TaskQueue> taskQueue_;
 };
 } // namespace MiscServices
 } // namespace OHOS

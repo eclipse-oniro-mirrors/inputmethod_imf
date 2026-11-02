@@ -23,12 +23,13 @@
 #include "js_utils.h"
 #include "napi/native_api.h"
 #include "napi/native_node_api.h"
-#include "variant_util.h"
 
 namespace OHOS {
 namespace MiscServices {
+#define ASYNC_POST(env, ctx) asyncCall.Post((env), (ctx), taskQueue_, __FUNCTION__)
 const std::string JsProxyTextInputClient::PIC_CLASS_NAME = "ProxyTextInputClient";
 thread_local napi_ref JsProxyTextInputClient::PICRef_ = nullptr;
+std::shared_ptr<AsyncCall::TaskQueue> JsProxyTextInputClient::taskQueue_ = std::make_shared<AsyncCall::TaskQueue>();
 
 napi_value JsProxyTextInputClient::Init(napi_env env, napi_value exports)
 {
@@ -89,26 +90,16 @@ napi_value JsProxyTextInputClient::SendKeyFunction(napi_env env, napi_callback_i
             TYPE_NONE, napi_generic_failure);
         return napi_ok;
     };
-    auto exec = [ctxt](AsyncCall::Context *ctx, AsyncCall::Context::CallBackAction completeFunc) {
-        auto rspCallBack = [ctxt, completeFunc](int32_t code, const ResponseData &data) -> void {
-            if (code == ErrorCode::NO_ERROR) {
-                ctxt->status = napi_ok;
-                ctxt->SetState(ctxt->status);
-            } else {
-                ctxt->SetErrorCode(code);
-            }
-            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
-        };
-        int32_t code = InputMethodAbility::GetInstance().SendFunctionKey(ctxt->action, rspCallBack);
-        if (code != ErrorCode::NO_ERROR) {
-            ctxt->SetErrorCode(code);
-            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
-        }
+    auto exec = [ctxt](AsyncCall::Context *ctx) {
+        int32_t ret = InputMethodAbility::GetInstance().SendFunctionKey(ctxt->action);
+        ctxt->SetErrorCode(ret);
+        CHECK_RETURN_VOID(ret == ErrorCode::NO_ERROR, "failed to send function key!");
+        ctxt->SetState(napi_ok);
     };
     ctxt->SetAction(std::move(input));
     // 1 means JsAPI:SendKeyFunction has 1 param at most.
-    EditAsyncCall asyncCall(env, info, ctxt, 1);
-    return asyncCall.Call(env, exec, __FUNCTION__);
+    AsyncCall asyncCall(env, info, ctxt, 1);
+    return ASYNC_POST(env, exec);
 }
 
 napi_value JsProxyTextInputClient::DeleteForward(napi_env env, napi_callback_info info)
@@ -121,26 +112,16 @@ napi_value JsProxyTextInputClient::DeleteForward(napi_env env, napi_callback_inf
         PARAM_CHECK_RETURN(env, ctxt->length >= 0, "length cannot be less than 0!", TYPE_NONE, napi_generic_failure);
         return napi_ok;
     };
-    auto exec = [ctxt](AsyncCall::Context *ctx, AsyncCall::Context::CallBackAction completeFunc) {
-        auto rspCallBack = [ctxt, completeFunc](int32_t code, const ResponseData &data) -> void {
-            if (code == ErrorCode::NO_ERROR) {
-                ctxt->status = napi_ok;
-                ctxt->SetState(ctxt->status);
-            } else {
-                ctxt->SetErrorCode(code);
-            }
-            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
-        };
-        int32_t code = InputMethodAbility::GetInstance().DeleteForward(ctxt->length, rspCallBack);
-        if (code != ErrorCode::NO_ERROR) {
-            ctxt->SetErrorCode(code);
-            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
-        }
+    auto exec = [ctxt](AsyncCall::Context *ctx) {
+        int32_t ret = InputMethodAbility::GetInstance().DeleteForward(ctxt->length);
+        ctxt->SetErrorCode(ret);
+        CHECK_RETURN_VOID(ret == ErrorCode::NO_ERROR, "failed to delete forward!");
+        ctxt->SetState(napi_ok);
     };
     ctxt->SetAction(std::move(input));
     // 1 means JsAPI:DeleteForward has 1 param at most.
-    EditAsyncCall asyncCall(env, info, ctxt, 1);
-    return asyncCall.Call(env, exec, __FUNCTION__);
+    AsyncCall asyncCall(env, info, ctxt, 1);
+    return ASYNC_POST(env, exec);
 }
 
 napi_value JsProxyTextInputClient::DeleteBackward(napi_env env, napi_callback_info info)
@@ -153,26 +134,16 @@ napi_value JsProxyTextInputClient::DeleteBackward(napi_env env, napi_callback_in
         PARAM_CHECK_RETURN(env, ctxt->length >= 0, "length cannot be less than 0!", TYPE_NONE, napi_generic_failure);
         return napi_ok;
     };
-    auto exec = [ctxt](AsyncCall::Context *ctx, AsyncCall::Context::CallBackAction completeFunc) {
-        auto rspCallBack = [ctxt, completeFunc](int32_t code, const ResponseData &data) -> void {
-            if (code == ErrorCode::NO_ERROR) {
-                ctxt->status = napi_ok;
-                ctxt->SetState(ctxt->status);
-            } else {
-                ctxt->SetErrorCode(code);
-            }
-            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
-        };
-        int32_t code = InputMethodAbility::GetInstance().DeleteBackward(ctxt->length, rspCallBack);
-        if (code != ErrorCode::NO_ERROR) {
-            ctxt->SetErrorCode(code);
-            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
-        }
+    auto exec = [ctxt](AsyncCall::Context *ctx) {
+        int32_t ret = InputMethodAbility::GetInstance().DeleteBackward(ctxt->length);
+        ctxt->SetErrorCode(ret);
+        CHECK_RETURN_VOID(ret == ErrorCode::NO_ERROR, "failed to delete backward!");
+        ctxt->SetState(napi_ok);
     };
     ctxt->SetAction(std::move(input));
     // 1 means JsAPI:DeleteBackward has 1 param at most.
-    EditAsyncCall asyncCall(env, info, ctxt, 1);
-    return asyncCall.Call(env, exec, __FUNCTION__);
+    AsyncCall asyncCall(env, info, ctxt, 1);
+    return ASYNC_POST(env, exec);
 }
 
 napi_value JsProxyTextInputClient::InsertText(napi_env env, napi_callback_info info)
@@ -184,26 +155,16 @@ napi_value JsProxyTextInputClient::InsertText(napi_env env, napi_callback_info i
         PARAM_CHECK_RETURN(env, status == napi_ok, "text type must be string", TYPE_NONE, napi_generic_failure);
         return status;
     };
-    auto exec = [ctxt](AsyncCall::Context *ctx, AsyncCall::Context::CallBackAction completeFunc) {
-        auto rspCallBack = [ctxt, completeFunc](int32_t code, const ResponseData &data) -> void {
-            if (code == ErrorCode::NO_ERROR) {
-                ctxt->status = napi_ok;
-                ctxt->SetState(ctxt->status);
-            } else {
-                ctxt->SetErrorCode(code);
-            }
-            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
-        };
-        int32_t code = InputMethodAbility::GetInstance().InsertText(ctxt->text, rspCallBack);
-        if (code != ErrorCode::NO_ERROR) {
-            ctxt->SetErrorCode(code);
-            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
-        }
+    auto exec = [ctxt](AsyncCall::Context *ctx) {
+        int32_t ret = InputMethodAbility::GetInstance().InsertText(ctxt->text);
+        ctxt->SetErrorCode(ret);
+        CHECK_RETURN_VOID(ret == ErrorCode::NO_ERROR, "failed to insert text!");
+        ctxt->SetState(napi_ok);
     };
     ctxt->SetAction(std::move(input));
     // 1 means JsAPI:InsertText has 1 param at most.
-    EditAsyncCall asyncCall(env, info, ctxt, 1);
-    return asyncCall.Call(env, exec, __FUNCTION__);
+    AsyncCall asyncCall(env, info, ctxt, 1);
+    return ASYNC_POST(env, exec);
 }
 
 napi_value JsProxyTextInputClient::GetForward(napi_env env, napi_callback_info info)
@@ -221,28 +182,19 @@ napi_value JsProxyTextInputClient::GetForward(napi_env env, napi_callback_info i
         *result = jsText;
         return napi_ok;
     };
-    auto exec = [ctxt](AsyncCall::Context *ctx, AsyncCall::Context::CallBackAction completeFunc) {
-        auto rspCallBack = [ctxt, completeFunc](int32_t code, const ResponseData &data) -> void {
-            if (code == ErrorCode::NO_ERROR) {
-                VariantUtil::GetValue(data, ctxt->text);
-                ctxt->status = napi_ok;
-                ctxt->SetState(ctxt->status);
-            } else {
-                ctxt->SetErrorCode(code);
-            }
-            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
-        };
+    auto exec = [ctxt](AsyncCall::Context *ctx) {
         std::u16string temp;
-        int32_t code = InputMethodAbility::GetInstance().GetTextBeforeCursor(ctxt->length, temp, rspCallBack);
-        if (code != ErrorCode::NO_ERROR) {
-            ctxt->SetErrorCode(code);
-            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
-        }
+        int32_t ret = InputMethodAbility::GetInstance().GetTextBeforeCursor(ctxt->length, temp);
+        ctxt->SetErrorCode(ret);
+        CHECK_RETURN_VOID(ret == ErrorCode::NO_ERROR, "failed to get forward text!");
+        ctxt->text = Str16ToStr8(temp);
+        ctxt->status = napi_ok;
+        ctxt->SetState(ctxt->status);
     };
     ctxt->SetAction(std::move(input), std::move(output));
     // 1 means JsAPI:GetForward has 1 param at most.
-    EditAsyncCall asyncCall(env, info, ctxt, 1);
-    return asyncCall.Call(env, exec, __FUNCTION__);
+    AsyncCall asyncCall(env, info, ctxt, 1);
+    return ASYNC_POST(env, exec);
 }
 
 napi_value JsProxyTextInputClient::GetBackward(napi_env env, napi_callback_info info)
@@ -260,28 +212,19 @@ napi_value JsProxyTextInputClient::GetBackward(napi_env env, napi_callback_info 
         *result = jsText;
         return napi_ok;
     };
-    auto exec = [ctxt](AsyncCall::Context *ctx, AsyncCall::Context::CallBackAction completeFunc) {
-        auto rspCallBack = [ctxt, completeFunc](int32_t code, const ResponseData &data) -> void {
-            if (code == ErrorCode::NO_ERROR) {
-                VariantUtil::GetValue(data, ctxt->text);
-                ctxt->status = napi_ok;
-                ctxt->SetState(ctxt->status);
-            } else {
-                ctxt->SetErrorCode(code);
-            }
-            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
-        };
+    auto exec = [ctxt](AsyncCall::Context *ctx) {
         std::u16string temp;
-        int32_t code = InputMethodAbility::GetInstance().GetTextAfterCursor(ctxt->length, temp, rspCallBack);
-        if (code != ErrorCode::NO_ERROR) {
-            ctxt->SetErrorCode(code);
-            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
-        }
+        int32_t ret = InputMethodAbility::GetInstance().GetTextAfterCursor(ctxt->length, temp);
+        ctxt->SetErrorCode(ret);
+        CHECK_RETURN_VOID(ret == ErrorCode::NO_ERROR, "failed to get backward text!");
+        ctxt->text = Str16ToStr8(temp);
+        ctxt->status = napi_ok;
+        ctxt->SetState(ctxt->status);
     };
     ctxt->SetAction(std::move(input), std::move(output));
     // 1 means JsAPI:GetBackward has 1 param at most.
-    EditAsyncCall asyncCall(env, info, ctxt, 1);
-    return asyncCall.Call(env, exec, __FUNCTION__);
+    AsyncCall asyncCall(env, info, ctxt, 1);
+    return ASYNC_POST(env, exec);
 }
 
 napi_value JsProxyTextInputClient::MoveCursor(napi_env env, napi_callback_info info)
@@ -296,26 +239,17 @@ napi_value JsProxyTextInputClient::MoveCursor(napi_env env, napi_callback_info i
             "direction is out of valid range!", TYPE_NONE, napi_generic_failure);
         return napi_ok;
     };
-    auto exec = [ctxt](AsyncCall::Context *ctx, AsyncCall::Context::CallBackAction completeFunc) {
-        auto rspCallBack = [ctxt, completeFunc](int32_t code, const ResponseData &data) -> void {
-            if (code == ErrorCode::NO_ERROR) {
-                ctxt->status = napi_ok;
-                ctxt->SetState(ctxt->status);
-            } else {
-                ctxt->SetErrorCode(code);
-            }
-            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
-        };
-        int32_t code = InputMethodAbility::GetInstance().MoveCursor(ctxt->num, rspCallBack);
-        if (code != ErrorCode::NO_ERROR) {
-            ctxt->SetErrorCode(code);
-            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
-        }
+    auto exec = [ctxt](AsyncCall::Context *ctx) {
+        int32_t ret = InputMethodAbility::GetInstance().MoveCursor(ctxt->num);
+        ctxt->SetErrorCode(ret);
+        CHECK_RETURN_VOID(ret == ErrorCode::NO_ERROR, "failed to move cursor!");
+        ctxt->status = napi_ok;
+        ctxt->SetState(ctxt->status);
     };
     ctxt->SetAction(std::move(input));
     // 1 means JsAPI:MoveCursor has 1 param at most.
-    EditAsyncCall asyncCall(env, info, ctxt, 1);
-    return asyncCall.Call(env, exec, __FUNCTION__);
+    AsyncCall asyncCall(env, info, ctxt, 1);
+    return ASYNC_POST(env, exec);
 }
 
 napi_value JsProxyTextInputClient::SendExtendAction(napi_env env, napi_callback_info info)
@@ -330,25 +264,16 @@ napi_value JsProxyTextInputClient::SendExtendAction(napi_env env, napi_callback_
             TYPE_NONE, napi_generic_failure);
         return napi_ok;
     };
-    auto exec = [ctxt](AsyncCall::Context *ctx, AsyncCall::Context::CallBackAction completeFunc) {
-        auto rspCallBack = [ctxt, completeFunc](int32_t code, const ResponseData &data) -> void {
-            if (code == ErrorCode::NO_ERROR) {
-                ctxt->SetState(napi_ok);
-            } else {
-                ctxt->SetErrorCode(code);
-            }
-            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
-        };
-        int32_t code = InputMethodAbility::GetInstance().SendExtendAction(ctxt->action, rspCallBack);
-        if (code != ErrorCode::NO_ERROR) {
-            ctxt->SetErrorCode(code);
-            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
-        }
+    auto exec = [ctxt](AsyncCall::Context *ctx) {
+        int32_t ret = InputMethodAbility::GetInstance().SendExtendAction(ctxt->action);
+        ctxt->SetErrorCode(ret);
+        CHECK_RETURN_VOID(ret == ErrorCode::NO_ERROR, "failed to send extend action!");
+        ctxt->SetState(napi_ok);
     };
     ctxt->SetAction(std::move(input));
     // 1 means JsAPI:SendExtendAction has 1 param at most.
-    EditAsyncCall asyncCall(env, info, ctxt, 1);
-    return asyncCall.Call(env, exec, __FUNCTION__);
+    AsyncCall asyncCall(env, info, ctxt, 1);
+    return ASYNC_POST(env, exec);
 }
 
 napi_value JsProxyTextInputClient::SelectByRange(napi_env env, napi_callback_info info)
@@ -358,26 +283,17 @@ napi_value JsProxyTextInputClient::SelectByRange(napi_env env, napi_callback_inf
         PARAM_CHECK_RETURN(env, argc > 0, "at least one parameter is required!", TYPE_NONE, napi_generic_failure);
         return JsUtils::GetSelectRange(env, argv[0], ctxt->start, ctxt->end);
     };
-    auto exec = [ctxt](AsyncCall::Context *ctx, AsyncCall::Context::CallBackAction completeFunc) {
-        auto rspCallBack = [ctxt, completeFunc](int32_t code, const ResponseData &data) -> void {
-            if (code == ErrorCode::NO_ERROR) {
-                ctxt->status = napi_ok;
-                ctxt->SetState(ctxt->status);
-            } else {
-                ctxt->SetErrorCode(code);
-            }
-            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
-        };
-        int32_t code = InputMethodAbility::GetInstance().SelectByRange(ctxt->start, ctxt->end, rspCallBack);
-        if (code != ErrorCode::NO_ERROR) {
-            ctxt->SetErrorCode(code);
-            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
-        }
+    auto exec = [ctxt](AsyncCall::Context *ctx) {
+        int32_t ret = InputMethodAbility::GetInstance().SelectByRange(ctxt->start, ctxt->end);
+        ctxt->SetErrorCode(ret);
+        CHECK_RETURN_VOID(ret == ErrorCode::NO_ERROR, "failed to select by range!");
+        ctxt->status = napi_ok;
+        ctxt->SetState(ctxt->status);
     };
     ctxt->SetAction(std::move(input));
     // 1 means JsAPI:SelectByRange has 1 param at most.
-    EditAsyncCall asyncCall(env, info, ctxt, 1);
-    return asyncCall.Call(env, exec, __FUNCTION__);
+    AsyncCall asyncCall(env, info, ctxt, 1);
+    return ASYNC_POST(env, exec);
 }
 
 napi_value JsProxyTextInputClient::SelectByMovement(napi_env env, napi_callback_info info)
@@ -387,26 +303,17 @@ napi_value JsProxyTextInputClient::SelectByMovement(napi_env env, napi_callback_
         PARAM_CHECK_RETURN(env, argc > 0, "at least one parameter is required!", TYPE_NONE, napi_generic_failure);
         return JsUtils::GetSelectMovement(env, argv[0], ctxt->direction);
     };
-    auto exec = [ctxt](AsyncCall::Context *ctx, AsyncCall::Context::CallBackAction completeFunc) {
-        auto rspCallBack = [ctxt, completeFunc](int32_t code, const ResponseData &data) -> void {
-            if (code == ErrorCode::NO_ERROR) {
-                ctxt->status = napi_ok;
-                ctxt->SetState(ctxt->status);
-            } else {
-                ctxt->SetErrorCode(code);
-            }
-            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
-        };
-        int32_t code = InputMethodAbility::GetInstance().SelectByMovement(ctxt->direction, rspCallBack);
-        if (code != ErrorCode::NO_ERROR) {
-            ctxt->SetErrorCode(code);
-            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
-        }
+    auto exec = [ctxt](AsyncCall::Context *ctx) {
+        int32_t ret = InputMethodAbility::GetInstance().SelectByMovement(ctxt->direction);
+        ctxt->SetErrorCode(ret);
+        CHECK_RETURN_VOID(ret == ErrorCode::NO_ERROR, "failed to select by movement!");
+        ctxt->status = napi_ok;
+        ctxt->SetState(ctxt->status);
     };
     ctxt->SetAction(std::move(input));
     // 1 means JsAPI:SelectByMovement has 1 param at most.
-    EditAsyncCall asyncCall(env, info, ctxt, 1);
-    return asyncCall.Call(env, exec, __FUNCTION__);
+    AsyncCall asyncCall(env, info, ctxt, 1);
+    return ASYNC_POST(env, exec);
 }
 
 napi_value JsProxyTextInputClient::GetEditorAttribute(napi_env env, napi_callback_info info)
@@ -436,27 +343,17 @@ napi_value JsProxyTextInputClient::GetTextIndexAtCursor(napi_env env, napi_callb
     auto output = [ctxt](napi_env env, napi_value *result) -> napi_status {
         return napi_create_int32(env, ctxt->index, result);
     };
-    auto exec = [ctxt](AsyncCall::Context *ctx, AsyncCall::Context::CallBackAction completeFunc) {
-        auto rspCallBack = [ctxt, completeFunc](int32_t code, const ResponseData &data) -> void {
-            if (code == ErrorCode::NO_ERROR) {
-                VariantUtil::GetValue(data, ctxt->index);
-                ctxt->status = napi_ok;
-                ctxt->SetState(ctxt->status);
-            } else {
-                ctxt->SetErrorCode(code);
-            }
-            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
-        };
-        int32_t code = InputMethodAbility::GetInstance().GetTextIndexAtCursor(ctxt->index, rspCallBack);
-        if (code != ErrorCode::NO_ERROR) {
-            ctxt->SetErrorCode(code);
-            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
-        }
+    auto exec = [ctxt](AsyncCall::Context *ctx) {
+        int32_t ret = InputMethodAbility::GetInstance().GetTextIndexAtCursor(ctxt->index);
+        ctxt->SetErrorCode(ret);
+        CHECK_RETURN_VOID(ret == ErrorCode::NO_ERROR, "failed to get text index at cursor!");
+        ctxt->status = napi_ok;
+        ctxt->SetState(ctxt->status);
     };
     ctxt->SetAction(nullptr, std::move(output));
     // 0 means JsAPI:GetTextIndexAtCursor has 0 param at most.
-    EditAsyncCall asyncCall(env, info, ctxt, 0);
-    return asyncCall.Call(env, exec, __FUNCTION__);
+    AsyncCall asyncCall(env, info, ctxt, 0);
+    return ASYNC_POST(env, exec);
 }
 } // namespace MiscServices
 } // namespace OHOS
