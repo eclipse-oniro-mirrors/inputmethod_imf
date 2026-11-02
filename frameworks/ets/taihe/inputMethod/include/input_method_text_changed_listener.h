@@ -55,6 +55,8 @@ public:
         return false;
     }
     int32_t SetPreviewText(const std::u16string &text, const Range &range) override;
+    int32_t SetPreviewTextWithStyle(
+        const std::u16string &text, const Range &range, const PreviewTextStyleInner &style) override;
     void FinishTextPreview() override;
 
 private:

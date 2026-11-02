@@ -269,6 +269,22 @@ InputMethod_ErrorCode OH_TextEditorProxy_SetSetPreviewTextFunc(
     proxy->setPreviewTextFunc = setPreviewTextFunc;
     return IME_ERR_OK;
 }
+InputMethod_ErrorCode OH_InputMethod_TextEditorProxy_SetSetPreviewTextWithStyleFunc(InputMethod_TextEditorProxy *proxy,
+    OH_InputMethod_TextEditorProxy_SetPreviewTextWithStyleFunc setPreviewTextWithStyleFunc)
+{
+    if (proxy == nullptr) {
+        IMSA_HILOGE("proxy is nullptr");
+        return IME_ERR_NULL_POINTER;
+    }
+
+    if (setPreviewTextWithStyleFunc == nullptr) {
+        IMSA_HILOGE("setPreviewTextWithStyleFunc is nullptr");
+        return IME_ERR_NULL_POINTER;
+    }
+
+    proxy->setPreviewTextWithStyleFunc = setPreviewTextWithStyleFunc;
+    return IME_ERR_OK;
+}
 InputMethod_ErrorCode OH_TextEditorProxy_SetFinishTextPreviewFunc(
     InputMethod_TextEditorProxy *proxy, OH_TextEditorProxy_FinishTextPreviewFunc finishTextPreviewFunc)
 {
@@ -495,6 +511,21 @@ InputMethod_ErrorCode OH_TextEditorProxy_GetSetPreviewTextFunc(
         return IME_ERR_NULL_POINTER;
     }
     *setPreviewTextFunc = proxy->setPreviewTextFunc;
+    return IME_ERR_OK;
+}
+
+InputMethod_ErrorCode OH_InputMethod_TextEditorProxy_GetSetPreviewTextWithStyleFunc(InputMethod_TextEditorProxy *proxy,
+    OH_InputMethod_TextEditorProxy_SetPreviewTextWithStyleFunc *setPreviewTextWithStyleFunc)
+{
+    if (proxy == nullptr) {
+        IMSA_HILOGE("proxy is nullptr");
+        return IME_ERR_NULL_POINTER;
+    }
+    if (setPreviewTextWithStyleFunc == nullptr) {
+        IMSA_HILOGE("setPreviewTextWithStyleFunc is nullptr");
+        return IME_ERR_NULL_POINTER;
+    }
+    *setPreviewTextWithStyleFunc = proxy->setPreviewTextWithStyleFunc;
     return IME_ERR_OK;
 }
 

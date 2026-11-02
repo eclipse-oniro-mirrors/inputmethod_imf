@@ -56,6 +56,8 @@ public:
     std::u16string GetRightTextOfCursorCallback(int32_t number);
     int32_t GetTextIndexAtCursorCallback();
     int32_t SetPreviewTextCallback(const std::u16string &text, const Range &range);
+    int32_t SetPreviewTextWithStyleCallback(const std::u16string &text, const Range &range,
+        const PreviewTextStyleInner &style);
     void FinishTextPreviewCallback();
 
     void DiscardTypingTextSync();
@@ -132,6 +134,19 @@ public:
     void OffSetPreviewText(taihe::optional_view<uintptr_t> opq)
     {
         InputMethodControllerImpl::GetInstance()->UnRegisterListener("setPreviewText", opq);
+    }
+
+    void OnSetPreviewTextWithStyle(
+        taihe::callback_view<void(::taihe::string_view text, ::ohos::inputMethod::Range const& range,
+            ::ohos::inputMethodEngine::PreviewTextStyle const& style)> f,
+        uintptr_t opq)
+    {
+        InputMethodControllerImpl::GetInstance()->RegisterListener("setPreviewTextWithStyle", f, opq);
+    }
+
+    void OffSetPreviewTextWithStyle(taihe::optional_view<uintptr_t> opq)
+    {
+        InputMethodControllerImpl::GetInstance()->UnRegisterListener("setPreviewTextWithStyle", opq);
     }
 
     void OnFinishTextPreview(taihe::callback_view<void(UndefinedType_t const&)> f, uintptr_t opq)

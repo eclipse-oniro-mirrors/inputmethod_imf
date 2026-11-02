@@ -1989,7 +1989,154 @@ HWTEST_F(InputMethodAbilityTest, testFinishTextPreview_003, TestSize.Level0)
 }
 
 /**
- * @tc.name: testGetInputMethodState_001
+ * @tc.name: testSetPreviewTextWithStyle_001
+ * @tc.desc: IMA SetPreviewTextWithStyle success, fires WithStyle callback with style
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testSetPreviewTextWithStyle_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbilityTest testSetPreviewTextWithStyle_001 Test START");
+    TextListener::ResetParam();
+    std::string text = "test";
+    Range range = { 1, 2 };
+    PreviewTextStyleInner style {};
+    style.underlineStyle = static_cast<int32_t>(UnderlineStyle::SOLID);
+    style.underlineColor = 0xFFFF0000;
+    style.hasUnderlineColor = true;
+    InputMethodAbilityTest::GetIMCAttachIMA();
+    InputMethodAbilityTest::imc_->textConfig_.inputAttribute.isTextPreviewSupported = true;
+    auto ret = InputMethodAbilityTest::inputMethodAbility_.SetPreviewTextWithStyle(text, range, style);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_EQ(TextListener::previewTextWithStyle_, text);
+    EXPECT_EQ(TextListener::previewRangeWithStyle_, range);
+    EXPECT_EQ(TextListener::previewStyle_.underlineStyle, style.underlineStyle);
+    // Alpha channel is forced to 0xFF by IMA: 0xFFFF0000 stays 0xFFFF0000
+    EXPECT_EQ(TextListener::previewStyle_.underlineColor, 0xFFFF0000);
+    EXPECT_TRUE(TextListener::previewStyle_.hasUnderlineColor);
+    EXPECT_EQ(TextListener::setPreviewTextWithStyleCallCount_, 1);
+    InputMethodAbilityTest::GetIMCDetachIMA();
+}
+
+/**
+ * @tc.name: testSetPreviewTextWithStyle_002
+ * @tc.desc: IMA SetPreviewTextWithStyle with null channel returns ERROR_IMA_CHANNEL_NULLPTR
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testSetPreviewTextWithStyle_002, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbilityTest testSetPreviewTextWithStyle_002 Test START");
+    TextListener::ResetParam();
+    std::string text = "test";
+    Range range = { 1, 2 };
+    PreviewTextStyleInner style {};
+    style.underlineStyle = static_cast<int32_t>(UnderlineStyle::SOLID);
+    InputMethodAbilityTest::inputMethodAbility_.ClearDataChannel(
+        InputMethodAbilityTest::inputMethodAbility_.dataChannelObject_);
+    auto ret = InputMethodAbilityTest::inputMethodAbility_.SetPreviewTextWithStyle(text, range, style);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMA_CHANNEL_NULLPTR);
+    EXPECT_NE(TextListener::previewTextWithStyle_, text);
+    EXPECT_EQ(TextListener::setPreviewTextWithStyleCallCount_, 0);
+}
+
+/**
+ * @tc.name: testSetPreviewTextWithStyle_003
+ * @tc.desc: IMA SetPreviewTextWithStyle with isTextPreviewSupported=false returns ERROR_TEXT_PREVIEW_NOT_SUPPORTED
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testSetPreviewTextWithStyle_003, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbilityTest testSetPreviewTextWithStyle_003 Test START");
+    TextListener::ResetParam();
+    std::string text = "test";
+    Range range = { 1, 2 };
+    PreviewTextStyleInner style {};
+    style.underlineStyle = static_cast<int32_t>(UnderlineStyle::SOLID);
+    InputMethodAbilityTest::GetIMCAttachIMA();
+    InputMethodAbilityTest::imc_->textConfig_.inputAttribute.isTextPreviewSupported = false;
+    auto ret = InputMethodAbilityTest::inputMethodAbility_.SetPreviewTextWithStyle(text, range, style);
+    EXPECT_EQ(ret, ErrorCode::ERROR_TEXT_PREVIEW_NOT_SUPPORTED);
+    EXPECT_NE(TextListener::previewTextWithStyle_, text);
+    EXPECT_EQ(TextListener::setPreviewTextWithStyleCallCount_, 0);
+    InputMethodAbilityTest::GetIMCDetachIMA();
+}
+
+/**
+ * @tc.name: testSetPreviewTextWithStyle_004
+ * @tc.desc: IMA SetPreviewTextWithStyle without color, hasUnderlineColor should be false
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testSetPreviewTextWithStyle_004, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbilityTest testSetPreviewTextWithStyle_004 Test START");
+    TextListener::ResetParam();
+    std::string text = "hello";
+    Range range = { 0, 0 };
+    PreviewTextStyleInner style {};
+    style.underlineStyle = static_cast<int32_t>(UnderlineStyle::WAVY);
+    InputMethodAbilityTest::GetIMCAttachIMA();
+    InputMethodAbilityTest::imc_->textConfig_.inputAttribute.isTextPreviewSupported = true;
+    auto ret = InputMethodAbilityTest::inputMethodAbility_.SetPreviewTextWithStyle(text, range, style);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_EQ(TextListener::previewTextWithStyle_, text);
+    EXPECT_EQ(TextListener::previewStyle_.underlineStyle, style.underlineStyle);
+    EXPECT_FALSE(TextListener::previewStyle_.hasUnderlineColor);
+    InputMethodAbilityTest::GetIMCDetachIMA();
+}
+
+/**
+ * @tc.name: testSetPreviewTextWithStyle_005
+ * @tc.desc: IMA SetPreviewTextWithStyle forces alpha to 0xFF on underlineColor (| 0xFF000000)
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testSetPreviewTextWithStyle_005, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbilityTest testSetPreviewTextWithStyle_005 Test START");
+    TextListener::ResetParam();
+    std::string text = "alpha";
+    Range range = { 0, 0 };
+    PreviewTextStyleInner style {};
+    style.underlineStyle = static_cast<int32_t>(UnderlineStyle::DASHED);
+    // Partial alpha 0x12, color 0x123456 -> forced to 0xFF123456
+    style.underlineColor = 0x12123456;
+    style.hasUnderlineColor = true;
+    InputMethodAbilityTest::GetIMCAttachIMA();
+    InputMethodAbilityTest::imc_->textConfig_.inputAttribute.isTextPreviewSupported = true;
+    auto ret = InputMethodAbilityTest::inputMethodAbility_.SetPreviewTextWithStyle(text, range, style);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    // Alpha forced to 0xFF, RRGGBB kept: 0x12123456 -> 0xFF123456
+    EXPECT_EQ(TextListener::previewStyle_.underlineColor, 0xFF123456);
+    EXPECT_TRUE(TextListener::previewStyle_.hasUnderlineColor);
+    EXPECT_EQ(TextListener::previewStyle_.underlineStyle, style.underlineStyle);
+    InputMethodAbilityTest::GetIMCDetachIMA();
+}
+
+/**
+ * @tc.name: testSetPreviewTextWithStyle_006
+ * @tc.desc: IMA SetPreviewTextWithStyle with zero alpha (0x00RRGGBB) forces alpha to 0xFF
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testSetPreviewTextWithStyle_006, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbilityTest testSetPreviewTextWithStyle_006 Test START");
+    TextListener::ResetParam();
+    std::string text = "zeroalpha";
+    Range range = { 0, 0 };
+    PreviewTextStyleInner style {};
+    style.underlineStyle = static_cast<int32_t>(UnderlineStyle::SOLID);
+    // Zero alpha 0x00, color 0xAABBCC -> forced to 0xFFAABBCC
+    style.underlineColor = 0x00AABBCC;
+    style.hasUnderlineColor = true;
+    InputMethodAbilityTest::GetIMCAttachIMA();
+    InputMethodAbilityTest::imc_->textConfig_.inputAttribute.isTextPreviewSupported = true;
+    auto ret = InputMethodAbilityTest::inputMethodAbility_.SetPreviewTextWithStyle(text, range, style);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    // Alpha forced to 0xFF: 0x00AABBCC -> 0xFFAABBCC
+    EXPECT_EQ(TextListener::previewStyle_.underlineColor, 0xFFAABBCC);
+    EXPECT_TRUE(TextListener::previewStyle_.hasUnderlineColor);
+    InputMethodAbilityTest::GetIMCDetachIMA();
+}
+
+/**
  * @tc.desc: IMA
  * @tc.type: FUNC
  * @tc.require:

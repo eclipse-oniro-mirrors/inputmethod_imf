@@ -374,6 +374,42 @@ struct RangeInner : public Parcelable {
     }
 };
 
+struct PreviewTextStyleInner : public Parcelable {
+    int32_t underlineStyle = 0; // UNDERLINE_STYLE_NONE
+    uint32_t underlineColor = 0;
+    bool hasUnderlineColor = false; // true if underlineColor is explicitly set, false means follow app theme color
+
+    bool ReadFromParcel(Parcel &in)
+    {
+        underlineStyle = in.ReadInt32();
+        underlineColor = in.ReadUint32();
+        hasUnderlineColor = in.ReadBool();
+        return true;
+    }
+    bool Marshalling(Parcel &out) const
+    {
+        if (!out.WriteInt32(underlineStyle)) {
+            return false;
+        }
+        if (!out.WriteUint32(underlineColor)) {
+            return false;
+        }
+        if (!out.WriteBool(hasUnderlineColor)) {
+            return false;
+        }
+        return true;
+    }
+    static PreviewTextStyleInner *Unmarshalling(Parcel &in)
+    {
+        PreviewTextStyleInner *data = new (std::nothrow) PreviewTextStyleInner();
+        if (data && !data->ReadFromParcel(in)) {
+            delete data;
+            data = nullptr;
+        }
+        return data;
+    }
+};
+
 struct TextSelection {
     int32_t oldBegin = INVALID_VALUE;
     int32_t oldEnd = INVALID_VALUE;
@@ -633,6 +669,13 @@ enum class SpanType : uint32_t {
     IMAGE = 1,
     SYMBOL = 2,
     CUSTOM = 3,
+};
+
+enum class UnderlineStyle : int32_t {
+    NONE = 0,
+    SOLID = 1,
+    WAVY = 2,
+    DASHED = 3,
 };
 
 struct RichTextSpan {

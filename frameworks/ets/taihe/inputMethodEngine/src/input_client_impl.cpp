@@ -325,6 +325,28 @@ void InputClientImpl::SetPreviewTextAsync(taihe::string_view text, Range_t const
     IMSA_HILOGI("set preview text success");
 }
 
+void InputClientImpl::SetPreviewTextWithStyleAsync(taihe::string_view text, Range_t const& range,
+    PreviewTextStyle_t const& style)
+{
+    std::string previewString = std::string(text);
+    Range tmpRange {};
+    tmpRange.start = range.start;
+    tmpRange.end = range.end;
+    PreviewTextStyleInner tmpStyle {};
+    tmpStyle.underlineStyle = style.underlineStyle.get_value();
+    if (style.underlineColor.has_value()) {
+        tmpStyle.underlineColor = style.underlineColor.value();
+        tmpStyle.hasUnderlineColor = true;
+    }
+    int32_t code = InputMethodAbility::GetInstance().SetPreviewTextWithStyle(previewString, tmpRange, tmpStyle);
+    if (code != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("set preview text with style failed");
+        taihe::set_business_error(JsUtils::Convert(code), JsUtils::ToMessage(JsUtils::Convert(code)));
+        return;
+    }
+    IMSA_HILOGI("set preview text with style success");
+}
+
 void InputClientImpl::FinishTextPreviewAsync()
 {
     IMSA_HILOGD("start.");
@@ -408,6 +430,34 @@ void InputClientImpl::SetPreviewTextSync(taihe::string_view text, Range_t const&
         return;
     }
     IMSA_HILOGI("SetPreviewTextSync success");
+}
+
+void InputClientImpl::SetPreviewTextWithStyleSync(taihe::string_view text, Range_t const& range,
+    PreviewTextStyle_t const& style)
+{
+    IMSA_HILOGD("start.");
+    std::string previewString = std::string(text);
+    Range tmpRange {};
+    tmpRange.start = range.start;
+    tmpRange.end = range.end;
+    PreviewTextStyleInner tmpStyle {};
+    tmpStyle.underlineStyle = style.underlineStyle.get_value();
+    if (style.underlineColor.has_value()) {
+        tmpStyle.underlineColor = style.underlineColor.value();
+        tmpStyle.hasUnderlineColor = true;
+    }
+    int32_t ret = InputMethodAbility::GetInstance().SetPreviewTextWithStyle(previewString, tmpRange, tmpStyle);
+    if (ret == ErrorCode::ERROR_INVALID_RANGE) {
+        IMSA_HILOGE("range is invalid!");
+        taihe::set_business_error(IMFErrorCode::EXCEPTION_PARAMCHECK,
+            "range should be included in preview text range, otherwise should be included in total text range");
+        return;
+    } else if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("set preview text with style failed!");
+        taihe::set_business_error(JsUtils::Convert(ret), JsUtils::ToMessage(JsUtils::Convert(ret)));
+        return;
+    }
+    IMSA_HILOGI("SetPreviewTextWithStyleSync success");
 }
 
 void InputClientImpl::SelectByMovementSync(Movement_t const& movement)

@@ -15,6 +15,7 @@
 
 @!sts_inject_into_module("import {ElementName} from 'bundleManager.ElementName';")
 @!sts_inject_into_module("import * as ohos_InputMethodSubtype from './@ohos.InputMethodSubtype';")
+@!sts_inject_into_module("import * as ohos_inputMethodEngine from './@ohos.inputMethodEngine';")
 
 @!sts_inject_into_module("""
 import { Callback } from '@ohos.base';
@@ -25,9 +26,19 @@ import { UIContext } from "@ohos.arkui.UIContext";
 
 from ohos.inputMethod.Panel use PanelInfo;
 from ohos.InputMethodSubtype use InputMethodSubtype;
+from ohos.inputMethodEngine use PreviewTextStyle;
+
 @!sts_inject("""
 static { loadLibrary("inputmethod_taihe_native.z") }
+export type PreviewTextStyle = ohos_inputMethodEngine.inputMethodEngine.PreviewTextStyle;
 """)
+
+enum UnderlineStyle: i32 {
+    NONE = 0,
+    SOLID = 1,
+    WAVY = 2,
+    DASHED = 3,
+}
 
 struct MessageHandler {
     onMessage: (msgId: String, @optional msgParam: Optional<@arraybuffer Array<u8>>) => void;
@@ -298,6 +309,10 @@ interface InputMethodController {
 
     OnSetPreviewText(callback: (text: String, range: Range) => void, @sts_last opq: Opaque);
     OffSetPreviewText(opq: Optional<@sts_type("Function2<String, Range, void>") Opaque>);
+
+    OnSetPreviewTextWithStyle(callback: (text: String, range: Range, style: PreviewTextStyle) => void,
+        @sts_last opq: Opaque);
+    OffSetPreviewTextWithStyle(opq: Optional<@sts_type("Function3<String, Range, PreviewTextStyle, void>") Opaque>);
 
     OnFinishTextPreview(callback: (data: UndefinedType) => void, @sts_last opq: Opaque);
     OffFinishTextPreview(opq: Optional<@sts_type("Function1<void, void>") Opaque>);

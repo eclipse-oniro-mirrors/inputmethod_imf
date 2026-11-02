@@ -19,6 +19,7 @@
 #include "event_runner.h"
 #include "input_method_controller.h"
 #include "input_method_property.h"
+#include "input_method_utils.h"
 #include "inputmethod_trace.h"
 #include "js_callback_handler.h"
 #include "js_util.h"
@@ -47,11 +48,31 @@ napi_value JsInputMethod::Init(napi_env env, napi_value exports)
         DECLARE_NAPI_FUNCTION("onAttachmentDidFail", OnAttachmentDidFail),
         DECLARE_NAPI_FUNCTION("offAttachmentDidFail", OffAttachmentDidFail),
         DECLARE_NAPI_STATIC_PROPERTY("AttachFailureReason", GetJsAttachFailureReasonProperty(env)),
+        DECLARE_NAPI_STATIC_PROPERTY("UnderlineStyle", GetJsUnderlineStyleProperty(env))
     };
     IMF_CALL(
         napi_define_properties(env, exports, sizeof(descriptor) / sizeof(napi_property_descriptor), descriptor));
     return exports;
 };
+
+napi_value JsInputMethod::GetJsUnderlineStyleProperty(napi_env env)
+{
+    napi_value underlineStyle = nullptr;
+    napi_value none = nullptr;
+    napi_value solid = nullptr;
+    napi_value wavy = nullptr;
+    napi_value dashed = nullptr;
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(UnderlineStyle::NONE), &none));
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(UnderlineStyle::SOLID), &solid));
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(UnderlineStyle::WAVY), &wavy));
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(UnderlineStyle::DASHED), &dashed));
+    IMF_CALL(napi_create_object(env, &underlineStyle));
+    IMF_CALL(napi_set_named_property(env, underlineStyle, "NONE", none));
+    IMF_CALL(napi_set_named_property(env, underlineStyle, "SOLID", solid));
+    IMF_CALL(napi_set_named_property(env, underlineStyle, "WAVY", wavy));
+    IMF_CALL(napi_set_named_property(env, underlineStyle, "DASHED", dashed));
+    return underlineStyle;
+}
 
 napi_status JsInputMethod::GetInputMethodProperty(napi_env env, napi_value argv,
     std::shared_ptr<SwitchInputMethodContext> ctxt)

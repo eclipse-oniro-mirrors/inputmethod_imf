@@ -50,8 +50,14 @@ public:
     RichTextData GetRightRichTextOfCursor(int32_t number) override;
     int32_t ReceivePrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand) override;
     int32_t SetPreviewText(const std::u16string &text, const Range &range) override;
+    int32_t SetPreviewTextWithStyle(
+        const std::u16string &text, const Range &range, const PreviewTextStyleInner &style) override;
     void FinishTextPreview() override;
     bool IsFromTs() override;
+    bool IsSupportPreviewTextWithStyle() override
+    {
+        return true;
+    }
     static void ResetParam();
     static bool WaitSendKeyboardStatusCallback(const KeyboardStatus &keyboardStatus);
     static bool WaitNotifyPanelStatusInfoCallback(const PanelStatusInfo &info);
@@ -88,6 +94,11 @@ public:
     static std::unordered_map<std::string, PrivateDataValue> privateCommand_;
     static std::string previewText_;
     static Range previewRange_;
+    static std::string previewTextWithStyle_;
+    static Range previewRangeWithStyle_;
+    static PreviewTextStyleInner previewStyle_;
+    static int32_t setPreviewTextCallCount_;
+    static int32_t setPreviewTextWithStyleCallCount_;
     static bool isFinishTextPreviewCalled_;
     static bool isFromTs_;
 };

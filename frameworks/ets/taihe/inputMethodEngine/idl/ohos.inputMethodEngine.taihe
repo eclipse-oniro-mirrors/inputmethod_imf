@@ -79,6 +79,18 @@ const CURSOR_RIGHT: int = 4;
 const WINDOW_TYPE_INPUT_METHOD_FLOAT: int = 2105;
 """)
 
+enum UnderlineStyle: i32 {
+    NONE = 0,
+    SOLID = 1,
+    WAVY = 2,
+    DASHED = 3,
+}
+
+struct PreviewTextStyle {
+    underlineStyle: UnderlineStyle;
+    underlineColor: Optional<u32>;
+}
+
 enum Direction: i32 {
     CURSOR_UP = 1,
     CURSOR_DOWN = 2,
@@ -404,6 +416,9 @@ interface InputClient {
     @gen_promise("setPreviewText")
     SetPreviewTextAsync(text: String, range: Range): void;
 
+    @gen_promise("setPreviewTextWithStyle")
+    SetPreviewTextWithStyleAsync(text: String, range: Range, style: PreviewTextStyle): void;
+
     @gen_promise("finishTextPreview")
     FinishTextPreviewAsync(): void;
 
@@ -413,6 +428,7 @@ interface InputClient {
     RecvMessage(msgHandler: Optional<MessageHandler>): void;
     FinishTextPreviewSync(): void;
     SetPreviewTextSync(text: String, range: Range): void;
+    SetPreviewTextWithStyleSync(text: String, range: Range, style: PreviewTextStyle): void;
     SelectByMovementSync(movement: Movement): void;
     SelectByRangeSync(range: Range): void;
     MoveCursorSync(direction: i32): void;

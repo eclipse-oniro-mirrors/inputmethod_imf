@@ -61,6 +61,9 @@ public:
 
     void SetPreviewTextAsync(taihe::string_view text, Range_t const& range);
 
+    void SetPreviewTextWithStyleAsync(taihe::string_view text, Range_t const& range,
+        PreviewTextStyle_t const& style);
+
     void FinishTextPreviewAsync();
 
     void SendMessageAsync(taihe::string_view msgId, taihe::optional_view<taihe::array<uint8_t>> msgParam);
@@ -70,6 +73,9 @@ public:
     void FinishTextPreviewSync();
 
     void SetPreviewTextSync(taihe::string_view text, Range_t const& range);
+
+    void SetPreviewTextWithStyleSync(taihe::string_view text, Range_t const& range,
+        PreviewTextStyle_t const& style);
 
     void SelectByMovementSync(Movement_t const& movement);
 

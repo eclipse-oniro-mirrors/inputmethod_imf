@@ -39,6 +39,11 @@ PanelStatusInfo TextListener::info_ {};
 std::unordered_map<std::string, PrivateDataValue> TextListener::privateCommand_ {};
 std::string TextListener::previewText_;
 Range TextListener::previewRange_ {};
+std::string TextListener::previewTextWithStyle_;
+Range TextListener::previewRangeWithStyle_ {};
+PreviewTextStyleInner TextListener::previewStyle_ {};
+int32_t TextListener::setPreviewTextCallCount_ = 0;
+int32_t TextListener::setPreviewTextWithStyleCallCount_ = 0;
 bool TextListener::isFinishTextPreviewCalled_ { false };
 bool TextListener::isFromTs_{ false };
 TextListener::TextListener()
@@ -219,6 +224,23 @@ int32_t TextListener::SetPreviewText(const std::u16string &text, const Range &ra
         Str16ToStr8(text).c_str(), range.start, range.end);
     previewText_ = Str16ToStr8(text);
     previewRange_ = range;
+    setPreviewTextCallCount_++;
+    return ErrorCode::NO_ERROR;
+}
+
+int32_t TextListener::SetPreviewTextWithStyle(const std::u16string &text, const Range &range,
+    const PreviewTextStyleInner &style)
+{
+    IMSA_HILOGI("TextListener, text: %{public}s, range[start, end]: [%{public}d, %{public}d], style: %{public}d",
+        Str16ToStr8(text).c_str(), range.start, range.end, style.underlineStyle);
+    // Also set previewText_/previewRange_ for backward compatibility with SetPreviewText tests,
+    // since single-dispatch routes SetPreviewText through SetPreviewTextWithStyle.
+    previewText_ = Str16ToStr8(text);
+    previewRange_ = range;
+    previewTextWithStyle_ = Str16ToStr8(text);
+    previewRangeWithStyle_ = range;
+    previewStyle_ = style;
+    setPreviewTextWithStyleCallCount_++;
     return ErrorCode::NO_ERROR;
 }
 
@@ -252,6 +274,11 @@ void TextListener::ResetParam()
     height_ = 0;
     previewText_ = "";
     previewRange_ = {};
+    previewTextWithStyle_ = "";
+    previewRangeWithStyle_ = {};
+    previewStyle_ = {};
+    setPreviewTextCallCount_ = 0;
+    setPreviewTextWithStyleCallCount_ = 0;
     isFinishTextPreviewCalled_ = false;
 }
 

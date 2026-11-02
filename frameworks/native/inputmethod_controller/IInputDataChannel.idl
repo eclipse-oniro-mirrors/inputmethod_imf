@@ -19,6 +19,7 @@ sequenceable input_method_utils..OHOS.MiscServices.PanelStatusInfoInner;
 sequenceable input_method_utils..OHOS.MiscServices.FunctionKey;
 sequenceable input_method_utils..OHOS.MiscServices.Value;
 sequenceable input_method_utils..OHOS.MiscServices.RangeInner;
+sequenceable input_method_utils..OHOS.MiscServices.PreviewTextStyleInner;
 sequenceable input_method_utils..OHOS.MiscServices.ArrayBuffer;
 sequenceable OHOS.IRemoteObject;
 interface OHOS.MiscServices.IInputDataChannel {
@@ -46,4 +47,6 @@ interface OHOS.MiscServices.IInputDataChannel {
     [oneway] void HandleKeyEventResult([in] unsigned long cbId, [in] boolean consumeResult);
     [oneway] void GetRichBeforeCursor([in] int number, [in] unsigned long msgId, [in] IRemoteObject agent);
     [oneway] void GetRichAfterCursor([in] int number, [in] unsigned long msgId, [in] IRemoteObject agent);
+    [oneway] void SetPreviewTextWithStyle([in] String text, [in] RangeInner rangeInner,
+        [in] PreviewTextStyleInner styleInner, [in] unsigned long msgId, [in] IRemoteObject agent);
 }
