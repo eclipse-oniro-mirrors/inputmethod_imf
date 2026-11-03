@@ -93,6 +93,8 @@ napi_value JsGetInputMethodController::Init(napi_env env, napi_value info)
         DECLARE_NAPI_FUNCTION("showSoftKeyboard", ShowSoftKeyboard),
         DECLARE_NAPI_FUNCTION("on", Subscribe),
         DECLARE_NAPI_FUNCTION("off", UnSubscribe),
+        DECLARE_NAPI_FUNCTION("onSetPreviewTextWithStyle", OnSetPreviewTextWithStyle),
+        DECLARE_NAPI_FUNCTION("offSetPreviewTextWithStyle", OffSetPreviewTextWithStyle),
         DECLARE_NAPI_FUNCTION("sendMessage", SendMessage),
         DECLARE_NAPI_FUNCTION("recvMessage", RecvMessage),
         DECLARE_NAPI_FUNCTION("discardTypingText", DiscardTypingText),
@@ -498,6 +500,59 @@ napi_value JsGetInputMethodController::UnSubscribe(napi_env env, napi_callback_i
     return result;
 }
 
+napi_value JsGetInputMethodController::OnSetPreviewTextWithStyle(napi_env env, napi_callback_info info)
+{
+    size_t argc = ARGC_ONE;
+    napi_value argv[ARGC_ONE] = { nullptr };
+    napi_value thisVar = nullptr;
+    void *data = nullptr;
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
+    PARAM_CHECK_RETURN(env, JsUtil::GetType(env, argv[0]) == napi_function, "callback", TYPE_FUNCTION, nullptr);
+    std::string type = "setPreviewTextWithStyle";
+
+    auto engine = reinterpret_cast<JsGetInputMethodController *>(JsUtils::GetNativeSelf(env, info));
+    if (engine == nullptr) {
+        return nullptr;
+    }
+    std::shared_ptr<JSCallbackObject> callback = std::make_shared<JSCallbackObject>(
+        env, argv[0], std::this_thread::get_id(), AppExecFwk::EventHandler::Current());
+    engine->RegisterListener(argv[0], type, callback);
+
+    napi_value result = nullptr;
+    napi_get_null(env, &result);
+    return result;
+}
+
+napi_value JsGetInputMethodController::OffSetPreviewTextWithStyle(napi_env env, napi_callback_info info)
+{
+    size_t argc = ARGC_ONE;
+    napi_value argv[ARGC_ONE] = { nullptr };
+    napi_value thisVar = nullptr;
+    void *data = nullptr;
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
+    std::string type = "setPreviewTextWithStyle";
+    // if the first param is not napi_function/napi_null/napi_undefined, return
+    napi_value callback = nullptr;
+    if (argc >= 1) {
+        auto paramType = JsUtil::GetType(env, argv[0]);
+        if (paramType != napi_function && paramType != napi_null && paramType != napi_undefined) {
+            return nullptr;
+        }
+        // if the first param is napi_function, delete it, else delete all
+        callback = paramType == napi_function ? argv[0] : nullptr;
+    }
+
+    auto engine = reinterpret_cast<JsGetInputMethodController *>(JsUtils::GetNativeSelf(env, info));
+    if (engine == nullptr) {
+        return nullptr;
+    }
+    engine->UnRegisterListener(callback, type);
+
+    napi_value result = nullptr;
+    napi_get_null(env, &result);
+    return result;
+}
+
 napi_value JsGetInputMethodController::CreateSelectRange(napi_env env, int32_t start, int32_t end)
 {
     napi_value range = nullptr;
@@ -511,6 +566,24 @@ napi_value JsGetInputMethodController::CreateSelectRange(napi_env env, int32_t s
     napi_set_named_property(env, range, "end", value);
 
     return range;
+}
+
+napi_value JsGetInputMethodController::CreatePreviewTextStyle(
+    napi_env env, int32_t underlineStyle, uint32_t underlineColor, bool hasUnderlineColor)
+{
+    napi_value style = nullptr;
+    napi_create_object(env, &style);
+
+    napi_value value = nullptr;
+    napi_create_int32(env, underlineStyle, &value);
+    napi_set_named_property(env, style, "underlineStyle", value);
+
+    if (hasUnderlineColor) {
+        napi_create_uint32(env, underlineColor, &value);
+        napi_set_named_property(env, style, "underlineColor", value);
+    }
+
+    return style;
 }
 
 napi_value JsGetInputMethodController::CreateSelectMovement(napi_env env, int32_t direction)
@@ -1395,6 +1468,43 @@ int32_t JsGetInputMethodController::SetPreviewText(const std::u16string &text, c
     return ErrorCode::NO_ERROR;
 }
 
+int32_t JsGetInputMethodController::SetPreviewTextWithStyle(
+    const std::u16string &text, const Range &range, const PreviewTextStyleInner &style)
+{
+    std::string previewText = Str16ToStr8(text);
+    std::string type = "setPreviewTextWithStyle";
+    auto entry = GetEntry(type, [&previewText, &range, &style](UvEntry &entry) {
+        entry.text = previewText;
+        entry.start = range.start;
+        entry.end = range.end;
+        entry.underlineStyle = style.underlineStyle;
+        entry.underlineColor = style.underlineColor;
+        entry.hasUnderlineColor = style.hasUnderlineColor;
+    });
+    if (entry == nullptr) {
+        IMSA_HILOGD("failed to get uv entry!");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    IMSA_HILOGI("previewTextWithStyle start.");
+    auto getPreviewTextWithStyleProperty = [entry](napi_env env, napi_value *args, uint8_t argc) -> bool {
+        // 3 means the callback has three params.
+        if (argc < 3) {
+            return false;
+        }
+        // 0 means the first param of callback.
+        args[0] = JsUtil::GetValue(env, entry->text);
+        // 1 means the second param of callback.
+        args[1] = CreateSelectRange(env, entry->start, entry->end);
+        // 2 means the third param of callback.
+        args[2] = CreatePreviewTextStyle(env, entry->underlineStyle, entry->underlineColor, entry->hasUnderlineColor);
+        return true;
+    };
+
+    // 3 means the callback has three param.
+    JsCallbackHandler::Traverse(entry->vecCopy, { 3, getPreviewTextWithStyleProperty });
+    return ErrorCode::NO_ERROR;
+}
+
 void JsGetInputMethodController::FinishTextPreview()
 {
     std::string type = "finishTextPreview";
@@ -1629,12 +1739,13 @@ bool JsGetInputMethodController::IsTextPreviewSupported()
     if (engine == nullptr) {
         return false;
     }
-    return engine->IsRegister("setPreviewText") && engine->IsRegister("finishTextPreview");
+    return (engine->IsRegister("setPreviewText") || engine->IsRegister("setPreviewTextWithStyle")) &&
+        engine->IsRegister("finishTextPreview");
 }
 
 void JsGetInputMethodController::UpdateTextPreviewState(const std::string &type)
 {
-    if (type == "setPreviewText" || type == "finishTextPreview") {
+    if (type == "setPreviewText" || type == "setPreviewTextWithStyle" || type == "finishTextPreview") {
         auto instance = InputMethodController::GetInstance();
         if (instance == nullptr) {
             IMSA_HILOGE("GetInstance() is nullptr!");

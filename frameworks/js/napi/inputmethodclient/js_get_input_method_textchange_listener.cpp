@@ -154,6 +154,17 @@ int32_t JsGetInputMethodTextChangedListener::SetPreviewText(const std::u16string
     return controller->SetPreviewText(text, range);
 }
 
+int32_t JsGetInputMethodTextChangedListener::SetPreviewTextWithStyle(const std::u16string &text, const Range &range,
+    const PreviewTextStyleInner &style)
+{
+    auto controller = JsGetInputMethodController::GetInstance();
+    if (controller == nullptr) {
+        IMSA_HILOGE("controller is nullptr!");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    return controller->SetPreviewTextWithStyle(text, range, style);
+}
+
 void JsGetInputMethodTextChangedListener::FinishTextPreview()
 {
     auto controller = JsGetInputMethodController::GetInstance();

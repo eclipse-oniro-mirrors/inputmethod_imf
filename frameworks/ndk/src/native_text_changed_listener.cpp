@@ -296,6 +296,27 @@ int32_t NativeTextChangedListener::SetPreviewText(const std::u16string &text, co
     return proxy->setPreviewTextFunc(proxy.get(), text.c_str(), text.length(), range.start, range.end);
 }
 
+int32_t NativeTextChangedListener::SetPreviewTextWithStyle(
+    const std::u16string &text, const OHOS::MiscServices::Range &range, const PreviewTextStyleInner &style)
+{
+    auto proxy = textEditor_.lock();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("textEditor_ is nullptr");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+
+    if (proxy->setPreviewTextWithStyleFunc == nullptr) {
+        IMSA_HILOGE("setPreviewTextWithStyleFunc is nullptr");
+        return ErrorCode::NO_ERROR;
+    }
+    OH_InputMethod_PreviewTextStyle cStyle {};
+    cStyle.underlineStyle = static_cast<OH_InputMethod_UnderlineStyle>(style.underlineStyle);
+    cStyle.underlineColor = style.underlineColor;
+    cStyle.hasUnderlineColor = style.hasUnderlineColor;
+    return proxy->setPreviewTextWithStyleFunc(
+        proxy.get(), text.c_str(), static_cast<uint32_t>(text.length()), range.start, range.end, &cStyle);
+}
+
 void NativeTextChangedListener::FinishTextPreview()
 {
     auto proxy = textEditor_.lock();

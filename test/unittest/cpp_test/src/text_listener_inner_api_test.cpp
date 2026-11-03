@@ -690,5 +690,179 @@ HWTEST_F(TextListenerInnerApiTest, testFinishTextPreview02, TestSize.Level1)
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     EXPECT_TRUE(TextListener::isFinishTextPreviewCalled_);
 }
+
+/**
+ * @tc.name: testSetPreviewTextWithStyle001
+ * @tc.desc: AC-1.1/AC-1.7: IME calls SetPreviewTextWithStyle, inner_api single dispatch fires WithStyle callback
+ * @tc.type: FUNC
+ */
+HWTEST_F(TextListenerInnerApiTest, testSetPreviewTextWithStyle001, TestSize.Level1)
+{
+    IMSA_HILOGI("TextListenerInnerApiTest testSetPreviewTextWithStyle001 START");
+    TextListener::ResetParam();
+    TextListenerInnerApiTest::GetIMCAttached();
+    imc_->textConfig_.inputAttribute.isTextPreviewSupported = true;
+
+    PreviewTextStyleInner style {};
+    style.underlineStyle = 1; // SOLID
+    style.underlineColor = 0xFFFF0000;
+    style.hasUnderlineColor = true;
+    Range range { 0, 0 };
+    int32_t ret = imc_->SetPreviewTextWithStyle("nihao", range, style);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    // inner_api: only WithStyle callback fires (single dispatch)
+    EXPECT_EQ(TextListener::previewTextWithStyle_, "nihao");
+    EXPECT_EQ(TextListener::previewStyle_.underlineStyle, 1);
+    EXPECT_EQ(TextListener::previewStyle_.underlineColor, 0xFFFF0000U);
+    EXPECT_TRUE(TextListener::previewStyle_.hasUnderlineColor);
+    EXPECT_EQ(TextListener::setPreviewTextWithStyleCallCount_, 1);
+    // old callback not directly dispatched in inner_api mode
+    EXPECT_EQ(TextListener::setPreviewTextCallCount_, 0);
+}
+
+/**
+ * @tc.name: testSetPreviewTextWithStyle002
+ * @tc.desc: AC-1.4: invalid underlineStyle returns ERROR_BAD_PARAMETERS
+ * @tc.type: FUNC
+ */
+HWTEST_F(TextListenerInnerApiTest, testSetPreviewTextWithStyle002, TestSize.Level1)
+{
+    IMSA_HILOGI("TextListenerInnerApiTest testSetPreviewTextWithStyle002 START");
+    TextListener::ResetParam();
+    TextListenerInnerApiTest::GetIMCAttached();
+    imc_->textConfig_.inputAttribute.isTextPreviewSupported = true;
+
+    PreviewTextStyleInner style {};
+    style.underlineStyle = 99; // invalid
+    Range range { 0, 0 };
+    int32_t ret = imc_->SetPreviewTextWithStyle("text", range, style);
+    EXPECT_EQ(ret, ErrorCode::ERROR_BAD_PARAMETERS);
+    // Neither callback should fire on parameter error
+    EXPECT_EQ(TextListener::setPreviewTextCallCount_, 0);
+    EXPECT_EQ(TextListener::setPreviewTextWithStyleCallCount_, 0);
+}
+
+/**
+ * @tc.name: testSetPreviewTextWithStyle003
+ * @tc.desc: AC-1.3: not editable returns ERROR_CLIENT_NOT_EDITABLE
+ * @tc.type: FUNC
+ */
+HWTEST_F(TextListenerInnerApiTest, testSetPreviewTextWithStyle003, TestSize.Level1)
+{
+    IMSA_HILOGI("TextListenerInnerApiTest testSetPreviewTextWithStyle003 START");
+    TextListener::ResetParam();
+    TextListenerInnerApiTest::GetIMCAttached();
+    imc_->textConfig_.inputAttribute.isTextPreviewSupported = true;
+    imc_->isEditable_.store(false);
+
+    PreviewTextStyleInner style {};
+    style.underlineStyle = 1;
+    Range range { 0, 0 };
+    int32_t ret = imc_->SetPreviewTextWithStyle("text", range, style);
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_EDITABLE);
+}
+
+/**
+ * @tc.name: testSetPreviewTextWithStyle004
+ * @tc.desc: AC-1.5: not supported returns ERROR_TEXT_PREVIEW_NOT_SUPPORTED
+ * @tc.type: FUNC
+ */
+HWTEST_F(TextListenerInnerApiTest, testSetPreviewTextWithStyle004, TestSize.Level1)
+{
+    IMSA_HILOGI("TextListenerInnerApiTest testSetPreviewTextWithStyle004 START");
+    TextListener::ResetParam();
+    TextListenerInnerApiTest::GetIMCAttached();
+    imc_->textConfig_.inputAttribute.isTextPreviewSupported = false;
+
+    PreviewTextStyleInner style {};
+    style.underlineStyle = 1;
+    Range range { 0, 0 };
+    int32_t ret = imc_->SetPreviewTextWithStyle("text", range, style);
+    EXPECT_EQ(ret, ErrorCode::ERROR_TEXT_PREVIEW_NOT_SUPPORTED);
+}
+
+/**
+ * @tc.name: testSetPreviewTextSimultaneousTrigger001
+ * @tc.desc: AC-3.1/AC-3.4/BR-8: IME calls old SetPreviewText, inner_api single dispatch fires
+ *           WithStyle callback with default style NONE
+ * @tc.type: FUNC
+ */
+HWTEST_F(TextListenerInnerApiTest, testSetPreviewTextSimultaneousTrigger001, TestSize.Level1)
+{
+    IMSA_HILOGI("TextListenerInnerApiTest testSetPreviewTextSimultaneousTrigger001 START");
+    TextListener::ResetParam();
+    TextListenerInnerApiTest::GetIMCAttached();
+    imc_->textConfig_.inputAttribute.isTextPreviewSupported = true;
+
+    Range range { 0, 0 };
+    int32_t ret = imc_->SetPreviewText("text", range);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    // inner_api: WithStyle callback fires with default style NONE (single dispatch)
+    EXPECT_EQ(TextListener::previewTextWithStyle_, "text");
+    EXPECT_EQ(TextListener::previewStyle_.underlineStyle, 0); // NONE
+    EXPECT_FALSE(TextListener::previewStyle_.hasUnderlineColor);
+    EXPECT_EQ(TextListener::setPreviewTextWithStyleCallCount_, 1);
+    // old callback not directly dispatched in inner_api mode
+    EXPECT_EQ(TextListener::setPreviewTextCallCount_, 0);
+}
+
+/**
+ * @tc.name: testSetPreviewTextWithStyleDefaultNone001
+ * @tc.desc: AC-3.1/DD-4: default PreviewTextStyleInner has underlineStyle=0 (NONE), hasUnderlineColor=false
+ * @tc.type: FUNC
+ */
+HWTEST_F(TextListenerInnerApiTest, testSetPreviewTextWithStyleDefaultNone001, TestSize.Level1)
+{
+    IMSA_HILOGI("TextListenerInnerApiTest testSetPreviewTextWithStyleDefaultNone001 START");
+    PreviewTextStyleInner defaultStyle {};
+    EXPECT_EQ(defaultStyle.underlineStyle, 0); // NONE
+    EXPECT_FALSE(defaultStyle.hasUnderlineColor);
+    EXPECT_EQ(defaultStyle.underlineColor, 0U);
+}
+
+/**
+ * @tc.name: testPreviewTextStyleInnerMarshalling001
+ * @tc.desc: PreviewTextStyleInner Marshalling/Unmarshalling round-trip preserves all fields
+ * @tc.type: FUNC
+ */
+HWTEST_F(TextListenerInnerApiTest, testPreviewTextStyleInnerMarshalling001, TestSize.Level1)
+{
+    IMSA_HILOGI("TextListenerInnerApiTest testPreviewTextStyleInnerMarshalling001 START");
+    PreviewTextStyleInner style {};
+    style.underlineStyle = static_cast<int32_t>(UnderlineStyle::WAVY);
+    style.underlineColor = 0xFF00FF00;
+    style.hasUnderlineColor = true;
+
+    Parcel parcel;
+    ASSERT_TRUE(style.Marshalling(parcel));
+    parcel.RewindRead(0);
+    auto *unmarshalled = PreviewTextStyleInner::Unmarshalling(parcel);
+    ASSERT_NE(unmarshalled, nullptr);
+    EXPECT_EQ(unmarshalled->underlineStyle, style.underlineStyle);
+    EXPECT_EQ(unmarshalled->underlineColor, style.underlineColor);
+    EXPECT_EQ(unmarshalled->hasUnderlineColor, style.hasUnderlineColor);
+    delete unmarshalled;
+}
+
+/**
+ * @tc.name: testPreviewTextStyleInnerMarshalling002
+ * @tc.desc: PreviewTextStyleInner Marshalling/Unmarshalling with default values (NONE, no color)
+ * @tc.type: FUNC
+ */
+HWTEST_F(TextListenerInnerApiTest, testPreviewTextStyleInnerMarshalling002, TestSize.Level1)
+{
+    IMSA_HILOGI("TextListenerInnerApiTest testPreviewTextStyleInnerMarshalling002 START");
+    PreviewTextStyleInner style {};
+
+    Parcel parcel;
+    ASSERT_TRUE(style.Marshalling(parcel));
+    parcel.RewindRead(0);
+    auto *unmarshalled = PreviewTextStyleInner::Unmarshalling(parcel);
+    ASSERT_NE(unmarshalled, nullptr);
+    EXPECT_EQ(unmarshalled->underlineStyle, 0);
+    EXPECT_EQ(unmarshalled->underlineColor, 0U);
+    EXPECT_FALSE(unmarshalled->hasUnderlineColor);
+    delete unmarshalled;
+}
 } // namespace MiscServices
 } // namespace OHOS

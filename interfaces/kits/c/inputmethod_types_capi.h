@@ -341,6 +341,38 @@ typedef enum InputMethod_RequestKeyboardReason {
      */
     IME_REQUEST_REASON_OTHER = 20
 } InputMethod_RequestKeyboardReason;
+
+/**
+ * @brief Enumerates the underline styles for preview text.
+ *
+ * @since 26.1.0
+ */
+typedef enum OH_InputMethod_UnderlineStyle {
+    /**
+     * @brief No underline.
+     *
+     * @since 26.1.0
+     */
+    OH_INPUTMETHOD_UNDERLINE_STYLE_NONE = 0,
+    /**
+     * @brief Solid underline.
+     *
+     * @since 26.1.0
+     */
+    OH_INPUTMETHOD_UNDERLINE_STYLE_SOLID = 1,
+    /**
+     * @brief Wavy underline.
+     *
+     * @since 26.1.0
+     */
+    OH_INPUTMETHOD_UNDERLINE_STYLE_WAVY = 2,
+    /**
+     * @brief Dashed underline.
+     *
+     * @since 26.1.0
+     */
+    OH_INPUTMETHOD_UNDERLINE_STYLE_DASHED = 3,
+} OH_InputMethod_UnderlineStyle;
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

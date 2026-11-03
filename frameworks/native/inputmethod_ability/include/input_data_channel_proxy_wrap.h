@@ -75,6 +75,8 @@ public:
     int32_t GetRichAfterCursor(int32_t number, RichTextData &richText, const AsyncIpcCallBack &callback = nullptr);
     int32_t SetPreviewText(
         const std::string &text, const RangeInner &range, const AsyncIpcCallBack &callback = nullptr);
+    int32_t SetPreviewTextWithStyle(const std::string &text, const RangeInner &range,
+        const PreviewTextStyleInner &style, const AsyncIpcCallBack &callback = nullptr);
     int32_t FinishTextPreview(const AsyncIpcCallBack &callback = nullptr);
     int32_t ClearRspHandlers();
 

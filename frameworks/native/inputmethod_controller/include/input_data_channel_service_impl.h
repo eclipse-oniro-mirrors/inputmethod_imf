@@ -52,6 +52,8 @@ public:
     ErrCode SendPrivateCommand(const Value &value) override;
     ErrCode SetPreviewText(const std::string &text, const RangeInner &rangeInner, uint64_t msgId,
         const sptr<IRemoteObject> &agent) override;
+    ErrCode SetPreviewTextWithStyle(const std::string &text, const RangeInner &rangeInner,
+        const PreviewTextStyleInner &styleInner, uint64_t msgId, const sptr<IRemoteObject> &agent) override;
     ErrCode FinishTextPreview(uint64_t msgId, const sptr<IRemoteObject> &agent) override;
     ErrCode SendMessage(const ArrayBuffer &arraybuffer) override;
     ErrCode HandleKeyEventResult(uint64_t cbId, bool consumeResult) override;

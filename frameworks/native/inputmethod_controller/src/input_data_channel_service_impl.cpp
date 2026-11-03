@@ -286,6 +286,21 @@ ErrCode InputDataChannelServiceImpl::SetPreviewText(
     return ret;
 }
 
+ErrCode InputDataChannelServiceImpl::SetPreviewTextWithStyle(const std::string &text, const RangeInner &rangeInner,
+    const PreviewTextStyleInner &styleInner, uint64_t msgId, const sptr<IRemoteObject> &agent)
+{
+    Range range = InputMethodTools::GetInstance().InnerToRange(rangeInner);
+    auto instance = InputMethodController::GetInstance();
+    if (instance == nullptr) {
+        IMSA_HILOGE("failed to get InputMethodController instance!");
+        ResponseDataChannel(agent, msgId, ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL);
+        return ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL;
+    }
+    auto ret = instance->SetPreviewTextWithStyle(text, range, styleInner);
+    ResponseDataChannel(agent, msgId, ret);
+    return ret;
+}
+
 ErrCode InputDataChannelServiceImpl::FinishTextPreview(uint64_t msgId, const sptr<IRemoteObject> &agent)
 {
     auto instance = InputMethodController::GetInstance();

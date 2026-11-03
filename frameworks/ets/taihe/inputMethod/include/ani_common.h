@@ -23,6 +23,7 @@
 #include "imc_inner_listener.h"
 #include "ohos.inputMethod.impl.hpp"
 #include "ohos.inputMethod.proj.hpp"
+#include "ohos.inputMethodEngine.proj.hpp"
 #include "taihe/runtime.hpp"
 #include "ui_content.h"
 using InputMethodProperty_t = ohos::inputMethod::InputMethodProperty;
@@ -32,6 +33,7 @@ using InputWindowInfo_t = ohos::inputMethod::InputWindowInfo;
 using RequestKeyboardReason_t = ohos::inputMethod::RequestKeyboardReason;
 using TextConfig_t = ohos::inputMethod::TextConfig;
 using Range_t = ohos::inputMethod::Range;
+using PreviewTextStyle_t = ohos::inputMethodEngine::PreviewTextStyle;
 using Movement_t = ohos::inputMethod::Movement;
 using KeyboardStatus_t = ohos::inputMethod::KeyboardStatus;
 using FunctionKey_t = ohos::inputMethod::FunctionKey;
@@ -61,6 +63,8 @@ using callbackType = std::variant<taihe::callback<int32_t()>, taihe::callback<ta
     taihe::callback<void(InputMethodProperty_t const &, InputMethodSubtype_t const &)>,
     taihe::callback<void(InputMethodProperty_t const &, InputMethodSubtype_t const &, int32_t)>,
     taihe::callback<void(::taihe::string_view text, ::ohos::inputMethod::Range const& range)>,
+    taihe::callback<void(::taihe::string_view text, ::ohos::inputMethod::Range const& range,
+        ::ohos::inputMethodEngine::PreviewTextStyle const& style)>,
     taihe::callback<void(UndefinedType_t const&)>, taihe::callback<void(AttachFailureReason_t)>>;
 
 struct CallbackObject {

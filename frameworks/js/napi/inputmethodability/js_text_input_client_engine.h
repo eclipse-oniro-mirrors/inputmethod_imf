@@ -382,6 +382,26 @@ struct SetPreviewTextContext : public AsyncCall::Context {
     }
 };
 
+struct SetPreviewTextWithStyleContext : public AsyncCall::Context {
+    std::string text;
+    Range range;
+    PreviewTextStyleInner style;
+    SetPreviewTextWithStyleContext() : Context(nullptr, nullptr){};
+    napi_status operator()(napi_env env, size_t argc, napi_value *argv, napi_value self) override
+    {
+        CHECK_RETURN(self != nullptr, "self is nullptr", napi_invalid_arg);
+        return Context::operator()(env, argc, argv, self);
+    }
+    napi_status operator()(napi_env env, napi_value *result) override
+    {
+        if (status_ != napi_ok) {
+            output_ = nullptr;
+            return status_;
+        }
+        return Context::operator()(env, result);
+    }
+};
+
 struct FinishTextPreviewContext : public AsyncCall::Context {
     FinishTextPreviewContext() : Context(nullptr, nullptr){};
     napi_status operator()(napi_env env, size_t argc, napi_value *argv, napi_value self) override
@@ -438,6 +458,8 @@ public:
     static napi_value SendPrivateCommand(napi_env env, napi_callback_info info);
     static napi_value SetPreviewText(napi_env env, napi_callback_info info);
     static napi_value SetPreviewTextSync(napi_env env, napi_callback_info info);
+    static napi_value SetPreviewTextWithStyle(napi_env env, napi_callback_info info);
+    static napi_value SetPreviewTextWithStyleSync(napi_env env, napi_callback_info info);
     static napi_value FinishTextPreview(napi_env env, napi_callback_info info);
     static napi_value FinishTextPreviewSync(napi_env env, napi_callback_info info);
     static napi_value SendMessage(napi_env env, napi_callback_info info);
@@ -471,6 +493,9 @@ private:
     static napi_value HandleParamCheckFailure(napi_env env);
     static napi_status GetPreviewTextParam(napi_env env, size_t argc, napi_value *argv, std::string &text,
         Range &range);
+    static napi_status GetPreviewTextWithStyleParam(
+        napi_env env, size_t argc, napi_value *argv, SetPreviewTextWithStyleContext &ctxt);
+    static napi_status ParsePreviewTextStyle(napi_env env, napi_value argv, PreviewTextStyleInner &style);
     static bool IsTargetDeviceType(int32_t resDeviceType);
     void RegisterListener(napi_value callback, std::string type, std::shared_ptr<JSCallbackObject> callbackObj);
     void UnRegisterListener(napi_value callback, std::string type);

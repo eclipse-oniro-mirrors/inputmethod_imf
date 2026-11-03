@@ -108,7 +108,8 @@ napi_value JsInputMethodEngineSetting::Init(napi_env env, napi_value exports)
         DECLARE_NAPI_STATIC_PROPERTY("RequestKeyboardReason", GetJsRequestKeyboardReasonProperty(env)),
         DECLARE_NAPI_STATIC_PROPERTY("CapitalizeMode", GetJsCapitalizeModeProperty(env)),
         DECLARE_NAPI_STATIC_PROPERTY("GradientMode", GetJsGradientModeProperty(env)),
-        DECLARE_NAPI_STATIC_PROPERTY("FluidLightMode", GetJsFluidLightModeProperty(env))
+        DECLARE_NAPI_STATIC_PROPERTY("FluidLightMode", GetJsFluidLightModeProperty(env)),
+        DECLARE_NAPI_STATIC_PROPERTY("UnderlineStyle", GetJsUnderlineStyleProperty(env))
     };
     IMF_CALL(
         napi_define_properties(env, exports, sizeof(descriptor) / sizeof(napi_property_descriptor), descriptor));
@@ -295,6 +296,25 @@ napi_value JsInputMethodEngineSetting::GetJsRequestKeyboardReasonProperty(napi_e
         JsUtil::Object::WriteProperty(
             env, requestKeyboardReason, "OTHER", static_cast<int32_t>(RequestKeyboardReason::OTHER));
     return ret ? requestKeyboardReason : JsUtil::Const::Null(env);
+}
+
+napi_value JsInputMethodEngineSetting::GetJsUnderlineStyleProperty(napi_env env)
+{
+    napi_value underlineStyle = nullptr;
+    napi_value none = nullptr;
+    napi_value solid = nullptr;
+    napi_value wavy = nullptr;
+    napi_value dashed = nullptr;
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(UnderlineStyle::NONE), &none));
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(UnderlineStyle::SOLID), &solid));
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(UnderlineStyle::WAVY), &wavy));
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(UnderlineStyle::DASHED), &dashed));
+    IMF_CALL(napi_create_object(env, &underlineStyle));
+    IMF_CALL(napi_set_named_property(env, underlineStyle, "NONE", none));
+    IMF_CALL(napi_set_named_property(env, underlineStyle, "SOLID", solid));
+    IMF_CALL(napi_set_named_property(env, underlineStyle, "WAVY", wavy));
+    IMF_CALL(napi_set_named_property(env, underlineStyle, "DASHED", dashed));
+    return underlineStyle;
 }
 
 std::shared_ptr<JsInputMethodEngineSetting> JsInputMethodEngineSetting::GetInputMethodEngineSetting()
