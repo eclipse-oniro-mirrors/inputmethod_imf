@@ -1883,6 +1883,26 @@ int32_t InputMethodAbility::SetPreviewText(
     return dataChannel->SetPreviewText(text, rangeInner, callback);
 }
 
+int32_t InputMethodAbility::SetPreviewTextWithStyle(
+    const std::string &text, const Range &range, const PreviewTextStyleInner &style, const AsyncIpcCallBack &callback)
+{
+#ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE
+    HISTOGRAM_BOOLEAN("imekit.inputMethodEngine.setPreviewText", 1);
+#endif
+    InputMethodSyncTrace tracer("IMA_SetPreviewTextWithStyle");
+    auto dataChannel = GetInputDataChannelProxyWrap();
+    if (dataChannel == nullptr) {
+        IMSA_HILOGE("dataChannel is nullptr!");
+        return ErrorCode::ERROR_IMA_CHANNEL_NULLPTR;
+    }
+    RangeInner rangeInner = InputMethodTools::GetInstance().RangeToInner(range);
+    // Force alpha channel to 0xFF (opaque), keep RRGGBB unchanged
+    constexpr uint32_t ALPHA_OPAQUE_MASK = 0xFF000000;
+    PreviewTextStyleInner opaqueStyle = style;
+    opaqueStyle.underlineColor = style.underlineColor | ALPHA_OPAQUE_MASK;
+    return dataChannel->SetPreviewTextWithStyle(text, rangeInner, opaqueStyle, callback);
+}
+
 int32_t InputMethodAbility::FinishTextPreview(const AsyncIpcCallBack &callback)
 {
 #ifdef HIVIEWDFX_API_METRICS_EXT_ENABLE

@@ -412,6 +412,26 @@ int32_t InputMethodControllerImpl::SetPreviewTextCallback(const std::u16string &
     return ErrorCode::NO_ERROR;
 }
 
+int32_t InputMethodControllerImpl::SetPreviewTextWithStyleCallback(const std::u16string &text, const Range &range,
+    const PreviewTextStyleInner &style)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    auto &cbVec = jsCbMap_["setPreviewTextWithStyle"];
+    for (auto &cb : cbVec) {
+        auto &func = std::get<taihe::callback<void(taihe::string_view, Range_t const &,
+            ::ohos::inputMethodEngine::PreviewTextStyle const &)>>(cb->callback);
+        taihe::string textStr = Str16ToStr8(text);
+        Range_t tmpRange { .start = range.start, .end = range.end };
+        ::ohos::inputMethodEngine::PreviewTextStyle tmpStyle {
+            .underlineStyle = ::ohos::inputMethodEngine::UnderlineStyle::from_value(style.underlineStyle),
+            .underlineColor = style.hasUnderlineColor
+                ? taihe::optional<uint32_t>(std::in_place_t{}, style.underlineColor)
+                : taihe::optional<uint32_t>{} };
+        func(textStr, tmpRange, tmpStyle);
+    }
+    return ErrorCode::NO_ERROR;
+}
+
 void InputMethodControllerImpl::FinishTextPreviewCallback()
 {
     std::lock_guard<std::mutex> lock(mutex_);
@@ -660,7 +680,7 @@ void InputMethodControllerImpl::UpdateCursorSync(::ohos::inputMethod::CursorInfo
 
 void InputMethodControllerImpl::UpdateTextPreviewState(const std::string &type)
 {
-    if (type == "setPreviewText" || type == "finishTextPreview") {
+    if (type == "setPreviewText" || type == "setPreviewTextWithStyle" || type == "finishTextPreview") {
         auto instance = InputMethodController::GetInstance();
         if (instance == nullptr) {
             IMSA_HILOGE("GetInstance() is nullptr!");
@@ -686,7 +706,26 @@ bool InputMethodControllerImpl::IsRegister(const std::string &type)
 
 bool InputMethodControllerImpl::IsTextPreviewSupported()
 {
-    return IsRegister("setPreviewText") && IsRegister("finishTextPreview");
+    return (IsRegister("setPreviewText") || IsRegister("setPreviewTextWithStyle")) &&
+           IsRegister("finishTextPreview");
+}
+
+void InputMethodControllerImpl::RequestSystemInputCapabilitySync(InputCapabilityType_t type)
+{
+    auto instance = InputMethodController::GetInstance();
+    if (instance == nullptr) {
+        IMSA_HILOGE("GetInstance() is nullptr!");
+        set_business_error(JsUtils::Convert(ErrorCode::ERROR_IMC_NULLPTR),
+            JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IMC_NULLPTR)));
+        return;
+    }
+    int32_t errCode = instance->RequestSystemInputCapability(static_cast<InputCapabilityType>(type.get_value()));
+    if (errCode != ErrorCode::NO_ERROR) {
+        set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
+        IMSA_HILOGE("RequestSystemInputCapability failed, errCode: %{public}d!", errCode);
+        return;
+    }
+    IMSA_HILOGI("RequestSystemInputCapability success");
 }
 } // namespace MiscServices
 } // namespace OHOS

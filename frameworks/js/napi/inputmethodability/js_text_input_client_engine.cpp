@@ -78,6 +78,8 @@ napi_value JsTextInputClientEngine::Init(napi_env env, napi_value info)
         DECLARE_NAPI_FUNCTION("getCallingWindowInfo", GetCallingWindowInfo),
         DECLARE_NAPI_FUNCTION("setPreviewText", SetPreviewText),
         DECLARE_NAPI_FUNCTION("setPreviewTextSync", SetPreviewTextSync),
+        DECLARE_NAPI_FUNCTION("setPreviewTextWithStyle", SetPreviewTextWithStyle),
+        DECLARE_NAPI_FUNCTION("setPreviewTextWithStyleSync", SetPreviewTextWithStyleSync),
         DECLARE_NAPI_FUNCTION("finishTextPreview", FinishTextPreview),
         DECLARE_NAPI_FUNCTION("finishTextPreviewSync", FinishTextPreviewSync),
         DECLARE_NAPI_FUNCTION("sendMessage", SendMessage),
@@ -1254,6 +1256,73 @@ napi_value JsTextInputClientEngine::SetPreviewTextSync(napi_env env, napi_callba
     return JsUtil::Const::Null(env);
 }
 
+napi_value JsTextInputClientEngine::SetPreviewTextWithStyle(napi_env env, napi_callback_info info)
+{
+    auto traceId = GenerateTraceId();
+    InputMethodSyncTrace tracer("JS_SetPreviewTextWithStyle_Start", traceId);
+    IMSA_HILOGD("JsTextInputClientEngine in");
+    auto ctxt = std::make_shared<SetPreviewTextWithStyleContext>();
+    auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
+        if (GetPreviewTextWithStyleParam(env, argc, argv, *ctxt) != napi_ok) {
+            return napi_generic_failure;
+        }
+        return napi_ok;
+    };
+    auto output = [ctxt, traceId](napi_env env, napi_value *result) -> napi_status {
+        InputMethodSyncTrace tracer("JS_SetPreviewTextWithStyle_Complete", traceId);
+        return napi_ok;
+    };
+    auto exec = [ctxt, traceId](AsyncCall::Context *ctx, AsyncCall::Context::CallBackAction completeFunc) {
+        InputMethodSyncTrace tracer("JS_SetPreviewTextWithStyle_Exec", traceId);
+        auto rspCallBack = [ctxt, completeFunc](int32_t code, const ResponseData &data) -> void {
+            if (code == ErrorCode::NO_ERROR) {
+                IMSA_HILOGD("exec setPreviewTextWithStyle success");
+                ctxt->SetState(napi_ok);
+            } else if (code == ErrorCode::ERROR_INVALID_RANGE) {
+                ctxt->SetErrorCode(code);
+                ctxt->SetErrorMessage("range should be included in preview text range, otherwise should be included in "
+                                      "total text range!");
+            } else {
+                ctxt->SetErrorCode(code);
+            }
+            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
+        };
+        int32_t code = InputMethodAbility::GetInstance().SetPreviewTextWithStyle(
+            ctxt->text, ctxt->range, ctxt->style, rspCallBack);
+        if (code != ErrorCode::NO_ERROR) {
+            ctxt->SetErrorCode(code);
+            completeFunc != nullptr ? completeFunc() : IMSA_HILOGE("completeFunc is nullptr");
+        }
+    };
+    ctxt->SetAction(std::move(input), std::move(output));
+    // 3 means JsAPI:setPreviewTextWithStyle needs 3 params at most
+    EditAsyncCall asyncCall(env, info, ctxt, 3);
+    return asyncCall.Call(env, exec, __FUNCTION__);
+}
+
+napi_value JsTextInputClientEngine::SetPreviewTextWithStyleSync(napi_env env, napi_callback_info info)
+{
+    InputMethodSyncTrace tracer("JS_SetPreviewTextWithStyleSync", GenerateTraceId());
+    IMSA_HILOGD("start.");
+    // 3 means JsAPI:setPreviewTextWithStyle needs 3 params at most
+    size_t argc = 3;
+    napi_value argv[3] = { nullptr };
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    SetPreviewTextWithStyleContext ctxt;
+    if (GetPreviewTextWithStyleParam(env, argc, argv, ctxt) != napi_ok) {
+        return JsUtil::Const::Null(env);
+    }
+    int32_t ret = InputMethodAbility::GetInstance().SetPreviewTextWithStyle(ctxt.text, ctxt.range, ctxt.style);
+    if (ret == ErrorCode::ERROR_INVALID_RANGE) {
+        JsUtils::ThrowException(env, IMFErrorCode::EXCEPTION_PARAMCHECK,
+            "range should be included in preview text range, otherwise should be included in total text range",
+            TYPE_NONE);
+    } else if (ret != ErrorCode::NO_ERROR) {
+        JsUtils::ThrowException(env, JsUtils::Convert(ret), "failed to set preview text with style!", TYPE_NONE);
+    }
+    return JsUtil::Const::Null(env);
+}
+
 napi_value JsTextInputClientEngine::FinishTextPreview(napi_env env, napi_callback_info info)
 {
     auto traceId = GenerateTraceId();
@@ -1346,6 +1415,41 @@ napi_status JsTextInputClientEngine::GetPreviewTextParam(napi_env env, size_t ar
         napi_generic_failure);
     PARAM_CHECK_RETURN(env, JsRange::Read(env, argv[1], range),
         "range covert failed, the range should have numbers start and end", TYPE_NONE, napi_generic_failure);
+    return napi_ok;
+}
+
+napi_status JsTextInputClientEngine::GetPreviewTextWithStyleParam(
+    napi_env env, size_t argc, napi_value *argv, SetPreviewTextWithStyleContext &ctxt)
+{
+    // 3 means JsAPI:setPreviewTextWithStyle needs 3 params, argv[2] is style object.
+    if (argc < 3) {
+        IMSA_HILOGE("at least three parameters is required!");
+        return napi_generic_failure;
+    }
+    if (GetPreviewTextParam(env, argc, argv, ctxt.text, ctxt.range) != napi_ok) {
+        return napi_generic_failure;
+    }
+    // 2 means parameter of style<PreviewTextStyle>
+    if (JsUtil::GetType(env, argv[2]) != napi_object) {
+        IMSA_HILOGE("style type must be PreviewTextStyle!");
+        return napi_generic_failure;
+    }
+    // 2 means parameter of style<PreviewTextStyle>
+    return ParsePreviewTextStyle(env, argv[2], ctxt.style);
+}
+
+napi_status JsTextInputClientEngine::ParsePreviewTextStyle(napi_env env, napi_value argv, PreviewTextStyleInner &style)
+{
+    napi_value value = nullptr;
+    // 2 means parameter of style<PreviewTextStyle>
+    napi_get_named_property(env, argv, "underlineStyle", &value);
+    if (!JsUtil::GetValue(env, value, style.underlineStyle)) {
+        IMSA_HILOGE("underlineStyle covert failed!");
+        return napi_generic_failure;
+    }
+    // 2 means parameter of style<PreviewTextStyle>
+    napi_get_named_property(env, argv, "underlineColor", &value);
+    style.hasUnderlineColor = JsUtil::GetValue(env, value, style.underlineColor);
     return napi_ok;
 }
 

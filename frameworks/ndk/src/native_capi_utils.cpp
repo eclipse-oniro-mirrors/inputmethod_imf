@@ -73,6 +73,8 @@ static const std::map<int32_t, InputMethod_ErrorCode> ERROR_CODE_MAP = {
     { ErrorCode::ERROR_IMC_NULLPTR,                    IME_ERR_IMMS               },
     { ErrorCode::ERROR_ACCOUNT_LOCALID_FAILED,        IME_ERR_IMMS               },
     { ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL,      IME_ERR_IMCLIENT           },
+    { ErrorCode::ERROR_NOT_DEFAULT_IME,                OH_INPUTMETHOD_ERR_NOT_DEFAULT_IME    },
+    { ErrorCode::ERROR_IMSA_INPUT_TYPE_NOT_SUPPORTED,   OH_INPUTMETHOD_INPUT_CAPABILITY_TYPE_NOT_SUPPORTED },
 };
 
 InputMethod_ErrorCode ErrorCodeConvert(int32_t code)

@@ -56,6 +56,8 @@ public:
     std::u16string GetRightTextOfCursorCallback(int32_t number);
     int32_t GetTextIndexAtCursorCallback();
     int32_t SetPreviewTextCallback(const std::u16string &text, const Range &range);
+    int32_t SetPreviewTextWithStyleCallback(const std::u16string &text, const Range &range,
+        const PreviewTextStyleInner &style);
     void FinishTextPreviewCallback();
 
     void DiscardTypingTextSync();
@@ -67,6 +69,7 @@ public:
     void ShowSoftKeyboardIdSync(int64_t displayId);
     void SendMessageSync(::taihe::string_view msgId, ::taihe::optional_view<::taihe::array<uint8_t>> msgParam);
     void recvMessage(::taihe::optional_view<MessageHandler_t> msgHandler);
+    void RequestSystemInputCapabilitySync(InputCapabilityType_t type);
     void UpdateCursorSync(::ohos::inputMethod::CursorInfo const& cursorInfo);
     void OnSelectByRange(int32_t start, int32_t end) override;
     void OnSelectByMovement(int32_t direction) override;
@@ -132,6 +135,19 @@ public:
     void OffSetPreviewText(taihe::optional_view<uintptr_t> opq)
     {
         InputMethodControllerImpl::GetInstance()->UnRegisterListener("setPreviewText", opq);
+    }
+
+    void OnSetPreviewTextWithStyle(
+        taihe::callback_view<void(::taihe::string_view text, ::ohos::inputMethod::Range const& range,
+            ::ohos::inputMethodEngine::PreviewTextStyle const& style)> f,
+        uintptr_t opq)
+    {
+        InputMethodControllerImpl::GetInstance()->RegisterListener("setPreviewTextWithStyle", f, opq);
+    }
+
+    void OffSetPreviewTextWithStyle(taihe::optional_view<uintptr_t> opq)
+    {
+        InputMethodControllerImpl::GetInstance()->UnRegisterListener("setPreviewTextWithStyle", opq);
     }
 
     void OnFinishTextPreview(taihe::callback_view<void(UndefinedType_t const&)> f, uintptr_t opq)
@@ -275,6 +291,10 @@ public:
     void recvMessage(::taihe::optional_view<MessageHandler_t> msgHandler)
     {
         InputMethodControllerImpl::GetInstance()->recvMessage(msgHandler);
+    }
+    void RequestSystemInputCapabilitySync(InputCapabilityType_t type)
+    {
+        InputMethodControllerImpl::GetInstance()->RequestSystemInputCapabilitySync(type);
     }
     void UpdateCursorSync(::ohos::inputMethod::CursorInfo const& cursorInfo)
     {

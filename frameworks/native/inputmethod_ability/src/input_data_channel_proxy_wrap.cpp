@@ -217,6 +217,17 @@ int32_t InputDataChannelProxyWrap::SetPreviewText(
         static_cast<int32_t>(IInputDataChannelIpcCode::COMMAND_SET_PREVIEW_TEXT));
 }
 
+int32_t InputDataChannelProxyWrap::SetPreviewTextWithStyle(const std::string &text, const RangeInner &range,
+    const PreviewTextStyleInner &style, const AsyncIpcCallBack &callback)
+{
+    auto work = [agentObject = agentObject_, text, range, style](
+                    uint64_t msgId, const std::shared_ptr<InputDataChannelProxy> &channel) -> int32_t {
+        return channel->SetPreviewTextWithStyle(text, range, style, msgId, agentObject);
+    };
+    return Request(callback, work, callback == nullptr,
+        static_cast<int32_t>(IInputDataChannelIpcCode::COMMAND_SET_PREVIEW_TEXT_WITH_STYLE));
+}
+
 int32_t InputDataChannelProxyWrap::FinishTextPreview(const AsyncIpcCallBack &callback)
 {
     auto work = [agentObject = agentObject_](

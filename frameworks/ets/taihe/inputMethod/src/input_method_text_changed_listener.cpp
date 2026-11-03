@@ -86,6 +86,11 @@ int32_t InputMethodTextChangedListener::SetPreviewText(const std::u16string &tex
 {
     return InputMethodControllerImpl::GetInstance()->SetPreviewTextCallback(text, range);
 }
+int32_t InputMethodTextChangedListener::SetPreviewTextWithStyle(const std::u16string &text, const Range &range,
+    const PreviewTextStyleInner &style)
+{
+    return InputMethodControllerImpl::GetInstance()->SetPreviewTextWithStyleCallback(text, range, style);
+}
 void InputMethodTextChangedListener::FinishTextPreview()
 {
     return InputMethodControllerImpl::GetInstance()->FinishTextPreviewCallback();

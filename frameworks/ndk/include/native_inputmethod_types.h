@@ -18,7 +18,8 @@
 #include <variant>
 
 #include "inputmethod_controller_capi.h"
-constexpr int32_t MAX_PLACEHOLDER_SIZE = 255; // 255 utf-16 chars
+#include "inputmethod_preview_text_style_capi.h"
+constexpr int32_t MAX_PLACEHOLDER_SIZE = 255;  // 255 utf-16 chars
 constexpr int32_t MAX_ABILITY_NAME_SIZE = 127; // 127 utf-16 chars
 // Maximum size of char16_t string, including the null terminator (0x0000).
 // The range of one UTF16 encoded character is [1,2] char16_t.
@@ -43,6 +44,12 @@ struct InputMethod_CursorInfo {
 struct InputMethod_TextAvoidInfo {
     double positionY;
     double height;
+};
+
+struct OH_InputMethod_PreviewTextStyle {
+    OH_InputMethod_UnderlineStyle underlineStyle = OH_INPUTMETHOD_UNDERLINE_STYLE_NONE;
+    uint32_t underlineColor = 0;
+    bool hasUnderlineColor = false;
 };
 struct InputMethod_TextConfig {
     InputMethod_TextInputType inputType;
@@ -80,6 +87,7 @@ struct InputMethod_TextEditorProxy {
     OH_TextEditorProxy_GetTextIndexAtCursorFunc getTextIndexAtCursorFunc;
     OH_TextEditorProxy_ReceivePrivateCommandFunc receivePrivateCommandFunc;
     OH_TextEditorProxy_SetPreviewTextFunc setPreviewTextFunc;
+    OH_InputMethod_TextEditorProxy_SetPreviewTextWithStyleFunc setPreviewTextWithStyleFunc;
     OH_TextEditorProxy_FinishTextPreviewFunc finishTextPreviewFunc;
     std::atomic_bool isCallbackInMainThread = false;
 };

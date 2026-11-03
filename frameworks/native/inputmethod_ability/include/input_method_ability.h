@@ -112,6 +112,8 @@ public:
     bool IsDefaultIme();
     int32_t GetCallingWindowInfo(CallingWindowInfo &windowInfo);
     int32_t SetPreviewText(const std::string &text, const Range &range, const AsyncIpcCallBack &callback = nullptr);
+    int32_t SetPreviewTextWithStyle(const std::string &text, const Range &range, const PreviewTextStyleInner &style,
+        const AsyncIpcCallBack &callback = nullptr);
     int32_t FinishTextPreview(const AsyncIpcCallBack &callback = nullptr);
     int32_t NotifyPanelStatus(bool isUseParameterFlag = false, PanelFlag panelFlag = FLG_FIXED,
         bool isCheckFuncButton = false);

@@ -89,6 +89,7 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void SetEDCDefaultInputMethod([in] String edcBackupImeName);
     void ExecTextInteraction([in] String text);
     void IsPttGestureAvailable([in] IRemoteObject channel, [out] boolean resultValue);
+    void RequestSystemInputCapability([in] int type);
     void RegisterInAppProxyIme([in] RegisterOptions options, [in] IInputMethodCore core, [in] IRemoteObject agent);
     void UnregisterInAppProxyIme();
 }

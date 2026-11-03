@@ -44,6 +44,7 @@
 #include "window_adapter.h"
 #include "tdd_util.h"
 #include "scene_board_judgement.h"
+#include "ime_enabled_info_manager.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -863,5 +864,188 @@ HWTEST_F(InputMethodServiceTest, ShowInputInner_NotStylus_NoStylusIme_005, TestS
     UserSessionManager::GetInstance().userSessions_.clear();
 }
 
+/**
+ * @tc.name: RequestSystemInputCapability_InvalidType
+ * @tc.desc: AC-1.6: invalid type returns ERROR_PARAMETER_CHECK_FAILED
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodServiceTest, RequestSystemInputCapability_InvalidType, TestSize.Level1)
+{
+    IMSA_HILOGI("RequestSystemInputCapability_InvalidType TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    IdentityCheckerMock::ResetParam();
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    auto ret = imsa->RequestSystemInputCapability(99);
+    EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+}
+
+/**
+ * @tc.name: RequestSystemInputCapability_Translation_NotDefaultIme
+ * @tc.desc: AC-1.2: current ime is not default ime, returns ERROR_NOT_DEFAULT_IME
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodServiceTest, RequestSystemInputCapability_Translation_NotDefaultIme, TestSize.Level1)
+{
+    IMSA_HILOGI("RequestSystemInputCapability_Translation_NotDefaultIme TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    IdentityCheckerMock::ResetParam();
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    int32_t userId = TddUtil::GetCurrentUserId();
+    // setup user session with attached client
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+    auto clientGroup = std::make_shared<ClientGroup>(0, nullptr);
+    session->clientGroupMap_[0] = clientGroup;
+    auto clientInfo = std::make_shared<InputClientInfo>();
+    clientInfo->pid = IPCSkeleton::GetCallingPid();
+    clientGroup->mapClients_[nullptr] = clientInfo;
+    ImeEnabledInfo enabledInfo;
+    enabledInfo.bundleName = "com.other.ime";
+    enabledInfo.extensionName = "ServiceExtAbility";
+    enabledInfo.extraInfo.isDefaultIme = true;
+    ImeEnabledCfg enabledCfg;
+    enabledCfg.enabledInfos.push_back(enabledInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(userId, enabledCfg);
+    FullImeInfo fullImeInfo;
+    fullImeInfo.prop.name = "com.other.ime";
+    FullImeInfoManager::GetInstance().fullImeInfos_[userId].push_back(fullImeInfo);
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = "com.default.ime/ServiceExtAbility";
+    auto ret = imsa->RequestSystemInputCapability(static_cast<int32_t>(InputCapabilityType::TRANSLATION));
+    EXPECT_EQ(ret, ErrorCode::ERROR_NOT_DEFAULT_IME);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.erase(userId);
+    FullImeInfoManager::GetInstance().fullImeInfos_.erase(userId);
+    UserSessionManager::GetInstance().userSessions_.clear();
+}
+
+/**
+ * @tc.name: RequestSystemInputCapability_Translation_NullCurrentIme
+ * @tc.desc: AC-1.2 boundary: current ime is nullptr, returns ERROR_NOT_DEFAULT_IME
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodServiceTest, RequestSystemInputCapability_Translation_NullCurrentIme, TestSize.Level1)
+{
+    IMSA_HILOGI("RequestSystemInputCapability_Translation_NullCurrentIme TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    IdentityCheckerMock::ResetParam();
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    int32_t userId = TddUtil::GetCurrentUserId();
+    // setup user session with attached client
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+    auto clientGroup = std::make_shared<ClientGroup>(0, nullptr);
+    session->clientGroupMap_[0] = clientGroup;
+    auto clientInfo = std::make_shared<InputClientInfo>();
+    clientInfo->pid = IPCSkeleton::GetCallingPid();
+    clientGroup->mapClients_[nullptr] = clientInfo;
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.erase(userId);
+    FullImeInfoManager::GetInstance().fullImeInfos_.erase(userId);
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = "com.default.ime/ServiceExtAbility";
+    auto ret = imsa->RequestSystemInputCapability(static_cast<int32_t>(InputCapabilityType::TRANSLATION));
+    EXPECT_EQ(ret, ErrorCode::ERROR_NOT_DEFAULT_IME);
+    UserSessionManager::GetInstance().userSessions_.clear();
+}
+
+/**
+ * @tc.name: RequestSystemInputCapability_Translation_EmptyDefaultIme
+ * @tc.desc: AC-1.2 boundary: default ime config is empty, returns ERROR_NOT_DEFAULT_IME
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodServiceTest, RequestSystemInputCapability_Translation_EmptyDefaultIme, TestSize.Level1)
+{
+    IMSA_HILOGI("RequestSystemInputCapability_Translation_EmptyDefaultIme TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    IdentityCheckerMock::ResetParam();
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    int32_t userId = TddUtil::GetCurrentUserId();
+    // setup user session with attached client
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+    auto clientGroup = std::make_shared<ClientGroup>(0, nullptr);
+    session->clientGroupMap_[0] = clientGroup;
+    auto clientInfo = std::make_shared<InputClientInfo>();
+    clientInfo->pid = IPCSkeleton::GetCallingPid();
+    clientGroup->mapClients_[nullptr] = clientInfo;
+    ImeEnabledInfo enabledInfo;
+    enabledInfo.bundleName = "com.default.ime";
+    enabledInfo.extensionName = "ServiceExtAbility";
+    enabledInfo.extraInfo.isDefaultIme = true;
+    ImeEnabledCfg enabledCfg;
+    enabledCfg.enabledInfos.push_back(enabledInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(userId, enabledCfg);
+    FullImeInfo fullImeInfo;
+    fullImeInfo.prop.name = "com.default.ime";
+    FullImeInfoManager::GetInstance().fullImeInfos_[userId].push_back(fullImeInfo);
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = "";
+    auto ret = imsa->RequestSystemInputCapability(static_cast<int32_t>(InputCapabilityType::TRANSLATION));
+    EXPECT_EQ(ret, ErrorCode::ERROR_NOT_DEFAULT_IME);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.erase(userId);
+    FullImeInfoManager::GetInstance().fullImeInfos_.erase(userId);
+    UserSessionManager::GetInstance().userSessions_.clear();
+}
+
+/**
+ * @tc.name: RequestSystemInputCapability_Translation_TypeNotConfigured
+ * @tc.desc: AC-1.4: translation type not configured in config file, returns ERROR_IMSA_INPUT_TYPE_NOT_SUPPORTED
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodServiceTest, RequestSystemInputCapability_Translation_TypeNotConfigured, TestSize.Level1)
+{
+    IMSA_HILOGI("RequestSystemInputCapability_Translation_TypeNotConfigured TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    IdentityCheckerMock::ResetParam();
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    int32_t userId = TddUtil::GetCurrentUserId();
+    // setup current ime == default ime
+    ImeEnabledInfo enabledInfo;
+    enabledInfo.bundleName = "com.default.ime";
+    enabledInfo.extensionName = "ServiceExtAbility";
+    enabledInfo.extraInfo.isDefaultIme = true;
+    ImeEnabledCfg enabledCfg;
+    enabledCfg.enabledInfos.push_back(enabledInfo);
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.insert_or_assign(userId, enabledCfg);
+    FullImeInfo fullImeInfo;
+    fullImeInfo.prop.name = "com.default.ime";
+    FullImeInfoManager::GetInstance().fullImeInfos_[userId].push_back(fullImeInfo);
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = "com.default.ime/ServiceExtAbility";
+    // setup user session with attached client
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+    auto clientGroup = std::make_shared<ClientGroup>(0, nullptr);
+    session->clientGroupMap_[0] = clientGroup;
+    auto clientInfo = std::make_shared<InputClientInfo>();
+    clientInfo->pid = IPCSkeleton::GetCallingPid();
+    clientGroup->mapClients_[nullptr] = clientInfo;
+    // ensure TRANSLATION_INPUT is not in inputTypes_
+    InputTypeManager::GetInstance().isTypeCfgReady_ = true;
+    InputTypeManager::GetInstance().inputTypes_.erase(InputType::TRANSLATION_INPUT);
+    auto ret = imsa->RequestSystemInputCapability(static_cast<int32_t>(InputCapabilityType::TRANSLATION));
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_INPUT_TYPE_NOT_SUPPORTED);
+    // cleanup
+    InputTypeManager::GetInstance().inputTypes_.erase(InputType::TRANSLATION_INPUT);
+    InputTypeManager::GetInstance().isTypeCfgReady_ = false;
+    UserSessionManager::GetInstance().userSessions_.clear();
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.erase(userId);
+    FullImeInfoManager::GetInstance().fullImeInfos_.erase(userId);
+}
+
+/**
+ * @tc.name: RequestSystemInputCapability_Translation_NotAttached
+ * @tc.desc: AC-1.5: caller not attached, returns ERROR_CLIENT_NOT_BOUND
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodServiceTest, RequestSystemInputCapability_Translation_NotAttached, TestSize.Level1)
+{
+    IMSA_HILOGI("RequestSystemInputCapability_Translation_NotAttached TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    IdentityCheckerMock::ResetParam();
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    int32_t userId = TddUtil::GetCurrentUserId();
+    // setup user session without any attached client
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+    auto ret = imsa->RequestSystemInputCapability(static_cast<int32_t>(InputCapabilityType::TRANSLATION));
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_BOUND);
+    UserSessionManager::GetInstance().userSessions_.clear();
+}
 } // namespace MiscServices
 } // namespace OHOS

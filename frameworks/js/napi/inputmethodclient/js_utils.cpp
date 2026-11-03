@@ -70,6 +70,7 @@ const std::map<int32_t, std::string> JsUtils::ERROR_CODE_CONVERT_MESSAGE_MAP = {
         "3. the caller is not system panel." },
     { EXCEPTION_NOT_FOCUSED, "the caller is not a focused application." },
     { EXCEPTION_IME_EXTENSION_NOT_ALLOWED, "the input method extension is not allowed." },
+    { EXCEPTION_INPUT_TYPE_NOT_SUPPORTED, "the input type is not supported." },
 };
 
 const std::map<int32_t, std::string> JsUtils::PARAMETER_TYPE = {

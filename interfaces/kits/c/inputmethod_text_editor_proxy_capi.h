@@ -34,14 +34,18 @@
  * @since 12
  * @version 1.0
  */
+#include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 #include "inputmethod_private_command_capi.h"
+#include "inputmethod_preview_text_style_capi.h"
 #include "inputmethod_text_config_capi.h"
 #include "inputmethod_types_capi.h"
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
+
 /**
  * @brief Define the InputMethod_TextEditorProxy structure type.
  *
@@ -246,6 +250,14 @@ typedef int32_t (*OH_TextEditorProxy_ReceivePrivateCommandFunc)(
  */
 typedef int32_t (*OH_TextEditorProxy_SetPreviewTextFunc)(
     InputMethod_TextEditorProxy *textEditorProxy, const char16_t text[], size_t length, int32_t start, int32_t end);
+/**
+ * @brief Called when input method setting preview text with style.
+ *
+ * @since 26.1.0
+ */
+typedef int32_t (*OH_InputMethod_TextEditorProxy_SetPreviewTextWithStyleFunc)(
+    InputMethod_TextEditorProxy *textEditorProxy, const char16_t text[], uint32_t length, int32_t start, int32_t end,
+    const OH_InputMethod_PreviewTextStyle *style);
 /**
  * @brief Called when input method finishing preview text.
  *
@@ -462,6 +474,15 @@ InputMethod_ErrorCode OH_TextEditorProxy_SetReceivePrivateCommandFunc(
  */
 InputMethod_ErrorCode OH_TextEditorProxy_SetSetPreviewTextFunc(
     InputMethod_TextEditorProxy *proxy, OH_TextEditorProxy_SetPreviewTextFunc setPreviewTextFunc);
+/**
+ * @brief Set function {@link OH_InputMethod_TextEditorProxy_SetPreviewTextWithStyleFunc} into
+ * {@link InputMethod_TextEditorProxy}.
+ *
+ * @since 26.1.0
+ */
+InputMethod_ErrorCode OH_InputMethod_TextEditorProxy_SetSetPreviewTextWithStyleFunc(
+    InputMethod_TextEditorProxy *proxy,
+    OH_InputMethod_TextEditorProxy_SetPreviewTextWithStyleFunc setPreviewTextWithStyleFunc);
 /**
  * @brief Set function {@link OH_TextEditorProxy_FinishTextPreviewFunc} into {@link InputMethod_TextEditorProxy}.
  *
@@ -680,6 +701,15 @@ InputMethod_ErrorCode OH_TextEditorProxy_GetReceivePrivateCommandFunc(
  */
 InputMethod_ErrorCode OH_TextEditorProxy_GetSetPreviewTextFunc(
     InputMethod_TextEditorProxy *proxy, OH_TextEditorProxy_SetPreviewTextFunc *setPreviewTextFunc);
+/**
+ * @brief Get function {@link OH_InputMethod_TextEditorProxy_SetPreviewTextWithStyleFunc} from
+ * {@link InputMethod_TextEditorProxy}.
+ *
+ * @since 26.1.0
+ */
+InputMethod_ErrorCode OH_InputMethod_TextEditorProxy_GetSetPreviewTextWithStyleFunc(
+    InputMethod_TextEditorProxy *proxy,
+    OH_InputMethod_TextEditorProxy_SetPreviewTextWithStyleFunc *setPreviewTextWithStyleFunc);
 /**
  * @brief Get function {@link OH_TextEditorProxy_FinishTextPreviewFunc} from {@link InputMethod_TextEditorProxy}.
  *

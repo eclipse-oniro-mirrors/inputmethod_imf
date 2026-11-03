@@ -37,6 +37,8 @@ public:
     int32_t GetTextIndexAtCursor() override;
     int32_t ReceivePrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand) override;
     int32_t SetPreviewText(const std::u16string &text, const OHOS::MiscServices::Range &range) override;
+    int32_t SetPreviewTextWithStyle(const std::u16string &text, const OHOS::MiscServices::Range &range,
+        const PreviewTextStyleInner &style) override;
     void FinishTextPreview() override;
     void OnDetach() override;
     std::shared_ptr<AppExecFwk::EventHandler> GetEventHandler() override;

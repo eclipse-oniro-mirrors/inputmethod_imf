@@ -76,6 +76,7 @@ public:
     static napi_value OnAttachmentDidFail(napi_env env, napi_callback_info info);
     static napi_value OffAttachmentDidFail(napi_env env, napi_callback_info info);
     static napi_value GetJsAttachFailureReasonProperty(napi_env env);
+    static napi_value GetJsUnderlineStyleProperty(napi_env env);
     void OnAttachmentDidFail(AttachFailureReason reason) override;
 
 private:

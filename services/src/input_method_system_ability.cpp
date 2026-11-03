@@ -1573,6 +1573,46 @@ ErrCode InputMethodSystemAbility::ExitCurrentInputType()
     return session->StartCurrentIme();
 }
 
+ErrCode InputMethodSystemAbility::RequestSystemInputCapability(int32_t type)
+{
+    auto userId = GetCallingUserId();
+    auto capabilityType = static_cast<InputCapabilityType>(type);
+    IMSA_HILOGI("RequestSystemInputCapability type=%{public}d, userId=%{public}d", type, userId);
+    auto inputType = CapabilityTypeToInputType(capabilityType);
+    if (inputType == InputType::NONE) {
+        IMSA_HILOGE("invalid type=%{public}d", type);
+        return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+    }
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+    if (session == nullptr) {
+        IMSA_HILOGE("%{public}d session is nullptr!", userId);
+        return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
+    }
+    // verify caller is attached (attach implies focused, unbind on unfocus)
+    auto [clientGroup, clientInfo] = session->GetClientBySelfPid(IPCSkeleton::GetCallingPid());
+    if (clientInfo == nullptr) {
+        IMSA_HILOGE("client not attached!");
+        return ErrorCode::ERROR_CLIENT_NOT_BOUND;
+    }
+    // verify current ime is the system default ime
+    auto currentIme = ImeInfoInquirer::GetInstance().GetCurrentInputMethod(userId);
+    auto defaultIme = ImeInfoInquirer::GetInstance().GetDefaultIme();
+    if (currentIme == nullptr || defaultIme.bundleName.empty()) {
+        IMSA_HILOGE("failed to get current or default ime!");
+        return ErrorCode::ERROR_NOT_DEFAULT_IME;
+    }
+    if (currentIme->name != defaultIme.bundleName) {
+        IMSA_HILOGE("current ime is not the system default ime!");
+        return ErrorCode::ERROR_NOT_DEFAULT_IME;
+    }
+    auto ret = StartInputType(userId, inputType, true, false);
+    if (ret == ErrorCode::ERROR_IMSA_INPUT_TYPE_NOT_FOUND) {
+        IMSA_HILOGE("input type not supported, type=%{public}d", type);
+        return ErrorCode::ERROR_IMSA_INPUT_TYPE_NOT_SUPPORTED;
+    }
+    return ret;
+}
+
 bool InputMethodSystemAbility::IsInputTypeCaller(int32_t userId, const std::string &bundleName)
 {
     if (!bundleName.empty()) {
@@ -3476,7 +3516,8 @@ bool InputMethodSystemAbility::IsCurrentIme(int32_t userId, uint32_t tokenId)
     return imeData != nullptr && bundleName == imeData->ime.first;
 }
 // LCOV_EXCL_START
-int32_t InputMethodSystemAbility::StartInputType(int32_t userId, InputType type, bool isPersistence)
+int32_t InputMethodSystemAbility::StartInputType(int32_t userId, InputType type, bool isPersistence,
+    bool isCheckPermission)
 {
     bool isPttType = type == InputType::PUSH_TO_TALK_INPUT;
     auto session = UserSessionManager::GetInstance().GetUserSession(userId);
@@ -3513,6 +3554,9 @@ int32_t InputMethodSystemAbility::StartInputType(int32_t userId, InputType type,
         IMSA_HILOGI("PTT: start input type finished, userId=%{public}d, type=%{public}d, ret=%{public}d.",
             userId, static_cast<int32_t>(type), ret);
         return ret;
+    }
+    if (!isCheckPermission) {
+        return OnStartInputType(userId, switchInfo, false, isPersistence);
     }
     return (type == InputType::SECURITY_INPUT || type == InputType::STYLUS_INPUT)
         ? OnStartInputType(userId, switchInfo, false) : OnStartInputType(userId, switchInfo, true, isPersistence);

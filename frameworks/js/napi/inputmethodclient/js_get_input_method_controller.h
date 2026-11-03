@@ -175,6 +175,27 @@ struct UpdateAttributeContext : public AsyncCall::Context {
     }
 };
 
+struct RequestSystemInputCapabilityContext : public AsyncCall::Context {
+    int32_t capabilityType = 0;
+    RequestSystemInputCapabilityContext() : Context(nullptr, nullptr){};
+    RequestSystemInputCapabilityContext(InputAction input, OutputAction output)
+        : Context(std::move(input), std::move(output)){};
+
+    napi_status operator()(napi_env env, size_t argc, napi_value *argv, napi_value self) override
+    {
+        CHECK_RETURN(self != nullptr, "self is nullptr!", napi_invalid_arg);
+        return Context::operator()(env, argc, argv, self);
+    }
+    napi_status operator()(napi_env env, napi_value *result) override
+    {
+        if (status_ != napi_ok) {
+            output_ = nullptr;
+            return status_;
+        }
+        return Context::operator()(env, result);
+    }
+};
+
 class JsGetInputMethodController : public ControllerListener {
 public:
     JsGetInputMethodController() = default;
@@ -201,8 +222,11 @@ public:
     static napi_value StopInput(napi_env env, napi_callback_info info);
     static napi_value Subscribe(napi_env env, napi_callback_info info);
     static napi_value UnSubscribe(napi_env env, napi_callback_info info);
+    static napi_value OnSetPreviewTextWithStyle(napi_env env, napi_callback_info info);
+    static napi_value OffSetPreviewTextWithStyle(napi_env env, napi_callback_info info);
     static napi_value SendMessage(napi_env env, napi_callback_info info);
     static napi_value RecvMessage(napi_env env, napi_callback_info info);
+    static napi_value RequestSystemInputCapability(napi_env env, napi_callback_info info);
     void OnSelectByRange(int32_t start, int32_t end) override;
     void OnSelectByMovement(int32_t direction) override;
     void InsertText(const std::u16string &text);
@@ -215,6 +239,7 @@ public:
     std::u16string GetText(const std::string &type, int32_t number);
     int32_t GetTextIndexAtCursor();
     int32_t SetPreviewText(const std::u16string &text, const Range &range);
+    int32_t SetPreviewTextWithStyle(const std::u16string &text, const Range &range, const PreviewTextStyleInner &style);
     void FinishTextPreview();
 
     class JsMessageHandler : public MsgHandlerCallbackInterface {
@@ -232,6 +257,8 @@ private:
     static napi_value JsConstructor(napi_env env, napi_callback_info cbinfo);
     static napi_value GetIMController(napi_env env, napi_callback_info cbInfo, bool needThrowException);
     static napi_value CreateSelectRange(napi_env env, int32_t start, int32_t end);
+    static napi_value CreatePreviewTextStyle(
+        napi_env env, int32_t underlineStyle, uint32_t underlineColor, bool hasUnderlineColor);
     static napi_value CreateSelectMovement(napi_env env, int32_t direction);
     static napi_value CreateSendFunctionKey(napi_env env, int32_t functionKey);
     void RegisterListener(napi_value callback, std::string type, std::shared_ptr<JSCallbackObject> callbackObj);
@@ -252,6 +279,8 @@ private:
     static napi_value GetJsEnabledStateProperty(napi_env env);
     static napi_value GetJsCapitalizeModeProperty(napi_env env);
     static napi_value GetJsRequestKeyboardReasonProperty(napi_env env);
+    static napi_value GetJsInputCapabilityTypeProperty(napi_env env);
+    static napi_value GetJsUnderlineStyleProperty(napi_env env);
     static std::shared_ptr<AppExecFwk::EventHandler> GetEventHandler();
     static bool IsTextPreviewSupported();
     static bool GetWindowIdFromUIContext(napi_env env, napi_value jsObject, uint32_t &windowId);
@@ -269,6 +298,9 @@ private:
         int32_t keyboardStatus = 0;
         int32_t enterKeyType = 0;
         int32_t number = 0;
+        int32_t underlineStyle = 0;
+        uint32_t underlineColor = 0;
+        bool hasUnderlineColor = false;
         std::shared_ptr<BlockData<std::string>> textResultHandler;
         std::shared_ptr<BlockData<std::int32_t>> indexResultHandler;
         explicit UvEntry(const std::vector<std::shared_ptr<JSCallbackObject>> &cbVec, const std::string &type)

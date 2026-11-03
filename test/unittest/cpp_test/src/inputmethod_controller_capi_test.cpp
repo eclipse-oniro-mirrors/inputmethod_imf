@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -26,6 +26,25 @@ using namespace testing::ext;
 using namespace OHOS;
 using namespace OHOS::MiscServices;
 using namespace testing;
+
+// PreviewTextStyle C API declarations (defined in inputmethod_preview_text_style_capi.h,
+// declared here as extern "C" to link against the C implementations in
+// inputmethod_preview_text_style_capi.cpp without pulling in the public header's
+// opaque typedef, since native_inputmethod_types.h already provides the concrete struct)
+extern "C" {
+OH_InputMethod_PreviewTextStyle *OH_InputMethod_PreviewTextStyle_Create(void);
+void OH_InputMethod_PreviewTextStyle_Destroy(OH_InputMethod_PreviewTextStyle *style);
+InputMethod_ErrorCode OH_InputMethod_PreviewTextStyle_SetUnderlineStyle(
+    OH_InputMethod_PreviewTextStyle *style, OH_InputMethod_UnderlineStyle underlineStyle);
+InputMethod_ErrorCode OH_InputMethod_PreviewTextStyle_GetUnderlineStyle(
+    OH_InputMethod_PreviewTextStyle *style, OH_InputMethod_UnderlineStyle *underlineStyle);
+InputMethod_ErrorCode OH_InputMethod_PreviewTextStyle_SetUnderlineColor(
+    OH_InputMethod_PreviewTextStyle *style, uint32_t underlineColor);
+InputMethod_ErrorCode OH_InputMethod_PreviewTextStyle_GetUnderlineColor(
+    OH_InputMethod_PreviewTextStyle *style, uint32_t *underlineColor);
+InputMethod_ErrorCode OH_InputMethod_PreviewTextStyle_HasUnderlineColor(
+    OH_InputMethod_PreviewTextStyle *style, bool *hasUnderlineColor);
+}
 
 namespace OHOS {
 namespace MiscServices {
@@ -263,6 +282,12 @@ int32_t SetPreviewTextFunc(
 {
     return 0;
 }
+int32_t SetPreviewTextWithStyleFunc(InputMethod_TextEditorProxy *proxy,
+    const char16_t *text, uint32_t length, int32_t start, int32_t end,
+    const OH_InputMethod_PreviewTextStyle *style)
+{
+    return IME_ERR_OK;
+}
 void FinishTextPreviewFunc(InputMethod_TextEditorProxy *proxy) { }
 void InputMethodControllerCapiTest::ConstructTextEditorProxy(InputMethod_TextEditorProxy *textEditorProxy)
 {
@@ -280,6 +305,8 @@ void InputMethodControllerCapiTest::ConstructTextEditorProxy(InputMethod_TextEdi
     EXPECT_EQ(IME_ERR_OK, OH_TextEditorProxy_SetGetTextIndexAtCursorFunc(textEditorProxy, GetTextIndexAtCursorFunc));
     EXPECT_EQ(IME_ERR_OK, OH_TextEditorProxy_SetReceivePrivateCommandFunc(textEditorProxy, ReceivePrivateCommandFunc));
     EXPECT_EQ(IME_ERR_OK, OH_TextEditorProxy_SetSetPreviewTextFunc(textEditorProxy, SetPreviewTextFunc));
+    EXPECT_EQ(IME_ERR_OK,
+        OH_InputMethod_TextEditorProxy_SetSetPreviewTextWithStyleFunc(textEditorProxy, SetPreviewTextWithStyleFunc));
     EXPECT_EQ(IME_ERR_OK, OH_TextEditorProxy_SetFinishTextPreviewFunc(textEditorProxy, FinishTextPreviewFunc));
 }
 
@@ -346,6 +373,14 @@ static void TestGetTextEditorProxyMember(InputMethod_TextEditorProxy *textEditor
     EXPECT_EQ(FinishTextPreviewFunc, finishTextPreviewFunc);
 }
 
+static void TestGetPreviewTextWithStyleMember(InputMethod_TextEditorProxy *textEditorProxy)
+{
+    OH_InputMethod_TextEditorProxy_SetPreviewTextWithStyleFunc setPreviewTextWithStyleFunc = nullptr;
+    EXPECT_EQ(IME_ERR_OK,
+        OH_InputMethod_TextEditorProxy_GetSetPreviewTextWithStyleFunc(textEditorProxy, &setPreviewTextWithStyleFunc));
+    EXPECT_EQ(SetPreviewTextWithStyleFunc, setPreviewTextWithStyleFunc);
+}
+
 /**
  * @tc.name: TextEditorProxy_001
  * @tc.desc: create and destroy TextEditorProxy success
@@ -358,6 +393,62 @@ HWTEST_F(InputMethodControllerCapiTest, TextEditorProxy_001, TestSize.Level0)
     ASSERT_NE(nullptr, textEditorProxy);
     ConstructTextEditorProxy(textEditorProxy);
     TestGetTextEditorProxyMember(textEditorProxy);
+    TestGetPreviewTextWithStyleMember(textEditorProxy);
+    OH_TextEditorProxy_Destroy(textEditorProxy);
+}
+
+/**
+ * @tc.name: SetPreviewTextWithStyleFunc_NullProxy_001
+ * @tc.desc: SetSetPreviewTextWithStyleFunc with null proxy returns IME_ERR_NULL_POINTER
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, SetPreviewTextWithStyleFunc_NullProxy_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodControllerCapiTest::SetPreviewTextWithStyleFunc_NullProxy_001 START");
+    auto ret = OH_InputMethod_TextEditorProxy_SetSetPreviewTextWithStyleFunc(nullptr, SetPreviewTextWithStyleFunc);
+    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
+}
+
+/**
+ * @tc.name: SetPreviewTextWithStyleFunc_NullFunc_001
+ * @tc.desc: SetSetPreviewTextWithStyleFunc with null func returns IME_ERR_NULL_POINTER
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, SetPreviewTextWithStyleFunc_NullFunc_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodControllerCapiTest::SetPreviewTextWithStyleFunc_NullFunc_001 START");
+    auto textEditorProxy = OH_TextEditorProxy_Create();
+    ASSERT_NE(nullptr, textEditorProxy);
+    auto ret = OH_InputMethod_TextEditorProxy_SetSetPreviewTextWithStyleFunc(textEditorProxy, nullptr);
+    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
+    OH_TextEditorProxy_Destroy(textEditorProxy);
+}
+
+/**
+ * @tc.name: GetSetPreviewTextWithStyleFunc_NullProxy_001
+ * @tc.desc: GetSetPreviewTextWithStyleFunc with null proxy returns IME_ERR_NULL_POINTER
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, GetSetPreviewTextWithStyleFunc_NullProxy_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodControllerCapiTest::GetSetPreviewTextWithStyleFunc_NullProxy_001 START");
+    OH_InputMethod_TextEditorProxy_SetPreviewTextWithStyleFunc func = nullptr;
+    auto ret = OH_InputMethod_TextEditorProxy_GetSetPreviewTextWithStyleFunc(nullptr, &func);
+    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
+}
+
+/**
+ * @tc.name: GetSetPreviewTextWithStyleFunc_NullOut_001
+ * @tc.desc: GetSetPreviewTextWithStyleFunc with null out param returns IME_ERR_NULL_POINTER
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, GetSetPreviewTextWithStyleFunc_NullOut_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodControllerCapiTest::GetSetPreviewTextWithStyleFunc_NullOut_001 START");
+    auto textEditorProxy = OH_TextEditorProxy_Create();
+    ASSERT_NE(nullptr, textEditorProxy);
+    auto ret = OH_InputMethod_TextEditorProxy_GetSetPreviewTextWithStyleFunc(textEditorProxy, nullptr);
+    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
     OH_TextEditorProxy_Destroy(textEditorProxy);
 }
 
@@ -2347,5 +2438,369 @@ HWTEST_F(InputMethodControllerCapiTest, GetOnMessageFuncWithNull_FAIL, TestSize.
 
     OH_MessageHandlerProxy_Destroy(proxy);
 }
+
+/**
+ * @tc.name: RequestSystemInputCapability_NullProxy
+ * @tc.desc: AC-1.5: pass nullptr proxy, expect IME_ERR_NULL_POINTER
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, RequestSystemInputCapability_NullProxy, TestSize.Level0)
+{
+    IMSA_HILOGI("RequestSystemInputCapability_NullProxy START");
+    auto ret = OH_InputMethod_InputMethodProxy_RequestSystemInputCapability(
+        nullptr, OH_INPUTMETHOD_INPUT_CAPABILITY_TYPE_TRANSLATION);
+    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
+}
+ 
+/**
+ * @tc.name: RequestSystemInputCapability_InvalidType
+ * @tc.desc: AC-1.6: pass invalid type, expect IME_ERR_PARAMCHECK
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, RequestSystemInputCapability_InvalidType, TestSize.Level0)
+{
+    IMSA_HILOGI("RequestSystemInputCapability_InvalidType START");
+    InputMethod_InputMethodProxy *inputMethodProxy = nullptr;
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Attach(textEditorProxy_, attachOptions_, &inputMethodProxy));
+    OH_InputMethod_InputCapabilityType invalidType = static_cast<OH_InputMethod_InputCapabilityType>(99);
+    auto ret = OH_InputMethod_InputMethodProxy_RequestSystemInputCapability(inputMethodProxy, invalidType);
+    EXPECT_EQ(ret, IME_ERR_PARAMCHECK);
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Detach(inputMethodProxy));
+}
+
+/**
+ * @tc.name: RequestSystemInputCapability_InvalidTypeWithoutAttach
+ * @tc.desc: AC-1.7: invalid type without attach, expect IME_ERR_PARAMCHECK
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, RequestSystemInputCapability_InvalidTypeWithoutAttach, TestSize.Level0)
+{
+    IMSA_HILOGI("RequestSystemInputCapability_InvalidTypeWithoutAttach START");
+    OH_InputMethod_InputCapabilityType invalidType = static_cast<OH_InputMethod_InputCapabilityType>(-1);
+    auto ret = OH_InputMethod_InputMethodProxy_RequestSystemInputCapability(nullptr, invalidType);
+    EXPECT_EQ(ret, IME_ERR_PARAMCHECK);
+}
+
+/**
+ * @tc.name: RequestSystemInputCapability_Success
+ * @tc.desc: AC-1.3: mock proxy returns NO_ERROR, expect IME_ERR_OK
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, RequestSystemInputCapability_Success, TestSize.Level0)
+{
+    IMSA_HILOGI("RequestSystemInputCapability_Success START");
+    ON_CALL(*systemAbilityProxyMock_, RequestSystemInputCapability(_))
+        .WillByDefault(Return(ErrorCode::NO_ERROR));
+    InputMethod_InputMethodProxy *inputMethodProxy = nullptr;
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Attach(textEditorProxy_, attachOptions_, &inputMethodProxy));
+    auto ret = OH_InputMethod_InputMethodProxy_RequestSystemInputCapability(
+        inputMethodProxy, OH_INPUTMETHOD_INPUT_CAPABILITY_TYPE_TRANSLATION);
+    EXPECT_EQ(ret, IME_ERR_OK);
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Detach(inputMethodProxy));
+}
+
+/**
+ * @tc.name: RequestSystemInputCapability_NotDefaultIme
+ * @tc.desc: AC-1.4: mock returns ERROR_NOT_DEFAULT_IME, expect OH_INPUTMETHOD_ERR_NOT_DEFAULT_IME
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, RequestSystemInputCapability_NotDefaultIme, TestSize.Level0)
+{
+    IMSA_HILOGI("RequestSystemInputCapability_NotDefaultIme START");
+    ON_CALL(*systemAbilityProxyMock_, RequestSystemInputCapability(_))
+        .WillByDefault(Return(ErrorCode::ERROR_NOT_DEFAULT_IME));
+    InputMethod_InputMethodProxy *inputMethodProxy = nullptr;
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Attach(textEditorProxy_, attachOptions_, &inputMethodProxy));
+    auto ret = OH_InputMethod_InputMethodProxy_RequestSystemInputCapability(
+        inputMethodProxy, OH_INPUTMETHOD_INPUT_CAPABILITY_TYPE_TRANSLATION);
+    EXPECT_EQ(ret, OH_INPUTMETHOD_ERR_NOT_DEFAULT_IME);
+    EXPECT_EQ(ret, 12800010);
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Detach(inputMethodProxy));
+}
+ 
+/**
+ * @tc.name: GetCurrentInputMethod_NullParam
+ * @tc.desc: AC-2.2: pass nullptr parameter, expect IME_ERR_NULL_POINTER
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, GetCurrentInputMethod_NullParam, TestSize.Level0)
+{
+    IMSA_HILOGI("GetCurrentInputMethod_NullParam START");
+    char *bundleName = nullptr;
+    uint32_t bundleNameLength = 0;
+    char *abilityName = nullptr;
+    uint32_t abilityNameLength = 0;
+    auto ret = OH_InputMethod_InputMethodController_GetCurrentInputMethod(
+        nullptr, &bundleNameLength, &abilityName, &abilityNameLength);
+    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
+    ret = OH_InputMethod_InputMethodController_GetCurrentInputMethod(
+        &bundleName, nullptr, &abilityName, &abilityNameLength);
+    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
+    ret = OH_InputMethod_InputMethodController_GetCurrentInputMethod(
+        &bundleName, &bundleNameLength, nullptr, &abilityNameLength);
+    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
+    ret = OH_InputMethod_InputMethodController_GetCurrentInputMethod(
+        &bundleName, &bundleNameLength, &abilityName, nullptr);
+    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
+}
+ 
+/**
+ * @tc.name: GetCurrentInputMethod_Success
+ * @tc.desc: AC-2.1: success, expect IME_ERR_OK and correct bundleName/abilityName
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, GetCurrentInputMethod_Success, TestSize.Level0)
+{
+    IMSA_HILOGI("GetCurrentInputMethod_Success START");
+    Property mockProp;
+    mockProp.name = "com.example.testime";
+    mockProp.id = "ServiceExtAbility";
+    ON_CALL(*systemAbilityProxyMock_, GetCurrentInputMethod(_, _))
+        .WillByDefault(DoAll(SetArgReferee<1>(mockProp), Return(ErrorCode::NO_ERROR)));
+    char *bundleName = nullptr;
+    uint32_t bundleNameLength = 0;
+    char *abilityName = nullptr;
+    uint32_t abilityNameLength = 0;
+    auto ret = OH_InputMethod_InputMethodController_GetCurrentInputMethod(
+        &bundleName, &bundleNameLength, &abilityName, &abilityNameLength);
+    EXPECT_EQ(ret, IME_ERR_OK);
+    ASSERT_NE(nullptr, bundleName);
+    ASSERT_NE(nullptr, abilityName);
+    EXPECT_STREQ(bundleName, mockProp.name.c_str());
+    EXPECT_STREQ(abilityName, mockProp.id.c_str());
+    EXPECT_EQ(bundleNameLength, mockProp.name.size() + 1);
+    EXPECT_EQ(abilityNameLength, mockProp.id.size() + 1);
+    free(bundleName);
+    free(abilityName);
+}
+
+/**
+ * @tc.name: PreviewTextStyle_CreateAndDestroy_001
+ * @tc.desc: Create and destroy OH_InputMethod_PreviewTextStyle success
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, PreviewTextStyle_CreateAndDestroy_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodControllerCapiTest::PreviewTextStyle_CreateAndDestroy_001 START");
+    auto style = OH_InputMethod_PreviewTextStyle_Create();
+    ASSERT_NE(nullptr, style);
+    OH_InputMethod_PreviewTextStyle_Destroy(style);
+}
+
+/**
+ * @tc.name: PreviewTextStyle_Destroy_Null_001
+ * @tc.desc: Destroy nullptr does not crash, and destroying a valid instance works correctly
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, PreviewTextStyle_Destroy_Null_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodControllerCapiTest::PreviewTextStyle_Destroy_Null_001 START");
+    // Destroy nullptr should be a no-op without crash
+    OH_InputMethod_PreviewTextStyle_Destroy(nullptr);
+    // Destroy a valid instance should release memory without crash
+    auto style = OH_InputMethod_PreviewTextStyle_Create();
+    ASSERT_NE(nullptr, style);
+    OH_InputMethod_PreviewTextStyle_Destroy(style);
+    // Destroy twice to verify idempotency is not guaranteed (style is already freed),
+    // but destroying nullptr again is safe
+    OH_InputMethod_PreviewTextStyle_Destroy(nullptr);
+    SUCCEED();
+}
+
+/**
+ * @tc.name: PreviewTextStyle_SetAndGetUnderlineStyle_001
+ * @tc.desc: Set and get underline style with all enum values
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, PreviewTextStyle_SetAndGetUnderlineStyle_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodControllerCapiTest::PreviewTextStyle_SetAndGetUnderlineStyle_001 START");
+    auto style = OH_InputMethod_PreviewTextStyle_Create();
+    ASSERT_NE(nullptr, style);
+
+    OH_InputMethod_UnderlineStyle styles[] = {
+        OH_INPUTMETHOD_UNDERLINE_STYLE_NONE,
+        OH_INPUTMETHOD_UNDERLINE_STYLE_SOLID,
+        OH_INPUTMETHOD_UNDERLINE_STYLE_WAVY,
+        OH_INPUTMETHOD_UNDERLINE_STYLE_DASHED,
+    };
+    for (auto &expected : styles) {
+        EXPECT_EQ(IME_ERR_OK, OH_InputMethod_PreviewTextStyle_SetUnderlineStyle(style, expected));
+        OH_InputMethod_UnderlineStyle actual = OH_INPUTMETHOD_UNDERLINE_STYLE_NONE;
+        EXPECT_EQ(IME_ERR_OK, OH_InputMethod_PreviewTextStyle_GetUnderlineStyle(style, &actual));
+        EXPECT_EQ(expected, actual);
+    }
+    OH_InputMethod_PreviewTextStyle_Destroy(style);
+}
+
+/**
+ * @tc.name: PreviewTextStyle_SetUnderlineStyle_Null_001
+ * @tc.desc: SetUnderlineStyle with null style returns IME_ERR_NULL_POINTER
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, PreviewTextStyle_SetUnderlineStyle_Null_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodControllerCapiTest::PreviewTextStyle_SetUnderlineStyle_Null_001 START");
+    auto ret = OH_InputMethod_PreviewTextStyle_SetUnderlineStyle(nullptr, OH_INPUTMETHOD_UNDERLINE_STYLE_SOLID);
+    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
+}
+
+/**
+ * @tc.name: PreviewTextStyle_GetUnderlineStyle_Null_001
+ * @tc.desc: GetUnderlineStyle with null parameters returns IME_ERR_NULL_POINTER
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, PreviewTextStyle_GetUnderlineStyle_Null_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodControllerCapiTest::PreviewTextStyle_GetUnderlineStyle_Null_001 START");
+    auto style = OH_InputMethod_PreviewTextStyle_Create();
+    ASSERT_NE(nullptr, style);
+
+    EXPECT_EQ(IME_ERR_NULL_POINTER, OH_InputMethod_PreviewTextStyle_GetUnderlineStyle(nullptr, nullptr));
+    EXPECT_EQ(IME_ERR_NULL_POINTER, OH_InputMethod_PreviewTextStyle_GetUnderlineStyle(style, nullptr));
+    OH_InputMethod_UnderlineStyle out = OH_INPUTMETHOD_UNDERLINE_STYLE_NONE;
+    EXPECT_EQ(IME_ERR_NULL_POINTER, OH_InputMethod_PreviewTextStyle_GetUnderlineStyle(nullptr, &out));
+
+    OH_InputMethod_PreviewTextStyle_Destroy(style);
+}
+
+/**
+ * @tc.name: PreviewTextStyle_SetAndGetUnderlineColor_001
+ * @tc.desc: Set and get underline color, verify hasUnderlineColor becomes true
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, PreviewTextStyle_SetAndGetUnderlineColor_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodControllerCapiTest::PreviewTextStyle_SetAndGetUnderlineColor_001 START");
+    auto style = OH_InputMethod_PreviewTextStyle_Create();
+    ASSERT_NE(nullptr, style);
+
+    // Before SetUnderlineColor, hasUnderlineColor should be false
+    bool hasColor = true;
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethod_PreviewTextStyle_HasUnderlineColor(style, &hasColor));
+    EXPECT_FALSE(hasColor);
+
+    uint32_t colors[] = { 0x00000000, 0xFFFF0000, 0xFF00FF00, 0x0000FFAA, 0xFFFFFFFF };
+    for (auto &expected : colors) {
+        EXPECT_EQ(IME_ERR_OK, OH_InputMethod_PreviewTextStyle_SetUnderlineColor(style, expected));
+        // After SetUnderlineColor, hasUnderlineColor should be true
+        hasColor = false;
+        EXPECT_EQ(IME_ERR_OK, OH_InputMethod_PreviewTextStyle_HasUnderlineColor(style, &hasColor));
+        EXPECT_TRUE(hasColor);
+        uint32_t actual = 0;
+        EXPECT_EQ(IME_ERR_OK, OH_InputMethod_PreviewTextStyle_GetUnderlineColor(style, &actual));
+        EXPECT_EQ(expected, actual);
+    }
+    OH_InputMethod_PreviewTextStyle_Destroy(style);
+}
+
+/**
+ * @tc.name: PreviewTextStyle_SetUnderlineColor_Null_001
+ * @tc.desc: SetUnderlineColor with null style returns IME_ERR_NULL_POINTER
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, PreviewTextStyle_SetUnderlineColor_Null_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodControllerCapiTest::PreviewTextStyle_SetUnderlineColor_Null_001 START");
+    auto ret = OH_InputMethod_PreviewTextStyle_SetUnderlineColor(nullptr, 0xFFFF0000);
+    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
+}
+
+/**
+ * @tc.name: PreviewTextStyle_GetUnderlineColor_Null_001
+ * @tc.desc: GetUnderlineColor with null parameters returns IME_ERR_NULL_POINTER
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, PreviewTextStyle_GetUnderlineColor_Null_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodControllerCapiTest::PreviewTextStyle_GetUnderlineColor_Null_001 START");
+    auto style = OH_InputMethod_PreviewTextStyle_Create();
+    ASSERT_NE(nullptr, style);
+
+    EXPECT_EQ(IME_ERR_NULL_POINTER, OH_InputMethod_PreviewTextStyle_GetUnderlineColor(nullptr, nullptr));
+    EXPECT_EQ(IME_ERR_NULL_POINTER, OH_InputMethod_PreviewTextStyle_GetUnderlineColor(style, nullptr));
+    uint32_t out = 0;
+    EXPECT_EQ(IME_ERR_NULL_POINTER, OH_InputMethod_PreviewTextStyle_GetUnderlineColor(nullptr, &out));
+
+    OH_InputMethod_PreviewTextStyle_Destroy(style);
+}
+
+/**
+ * @tc.name: PreviewTextStyle_HasUnderlineColor_Null_001
+ * @tc.desc: HasUnderlineColor with null parameters returns IME_ERR_NULL_POINTER
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, PreviewTextStyle_HasUnderlineColor_Null_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodControllerCapiTest::PreviewTextStyle_HasUnderlineColor_Null_001 START");
+    auto style = OH_InputMethod_PreviewTextStyle_Create();
+    ASSERT_NE(nullptr, style);
+
+    EXPECT_EQ(IME_ERR_NULL_POINTER, OH_InputMethod_PreviewTextStyle_HasUnderlineColor(nullptr, nullptr));
+    EXPECT_EQ(IME_ERR_NULL_POINTER, OH_InputMethod_PreviewTextStyle_HasUnderlineColor(style, nullptr));
+    bool out = false;
+    EXPECT_EQ(IME_ERR_NULL_POINTER, OH_InputMethod_PreviewTextStyle_HasUnderlineColor(nullptr, &out));
+
+    OH_InputMethod_PreviewTextStyle_Destroy(style);
+}
+
+/**
+ * @tc.name: PreviewTextStyle_DefaultValues_001
+ * @tc.desc: Newly created PreviewTextStyle has default values (NONE, 0, false)
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, PreviewTextStyle_DefaultValues_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodControllerCapiTest::PreviewTextStyle_DefaultValues_001 START");
+    auto style = OH_InputMethod_PreviewTextStyle_Create();
+    ASSERT_NE(nullptr, style);
+
+    OH_InputMethod_UnderlineStyle underlineStyle = OH_INPUTMETHOD_UNDERLINE_STYLE_DASHED;
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethod_PreviewTextStyle_GetUnderlineStyle(style, &underlineStyle));
+    EXPECT_EQ(OH_INPUTMETHOD_UNDERLINE_STYLE_NONE, underlineStyle);
+
+    uint32_t underlineColor = 0xFFFFFFFF;
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethod_PreviewTextStyle_GetUnderlineColor(style, &underlineColor));
+    EXPECT_EQ(0U, underlineColor);
+
+    bool hasUnderlineColor = true;
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethod_PreviewTextStyle_HasUnderlineColor(style, &hasUnderlineColor));
+    EXPECT_FALSE(hasUnderlineColor);
+
+    OH_InputMethod_PreviewTextStyle_Destroy(style);
+}
+
+/**
+ * @tc.name: PreviewTextStyle_FullWorkflow_001
+ * @tc.desc: Full workflow: create, set style+color, verify all, destroy
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, PreviewTextStyle_FullWorkflow_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodControllerCapiTest::PreviewTextStyle_FullWorkflow_001 START");
+    auto style = OH_InputMethod_PreviewTextStyle_Create();
+    ASSERT_NE(nullptr, style);
+
+    // Set SOLID style and red color
+    EXPECT_EQ(IME_ERR_OK,
+        OH_InputMethod_PreviewTextStyle_SetUnderlineStyle(style, OH_INPUTMETHOD_UNDERLINE_STYLE_SOLID));
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethod_PreviewTextStyle_SetUnderlineColor(style, 0xFFFF0000));
+
+    // Verify all values
+    OH_InputMethod_UnderlineStyle outStyle = OH_INPUTMETHOD_UNDERLINE_STYLE_NONE;
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethod_PreviewTextStyle_GetUnderlineStyle(style, &outStyle));
+    EXPECT_EQ(OH_INPUTMETHOD_UNDERLINE_STYLE_SOLID, outStyle);
+
+    uint32_t outColor = 0;
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethod_PreviewTextStyle_GetUnderlineColor(style, &outColor));
+    EXPECT_EQ(0xFFFF0000U, outColor);
+
+    bool hasColor = false;
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethod_PreviewTextStyle_HasUnderlineColor(style, &hasColor));
+    EXPECT_TRUE(hasColor);
+
+    OH_InputMethod_PreviewTextStyle_Destroy(style);
+}
 } // namespace MiscServices
 } // namespace OHOS
+

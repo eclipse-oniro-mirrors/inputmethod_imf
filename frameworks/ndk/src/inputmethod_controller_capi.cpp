@@ -24,6 +24,7 @@
 #include "native_inputmethod_utils.h"
 #include "native_text_changed_listener.h"
 #include "node_module_inner.h"
+#include "securec.h"
 #include "ui_content.h"
 using namespace OHOS::MiscServices;
 #ifdef __cplusplus
@@ -288,6 +289,66 @@ InputMethod_ErrorCode OH_InputMethodController_Detach(InputMethod_InputMethodPro
         return IME_ERR_NULL_POINTER;
     }
     return ErrorCodeConvert(instance->Close());
+}
+
+static bool AllocateString(const std::string &src, char **dst, uint32_t *len)
+{
+    uint32_t required = static_cast<uint32_t>(src.size()) + 1; // include null terminator
+    *dst = static_cast<char *>(malloc(required));
+    if (*dst == nullptr) {
+        IMSA_HILOGE("malloc failed, required=%{public}u", required);
+        return false;
+    }
+    errno_t ret = memcpy_s(*dst, required, src.c_str(), required);
+    if (ret != EOK) {
+        IMSA_HILOGE("memcpy_s failed, ret=%{public}d", ret);
+        free(*dst);
+        *dst = nullptr;
+        return false;
+    }
+    *len = required;
+    return true;
+}
+ 
+InputMethod_ErrorCode OH_InputMethod_InputMethodController_GetCurrentInputMethod(
+    char **bundleName, uint32_t *bundleNameLength, char **abilityName, uint32_t *abilityNameLength)
+{
+    if (bundleName == nullptr || bundleNameLength == nullptr ||
+        abilityName == nullptr || abilityNameLength == nullptr) {
+        IMSA_HILOGE("parameter is nullptr");
+        return IME_ERR_NULL_POINTER;
+    }
+    *bundleName = nullptr;
+    *bundleNameLength = 0;
+    *abilityName = nullptr;
+    *abilityNameLength = 0;
+    auto instance = InputMethodController::GetInstance();
+    if (instance == nullptr) {
+        IMSA_HILOGE("InputMethodController is nullptr");
+        return IME_ERR_NULL_POINTER;
+    }
+    auto property = instance->GetCurrentInputMethod();
+    if (property == nullptr) {
+        IMSA_HILOGE("property is nullptr");
+        return ErrorCodeConvert(ErrorCode::ERROR_IMSA_NULLPTR);
+    }
+    bool nameOk = AllocateString(property->name, bundleName, bundleNameLength);
+    bool idOk = AllocateString(property->id, abilityName, abilityNameLength);
+    if (!nameOk || !idOk) {
+        IMSA_HILOGE("allocate string failed");
+        if (*bundleName != nullptr) {
+            free(*bundleName);
+            *bundleName = nullptr;
+            *bundleNameLength = 0;
+        }
+        if (*abilityName != nullptr) {
+            free(*abilityName);
+            *abilityName = nullptr;
+            *abilityNameLength = 0;
+        }
+        return ErrorCodeConvert(ErrorCode::ERROR_IMSA_MALLOC_FAILED);
+    }
+    return IME_ERR_OK;
 }
 #ifdef __cplusplus
 }

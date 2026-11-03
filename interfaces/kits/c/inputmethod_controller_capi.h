@@ -106,6 +106,25 @@ InputMethod_ErrorCode OH_InputMethodController_AttachWithUIContext(ArkUI_Context
  * @since 12
  */
 InputMethod_ErrorCode OH_InputMethodController_Detach(InputMethod_InputMethodProxy *inputMethodProxy);
+
+/**
+ * @brief Get current input method.
+ *
+ * @param bundleName [out] Represents the pointer to the obtained bundleName string of current
+ *     input method. The caller should free it via free() after use to avoid memory leaks.
+ * @param bundleNameLength [out] Represents the pointer to the length of the bundleName string.
+ * @param abilityName [out] Represents the pointer to the obtained abilityName string of current
+ *     input method. The caller should free it via free() after use to avoid memory leaks.
+ * @param abilityNameLength [out] Represents the pointer to the length of the abilityName string.
+ * @return Returns a specific error code.
+ *     <br>{@link IME_ERR_OK} - success.
+ *     <br>{@link IME_ERR_IMMS} - input method manager service error.
+ *     <br>{@link IME_ERR_NULL_POINTER} - unexpected null pointer.
+ *     <br>Specific error codes can be referenced {@link InputMethod_ErrorCode}.
+ * @since 26.1.0
+ */
+InputMethod_ErrorCode OH_InputMethod_InputMethodController_GetCurrentInputMethod(
+    char **bundleName, uint32_t *bundleNameLength, char **abilityName, uint32_t *abilityNameLength);
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

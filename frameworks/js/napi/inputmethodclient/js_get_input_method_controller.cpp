@@ -72,7 +72,8 @@ napi_value JsGetInputMethodController::Init(napi_env env, napi_value info)
         DECLARE_NAPI_STATIC_PROPERTY("ExtendAction", GetJsExtendActionProperty(env)),
         DECLARE_NAPI_STATIC_PROPERTY("EnabledState", GetJsEnabledStateProperty(env)),
         DECLARE_NAPI_STATIC_PROPERTY("RequestKeyboardReason", GetJsRequestKeyboardReasonProperty(env)),
-        DECLARE_NAPI_STATIC_PROPERTY("CapitalizeMode", GetJsCapitalizeModeProperty(env))
+        DECLARE_NAPI_STATIC_PROPERTY("CapitalizeMode", GetJsCapitalizeModeProperty(env)),
+        DECLARE_NAPI_STATIC_PROPERTY("InputCapabilityType", GetJsInputCapabilityTypeProperty(env))
     };
     IMF_CALL(
         napi_define_properties(env, info, sizeof(descriptor) / sizeof(napi_property_descriptor), descriptor));
@@ -93,9 +94,12 @@ napi_value JsGetInputMethodController::Init(napi_env env, napi_value info)
         DECLARE_NAPI_FUNCTION("showSoftKeyboard", ShowSoftKeyboard),
         DECLARE_NAPI_FUNCTION("on", Subscribe),
         DECLARE_NAPI_FUNCTION("off", UnSubscribe),
+        DECLARE_NAPI_FUNCTION("onSetPreviewTextWithStyle", OnSetPreviewTextWithStyle),
+        DECLARE_NAPI_FUNCTION("offSetPreviewTextWithStyle", OffSetPreviewTextWithStyle),
         DECLARE_NAPI_FUNCTION("sendMessage", SendMessage),
         DECLARE_NAPI_FUNCTION("recvMessage", RecvMessage),
         DECLARE_NAPI_FUNCTION("discardTypingText", DiscardTypingText),
+        DECLARE_NAPI_FUNCTION("requestSystemInputCapability", RequestSystemInputCapability),
     };
     napi_value cons = nullptr;
     IMF_CALL(napi_define_class(env, IMC_CLASS_NAME.c_str(), IMC_CLASS_NAME.size(), JsConstructor, nullptr,
@@ -293,6 +297,42 @@ napi_value JsGetInputMethodController::GetJsRequestKeyboardReasonProperty(napi_e
     IMF_CALL(napi_set_named_property(env, requestKeyboardReason, "TOUCH", touch));
     IMF_CALL(napi_set_named_property(env, requestKeyboardReason, "OTHER", other));
     return requestKeyboardReason;
+}
+
+napi_value JsGetInputMethodController::GetJsInputCapabilityTypeProperty(napi_env env)
+{
+    napi_value inputCapabilityType = nullptr;
+    napi_value translation = nullptr;
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(InputCapabilityType::TRANSLATION), &translation));
+    IMF_CALL(napi_create_object(env, &inputCapabilityType));
+    IMF_CALL(napi_set_named_property(env, inputCapabilityType, "TRANSLATION", translation));
+    return inputCapabilityType;
+}
+
+napi_value JsGetInputMethodController::RequestSystemInputCapability(napi_env env, napi_callback_info info)
+{
+    auto ctxt = std::make_shared<RequestSystemInputCapabilityContext>();
+    auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
+        PARAM_CHECK_RETURN(env, argc > 0, "at least one parameter is required!", TYPE_NONE, napi_generic_failure);
+        napi_status status = JsUtils::GetValue(env, argv[0], ctxt->capabilityType);
+        PARAM_CHECK_RETURN(env, status == napi_ok, "type must be number", TYPE_NONE, status);
+        return status;
+    };
+    auto exec = [ctxt](AsyncCall::Context *ctx) {
+        int32_t errcode = ErrorCode::ERROR_CLIENT_NULL_POINTER;
+        auto instance = InputMethodController::GetInstance();
+        if (instance != nullptr) {
+            errcode = instance->RequestSystemInputCapability(
+                static_cast<InputCapabilityType>(ctxt->capabilityType));
+        }
+        ctxt->SetErrorCode(errcode);
+        CHECK_RETURN_VOID(errcode == ErrorCode::NO_ERROR, "RequestSystemInputCapability return error!");
+        ctxt->SetState(napi_ok);
+    };
+    ctxt->SetAction(std::move(input));
+    // 2 means JsAPI:requestSystemInputCapability has 2 params at most.
+    AsyncCall asyncCall(env, info, ctxt, 2);
+    return asyncCall.Call(env, exec, "requestSystemInputCapability");
 }
 
 napi_value JsGetInputMethodController::JsConstructor(napi_env env, napi_callback_info cbinfo)
@@ -498,6 +538,59 @@ napi_value JsGetInputMethodController::UnSubscribe(napi_env env, napi_callback_i
     return result;
 }
 
+napi_value JsGetInputMethodController::OnSetPreviewTextWithStyle(napi_env env, napi_callback_info info)
+{
+    size_t argc = ARGC_ONE;
+    napi_value argv[ARGC_ONE] = { nullptr };
+    napi_value thisVar = nullptr;
+    void *data = nullptr;
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
+    PARAM_CHECK_RETURN(env, JsUtil::GetType(env, argv[0]) == napi_function, "callback", TYPE_FUNCTION, nullptr);
+    std::string type = "setPreviewTextWithStyle";
+
+    auto engine = reinterpret_cast<JsGetInputMethodController *>(JsUtils::GetNativeSelf(env, info));
+    if (engine == nullptr) {
+        return nullptr;
+    }
+    std::shared_ptr<JSCallbackObject> callback = std::make_shared<JSCallbackObject>(
+        env, argv[0], std::this_thread::get_id(), AppExecFwk::EventHandler::Current());
+    engine->RegisterListener(argv[0], type, callback);
+
+    napi_value result = nullptr;
+    napi_get_null(env, &result);
+    return result;
+}
+
+napi_value JsGetInputMethodController::OffSetPreviewTextWithStyle(napi_env env, napi_callback_info info)
+{
+    size_t argc = ARGC_ONE;
+    napi_value argv[ARGC_ONE] = { nullptr };
+    napi_value thisVar = nullptr;
+    void *data = nullptr;
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
+    std::string type = "setPreviewTextWithStyle";
+    // if the first param is not napi_function/napi_null/napi_undefined, return
+    napi_value callback = nullptr;
+    if (argc >= 1) {
+        auto paramType = JsUtil::GetType(env, argv[0]);
+        if (paramType != napi_function && paramType != napi_null && paramType != napi_undefined) {
+            return nullptr;
+        }
+        // if the first param is napi_function, delete it, else delete all
+        callback = paramType == napi_function ? argv[0] : nullptr;
+    }
+
+    auto engine = reinterpret_cast<JsGetInputMethodController *>(JsUtils::GetNativeSelf(env, info));
+    if (engine == nullptr) {
+        return nullptr;
+    }
+    engine->UnRegisterListener(callback, type);
+
+    napi_value result = nullptr;
+    napi_get_null(env, &result);
+    return result;
+}
+
 napi_value JsGetInputMethodController::CreateSelectRange(napi_env env, int32_t start, int32_t end)
 {
     napi_value range = nullptr;
@@ -511,6 +604,24 @@ napi_value JsGetInputMethodController::CreateSelectRange(napi_env env, int32_t s
     napi_set_named_property(env, range, "end", value);
 
     return range;
+}
+
+napi_value JsGetInputMethodController::CreatePreviewTextStyle(
+    napi_env env, int32_t underlineStyle, uint32_t underlineColor, bool hasUnderlineColor)
+{
+    napi_value style = nullptr;
+    napi_create_object(env, &style);
+
+    napi_value value = nullptr;
+    napi_create_int32(env, underlineStyle, &value);
+    napi_set_named_property(env, style, "underlineStyle", value);
+
+    if (hasUnderlineColor) {
+        napi_create_uint32(env, underlineColor, &value);
+        napi_set_named_property(env, style, "underlineColor", value);
+    }
+
+    return style;
 }
 
 napi_value JsGetInputMethodController::CreateSelectMovement(napi_env env, int32_t direction)
@@ -1395,6 +1506,43 @@ int32_t JsGetInputMethodController::SetPreviewText(const std::u16string &text, c
     return ErrorCode::NO_ERROR;
 }
 
+int32_t JsGetInputMethodController::SetPreviewTextWithStyle(
+    const std::u16string &text, const Range &range, const PreviewTextStyleInner &style)
+{
+    std::string previewText = Str16ToStr8(text);
+    std::string type = "setPreviewTextWithStyle";
+    auto entry = GetEntry(type, [&previewText, &range, &style](UvEntry &entry) {
+        entry.text = previewText;
+        entry.start = range.start;
+        entry.end = range.end;
+        entry.underlineStyle = style.underlineStyle;
+        entry.underlineColor = style.underlineColor;
+        entry.hasUnderlineColor = style.hasUnderlineColor;
+    });
+    if (entry == nullptr) {
+        IMSA_HILOGD("failed to get uv entry!");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    IMSA_HILOGI("previewTextWithStyle start.");
+    auto getPreviewTextWithStyleProperty = [entry](napi_env env, napi_value *args, uint8_t argc) -> bool {
+        // 3 means the callback has three params.
+        if (argc < 3) {
+            return false;
+        }
+        // 0 means the first param of callback.
+        args[0] = JsUtil::GetValue(env, entry->text);
+        // 1 means the second param of callback.
+        args[1] = CreateSelectRange(env, entry->start, entry->end);
+        // 2 means the third param of callback.
+        args[2] = CreatePreviewTextStyle(env, entry->underlineStyle, entry->underlineColor, entry->hasUnderlineColor);
+        return true;
+    };
+
+    // 3 means the callback has three param.
+    JsCallbackHandler::Traverse(entry->vecCopy, { 3, getPreviewTextWithStyleProperty });
+    return ErrorCode::NO_ERROR;
+}
+
 void JsGetInputMethodController::FinishTextPreview()
 {
     std::string type = "finishTextPreview";
@@ -1629,12 +1777,13 @@ bool JsGetInputMethodController::IsTextPreviewSupported()
     if (engine == nullptr) {
         return false;
     }
-    return engine->IsRegister("setPreviewText") && engine->IsRegister("finishTextPreview");
+    return (engine->IsRegister("setPreviewText") || engine->IsRegister("setPreviewTextWithStyle")) &&
+        engine->IsRegister("finishTextPreview");
 }
 
 void JsGetInputMethodController::UpdateTextPreviewState(const std::string &type)
 {
-    if (type == "setPreviewText" || type == "finishTextPreview") {
+    if (type == "setPreviewText" || type == "setPreviewTextWithStyle" || type == "finishTextPreview") {
         auto instance = InputMethodController::GetInstance();
         if (instance == nullptr) {
             IMSA_HILOGE("GetInstance() is nullptr!");

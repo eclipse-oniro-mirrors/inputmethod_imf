@@ -253,6 +253,28 @@ InputMethod_ErrorCode OH_InputMethodProxy_RecvMessage(
         std::make_shared<NativeMessageHandlerCallback>(messageHandler);
     return ErrorCodeConvert(instance->RegisterMsgHandler(msgHandler));
 }
+
+InputMethod_ErrorCode OH_InputMethod_InputMethodProxy_RequestSystemInputCapability(
+    InputMethod_InputMethodProxy *inputMethodProxy, OH_InputMethod_InputCapabilityType type)
+{
+    if (type < OH_INPUTMETHOD_INPUT_CAPABILITY_TYPE_TRANSLATION ||
+        type >= OH_INPUTMETHOD_INPUT_CAPABILITY_TYPE_END) {
+        IMSA_HILOGE("invalid type=%{public}d", static_cast<int32_t>(type));
+        return IME_ERR_PARAMCHECK;
+    }
+    auto errCode = IsValidInputMethodProxy(inputMethodProxy);
+    if (errCode != IME_ERR_OK) {
+        IMSA_HILOGE("invalid state, errCode=%{public}d", errCode);
+        return errCode;
+    }
+    auto instance = InputMethodController::GetInstance();
+    if (instance == nullptr) {
+        IMSA_HILOGE("InputMethodController is nullptr");
+        return IME_ERR_NULL_POINTER;
+    }
+    auto ret = instance->RequestSystemInputCapability(static_cast<InputCapabilityType>(type));
+    return ErrorCodeConvert(ret);
+}
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

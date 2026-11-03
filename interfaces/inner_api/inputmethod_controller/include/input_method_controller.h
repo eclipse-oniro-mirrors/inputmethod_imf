@@ -105,6 +105,24 @@ public:
         return ErrorCode::NO_ERROR;
     }
     /**
+     * @brief Set preview text with style.
+     *
+     * When InputMethod app sends request to set preview text with underline style, the function will be called.
+     * Default implementation falls back to SetPreviewText, discarding style information.
+     *
+     * @since 26.1.0
+     */
+    virtual int32_t SetPreviewTextWithStyle(const std::u16string &text, const Range &range,
+        const PreviewTextStyleInner &style)
+    {
+        return SetPreviewText(text, range);
+    }
+
+    virtual bool IsSupportPreviewTextWithStyle()
+    {
+        return false;
+    }
+    /**
      * @brief Finish text preview.
      *
      * When InputMethod app sends request to finish text preview, the function will be called.
@@ -155,6 +173,8 @@ private:
     void HandleSelectV2(int32_t keyCode, int32_t cursorMoveSkip);
     int32_t ReceivePrivateCommandV2(const std::unordered_map<std::string, PrivateDataValue> &privateCommand);
     int32_t SetPreviewTextV2(const std::u16string &text, const Range &range);
+    int32_t SetPreviewTextWithStyleV2(const std::u16string &text, const Range &range,
+        const PreviewTextStyleInner &style);
     void FinishTextPreviewV2();
     void OnDetachV2();
 };
@@ -474,6 +494,18 @@ public:
      * @since 6
      */
     IMF_API std::shared_ptr<Property> GetCurrentInputMethod(int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
+
+    /**
+     * @brief Request system input capability.
+     *
+     * This function is used to request system input capability, such as translation input.
+     * For TRANSLATION type, the current input method must be the system default input method.
+     *
+     * @param type The input capability type, see {@link InputCapabilityType}.
+     * @return Returns {@link ErrorCode::NO_ERROR} on success, otherwise returns an error code.
+     * @since 26.1.0
+     */
+    IMF_API int32_t RequestSystemInputCapability(InputCapabilityType type);
 
     /**
      * @brief Get current input method subtypes.
@@ -994,6 +1026,17 @@ public:
      * @since 12
      */
     int32_t SetPreviewText(const std::string &text, const Range &range);
+    /**
+     * @brief Set preview text with style.
+     *
+     * @param text The preview text to set.
+     * @param range The range of the preview text.
+     * @param style The underline style and color for the preview text.
+     * @return Returns ErrorCode::NO_ERROR if success, otherwise error code.
+     * @since 26.1.0
+     */
+    IMF_API int32_t SetPreviewTextWithStyle(
+        const std::string &text, const Range &range, const PreviewTextStyleInner &style);
 
     /**
      * @brief Finish text preview.
@@ -1217,6 +1260,8 @@ private:
     void SetBindImeInfo(const std::pair<int64_t, std::string> &imeInfo);
     std::pair<int64_t, std::string> GetBindImeInfo();
     int32_t SetPreviewTextInner(const std::string &text, const Range &range);
+    int32_t SetPreviewTextWithStyleInner(const std::string &text, const Range &range,
+        const PreviewTextStyleInner &style);
     int32_t ShowTextInputInner(const AttachOptions &attachOptions, ClientType type);
     int32_t ShowSoftKeyboardInner(ClientType type);
     int32_t ShowSoftKeyboardInner(uint64_t displayId, ClientType type);

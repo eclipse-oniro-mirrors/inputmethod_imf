@@ -1783,6 +1783,17 @@ void InputMethodController::SetInputReady(
     }
 }
 
+int32_t InputMethodController::RequestSystemInputCapability(InputCapabilityType type)
+{
+    auto proxy = GetSystemAbilityProxy();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("proxy is nullptr!");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    IMSA_HILOGI("RequestSystemInputCapability type: %{public}d.", static_cast<int32_t>(type));
+    return proxy->RequestSystemInputCapability(static_cast<int32_t>(type));
+}
+
 void InputMethodController::OnTmpInputStop(const sptr<IRemoteObject> &proxy)
 {
     ClearAgentInfo();
@@ -2346,12 +2357,61 @@ int32_t InputMethodController::SetPreviewTextInner(const std::string &text, cons
     int64_t start = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
     {
         InputMethodSyncTrace aceTracer("ACE_SetPreviewText");
-        ret = listener->SetPreviewTextV2(Str8ToStr16(text), range);
+        if (listener->IsSupportPreviewTextWithStyle()) {
+            // inner_api: single dispatch, base class fallback handles SetPreviewText
+            PreviewTextStyleInner defaultStyle {};
+            ret = listener->SetPreviewTextWithStyleV2(Str8ToStr16(text), range, defaultStyle);
+        } else {
+            // C/JS/ETS: dual dispatch for backward compatibility
+            ret = listener->SetPreviewTextV2(Str8ToStr16(text), range);
+            PreviewTextStyleInner defaultStyle {};
+            listener->SetPreviewTextWithStyleV2(Str8ToStr16(text), range, defaultStyle);
+        }
     }
     PrintTextChangeLog();
     PrintLogIfAceTimeout(start);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("failed to SetPreviewText: %{public}d!", ret);
+        return ret == -1 ? ErrorCode::ERROR_INVALID_RANGE : ErrorCode::ERROR_TEXT_LISTENER_ERROR;
+    }
+    return ErrorCode::NO_ERROR;
+}
+
+int32_t InputMethodController::SetPreviewTextWithStyleInner(
+    const std::string &text, const Range &range, const PreviewTextStyleInner &style)
+{
+    InputMethodSyncTrace tracer("IMC_SetPreviewTextWithStyle");
+    IMSA_HILOGD("IMC start.");
+    if (!textConfig_.inputAttribute.isTextPreviewSupported) {
+        IMSA_HILOGE("text preview do not supported!");
+        return ErrorCode::ERROR_TEXT_PREVIEW_NOT_SUPPORTED;
+    }
+    auto listener = GetTextListener();
+    if (!IsEditable() || listener == nullptr) {
+        IMSA_HILOGE("not editable or listener is nullptr!");
+        return ErrorCode::ERROR_CLIENT_NOT_EDITABLE;
+    }
+    if (style.underlineStyle < 0 || style.underlineStyle > static_cast<int32_t>(UnderlineStyle::DASHED)) {
+        IMSA_HILOGE("invalid underlineStyle: %{public}d!", style.underlineStyle);
+        return ErrorCode::ERROR_BAD_PARAMETERS;
+    }
+    int32_t ret = 0;
+    int64_t start = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
+    {
+        InputMethodSyncTrace aceTracer("ACE_SetPreviewTextWithStyle");
+        if (listener->IsSupportPreviewTextWithStyle()) {
+            // inner_api: single dispatch, base class fallback handles SetPreviewText
+            ret = listener->SetPreviewTextWithStyleV2(Str8ToStr16(text), range, style);
+        } else {
+            // C/JS/ETS: dual dispatch for backward compatibility
+            ret = listener->SetPreviewTextWithStyleV2(Str8ToStr16(text), range, style);
+            listener->SetPreviewTextV2(Str8ToStr16(text), range);
+        }
+    }
+    PrintTextChangeLog();
+    PrintLogIfAceTimeout(start);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("failed to SetPreviewTextWithStyle: %{public}d!", ret);
         return ret == -1 ? ErrorCode::ERROR_INVALID_RANGE : ErrorCode::ERROR_TEXT_LISTENER_ERROR;
     }
     return ErrorCode::NO_ERROR;
@@ -2460,6 +2520,14 @@ int32_t InputMethodController::SetPreviewText(const std::string &text, const Ran
 {
     auto ret = SetPreviewTextInner(text, range);
     ReportBaseTextOperation(static_cast<int32_t>(IInputDataChannelIpcCode::COMMAND_SET_PREVIEW_TEXT), ret);
+    return ret;
+}
+
+int32_t InputMethodController::SetPreviewTextWithStyle(
+    const std::string &text, const Range &range, const PreviewTextStyleInner &style)
+{
+    auto ret = SetPreviewTextWithStyleInner(text, range, style);
+    ReportBaseTextOperation(static_cast<int32_t>(IInputDataChannelIpcCode::COMMAND_SET_PREVIEW_TEXT_WITH_STYLE), ret);
     return ret;
 }
 
@@ -3125,6 +3193,26 @@ int32_t OnTextChangedListener::SetPreviewTextV2(const std::u16string &text, cons
         listener->SetPreviewText(text, range);
     };
     eventHandler->PostTask(task, "SetPreviewTextV2", 0, AppExecFwk::EventQueue::Priority::VIP);
+    return ErrorCode::NO_ERROR;
+}
+
+int32_t OnTextChangedListener::SetPreviewTextWithStyleV2(
+    const std::u16string &text, const Range &range, const PreviewTextStyleInner &style)
+{
+    auto eventHandler = GetEventHandler();
+    if (eventHandler == nullptr) {
+        return SetPreviewTextWithStyle(text, range, style);
+    }
+    auto weakPtr = wptr<OnTextChangedListener>(this);
+    auto task = [weakPtr, text, range, style]() {
+        auto listener = weakPtr.promote();
+        if (listener == nullptr) {
+            IMSA_HILOGE("SetPreviewTextWithStyleV2 listener is nullptr!");
+            return;
+        }
+        listener->SetPreviewTextWithStyle(text, range, style);
+    };
+    eventHandler->PostTask(task, "SetPreviewTextWithStyleV2", 0, AppExecFwk::EventQueue::Priority::VIP);
     return ErrorCode::NO_ERROR;
 }
 
