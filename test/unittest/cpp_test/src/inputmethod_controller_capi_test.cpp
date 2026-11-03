@@ -12,15 +12,19 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <gtest/gtest.h>
-
-#include "string_ex.h"
+#include "inputmethod_controller_capi_test.h"
+#include <thread>
 
 #include "global.h"
 #include "input_method_controller.h"
+#include "input_method_queries.h"
 #include "mock_input_method_system_ability_proxy.h"
 #include "mock_iremote_object.h"
 #include "native_inputmethod_types.h"
+#include "native_message_handler_callback.h"
+#include "native_object_registry.h"
+#include "native_session_guard.h"
+#include "text_editor_proxy_manager.h"
 
 using namespace testing::ext;
 using namespace OHOS;
@@ -48,25 +52,23 @@ InputMethod_ErrorCode OH_InputMethod_PreviewTextStyle_HasUnderlineColor(
 
 namespace OHOS {
 namespace MiscServices {
-class InputMethodControllerCapiTest : public testing::Test {
-public:
-    static void SetUpTestSuite()
-    {
-        systemAbilityProxyMock_ = new (std::nothrow) NiceMock<MockInputMethodSystemAbilityProxy>();
-        ASSERT_NE(systemAbilityProxyMock_, nullptr);
-        MockInputMethodSystemAbilityProxy::SetImsaProxyForTest(
-            InputMethodController::GetInstance(), systemAbilityProxyMock_);
+void InputMethodControllerCapiTest::SetUpTestSuite()
+{
+    systemAbilityProxyMock_ = new (std::nothrow) NiceMock<MockInputMethodSystemAbilityProxy>();
+    ASSERT_NE(systemAbilityProxyMock_, nullptr);
+    MockInputMethodSystemAbilityProxy::SetImsaProxyForTest(
+        InputMethodController::GetInstance(), systemAbilityProxyMock_);
 
-        textEditorProxy_ = OH_TextEditorProxy_Create();
-        ASSERT_NE(nullptr, textEditorProxy_);
-        ConstructTextEditorProxy(textEditorProxy_);
+    textEditorProxy_ = OH_TextEditorProxy_Create();
+    ASSERT_NE(nullptr, textEditorProxy_);
+    ConstructTextEditorProxy(textEditorProxy_);
 
-        attachOptions_ = OH_AttachOptions_Create(true);
-        ASSERT_NE(nullptr, attachOptions_);
+    attachOptions_ = OH_AttachOptions_Create(true);
+    ASSERT_NE(nullptr, attachOptions_);
 
-        ON_CALL(*systemAbilityProxyMock_, StartInput(_, _, _))
-            .WillByDefault(Invoke([](const InputClientInfoInner &info, vector<sptr<IRemoteObject>> &agents,
-                                      vector<BindImeInfo> &imeInfos) {
+    ON_CALL(*systemAbilityProxyMock_, StartInput(_, _, _))
+        .WillByDefault(Invoke(
+            [](const InputClientInfoInner &info, vector<sptr<IRemoteObject>> &agents, vector<BindImeInfo> &imeInfos) {
                 sptr<MockIRemoteObject> iremoteObject = new (std::nothrow) NiceMock<MockIRemoteObject>();
                 EXPECT_NE(iremoteObject, nullptr);
                 agents.emplace_back(iremoteObject);
@@ -74,187 +76,202 @@ public:
                 imeInfos.push_back(imeinfo);
                 return ErrorCode::NO_ERROR;
             }));
+}
+
+void InputMethodControllerCapiTest::TearDownTestSuite()
+{
+    MockInputMethodSystemAbilityProxy::SetImsaProxyForTest(InputMethodController::GetInstance(), nullptr);
+    if (textEditorProxy_ != nullptr) {
+        OH_TextEditorProxy_Destroy(textEditorProxy_);
+        textEditorProxy_ = nullptr;
     }
 
-    static void TearDownTestSuite()
-    {
-        MockInputMethodSystemAbilityProxy::SetImsaProxyForTest(InputMethodController::GetInstance(), nullptr);
-        if (textEditorProxy_ != nullptr) {
-            OH_TextEditorProxy_Destroy(textEditorProxy_);
-            textEditorProxy_ = nullptr;
-        }
-
-        if (attachOptions_ != nullptr) {
-            OH_AttachOptions_Destroy(attachOptions_);
-            attachOptions_ = nullptr;
-        }
-
-        systemAbilityProxyMock_ = nullptr;
+    if (attachOptions_ != nullptr) {
+        OH_AttachOptions_Destroy(attachOptions_);
+        attachOptions_ = nullptr;
     }
 
-    static void ConstructTextEditorProxy(InputMethod_TextEditorProxy *textEditorProxy);
-
-    static InputMethod_TextEditorProxy *textEditorProxy_;
-    static InputMethod_AttachOptions *attachOptions_;
-    static sptr<MockInputMethodSystemAbilityProxy> systemAbilityProxyMock_;
-};
+    systemAbilityProxyMock_ = nullptr;
+}
 
 InputMethod_TextEditorProxy *InputMethodControllerCapiTest::textEditorProxy_ = nullptr;
 InputMethod_AttachOptions *InputMethodControllerCapiTest::attachOptions_ = nullptr;
 sptr<MockInputMethodSystemAbilityProxy> InputMethodControllerCapiTest::systemAbilityProxyMock_ = nullptr;
 /**
- * @tc.name: TestCursorInfo_001
- * @tc.desc: create and destroy TestCursorInfo success
+ * @tc.name: CurrentInputMethod_StatusAndLegacyContract
+ * @tc.desc: The status query preserves service errors while the legacy getter still returns its result object.
  * @tc.type: FUNC
  */
-HWTEST_F(InputMethodControllerCapiTest, TestCursorInfo_001, TestSize.Level0)
+HWTEST_F(InputMethodControllerCapiTest, CurrentInputMethod_StatusAndLegacyContract, TestSize.Level0)
 {
-    IMSA_HILOGI("InputMethodControllerCapiTest::TestCursorInfo_001 START");
-    double expLeft = 1.1;
-    double expTop = 2.2;
-    double expWidth = 3.3;
-    double expHeight = 4.4;
-    auto cursorInfo = OH_CursorInfo_Create(expLeft, expTop, expWidth, expHeight);
-    ASSERT_NE(nullptr, cursorInfo);
-
-    double actLeft = 0;
-    double actTop = 0;
-    double actWidth = 0;
-    double actHeight = 0;
-    EXPECT_EQ(IME_ERR_OK, OH_CursorInfo_GetRect(cursorInfo, &actLeft, &actTop, &actWidth, &actHeight));
-    EXPECT_EQ(expLeft, actLeft);
-    EXPECT_EQ(expTop, actTop);
-    EXPECT_EQ(expWidth, actWidth);
-    EXPECT_EQ(expHeight, actHeight);
-
-    // test set rect
-    expLeft = 1;
-    expTop = 2;
-    expWidth = 3;
-    expHeight = 4;
-    EXPECT_EQ(IME_ERR_OK, OH_CursorInfo_SetRect(cursorInfo, expLeft, expTop, expWidth, expHeight));
-    EXPECT_EQ(IME_ERR_OK, OH_CursorInfo_GetRect(cursorInfo, &actLeft, &actTop, &actWidth, &actHeight));
-    EXPECT_EQ(expLeft, actLeft);
-    EXPECT_EQ(expTop, actTop);
-    EXPECT_EQ(expWidth, actWidth);
-    EXPECT_EQ(expHeight, actHeight);
-
-    OH_CursorInfo_Destroy(cursorInfo);
-}
-
-static void TestCursorInfoOfTextConfig(InputMethod_TextConfig *config)
-{
-    InputMethod_CursorInfo *cursorInfo = nullptr;
-    EXPECT_EQ(IME_ERR_OK, OH_TextConfig_GetCursorInfo(config, &cursorInfo));
-    // test set and get cursorInfo rect
-    double expLeft = 1.1;
-    double expTop = 2.2;
-    double expWidth = 3.3;
-    double expHeight = 4.4;
-    EXPECT_EQ(IME_ERR_OK, OH_CursorInfo_SetRect(cursorInfo, expLeft, expTop, expWidth, expHeight));
-    double actLeft = 0.0;
-    double actTop = 0.0;
-    double actWidth = 0.0;
-    double actHeight = 0.0;
-    EXPECT_EQ(IME_ERR_OK, OH_CursorInfo_GetRect(cursorInfo, &actLeft, &actTop, &actWidth, &actHeight));
-    EXPECT_EQ(expLeft, actLeft);
-    EXPECT_EQ(expTop, actTop);
-    EXPECT_EQ(expWidth, actWidth);
-    EXPECT_EQ(expHeight, actHeight);
+    auto controller = InputMethodController::GetInstance();
+    Property serviceProperty;
+    serviceProperty.name = "test.ime";
+    constexpr int32_t userId = 101;
+    // Explicit counts check the contract without gMock's implicit expectation sequence.
+    for (auto status :
+        { ErrorCode::NO_ERROR, ErrorCode::ERROR_STATUS_PERMISSION_DENIED, ErrorCode::ERROR_SERVICE_START_FAILED }) {
+        auto calls = std::make_shared<uint32_t>(0);
+        ON_CALL(*systemAbilityProxyMock_, GetCurrentInputMethod(_, _))
+            .WillByDefault(Invoke([calls, serviceProperty, status, userId](int32_t actualUserId, Property &output) {
+                ++*calls;
+                EXPECT_EQ(userId, actualUserId);
+                output = serviceProperty;
+                return status;
+            }));
+        Property property;
+        EXPECT_EQ(status, InputMethodQueries::GetCurrent(*controller, property, userId));
+        EXPECT_EQ(serviceProperty.name, property.name);
+        auto legacy = controller->GetCurrentInputMethod(userId);
+        EXPECT_NE(nullptr, legacy);
+        if (legacy != nullptr) {
+            EXPECT_EQ(serviceProperty.name, legacy->name);
+        }
+        EXPECT_EQ(2u, *calls);
+    }
 }
 
 /**
- * @tc.name: TestTextConfig_001
- * @tc.desc: create and destroy TestTextConfig success
+ * @tc.name: CurrentSubtype_StatusAndLegacyContract
+ * @tc.desc: Subtype status queries preserve service failures without changing the legacy result contract.
  * @tc.type: FUNC
  */
-HWTEST_F(InputMethodControllerCapiTest, TestTextConfig_001, TestSize.Level0)
+HWTEST_F(InputMethodControllerCapiTest, CurrentSubtype_StatusAndLegacyContract, TestSize.Level0)
 {
-    IMSA_HILOGI("InputMethodControllerCapiTest::TestTextConfig_001 START");
-    auto config = OH_TextConfig_Create();
-    ASSERT_NE(nullptr, config);
-
-    // test set and get inputType
-    InputMethod_TextInputType expInputType = IME_TEXT_INPUT_TYPE_NUMBER_DECIMAL;
-    InputMethod_TextInputType actInputType = IME_TEXT_INPUT_TYPE_NONE;
-    EXPECT_EQ(IME_ERR_OK, OH_TextConfig_SetInputType(config, expInputType));
-    EXPECT_EQ(IME_ERR_OK, OH_TextConfig_GetInputType(config, &actInputType));
-    EXPECT_EQ(expInputType, actInputType);
-
-    // test set and get enterKeyType
-    InputMethod_EnterKeyType expEnterKeyType = IME_ENTER_KEY_SEARCH;
-    EXPECT_EQ(IME_ERR_OK, OH_TextConfig_SetEnterKeyType(config, expEnterKeyType));
-    InputMethod_EnterKeyType actEnterKeyType = IME_ENTER_KEY_UNSPECIFIED;
-    EXPECT_EQ(IME_ERR_OK, OH_TextConfig_GetEnterKeyType(config, &actEnterKeyType));
-    EXPECT_EQ(expEnterKeyType, actEnterKeyType);
-
-    // test set and get isPreviewTextSupported
-    EXPECT_EQ(IME_ERR_OK, OH_TextConfig_SetPreviewTextSupport(config, true));
-    bool isPreviewTextSupported = false;
-    EXPECT_EQ(IME_ERR_OK, OH_TextConfig_IsPreviewTextSupported(config, &isPreviewTextSupported));
-    EXPECT_TRUE(isPreviewTextSupported);
-
-    // test set and get consumeKeyEvents
-    EXPECT_EQ(IME_ERR_OK, OH_TextConfig_SetConsumeKeyEvents(config, true));
-    bool consumeKeyEvents = false;
-    EXPECT_EQ(IME_ERR_OK, OH_TextConfig_GetConsumeKeyEvents(config, &consumeKeyEvents));
-    EXPECT_TRUE(consumeKeyEvents);
-
-    // test set and get selection
-    int32_t expStart = 1;
-    int32_t expEnd = 2;
-    EXPECT_EQ(IME_ERR_OK, OH_TextConfig_SetSelection(config, expStart, expEnd));
-    int32_t actStart = 0;
-    int32_t actEnd = 0;
-    EXPECT_EQ(IME_ERR_OK, OH_TextConfig_GetSelection(config, &actStart, &actEnd));
-    EXPECT_EQ(expStart, actStart);
-    EXPECT_EQ(expEnd, actEnd);
-
-    // test set and get windowId
-    int32_t expWindowId = 1;
-    EXPECT_EQ(IME_ERR_OK, OH_TextConfig_SetWindowId(config, expWindowId));
-    int32_t actWindowId = 0;
-    EXPECT_EQ(IME_ERR_OK, OH_TextConfig_GetWindowId(config, &actWindowId));
-    EXPECT_EQ(expWindowId, actWindowId);
-
-    TestCursorInfoOfTextConfig(config);
-
-    InputMethod_TextAvoidInfo *textAvoidInfo = nullptr;
-    EXPECT_EQ(IME_ERR_OK, OH_TextConfig_GetTextAvoidInfo(config, &textAvoidInfo));
-
-    // test set and get text avoid info member
-    double expPositionY = 10.0;
-    double expHeight = 20.0;
-    EXPECT_EQ(IME_ERR_OK, OH_TextAvoidInfo_SetPositionY(textAvoidInfo, expPositionY));
-    EXPECT_EQ(IME_ERR_OK, OH_TextAvoidInfo_SetHeight(textAvoidInfo, expHeight));
-    double actPositionY = 0.0;
-    double actHeight = 0.0;
-    EXPECT_EQ(IME_ERR_OK, OH_TextAvoidInfo_GetPositionY(textAvoidInfo, &actPositionY));
-    EXPECT_EQ(IME_ERR_OK, OH_TextAvoidInfo_GetHeight(textAvoidInfo, &actHeight));
-    EXPECT_EQ(expPositionY, actPositionY);
-    EXPECT_EQ(expHeight, actHeight);
-
-    OH_TextConfig_Destroy(config);
+    auto controller = InputMethodController::GetInstance();
+    SubProperty serviceProperty;
+    serviceProperty.id = "test.subtype";
+    constexpr int32_t userId = 101;
+    for (auto status :
+        { ErrorCode::NO_ERROR, ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND, ErrorCode::ERROR_SERVICE_START_FAILED }) {
+        auto calls = std::make_shared<uint32_t>(0);
+        ON_CALL(*systemAbilityProxyMock_, GetCurrentInputMethodSubtype(_, _))
+            .WillByDefault(Invoke([calls, serviceProperty, status, userId](SubProperty &output, int32_t actualUserId) {
+                ++*calls;
+                EXPECT_EQ(userId, actualUserId);
+                output = serviceProperty;
+                return status;
+            }));
+        SubProperty property;
+        EXPECT_EQ(status, InputMethodQueries::GetCurrentSubtype(*controller, property, userId));
+        EXPECT_EQ(serviceProperty.id, property.id);
+        auto legacy = controller->GetCurrentInputMethodSubtype(userId);
+        EXPECT_NE(nullptr, legacy);
+        if (legacy != nullptr) {
+            EXPECT_EQ(serviceProperty.id, legacy->id);
+        }
+        EXPECT_EQ(2u, *calls);
+    }
 }
 
 /**
- * @tc.name: TestTextConfig_002
- * @tc.desc: create and destroy TestTextConfig success
+ * @tc.name: DefaultInputMethod_PreserveFailureAndOutput
+ * @tc.desc: Failed default-IME queries propagate the service status and do not replace the caller's output.
  * @tc.type: FUNC
  */
-HWTEST_F(InputMethodControllerCapiTest, TestTextConfig_002, TestSize.Level0)
+HWTEST_F(InputMethodControllerCapiTest, DefaultInputMethod_PreserveFailureAndOutput, TestSize.Level0)
 {
-    IMSA_HILOGI("InputMethodControllerCapiTest::TestTextConfig_002 START");
-    auto config = OH_TextConfig_Create();
-    ASSERT_NE(nullptr, config);
+    auto controller = InputMethodController::GetInstance();
+    auto original = std::make_shared<Property>();
+    original->name = "original";
+    auto property = original;
+    auto calls = std::make_shared<uint32_t>(0);
+    ON_CALL(*systemAbilityProxyMock_, GetDefaultInputMethod(_, _, _))
+        .WillByDefault(Invoke([calls](Property &, bool isBrief, int32_t userId) {
+            ++*calls;
+            EXPECT_FALSE(isBrief);
+            EXPECT_EQ(101, userId);
+            return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
+        }));
+    EXPECT_EQ(ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND, controller->GetDefaultInputMethod(property, 101));
+    EXPECT_EQ(original, property);
+    EXPECT_EQ("original", property->name);
+    EXPECT_EQ(1u, *calls);
+}
 
-    // test set and get inputType
-    InputMethod_TextInputType expInputType = IME_TEXT_INPUT_TYPE_ONE_TIME_CODE;
-    InputMethod_TextInputType actInputType = IME_TEXT_INPUT_TYPE_NONE;
-    EXPECT_EQ(IME_ERR_OK, OH_TextConfig_SetInputType(config, expInputType));
-    EXPECT_EQ(IME_ERR_OK, OH_TextConfig_GetInputType(config, &actInputType));
-    EXPECT_EQ(expInputType, actInputType);
-    OH_TextConfig_Destroy(config);
+/**
+ * @tc.name: NativeRegistry_ViewLifetimeAndPruning
+ * @tc.desc: Expired views are pruned and cannot be registered or resurrected.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, NativeRegistry_ViewLifetimeAndPruning, TestSize.Level0)
+{
+    auto &registry = NativeObjectRegistry<InputMethod_CursorInfo>::GetInstance();
+    auto cursor = std::make_shared<InputMethod_CursorInfo>();
+    auto lifetime = std::make_shared<uint8_t>(0);
+    EXPECT_EQ(nullptr, registry.Register(nullptr));
+    EXPECT_TRUE(registry.GetLifetime(cursor.get()).expired());
+    EXPECT_EQ(nullptr, registry.Get(cursor.get()));
+    EXPECT_FALSE(registry.RegisterView(cursor, {}));
+    EXPECT_TRUE(registry.RegisterView(cursor, lifetime));
+    EXPECT_EQ(cursor, registry.Get(cursor.get()));
+    EXPECT_FALSE(registry.Destroy(cursor.get()));
+    lifetime.reset();
+    EXPECT_EQ(nullptr, registry.Get(cursor.get()));
+    auto next = std::make_shared<InputMethod_CursorInfo>();
+    auto nextLifetime = std::make_shared<uint8_t>(0);
+    EXPECT_TRUE(registry.RegisterView(next, nextLifetime));
+    EXPECT_TRUE(registry.GetLifetime(cursor.get()).expired());
+    EXPECT_EQ(next, registry.Get(next.get()));
+    registry.UnregisterBorrowed(next.get());
+    EXPECT_EQ(nullptr, registry.Get(next.get()));
+    registry.UnregisterBorrowed(next.get());
+}
+
+/**
+ * @tc.name: NativeRegistry_OwnedLeaseSurvivesRetirement
+ * @tc.desc: Retirement invalidates the handle immediately but releases storage after the last lease.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, NativeRegistry_OwnedLeaseSurvivesRetirement, TestSize.Level0)
+{
+    auto raw = OH_AttachOptions_Create(true);
+    ASSERT_NE(nullptr, raw);
+    auto &registry = NativeObjectRegistry<InputMethod_AttachOptions>::GetInstance();
+    auto lease = registry.Get(raw);
+    ASSERT_NE(nullptr, lease);
+    std::weak_ptr<InputMethod_AttachOptions> storage = lease;
+    auto lifetime = registry.GetLifetime(raw);
+    registry.UnregisterBorrowed(raw);
+    EXPECT_EQ(lease, registry.Get(raw));
+    EXPECT_TRUE(registry.Destroy(raw));
+    EXPECT_TRUE(lifetime.expired());
+    EXPECT_EQ(nullptr, registry.Get(raw));
+    EXPECT_FALSE(registry.Destroy(raw));
+    EXPECT_FALSE(storage.expired());
+    EXPECT_TRUE(lease->showKeyboard);
+    lease.reset();
+    EXPECT_TRUE(storage.expired());
+}
+
+/**
+ * @tc.name: NativeObjectScope_CloseAndMove
+ * @tc.desc: Borrowed scope closure is idempotent and moved-from destruction preserves the new owner.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, NativeObjectScope_CloseAndMove, TestSize.Level0)
+{
+    auto &registry = NativeObjectRegistry<InputMethod_TextConfig>::GetInstance();
+    std::shared_ptr<InputMethod_TextConfig> lease;
+    std::weak_ptr<InputMethod_TextConfig> storage;
+    {
+        NativeObjectScope<InputMethod_TextConfig> scope;
+        ASSERT_NE(nullptr, scope.Get());
+        NativeObjectScope<InputMethod_TextConfig> moved(std::move(scope));
+        EXPECT_EQ(nullptr, scope.Get());
+        lease = registry.Get(moved.Get());
+        ASSERT_NE(nullptr, lease);
+        storage = lease;
+        EXPECT_FALSE(registry.Destroy(moved.Get()));
+        EXPECT_EQ(IME_ERR_OK, OH_TextConfig_SetWindowId(moved.Get(), 123));
+        moved.Close();
+        moved.Close();
+        EXPECT_EQ(nullptr, registry.Get(moved.Get()));
+    }
+    EXPECT_FALSE(storage.expired());
+    EXPECT_EQ(123, lease->windowId);
+    lease.reset();
+    EXPECT_TRUE(storage.expired());
 }
 
 void GetTextConfigFunc(InputMethod_TextEditorProxy *proxy, InputMethod_TextConfig *config) { }
@@ -591,266 +608,6 @@ HWTEST_F(InputMethodControllerCapiTest, PrivateCommand_001, TestSize.Level0)
     EXPECT_EQ(newKey, std::string(actStrKey, actStrKeyLength));
     OH_PrivateCommand_Destroy(privateCommand);
 }
-/**
- * @tc.name: OH_CursorInfo_SetRect_001
- * @tc.desc: input parameters is nullptr
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodControllerCapiTest, OH_CursorInfo_SetRect_001, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodControllerCapiTest::OH_CursorInfo_SetRect_001 START");
-    double left = 0;
-    double top = 0;
-    double width = 0;
-    double height = 0;
-    auto ret = OH_CursorInfo_SetRect(nullptr, left, top, width, height);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-}
-
-/**
- * @tc.name: OH_CursorInfo_GetRect_001
- * @tc.desc: input parameters is nullptr
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodControllerCapiTest, OH_CursorInfo_GetRect_001, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodControllerCapiTest::OH_CursorInfo_GetRect_001 START");
-    double left = 0;
-    double top = 0;
-    double width = 0;
-    double height = 0;
-    auto ret = OH_CursorInfo_GetRect(nullptr, nullptr, nullptr, nullptr, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    auto info = OH_CursorInfo_Create(left, top, width, height);
-    ret = OH_CursorInfo_GetRect(info, nullptr, nullptr, nullptr, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    ret = OH_CursorInfo_GetRect(info, &left, nullptr, nullptr, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    ret = OH_CursorInfo_GetRect(info, &left, &top, nullptr, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    ret = OH_CursorInfo_GetRect(info, &left, &top, &width, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    OH_CursorInfo_Destroy(info);
-}
-
-/**
- * @tc.name: OH_TextConfig_SetInputType_001
- * @tc.desc: input parameters is nullptr
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetInputType_001, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_SetInputType_001 START");
-    InputMethod_TextInputType inputType = IME_TEXT_INPUT_TYPE_TEXT;
-    auto ret = OH_TextConfig_SetInputType(nullptr, inputType);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-}
-
-/**
- * @tc.name: OH_TextConfig_SetEnterKeyType_001
- * @tc.desc: input parameters is nullptr
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetEnterKeyType_001, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_SetEnterKeyType_001 START");
-    InputMethod_EnterKeyType enterKeyType = IME_ENTER_KEY_UNSPECIFIED;
-    auto ret = OH_TextConfig_SetEnterKeyType(nullptr, enterKeyType);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-}
-
-/**
- * @tc.name: OH_TextConfig_SetPreviewTextSupport_001
- * @tc.desc: input parameters is nullptr
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetPreviewTextSupport_001, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_SetPreviewTextSupport_001 START");
-    bool supported = false;
-    auto ret = OH_TextConfig_SetPreviewTextSupport(nullptr, supported);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-}
-
-/**
- * @tc.name: OH_TextConfig_SetConsumeKeyEvents_001
- * @tc.desc: input parameters is nullptr
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetConsumeKeyEvents_001, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_SetConsumeKeyEvents_001 START");
-    bool supported = false;
-    auto ret = OH_TextConfig_SetConsumeKeyEvents(nullptr, supported);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-}
-
-/**
- * @tc.name: OH_TextConfig_SetSelection_001
- * @tc.desc: input parameters is nullptr
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetSelection_001, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_SetSelection_001 START");
-    int32_t start = 0;
-    int32_t end = 0;
-    auto ret = OH_TextConfig_SetSelection(nullptr, start, end);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-}
-
-/**
- * @tc.name: OH_TextConfig_SetWindowId_001
- * @tc.desc: input parameters is nullptr
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetWindowId_001, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_SetWindowId_001 START");
-    int32_t windowId = 0;
-    auto ret = OH_TextConfig_SetWindowId(nullptr, windowId);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-}
-
-/**
- * @tc.name: OH_TextConfig_GetInputType_001
- * @tc.desc: input parameters is nullptr
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_GetInputType_001, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_GetInputType_001 START");
-    auto ret = OH_TextConfig_GetInputType(nullptr, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    InputMethod_TextConfig *config = OH_TextConfig_Create();
-    ASSERT_NE(config, nullptr);
-    ret = OH_TextConfig_GetInputType(config, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    OH_TextConfig_Destroy(config);
-}
-
-/**
- * @tc.name: OH_TextConfig_GetEnterKeyType_001
- * @tc.desc: input parameters is nullptr
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_GetEnterKeyType_001, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_GetEnterKeyType_001 START");
-    auto ret = OH_TextConfig_GetEnterKeyType(nullptr, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    InputMethod_TextConfig *config = OH_TextConfig_Create();
-    ASSERT_NE(config, nullptr);
-    ret = OH_TextConfig_GetEnterKeyType(config, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    OH_TextConfig_Destroy(config);
-}
-
-/**
- * @tc.name: OH_TextConfig_IsPreviewTextSupported_001
- * @tc.desc: input parameters is nullptr
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_IsPreviewTextSupported_001, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_IsPreviewTextSupported_001 START");
-    auto ret = OH_TextConfig_IsPreviewTextSupported(nullptr, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    InputMethod_TextConfig *config = OH_TextConfig_Create();
-    ASSERT_NE(config, nullptr);
-    ret = OH_TextConfig_IsPreviewTextSupported(config, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    OH_TextConfig_Destroy(config);
-}
-
-/**
- * @tc.name: OH_TextConfig_GetConsumeKeyEvents_001
- * @tc.desc: input parameters is nullptr
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_GetConsumeKeyEvents_001, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_GetConsumeKeyEvents_001 START");
-    auto ret = OH_TextConfig_GetConsumeKeyEvents(nullptr, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    InputMethod_TextConfig *config = OH_TextConfig_Create();
-    ASSERT_NE(config, nullptr);
-    ret = OH_TextConfig_GetConsumeKeyEvents(config, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    OH_TextConfig_Destroy(config);
-}
-
-/**
- * @tc.name: OH_TextConfig_GetCursorInfo_001
- * @tc.desc: input parameters is nullptr
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_GetCursorInfo_001, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_GetCursorInfo_001 START");
-    auto ret = OH_TextConfig_GetCursorInfo(nullptr, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    InputMethod_TextConfig *config = OH_TextConfig_Create();
-    ASSERT_NE(config, nullptr);
-    ret = OH_TextConfig_GetCursorInfo(config, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    OH_TextConfig_Destroy(config);
-}
-
-/**
- * @tc.name: OH_TextConfig_GetTextAvoidInfo_001
- * @tc.desc: input parameters is nullptr
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_GetTextAvoidInfo_001, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_GetTextAvoidInfo_001 START");
-    auto ret = OH_TextConfig_GetTextAvoidInfo(nullptr, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    InputMethod_TextConfig *config = OH_TextConfig_Create();
-    ASSERT_NE(config, nullptr);
-    ret = OH_TextConfig_GetTextAvoidInfo(config, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    OH_TextConfig_Destroy(config);
-}
-
-/**
- * @tc.name: OH_TextConfig_GetSelection_001
- * @tc.desc: input parameters is nullptr
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_GetSelection_001, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_GetSelection_001 START");
-    auto ret = OH_TextConfig_GetSelection(nullptr, nullptr, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    InputMethod_TextConfig *config = OH_TextConfig_Create();
-    ASSERT_NE(config, nullptr);
-    ret = OH_TextConfig_GetSelection(config, nullptr, nullptr);
-    EXPECT_EQ(IME_ERR_NULL_POINTER, ret);
-    int32_t start = 0;
-    ret = OH_TextConfig_GetSelection(config, &start, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    OH_TextConfig_Destroy(config);
-}
-
-/**
- * @tc.name: OH_TextConfig_GetWindowId_001
- * @tc.desc: input parameters is nullptr
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_GetWindowId_001, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_GetWindowId_001 START");
-    auto ret = OH_TextConfig_GetWindowId(nullptr, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    InputMethod_TextConfig *config = OH_TextConfig_Create();
-    ASSERT_NE(config, nullptr);
-    ret = OH_TextConfig_GetWindowId(config, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    OH_TextConfig_Destroy(config);
-}
-
 /**
  * @tc.name: OH_TextEditorProxy_SetGetTextConfigFunc_001
  * @tc.desc: input parameters is nullptr
@@ -1361,6 +1118,106 @@ HWTEST_F(InputMethodControllerCapiTest, OH_TextEditorProxy_GetFinishTextPreviewF
     OH_TextEditorProxy_Destroy(proxy);
 }
 
+static void CheckTextEditorCallbackAccessors(InputMethod_TextEditorProxy *proxy, InputMethod_ErrorCode expected)
+{
+    auto check = [proxy, expected](auto setter, auto getter, auto callback) {
+        decltype(callback) actual = nullptr;
+        EXPECT_EQ(expected, setter(proxy, callback));
+        EXPECT_EQ(expected, getter(proxy, &actual));
+        EXPECT_EQ(expected == IME_ERR_OK ? callback : nullptr, actual);
+    };
+    check(OH_TextEditorProxy_SetGetTextConfigFunc, OH_TextEditorProxy_GetGetTextConfigFunc, GetTextConfigFunc);
+    check(OH_TextEditorProxy_SetInsertTextFunc, OH_TextEditorProxy_GetInsertTextFunc, InsertTextFunc);
+    check(OH_TextEditorProxy_SetDeleteForwardFunc, OH_TextEditorProxy_GetDeleteForwardFunc, DeleteForwardFunc);
+    check(OH_TextEditorProxy_SetDeleteBackwardFunc, OH_TextEditorProxy_GetDeleteBackwardFunc, DeleteBackwardFunc);
+    check(OH_TextEditorProxy_SetSendKeyboardStatusFunc, OH_TextEditorProxy_GetSendKeyboardStatusFunc,
+        SendKeyboardStatusFunc);
+    check(OH_TextEditorProxy_SetSendEnterKeyFunc, OH_TextEditorProxy_GetSendEnterKeyFunc, SendEnterKeyFunc);
+    check(OH_TextEditorProxy_SetMoveCursorFunc, OH_TextEditorProxy_GetMoveCursorFunc, MoveCursorFunc);
+    check(OH_TextEditorProxy_SetHandleSetSelectionFunc, OH_TextEditorProxy_GetHandleSetSelectionFunc,
+        HandleSetSelectionFunc);
+    check(OH_TextEditorProxy_SetHandleExtendActionFunc, OH_TextEditorProxy_GetHandleExtendActionFunc,
+        HandleExtendActionFunc);
+    check(OH_TextEditorProxy_SetGetLeftTextOfCursorFunc, OH_TextEditorProxy_GetGetLeftTextOfCursorFunc,
+        GetleftTextOfCursorFunc);
+    check(OH_TextEditorProxy_SetGetRightTextOfCursorFunc, OH_TextEditorProxy_GetGetRightTextOfCursorFunc,
+        GetRightTextOfCursorFunc);
+    check(OH_TextEditorProxy_SetGetTextIndexAtCursorFunc, OH_TextEditorProxy_GetGetTextIndexAtCursorFunc,
+        GetTextIndexAtCursorFunc);
+    check(OH_TextEditorProxy_SetReceivePrivateCommandFunc, OH_TextEditorProxy_GetReceivePrivateCommandFunc,
+        ReceivePrivateCommandFunc);
+    check(OH_TextEditorProxy_SetSetPreviewTextFunc, OH_TextEditorProxy_GetSetPreviewTextFunc, SetPreviewTextFunc);
+    check(OH_TextEditorProxy_SetFinishTextPreviewFunc, OH_TextEditorProxy_GetFinishTextPreviewFunc,
+        FinishTextPreviewFunc);
+    EXPECT_EQ(expected, OH_TextEditorProxy_SetCallbackInMainThread(proxy, true));
+}
+
+/**
+ * @tc.name: TextEditorCallbacks_RoundTrip
+ * @tc.desc: All atomic callback setters and getters preserve the registered function.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, TextEditorCallbacks_RoundTrip, TestSize.Level0)
+{
+    auto proxy = OH_TextEditorProxy_Create();
+    ASSERT_NE(nullptr, proxy);
+    CheckTextEditorCallbackAccessors(proxy, IME_ERR_OK);
+    OH_TextEditorProxy_Destroy(proxy);
+}
+
+/**
+ * @tc.name: TextEditorCallbacks_RejectUnregisteredHandle
+ * @tc.desc: Every callback accessor rejects non-null unregistered storage.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, TextEditorCallbacks_RejectUnregisteredHandle, TestSize.Level0)
+{
+    InputMethod_TextEditorProxy proxy;
+    CheckTextEditorCallbackAccessors(&proxy, IME_ERR_NULL_POINTER);
+    EXPECT_EQ(nullptr, proxy.insertTextFunc.load());
+    EXPECT_FALSE(proxy.isCallbackInMainThread.load());
+}
+
+/**
+ * @tc.name: TextEditorCallbacks_RejectRetiredHandle
+ * @tc.desc: Keeping retired editor storage alive does not permit callback replacement.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, TextEditorCallbacks_RejectRetiredHandle, TestSize.Level0)
+{
+    auto proxy = OH_TextEditorProxy_Create();
+    ASSERT_NE(nullptr, proxy);
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    ASSERT_NE(nullptr, lease);
+    OH_TextEditorProxy_Destroy(proxy);
+    CheckTextEditorCallbackAccessors(proxy, IME_ERR_NULL_POINTER);
+    EXPECT_EQ(nullptr, lease->insertTextFunc.load());
+    EXPECT_FALSE(lease->isCallbackInMainThread.load());
+}
+
+/**
+ * @tc.name: AttachOptions_RejectInvalidHandles
+ * @tc.desc: Unregistered and retired options are rejected without changing outputs.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, AttachOptions_RejectInvalidHandles, TestSize.Level0)
+{
+    InputMethod_AttachOptions unregistered {};
+    auto options = OH_AttachOptions_Create(true);
+    ASSERT_NE(nullptr, options);
+    auto lease = NativeObjectRegistry<InputMethod_AttachOptions>::GetInstance().Get(options);
+    OH_AttachOptions_Destroy(options);
+    for (auto invalid : { &unregistered, options }) {
+        bool show = false;
+        int reason = -1;
+        EXPECT_EQ(IME_ERR_PARAMCHECK, OH_AttachOptions_IsShowKeyboard(invalid, &show));
+        EXPECT_EQ(IME_ERR_PARAMCHECK, OH_AttachOptions_GetRequestKeyboardReason(invalid, &reason));
+        EXPECT_FALSE(show);
+        EXPECT_EQ(-1, reason);
+    }
+    OH_AttachOptions_Destroy(options);
+}
+
 /**
  * @tc.name: OH_AttachOptions_IsShowKeyboard_001
  * @tc.desc: input parameters is nullptr
@@ -1623,6 +1480,118 @@ HWTEST_F(InputMethodControllerCapiTest, OH_PrivateCommand_GetStrValue_001, TestS
 }
 
 /**
+ * @tc.name: PrivateCommand_RejectInvalidHandles
+ * @tc.desc: All private-command accessors reject unregistered and retired handles.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, PrivateCommand_RejectInvalidHandles, TestSize.Level0)
+{
+    char key[] = "key";
+    InputMethod_PrivateCommand unregistered {};
+    auto command = OH_PrivateCommand_Create(key, 3);
+    ASSERT_NE(nullptr, command);
+    auto lease = NativeObjectRegistry<InputMethod_PrivateCommand>::GetInstance().Get(command);
+    OH_PrivateCommand_Destroy(command);
+    for (auto invalid : { &unregistered, command }) {
+        const char *text = nullptr;
+        size_t length = 0;
+        bool boolValue = false;
+        int32_t intValue = -1;
+        InputMethod_CommandValueType type = IME_COMMAND_VALUE_TYPE_NONE;
+        EXPECT_EQ(IME_ERR_PARAMCHECK, OH_PrivateCommand_SetKey(invalid, key, 3));
+        EXPECT_EQ(IME_ERR_PARAMCHECK, OH_PrivateCommand_SetBoolValue(invalid, true));
+        EXPECT_EQ(IME_ERR_PARAMCHECK, OH_PrivateCommand_SetIntValue(invalid, 1));
+        EXPECT_EQ(IME_ERR_PARAMCHECK, OH_PrivateCommand_SetStrValue(invalid, key, 3));
+        EXPECT_EQ(IME_ERR_PARAMCHECK, OH_PrivateCommand_GetKey(invalid, &text, &length));
+        EXPECT_EQ(IME_ERR_PARAMCHECK, OH_PrivateCommand_GetValueType(invalid, &type));
+        EXPECT_EQ(IME_ERR_PARAMCHECK, OH_PrivateCommand_GetBoolValue(invalid, &boolValue));
+        EXPECT_EQ(IME_ERR_PARAMCHECK, OH_PrivateCommand_GetIntValue(invalid, &intValue));
+        EXPECT_EQ(IME_ERR_PARAMCHECK, OH_PrivateCommand_GetStrValue(invalid, &text, &length));
+        EXPECT_EQ(nullptr, text);
+        EXPECT_EQ(0, length);
+        EXPECT_FALSE(boolValue);
+        EXPECT_EQ(-1, intValue);
+        EXPECT_EQ(IME_COMMAND_VALUE_TYPE_NONE, type);
+    }
+    OH_PrivateCommand_Destroy(command);
+}
+
+/**
+ * @tc.name: NativeSessionGuard_RejectNestedAndConcurrentEntry
+ * @tc.desc: A rejected guard cannot release the current owner and acquisition recovers after exit.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, NativeSessionGuard_RejectNestedAndConcurrentEntry, TestSize.Level0)
+{
+    {
+        NativeSessionGuard owner;
+        ASSERT_TRUE(owner.IsAcquired());
+        {
+            NativeSessionGuard nested;
+            EXPECT_FALSE(nested.IsAcquired());
+        }
+        bool acquired = true;
+        std::thread contender([&acquired]() {
+            NativeSessionGuard guard;
+            acquired = guard.IsAcquired();
+        });
+        contender.join();
+        EXPECT_FALSE(acquired);
+        NativeSessionGuard stillBlocked;
+        EXPECT_FALSE(stillBlocked.IsAcquired());
+    }
+    NativeSessionGuard next;
+    EXPECT_TRUE(next.IsAcquired());
+}
+
+/**
+ * @tc.name: CSessionOperations_RejectReentryBeforeValidation
+ * @tc.desc: Every session entry point rejects reentry without touching controller state.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, CSessionOperations_RejectReentryBeforeValidation, TestSize.Level0)
+{
+    {
+        NativeSessionGuard owner;
+        ASSERT_TRUE(owner.IsAcquired());
+        EXPECT_EQ(IME_ERR_IMCLIENT, OH_InputMethodController_Attach(nullptr, nullptr, nullptr));
+        EXPECT_EQ(IME_ERR_IMCLIENT, OH_InputMethodController_AttachWithUIContext(nullptr, nullptr, nullptr, nullptr));
+        EXPECT_EQ(IME_ERR_IMCLIENT, OH_InputMethodController_Detach(nullptr));
+        EXPECT_EQ(IME_ERR_IMCLIENT, OH_InputMethodProxy_ShowKeyboard(nullptr));
+        EXPECT_EQ(IME_ERR_IMCLIENT, OH_InputMethodProxy_ShowTextInput(nullptr, nullptr));
+        EXPECT_EQ(IME_ERR_IMCLIENT, OH_InputMethodProxy_HideKeyboard(nullptr));
+        EXPECT_EQ(IME_ERR_IMCLIENT, OH_InputMethodProxy_NotifySelectionChange(nullptr, nullptr, 0, 0, 0));
+        EXPECT_EQ(IME_ERR_IMCLIENT,
+            OH_InputMethodProxy_NotifyConfigurationChange(nullptr, IME_ENTER_KEY_NONE, IME_TEXT_INPUT_TYPE_NONE));
+        EXPECT_EQ(IME_ERR_IMCLIENT, OH_InputMethodProxy_NotifyCursorUpdate(nullptr, nullptr));
+        EXPECT_EQ(IME_ERR_IMCLIENT, OH_InputMethodProxy_SendPrivateCommand(nullptr, nullptr, 0));
+        EXPECT_EQ(IME_ERR_IMCLIENT, OH_InputMethodProxy_SendMessage(nullptr, nullptr, 0, nullptr, 0));
+        EXPECT_EQ(IME_ERR_IMCLIENT, OH_InputMethodProxy_RecvMessage(nullptr, nullptr));
+    }
+    EXPECT_EQ(IME_ERR_NULL_POINTER, OH_InputMethodController_Attach(nullptr, nullptr, nullptr));
+    EXPECT_EQ(IME_ERR_NULL_POINTER, OH_InputMethodProxy_ShowKeyboard(nullptr));
+}
+
+/**
+ * @tc.name: Attach_RejectRetiredOptions
+ * @tc.desc: Both attach entry points reject retired options before a platform or IPC call.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, Attach_RejectRetiredOptions, TestSize.Level0)
+{
+    auto options = OH_AttachOptions_Create(true);
+    ASSERT_NE(nullptr, options);
+    auto lease = NativeObjectRegistry<InputMethod_AttachOptions>::GetInstance().Get(options);
+    OH_AttachOptions_Destroy(options);
+    InputMethod_InputMethodProxy *result = nullptr;
+    EXPECT_EQ(IME_ERR_PARAMCHECK, OH_InputMethodController_Attach(textEditorProxy_, options, &result));
+    EXPECT_EQ(IME_ERR_PARAMCHECK,
+        OH_InputMethodController_AttachWithUIContext(
+            reinterpret_cast<ArkUI_ContextHandle>(&result), textEditorProxy_, options, &result));
+    EXPECT_EQ(nullptr, result);
+}
+
+/**
  * @tc.name: OH_InputMethodController_Attach_001
  * @tc.desc: input parameters is nullptr
  * @tc.type: FUNC
@@ -1715,7 +1684,7 @@ HWTEST_F(InputMethodControllerCapiTest, ShowTextInputWithNullOptions_fail, TestS
     EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Attach(textEditorProxy_, attachOptions_, &inputMethodProxy));
 
     auto ret = OH_InputMethodProxy_ShowTextInput(inputMethodProxy, nullptr);
-    EXPECT_EQ(ret, IME_ERR_PARAMCHECK);
+    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
 
     ret = OH_InputMethodProxy_ShowTextInput(nullptr, attachOptions_);
     EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
@@ -2116,253 +2085,105 @@ HWTEST_F(InputMethodControllerCapiTest, TestAttachWithPlaceholderAndAbility_001,
 }
 
 /**
- * @tc.name: OH_TextConfig_SetPlaceholder_001
- * @tc.desc: Input parameters are valid
+ * @tc.name: Attach_BorrowedConfigAndReentry
+ * @tc.desc: Callback-owned config and children survive attempted destruction and expire on callback return.
  * @tc.type: FUNC
  */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetPlaceholder_001, TestSize.Level0)
+HWTEST_F(InputMethodControllerCapiTest, Attach_BorrowedConfigAndReentry, TestSize.Level0)
 {
-    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_SetPlaceholder_001 START");
-    auto config = OH_TextConfig_Create();
-    ASSERT_NE(nullptr, config);
-    std::u16string input = u"test";
-    auto ret = OH_TextConfig_SetPlaceholder(config, input.data(), input.size());
-    EXPECT_EQ(ret, IME_ERR_OK);
-    ret = OH_TextConfig_GetPlaceholder(nullptr, nullptr, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    ret = OH_TextConfig_GetPlaceholder(config, nullptr, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    size_t outLen = 513;
-    char16_t pOut[513] = {};
-    ret = OH_TextConfig_GetPlaceholder(config, pOut, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    outLen = 1;
-    ret = OH_TextConfig_GetPlaceholder(config, pOut, &outLen);
-    EXPECT_EQ(ret, IME_ERR_PARAMCHECK);
-    EXPECT_EQ(outLen - 1, input.size());
-    outLen = 513;
-    ret = OH_TextConfig_GetPlaceholder(config, pOut, &outLen);
-    EXPECT_EQ(ret, IME_ERR_OK);
-    EXPECT_EQ(outLen - 1, input.size());
-    outLen = input.size();
-    ret = OH_TextConfig_GetPlaceholder(config, pOut, &outLen);
-    EXPECT_EQ(ret, IME_ERR_PARAMCHECK);
-    std::u16string out(pOut, outLen);
-    EXPECT_GT(out.size(), input.size());
-    outLen = 4;
-    ret = OH_TextConfig_GetPlaceholder(config, pOut, &outLen);
-    EXPECT_EQ(ret, IME_ERR_PARAMCHECK);
-    OH_TextConfig_Destroy(config);
+    auto editor = OH_TextEditorProxy_Create();
+    ASSERT_NE(nullptr, editor);
+    ConstructTextEditorProxy(editor);
+    static std::shared_ptr<InputMethod_TextConfig> borrowed;
+    static InputMethod_CursorInfo *cursor = nullptr;
+    static InputMethod_TextAvoidInfo *avoid = nullptr;
+    borrowed.reset();
+    cursor = nullptr;
+    avoid = nullptr;
+    EXPECT_EQ(IME_ERR_OK,
+        OH_TextEditorProxy_SetGetTextConfigFunc(
+            editor, [](InputMethod_TextEditorProxy *proxy, InputMethod_TextConfig *config) {
+                borrowed = NativeObjectRegistry<InputMethod_TextConfig>::GetInstance().Get(config);
+                OH_TextConfig_Destroy(config);
+                EXPECT_EQ(IME_ERR_OK, OH_TextConfig_SetWindowId(config, 123));
+                EXPECT_EQ(IME_ERR_OK, OH_TextConfig_GetCursorInfo(config, &cursor));
+                EXPECT_EQ(IME_ERR_OK, OH_TextConfig_GetTextAvoidInfo(config, &avoid));
+                OH_CursorInfo_Destroy(cursor);
+                OH_TextAvoidInfo_Destroy(avoid);
+                EXPECT_EQ(IME_ERR_OK, OH_CursorInfo_SetRect(cursor, 1, 2, 3, 4));
+                EXPECT_EQ(IME_ERR_OK, OH_TextAvoidInfo_SetHeight(avoid, 5));
+                EXPECT_EQ(IME_ERR_IMCLIENT, OH_InputMethodController_Attach(proxy, nullptr, nullptr));
+                EXPECT_EQ(IME_ERR_IMCLIENT, OH_InputMethodProxy_ShowKeyboard(nullptr));
+            }));
+    InputMethod_InputMethodProxy *result = nullptr;
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Attach(editor, attachOptions_, &result));
+    EXPECT_NE(nullptr, borrowed);
+    int32_t windowId = -1;
+    double value = -1;
+    EXPECT_EQ(IME_ERR_PARAMCHECK, OH_TextConfig_GetWindowId(borrowed.get(), &windowId));
+    EXPECT_EQ(IME_ERR_PARAMCHECK, OH_CursorInfo_GetRect(cursor, &value, &value, &value, &value));
+    EXPECT_EQ(IME_ERR_PARAMCHECK, OH_TextAvoidInfo_GetHeight(avoid, &value));
+    EXPECT_EQ(-1, windowId);
+    EXPECT_EQ(-1, value);
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Detach(result));
+    OH_TextEditorProxy_Destroy(editor);
+    borrowed.reset();
 }
 
 /**
- * @tc.name: OH_TextConfig_SetPlaceholder_002
- * @tc.desc: Invalid test input parameter
+ * @tc.name: Attach_CancelWhenEditorDestroyedInCallback
+ * @tc.desc: Destroying the editor during GetTextConfig cancels attach instead of using a stale handle.
  * @tc.type: FUNC
  */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetPlaceholder_002, TestSize.Level0)
+HWTEST_F(InputMethodControllerCapiTest, Attach_CancelWhenEditorDestroyedInCallback, TestSize.Level0)
 {
-    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_SetPlaceholder_002 START");
-    auto config = OH_TextConfig_Create();
-    ASSERT_NE(nullptr, config);
-    std::u16string input = u"test";
-    auto ret = OH_TextConfig_SetPlaceholder(config, input.data(), input.size());
-    EXPECT_EQ(ret, IME_ERR_OK);
-    ret = OH_TextConfig_SetPlaceholder(config, nullptr, 0);
-    EXPECT_EQ(ret, IME_ERR_OK);
-    size_t outLen = 512;
-    char16_t pOut[512] = {};
-    ret = OH_TextConfig_GetPlaceholder(config, pOut, &outLen);
-    EXPECT_EQ(ret, IME_ERR_OK);
-    EXPECT_EQ(outLen, 1);
-    OH_TextConfig_Destroy(config);
+    auto editor = OH_TextEditorProxy_Create();
+    ASSERT_NE(nullptr, editor);
+    ConstructTextEditorProxy(editor);
+    InputMethod_InputMethodProxy *result = nullptr;
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Attach(editor, attachOptions_, &result));
+    EXPECT_EQ(IME_ERR_OK,
+        OH_TextEditorProxy_SetGetTextConfigFunc(
+            editor, [](InputMethod_TextEditorProxy *proxy, InputMethod_TextConfig *config) {
+                OH_TextEditorProxy_Destroy(proxy);
+                EXPECT_EQ(IME_ERR_OK, OH_TextConfig_SetWindowId(config, 321));
+            }));
+    InputMethod_InputMethodProxy *cancelled = nullptr;
+    EXPECT_EQ(IME_ERR_IMCLIENT, OH_InputMethodController_Attach(editor, attachOptions_, &cancelled));
+    EXPECT_EQ(nullptr, cancelled);
+    EXPECT_TRUE(TextEditorProxyManager::GetInstance().GetWeak(editor).expired());
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Detach(result));
 }
 
 /**
- * @tc.name: OH_TextConfig_SetPlaceholder_003
- * @tc.desc: Invalid test input parameter
+ * @tc.name: InputMethodProxy_RejectRetiredValueHandles
+ * @tc.desc: An attached proxy rejects invalid value and callback handles before native dispatch.
  * @tc.type: FUNC
  */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetPlaceholder_003, TestSize.Level0)
+HWTEST_F(InputMethodControllerCapiTest, InputMethodProxy_RejectRetiredValueHandles, TestSize.Level0)
 {
-    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_SetPlaceholder_003 START");
-    auto config = OH_TextConfig_Create();
-    ASSERT_NE(nullptr, config);
-    auto ret = OH_TextConfig_SetPlaceholder(config, nullptr, 257);
-    EXPECT_EQ(ret, IME_ERR_OK);
-    ret = OH_TextConfig_SetPlaceholder(config, nullptr, 1);
-    EXPECT_EQ(ret, IME_ERR_OK);
-    ret = OH_TextConfig_SetPlaceholder(nullptr, nullptr, 1);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    std::u16string input = u"";
-    for (int i = 0; i < MAX_PLACEHOLDER_SIZE; ++i) {
-        input.append(u"𪛊");
-    }
-    IMSA_HILOGI("inputLen:%{public}zu,input:%{public}s", input.size(), Str16ToStr8(input).c_str());
-    ret = OH_TextConfig_SetPlaceholder(config, input.data(), input.size());
-    EXPECT_EQ(ret, IME_ERR_OK);
-    std::u16string out(MAX_PLACEHOLDER_INPUT_SIZE, u'\0');
-    size_t outLen = out.size();
-    ret = OH_TextConfig_GetPlaceholder(config, out.data(), &outLen);
-    EXPECT_EQ(ret, IME_ERR_OK);
-    EXPECT_EQ(out.size(), outLen);
-    EXPECT_EQ(out[out.size() - 1], 0);
-    out.pop_back();
-    EXPECT_EQ(out.compare(input), 0);
-    input.append(u"a");
-    IMSA_HILOGI("inputLen:%{public}zu,input:%{public}s", input.size(), Str16ToStr8(input).c_str());
-    ret = OH_TextConfig_SetPlaceholder(config, input.data(), input.size());
-    EXPECT_EQ(ret, IME_ERR_OK);
-    std::u16string out2(MAX_PLACEHOLDER_INPUT_SIZE, u'\0');
-    outLen = out2.size();
-    ret = OH_TextConfig_GetPlaceholder(config, out2.data(), &outLen);
-    EXPECT_EQ(ret, IME_ERR_OK);
-    EXPECT_EQ(out2[out2.size() - 1], 0);
-    input[input.size() - 1] = u'\0';
-    EXPECT_EQ(out2.compare(input), 0);
-    OH_TextConfig_Destroy(config);
-}
-
-/**
- * @tc.name: OH_TextConfig_SetAbilityName_001
- * @tc.desc: Input parameters are valid
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetAbilityName_001, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_SetAbilityName_001 START");
-    auto config = OH_TextConfig_Create();
-    ASSERT_NE(nullptr, config);
-    std::u16string input = u"test";
-    auto ret = OH_TextConfig_SetAbilityName(config, input.data(), input.size());
-    EXPECT_EQ(ret, IME_ERR_OK);
-    ret = OH_TextConfig_GetAbilityName(nullptr, nullptr, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    ret = OH_TextConfig_GetAbilityName(config, nullptr, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    size_t outLen = 66;
-    char16_t pOut[66] = {};
-    ret = OH_TextConfig_GetAbilityName(config, pOut, nullptr);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    outLen = 1;
-    ret = OH_TextConfig_GetAbilityName(config, pOut, &outLen);
-    EXPECT_EQ(ret, IME_ERR_PARAMCHECK);
-    EXPECT_EQ(outLen, 5);
-    outLen = 65;
-    ret = OH_TextConfig_GetAbilityName(config, pOut, &outLen);
-    EXPECT_EQ(ret, IME_ERR_OK);
-    EXPECT_EQ(outLen, 5);
-    outLen = 5;
-    ret = OH_TextConfig_GetAbilityName(config, pOut, &outLen);
-    EXPECT_EQ(ret, IME_ERR_OK);
-    std::u16string out(pOut, outLen);
-    IMSA_HILOGI("outLen:%{public}zu,out:%{public}s,outSize:%{public}zu", outLen, Str16ToStr8(out).c_str(), out.size());
-    EXPECT_GT(out.size(), input.size());
-    outLen = input.size();
-    ret = OH_TextConfig_GetAbilityName(config, pOut, &outLen);
-    EXPECT_EQ(ret, IME_ERR_PARAMCHECK);
-    OH_TextConfig_Destroy(config);
-}
-
-/**
- * @tc.name: OH_TextConfig_SetAbilityName_002
- * @tc.desc: Invalid test input parameter
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetAbilityName_002, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_SetAbilityName_002 START");
-    auto config = OH_TextConfig_Create();
-    ASSERT_NE(nullptr, config);
-    std::u16string input = u"test";
-    auto ret = OH_TextConfig_SetAbilityName(config, input.data(), input.size());
-    EXPECT_EQ(ret, IME_ERR_OK);
-    ret = OH_TextConfig_SetAbilityName(config, nullptr, 0);
-    EXPECT_EQ(ret, IME_ERR_OK);
-    char16_t *pOut = nullptr;
-    size_t outLen = 0;
-    ret = OH_TextConfig_GetAbilityName(config, pOut, &outLen);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    EXPECT_EQ(outLen, 1);
-    EXPECT_EQ(pOut, nullptr);
-    OH_TextConfig_Destroy(config);
-}
-
-/**
- * @tc.name: OH_TextConfig_SetAbilityName_003
- * @tc.desc: Invalid test input parameter
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetAbilityName_003, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_SetAbilityName_003 START");
-    auto config = OH_TextConfig_Create();
-    ASSERT_NE(nullptr, config);
-    auto ret = OH_TextConfig_SetAbilityName(config, nullptr, 128);
-    EXPECT_EQ(ret, IME_ERR_OK);
-    ret = OH_TextConfig_SetAbilityName(config, nullptr, 1);
-    EXPECT_EQ(ret, IME_ERR_OK);
-    char16_t input[] = u"0";
-    ret = OH_TextConfig_SetAbilityName(config, input, 0);
-    EXPECT_EQ(ret, IME_ERR_OK);
-    ret = OH_TextConfig_SetAbilityName(config, input, 1);
-    EXPECT_EQ(ret, IME_ERR_OK);
-    ret = OH_TextConfig_SetAbilityName(nullptr, nullptr, 1);
-    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
-    OH_TextConfig_Destroy(config);
-}
-
-/**
- * @tc.name: OH_TextConfig_SetAbilityName_004
- * @tc.desc: Invalid test input parameter
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodControllerCapiTest, OH_TextConfig_SetAbilityName_004, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodControllerCapiTest::OH_TextConfig_SetAbilityName_004 START");
-    auto config = OH_TextConfig_Create();
-    ASSERT_NE(nullptr, config);
-    std::u16string input = u"";
-    for (int i = 0; i < MAX_ABILITY_NAME_SIZE; ++i) {
-        input.append(u"𪛊");
-    }
-    IMSA_HILOGI("inputLen:%{public}zu,input:%{public}s", input.size(), Str16ToStr8(input).c_str());
-    auto ret = OH_TextConfig_SetAbilityName(config, input.data(), input.size());
-    EXPECT_EQ(ret, IME_ERR_OK);
-    std::u16string out(MAX_ABILITY_NAME_INPUT_SIZE, u'\0');
-    size_t outLen = out.size();
-    ret = OH_TextConfig_GetAbilityName(config, out.data(), &outLen);
-    EXPECT_EQ(ret, IME_ERR_OK);
-    IMSA_HILOGI("outLen:%{public}zu,input:%{public}s,outSize:%{public}zu,inputSize:%{public}zu", outLen,
-        Str16ToStr8(input).c_str(), out.size(), input.size());
-    EXPECT_GT(out.size(), input.size());
-    EXPECT_EQ(out[out.size() - 1], 0);
-    out.pop_back();
-    EXPECT_EQ(out.compare(input), 0);
-    input.append(u"a");
-    IMSA_HILOGI("inputLen:%{public}zu,input:%{public}s", input.size(), Str16ToStr8(input).c_str());
-    ret = OH_TextConfig_SetAbilityName(config, input.data(), input.size());
-    EXPECT_EQ(ret, IME_ERR_OK);
-    std::u16string out2(MAX_ABILITY_NAME_INPUT_SIZE, u'\0');
-    outLen = out2.size();
-    ret = OH_TextConfig_GetAbilityName(config, out2.data(), &outLen);
-    EXPECT_EQ(ret, IME_ERR_OK);
-    EXPECT_EQ(out2[out2.size() - 1], 0);
-    input[input.size() - 1] = u'\0';
-    EXPECT_EQ(out2.compare(input), 0);
-    char16_t charInput[65] = u"123456789\0123456789\0012345678901\023456789";
-    size_t charInputLen = 32;
-    IMSA_HILOGI("inputLen:%{public}zu,input:%{public}s", charInputLen, Str16ToStr8(input).c_str());
-    ret = OH_TextConfig_SetAbilityName(config, charInput, charInputLen);
-    EXPECT_EQ(ret, IME_ERR_OK);
-    char16_t outChar[66] = {};
-    outLen = 33;
-    ret = OH_TextConfig_GetAbilityName(config, outChar, &outLen);
-    EXPECT_EQ(ret, IME_ERR_OK);
-    out = std::u16string(outChar, outLen);
-    auto utf8Out = Str16ToStr8(outChar);
-    IMSA_HILOGI("outLen:%{public}zu,out:%{public}s, utf8len:%{public}zu", outLen, utf8Out.c_str(), utf8Out.size());
-    OH_TextConfig_Destroy(config);
+    InputMethod_InputMethodProxy *proxy = nullptr;
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Attach(textEditorProxy_, attachOptions_, &proxy));
+    InputMethod_AttachOptions options {};
+    InputMethod_CursorInfo cursor;
+    InputMethod_PrivateCommand command {};
+    InputMethod_MessageHandlerProxy handler;
+    InputMethod_PrivateCommand *commands[] = { &command };
+    EXPECT_EQ(IME_ERR_PARAMCHECK, OH_InputMethodProxy_ShowTextInput(proxy, &options));
+    EXPECT_EQ(IME_ERR_PARAMCHECK, OH_InputMethodProxy_NotifyCursorUpdate(proxy, &cursor));
+    EXPECT_EQ(IME_ERR_PARAMCHECK, OH_InputMethodProxy_SendPrivateCommand(proxy, commands, 1));
+    EXPECT_EQ(IME_ERR_PARAMCHECK, OH_InputMethodProxy_RecvMessage(proxy, &handler));
+    auto messageHandler = OH_MessageHandlerProxy_Create();
+    ASSERT_NE(nullptr, messageHandler);
+    EXPECT_EQ(IME_ERR_NULL_POINTER, OH_InputMethodProxy_RecvMessage(proxy, messageHandler));
+    EXPECT_EQ(
+        IME_ERR_OK, OH_MessageHandlerProxy_SetOnTerminatedFunc(messageHandler, [](InputMethod_MessageHandlerProxy *) {
+            return 0;
+        }));
+    EXPECT_EQ(IME_ERR_NULL_POINTER, OH_InputMethodProxy_RecvMessage(proxy, messageHandler));
+    OH_MessageHandlerProxy_Destroy(messageHandler);
+    EXPECT_EQ(IME_ERR_PARAMCHECK, OH_InputMethodProxy_RecvMessage(proxy, messageHandler));
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Detach(proxy));
 }
 
 /**
@@ -2801,6 +2622,174 @@ HWTEST_F(InputMethodControllerCapiTest, PreviewTextStyle_FullWorkflow_001, TestS
 
     OH_InputMethod_PreviewTextStyle_Destroy(style);
 }
+
+/**
+ * @tc.name: MessageHandler_RejectInvalidHandles
+ * @tc.desc: Callback setters and getters reject unregistered and retired handlers without changing outputs.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, MessageHandler_RejectInvalidHandles, TestSize.Level0)
+{
+    InputMethod_MessageHandlerProxy unregistered;
+    auto proxy = OH_MessageHandlerProxy_Create();
+    ASSERT_NE(nullptr, proxy);
+    auto lease = NativeObjectRegistry<InputMethod_MessageHandlerProxy>::GetInstance().Get(proxy);
+    OH_MessageHandlerProxy_Destroy(proxy);
+    for (auto invalid : { &unregistered, proxy }) {
+        OH_MessageHandlerProxy_OnTerminatedFunc terminated = nullptr;
+        OH_MessageHandlerProxy_OnMessageFunc message = nullptr;
+        EXPECT_EQ(IME_ERR_PARAMCHECK,
+            OH_MessageHandlerProxy_SetOnTerminatedFunc(invalid, [](InputMethod_MessageHandlerProxy *) {
+                return 0;
+            }));
+        EXPECT_EQ(IME_ERR_PARAMCHECK,
+            OH_MessageHandlerProxy_SetOnMessageFunc(
+                invalid, [](InputMethod_MessageHandlerProxy *, const char16_t *, size_t, const uint8_t *, size_t) {
+                    return 0;
+                }));
+        EXPECT_EQ(IME_ERR_PARAMCHECK, OH_MessageHandlerProxy_GetOnTerminatedFunc(invalid, &terminated));
+        EXPECT_EQ(IME_ERR_PARAMCHECK, OH_MessageHandlerProxy_GetOnMessageFunc(invalid, &message));
+        EXPECT_EQ(nullptr, terminated);
+        EXPECT_EQ(nullptr, message);
+    }
+    OH_MessageHandlerProxy_Destroy(proxy);
+}
+
+/**
+ * @tc.name: NativeMessageHandler_MissingCallbacks
+ * @tc.desc: Missing handlers and missing callback slots return the existing null-pointer error.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, NativeMessageHandler_MissingCallbacks, TestSize.Level0)
+{
+    ArrayBuffer buffer;
+    NativeMessageHandlerCallback missing(nullptr);
+    EXPECT_EQ(ErrorCode::ERROR_CLIENT_NULL_POINTER, missing.OnTerminated());
+    EXPECT_EQ(ErrorCode::ERROR_CLIENT_NULL_POINTER, missing.OnMessage(buffer));
+    auto proxy = OH_MessageHandlerProxy_Create();
+    ASSERT_NE(nullptr, proxy);
+    NativeMessageHandlerCallback callback(proxy);
+    EXPECT_EQ(ErrorCode::ERROR_CLIENT_NULL_POINTER, callback.OnTerminated());
+    EXPECT_EQ(ErrorCode::ERROR_CLIENT_NULL_POINTER, callback.OnMessage(buffer));
+    OH_MessageHandlerProxy_Destroy(proxy);
+    EXPECT_EQ(ErrorCode::ERROR_CLIENT_NULL_POINTER, callback.OnTerminated());
+    EXPECT_EQ(ErrorCode::ERROR_CLIENT_NULL_POINTER, callback.OnMessage(buffer));
+}
+
+/**
+ * @tc.name: NativeMessageHandler_RejectRetiredHandlerWithLease
+ * @tc.desc: An external storage lease must not keep retired callbacks dispatchable.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, NativeMessageHandler_RejectRetiredHandlerWithLease, TestSize.Level0)
+{
+    auto proxy = OH_MessageHandlerProxy_Create();
+    ASSERT_NE(nullptr, proxy);
+    auto lease = NativeObjectRegistry<InputMethod_MessageHandlerProxy>::GetInstance().Get(proxy);
+    EXPECT_EQ(IME_ERR_OK, OH_MessageHandlerProxy_SetOnTerminatedFunc(proxy, [](InputMethod_MessageHandlerProxy *) {
+        ADD_FAILURE() << "A retired handler must not dispatch";
+        return 0;
+    }));
+    EXPECT_EQ(IME_ERR_OK,
+        OH_MessageHandlerProxy_SetOnMessageFunc(
+            proxy, [](InputMethod_MessageHandlerProxy *, const char16_t *, size_t, const uint8_t *, size_t) {
+                ADD_FAILURE() << "A retired handler must not dispatch";
+                return 0;
+            }));
+    NativeMessageHandlerCallback callback(proxy);
+    OH_MessageHandlerProxy_Destroy(proxy);
+    EXPECT_EQ(ErrorCode::ERROR_CLIENT_NULL_POINTER, callback.OnTerminated());
+    EXPECT_EQ(ErrorCode::ERROR_CLIENT_NULL_POINTER, callback.OnMessage(ArrayBuffer {}));
+}
+
+/**
+ * @tc.name: NativeMessageHandler_CallbackReplacementAndErrors
+ * @tc.desc: Each dispatch snapshots its callback, and later dispatch sees replacement and failure mapping.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, NativeMessageHandler_CallbackReplacementAndErrors, TestSize.Level0)
+{
+    auto proxy = OH_MessageHandlerProxy_Create();
+    ASSERT_NE(nullptr, proxy);
+    EXPECT_EQ(
+        IME_ERR_OK, OH_MessageHandlerProxy_SetOnTerminatedFunc(proxy, [](InputMethod_MessageHandlerProxy *handler) {
+            EXPECT_EQ(
+                IME_ERR_OK, OH_MessageHandlerProxy_SetOnTerminatedFunc(handler, [](InputMethod_MessageHandlerProxy *) {
+                    return -1;
+                }));
+            return 0;
+        }));
+    EXPECT_EQ(IME_ERR_OK,
+        OH_MessageHandlerProxy_SetOnMessageFunc(proxy,
+            [](InputMethod_MessageHandlerProxy *handler, const char16_t *id, size_t idLength, const uint8_t *data,
+                size_t dataLength) {
+                EXPECT_EQ(u"message", std::u16string(id, idLength));
+                EXPECT_EQ(2, dataLength);
+                EXPECT_EQ(1, data[0]);
+                EXPECT_EQ(2, data[1]);
+                EXPECT_EQ(IME_ERR_OK,
+                    OH_MessageHandlerProxy_SetOnMessageFunc(handler,
+                        [](InputMethod_MessageHandlerProxy *, const char16_t *, size_t, const uint8_t *, size_t) {
+                            return -1;
+                        }));
+                return 0;
+            }));
+    NativeMessageHandlerCallback callback(proxy);
+    ArrayBuffer buffer;
+    buffer.msgId = "message";
+    buffer.msgParam = { 1, 2 };
+    EXPECT_EQ(ErrorCode::NO_ERROR, callback.OnTerminated());
+    EXPECT_EQ(ErrorCode::ERROR_MESSAGE_HANDLER, callback.OnTerminated());
+    EXPECT_EQ(ErrorCode::NO_ERROR, callback.OnMessage(buffer));
+    EXPECT_EQ(ErrorCode::ERROR_MESSAGE_HANDLER, callback.OnMessage(buffer));
+    OH_MessageHandlerProxy_Destroy(proxy);
+}
+
+/**
+ * @tc.name: NativeMessageHandler_DestroyDuringTermination
+ * @tc.desc: A terminating callback may retire itself while the in-flight dispatch retains its storage.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, NativeMessageHandler_DestroyDuringTermination, TestSize.Level0)
+{
+    auto proxy = OH_MessageHandlerProxy_Create();
+    ASSERT_NE(nullptr, proxy);
+    auto &registry = NativeObjectRegistry<InputMethod_MessageHandlerProxy>::GetInstance();
+    std::weak_ptr<InputMethod_MessageHandlerProxy> storage = registry.Get(proxy);
+    EXPECT_EQ(
+        IME_ERR_OK, OH_MessageHandlerProxy_SetOnTerminatedFunc(proxy, [](InputMethod_MessageHandlerProxy *handler) {
+            OH_MessageHandlerProxy_Destroy(handler);
+            EXPECT_NE(nullptr, handler->onTerminatedFunc.load());
+            return 0;
+        }));
+    NativeMessageHandlerCallback callback(proxy);
+    EXPECT_EQ(ErrorCode::NO_ERROR, callback.OnTerminated());
+    EXPECT_TRUE(storage.expired());
+    EXPECT_EQ(ErrorCode::ERROR_CLIENT_NULL_POINTER, callback.OnTerminated());
+}
+
+/**
+ * @tc.name: NativeMessageHandler_DestroyDuringMessage
+ * @tc.desc: A message callback may destroy its handle without releasing its in-flight storage early.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, NativeMessageHandler_DestroyDuringMessage, TestSize.Level0)
+{
+    auto proxy = OH_MessageHandlerProxy_Create();
+    ASSERT_NE(nullptr, proxy);
+    auto &registry = NativeObjectRegistry<InputMethod_MessageHandlerProxy>::GetInstance();
+    std::weak_ptr<InputMethod_MessageHandlerProxy> storage = registry.Get(proxy);
+    EXPECT_EQ(IME_ERR_OK,
+        OH_MessageHandlerProxy_SetOnMessageFunc(
+            proxy, [](InputMethod_MessageHandlerProxy *handler, const char16_t *, size_t, const uint8_t *, size_t) {
+                OH_MessageHandlerProxy_Destroy(handler);
+                EXPECT_NE(nullptr, handler->onMessageFunc.load());
+                return 0;
+            }));
+    NativeMessageHandlerCallback callback(proxy);
+    EXPECT_EQ(ErrorCode::NO_ERROR, callback.OnMessage(ArrayBuffer {}));
+    EXPECT_TRUE(storage.expired());
+    EXPECT_EQ(ErrorCode::ERROR_CLIENT_NULL_POINTER, callback.OnMessage(ArrayBuffer {}));
+}
 } // namespace MiscServices
 } // namespace OHOS
-

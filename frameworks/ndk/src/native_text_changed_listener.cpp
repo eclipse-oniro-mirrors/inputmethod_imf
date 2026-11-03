@@ -15,6 +15,7 @@
 #include "native_text_changed_listener.h"
 #include "input_method_utils.h"
 #include "native_inputmethod_utils.h"
+#include "native_object_registry.h"
 #include "text_editor_proxy_manager.h"
 
 namespace OHOS {
@@ -31,12 +32,13 @@ void NativeTextChangedListener::InsertText(const std::u16string &text)
         return;
     }
 
-    if (proxy->insertTextFunc == nullptr) {
+    auto callback = proxy->insertTextFunc.load();
+    if (callback == nullptr) {
         IMSA_HILOGE("insertTextFunc is nullptr");
         return;
     }
 
-    proxy->insertTextFunc(proxy.get(), text.c_str(), text.length());
+    callback(proxy.get(), text.c_str(), text.length());
 }
 
 void NativeTextChangedListener::DeleteForward(int32_t length)
@@ -47,12 +49,13 @@ void NativeTextChangedListener::DeleteForward(int32_t length)
         return;
     }
 
-    if (proxy->deleteForwardFunc == nullptr) {
+    auto callback = proxy->deleteForwardFunc.load();
+    if (callback == nullptr) {
         IMSA_HILOGE("deleteForwardFunc is nullptr");
         return;
     }
 
-    proxy->deleteForwardFunc(proxy.get(), length);
+    callback(proxy.get(), length);
 }
 
 void NativeTextChangedListener::DeleteBackward(int32_t length)
@@ -63,12 +66,13 @@ void NativeTextChangedListener::DeleteBackward(int32_t length)
         return;
     }
 
-    if (proxy->deleteBackwardFunc == nullptr) {
+    auto callback = proxy->deleteBackwardFunc.load();
+    if (callback == nullptr) {
         IMSA_HILOGE("deleteBackwardFunc is nullptr");
         return;
     }
 
-    proxy->deleteBackwardFunc(proxy.get(), length);
+    callback(proxy.get(), length);
 }
 
 void NativeTextChangedListener::SendKeyboardStatus(const OHOS::MiscServices::KeyboardStatus &status)
@@ -79,12 +83,13 @@ void NativeTextChangedListener::SendKeyboardStatus(const OHOS::MiscServices::Key
         return;
     }
 
-    if (proxy->sendKeyboardStatusFunc == nullptr) {
+    auto callback = proxy->sendKeyboardStatusFunc.load();
+    if (callback == nullptr) {
         IMSA_HILOGE("sendKeyboardStatusFunc is nullptr");
         return;
     }
 
-    proxy->sendKeyboardStatusFunc(proxy.get(), ConvertToCKeyboardStatus(status));
+    callback(proxy.get(), ConvertToCKeyboardStatus(status));
 }
 
 void NativeTextChangedListener::SendFunctionKey(const OHOS::MiscServices::FunctionKey &functionKey)
@@ -95,14 +100,15 @@ void NativeTextChangedListener::SendFunctionKey(const OHOS::MiscServices::Functi
         return;
     }
 
-    if (proxy->sendEnterKeyFunc == nullptr) {
+    auto callback = proxy->sendEnterKeyFunc.load();
+    if (callback == nullptr) {
         IMSA_HILOGE("sendEnterKeyFunc is nullptr");
         return;
     }
 
     auto enterKeyType = ConvertToCEnterKeyType(functionKey.GetEnterKeyType());
 
-    proxy->sendEnterKeyFunc(proxy.get(), enterKeyType);
+    callback(proxy.get(), enterKeyType);
 }
 
 void NativeTextChangedListener::MoveCursor(const OHOS::MiscServices::Direction direction)
@@ -113,12 +119,13 @@ void NativeTextChangedListener::MoveCursor(const OHOS::MiscServices::Direction d
         return;
     }
 
-    if (proxy->moveCursorFunc == nullptr) {
+    auto callback = proxy->moveCursorFunc.load();
+    if (callback == nullptr) {
         IMSA_HILOGE("moveCursorFunc is nullptr");
         return;
     }
 
-    proxy->moveCursorFunc(proxy.get(), ConvertToCDirection(direction));
+    callback(proxy.get(), ConvertToCDirection(direction));
 }
 
 void NativeTextChangedListener::HandleSetSelection(int32_t start, int32_t end)
@@ -129,12 +136,13 @@ void NativeTextChangedListener::HandleSetSelection(int32_t start, int32_t end)
         return;
     }
 
-    if (proxy->handleSetSelectionFunc == nullptr) {
+    auto callback = proxy->handleSetSelectionFunc.load();
+    if (callback == nullptr) {
         IMSA_HILOGE("handleSetSelectionFunc is nullptr");
         return;
     }
 
-    proxy->handleSetSelectionFunc(proxy.get(), start, end);
+    callback(proxy.get(), start, end);
 }
 
 void NativeTextChangedListener::HandleExtendAction(int32_t action)
@@ -145,12 +153,13 @@ void NativeTextChangedListener::HandleExtendAction(int32_t action)
         return;
     }
 
-    if (proxy->handleExtendActionFunc == nullptr) {
+    auto callback = proxy->handleExtendActionFunc.load();
+    if (callback == nullptr) {
         IMSA_HILOGE("handleExtendActionFunc is nullptr");
         return;
     }
 
-    proxy->handleExtendActionFunc(proxy.get(), ConvertToCExtendAction(action));
+    callback(proxy.get(), ConvertToCExtendAction(action));
 }
 
 std::u16string NativeTextChangedListener::GetLeftTextOfCursor(int32_t number)
@@ -161,7 +170,8 @@ std::u16string NativeTextChangedListener::GetLeftTextOfCursor(int32_t number)
         return u"";
     }
 
-    if (proxy->getLeftTextOfCursorFunc == nullptr) {
+    auto callback = proxy->getLeftTextOfCursorFunc.load();
+    if (callback == nullptr) {
         IMSA_HILOGE("getLeftTextOfCursorFunc is nullptr");
         return u"";
     }
@@ -175,7 +185,7 @@ std::u16string NativeTextChangedListener::GetLeftTextOfCursor(int32_t number)
     std::vector<char16_t> text(bufferSize);
     size_t realLength = static_cast<size_t>(number);
 
-    proxy->getLeftTextOfCursorFunc(proxy.get(), number, text.data(), &realLength);
+    callback(proxy.get(), number, text.data(), &realLength);
     if (realLength > static_cast<size_t>(number)) {
         IMSA_HILOGE("realLength > number");
         return u"";
@@ -193,7 +203,8 @@ std::u16string NativeTextChangedListener::GetRightTextOfCursor(int32_t number)
         return u"";
     }
 
-    if (proxy->getRightTextOfCursorFunc == nullptr) {
+    auto callback = proxy->getRightTextOfCursorFunc.load();
+    if (callback == nullptr) {
         IMSA_HILOGE("getRightTextOfCursorFunc is nullptr");
         return u"";
     }
@@ -207,7 +218,7 @@ std::u16string NativeTextChangedListener::GetRightTextOfCursor(int32_t number)
     std::vector<char16_t> text(bufferSize);
     size_t realLength = static_cast<size_t>(number);
 
-    proxy->getRightTextOfCursorFunc(proxy.get(), number, text.data(), &realLength);
+    callback(proxy.get(), number, text.data(), &realLength);
     if (realLength > static_cast<size_t>(number)) {
         IMSA_HILOGE("realLength > number");
         return u"";
@@ -224,12 +235,13 @@ int32_t NativeTextChangedListener::GetTextIndexAtCursor()
         return 0;
     }
 
-    if (proxy->getTextIndexAtCursorFunc == nullptr) {
+    auto callback = proxy->getTextIndexAtCursorFunc.load();
+    if (callback == nullptr) {
         IMSA_HILOGE("getTextIndexAtCursorFunc is nullptr");
         return 0;
     }
 
-    return proxy->getTextIndexAtCursorFunc(proxy.get());
+    return callback(proxy.get());
 }
 
 int32_t NativeTextChangedListener::ReceivePrivateCommand(
@@ -241,43 +253,28 @@ int32_t NativeTextChangedListener::ReceivePrivateCommand(
         return ErrorCode::ERROR_NULL_POINTER;
     }
 
-    if (proxy->receivePrivateCommandFunc == nullptr) {
+    auto callback = proxy->receivePrivateCommandFunc.load();
+    if (callback == nullptr) {
         IMSA_HILOGE("receivePrivateCommandFunc is nullptr");
         return ErrorCode::ERROR_NULL_POINTER;
     }
 
-    InputMethod_PrivateCommand **command = new (std::nothrow) InputMethod_PrivateCommand *[privateCommand.size()];
-    if (command == nullptr) {
-        IMSA_HILOGE("command is nullptr");
-        return ErrorCode::ERROR_NULL_POINTER;
-    }
-
-    auto freeCommand = [&command](size_t index) {
-        for (size_t i = 0; i < index; i++) {
-            delete command[i];
-            command[i] = nullptr;
-        }
-        delete[] command;
-        command = nullptr;
-    };
-
-    size_t index = 0;
+    std::vector<NativeObjectScope<InputMethod_PrivateCommand>> borrowed;
+    std::vector<InputMethod_PrivateCommand *> command;
+    borrowed.reserve(privateCommand.size());
+    command.reserve(privateCommand.size());
     for (const auto &item : privateCommand) {
-        command[index] = new (std::nothrow) InputMethod_PrivateCommand();
-        if (command[index] == nullptr) {
-            IMSA_HILOGE("new InputMethod_PrivateCommand failed");
-            freeCommand(index);
+        borrowed.emplace_back();
+        auto value = borrowed.back().Get();
+        if (value == nullptr) {
+            IMSA_HILOGE("Failed to allocate callback private command.");
             return ErrorCode::ERROR_NULL_POINTER;
         }
-        command[index]->key = item.first;
-        command[index]->value = item.second;
-        ++index;
+        value->key = item.first;
+        value->value = item.second;
+        command.push_back(value);
     }
-
-    auto errCode = proxy->receivePrivateCommandFunc(proxy.get(), command, privateCommand.size());
-
-    freeCommand(index);
-    return errCode;
+    return callback(proxy.get(), command.data(), command.size());
 }
 
 int32_t NativeTextChangedListener::SetPreviewText(const std::u16string &text, const OHOS::MiscServices::Range &range)
@@ -288,12 +285,13 @@ int32_t NativeTextChangedListener::SetPreviewText(const std::u16string &text, co
         return ErrorCode::ERROR_NULL_POINTER;
     }
 
-    if (proxy->setPreviewTextFunc == nullptr) {
+    auto callback = proxy->setPreviewTextFunc.load();
+    if (callback == nullptr) {
         IMSA_HILOGE("setPreviewTextFunc is nullptr");
         return ErrorCode::ERROR_NULL_POINTER;
     }
 
-    return proxy->setPreviewTextFunc(proxy.get(), text.c_str(), text.length(), range.start, range.end);
+    return callback(proxy.get(), text.c_str(), text.length(), range.start, range.end);
 }
 
 int32_t NativeTextChangedListener::SetPreviewTextWithStyle(
@@ -325,12 +323,13 @@ void NativeTextChangedListener::FinishTextPreview()
         return;
     }
 
-    if (proxy->finishTextPreviewFunc == nullptr) {
+    auto callback = proxy->finishTextPreviewFunc.load();
+    if (callback == nullptr) {
         IMSA_HILOGE("finishTextPreviewFunc is nullptr");
         return;
     }
 
-    proxy->finishTextPreviewFunc(proxy.get());
+    callback(proxy.get());
 }
 
 void NativeTextChangedListener::OnDetach()

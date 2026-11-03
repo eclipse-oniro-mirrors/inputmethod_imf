@@ -15,6 +15,8 @@
 #ifndef ASYN_CALL_H
 #define ASYN_CALL_H
 
+#include <mutex>
+
 #include "cpp/mutex.h"
 #include "global.h"
 #include "js_utils.h"
@@ -27,6 +29,12 @@
 namespace OHOS {
 namespace MiscServices {
 class AsyncCall {
+protected:
+    struct AsyncContext;
+    struct AsyncContextOwner {
+        std::shared_ptr<AsyncContext> context;
+    };
+
 public:
     class Context {
     public:
@@ -40,6 +48,7 @@ public:
             handler_ = AppExecFwk::EventHandler::Current();
         };
         virtual ~Context(){};
+        virtual void ReleaseJsResources(napi_env) { }
         void SetAction(InputAction input, OutputAction output = nullptr)
         {
             input_ = input;
@@ -59,6 +68,25 @@ public:
         void SetState(const napi_status &status)
         {
             status_ = status;
+        }
+
+        void SetCleanup(CallBackAction cleanup)
+        {
+            std::lock_guard<std::mutex> lock(cleanupMutex_);
+            cleanup_ = std::move(cleanup);
+        }
+
+        // Only native queue retirement belongs here; JS references are released by DeleteContext on the JS thread.
+        void Cleanup()
+        {
+            CallBackAction cleanup;
+            {
+                std::lock_guard<std::mutex> lock(cleanupMutex_);
+                cleanup = std::move(cleanup_);
+            }
+            if (cleanup != nullptr) {
+                cleanup();
+            }
         }
 
         napi_status GetState()
@@ -124,6 +152,8 @@ public:
         int32_t errorCode_ = 0;
         std::string errMessage_;
         std::shared_ptr<AppExecFwk::EventHandler> handler_ = nullptr;
+        std::mutex cleanupMutex_;
+        CallBackAction cleanup_ = nullptr;
     };
 
     struct InnerTask {
@@ -133,6 +163,7 @@ public:
         napi_async_work work = nullptr;
         const char *name = nullptr;
         uint64_t startTime = 0;
+        std::shared_ptr<AsyncContext> context = nullptr;
     };
 
     struct TaskQueue {
@@ -157,20 +188,41 @@ protected:
         napi_deferred defer = nullptr;
         napi_async_work work = nullptr;
         std::shared_ptr<TaskQueue> queue = nullptr;
+        bool inputValid = false;
+        napi_env env = nullptr;
+        std::mutex completionMutex;
+        bool closing = false;
+        bool jsResourcesReleased = false;
+        bool workSubmitted = false;
+        // The env hook and submitted work independently retain the native context.
+        AsyncContextOwner *cleanupOwner = nullptr;
+        AsyncContextOwner *workData = nullptr;
     };
-    static void OnExecuteAsync(napi_env env, AsyncContext *context, Context::CallBackAction cb);
+    static void OnExecuteAsync(napi_env env, const std::shared_ptr<AsyncContext> &context, Context::CallBackAction cb);
     static void OnComplete(napi_env env, napi_status status, void *data);
+    static void CompleteOnJsThread(napi_env env, const std::shared_ptr<AsyncContext> &context, napi_status status);
 
 private:
-    virtual void CallImpl(napi_env env, AsyncContext *context, const std::string &resourceName);
+    virtual void CallImpl(napi_env env, const std::shared_ptr<AsyncContext> &context, const std::string &resourceName);
 
 private:
     enum Arg : int { ARG_ERROR, ARG_DATA, ARG_BUTT };
     static void OnExecute(napi_env env, void *data);
     static void OnExecuteSeq(napi_env env, void *data);
+    static void OnWorkExecute(napi_env env, void *data);
+    static void OnWorkExecuteSeq(napi_env env, void *data);
+    static void OnWorkComplete(napi_env env, napi_status status, void *data);
+    static void OnEnvCleanup(void *data);
+    static void ReleaseResources(napi_env env, AsyncContext *context);
     static void DeleteContext(napi_env env, AsyncContext *context);
+    static void Fail(napi_env env, const std::shared_ptr<AsyncContext> &context, const std::string &message);
+    static void StartNextTask(const std::shared_ptr<TaskQueue> &queue);
+    static std::shared_ptr<AsyncContext> SubmitNextTask(const std::shared_ptr<TaskQueue> &queue, napi_env &failedEnv);
+    static void AdvanceQueue(AsyncContext *context);
+    static void CompleteResult(napi_env env, AsyncContext *context, bool success, napi_value (&result)[ARG_BUTT]);
+    bool PrepareResult(napi_env env, napi_value &result);
 
-    AsyncContext *context_ = nullptr;
+    std::shared_ptr<AsyncContext> context_ = nullptr;
     napi_env env_ = nullptr;
 };
 } // namespace MiscServices

@@ -14,13 +14,17 @@
  */
 #include "global.h"
 #include "native_inputmethod_types.h"
+#include "native_object_registry.h"
+using namespace OHOS::MiscServices;
+
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
 InputMethod_PrivateCommand *OH_PrivateCommand_Create(char key[], size_t keyLength)
 {
-    return new (std::nothrow) InputMethod_PrivateCommand({ std::string(key, keyLength), false });
+    return NativeObjectRegistry<InputMethod_PrivateCommand>::GetInstance().Register(
+        new (std::nothrow) InputMethod_PrivateCommand({ std::string(key, keyLength), false }));
 }
 void OH_PrivateCommand_Destroy(InputMethod_PrivateCommand *command)
 {
@@ -28,13 +32,18 @@ void OH_PrivateCommand_Destroy(InputMethod_PrivateCommand *command)
         IMSA_HILOGE("command is nullptr");
         return;
     }
-    delete command;
+    NativeObjectRegistry<InputMethod_PrivateCommand>::GetInstance().Destroy(command);
 }
 InputMethod_ErrorCode OH_PrivateCommand_SetKey(InputMethod_PrivateCommand *command, char key[], size_t keyLength)
 {
     if (command == nullptr) {
         IMSA_HILOGE("command is nullptr");
         return IME_ERR_NULL_POINTER;
+    }
+    auto lease = NativeObjectRegistry<InputMethod_PrivateCommand>::GetInstance().Get(command);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_PrivateCommand is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
     }
     if (key == nullptr) {
         IMSA_HILOGE("key is nullptr");
@@ -49,6 +58,11 @@ InputMethod_ErrorCode OH_PrivateCommand_SetBoolValue(InputMethod_PrivateCommand 
         IMSA_HILOGE("command is nullptr");
         return IME_ERR_NULL_POINTER;
     }
+    auto lease = NativeObjectRegistry<InputMethod_PrivateCommand>::GetInstance().Get(command);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_PrivateCommand is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
+    }
     command->value = value;
     return IME_ERR_OK;
 }
@@ -57,6 +71,11 @@ InputMethod_ErrorCode OH_PrivateCommand_SetIntValue(InputMethod_PrivateCommand *
     if (command == nullptr) {
         IMSA_HILOGE("command is nullptr");
         return IME_ERR_NULL_POINTER;
+    }
+    auto lease = NativeObjectRegistry<InputMethod_PrivateCommand>::GetInstance().Get(command);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_PrivateCommand is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
     }
     command->value = value;
     return IME_ERR_OK;
@@ -67,6 +86,11 @@ InputMethod_ErrorCode OH_PrivateCommand_SetStrValue(
     if (command == nullptr) {
         IMSA_HILOGE("command is nullptr");
         return IME_ERR_NULL_POINTER;
+    }
+    auto lease = NativeObjectRegistry<InputMethod_PrivateCommand>::GetInstance().Get(command);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_PrivateCommand is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
     }
     if (value == nullptr) {
         IMSA_HILOGE("value is nullptr");
@@ -81,6 +105,11 @@ InputMethod_ErrorCode OH_PrivateCommand_GetKey(InputMethod_PrivateCommand *comma
     if (command == nullptr) {
         IMSA_HILOGE("command is nullptr");
         return IME_ERR_NULL_POINTER;
+    }
+    auto lease = NativeObjectRegistry<InputMethod_PrivateCommand>::GetInstance().Get(command);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_PrivateCommand is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
     }
     if (key == nullptr) {
         IMSA_HILOGE("key is nullptr");
@@ -101,6 +130,11 @@ InputMethod_ErrorCode OH_PrivateCommand_GetValueType(
     if (command == nullptr) {
         IMSA_HILOGE("command is nullptr");
         return IME_ERR_NULL_POINTER;
+    }
+    auto lease = NativeObjectRegistry<InputMethod_PrivateCommand>::GetInstance().Get(command);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_PrivateCommand is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
     }
     if (type == nullptr) {
         IMSA_HILOGE("type is nullptr");
@@ -126,6 +160,11 @@ InputMethod_ErrorCode OH_PrivateCommand_GetBoolValue(InputMethod_PrivateCommand 
         IMSA_HILOGE("command is nullptr");
         return IME_ERR_NULL_POINTER;
     }
+    auto lease = NativeObjectRegistry<InputMethod_PrivateCommand>::GetInstance().Get(command);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_PrivateCommand is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
+    }
 
     if (value == nullptr) {
         IMSA_HILOGE("value is nullptr");
@@ -144,6 +183,11 @@ InputMethod_ErrorCode OH_PrivateCommand_GetIntValue(InputMethod_PrivateCommand *
     if (command == nullptr) {
         IMSA_HILOGE("command is nullptr");
         return IME_ERR_NULL_POINTER;
+    }
+    auto lease = NativeObjectRegistry<InputMethod_PrivateCommand>::GetInstance().Get(command);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_PrivateCommand is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
     }
 
     if (value == nullptr) {
@@ -165,6 +209,11 @@ InputMethod_ErrorCode OH_PrivateCommand_GetStrValue(
     if (command == nullptr) {
         IMSA_HILOGE("command is nullptr");
         return IME_ERR_NULL_POINTER;
+    }
+    auto lease = NativeObjectRegistry<InputMethod_PrivateCommand>::GetInstance().Get(command);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_PrivateCommand is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
     }
     if (value == nullptr) {
         IMSA_HILOGE("value is nullptr");

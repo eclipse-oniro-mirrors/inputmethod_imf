@@ -17,6 +17,7 @@
 
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -36,8 +37,16 @@ public:
     void UnRegisterListener(std::string const &type, taihe::optional_view<uintptr_t> opq);
     void OnAttachOptionsChanged(const AttachOptions &attachOptions) override;
 private:
+    struct CallbackHolder final : CallbackObjects {
+        using CallbackObjects::CallbackObjects;
+        ~CallbackHolder()
+        {
+            Release();
+        }
+    };
+    std::vector<std::shared_ptr<CallbackObjects>> GetCallbacks(const std::string &type);
     std::mutex mutex_;
-    std::map<std::string, std::vector<std::unique_ptr<CallbackObjects>>> jsCbMap_;
+    std::map<std::string, std::vector<std::shared_ptr<CallbackObjects>>> jsCbMap_;
     static std::mutex engineMutex_;
     static std::shared_ptr<InputMethodClientImpl> textInputClientEngine_;
 };

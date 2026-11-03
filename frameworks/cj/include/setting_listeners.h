@@ -35,6 +35,8 @@ namespace OHOS::MiscServices {
     private:
         static std::mutex msMutex_;
         static std::shared_ptr<CJGetInputMethodSetting> inputMethod_;
+        std::mutex operationMutex_;
+        std::mutex callbackMutex_;
         std::function<void(CInputMethodProperty, CInputMethodSubtype)> callback = nullptr;
     };
 }

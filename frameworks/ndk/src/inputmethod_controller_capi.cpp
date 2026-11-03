@@ -22,9 +22,12 @@
 #include "input_method_utils.h"
 #include "native_inputmethod_types.h"
 #include "native_inputmethod_utils.h"
+#include "native_object_registry.h"
+#include "native_session_guard.h"
 #include "native_text_changed_listener.h"
 #include "node_module_inner.h"
 #include "securec.h"
+#include "text_editor_proxy_manager.h"
 #include "ui_content.h"
 using namespace OHOS::MiscServices;
 #ifdef __cplusplus
@@ -93,12 +96,12 @@ static InputMethod_ErrorCode GetInputMethodProxy(InputMethod_TextEditorProxy *te
     g_inputMethodProxy = tmpInputMethodProxy;
     return IME_ERR_OK;
 }
-#define CHECK_MEMBER_NULL(textEditor, member)   \
-    do {                                        \
-        if ((textEditor)->member == nullptr) {  \
-            IMSA_HILOGE(#member " is nullptr"); \
-            return IME_ERR_NULL_POINTER;        \
-        }                                       \
+#define CHECK_MEMBER_NULL(textEditor, member)         \
+    do {                                              \
+        if ((textEditor)->member.load() == nullptr) { \
+            IMSA_HILOGE(#member " is nullptr");       \
+            return IME_ERR_NULL_POINTER;              \
+        }                                             \
     } while (0)
 static int32_t IsValidTextEditorProxy(InputMethod_TextEditorProxy *textEditor)
 {
@@ -154,6 +157,29 @@ static TextConfig ConstructTextConfig(const InputMethod_TextConfig &config)
     return textConfig;
 }
 
+static InputMethod_ErrorCode ReadTextConfig(InputMethod_TextEditorProxy *textEditorProxy, TextConfig &textConfig)
+{
+    NativeObjectScope<InputMethod_TextConfig> configScope;
+    auto config = configScope.Get();
+    if (config == nullptr) {
+        IMSA_HILOGE("Failed to allocate callback TextConfig.");
+        return IME_ERR_NULL_POINTER;
+    }
+    auto getTextConfig = textEditorProxy->getTextConfigFunc.load();
+    if (getTextConfig == nullptr) {
+        IMSA_HILOGE("getTextConfigFunc is nullptr");
+        return IME_ERR_NULL_POINTER;
+    }
+    getTextConfig(textEditorProxy, config);
+    configScope.Close();
+    if (TextEditorProxyManager::GetInstance().GetWeak(textEditorProxy).expired()) {
+        IMSA_HILOGE("Editor was destroyed during GetTextConfig; attach cancelled.");
+        return IME_ERR_IMCLIENT;
+    }
+    textConfig = ConstructTextConfig(*config);
+    return IME_ERR_OK;
+}
+
 static InputMethod_ErrorCode PerformAttach(InputMethod_TextEditorProxy *textEditorProxy,
     const AttachOptions &attachOptions, const TextConfig &textConfig,
     InputMethod_InputMethodProxy **inputMethodProxy)
@@ -190,11 +216,23 @@ InputMethod_ErrorCode OH_InputMethodController_AttachWithUIContext(ArkUI_Context
     InputMethod_TextEditorProxy *textEditorProxy, InputMethod_AttachOptions *options,
     InputMethod_InputMethodProxy **inputMethodProxy)
 {
+    NativeSessionGuard sessionGuard;
+    if (!sessionGuard.IsAcquired()) {
+        IMSA_HILOGE("Concurrent or reentrant C session operation rejected; wait for the current operation to finish.");
+        return IME_ERR_IMCLIENT;
+    }
+    auto editorLease = TextEditorProxyManager::GetInstance().GetWeak(textEditorProxy).lock();
     IMSA_HILOGD("start");
-    if (context == nullptr || (IsValidTextEditorProxy(textEditorProxy) != IME_ERR_OK) || options == nullptr ||
+    if (context == nullptr || (IsValidTextEditorProxy(editorLease.get()) != IME_ERR_OK) || options == nullptr ||
         inputMethodProxy == nullptr) {
         IMSA_HILOGE("invalid parameter");
         return IME_ERR_NULL_POINTER;
+    }
+
+    auto optionsLease = NativeObjectRegistry<InputMethod_AttachOptions>::GetInstance().Get(options);
+    if (optionsLease == nullptr) {
+        IMSA_HILOGE("Attach options are unregistered or destroyed.");
+        return IME_ERR_PARAMCHECK;
     }
 
     auto *uiContext = reinterpret_cast<ArkUI_Context*>(context);
@@ -210,10 +248,11 @@ InputMethod_ErrorCode OH_InputMethodController_AttachWithUIContext(ArkUI_Context
         return errCode;
     }
 
-    InputMethod_TextConfig config;
-    textEditorProxy->getTextConfigFunc(textEditorProxy, &config);
-
-    auto textConfig = ConstructTextConfig(config);
+    TextConfig textConfig;
+    errCode = ReadTextConfig(textEditorProxy, textConfig);
+    if (errCode != IME_ERR_OK) {
+        return errCode;
+    }
     textConfig.windowId = windowId;
 
     AttachOptions attachOptions;
@@ -227,10 +266,23 @@ InputMethod_ErrorCode OH_InputMethodController_AttachWithUIContext(ArkUI_Context
 InputMethod_ErrorCode OH_InputMethodController_Attach(InputMethod_TextEditorProxy *textEditor,
     InputMethod_AttachOptions *options, InputMethod_InputMethodProxy **inputMethodProxy)
 {
+    NativeSessionGuard sessionGuard;
+    if (!sessionGuard.IsAcquired()) {
+        IMSA_HILOGE("Concurrent or reentrant C session operation rejected; wait for the current operation to finish.");
+        return IME_ERR_IMCLIENT;
+    }
+    auto editorLease = TextEditorProxyManager::GetInstance().GetWeak(textEditor).lock();
     IMSA_HILOGD("start");
-    if ((IsValidTextEditorProxy(textEditor) != IME_ERR_OK) || options == nullptr || inputMethodProxy == nullptr) {
+    if ((IsValidTextEditorProxy(editorLease.get()) != IME_ERR_OK) || options == nullptr ||
+        inputMethodProxy == nullptr) {
         IMSA_HILOGE("invalid parameter");
         return IME_ERR_NULL_POINTER;
+    }
+
+    auto optionsLease = NativeObjectRegistry<InputMethod_AttachOptions>::GetInstance().Get(options);
+    if (optionsLease == nullptr) {
+        IMSA_HILOGE("Attach options are unregistered or destroyed.");
+        return IME_ERR_PARAMCHECK;
     }
 
     InputMethod_ErrorCode errCode = GetInputMethodProxy(textEditor);
@@ -238,10 +290,25 @@ InputMethod_ErrorCode OH_InputMethodController_Attach(InputMethod_TextEditorProx
         return errCode;
     }
 
-    InputMethod_TextConfig config;
-    textEditor->getTextConfigFunc(textEditor, &config);
+    NativeObjectScope<InputMethod_TextConfig> configScope;
+    auto config = configScope.Get();
+    if (config == nullptr) {
+        IMSA_HILOGE("Failed to allocate callback TextConfig.");
+        return IME_ERR_NULL_POINTER;
+    }
+    auto getTextConfig = textEditor->getTextConfigFunc.load();
+    if (getTextConfig == nullptr) {
+        IMSA_HILOGE("getTextConfigFunc is nullptr");
+        return IME_ERR_NULL_POINTER;
+    }
+    getTextConfig(textEditor, config);
+    configScope.Close();
+    if (TextEditorProxyManager::GetInstance().GetWeak(textEditor).expired()) {
+        IMSA_HILOGE("Editor was destroyed during GetTextConfig; attach cancelled.");
+        return IME_ERR_IMCLIENT;
+    }
 
-    auto textConfig = ConstructTextConfig(config);
+    auto textConfig = ConstructTextConfig(*config);
 
     AttachOptions attachOptions;
     attachOptions.isShowKeyboard = options->showKeyboard;
@@ -262,6 +329,11 @@ void ClearInputMethodProxy(void)
 
 InputMethod_ErrorCode OH_InputMethodController_Detach(InputMethod_InputMethodProxy *inputMethodProxy)
 {
+    NativeSessionGuard sessionGuard;
+    if (!sessionGuard.IsAcquired()) {
+        IMSA_HILOGE("Concurrent or reentrant C session operation rejected; wait for the current operation to finish.");
+        return IME_ERR_IMCLIENT;
+    }
     if (inputMethodProxy == nullptr) {
         IMSA_HILOGE("inputMethodProxy is nullptr");
         return IME_ERR_NULL_POINTER;

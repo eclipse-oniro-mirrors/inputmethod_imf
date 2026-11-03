@@ -480,8 +480,10 @@ napi_value JsGetInputMethodSetting::GetInputMethodSubtype(napi_env env, napi_cal
     if (instance != nullptr) {
         errCode = instance->ListInputMethodSubtype(property, subProperties, userId);
     }
-    if (errCode == ErrorCode::NO_ERROR) {
-        IMSA_HILOGI("exec ListInputMethodSubtype success");
+    if (errCode != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("ListInputMethodSubtype failed, errCode: %{public}d", errCode);
+        JsUtils::ThrowException(env, JsUtils::Convert(errCode), "failed to get input method subtypes!", TYPE_NONE);
+        return JsUtil::Const::Null(env);
     }
     return JsInputMethod::GetJSInputMethodSubProperties(env, subProperties);
 }
@@ -675,13 +677,11 @@ napi_value JsGetInputMethodSetting::Subscribe(napi_env env, napi_callback_info i
     void *data = nullptr;
     IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
     std::string type;
-    // 2 means least param num.
-    if (argc < 2 || !JsUtil::GetValue(env, argv[0], type) ||
-        !EventChecker::IsValidEventType(EventSubscribeModule::INPUT_METHOD_SETTING, type) ||
-        JsUtil::GetType(env, argv[1]) != napi_function) {
-        IMSA_HILOGE("subscribe failed, type:%{public}s", type.c_str());
-        return nullptr;
-    }
+    PARAM_CHECK_RETURN(env, argc >= ARGC_TWO, "at least two parameters are required!", TYPE_NONE, nullptr);
+    PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, argv[0], type), "type must be string", TYPE_NONE, nullptr);
+    PARAM_CHECK_RETURN(env, EventChecker::IsValidEventType(EventSubscribeModule::INPUT_METHOD_SETTING, type),
+        "type verification failed, review the instructions and fill in the fixed values!", TYPE_NONE, nullptr);
+    PARAM_CHECK_RETURN(env, JsUtil::GetType(env, argv[1]) == napi_function, "callback", TYPE_FUNCTION, nullptr);
     IMSA_HILOGD("subscribe type: %{public}s.", type.c_str());
     auto engine = reinterpret_cast<JsGetInputMethodSetting *>(JsUtils::GetNativeSelf(env, info));
     if (engine == nullptr) {
@@ -699,10 +699,8 @@ napi_value JsGetInputMethodSetting::Subscribe(napi_env env, napi_callback_info i
         engine->RegisterListener(argv[ARGC_ONE], type, callback);
     } else {
         auto errCode = JsUtils::Convert(ret);
-        if (errCode == EXCEPTION_SYSTEM_PERMISSION) {
-            IMSA_HILOGE("failed to UpdateListenEventFlag , ret: %{public}d, type: %{public}s!", ret, type.c_str());
-            JsUtils::ThrowException(env, errCode, "", TYPE_NONE);
-        }
+        IMSA_HILOGE("failed to register event, ret: %{public}d, type: %{public}s!", ret, type.c_str());
+        JsUtils::ThrowException(env, errCode, "failed to register input method event!", TYPE_NONE);
     }
     napi_value result = nullptr;
     napi_get_null(env, &result);
@@ -716,11 +714,8 @@ napi_value JsGetInputMethodSetting::SubscribeImechange(napi_env env, napi_callba
     napi_value argv[ARGC_ONE] = { nullptr };
     IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
 
-    // 1 means least param num.
-    if (argc < 1 || JsUtil::GetType(env, argv[0]) != napi_function) {
-        IMSA_HILOGE("subscribe failed param is not napi_function");
-        return nullptr;
-    }
+    PARAM_CHECK_RETURN(env, argc >= ARGC_ONE, "callback is required!", TYPE_NONE, nullptr);
+    PARAM_CHECK_RETURN(env, JsUtil::GetType(env, argv[0]) == napi_function, "callback", TYPE_FUNCTION, nullptr);
 
     auto engine = reinterpret_cast<JsGetInputMethodSetting *>(JsUtils::GetNativeSelf(env, info));
     if (engine == nullptr) {
@@ -738,10 +733,8 @@ napi_value JsGetInputMethodSetting::SubscribeImechange(napi_env env, napi_callba
         engine->RegisterListener(argv[0], type, callback);
     } else {
         auto errCode = JsUtils::Convert(ret);
-        if (errCode == EXCEPTION_SYSTEM_PERMISSION) {
-            IMSA_HILOGE("failed to UpdateListenEventFlag , ret: %{public}d, type: %{public}s!", ret, type.c_str());
-            JsUtils::ThrowException(env, errCode, "", TYPE_NONE);
-        }
+        IMSA_HILOGE("failed to register event, ret: %{public}d, type: %{public}s!", ret, type.c_str());
+        JsUtils::ThrowException(env, errCode, "failed to register input method event!", TYPE_NONE);
     }
     napi_value result = nullptr;
     napi_get_null(env, &result);
@@ -786,18 +779,14 @@ napi_value JsGetInputMethodSetting::UnSubscribe(napi_env env, napi_callback_info
     void *data = nullptr;
     IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
     std::string type;
-    // 1 means least param num.
-    if (argc < 1 || !JsUtil::GetValue(env, argv[0], type) ||
-        !EventChecker::IsValidEventType(EventSubscribeModule::INPUT_METHOD_SETTING, type)) {
-        IMSA_HILOGE("unsubscribe failed, type: %{public}s!", type.c_str());
-        return nullptr;
-    }
+    PARAM_CHECK_RETURN(env, argc >= ARGC_ONE, "type is required!", TYPE_NONE, nullptr);
+    PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, argv[0], type), "type must be string", TYPE_NONE, nullptr);
+    PARAM_CHECK_RETURN(env, EventChecker::IsValidEventType(EventSubscribeModule::INPUT_METHOD_SETTING, type),
+        "type verification failed, review the instructions and fill in the fixed values!", TYPE_NONE, nullptr);
 
-    // if the second param is not napi_function/napi_null/napi_undefined, return
-    auto paramType = JsUtil::GetType(env, argv[1]);
-    if (paramType != napi_function && paramType != napi_null && paramType != napi_undefined) {
-        return nullptr;
-    }
+    auto paramType = argc > ARGC_ONE ? JsUtil::GetType(env, argv[1]) : napi_undefined;
+    PARAM_CHECK_RETURN(env, paramType == napi_function || paramType == napi_null || paramType == napi_undefined,
+        "callback must be a function, null or undefined!", TYPE_NONE, nullptr);
     // if the second param is napi_function, delete it, else delete all
     argv[1] = paramType == napi_function ? argv[1] : nullptr;
 
@@ -819,6 +808,9 @@ napi_value JsGetInputMethodSetting::UnSubscribe(napi_env env, napi_callback_info
     if (isUpdateFlag) {
         auto ret = ImeEventMonitorManagerImpl::GetInstance().UnRegisterImeEventListener(iter->second, inputMethod_);
         IMSA_HILOGI("UpdateListenEventFlag, ret: %{public}d, type: %{public}s.", ret, type.c_str());
+        if (ret != ErrorCode::NO_ERROR) {
+            JsUtils::ThrowException(env, JsUtils::Convert(ret), "failed to unregister input method event!", TYPE_NONE);
+        }
     }
     napi_value result = nullptr;
     napi_get_null(env, &result);
@@ -836,9 +828,9 @@ napi_value JsGetInputMethodSetting::UnSubscribeImechange(napi_env env, napi_call
     napi_valuetype paramType = napi_undefined;
     if (argc > 0) {
         paramType = JsUtil::GetType(env, argv[0]);
-        if (paramType != napi_function && paramType != napi_null && paramType != napi_undefined) {
-            return nullptr;
-        }
+        PARAM_CHECK_RETURN(env,
+            paramType == napi_function || paramType == napi_null || paramType == napi_undefined,
+            "callback must be a function, null or undefined!", TYPE_NONE, nullptr);
         // if the first param is napi_function, delete it, else delete all
         argv[0] = paramType == napi_function ? argv[0] : nullptr;
     }
@@ -858,6 +850,9 @@ napi_value JsGetInputMethodSetting::UnSubscribeImechange(napi_env env, napi_call
     if (isUpdateFlag) {
         auto ret = ImeEventMonitorManagerImpl::GetInstance().UnRegisterImeEventListener(iter->second, inputMethod_);
         IMSA_HILOGI("UpdateListenEventFlag, ret: %{public}d, type: %{public}s.", ret, type.c_str());
+        if (ret != ErrorCode::NO_ERROR) {
+            JsUtils::ThrowException(env, JsUtils::Convert(ret), "failed to unregister input method event!", TYPE_NONE);
+        }
     }
     napi_value result = nullptr;
     napi_get_null(env, &result);

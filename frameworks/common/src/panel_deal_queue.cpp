@@ -25,14 +25,29 @@ void PanelDealQueue::Pop()
     panelDealQueue_.Pop();
 }
 
+bool PanelDealQueue::Pop(const JsEventInfo &info)
+{
+    return panelDealQueue_.Pop(info);
+}
+
+bool PanelDealQueue::Remove(const JsEventInfo &info)
+{
+    return panelDealQueue_.Remove(info);
+}
+
+bool PanelDealQueue::IsReady(const JsEventInfo &info)
+{
+    return panelDealQueue_.IsReady(info);
+}
+
 void PanelDealQueue::Push(const JsEventInfo &info)
 {
     panelDealQueue_.Push(info);
 }
 
-void PanelDealQueue::Wait(const JsEventInfo &info)
+bool PanelDealQueue::Wait(const JsEventInfo &info)
 {
-    panelDealQueue_.Wait(info);
+    return panelDealQueue_.Wait(info);
 }
 
 void PanelDealQueue::PrintIfTimeout(int64_t start, const JsEventInfo &currentInfo)

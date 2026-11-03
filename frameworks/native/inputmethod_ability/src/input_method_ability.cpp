@@ -1335,9 +1335,11 @@ int32_t InputMethodAbility::CreatePanel(const std::shared_ptr<AbilityRuntime::Co
     auto panelHeightCallback = [this](uint32_t panelHeight, PanelFlag panelFlag) {
         NotifyKeyboardHeight(panelHeight, panelFlag);
     };
+    bool creationAttempted = false;
     auto flag = panels_.ComputeIfAbsent(panelInfo.panelType,
-        [panelHeightCallback, &panelInfo, &context, &inputMethodPanel](
+        [panelHeightCallback, &panelInfo, &context, &inputMethodPanel, &creationAttempted](
             const PanelType &panelType, std::shared_ptr<InputMethodPanel> &panel) {
+            creationAttempted = true;
             inputMethodPanel = std::make_shared<InputMethodPanel>();
             inputMethodPanel->SetPanelHeightCallback(panelHeightCallback);
             auto ret = inputMethodPanel->CreatePanel(context, panelInfo);
@@ -1345,9 +1347,14 @@ int32_t InputMethodAbility::CreatePanel(const std::shared_ptr<AbilityRuntime::Co
                 panel = inputMethodPanel;
                 return true;
             }
+            IMSA_HILOGE("Native panel creation failed, panelType: %{public}d, ret: %{public}d", panelType, ret);
             inputMethodPanel = nullptr;
             return false;
         });
+    if (!flag && !creationAttempted) {
+        IMSA_HILOGE("Panel type %{public}d is already registered; reuse or destroy the existing panel first.",
+            panelInfo.panelType);
+    }
     if (flag && isShowAfterCreate_.load() && panelInfo.panelType == SOFT_KEYBOARD &&
         panelInfo.panelFlag != FLG_CANDIDATE_COLUMN) {
         isShowAfterCreate_.store(false);
@@ -1367,12 +1374,15 @@ int32_t InputMethodAbility::DestroyPanel(const std::shared_ptr<InputMethodPanel>
         IMSA_HILOGE("panel is nullptr!");
         return ErrorCode::ERROR_BAD_PARAMETERS;
     }
-    auto ret = inputMethodPanel->DestroyPanel();
+    auto ret = inputMethodPanel->DestroyPanelWithStatus();
     if (ret == ErrorCode::NO_ERROR) {
         PanelType panelType = inputMethodPanel->GetPanelType();
-        panels_.Erase(panelType);
+        panels_.EraseIf(
+            [panelType, &inputMethodPanel](const PanelType &type, std::shared_ptr<InputMethodPanel> &registered) {
+                return type == panelType && registered == inputMethodPanel;
+            });
     }
-    return ret;
+    return ret == ErrorCode::ERROR_WINDOW_MANAGER ? ErrorCode::ERROR_OPERATE_PANEL : ret;
 }
 
 int32_t InputMethodAbility::ShowPanel(const std::shared_ptr<InputMethodPanel> &inputMethodPanel)

@@ -54,12 +54,49 @@ class PanelDealQueue {
 public:
     static constexpr int64_t MAX_WAIT_TIME = 10;    //ms
     static void Pop();
+    static bool Pop(const JsEventInfo &info);
+    static bool Remove(const JsEventInfo &info);
+    static bool IsReady(const JsEventInfo &info);
 
     static void Push(const JsEventInfo &info);
 
-    static void Wait(const JsEventInfo &info);
+    static bool Wait(const JsEventInfo &info);
 
     static void PrintIfTimeout(int64_t start, const JsEventInfo &currentInfo);
+
+    class TaskGuard {
+    public:
+        explicit TaskGuard(const JsEventInfo &info) : info_(info)
+        {
+            Push(info_);
+        }
+        ~TaskGuard()
+        {
+            if (active_) {
+                Remove(info_);
+            }
+        }
+        TaskGuard(const TaskGuard &) = delete;
+        TaskGuard &operator=(const TaskGuard &) = delete;
+        bool Wait()
+        {
+            return PanelDealQueue::Wait(info_);
+        }
+        bool IsReady()
+        {
+            return PanelDealQueue::IsReady(info_);
+        }
+        void Finish()
+        {
+            if (Pop(info_)) {
+                active_ = false;
+            }
+        }
+
+    private:
+        JsEventInfo info_;
+        bool active_ = true;
+    };
 
 private:
     static FFRTBlockQueue<JsEventInfo> panelDealQueue_;

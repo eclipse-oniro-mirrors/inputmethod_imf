@@ -36,6 +36,7 @@ struct PrivateCommandInfo {
 struct SendPrivateCommandContext : public AsyncCall::Context {
     std::unordered_map<std::string, PrivateDataValue> privateCommand;
     PrivateCommandInfo info;
+    bool queued = false;
     SendPrivateCommandContext() : Context(nullptr, nullptr){};
 
     napi_status operator()(napi_env env, napi_value *result) override
@@ -74,6 +75,7 @@ public:
     void NotifyPanelStatus(const SysPanelStatus &sysPanelStatus) override;
 
 private:
+    static void ExecutePrivateCommand(const std::shared_ptr<SendPrivateCommandContext> &ctxt);
     void RegisterListener(napi_value callback, std::string type, std::shared_ptr<JSCallbackObject> callbackObj);
     void UnRegisterListener(napi_value callback, std::string type, napi_env env);
     napi_value GetJsPanelStatus(napi_env env, const SysPanelStatus &in);

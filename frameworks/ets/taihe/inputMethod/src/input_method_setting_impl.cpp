@@ -252,14 +252,15 @@ void InputMethodSettingImpl::UnregisterImeEvent(std::string const &eventName, in
         auto ret = ImeEventMonitorManagerImpl::GetInstance().UnRegisterImeEventListener(eventMask,
             InputMethodEventListener::GetInstance());
         IMSA_HILOGI("Updated event: %{public}s flag, ret: %{public}d", eventName.c_str(), ret);
+        if (ret != ErrorCode::NO_ERROR) {
+            set_business_error(JsUtils::Convert(ret), "failed to unregister input method event!");
+        }
     }
 }
 void InputMethodSettingImpl::HandleRegistrationError(std::string const &eventName, int32_t errorCode)
 {
     auto errCode = JsUtils::Convert(errorCode);
-    if (errCode == EXCEPTION_SYSTEM_PERMISSION) {
-        set_business_error(EXCEPTION_SYSTEM_PERMISSION, JsUtils::ToMessage(EXCEPTION_SYSTEM_PERMISSION));
-    }
+    set_business_error(errCode, JsUtils::ToMessage(errCode));
     IMSA_HILOGE("Failed to register %{public}s, error: %{public}d", eventName.c_str(), errorCode);
 }
 void InputMethodSettingImpl::RegisterListener(std::string const &type, callbackType &&cb, uintptr_t opq)
@@ -274,7 +275,7 @@ void InputMethodSettingImpl::RegisterListener(std::string const &type, callbackT
     }
     auto &cbVec = jsCbMap_[type];
     bool isDuplicate =
-        std::any_of(cbVec.begin(), cbVec.end(), [env, callbackRef](std::unique_ptr<CallbackObject> &obj) {
+        std::any_of(cbVec.begin(), cbVec.end(), [env, callbackRef](const std::shared_ptr<CallbackObject> &obj) {
             ani_boolean isEqual = false;
             return (ANI_OK == env->Reference_StrictEquals(callbackRef, obj->ref, &isEqual)) && isEqual;
         });
@@ -286,7 +287,7 @@ void InputMethodSettingImpl::RegisterListener(std::string const &type, callbackT
         IMSA_HILOGD("%{public}s is already registered", type.c_str());
         return;
     }
-    cbVec.emplace_back(std::make_unique<CallbackObject>(cb, callbackRef));
+    cbVec.emplace_back(std::make_shared<CallbackObject>(cb, callbackRef));
     IMSA_HILOGI("Registered success type: %{public}s", type.c_str());
 }
 void InputMethodSettingImpl::UnregisterListener(std::string const &type, optional_view<uintptr_t> opq,
@@ -316,7 +317,7 @@ void InputMethodSettingImpl::UnregisterListener(std::string const &type, optiona
         return;
     }
 
-    const auto pred = [env, targetRef = guard.get()](std::unique_ptr<CallbackObject> &obj) {
+    const auto pred = [env, targetRef = guard.get()](const std::shared_ptr<CallbackObject> &obj) {
         ani_boolean is_equal = false;
         return (ANI_OK == env->Reference_StrictEquals(targetRef, obj->ref, &is_equal)) && is_equal;
     };
@@ -331,10 +332,16 @@ void InputMethodSettingImpl::UnregisterListener(std::string const &type, optiona
     }
 }
 
-void InputMethodSettingImpl::OnImeChangeCallback(const Property &property, const SubProperty &subProperty)
+std::vector<std::shared_ptr<CallbackObject>> InputMethodSettingImpl::GetCallbacks(const std::string &type)
 {
     std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_["imeChange"];
+    const auto iter = jsCbMap_.find(type);
+    return iter == jsCbMap_.end() ? std::vector<std::shared_ptr<CallbackObject>> {} : iter->second;
+}
+
+void InputMethodSettingImpl::OnImeChangeCallback(const Property &property, const SubProperty &subProperty)
+{
+    auto cbVec = GetCallbacks("imeChange");
     for (auto &cb : cbVec) {
         auto &func =
             std::get<taihe::callback<void(InputMethodProperty_t const &, InputMethodSubtype_t const &)>>(cb->callback);
@@ -350,8 +357,7 @@ void InputMethodSettingImpl::OnImeChangeCallbackWithUserId(
         set_business_error(JsUtils::Convert(errCode), "userId must greater than 0");
         return;
     }
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_["imeChangeWithUserId"];
+    auto cbVec = GetCallbacks("imeChangeWithUserId");
     for (auto &cb : cbVec) {
         auto &func =
             std::get<taihe::callback<void(InputMethodProperty_t const &, InputMethodSubtype_t const &,
@@ -404,8 +410,7 @@ void InputMethodSettingImpl::SetSoftKbShowingFlag(PanelFlag flag)
 
 void InputMethodSettingImpl::OnPanelStatusChange(std::string const &type, const InputWindowInfo &info)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_[type];
+    auto cbVec = GetCallbacks(type);
     for (auto &cb : cbVec) {
         InputWindowInfo_t inputWindowInfo{ .name = info.name,
             .left = info.left,
