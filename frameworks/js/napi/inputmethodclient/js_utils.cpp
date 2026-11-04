@@ -461,8 +461,8 @@ napi_status JsUtils::GetValue(napi_env env, napi_value in, RegisterOptions &out)
     PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, patternTypes, types) && !types.empty(),
         "inputPatternTypes must be a non-empty int array!", TYPE_NONE, napi_generic_failure);
     for (int32_t pattern : types) {
-        PARAM_CHECK_RETURN(env, IsValidInputPattern(pattern),
-            "inputPatternTypes contains invalid pattern!", TYPE_NONE, napi_generic_failure);
+        PARAM_CHECK_RETURN(env, IsValidInputPattern(pattern), "inputPatternTypes contains invalid value!", TYPE_NONE,
+            napi_generic_failure);
     }
     out.inputPatternTypes = std::move(types);
     return napi_ok;
