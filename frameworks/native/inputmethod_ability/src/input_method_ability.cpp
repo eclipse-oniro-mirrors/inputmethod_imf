@@ -1890,6 +1890,14 @@ int32_t InputMethodAbility::SetPreviewTextWithStyle(
     HISTOGRAM_BOOLEAN("imekit.inputMethodEngine.setPreviewText", 1);
 #endif
     InputMethodSyncTrace tracer("IMA_SetPreviewTextWithStyle");
+    if (style.underlineStyle < 0 || style.underlineStyle > static_cast<int32_t>(UnderlineStyle::DASHED)) {
+        IMSA_HILOGE("invalid underlineStyle: %{public}d!", style.underlineStyle);
+        return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+    }
+    if (range.start < INVALID_VALUE || range.end < INVALID_VALUE) {
+        IMSA_HILOGE("invalid range: start=%{public}d, end=%{public}d!", range.start, range.end);
+        return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+    }
     auto dataChannel = GetInputDataChannelProxyWrap();
     if (dataChannel == nullptr) {
         IMSA_HILOGE("dataChannel is nullptr!");
