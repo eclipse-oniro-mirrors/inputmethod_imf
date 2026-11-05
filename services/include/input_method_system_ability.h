@@ -89,6 +89,7 @@ public:
     ErrCode StartInputType(int32_t type, bool isPersistence) override;
     ErrCode StartInputTypeAsync(int32_t type, bool isPersistence) override;
     ErrCode ExitCurrentInputType() override;
+    ErrCode RequestSystemInputCapability(int32_t type) override;
     ErrCode IsPanelShown(const PanelInfo &panelInfo, bool &isShown) override;
     ErrCode IsPanelShown(uint64_t displayId, const PanelInfo &panelInfo, bool &isShown) override;
     ErrCode GetSecurityMode(int32_t &security) override;
@@ -220,7 +221,7 @@ private:
     void DealSwitchRequest(int32_t userId);
     bool IsCurrentIme(int32_t userId, uint32_t tokenId);
     bool IsInputTypeCaller(int32_t userId, const std::string &bundleName);
-    int32_t StartInputType(int32_t userId, InputType type, bool isPersistence = true);
+    int32_t StartInputType(int32_t userId, InputType type, bool isPersistence = true, bool isCheckPermission = true);
     // if switch input type need to switch ime, then no need to hide panel first.
     void NeedHideWhenSwitchInputType(int32_t userId, InputType type, bool &needHide);
     bool GetDeviceFunctionKeyState(int32_t functionKey, bool &isEnable);

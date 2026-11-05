@@ -234,6 +234,10 @@ enum RequestKeyboardReason : i32 {
     OTHER = 20
 }
 
+enum InputCapabilityType : i32 {
+    TRANSLATION = 0,
+}
+
 union UndefinedType {
   @undefined undefined;
 }
@@ -352,6 +356,9 @@ interface InputMethodController {
     SendMessageSync(msgId: String, msgParam: Optional<@arraybuffer Array<u8>>): void;
 
     recvMessage(msgHandler: Optional<MessageHandler>): void;
+
+    @gen_promise("requestSystemInputCapability")
+    RequestSystemInputCapabilitySync(type: InputCapabilityType): void;
 }
 
 function GetSetting(): InputMethodSetting;

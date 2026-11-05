@@ -496,6 +496,18 @@ public:
     IMF_API std::shared_ptr<Property> GetCurrentInputMethod(int32_t userId = ImfCommonConst::DEFAULT_USER_ID);
 
     /**
+     * @brief Request system input capability.
+     *
+     * This function is used to request system input capability, such as translation input.
+     * For TRANSLATION type, the current input method must be the system default input method.
+     *
+     * @param type The input capability type, see {@link InputCapabilityType}.
+     * @return Returns {@link ErrorCode::NO_ERROR} on success, otherwise returns an error code.
+     * @since 26.1.0
+     */
+    IMF_API int32_t RequestSystemInputCapability(InputCapabilityType type);
+
+    /**
      * @brief Get current input method subtypes.
      *
      * This function is used to get current input method's current subtype.

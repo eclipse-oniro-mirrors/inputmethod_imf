@@ -1783,6 +1783,17 @@ void InputMethodController::SetInputReady(
     }
 }
 
+int32_t InputMethodController::RequestSystemInputCapability(InputCapabilityType type)
+{
+    auto proxy = GetSystemAbilityProxy();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("proxy is nullptr!");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    IMSA_HILOGI("RequestSystemInputCapability type: %{public}d.", static_cast<int32_t>(type));
+    return proxy->RequestSystemInputCapability(static_cast<int32_t>(type));
+}
+
 void InputMethodController::OnTmpInputStop(const sptr<IRemoteObject> &proxy)
 {
     ClearAgentInfo();

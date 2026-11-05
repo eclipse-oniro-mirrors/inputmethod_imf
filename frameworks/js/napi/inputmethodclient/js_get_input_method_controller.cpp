@@ -72,7 +72,8 @@ napi_value JsGetInputMethodController::Init(napi_env env, napi_value info)
         DECLARE_NAPI_STATIC_PROPERTY("ExtendAction", GetJsExtendActionProperty(env)),
         DECLARE_NAPI_STATIC_PROPERTY("EnabledState", GetJsEnabledStateProperty(env)),
         DECLARE_NAPI_STATIC_PROPERTY("RequestKeyboardReason", GetJsRequestKeyboardReasonProperty(env)),
-        DECLARE_NAPI_STATIC_PROPERTY("CapitalizeMode", GetJsCapitalizeModeProperty(env))
+        DECLARE_NAPI_STATIC_PROPERTY("CapitalizeMode", GetJsCapitalizeModeProperty(env)),
+        DECLARE_NAPI_STATIC_PROPERTY("InputCapabilityType", GetJsInputCapabilityTypeProperty(env))
     };
     IMF_CALL(
         napi_define_properties(env, info, sizeof(descriptor) / sizeof(napi_property_descriptor), descriptor));
@@ -98,6 +99,7 @@ napi_value JsGetInputMethodController::Init(napi_env env, napi_value info)
         DECLARE_NAPI_FUNCTION("sendMessage", SendMessage),
         DECLARE_NAPI_FUNCTION("recvMessage", RecvMessage),
         DECLARE_NAPI_FUNCTION("discardTypingText", DiscardTypingText),
+        DECLARE_NAPI_FUNCTION("requestSystemInputCapability", RequestSystemInputCapability),
     };
     napi_value cons = nullptr;
     IMF_CALL(napi_define_class(env, IMC_CLASS_NAME.c_str(), IMC_CLASS_NAME.size(), JsConstructor, nullptr,
@@ -295,6 +297,42 @@ napi_value JsGetInputMethodController::GetJsRequestKeyboardReasonProperty(napi_e
     IMF_CALL(napi_set_named_property(env, requestKeyboardReason, "TOUCH", touch));
     IMF_CALL(napi_set_named_property(env, requestKeyboardReason, "OTHER", other));
     return requestKeyboardReason;
+}
+
+napi_value JsGetInputMethodController::GetJsInputCapabilityTypeProperty(napi_env env)
+{
+    napi_value inputCapabilityType = nullptr;
+    napi_value translation = nullptr;
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(InputCapabilityType::TRANSLATION), &translation));
+    IMF_CALL(napi_create_object(env, &inputCapabilityType));
+    IMF_CALL(napi_set_named_property(env, inputCapabilityType, "TRANSLATION", translation));
+    return inputCapabilityType;
+}
+
+napi_value JsGetInputMethodController::RequestSystemInputCapability(napi_env env, napi_callback_info info)
+{
+    auto ctxt = std::make_shared<RequestSystemInputCapabilityContext>();
+    auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
+        PARAM_CHECK_RETURN(env, argc > 0, "at least one parameter is required!", TYPE_NONE, napi_generic_failure);
+        napi_status status = JsUtils::GetValue(env, argv[0], ctxt->capabilityType);
+        PARAM_CHECK_RETURN(env, status == napi_ok, "type must be number", TYPE_NONE, status);
+        return status;
+    };
+    auto exec = [ctxt](AsyncCall::Context *ctx) {
+        int32_t errcode = ErrorCode::ERROR_CLIENT_NULL_POINTER;
+        auto instance = InputMethodController::GetInstance();
+        if (instance != nullptr) {
+            errcode = instance->RequestSystemInputCapability(
+                static_cast<InputCapabilityType>(ctxt->capabilityType));
+        }
+        ctxt->SetErrorCode(errcode);
+        CHECK_RETURN_VOID(errcode == ErrorCode::NO_ERROR, "RequestSystemInputCapability return error!");
+        ctxt->SetState(napi_ok);
+    };
+    ctxt->SetAction(std::move(input));
+    // 2 means JsAPI:requestSystemInputCapability has 2 params at most.
+    AsyncCall asyncCall(env, info, ctxt, 2);
+    return asyncCall.Call(env, exec, "requestSystemInputCapability");
 }
 
 napi_value JsGetInputMethodController::JsConstructor(napi_env env, napi_callback_info cbinfo)

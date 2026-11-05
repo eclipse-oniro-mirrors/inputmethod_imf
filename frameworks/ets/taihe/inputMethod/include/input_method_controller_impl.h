@@ -69,6 +69,7 @@ public:
     void ShowSoftKeyboardIdSync(int64_t displayId);
     void SendMessageSync(::taihe::string_view msgId, ::taihe::optional_view<::taihe::array<uint8_t>> msgParam);
     void recvMessage(::taihe::optional_view<MessageHandler_t> msgHandler);
+    void RequestSystemInputCapabilitySync(InputCapabilityType_t type);
     void UpdateCursorSync(::ohos::inputMethod::CursorInfo const& cursorInfo);
     void OnSelectByRange(int32_t start, int32_t end) override;
     void OnSelectByMovement(int32_t direction) override;
@@ -290,6 +291,10 @@ public:
     void recvMessage(::taihe::optional_view<MessageHandler_t> msgHandler)
     {
         InputMethodControllerImpl::GetInstance()->recvMessage(msgHandler);
+    }
+    void RequestSystemInputCapabilitySync(InputCapabilityType_t type)
+    {
+        InputMethodControllerImpl::GetInstance()->RequestSystemInputCapabilitySync(type);
     }
     void UpdateCursorSync(::ohos::inputMethod::CursorInfo const& cursorInfo)
     {

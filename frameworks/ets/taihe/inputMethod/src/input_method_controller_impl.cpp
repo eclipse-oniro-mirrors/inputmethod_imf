@@ -709,5 +709,23 @@ bool InputMethodControllerImpl::IsTextPreviewSupported()
     return (IsRegister("setPreviewText") || IsRegister("setPreviewTextWithStyle")) &&
            IsRegister("finishTextPreview");
 }
+
+void InputMethodControllerImpl::RequestSystemInputCapabilitySync(InputCapabilityType_t type)
+{
+    auto instance = InputMethodController::GetInstance();
+    if (instance == nullptr) {
+        IMSA_HILOGE("GetInstance() is nullptr!");
+        set_business_error(JsUtils::Convert(ErrorCode::ERROR_IMC_NULLPTR),
+            JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IMC_NULLPTR)));
+        return;
+    }
+    int32_t errCode = instance->RequestSystemInputCapability(static_cast<InputCapabilityType>(type.get_value()));
+    if (errCode != ErrorCode::NO_ERROR) {
+        set_business_error(JsUtils::Convert(errCode), JsUtils::ToMessage(JsUtils::Convert(errCode)));
+        IMSA_HILOGE("RequestSystemInputCapability failed, errCode: %{public}d!", errCode);
+        return;
+    }
+    IMSA_HILOGI("RequestSystemInputCapability success");
+}
 } // namespace MiscServices
 } // namespace OHOS

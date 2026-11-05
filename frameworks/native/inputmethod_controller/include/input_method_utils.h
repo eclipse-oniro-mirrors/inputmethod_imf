@@ -300,8 +300,23 @@ enum class InputType : int32_t {
     VOICEKB_INPUT,
     PUSH_TO_TALK_INPUT,
     STYLUS_INPUT,
+    TRANSLATION_INPUT,
     END
 };
+
+enum class InputCapabilityType : int32_t {
+    TRANSLATION = 0,
+};
+
+inline InputType CapabilityTypeToInputType(InputCapabilityType type)
+{
+    switch (type) {
+        case InputCapabilityType::TRANSLATION:
+            return InputType::TRANSLATION_INPUT;
+        default:
+            return InputType::NONE;
+    }
+}
 
 struct PanelStatusInfo {
     PanelInfo panelInfo;

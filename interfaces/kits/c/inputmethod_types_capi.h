@@ -297,6 +297,16 @@ typedef enum InputMethod_ErrorCode {
      */
     IME_ERR_DETACHED = 12800009,
     /**
+     * @brief The error code when current ime is not the default ime.
+     * @since 26.1.0
+     */
+    OH_INPUTMETHOD_ERR_NOT_DEFAULT_IME = 12800010,
+    /**
+     * @brief The error code when the input type is not supported.
+     * @since 26.1.0
+     */
+    OH_INPUTMETHOD_INPUT_CAPABILITY_TYPE_NOT_SUPPORTED = 12800029,
+    /**
      * @error The error code when another size was not register message handler.
      */
     IME_ERR_BASIC_MODE = 12800014,
@@ -341,6 +351,24 @@ typedef enum InputMethod_RequestKeyboardReason {
      */
     IME_REQUEST_REASON_OTHER = 20
 } InputMethod_RequestKeyboardReason;
+
+/**
+ * @brief Enumerates the input capability types.
+ *
+ * @since 26.1.0
+ */
+typedef enum OH_InputMethod_InputCapabilityType {
+    /**
+     * @brief The input capability type is TRANSLATION.
+     * @since 26.1.0
+     */
+    OH_INPUTMETHOD_INPUT_CAPABILITY_TYPE_TRANSLATION = 0,
+    /**
+     * @brief The boundary value of the input capability type.
+     * @since 26.1.0
+     */
+    OH_INPUTMETHOD_INPUT_CAPABILITY_TYPE_END,
+} OH_InputMethod_InputCapabilityType;
 
 /**
  * @brief Enumerates the underline styles for preview text.

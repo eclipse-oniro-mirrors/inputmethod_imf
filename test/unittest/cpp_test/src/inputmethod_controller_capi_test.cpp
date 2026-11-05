@@ -1,4 +1,4 @@
-/*
+﻿/*
  * Copyright (c) 2024 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
@@ -2437,6 +2437,141 @@ HWTEST_F(InputMethodControllerCapiTest, GetOnMessageFuncWithNull_FAIL, TestSize.
     EXPECT_EQ(IME_ERR_NULL_POINTER, OH_MessageHandlerProxy_GetOnMessageFunc(proxy, nullptr));
 
     OH_MessageHandlerProxy_Destroy(proxy);
+}
+
+/**
+ * @tc.name: RequestSystemInputCapability_NullProxy
+ * @tc.desc: AC-1.5: pass nullptr proxy, expect IME_ERR_NULL_POINTER
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, RequestSystemInputCapability_NullProxy, TestSize.Level0)
+{
+    IMSA_HILOGI("RequestSystemInputCapability_NullProxy START");
+    auto ret = OH_InputMethod_InputMethodProxy_RequestSystemInputCapability(
+        nullptr, OH_INPUTMETHOD_INPUT_CAPABILITY_TYPE_TRANSLATION);
+    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
+}
+ 
+/**
+ * @tc.name: RequestSystemInputCapability_InvalidType
+ * @tc.desc: AC-1.6: pass invalid type, expect IME_ERR_PARAMCHECK
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, RequestSystemInputCapability_InvalidType, TestSize.Level0)
+{
+    IMSA_HILOGI("RequestSystemInputCapability_InvalidType START");
+    InputMethod_InputMethodProxy *inputMethodProxy = nullptr;
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Attach(textEditorProxy_, attachOptions_, &inputMethodProxy));
+    OH_InputMethod_InputCapabilityType invalidType = static_cast<OH_InputMethod_InputCapabilityType>(99);
+    auto ret = OH_InputMethod_InputMethodProxy_RequestSystemInputCapability(inputMethodProxy, invalidType);
+    EXPECT_EQ(ret, IME_ERR_PARAMCHECK);
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Detach(inputMethodProxy));
+}
+
+/**
+ * @tc.name: RequestSystemInputCapability_InvalidTypeWithoutAttach
+ * @tc.desc: AC-1.7: invalid type without attach, expect IME_ERR_PARAMCHECK
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, RequestSystemInputCapability_InvalidTypeWithoutAttach, TestSize.Level0)
+{
+    IMSA_HILOGI("RequestSystemInputCapability_InvalidTypeWithoutAttach START");
+    OH_InputMethod_InputCapabilityType invalidType = static_cast<OH_InputMethod_InputCapabilityType>(-1);
+    auto ret = OH_InputMethod_InputMethodProxy_RequestSystemInputCapability(nullptr, invalidType);
+    EXPECT_EQ(ret, IME_ERR_PARAMCHECK);
+}
+
+/**
+ * @tc.name: RequestSystemInputCapability_Success
+ * @tc.desc: AC-1.3: mock proxy returns NO_ERROR, expect IME_ERR_OK
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, RequestSystemInputCapability_Success, TestSize.Level0)
+{
+    IMSA_HILOGI("RequestSystemInputCapability_Success START");
+    ON_CALL(*systemAbilityProxyMock_, RequestSystemInputCapability(_))
+        .WillByDefault(Return(ErrorCode::NO_ERROR));
+    InputMethod_InputMethodProxy *inputMethodProxy = nullptr;
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Attach(textEditorProxy_, attachOptions_, &inputMethodProxy));
+    auto ret = OH_InputMethod_InputMethodProxy_RequestSystemInputCapability(
+        inputMethodProxy, OH_INPUTMETHOD_INPUT_CAPABILITY_TYPE_TRANSLATION);
+    EXPECT_EQ(ret, IME_ERR_OK);
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Detach(inputMethodProxy));
+}
+
+/**
+ * @tc.name: RequestSystemInputCapability_NotDefaultIme
+ * @tc.desc: AC-1.4: mock returns ERROR_NOT_DEFAULT_IME, expect OH_INPUTMETHOD_ERR_NOT_DEFAULT_IME
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, RequestSystemInputCapability_NotDefaultIme, TestSize.Level0)
+{
+    IMSA_HILOGI("RequestSystemInputCapability_NotDefaultIme START");
+    ON_CALL(*systemAbilityProxyMock_, RequestSystemInputCapability(_))
+        .WillByDefault(Return(ErrorCode::ERROR_NOT_DEFAULT_IME));
+    InputMethod_InputMethodProxy *inputMethodProxy = nullptr;
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Attach(textEditorProxy_, attachOptions_, &inputMethodProxy));
+    auto ret = OH_InputMethod_InputMethodProxy_RequestSystemInputCapability(
+        inputMethodProxy, OH_INPUTMETHOD_INPUT_CAPABILITY_TYPE_TRANSLATION);
+    EXPECT_EQ(ret, OH_INPUTMETHOD_ERR_NOT_DEFAULT_IME);
+    EXPECT_EQ(ret, 12800010);
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Detach(inputMethodProxy));
+}
+ 
+/**
+ * @tc.name: GetCurrentInputMethod_NullParam
+ * @tc.desc: AC-2.2: pass nullptr parameter, expect IME_ERR_NULL_POINTER
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, GetCurrentInputMethod_NullParam, TestSize.Level0)
+{
+    IMSA_HILOGI("GetCurrentInputMethod_NullParam START");
+    char *bundleName = nullptr;
+    uint32_t bundleNameLength = 0;
+    char *abilityName = nullptr;
+    uint32_t abilityNameLength = 0;
+    auto ret = OH_InputMethod_InputMethodController_GetCurrentInputMethod(
+        nullptr, &bundleNameLength, &abilityName, &abilityNameLength);
+    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
+    ret = OH_InputMethod_InputMethodController_GetCurrentInputMethod(
+        &bundleName, nullptr, &abilityName, &abilityNameLength);
+    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
+    ret = OH_InputMethod_InputMethodController_GetCurrentInputMethod(
+        &bundleName, &bundleNameLength, nullptr, &abilityNameLength);
+    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
+    ret = OH_InputMethod_InputMethodController_GetCurrentInputMethod(
+        &bundleName, &bundleNameLength, &abilityName, nullptr);
+    EXPECT_EQ(ret, IME_ERR_NULL_POINTER);
+}
+ 
+/**
+ * @tc.name: GetCurrentInputMethod_Success
+ * @tc.desc: AC-2.1: success, expect IME_ERR_OK and correct bundleName/abilityName
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodControllerCapiTest, GetCurrentInputMethod_Success, TestSize.Level0)
+{
+    IMSA_HILOGI("GetCurrentInputMethod_Success START");
+    Property mockProp;
+    mockProp.name = "com.example.testime";
+    mockProp.id = "ServiceExtAbility";
+    ON_CALL(*systemAbilityProxyMock_, GetCurrentInputMethod(_, _))
+        .WillByDefault(DoAll(SetArgReferee<1>(mockProp), Return(ErrorCode::NO_ERROR)));
+    char *bundleName = nullptr;
+    uint32_t bundleNameLength = 0;
+    char *abilityName = nullptr;
+    uint32_t abilityNameLength = 0;
+    auto ret = OH_InputMethod_InputMethodController_GetCurrentInputMethod(
+        &bundleName, &bundleNameLength, &abilityName, &abilityNameLength);
+    EXPECT_EQ(ret, IME_ERR_OK);
+    ASSERT_NE(nullptr, bundleName);
+    ASSERT_NE(nullptr, abilityName);
+    EXPECT_STREQ(bundleName, mockProp.name.c_str());
+    EXPECT_STREQ(abilityName, mockProp.id.c_str());
+    EXPECT_EQ(bundleNameLength, mockProp.name.size() + 1);
+    EXPECT_EQ(abilityNameLength, mockProp.id.size() + 1);
+    free(bundleName);
+    free(abilityName);
 }
 
 /**

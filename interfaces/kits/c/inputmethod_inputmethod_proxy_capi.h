@@ -227,6 +227,26 @@ InputMethod_ErrorCode OH_InputMethodProxy_SendMessage(InputMethod_InputMethodPro
  */
 InputMethod_ErrorCode OH_InputMethodProxy_RecvMessage(
     InputMethod_InputMethodProxy *inputMethodProxy, InputMethod_MessageHandlerProxy *messageHandler);
+
+/**
+ * @brief Request system input capability.
+ *
+ * @param inputMethodProxy [in] Represents a pointer to an {@link InputMethod_InputMethodProxy} instance.
+ *     The inputMethodProxy is obtained from {@link OH_InputMethodController_Attach}.
+ * @param type [in] Represents the input capability type. {@link OH_InputMethod_InputCapabilityType}
+ * @return Returns a specific error code.
+ *     - {@link IME_ERR_OK} - success.
+ *     - {@link IME_ERR_PARAMCHECK} - parameter check failed.
+ *     - {@link IME_ERR_IMMS} - input method manager service error.
+ *     - {@link OH_INPUTMETHOD_ERR_NOT_DEFAULT_IME} - current ime is not the default ime.
+ *     - {@link OH_INPUTMETHOD_INPUT_CAPABILITY_TYPE_NOT_SUPPORTED} - the input type is not supported.
+ *     - {@link IME_ERR_DETACHED} - input method client detached.
+ *     - {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
+ *     Specific error codes can be referenced {@link InputMethod_ErrorCode}.
+ * @since 26.1.0
+ */
+InputMethod_ErrorCode OH_InputMethod_InputMethodProxy_RequestSystemInputCapability(
+    InputMethod_InputMethodProxy *inputMethodProxy, OH_InputMethod_InputCapabilityType type);
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

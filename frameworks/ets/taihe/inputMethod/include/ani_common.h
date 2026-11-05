@@ -47,6 +47,7 @@ using UndefinedType_t = ::ohos::inputMethod::UndefinedType;
 using AttachFailureReason_t = ohos::inputMethod::AttachFailureReason;
 using AttachOptions_t = ohos::inputMethod::AttachOptions;
 using CursorInfo_t = ::ohos::inputMethod::CursorInfo;
+using InputCapabilityType_t = ::ohos::inputMethod::InputCapabilityType;
 namespace OHOS {
 namespace MiscServices {
 constexpr const int32_t SELECT_ALL = 0;
