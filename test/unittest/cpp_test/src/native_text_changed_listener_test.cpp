@@ -490,5 +490,171 @@ HWTEST_F(NativeTextChangedListenerTest, TextEditorProxy_DoubleDestroy_001, TestS
     OH_TextEditorProxy_Destroy(proxy);
     EXPECT_TRUE(true);
 }
+
+// Callback for SetPreviewTextWithStyle
+static std::atomic<int32_t> g_setPreviewTextWithStyleCallCount(0);
+static std::atomic<int32_t> g_lastReceivedUnderlineStyle(0);
+static std::atomic<uint32_t> g_lastReceivedUnderlineColor(0);
+static std::atomic<bool> g_lastReceivedHasUnderlineColor(false);
+int32_t SetPreviewTextWithStyleCb(InputMethod_TextEditorProxy *proxy,
+    const char16_t *text, uint32_t length, int32_t start, int32_t end,
+    const OH_InputMethod_PreviewTextStyle *style)
+{
+    g_setPreviewTextWithStyleCallCount++;
+    if (style != nullptr) {
+        g_lastReceivedUnderlineStyle = static_cast<int32_t>(style->underlineStyle);
+        g_lastReceivedUnderlineColor = style->underlineColor;
+        g_lastReceivedHasUnderlineColor = style->hasUnderlineColor;
+    }
+    return ErrorCode::NO_ERROR;
+}
+
+/**
+ * @tc.name: SetPreviewTextWithStyle_NullProxy_001
+ * @tc.desc: SetPreviewTextWithStyle with nullptr proxy returns ERROR_NULL_POINTER
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeTextChangedListenerTest, SetPreviewTextWithStyle_NullProxy_001, TestSize.Level1)
+{
+    IMSA_HILOGI("NativeTextChangedListenerTest::SetPreviewTextWithStyle_NullProxy_001 start");
+    sptr<NativeTextChangedListener> listener = new (std::nothrow) NativeTextChangedListener(nullptr);
+    ASSERT_NE(nullptr, listener);
+    Range range = { 0, 0 };
+    PreviewTextStyleInner style {};
+    style.underlineStyle = static_cast<int32_t>(UnderlineStyle::SOLID);
+    int32_t ret = listener->SetPreviewTextWithStyle(u"hello", range, style);
+    EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
+}
+
+/**
+ * @tc.name: SetPreviewTextWithStyle_NullStyleFunc_001
+ * @tc.desc: SetPreviewTextWithStyle when style func is null returns NO_ERROR (fallback to SetPreviewText)
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeTextChangedListenerTest, SetPreviewTextWithStyle_NullStyleFunc_001, TestSize.Level1)
+{
+    IMSA_HILOGI("NativeTextChangedListenerTest::SetPreviewTextWithStyle_NullStyleFunc_001 start");
+    auto textEditor = OH_TextEditorProxy_Create();
+    EXPECT_NE(nullptr, textEditor);
+    sptr<NativeTextChangedListener> listener = new (std::nothrow) NativeTextChangedListener(textEditor);
+    ASSERT_NE(nullptr, listener);
+    Range range = { 0, 0 };
+    PreviewTextStyleInner style {};
+    style.underlineStyle = static_cast<int32_t>(UnderlineStyle::SOLID);
+    int32_t ret = listener->SetPreviewTextWithStyle(u"hello", range, style);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    OH_TextEditorProxy_Destroy(textEditor);
+}
+
+/**
+ * @tc.name: SetPreviewTextWithStyle_WithStyleFunc_001
+ * @tc.desc: SetPreviewTextWithStyle when style func is set invokes callback with correct style
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeTextChangedListenerTest, SetPreviewTextWithStyle_WithStyleFunc_001, TestSize.Level1)
+{
+    IMSA_HILOGI("NativeTextChangedListenerTest::SetPreviewTextWithStyle_WithStyleFunc_001 start");
+    g_setPreviewTextWithStyleCallCount = 0;
+    auto textEditor = OH_TextEditorProxy_Create();
+    EXPECT_NE(nullptr, textEditor);
+    EXPECT_EQ(IME_ERR_OK,
+        OH_InputMethod_TextEditorProxy_SetSetPreviewTextWithStyleFunc(textEditor, SetPreviewTextWithStyleCb));
+    sptr<NativeTextChangedListener> listener = new (std::nothrow) NativeTextChangedListener(textEditor);
+    ASSERT_NE(nullptr, listener);
+    Range range = { 1, 2 };
+    PreviewTextStyleInner style {};
+    style.underlineStyle = static_cast<int32_t>(UnderlineStyle::SOLID);
+    style.underlineColor = 0x00FF0000;
+    style.hasUnderlineColor = true;
+    int32_t ret = listener->SetPreviewTextWithStyle(u"hello", range, style);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_EQ(g_setPreviewTextWithStyleCallCount.load(), 1);
+    EXPECT_EQ(g_lastReceivedUnderlineStyle.load(), static_cast<int32_t>(UnderlineStyle::SOLID));
+    EXPECT_EQ(g_lastReceivedUnderlineColor.load(), 0x00FF0000U);
+    EXPECT_TRUE(g_lastReceivedHasUnderlineColor.load());
+    OH_TextEditorProxy_Destroy(textEditor);
+}
+
+/**
+ * @tc.name: SetPreviewTextWithStyle_AllEnumValues_001
+ * @tc.desc: SetPreviewTextWithStyle with all UnderlineStyle enum values dispatched correctly
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeTextChangedListenerTest, SetPreviewTextWithStyle_AllEnumValues_001, TestSize.Level1)
+{
+    IMSA_HILOGI("NativeTextChangedListenerTest::SetPreviewTextWithStyle_AllEnumValues_001 start");
+    g_setPreviewTextWithStyleCallCount = 0;
+    auto textEditor = OH_TextEditorProxy_Create();
+    EXPECT_NE(nullptr, textEditor);
+    EXPECT_EQ(IME_ERR_OK,
+        OH_InputMethod_TextEditorProxy_SetSetPreviewTextWithStyleFunc(textEditor, SetPreviewTextWithStyleCb));
+    sptr<NativeTextChangedListener> listener = new (std::nothrow) NativeTextChangedListener(textEditor);
+    ASSERT_NE(nullptr, listener);
+    Range range = { 0, 0 };
+    int32_t styles[] = {
+        static_cast<int32_t>(UnderlineStyle::NONE),
+        static_cast<int32_t>(UnderlineStyle::SOLID),
+        static_cast<int32_t>(UnderlineStyle::WAVY),
+        static_cast<int32_t>(UnderlineStyle::DASHED),
+    };
+    for (auto &s : styles) {
+        PreviewTextStyleInner style {};
+        style.underlineStyle = s;
+        int32_t ret = listener->SetPreviewTextWithStyle(u"text", range, style);
+        EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+        EXPECT_EQ(g_lastReceivedUnderlineStyle.load(), s);
+    }
+    EXPECT_EQ(g_setPreviewTextWithStyleCallCount.load(), 4);
+    OH_TextEditorProxy_Destroy(textEditor);
+}
+
+/**
+ * @tc.name: SetPreviewTextWithStyle_NoColor_001
+ * @tc.desc: SetPreviewTextWithStyle without color, hasUnderlineColor should be false in callback
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeTextChangedListenerTest, SetPreviewTextWithStyle_NoColor_001, TestSize.Level1)
+{
+    IMSA_HILOGI("NativeTextChangedListenerTest::SetPreviewTextWithStyle_NoColor_001 start");
+    g_setPreviewTextWithStyleCallCount = 0;
+    auto textEditor = OH_TextEditorProxy_Create();
+    EXPECT_NE(nullptr, textEditor);
+    EXPECT_EQ(IME_ERR_OK,
+        OH_InputMethod_TextEditorProxy_SetSetPreviewTextWithStyleFunc(textEditor, SetPreviewTextWithStyleCb));
+    sptr<NativeTextChangedListener> listener = new (std::nothrow) NativeTextChangedListener(textEditor);
+    ASSERT_NE(nullptr, listener);
+    Range range = { 0, 0 };
+    PreviewTextStyleInner style {};
+    style.underlineStyle = static_cast<int32_t>(UnderlineStyle::WAVY);
+    int32_t ret = listener->SetPreviewTextWithStyle(u"text", range, style);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_FALSE(g_lastReceivedHasUnderlineColor.load());
+    OH_TextEditorProxy_Destroy(textEditor);
+}
+
+/**
+ * @tc.name: SetPreviewTextWithStyle_EmptyText_001
+ * @tc.desc: SetPreviewTextWithStyle with empty text still invokes callback
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeTextChangedListenerTest, SetPreviewTextWithStyle_EmptyText_001, TestSize.Level1)
+{
+    IMSA_HILOGI("NativeTextChangedListenerTest::SetPreviewTextWithStyle_EmptyText_001 start");
+    g_setPreviewTextWithStyleCallCount = 0;
+    auto textEditor = OH_TextEditorProxy_Create();
+    EXPECT_NE(nullptr, textEditor);
+    EXPECT_EQ(IME_ERR_OK,
+        OH_InputMethod_TextEditorProxy_SetSetPreviewTextWithStyleFunc(textEditor, SetPreviewTextWithStyleCb));
+    sptr<NativeTextChangedListener> listener = new (std::nothrow) NativeTextChangedListener(textEditor);
+    ASSERT_NE(nullptr, listener);
+    Range range = { 0, 0 };
+    PreviewTextStyleInner style {};
+    style.underlineStyle = static_cast<int32_t>(UnderlineStyle::DASHED);
+    int32_t ret = listener->SetPreviewTextWithStyle(u"", range, style);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_EQ(g_setPreviewTextWithStyleCallCount.load(), 1);
+    EXPECT_EQ(g_lastReceivedUnderlineStyle.load(), static_cast<int32_t>(UnderlineStyle::DASHED));
+    OH_TextEditorProxy_Destroy(textEditor);
+}
 } // namespace MiscServices
 } // namespace OHOS
