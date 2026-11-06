@@ -2168,6 +2168,112 @@ HWTEST_F(InputMethodAbilityTest, testSetPreviewTextWithStyle_006, TestSize.Level
 }
 
 /**
+ * @tc.name: testSetPreviewTextWithStyle_007
+ * @tc.desc: IMA SetPreviewTextWithStyle with invalid underlineStyle (-1) returns ERROR_PARAMETER_CHECK_FAILED
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testSetPreviewTextWithStyle_007, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbilityTest testSetPreviewTextWithStyle_007 Test START");
+    TextListener::ResetParam();
+    std::string text = "test";
+    Range range = { 1, 2 };
+    PreviewTextStyleInner style {};
+    style.underlineStyle = -1;
+    InputMethodAbilityTest::GetIMCAttachIMA();
+    InputMethodAbilityTest::imc_->textConfig_.inputAttribute.isTextPreviewSupported = true;
+    auto ret = InputMethodAbilityTest::inputMethodAbility_.SetPreviewTextWithStyle(text, range, style);
+    EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+    EXPECT_EQ(TextListener::setPreviewTextWithStyleCallCount_, 0);
+    InputMethodAbilityTest::GetIMCDetachIMA();
+}
+
+/**
+ * @tc.name: testSetPreviewTextWithStyle_008
+ * @tc.desc: IMA SetPreviewTextWithStyle with invalid underlineStyle (> DASHED) returns ERROR_PARAMETER_CHECK_FAILED
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testSetPreviewTextWithStyle_008, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbilityTest testSetPreviewTextWithStyle_008 Test START");
+    TextListener::ResetParam();
+    std::string text = "test";
+    Range range = { 1, 2 };
+    PreviewTextStyleInner style {};
+    style.underlineStyle = static_cast<int32_t>(UnderlineStyle::DASHED) + 1;
+    InputMethodAbilityTest::GetIMCAttachIMA();
+    InputMethodAbilityTest::imc_->textConfig_.inputAttribute.isTextPreviewSupported = true;
+    auto ret = InputMethodAbilityTest::inputMethodAbility_.SetPreviewTextWithStyle(text, range, style);
+    EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+    EXPECT_EQ(TextListener::setPreviewTextWithStyleCallCount_, 0);
+    InputMethodAbilityTest::GetIMCDetachIMA();
+}
+
+/**
+ * @tc.name: testSetPreviewTextWithStyle_009
+ * @tc.desc: IMA SetPreviewTextWithStyle with range.start < -1 returns ERROR_PARAMETER_CHECK_FAILED
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testSetPreviewTextWithStyle_009, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbilityTest testSetPreviewTextWithStyle_009 Test START");
+    TextListener::ResetParam();
+    std::string text = "test";
+    Range range = { -2, 2 };
+    PreviewTextStyleInner style {};
+    style.underlineStyle = static_cast<int32_t>(UnderlineStyle::SOLID);
+    InputMethodAbilityTest::GetIMCAttachIMA();
+    InputMethodAbilityTest::imc_->textConfig_.inputAttribute.isTextPreviewSupported = true;
+    auto ret = InputMethodAbilityTest::inputMethodAbility_.SetPreviewTextWithStyle(text, range, style);
+    EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+    EXPECT_EQ(TextListener::setPreviewTextWithStyleCallCount_, 0);
+    InputMethodAbilityTest::GetIMCDetachIMA();
+}
+
+/**
+ * @tc.name: testSetPreviewTextWithStyle_010
+ * @tc.desc: IMA SetPreviewTextWithStyle with range.end < -1 returns ERROR_PARAMETER_CHECK_FAILED
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testSetPreviewTextWithStyle_010, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbilityTest testSetPreviewTextWithStyle_010 Test START");
+    TextListener::ResetParam();
+    std::string text = "test";
+    Range range = { 1, -2 };
+    PreviewTextStyleInner style {};
+    style.underlineStyle = static_cast<int32_t>(UnderlineStyle::SOLID);
+    InputMethodAbilityTest::GetIMCAttachIMA();
+    InputMethodAbilityTest::imc_->textConfig_.inputAttribute.isTextPreviewSupported = true;
+    auto ret = InputMethodAbilityTest::inputMethodAbility_.SetPreviewTextWithStyle(text, range, style);
+    EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+    EXPECT_EQ(TextListener::setPreviewTextWithStyleCallCount_, 0);
+    InputMethodAbilityTest::GetIMCDetachIMA();
+}
+
+/**
+ * @tc.name: testSetPreviewTextWithStyle_011
+ * @tc.desc: IMA SetPreviewTextWithStyle with range = {-1, -1} (INVALID_VALUE) succeeds
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testSetPreviewTextWithStyle_011, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbilityTest testSetPreviewTextWithStyle_011 Test START");
+    TextListener::ResetParam();
+    std::string text = "test";
+    Range range = { INVALID_VALUE, INVALID_VALUE };
+    PreviewTextStyleInner style {};
+    style.underlineStyle = static_cast<int32_t>(UnderlineStyle::SOLID);
+    InputMethodAbilityTest::GetIMCAttachIMA();
+    InputMethodAbilityTest::imc_->textConfig_.inputAttribute.isTextPreviewSupported = true;
+    auto ret = InputMethodAbilityTest::inputMethodAbility_.SetPreviewTextWithStyle(text, range, style);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_EQ(TextListener::previewTextWithStyle_, text);
+    EXPECT_EQ(TextListener::setPreviewTextWithStyleCallCount_, 1);
+    InputMethodAbilityTest::GetIMCDetachIMA();
+}
+
+/**
  * @tc.desc: IMA
  * @tc.type: FUNC
  * @tc.require:
