@@ -3063,7 +3063,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnRegisterProxyIme, TestSi
 
 /**
  * @tc.name: PerUserSession_OnRegisterProxyIme_InAppProxyImeSkipRebind
- * @tc.desc: When current binding is INAPP_PROXY_IME, OnRegisterProxyIme skips PROXY_IME rebind.
+ * @tc.desc: When current binding is INAPP_PROXY_IME and uid is COL_PROXY_IME, OnRegisterProxyIme skips rebind.
  * @tc.type: FUNC
  * @tc.require:
  */
@@ -3073,7 +3073,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnRegisterProxyIme_InAppPr
     auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     uint64_t displayId = ImfCommonConst::DEFAULT_DISPLAY_ID;
     int32_t pid = 10;
-    int32_t uid = 100;
+    int32_t uid = static_cast<int32_t>(ImfCommonConst::COL_PROXY_IME);
     // set up a current client whose bindImeData is INAPP_PROXY_IME
     auto group = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
     sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
@@ -3098,6 +3098,42 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnRegisterProxyIme_InAppPr
     ASSERT_NE(clientInfo, nullptr);
     ASSERT_NE(clientInfo->bindImeData, nullptr);
     EXPECT_TRUE(clientInfo->bindImeData->IsInAppIme());
+}
+
+/**
+ * @tc.name: PerUserSession_OnRegisterProxyIme_InAppImeUsed_RejectNonProxyUid
+ * @tc.desc: When in-app IME is used and uid is not COL_PROXY_IME,
+ * OnRegisterProxyIme rejects with ERROR_EX_UNSUPPORTED_OPERATION.
+ * @tc.type: FUNC
+ */
+HWTEST_F(
+    InputMethodPrivateMemberTest, PerUserSession_OnRegisterProxyIme_InAppImeUsed_RejectNonProxyUid, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_OnRegisterProxyIme_InAppImeUsed_RejectNonProxyUid "
+                "start.");
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
+    uint64_t displayId = ImfCommonConst::DEFAULT_DISPLAY_ID;
+    int32_t pid = 10;
+    int32_t uid = 100; // not COL_PROXY_IME
+    // set up a current client whose bindImeData is INAPP_PROXY_IME
+    auto group = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+    group->SetCurrentClient(client);
+    auto info = std::make_shared<InputClientInfo>();
+    info->client = client;
+    info->bindImeData = std::make_shared<BindImeData>(pid, ImeType::INAPP_PROXY_IME);
+    group->mapClients_.insert_or_assign(client->AsObject(), info);
+    userSession->clientGroupMap_.insert_or_assign(ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID, group);
+    auto core = new (std::nothrow) InputMethodCoreServiceImpl();
+    auto agent = new (std::nothrow) InputMethodAgentServiceImpl();
+    ASSERT_NE(core, nullptr);
+    ASSERT_NE(agent, nullptr);
+    // in-app IME is used and uid is not COL_PROXY_IME → rejected
+    auto ret = userSession->OnRegisterProxyIme(displayId, core, agent->AsObject(), pid, uid);
+    EXPECT_EQ(ret, ErrorCode::ERROR_EX_UNSUPPORTED_OPERATION);
+    // proxy IME data is NOT added (early return before AddProxyImeData)
+    EXPECT_EQ(userSession->proxyImeData_[displayId].size(), 0);
 }
 
 /**

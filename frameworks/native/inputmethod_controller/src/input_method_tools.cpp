@@ -229,6 +229,7 @@ InputClientInfo InputMethodTools::InnerToInputClientInfo(const InputClientInfoIn
 PanelStatusInfoInner InputMethodTools::PanelStatusInfoToInner(const PanelStatusInfo &panelStatusInfo)
 {
     PanelStatusInfoInner inner;
+    inner.keyboardType = panelStatusInfo.keyboardType;
     inner.panelInfo = panelStatusInfo.panelInfo;
     inner.inputType = panelStatusInfo.inputType;
     inner.visible = panelStatusInfo.visible;
@@ -241,6 +242,7 @@ PanelStatusInfoInner InputMethodTools::PanelStatusInfoToInner(const PanelStatusI
 PanelStatusInfo InputMethodTools::InnerToPanelStatusInfo(const PanelStatusInfoInner &inner)
 {
     PanelStatusInfo panelStatusInfo;
+    panelStatusInfo.keyboardType = inner.keyboardType;
     panelStatusInfo.panelInfo = inner.panelInfo;
     panelStatusInfo.inputType = inner.inputType;
     panelStatusInfo.visible = inner.visible;

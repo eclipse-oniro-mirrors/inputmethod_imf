@@ -318,8 +318,18 @@ inline InputType CapabilityTypeToInputType(InputCapabilityType type)
     }
 }
 
+enum class KeyboardType : int32_t {
+    TYPE_START = 0,
+    TYPE_PANEL = TYPE_START,
+    TYPE_CUSTOM,
+    TYPE_END = TYPE_CUSTOM,
+};
+
 struct PanelStatusInfo {
+    KeyboardType keyboardType;
+    // START: only keyboardType==TYPE_PANEL is valid
     PanelInfo panelInfo;
+    // END: only keyboardType==TYPE_PANEL is valid
     InputType inputType = InputType::NONE;
     bool visible { false };
     Trigger trigger { END };
@@ -333,6 +343,7 @@ struct PanelStatusInfo {
 };
 
 struct PanelStatusInfoInner : public Parcelable {
+    KeyboardType keyboardType;
     PanelInfo panelInfo;
     InputType inputType = InputType::NONE;
     bool visible { false };

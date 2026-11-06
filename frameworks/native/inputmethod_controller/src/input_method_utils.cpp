@@ -21,6 +21,14 @@ namespace MiscServices {
 
 bool PanelStatusInfoInner::ReadFromParcel(Parcel &in)
 {
+    int32_t keyboardTypeData = in.ReadInt32();
+    if (keyboardTypeData < static_cast<int32_t>(KeyboardType::TYPE_START) ||
+        keyboardTypeData > static_cast<int32_t>(KeyboardType::TYPE_END)) {
+        IMSA_HILOGE("Invalid keyboardType value: %{public}d", keyboardTypeData);
+        return false;
+    }
+    keyboardType = static_cast<KeyboardType>(keyboardTypeData);
+
     std::unique_ptr<PanelInfo> panelDataInfo(in.ReadParcelable<PanelInfo>());
     if (panelDataInfo == nullptr) {
         return false;
@@ -204,6 +212,10 @@ ArrayBuffer *ArrayBuffer::Unmarshalling(Parcel &in)
 // LCOV_EXCL_START
 bool PanelStatusInfoInner::Marshalling(Parcel &out) const
 {
+    if (!out.WriteInt32(static_cast<int32_t>(keyboardType))) {
+        return false;
+    }
+
     if (!out.WriteParcelable(&panelInfo)) {
         return false;
     }
