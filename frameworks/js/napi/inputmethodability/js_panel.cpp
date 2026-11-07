@@ -208,7 +208,6 @@ napi_value JsPanel::Resize(napi_env env, napi_callback_info info)
             PanelDealQueue::Pop();
             return;
         }
-        ctxt->inputMethodPanel->hasSetSize_.store(true);
         auto code = ctxt->inputMethodPanel->Resize(ctxt->width, ctxt->height);
         PanelDealQueue::Pop();
         if (code == ErrorCode::NO_ERROR) {
@@ -249,7 +248,6 @@ napi_value JsPanel::MoveTo(napi_env env, napi_callback_info info)
             PanelDealQueue::Pop();
             return;
         }
-        ctxt->inputMethodPanel->hasSetSize_.store(true);
         auto code = ctxt->inputMethodPanel->MoveTo(ctxt->x, ctxt->y);
         PanelDealQueue::Pop();
         if (code == ErrorCode::ERROR_PARAMETER_CHECK_FAILED) {
@@ -414,7 +412,6 @@ napi_value JsPanel::ChangeFlag(napi_env env, napi_callback_info info)
     JsEventInfo eventInfo = { std::chrono::system_clock::now(), JsEvent::CHANGE_PANEL_FLAG };
     PanelDealQueue::Push(eventInfo);
     PanelDealQueue::Wait(eventInfo);
-    inputMethodPanel->hasSetSize_.store(true);
     auto ret = inputMethodPanel->ChangePanelFlag(PanelFlag(panelFlag));
     PanelDealQueue::Pop();
     CHECK_RETURN(ret == ErrorCode::NO_ERROR, "failed to ChangePanelFlag!", nullptr);
@@ -668,7 +665,6 @@ napi_value JsPanel::AdjustPanelRect(napi_env env, napi_callback_info info)
             PanelDealQueue::Pop();
             return;
         }
-        ctxt->inputMethodPanel->hasSetSize_.store(true);
         if (!ctxt->isEnhancedCall) {
             AdjustLayoutParam(ctxt);
         } else {
@@ -717,7 +713,6 @@ napi_value JsPanel::UpdatePanelRectSync(napi_env env, napi_callback_info info)
     JsEventInfo eventInfo = { std::chrono::system_clock::now(), JsEvent::UPDATE_PANEL_RECT_SYNC };
     PanelDealQueue::Push(eventInfo);
     PanelDealQueue::Wait(eventInfo);
-    panel->hasSetSize_.store(true);
     int32_t ret = isEnhancedCall
         ? panel->AdjustPanelRect(ctxt->panelFlag, ctxt->enhancedLayoutParams, ctxt->hotAreas, false)
         : panel->AdjustPanelRect(ctxt->panelFlag, ctxt->layoutParams, true, true, false);
@@ -760,7 +755,6 @@ napi_value JsPanel::UpdateRegion(napi_env env, napi_callback_info info)
             PanelDealQueue::Pop();
             return;
         }
-        ctxt->inputMethodPanel->hasSetSize_.store(true);
         int32_t code = ctxt->inputMethodPanel->UpdateRegion(ctxt->hotArea);
         if (code == ErrorCode::NO_ERROR) {
             ctxt->SetState(napi_ok);

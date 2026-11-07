@@ -1169,7 +1169,7 @@ HWTEST_F(InputMethodPanelAdjustTest, testSetImmersiveEffect_008, TestSize.Level0
     auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     AccessScope scope(currentImeTokenId_, currentImeUid_);
-    ret = inputMethodPanel->ShowPanel(Trigger::IME_APP);
+    ret = inputMethodPanel->ShowPanel();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 
     ImmersiveEffect immersiveEffect;
@@ -1213,7 +1213,7 @@ HWTEST_F(InputMethodPanelAdjustTest, testSetImmersiveEffect_009, TestSize.Level0
     auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, params, hotAreas, false);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     AccessScope scope(currentImeTokenId_, currentImeUid_);
-    ret = inputMethodPanel->ShowPanel(Trigger::IME_APP);
+    ret = inputMethodPanel->ShowPanel();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 
     ImmersiveEffect immersiveEffect;
@@ -1500,7 +1500,7 @@ HWTEST_F(InputMethodPanelAdjustTest, testShowPanelWithAdjustWithoutScb_001, Test
     inputMethodPanel->isPortrait_ = !currentPortrait;
     AccessScope scope(currentImeTokenId_, currentImeUid_);
     // ShowPanel should detect orientation mismatch and re-adjust
-    ret = inputMethodPanel->ShowPanel(Trigger::IME_APP);
+    ret = inputMethodPanel->ShowPanel();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     // After ShowPanel, isPortrait_ should be updated to current display orientation
     EXPECT_EQ(inputMethodPanel->isPortrait_, currentPortrait);
@@ -1524,7 +1524,7 @@ HWTEST_F(InputMethodPanelAdjustTest, testShowPanelWithAdjustWithoutScb_002, Test
     // hasAdjustWithoutScb_ is false by default, ShowPanel should not trigger AdjustLayoutWithoutScb
     bool originalPortrait = inputMethodPanel->isPortrait_;
     AccessScope scope(currentImeTokenId_, currentImeUid_);
-    auto ret = inputMethodPanel->ShowPanel(Trigger::IME_APP);
+    auto ret = inputMethodPanel->ShowPanel();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     // isPortrait_ should remain unchanged since hasAdjustWithoutScb_ is false
     EXPECT_EQ(inputMethodPanel->isPortrait_, originalPortrait);
@@ -1550,7 +1550,7 @@ HWTEST_F(InputMethodPanelAdjustTest, testShowPanelWithAdjustWithoutScb_003, Test
     // hasAdjustWithoutScb_ is true and orientation changes
     bool originalPortrait = inputMethodPanel->isPortrait_;
     AccessScope scope(currentImeTokenId_, currentImeUid_);
-    auto ret = inputMethodPanel->ShowPanel(Trigger::IME_APP);
+    auto ret = inputMethodPanel->ShowPanel();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     // isPortrait_ should remain unchanged since isScbEnable_ is true
     EXPECT_EQ(inputMethodPanel->isPortrait_, originalPortrait);
