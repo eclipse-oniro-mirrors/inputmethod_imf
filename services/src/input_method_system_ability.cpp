@@ -1033,9 +1033,30 @@ ErrCode InputMethodSystemAbility::RequestHideInput(uint32_t windowId, uint64_t d
             IMSA_HILOGD("permission denied");
             return ErrorCode::ERROR_STATUS_PERMISSION_DENIED;
         }
+        auto modalAppBundleName = identityChecker_->GetBundleNameByToken(tokenId);
+        if (session->IsImeModalApp(modalAppBundleName) && session->IsCurrentBoundRealIme()) {
+            IMSA_HILOGI("caller is ime modal app and real ime is bound, skip hide input.");
+            return ErrorCode::NO_ERROR;
+        }
     }
     return session->OnRequestHideInput(
         WindowAdapter::GetDisplayIdWithCorrect(windowId, displayId, outputUserId), callerBundleName);
+}
+
+ErrCode InputMethodSystemAbility::NotifyImeModalWindowStateChanged(const std::string &bundleName, int32_t state)
+{
+    auto userId = GetCallingUserId();
+    auto session = UserSessionManager::GetInstance().GetUserSession(userId);
+    if (session == nullptr) {
+        IMSA_HILOGE("%{public}d session is nullptr!", userId);
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    auto pid = IPCSkeleton::GetCallingPid();
+    if (!session->IsCurrentImeByPid(pid)) {
+        IMSA_HILOGE("caller is not current real ime, deny.");
+        return ErrorCode::ERROR_NOT_IME;
+    }
+    return session->OnNotifyImeModalWindowStateChanged(pid, bundleName, state);
 }
 
 ErrCode InputMethodSystemAbility::SetCoreAndAgent(const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent)

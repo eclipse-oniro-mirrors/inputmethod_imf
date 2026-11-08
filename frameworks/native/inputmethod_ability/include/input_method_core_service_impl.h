@@ -44,7 +44,7 @@ public:
     ErrCode IsPanelShown(const PanelInfo &panelInfo, bool &isShown) override;
     ErrCode OnSecurityChange(int32_t security) override;
     ErrCode OnConnectSystemCmd(const sptr<IRemoteObject> &channel) override;
-    ErrCode OnClientInactive(const sptr<IRemoteObject> &channel) override;
+    ErrCode OnClientInactive(const sptr<IRemoteObject> &channel, bool skipHidePanel) override;
     ErrCode OnSetInputType(int32_t inputType, uint64_t displayId) override;
     ErrCode OnCallingDisplayIdChanged(uint64_t editorDisplayId, uint64_t keyboardDisplayId) override;
     ErrCode OnCallingWindowIdChanged(uint32_t rawEditorWindowId, const FocusedInfo &focusedInfo) override;

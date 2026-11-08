@@ -80,6 +80,7 @@ constexpr int32_t MAKE_IMAGE_TIMEOUT = 2 * 60 * 1000; // two min
 constexpr int32_t E_IMAGE_CREATING = -2; // same with ForkallErrCode::E_IMAGE_CREATING, never modify
 constexpr int32_t WAIT_IME_EXT_EXIT_DELAY = 5;
 constexpr int32_t WAIT_IME_EXT_EXIT_MAX_TIMES = 40;
+constexpr const char *FLOAT_WINDOW_FROM_IME_NAME = "FloatWindowFromIME";
 
 PerUserSession::PerUserSession(int32_t userId, const std::shared_ptr<AppExecFwk::EventHandler> &eventHandler)
     : userId_(userId), eventHandler_(eventHandler), taskNames_(TaskNames::MakeTaskNames(userId))
@@ -467,6 +468,52 @@ int32_t PerUserSession::OnRequestHideInput(uint64_t displayId, const std::string
     return ErrorCode::NO_ERROR;
 }
 
+int32_t PerUserSession::OnNotifyImeModalWindowStateChanged(pid_t imePid, const std::string &bundleName, int32_t state)
+{
+    IMSA_HILOGI("imePid: %{public}d, bundleName: %{public}s, state: %{public}d.", imePid, bundleName.c_str(), state);
+    // state: 0 - modal window created, 1 - modal window destroyed; reject any other value.
+    if (state < 0 || state > 1) {
+        IMSA_HILOGE("invalid modal window state: %{public}d", state);
+        return ErrorCode::ERROR_BAD_PARAMETERS;
+    }
+    std::lock_guard<std::mutex> lock(modalStateLock_);
+    if (state == 0) {
+        modalAppsByImePid_[imePid].insert(bundleName);
+    } else {
+        auto iter = modalAppsByImePid_.find(imePid);
+        if (iter != modalAppsByImePid_.end()) {
+            iter->second.erase(bundleName);
+            if (iter->second.empty()) {
+                modalAppsByImePid_.erase(iter);
+            }
+        }
+    }
+    return ErrorCode::NO_ERROR;
+}
+
+bool PerUserSession::IsImeModalApp(const std::string &bundleName)
+{
+    std::lock_guard<std::mutex> lock(modalStateLock_);
+    for (const auto &[imePid, bundleNames] : modalAppsByImePid_) {
+        if (bundleNames.find(bundleName) != bundleNames.end()) {
+            return true;
+        }
+    }
+    return false;
+}
+
+bool PerUserSession::IsCurrentBoundRealIme()
+{
+    auto [clientGroup, clientInfo] = GetCurrentClientBoundRealIme();
+    return clientInfo != nullptr;
+}
+
+void PerUserSession::ClearModalStateByImePid(pid_t imePid)
+{
+    std::lock_guard<std::mutex> lock(modalStateLock_);
+    modalAppsByImePid_.erase(imePid);
+}
+
 bool PerUserSession::RequestHideRealIme(uint64_t displayGroupId)
 {
     auto realImeData = GetRealImeData(true);
@@ -636,7 +683,8 @@ int32_t PerUserSession::RemoveClient(
     return ErrorCode::NO_ERROR;
 }
 
-void PerUserSession::DeactivateClient(const sptr<IInputClient> &client, const std::shared_ptr<ClientGroup> &clientGroup)
+void PerUserSession::DeactivateClient(
+    const sptr<IInputClient> &client, const std::shared_ptr<ClientGroup> &clientGroup, bool skipHidePanel)
 {
     if (client == nullptr || clientGroup == nullptr) {
         IMSA_HILOGD("client is nullptr.");
@@ -646,7 +694,7 @@ void PerUserSession::DeactivateClient(const sptr<IInputClient> &client, const st
     if (clientInfo == nullptr) {
         return;
     }
-    IMSA_HILOGI("deactivate client[%{public}d].", clientInfo->pid);
+    IMSA_HILOGI("deactivate client[%{public}d], skipHidePanel: %{public}d.", clientInfo->pid, skipHidePanel);
     clientGroup->UpdateClientInfo(client->AsObject(), { { UpdateFlag::STATE, ClientState::INACTIVE } });
     if (IsSameClient(client, clientGroup->GetCurrentClient())) {
         clientGroup->SetCurrentClient(nullptr);
@@ -658,8 +706,8 @@ void PerUserSession::DeactivateClient(const sptr<IInputClient> &client, const st
         IMSA_HILOGE("%{public}d bind ime is abnormal!", clientInfo->pid);
         return;
     }
-    RequestAllIme(data, RequestType::NORMAL, [&clientInfo](const sptr<IInputMethodCore> &core) {
-        core->OnClientInactive(clientInfo->channel);
+    RequestAllIme(data, RequestType::NORMAL, [&clientInfo, skipHidePanel](const sptr<IInputMethodCore> &core) {
+        core->OnClientInactive(clientInfo->channel, skipHidePanel);
         return ErrorCode::NO_ERROR;
     }, clientInfo->clientGroupId);
     InputMethodSysEvent::GetInstance().ReportImeState(ImeState::UNBIND, data->pid, data->ime.first);
@@ -1824,6 +1872,7 @@ void PerUserSession::RemoveImeData(pid_t pid)
     RemoveMirrorImeData(pid);
     RemoveProxyImeData(pid);
     RemoveInAppProxyImeData(pid);
+    ClearModalStateByImePid(pid);
 }
 
 void PerUserSession::RemoveDeathRecipient(
@@ -1903,7 +1952,18 @@ void PerUserSession::OnFocused(uint64_t displayId, int32_t pid, int32_t uid)
         return;
     }
     IMSA_HILOGI("focus shifts to pid: %{public}d, deactivate current client.", pid);
-    DeactivateClient(client, clientGroup);
+    bool skipHidePanel = false;
+    auto windowInfo = WindowAdapter::GetFocusedWindowInfo(displayId, userId_);
+    if (windowInfo != nullptr) {
+        const auto &metaInfo = windowInfo->windowMetaInfo;
+        if (metaInfo.windowName.rfind(FLOAT_WINDOW_FROM_IME_NAME, 0) == 0) {
+            IMSA_HILOGI("focus shifts to a window from ime, skip hiding all panels.");
+            skipHidePanel = true;
+        }
+    } else {
+        IMSA_HILOGW("failed to get focused window info, displayId: %{public}" PRIu64, displayId);
+    }
+    DeactivateClient(client, clientGroup, skipHidePanel);
 }
 
 void PerUserSession::OnUnfocused(uint64_t displayId, int32_t pid, int32_t uid)

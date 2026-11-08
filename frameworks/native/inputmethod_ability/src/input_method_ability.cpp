@@ -1724,7 +1724,7 @@ int32_t InputMethodAbility::IsPanelShown(const PanelInfo &panelInfo, bool &isSho
     return ErrorCode::NO_ERROR;
 }
 
-void InputMethodAbility::OnClientInactive(const sptr<IRemoteObject> &channel)
+void InputMethodAbility::OnClientInactive(const sptr<IRemoteObject> &channel, bool skipHidePanel)
 {
     IMSA_HILOGI("client inactive.");
     ResetPttKeyEventTracking();
@@ -1735,6 +1735,14 @@ void InputMethodAbility::OnClientInactive(const sptr<IRemoteObject> &channel)
     auto channelProxy = std::make_shared<InputDataChannelProxy>(channel);
     if (channelProxy == nullptr) {
         IMSA_HILOGE("failed to create channel proxy!");
+        return;
+    }
+    if (skipHidePanel) {
+        // Focus shifts to an IME-owned floating window; keep all panels visible.
+        // Only tear down the binding metadata, do not hide any panel.
+        ClearDataChannel(channel);
+        ClearAttachOptions();
+        ClearBindClientInfo();
         return;
     }
     auto panel = GetSoftKeyboardPanel();
@@ -2310,6 +2318,16 @@ Ace::UIContent *InputMethodAbility::GetSoftKeyboardUIContent()
         return nullptr;
     }
     return panel->GetUIContent();
+}
+
+int32_t InputMethodAbility::NotifyImeModalWindowStateChanged(const std::string &bundleName, int32_t state)
+{
+    auto proxy = GetImsaProxy();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("imsa proxy is nullptr!");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    return proxy->NotifyImeModalWindowStateChanged(bundleName, state);
 }
 } // namespace MiscServices
 } // namespace OHOS

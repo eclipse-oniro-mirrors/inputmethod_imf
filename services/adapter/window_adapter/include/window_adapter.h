@@ -48,6 +48,9 @@ public:
     static uint64_t GetDisplayIdByToken(sptr<IRemoteObject> abilityToken, int32_t userId);
     static bool ListWindowInfo(std::vector<sptr<OHOS::Rosen::WindowInfo>> &windowInfos, int32_t userId);
     static int32_t GetAllFocusWindowInfos(std::vector<Rosen::FocusChangeInfo> &focusWindowInfos, int32_t userId);
+    // Query the WindowMetaInfo of the currently focused window on the given display.
+    // Returns nullptr if not found. The returned sptr is only valid during the caller's scope.
+    static sptr<OHOS::Rosen::WindowInfo> GetFocusedWindowInfo(uint64_t displayId, int32_t userId);
     uint64_t GetDisplayGroupId(uint64_t displayId, int32_t userId);
     bool IsDefaultDisplayGroup(uint64_t displayId, int32_t userId);
     int32_t GetDisplayGroupId(uint32_t windowId, int32_t userId);
