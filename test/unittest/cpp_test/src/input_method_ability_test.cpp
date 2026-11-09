@@ -147,9 +147,11 @@ public:
     public:
         TextInputClientListenerImpl() = default;
         ~TextInputClientListenerImpl() = default;
+        int32_t attachOptionsCount = 0;
 
         void OnAttachOptionsChanged(const AttachOptions &options)
         {
+            attachOptionsCount++;
             IMSA_HILOGI("TextInputClientListenerImpl OnAttachOptionsChanged");
         }
     };
@@ -2721,6 +2723,26 @@ HWTEST_F(InputMethodAbilityTest, testInvokeAttachOptionsCallback, TestSize.Level
     uint64_t displayidNew = 1;
     auto ret = inputMethodAbility_.IsDisplayChanged(displayid, displayidNew);
     EXPECT_TRUE(ret);
+}
+
+/**
+ * @tc.name: testSetTextInputClientListener
+ * @tc.desc: set TextInputClientListener through InputMethodAbilityInterface and verify OnAttachOptionsChanged
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testSetTextInputClientListener, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbilityTest testSetTextInputClientListener START");
+    auto listener = std::make_shared<TextInputClientListenerImpl>();
+    InputMethodAbilityInterface::GetInstance().SetTextInputClientListener(listener);
+    AttachOptions options;
+    inputMethodAbility_.InvokeAttachOptionsCallback(options, true);
+    EXPECT_EQ(listener->attachOptionsCount, 1);
+    options.requestKeyboardReason = RequestKeyboardReason::TOUCH;
+    inputMethodAbility_.InvokeAttachOptionsCallback(options, false);
+    EXPECT_EQ(listener->attachOptionsCount, 2);
+    inputMethodAbility_.InvokeAttachOptionsCallback(options, false);
+    EXPECT_EQ(listener->attachOptionsCount, 2);
 }
 
 /**
