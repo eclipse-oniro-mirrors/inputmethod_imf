@@ -28,6 +28,7 @@
 #include "input_method_engine_listener_impl.h"
 #include "input_method_types.h"
 #include "keyboard_listener_test_impl.h"
+#include "mock_token.h"
 #include "scope_utils.h"
 #include "tdd_util.h"
 #include "text_listener.h"
@@ -47,9 +48,15 @@ public:
     static constexpr int32_t MAX_WAIT_TIME = 1;
     static void SetUpTestCase(void)
     {
+        TddUtil::StorageSelfTokenID();
         std::shared_ptr<Property> property = InputMethodController::GetInstance()->GetCurrentInputMethod();
         std::string bundleName = property != nullptr ? property->name : "default.inputmethod.unittest";
-        auto currentImeTokenId = TddUtil::GetTestTokenID(bundleName);
+        uint64_t currentImeTokenId = 0;
+        {
+            MockNativeToken mock("foundation");
+            currentImeTokenId = OHOS::Security::AccessToken::AccessTokenKit::GetHapTokenID(
+                TddUtil::GetCurrentUserId(), bundleName, 0);
+        }
         {
             TokenScope scope(currentImeTokenId);
             InputMethodAbility::GetInstance().SetCoreAndAgent();
@@ -63,6 +70,7 @@ public:
     }
     static void TearDownTestCase(void)
     {
+        TddUtil::RestoreSelfTokenID();
     }
     void SetUp()
     {
