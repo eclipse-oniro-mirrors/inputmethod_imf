@@ -3706,5 +3706,71 @@ HWTEST_F(InputMethodAbilityTest, testOnClientInactive_006, TestSize.Level0)
     ima.imeListener_ = savedListener;
     ima.panels_.Clear();
 }
+
+/**
+ * @tc.name: testOnClientInactive_skipHidePanel_001
+ * @tc.desc: InputMethodAbility::OnClientInactive with skipHidePanel keeps panels and clears binding metadata
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testOnClientInactive_skipHidePanel_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testOnClientInactive_skipHidePanel_001 START");
+    auto &ima = InputMethodAbilityTest::inputMethodAbility_;
+    auto savedListener = ima.imeListener_;
+    ima.panels_.Clear();
+    ima.imeListener_ = std::make_shared<InputMethodEngineListenerImpl>();
+    std::shared_ptr<InputMethodPanel> panel;
+    PanelInfo info;
+    info.panelType = SOFT_KEYBOARD;
+    info.panelFlag = FLG_FLOATING;
+    ASSERT_EQ(ima.CreatePanel(nullptr, info, panel), ErrorCode::NO_ERROR);
+    InputMethodAbilityTest::showKeyboard_ = true;
+    ima.OnClientInactive(nullptr, true);
+    EXPECT_TRUE(InputMethodAbilityTest::showKeyboard_);
+    EXPECT_TRUE(ima.GetBindClientInfo().name.empty());
+    ima.imeListener_ = savedListener;
+    ima.panels_.Clear();
+}
+
+namespace {
+class NotifyModalWindowMockProxy : public InputMethodSystemAbilityProxy {
+public:
+    NotifyModalWindowMockProxy() : InputMethodSystemAbilityProxy(nullptr) { }
+
+    ErrCode NotifyImeModalWindowStateChanged(const std::string &bundleName, int32_t state) override
+    {
+        ++callCount_;
+        lastBundleName_ = bundleName;
+        lastState_ = state;
+        return returnCode_;
+    }
+
+    int32_t callCount_ { 0 };
+    ErrCode returnCode_ { ErrorCode::NO_ERROR };
+    std::string lastBundleName_;
+    int32_t lastState_ { -1 };
+};
+} // namespace
+
+/**
+ * @tc.name: testNotifyImeModalWindowStateChanged_001
+ * @tc.desc: InputMethodAbility::NotifyImeModalWindowStateChanged delegates to proxy when proxy is not null
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testNotifyImeModalWindowStateChanged_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testNotifyImeModalWindowStateChanged_001 START");
+    auto &ima = InputMethodAbilityTest::inputMethodAbility_;
+    auto saved = ima.abilityManager_;
+    sptr<NotifyModalWindowMockProxy> mockProxy = new (std::nothrow) NotifyModalWindowMockProxy();
+    ASSERT_NE(mockProxy, nullptr);
+    mockProxy->returnCode_ = ErrorCode::NO_ERROR;
+    ima.abilityManager_ = mockProxy;
+    EXPECT_EQ(ima.NotifyImeModalWindowStateChanged("test.bundle", 1), ErrorCode::NO_ERROR);
+    EXPECT_EQ(mockProxy->callCount_, 1);
+    EXPECT_EQ(mockProxy->lastBundleName_, "test.bundle");
+    EXPECT_EQ(mockProxy->lastState_, 1);
+    ima.abilityManager_ = saved;
+}
 } // namespace MiscServices
 } // namespace OHOS

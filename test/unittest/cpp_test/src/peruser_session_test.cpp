@@ -2948,5 +2948,98 @@ HWTEST_F(PerUserSessionTest, testOnRegisterInAppProxyIme_004, TestSize.Level0)
     sptr<IRemoteObject> agent = agentStub->AsObject();
     EXPECT_EQ(session_->OnRegisterInAppProxyIme(TEST_PID, TEST_UID, {}, core, agent), ErrorCode::NO_ERROR);
 }
+
+/**
+ * @tc.name: TestOnNotifyImeModalWindowStateChanged_InvalidState_001
+ * @tc.desc: PerUserSession::OnNotifyImeModalWindowStateChanged rejects state outside 0/1
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestOnNotifyImeModalWindowStateChanged_InvalidState_001, TestSize.Level0)
+{
+    session_->modalAppsByImePid_.clear();
+    EXPECT_EQ(session_->OnNotifyImeModalWindowStateChanged(TEST_PID, "com.test.modal", -1),
+        ErrorCode::ERROR_BAD_PARAMETERS);
+    EXPECT_EQ(session_->OnNotifyImeModalWindowStateChanged(TEST_PID, "com.test.modal", 2),
+        ErrorCode::ERROR_BAD_PARAMETERS);
+    EXPECT_TRUE(session_->modalAppsByImePid_.empty());
+}
+
+/**
+ * @tc.name: TestOnNotifyImeModalWindowStateChanged_CreateDestroy_001
+ * @tc.desc: PerUserSession::OnNotifyImeModalWindowStateChanged create/destroy and bucket cleanup
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestOnNotifyImeModalWindowStateChanged_CreateDestroy_001, TestSize.Level0)
+{
+    session_->modalAppsByImePid_.clear();
+    constexpr pid_t imePid = TEST_PID;
+    constexpr pid_t otherImePid = TEST_PID + 1;
+    EXPECT_EQ(session_->OnNotifyImeModalWindowStateChanged(imePid, "com.a", 0), ErrorCode::NO_ERROR);
+    EXPECT_EQ(session_->OnNotifyImeModalWindowStateChanged(imePid, "com.b", 0), ErrorCode::NO_ERROR);
+    ASSERT_NE(session_->modalAppsByImePid_.find(imePid), session_->modalAppsByImePid_.end());
+    EXPECT_EQ(session_->modalAppsByImePid_[imePid].size(), 2u);
+
+    // destroy one bundle name, bucket still keeps the other
+    EXPECT_EQ(session_->OnNotifyImeModalWindowStateChanged(imePid, "com.a", 1), ErrorCode::NO_ERROR);
+    ASSERT_NE(session_->modalAppsByImePid_.find(imePid), session_->modalAppsByImePid_.end());
+    EXPECT_EQ(session_->modalAppsByImePid_[imePid].size(), 1u);
+
+    // destroy the last bundle name, bucket is removed
+    EXPECT_EQ(session_->OnNotifyImeModalWindowStateChanged(imePid, "com.b", 1), ErrorCode::NO_ERROR);
+    EXPECT_EQ(session_->modalAppsByImePid_.find(imePid), session_->modalAppsByImePid_.end());
+
+    // destroy a bundle name for a non-existent ime pid
+    EXPECT_EQ(session_->OnNotifyImeModalWindowStateChanged(otherImePid, "com.c", 1), ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: TestIsImeModalApp_001
+ * @tc.desc: PerUserSession::IsImeModalApp returns true only for registered modal app
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestIsImeModalApp_001, TestSize.Level0)
+{
+    session_->modalAppsByImePid_.clear();
+    EXPECT_FALSE(session_->IsImeModalApp("com.a"));
+    EXPECT_EQ(session_->OnNotifyImeModalWindowStateChanged(TEST_PID, "com.a", 0), ErrorCode::NO_ERROR);
+    EXPECT_TRUE(session_->IsImeModalApp("com.a"));
+    EXPECT_FALSE(session_->IsImeModalApp("com.b"));
+}
+
+/**
+ * @tc.name: TestIsCurrentBoundRealIme_001
+ * @tc.desc: PerUserSession::IsCurrentBoundRealIme with/without a current client bound to real IME
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestIsCurrentBoundRealIme_001, TestSize.Level0)
+{
+    session_->clientGroupMap_.clear();
+    EXPECT_FALSE(session_->IsCurrentBoundRealIme());
+
+    auto group = std::make_shared<ClientGroup>(TEST_DISPLAY_GROUP_ID, nullptr);
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+    group->currentClient_ = client;
+    auto info = std::make_shared<InputClientInfo>();
+    info->bindImeData = std::make_shared<BindImeData>(TEST_PID, ImeType::IME);
+    group->mapClients_.insert_or_assign(client->AsObject(), info);
+    session_->clientGroupMap_.insert_or_assign(TEST_DISPLAY_GROUP_ID, group);
+
+    EXPECT_TRUE(session_->IsCurrentBoundRealIme());
+}
+
+/**
+ * @tc.name: TestClearModalStateByImePid_001
+ * @tc.desc: PerUserSession::ClearModalStateByImePid clears the modal bucket for an ime pid
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestClearModalStateByImePid_001, TestSize.Level0)
+{
+    session_->modalAppsByImePid_.clear();
+    EXPECT_EQ(session_->OnNotifyImeModalWindowStateChanged(TEST_PID, "com.a", 0), ErrorCode::NO_ERROR);
+    ASSERT_NE(session_->modalAppsByImePid_.find(TEST_PID), session_->modalAppsByImePid_.end());
+    session_->ClearModalStateByImePid(TEST_PID);
+    EXPECT_EQ(session_->modalAppsByImePid_.find(TEST_PID), session_->modalAppsByImePid_.end());
+}
 } // namespace MiscServices
 } // namespace OHOS

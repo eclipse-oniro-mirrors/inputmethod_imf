@@ -1738,8 +1738,7 @@ void InputMethodAbility::OnClientInactive(const sptr<IRemoteObject> &channel, bo
         return;
     }
     if (skipHidePanel) {
-        // Focus shifts to an IME-owned floating window; keep all panels visible.
-        // Only tear down the binding metadata, do not hide any panel.
+        // Focus shifts to an IME-owned floating window, keep all panels visible and only tear down binding metadata.
         ClearDataChannel(channel);
         ClearAttachOptions();
         ClearBindClientInfo();
