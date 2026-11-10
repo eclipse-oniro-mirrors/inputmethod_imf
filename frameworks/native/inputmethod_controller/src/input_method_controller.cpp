@@ -2115,6 +2115,15 @@ void InputMethodController::NotifyPanelStatusInfo(const PanelStatusInfo &info)
         IMSA_HILOGE("listener is nullptr!");
         return;
     }
+    if (info.keyboardType == KeyboardType::TYPE_CUSTOM) {
+        IMSA_HILOGD("imc custom keyboard!");
+        if (info.sessionId != 0 && info.sessionId != sessionId_) {
+            return;
+        }
+        info.visible ? SendKeyboardStatus(KeyboardStatus::SHOW) : SendKeyboardStatus(KeyboardStatus::HIDE);
+        listener->NotifyPanelStatusInfoV2(info);
+        return;
+    }
     if (info.panelInfo.panelType == PanelType::SOFT_KEYBOARD &&
             info.panelInfo.panelFlag != PanelFlag::FLG_CANDIDATE_COLUMN) {
         info.visible ? SendKeyboardStatus(KeyboardStatus::SHOW) : SendKeyboardStatus(KeyboardStatus::HIDE);

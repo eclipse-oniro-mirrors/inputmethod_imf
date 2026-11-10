@@ -3361,7 +3361,7 @@ HWTEST_F(InputMethodAbilityTest, testIsImeExtension_004, TestSize.Level0)
 
 /**
  * @tc.name: testHideCustomKeyboardSelf_002
- * @tc.desc: InputMethodAbility::HideCustomKeyboardSelf returns ERROR_CLIENT_NULL_POINTER when channel is null
+ * @tc.desc: InputMethodAbility::HideCustomKeyboardSelf returns NO_ERROR when channel is null (new behavior)
  * @tc.type: FUNC
  */
 HWTEST_F(InputMethodAbilityTest, testHideCustomKeyboardSelf_002, TestSize.Level0)
@@ -3371,13 +3371,16 @@ HWTEST_F(InputMethodAbilityTest, testHideCustomKeyboardSelf_002, TestSize.Level0
     auto savedWrap = ima.dataChannelProxyWrap_;
     auto savedObject = ima.dataChannelObject_;
     auto savedDeath = ima.dataChannelDeathRecipient_;
+    auto savedListener = ima.imeListener_;
     ima.dataChannelProxyWrap_ = nullptr;
     ima.dataChannelObject_ = nullptr;
+    ima.imeListener_ = nullptr;
     auto ret = ima.HideCustomKeyboardSelf();
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
     ima.dataChannelProxyWrap_ = savedWrap;
     ima.dataChannelObject_ = savedObject;
     ima.dataChannelDeathRecipient_ = savedDeath;
+    ima.imeListener_ = savedListener;
 }
 
 /**
@@ -3705,6 +3708,183 @@ HWTEST_F(InputMethodAbilityTest, testOnClientInactive_006, TestSize.Level0)
     EXPECT_TRUE(ima.GetBindClientInfo().name.empty());
     ima.imeListener_ = savedListener;
     ima.panels_.Clear();
+}
+
+/**
+ * @tc.name: testRegisterInAppProxyIme_isInAppIme_002
+ * @tc.desc: Verify isInAppIme_ stays false when RegisterInAppProxyIme fails
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testRegisterInAppProxyIme_isInAppIme_002, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testRegisterInAppProxyIme_isInAppIme_002 START");
+    IdentityCheckerMock::SetFocused(false);
+    auto &ima = InputMethodAbilityTest::inputMethodAbility_;
+    ima.isInAppIme_.store(false);
+    auto ret = ima.RegisterInAppProxyIme({});
+    EXPECT_NE(ret, ErrorCode::NO_ERROR);
+    EXPECT_FALSE(ima.isInAppIme_.load());
+    IdentityCheckerMock::SetFocused(true);
+}
+
+/**
+ * @tc.name: testHideCustomKeyboardSelf_005
+ * @tc.desc: HideCustomKeyboardSelf with isInAppIme_=true triggers NotifyPanelStatusInfo path
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testHideCustomKeyboardSelf_005, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testHideCustomKeyboardSelf_005 START");
+    auto &ima = InputMethodAbilityTest::inputMethodAbility_;
+    auto savedWrap = ima.dataChannelProxyWrap_;
+    auto savedObject = ima.dataChannelObject_;
+    auto savedListener = ima.imeListener_;
+    auto savedIsInAppIme = ima.isInAppIme_.load();
+    sptr<InputDataChannelServiceImpl> channelSvc = new (std::nothrow) InputDataChannelServiceImpl();
+    ASSERT_NE(channelSvc, nullptr);
+    auto channelProxy = std::make_shared<InputDataChannelProxy>(channelSvc->AsObject());
+    ima.dataChannelProxyWrap_ = std::make_shared<InputDataChannelProxyWrap>(channelProxy, nullptr);
+    ima.dataChannelObject_ = channelSvc->AsObject();
+    ima.imeListener_ = std::make_shared<InputMethodEngineListenerImpl>();
+    ima.isInAppIme_.store(true);
+    auto ret = ima.HideCustomKeyboardSelf();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ima.dataChannelProxyWrap_ = savedWrap;
+    ima.dataChannelObject_ = savedObject;
+    ima.imeListener_ = savedListener;
+    ima.isInAppIme_.store(savedIsInAppIme);
+}
+
+/**
+ * @tc.name: testHideCustomKeyboardSelf_006
+ * @tc.desc: HideCustomKeyboardSelf with isInAppIme_=false triggers SendKeyboardStatus path
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testHideCustomKeyboardSelf_006, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testHideCustomKeyboardSelf_006 START");
+    auto &ima = InputMethodAbilityTest::inputMethodAbility_;
+    auto savedWrap = ima.dataChannelProxyWrap_;
+    auto savedObject = ima.dataChannelObject_;
+    auto savedListener = ima.imeListener_;
+    auto savedIsInAppIme = ima.isInAppIme_.load();
+    sptr<InputDataChannelServiceImpl> channelSvc = new (std::nothrow) InputDataChannelServiceImpl();
+    ASSERT_NE(channelSvc, nullptr);
+    auto channelProxy = std::make_shared<InputDataChannelProxy>(channelSvc->AsObject());
+    ima.dataChannelProxyWrap_ = std::make_shared<InputDataChannelProxyWrap>(channelProxy, nullptr);
+    ima.dataChannelObject_ = channelSvc->AsObject();
+    ima.imeListener_ = std::make_shared<InputMethodEngineListenerImpl>();
+    ima.isInAppIme_.store(false);
+    auto ret = ima.HideCustomKeyboardSelf();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ima.dataChannelProxyWrap_ = savedWrap;
+    ima.dataChannelObject_ = savedObject;
+    ima.imeListener_ = savedListener;
+    ima.isInAppIme_.store(savedIsInAppIme);
+}
+
+/**
+ * @tc.name: testNotifyPanelStatusInfo_CustomKeyboard_002
+ * @tc.desc: NotifyPanelStatusInfo with TYPE_CUSTOM and mismatched sessionId returns early without notifying
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testNotifyPanelStatusInfo_CustomKeyboard_002, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testNotifyPanelStatusInfo_CustomKeyboard_002 START");
+    imc_->Attach(textListener_);
+    BlockRetry(waitTaskEmptyInterval_, waitTaskEmptyTimes_, IsTaskEmpty);
+    auto &ima = InputMethodAbilityTest::inputMethodAbility_;
+    auto savedWrap = ima.dataChannelProxyWrap_;
+    auto savedObject = ima.dataChannelObject_;
+    auto savedListener = ima.imeListener_;
+    auto savedIsInAppIme = ima.isInAppIme_.load();
+    sptr<InputDataChannelServiceImpl> channelSvc = new (std::nothrow) InputDataChannelServiceImpl();
+    ASSERT_NE(channelSvc, nullptr);
+    auto channelProxy = std::make_shared<InputDataChannelProxy>(channelSvc->AsObject());
+    ima.dataChannelProxyWrap_ = std::make_shared<InputDataChannelProxyWrap>(channelProxy, nullptr);
+    ima.dataChannelObject_ = channelSvc->AsObject();
+    ima.imeListener_ = std::make_shared<InputMethodEngineListenerImpl>();
+    ima.isInAppIme_.store(true);
+
+    TextListener::ResetParam();
+    // sessionId=9999 won't match sessionId_ → controller returns early, no SendKeyboardStatus
+    auto ret = ima.HideKeyboard(Trigger::IMF, 9999, -1);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_FALSE(TextListener::WaitSendKeyboardStatusCallback(KeyboardStatus::HIDE));
+
+    ima.dataChannelProxyWrap_ = savedWrap;
+    ima.dataChannelObject_ = savedObject;
+    ima.imeListener_ = savedListener;
+    ima.isInAppIme_.store(savedIsInAppIme);
+}
+
+/**
+ * @tc.name: testNotifyKeyboardStatusWithoutPanel_001
+ * @tc.desc: NotifyKeyboardStatusWithoutPanel returns ERROR_CLIENT_NULL_POINTER when channel is null
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testNotifyKeyboardStatusWithoutPanel_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testNotifyKeyboardStatusWithoutPanel_001 START");
+    auto &ima = InputMethodAbilityTest::inputMethodAbility_;
+    auto savedWrap = ima.dataChannelProxyWrap_;
+    auto savedObject = ima.dataChannelObject_;
+    ima.dataChannelProxyWrap_ = nullptr;
+    ima.dataChannelObject_ = nullptr;
+    auto ret = ima.NotifyKeyboardStatusWithoutPanel(KeyboardStatus::HIDE, Trigger::IME_APP);
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
+    ima.dataChannelProxyWrap_ = savedWrap;
+    ima.dataChannelObject_ = savedObject;
+}
+
+/**
+ * @tc.name: testNotifyKeyboardStatusWithoutPanel_002
+ * @tc.desc: NotifyKeyboardStatusWithoutPanel returns NO_ERROR when !isInAppIme_ (SendKeyboardStatus path)
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testNotifyKeyboardStatusWithoutPanel_002, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testNotifyKeyboardStatusWithoutPanel_002 START");
+    auto &ima = InputMethodAbilityTest::inputMethodAbility_;
+    auto savedWrap = ima.dataChannelProxyWrap_;
+    auto savedObject = ima.dataChannelObject_;
+    auto savedIsInAppIme = ima.isInAppIme_.load();
+    sptr<InputDataChannelServiceImpl> channelSvc = new (std::nothrow) InputDataChannelServiceImpl();
+    ASSERT_NE(channelSvc, nullptr);
+    auto channelProxy = std::make_shared<InputDataChannelProxy>(channelSvc->AsObject());
+    ima.dataChannelProxyWrap_ = std::make_shared<InputDataChannelProxyWrap>(channelProxy, nullptr);
+    ima.dataChannelObject_ = channelSvc->AsObject();
+    ima.isInAppIme_.store(false);
+    auto ret = ima.NotifyKeyboardStatusWithoutPanel(KeyboardStatus::HIDE, Trigger::IME_APP);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ima.dataChannelProxyWrap_ = savedWrap;
+    ima.dataChannelObject_ = savedObject;
+    ima.isInAppIme_.store(savedIsInAppIme);
+}
+
+/**
+ * @tc.name: testNotifyKeyboardStatusWithoutPanel_003
+ * @tc.desc: NotifyKeyboardStatusWithoutPanel returns NO_ERROR when isInAppIme_ (NotifyPanelStatusInfo path)
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testNotifyKeyboardStatusWithoutPanel_003, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbility testNotifyKeyboardStatusWithoutPanel_003 START");
+    auto &ima = InputMethodAbilityTest::inputMethodAbility_;
+    auto savedWrap = ima.dataChannelProxyWrap_;
+    auto savedObject = ima.dataChannelObject_;
+    auto savedIsInAppIme = ima.isInAppIme_.load();
+    sptr<InputDataChannelServiceImpl> channelSvc = new (std::nothrow) InputDataChannelServiceImpl();
+    ASSERT_NE(channelSvc, nullptr);
+    auto channelProxy = std::make_shared<InputDataChannelProxy>(channelSvc->AsObject());
+    ima.dataChannelProxyWrap_ = std::make_shared<InputDataChannelProxyWrap>(channelProxy, nullptr);
+    ima.dataChannelObject_ = channelSvc->AsObject();
+    ima.isInAppIme_.store(true);
+    auto ret = ima.NotifyKeyboardStatusWithoutPanel(KeyboardStatus::HIDE, Trigger::IME_APP);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ima.dataChannelProxyWrap_ = savedWrap;
+    ima.dataChannelObject_ = savedObject;
+    ima.isInAppIme_.store(savedIsInAppIme);
 }
 } // namespace MiscServices
 } // namespace OHOS
