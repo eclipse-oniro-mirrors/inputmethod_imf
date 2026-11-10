@@ -2701,6 +2701,32 @@ HWTEST_F(InputMethodAbilityTest, testHandleUnconsumedKey_011, TestSize.Level0)
 }
 
 /**
+ * @tc.name: testSetTextInputClientListener
+ * @tc.desc: set TextInputClientListener through InputMethodAbilityInterface and verify OnAttachOptionsChanged
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityTest, testSetTextInputClientListener, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodAbilityTest testSetTextInputClientListener START");
+    auto listener = std::make_shared<TextInputClientListenerImpl>();
+    InputMethodAbilityInterface::GetInstance().SetTextInputClientListener(listener);
+    AttachOptions options;
+    inputMethodAbility_.InvokeAttachOptionsCallback(options, true);
+    EXPECT_EQ(listener->attachOptionsCount, 1);
+    options.requestKeyboardReason = RequestKeyboardReason::TOUCH;
+    inputMethodAbility_.InvokeAttachOptionsCallback(options, false);
+    EXPECT_EQ(listener->attachOptionsCount, 2);
+    inputMethodAbility_.InvokeAttachOptionsCallback(options, false);
+    EXPECT_EQ(listener->attachOptionsCount, 2);
+    auto newListener = std::make_shared<TextInputClientListenerImpl>();
+    InputMethodAbilityInterface::GetInstance().SetTextInputClientListener(newListener);
+    options.isSimpleKeyboardEnabled = true;
+    inputMethodAbility_.InvokeAttachOptionsCallback(options, false);
+    EXPECT_EQ(listener->attachOptionsCount, 3);
+    EXPECT_EQ(newListener->attachOptionsCount, 0);
+}
+
+/**
  * @tc.name: testInvokeAttachOptionsCallback
  * @tc.desc: testInvokeAttachOptionsCallback
  * @tc.type: FUNC
@@ -2723,26 +2749,6 @@ HWTEST_F(InputMethodAbilityTest, testInvokeAttachOptionsCallback, TestSize.Level
     uint64_t displayidNew = 1;
     auto ret = inputMethodAbility_.IsDisplayChanged(displayid, displayidNew);
     EXPECT_TRUE(ret);
-}
-
-/**
- * @tc.name: testSetTextInputClientListener
- * @tc.desc: set TextInputClientListener through InputMethodAbilityInterface and verify OnAttachOptionsChanged
- * @tc.type: FUNC
- */
-HWTEST_F(InputMethodAbilityTest, testSetTextInputClientListener, TestSize.Level0)
-{
-    IMSA_HILOGI("InputMethodAbilityTest testSetTextInputClientListener START");
-    auto listener = std::make_shared<TextInputClientListenerImpl>();
-    InputMethodAbilityInterface::GetInstance().SetTextInputClientListener(listener);
-    AttachOptions options;
-    inputMethodAbility_.InvokeAttachOptionsCallback(options, true);
-    EXPECT_EQ(listener->attachOptionsCount, 1);
-    options.requestKeyboardReason = RequestKeyboardReason::TOUCH;
-    inputMethodAbility_.InvokeAttachOptionsCallback(options, false);
-    EXPECT_EQ(listener->attachOptionsCount, 2);
-    inputMethodAbility_.InvokeAttachOptionsCallback(options, false);
-    EXPECT_EQ(listener->attachOptionsCount, 2);
 }
 
 /**
