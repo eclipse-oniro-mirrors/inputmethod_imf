@@ -1246,7 +1246,7 @@ int32_t InputMethodController::GetLeftRich(int32_t length, RichTextData &richTex
         richText.spans.push_back(span);
     }
     if (!richText.IsSizeValid()) {
-        IMSA_HILOGE("rich text size exceeds limit, size: %{public}zu", richText.GetIpcSize());
+        IMSA_HILOGE("rich text size exceeds limit");
         richText.spans.clear();
         return ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL;
     }
@@ -1277,7 +1277,7 @@ int32_t InputMethodController::GetRightRich(int32_t length, RichTextData &richTe
         richText.spans.push_back(span);
     }
     if (!richText.IsSizeValid()) {
-        IMSA_HILOGE("rich text size exceeds limit, size: %{public}zu", richText.GetIpcSize());
+        IMSA_HILOGE("rich text size exceeds limit");
         richText.spans.clear();
         return ErrorCode::ERROR_IMA_DATA_CHANNEL_ABNORMAL;
     }

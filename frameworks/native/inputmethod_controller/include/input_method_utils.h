@@ -42,6 +42,7 @@ constexpr size_t MAX_VALUE_MAP_COUNT = 256;
 constexpr size_t MAX_ARRAY_BUFFER_MSG_ID_SIZE = 256; // 256B
 constexpr size_t MAX_ARRAY_BUFFER_MSG_PARAM_SIZE = 128 * 1024; // 128KB
 constexpr size_t MAX_RICH_TEXT_SIZE = 128 * 1024; // 128KB
+constexpr uint32_t MAX_RICH_TEXT_SPAN_COUNT = 4096;
 constexpr int32_t MAX_RICH_TEXT_LENGTH = 4096;
 constexpr int32_t MIN_RICH_TEXT_LENGTH = 0;
 constexpr size_t SPAN_HEADER_SIZE = sizeof(uint32_t) + sizeof(int32_t) + sizeof(int32_t);

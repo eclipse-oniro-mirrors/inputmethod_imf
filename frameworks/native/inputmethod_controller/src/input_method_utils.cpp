@@ -437,6 +437,10 @@ bool ResponseDataInner::ReadFromParcel(Parcel &in)
             RichTextData richTextData;
             uint32_t spanCount = in.ReadUint32();
             IMSA_HILOGD("RICH_TEXT_TYPE unmarshalling, spanCount: %{public}u", spanCount);
+            if (spanCount > MAX_RICH_TEXT_SPAN_COUNT) {
+                IMSA_HILOGE("spanCount exceeds limit: %{public}u", spanCount);
+                return false;
+            }
             for (uint32_t i = 0; i < spanCount; i++) {
                 RichTextSpan span;
                 span.type = static_cast<SpanType>(in.ReadUint32());
@@ -520,6 +524,10 @@ bool RichTextDataInner::ReadFromParcel(Parcel &in)
 {
     uint32_t spanCount = in.ReadUint32();
     IMSA_HILOGD("RichTextDataInner read, spanCount: %{public}u", spanCount);
+    if (spanCount > MAX_RICH_TEXT_SPAN_COUNT) {
+        IMSA_HILOGE("spanCount exceeds limit: %{public}u", spanCount);
+        return false;
+    }
     for (uint32_t i = 0; i < spanCount; i++) {
         RichTextSpan span;
         span.type = static_cast<SpanType>(in.ReadUint32());

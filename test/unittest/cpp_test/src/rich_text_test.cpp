@@ -208,6 +208,79 @@ HWTEST_F(RichTextTest, testRichTextSerialization03, TestSize.Level1)
 }
 
 /**
+ * @tc.name: testRichTextSerializationSpanCountOverLimit01
+ * @tc.desc: Test RichTextDataInner::Unmarshalling returns nullptr when spanCount exceeds MAX_RICH_TEXT_SPAN_COUNT.
+ * @tc.type: FUNC
+ */
+HWTEST_F(RichTextTest, testRichTextSerializationSpanCountOverLimit01, TestSize.Level1)
+{
+    Parcel parcel;
+    // Write spanCount exceeding the limit, without writing any actual span data.
+    EXPECT_TRUE(parcel.WriteUint32(MAX_RICH_TEXT_SPAN_COUNT + 1));
+    auto *readInner = RichTextDataInner::Unmarshalling(parcel);
+    EXPECT_EQ(readInner, nullptr);
+}
+
+/**
+ * @tc.name: testRichTextSerializationSpanCountAtLimit01
+ * @tc.desc: Test RichTextDataInner::Unmarshalling succeeds when spanCount equals MAX_RICH_TEXT_SPAN_COUNT.
+ * @tc.type: FUNC
+ */
+HWTEST_F(RichTextTest, testRichTextSerializationSpanCountAtLimit01, TestSize.Level1)
+{
+    Parcel parcel;
+    EXPECT_TRUE(parcel.WriteUint32(MAX_RICH_TEXT_SPAN_COUNT));
+    // Write MAX_RICH_TEXT_SPAN_COUNT minimal spans (empty content).
+    for (uint32_t i = 0; i < MAX_RICH_TEXT_SPAN_COUNT; i++) {
+        EXPECT_TRUE(parcel.WriteUint32(static_cast<uint32_t>(SpanType::TEXT)));
+        EXPECT_TRUE(parcel.WriteInt32(0));
+        EXPECT_TRUE(parcel.WriteInt32(0));
+        EXPECT_TRUE(parcel.WriteString(""));
+    }
+    auto *readInner = RichTextDataInner::Unmarshalling(parcel);
+    ASSERT_NE(readInner, nullptr);
+    EXPECT_EQ(readInner->richTextData.spans.size(), MAX_RICH_TEXT_SPAN_COUNT);
+    delete readInner;
+}
+
+/**
+ * @tc.name: testResponseDataRichTextSpanCountOverLimit01
+ * @tc.desc: Test ResponseDataInner::Unmarshalling returns nullptr when RICH_TEXT_TYPE spanCount exceeds limit.
+ * @tc.type: FUNC
+ */
+HWTEST_F(RichTextTest, testResponseDataRichTextSpanCountOverLimit01, TestSize.Level1)
+{
+    Parcel parcel;
+    // Write RICH_TEXT_TYPE index, then spanCount exceeding the limit.
+    EXPECT_TRUE(parcel.WriteUint64(static_cast<uint64_t>(ResponseDataType::RICH_TEXT_TYPE)));
+    EXPECT_TRUE(parcel.WriteUint32(MAX_RICH_TEXT_SPAN_COUNT + 1));
+    auto *readInner = ResponseDataInner::Unmarshalling(parcel);
+    EXPECT_EQ(readInner, nullptr);
+}
+
+/**
+ * @tc.name: testResponseDataRichTextSpanCountAtLimit01
+ * @tc.desc: Test ResponseDataInner::Unmarshalling succeeds when RICH_TEXT_TYPE spanCount equals limit.
+ * @tc.type: FUNC
+ */
+HWTEST_F(RichTextTest, testResponseDataRichTextSpanCountAtLimit01, TestSize.Level1)
+{
+    Parcel parcel;
+    EXPECT_TRUE(parcel.WriteUint64(static_cast<uint64_t>(ResponseDataType::RICH_TEXT_TYPE)));
+    EXPECT_TRUE(parcel.WriteUint32(MAX_RICH_TEXT_SPAN_COUNT));
+    for (uint32_t i = 0; i < MAX_RICH_TEXT_SPAN_COUNT; i++) {
+        EXPECT_TRUE(parcel.WriteUint32(static_cast<uint32_t>(SpanType::TEXT)));
+        EXPECT_TRUE(parcel.WriteInt32(0));
+        EXPECT_TRUE(parcel.WriteInt32(0));
+        EXPECT_TRUE(parcel.WriteString(""));
+    }
+    auto *readInner = ResponseDataInner::Unmarshalling(parcel);
+    ASSERT_NE(readInner, nullptr);
+    EXPECT_NE(readInner->rspData.index(), 0); // not monostate
+    delete readInner;
+}
+
+/**
  * @tc.name: testResponseDataRichText01
  * @tc.desc: Test ResponseData with RichTextData variant type.
  * @tc.type: FUNC
