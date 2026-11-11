@@ -14,6 +14,7 @@
  */
 
 #include <gtest/gtest.h>
+#include <thread>
 #include "input_method_ability.h"
 #include "iinput_method_agent.h"
 #include "input_data_channel_proxy.h"
@@ -55,6 +56,144 @@ public:
     static InputMethodAbility &inputMethodAbility_;
 };
 InputMethodAbility &InputMethodAbilityExceptionTest::inputMethodAbility_ = InputMethodAbility::GetInstance();
+
+class PanelDestroyWindow : public Rosen::Window {
+public:
+    Rosen::WMError Destroy(uint32_t, bool) override
+    {
+        ++destroyCount_;
+        return destroyResult_;
+    }
+    Rosen::WindowState GetWindowState() const override
+    {
+        return Rosen::WindowState::STATE_SHOWN;
+    }
+    Rosen::WMError Hide(uint32_t, bool, bool) override
+    {
+        return Rosen::WMError::WM_ERROR_INVALID_PERMISSION;
+    }
+    Rosen::WMError destroyResult_ = Rosen::WMError::WM_OK;
+    uint32_t destroyCount_ = 0;
+};
+
+/**
+ * @tc.name: CreatePanel_RejectDuplicateType
+ * @tc.desc: Duplicate creation preserves the registered panel and does not allocate a replacement.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityExceptionTest, CreatePanel_RejectDuplicateType, TestSize.Level0)
+{
+    auto registered = std::make_shared<InputMethodPanel>();
+    inputMethodAbility_.panels_.Insert(SOFT_KEYBOARD, registered);
+    PanelInfo info;
+    info.panelType = SOFT_KEYBOARD;
+    info.panelFlag = FLG_FIXED;
+    std::shared_ptr<InputMethodPanel> duplicate;
+    EXPECT_EQ(ErrorCode::ERROR_OPERATE_PANEL, inputMethodAbility_.CreatePanel(nullptr, info, duplicate));
+    EXPECT_EQ(nullptr, duplicate);
+    EXPECT_EQ(registered, inputMethodAbility_.panels_.Find(SOFT_KEYBOARD).second);
+}
+
+/**
+ * @tc.name: DestroyPanel_FailedWindowRetainsRegistration
+ * @tc.desc: Native best-effort compatibility cannot cause managed retirement after a WMS failure.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityExceptionTest, DestroyPanel_FailedWindowRetainsRegistration, TestSize.Level0)
+{
+    auto panel = std::make_shared<InputMethodPanel>();
+    sptr<PanelDestroyWindow> window = new (std::nothrow) PanelDestroyWindow();
+    ASSERT_NE(nullptr, window);
+    window->destroyResult_ = Rosen::WMError::WM_ERROR_INVALID_PERMISSION;
+    panel->window_ = window;
+    panel->panelType_ = STATUS_BAR;
+    inputMethodAbility_.panels_.Insert(STATUS_BAR, panel);
+    EXPECT_EQ(ErrorCode::NO_ERROR, panel->DestroyPanel());
+    EXPECT_FALSE(panel->IsDestroyed());
+    EXPECT_EQ(ErrorCode::ERROR_OPERATE_PANEL, inputMethodAbility_.DestroyPanel(panel));
+    EXPECT_EQ(panel, inputMethodAbility_.panels_.Find(STATUS_BAR).second);
+    EXPECT_FALSE(panel->IsDestroyed());
+    window->destroyResult_ = Rosen::WMError::WM_OK;
+    EXPECT_EQ(ErrorCode::NO_ERROR, inputMethodAbility_.DestroyPanel(panel));
+    EXPECT_TRUE(panel->IsDestroyed());
+    EXPECT_FALSE(inputMethodAbility_.panels_.Find(STATUS_BAR).first);
+    EXPECT_EQ(3, window->destroyCount_);
+    EXPECT_EQ(ErrorCode::NO_ERROR, panel->DestroyPanel());
+    EXPECT_EQ(3, window->destroyCount_);
+}
+
+/**
+ * @tc.name: DestroyPanel_OldInstancePreservesReplacement
+ * @tc.desc: Successful destruction of old A cannot remove registered B of the same type or another panel type.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityExceptionTest, DestroyPanel_OldInstancePreservesReplacement, TestSize.Level0)
+{
+    auto oldPanel = std::make_shared<InputMethodPanel>();
+    sptr<PanelDestroyWindow> window = new (std::nothrow) PanelDestroyWindow();
+    ASSERT_NE(nullptr, window);
+    oldPanel->window_ = window;
+    oldPanel->panelType_ = STATUS_BAR;
+    auto replacement = std::make_shared<InputMethodPanel>();
+    auto keyboard = std::make_shared<InputMethodPanel>();
+    inputMethodAbility_.panels_.Insert(STATUS_BAR, replacement);
+    inputMethodAbility_.panels_.Insert(SOFT_KEYBOARD, keyboard);
+    EXPECT_EQ(ErrorCode::NO_ERROR, inputMethodAbility_.DestroyPanel(oldPanel));
+    EXPECT_EQ(replacement, inputMethodAbility_.panels_.Find(STATUS_BAR).second);
+    EXPECT_EQ(keyboard, inputMethodAbility_.panels_.Find(SOFT_KEYBOARD).second);
+    EXPECT_EQ(ErrorCode::NO_ERROR, inputMethodAbility_.DestroyPanel(oldPanel));
+    EXPECT_EQ(1, window->destroyCount_);
+}
+
+/**
+ * @tc.name: DestroyPanel_OnlyMatchingInstanceIsRetired
+ * @tc.desc: Destroy success removes exactly the matching registration and preserves unrelated types.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityExceptionTest, DestroyPanel_OnlyMatchingInstanceIsRetired, TestSize.Level0)
+{
+    auto panel = std::make_shared<InputMethodPanel>();
+    sptr<PanelDestroyWindow> window = new (std::nothrow) PanelDestroyWindow();
+    ASSERT_NE(nullptr, window);
+    panel->window_ = window;
+    panel->panelType_ = STATUS_BAR;
+    auto keyboard = std::make_shared<InputMethodPanel>();
+    inputMethodAbility_.panels_.Insert(STATUS_BAR, panel);
+    inputMethodAbility_.panels_.Insert(SOFT_KEYBOARD, keyboard);
+    EXPECT_EQ(ErrorCode::NO_ERROR, inputMethodAbility_.DestroyPanel(panel));
+    EXPECT_FALSE(inputMethodAbility_.panels_.Find(STATUS_BAR).first);
+    EXPECT_EQ(keyboard, inputMethodAbility_.panels_.Find(SOFT_KEYBOARD).second);
+}
+
+/**
+ * @tc.name: PanelLifecycle_RejectOverlappingOperations
+ * @tc.desc: Contending creation and destruction return immediately and leave registration and lifecycle unchanged.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodAbilityExceptionTest, PanelLifecycle_RejectOverlappingOperations, TestSize.Level0)
+{
+    auto panel = std::make_shared<InputMethodPanel>();
+    inputMethodAbility_.panels_.Insert(SOFT_KEYBOARD, panel);
+    int32_t createResult = ErrorCode::NO_ERROR;
+    int32_t destroyResult = ErrorCode::NO_ERROR;
+    {
+        std::lock_guard<std::mutex> lock(panel->lifecycleMutex_);
+        std::thread contender([&panel, &createResult, &destroyResult]() {
+            PanelInfo info;
+            info.panelType = SOFT_KEYBOARD;
+            info.panelFlag = FLG_FIXED;
+            createResult = panel->CreatePanel(nullptr, info);
+            destroyResult = inputMethodAbility_.DestroyPanel(panel);
+        });
+        contender.join();
+    }
+    EXPECT_EQ(ErrorCode::ERROR_OPERATE_PANEL, createResult);
+    EXPECT_EQ(ErrorCode::ERROR_OPERATE_PANEL, destroyResult);
+    EXPECT_FALSE(panel->IsDestroyed());
+    EXPECT_EQ(panel, inputMethodAbility_.panels_.Find(SOFT_KEYBOARD).second);
+    EXPECT_EQ(ErrorCode::ERROR_NULL_POINTER, inputMethodAbility_.DestroyPanel(panel));
+    EXPECT_EQ(panel, inputMethodAbility_.panels_.Find(SOFT_KEYBOARD).second);
+}
 
 /**
  * @tc.name: testMoveCursorException

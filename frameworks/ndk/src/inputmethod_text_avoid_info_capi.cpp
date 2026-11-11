@@ -14,13 +14,17 @@
  */
 #include "global.h"
 #include "native_inputmethod_types.h"
+#include "native_object_registry.h"
+
+using namespace OHOS::MiscServices;
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 
 InputMethod_TextAvoidInfo *OH_TextAvoidInfo_Create(double positionY, double height)
 {
-    return new (std::nothrow) InputMethod_TextAvoidInfo({ positionY, height });
+    return NativeObjectRegistry<InputMethod_TextAvoidInfo>::GetInstance().Register(
+        new (std::nothrow) InputMethod_TextAvoidInfo({ positionY, height }));
 }
 void OH_TextAvoidInfo_Destroy(InputMethod_TextAvoidInfo *info)
 {
@@ -28,13 +32,18 @@ void OH_TextAvoidInfo_Destroy(InputMethod_TextAvoidInfo *info)
         IMSA_HILOGE("info is nullptr");
         return;
     }
-    delete info;
+    NativeObjectRegistry<InputMethod_TextAvoidInfo>::GetInstance().Destroy(info);
 }
 InputMethod_ErrorCode OH_TextAvoidInfo_SetPositionY(InputMethod_TextAvoidInfo *info, double positionY)
 {
     if (info == nullptr) {
         IMSA_HILOGE("info is nullptr");
         return IME_ERR_NULL_POINTER;
+    }
+    auto lease = NativeObjectRegistry<InputMethod_TextAvoidInfo>::GetInstance().Get(info);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_TextAvoidInfo is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
     }
     info->positionY = positionY;
     return IME_ERR_OK;
@@ -45,6 +54,11 @@ InputMethod_ErrorCode OH_TextAvoidInfo_SetHeight(InputMethod_TextAvoidInfo *info
         IMSA_HILOGE("info is nullptr");
         return IME_ERR_NULL_POINTER;
     }
+    auto lease = NativeObjectRegistry<InputMethod_TextAvoidInfo>::GetInstance().Get(info);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_TextAvoidInfo is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
+    }
     info->height = height;
     return IME_ERR_OK;
 }
@@ -53,6 +67,11 @@ InputMethod_ErrorCode OH_TextAvoidInfo_GetPositionY(InputMethod_TextAvoidInfo *i
     if (info == nullptr) {
         IMSA_HILOGE("info is nullptr");
         return IME_ERR_NULL_POINTER;
+    }
+    auto lease = NativeObjectRegistry<InputMethod_TextAvoidInfo>::GetInstance().Get(info);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_TextAvoidInfo is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
     }
     if (positionY == nullptr) {
         IMSA_HILOGE("positionY is nullptr");
@@ -66,6 +85,11 @@ InputMethod_ErrorCode OH_TextAvoidInfo_GetHeight(InputMethod_TextAvoidInfo *info
     if (info == nullptr) {
         IMSA_HILOGE("info is nullptr");
         return IME_ERR_NULL_POINTER;
+    }
+    auto lease = NativeObjectRegistry<InputMethod_TextAvoidInfo>::GetInstance().Get(info);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_TextAvoidInfo is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
     }
     if (height == nullptr) {
         IMSA_HILOGE("height is nullptr");

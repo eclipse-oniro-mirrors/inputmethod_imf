@@ -352,7 +352,10 @@ int32_t InputMethodSystemAbility::RestoreInputmethod(std::string &bundleName)
     }
     SwitchInfo switchInfo = { std::chrono::system_clock::now(), bundleName, "" };
     switchInfo.timestamp = std::chrono::system_clock::now();
-    session->GetSwitchQueue().Push(switchInfo);
+    if (!session->GetSwitchQueue().Push(switchInfo)) {
+        IMSA_HILOGE("switch queue is full, request not executed, userId:%{public}d.", userId);
+        return ErrorCode::ERROR_SWITCH_IME;
+    }
     auto ret = OnSwitchInputMethod(userId, switchInfo, SwitchTrigger::IMSA);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("SwitchInputMethod failed, ret=%{public}d.", ret);
@@ -642,7 +645,10 @@ int32_t InputMethodSystemAbility::SwitchByCondition(
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_NULL_POINTER;
     }
-    session->GetSwitchQueue().Push(switchInfo);
+    if (!session->GetSwitchQueue().Push(switchInfo)) {
+        IMSA_HILOGE("switch queue is full, request not executed, userId:%{public}d.", userId);
+        return ErrorCode::ERROR_SWITCH_IME;
+    }
     return OnSwitchInputMethod(userId, switchInfo, SwitchTrigger::IMSA);
 }
 // LCOV_EXCL_STOP
@@ -1921,7 +1927,10 @@ int32_t InputMethodSystemAbility::SwitchInputMethodInner(int32_t userId, const s
     }
     switchInfo.timestamp = std::chrono::system_clock::now();
     switchInfo.isTmpImeSwitchSubtype = IsTmpImeSwitchSubtype(userId, tokenId, switchInfo);
-    session->GetSwitchQueue().Push(switchInfo);
+    if (!session->GetSwitchQueue().Push(switchInfo)) {
+        IMSA_HILOGE("switch queue is full, request not executed, userId:%{public}d.", userId);
+        return ErrorCode::ERROR_SWITCH_IME;
+    }
     return InputTypeManager::GetInstance().IsInputType({ bundleName, subName })
                ? OnStartInputType(userId, switchInfo, true)
                : OnSwitchInputMethod(userId, switchInfo, trigger);
@@ -1936,19 +1945,20 @@ int32_t InputMethodSystemAbility::OnSwitchInputMethod(int32_t userId, const Swit
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_NULL_POINTER;
     }
-    if (!session->GetSwitchQueue().IsReady(switchInfo)) {
-        IMSA_HILOGD("start wait.");
-        session->GetSwitchQueue().Wait(switchInfo);
+    if (!session->GetSwitchQueue().IsReady(switchInfo) && !session->GetSwitchQueue().Wait(switchInfo)) {
+        IMSA_HILOGE("switch queue wait timed out, request not executed, userId:%{public}d.", userId);
+        session->GetSwitchQueue().Remove(switchInfo);
+        return ErrorCode::ERROR_SWITCH_IME;
     }
     int32_t ret = CheckSwitchPermission(userId, switchInfo, trigger);
     if (ret != ErrorCode::NO_ERROR) {
         InputMethodSysEvent::GetInstance().InputmethodFaultReporter(ErrorCode::ERROR_STATUS_PERMISSION_DENIED,
             switchInfo.bundleName, "switch input method failed!", userId);
-        session->GetSwitchQueue().Pop();
+        session->GetSwitchQueue().Pop(switchInfo);
         return ret;
     }
     ret = StartSwitch(userId, switchInfo, session);
-    session->GetSwitchQueue().Pop();
+    session->GetSwitchQueue().Pop(switchInfo);
     return ret;
 }
 
@@ -1973,23 +1983,24 @@ int32_t InputMethodSystemAbility::OnStartInputType(int32_t userId, const SwitchI
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND;
     }
-    if (!session->GetSwitchQueue().IsReady(switchInfo)) {
-        IMSA_HILOGD("start wait.");
-        session->GetSwitchQueue().Wait(switchInfo);
+    if (!session->GetSwitchQueue().IsReady(switchInfo) && !session->GetSwitchQueue().Wait(switchInfo)) {
+        IMSA_HILOGE("switch queue wait timed out, request not executed, userId:%{public}d.", userId);
+        session->GetSwitchQueue().Remove(switchInfo);
+        return ErrorCode::ERROR_SWITCH_IME;
     }
     IMSA_HILOGD("start switch %{public}s|%{public}s.", switchInfo.bundleName.c_str(), switchInfo.subName.c_str());
     if (isCheckPermission && !IsStartInputTypePermitted(userId)) {
         IMSA_HILOGE("not permitted to start input type!");
-        session->GetSwitchQueue().Pop();
+        session->GetSwitchQueue().Pop(switchInfo);
         return ErrorCode::ERROR_STATUS_PERMISSION_DENIED;
     }
     if (!IsNeedSwitch(userId, switchInfo.bundleName, switchInfo.subName)) {
         IMSA_HILOGI("no need to switch.");
-        session->GetSwitchQueue().Pop();
+        session->GetSwitchQueue().Pop(switchInfo);
         return ErrorCode::NO_ERROR;
     }
     int32_t ret = SwitchInputType(userId, switchInfo, isPersistence);
-    session->GetSwitchQueue().Pop();
+    session->GetSwitchQueue().Pop(switchInfo);
     return ret;
 }
 
@@ -2730,7 +2741,10 @@ int32_t InputMethodSystemAbility::SwitchType(int32_t userId)
         IMSA_HILOGE("%{public}d session is nullptr!", userId);
         return ErrorCode::ERROR_NULL_POINTER;
     }
-    session->GetSwitchQueue().Push(nextSwitchInfo);
+    if (!session->GetSwitchQueue().Push(nextSwitchInfo)) {
+        IMSA_HILOGE("switch queue is full, request not executed, userId:%{public}d.", userId);
+        return ErrorCode::ERROR_SWITCH_IME;
+    }
     return OnSwitchInputMethod(userId, nextSwitchInfo, SwitchTrigger::IMSA);
 }
 
@@ -3547,7 +3561,10 @@ int32_t InputMethodSystemAbility::StartInputType(int32_t userId, InputType type,
         return ErrorCode::NO_ERROR;
     }
     SwitchInfo switchInfo = { std::chrono::system_clock::now(), ime.bundleName, ime.subName };
-    session->GetSwitchQueue().Push(switchInfo);
+    if (!session->GetSwitchQueue().Push(switchInfo)) {
+        IMSA_HILOGE("switch queue is full, request not executed, userId:%{public}d.", userId);
+        return ErrorCode::ERROR_SWITCH_IME;
+    }
     IMSA_HILOGI("start input type: %{public}d, isPersistence: %{public}d.", type, isPersistence);
     if (isPttType) {
         ret = OnStartInputType(userId, switchInfo, false, isPersistence);
@@ -4018,7 +4035,10 @@ int32_t InputMethodSystemAbility::SwitchToDefaultIme(int32_t userId)
         return ErrorCode::ERROR_NULL_POINTER;
     }
     SwitchInfo switchInfo = { std::chrono::system_clock::now(), defaultIme.bundleName, "" };
-    session->GetSwitchQueue().Push(switchInfo);
+    if (!session->GetSwitchQueue().Push(switchInfo)) {
+        IMSA_HILOGE("switch queue is full, request not executed, userId:%{public}d.", userId);
+        return ErrorCode::ERROR_SWITCH_IME;
+    }
     return OnSwitchInputMethod(userId, switchInfo, SwitchTrigger::IMSA);
 }
 
@@ -4044,7 +4064,10 @@ int32_t InputMethodSystemAbility::SwitchToPreviousIme(int32_t userId)
         return ErrorCode::ERROR_ENABLE_IME;
     }
     SwitchInfo switchInfo = { std::chrono::system_clock::now(), previousBundleName, previousSubName };
-    session->GetSwitchQueue().Push(switchInfo);
+    if (!session->GetSwitchQueue().Push(switchInfo)) {
+        IMSA_HILOGE("switch queue is full, request not executed, userId:%{public}d.", userId);
+        return ErrorCode::ERROR_SWITCH_IME;
+    }
     return OnSwitchInputMethod(userId, switchInfo, SwitchTrigger::IMSA);
 }
 

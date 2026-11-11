@@ -19,6 +19,7 @@
 #include "common_fun_ani.h"
 #include "input_method_controller.h"
 #include "input_method_controller_impl.h"
+#include "input_method_queries.h"
 #include "input_method_setting_impl.h"
 #include "js_utils.h"
 #include "ohos.inputMethod.proj.hpp"
@@ -108,10 +109,13 @@ InputMethodProperty GetCurrentInputMethodByUserId(optional_view<int32_t> userId)
             return inputMethodProperty;
         }
     }
-    std::shared_ptr<Property> property =
-        OHOS::MiscServices::InputMethodController::GetInstance()->GetCurrentInputMethod(nativeUserId);
-    if (property == nullptr) {
-        IMSA_HILOGE("current input method is nullptr!");
+    Property property;
+    auto instance = OHOS::MiscServices::InputMethodController::GetInstance();
+    auto ret = instance == nullptr ? ErrorCode::ERROR_SERVICE_START_FAILED :
+        InputMethodQueries::GetCurrent(*instance, property, nativeUserId);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("failed to get current input method: %{public}d", ret);
+        set_business_error(JsUtils::Convert(ret), "failed to get current input method!");
         return inputMethodProperty;
     }
     inputMethodProperty = PropertyConverter::ConvertProperty(property);
@@ -143,10 +147,13 @@ InputMethodSubtype GetCurrentInputMethodSubtypeByUserId(optional_view<int32_t> u
             return inputMethodSubtype;
         }
     }
-    std::shared_ptr<SubProperty> subProperty =
-        OHOS::MiscServices::InputMethodController::GetInstance()->GetCurrentInputMethodSubtype(nativeUserId);
-    if (subProperty == nullptr) {
-        IMSA_HILOGE("current input method subtype is nullptr!");
+    SubProperty subProperty;
+    auto instance = OHOS::MiscServices::InputMethodController::GetInstance();
+    auto ret = instance == nullptr ? ErrorCode::ERROR_SERVICE_START_FAILED :
+        InputMethodQueries::GetCurrentSubtype(*instance, subProperty, nativeUserId);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("failed to get current input method subtype: %{public}d", ret);
+        set_business_error(JsUtils::Convert(ret), "failed to get current input method subtype!");
         return inputMethodSubtype;
     }
     inputMethodSubtype = PropertyConverter::ConvertSubProperty(subProperty);

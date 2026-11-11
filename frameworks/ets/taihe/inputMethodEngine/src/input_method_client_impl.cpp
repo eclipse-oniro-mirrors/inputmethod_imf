@@ -24,14 +24,13 @@ std::mutex InputMethodClientImpl::engineMutex_;
 std::shared_ptr<InputMethodClientImpl> InputMethodClientImpl::textInputClientEngine_ {nullptr};
 std::shared_ptr<InputMethodClientImpl> InputMethodClientImpl::GetInstance()
 {
+    std::lock_guard<std::mutex> lock(engineMutex_);
     if (textInputClientEngine_ == nullptr) {
-        std::lock_guard<std::mutex> lock(engineMutex_);
-        if (textInputClientEngine_ == nullptr) {
-            textInputClientEngine_ = std::make_shared<InputMethodClientImpl>();
-            if (!Init()) {
-                IMSA_HILOGE("Init failed!");
-                return nullptr;
-            }
+        textInputClientEngine_ = std::make_shared<InputMethodClientImpl>();
+        if (!Init()) {
+            IMSA_HILOGE("Init failed!");
+            textInputClientEngine_.reset();
+            return nullptr;
         }
     }
     return textInputClientEngine_;
@@ -40,9 +39,11 @@ std::shared_ptr<InputMethodClientImpl> InputMethodClientImpl::GetInstance()
 bool InputMethodClientImpl::InitTextInputClientEngine()
 {
     if (!InputMethodAbility::GetInstance().IsCurrentIme()) {
+        IMSA_HILOGE("Current IME check failed.");
         return false;
     }
     if (textInputClientEngine_ == nullptr) {
+        IMSA_HILOGE("textInputClientEngine_ is nullptr!");
         return false;
     }
     InputMethodAbility::GetInstance().SetTextInputClientListener(textInputClientEngine_);
@@ -52,7 +53,7 @@ bool InputMethodClientImpl::InitTextInputClientEngine()
 bool InputMethodClientImpl::Init()
 {
     if (!InitTextInputClientEngine()) {
-        IMSA_HILOGE("textInputClientEngine_ is nullptr!");
+        IMSA_HILOGE("Text input client listener initialization failed.");
         return false;
     }
     return true;
@@ -74,7 +75,7 @@ void InputMethodClientImpl::RegisterListener(std::string const &type, callbackTy
     }
     auto &cbVec = jsCbMap_[type];
     bool isDuplicate =
-        std::any_of(cbVec.begin(), cbVec.end(), [env, callbackRef](std::unique_ptr<CallbackObjects> &obj) {
+        std::any_of(cbVec.begin(), cbVec.end(), [env, callbackRef](const std::shared_ptr<CallbackObjects> &obj) {
             ani_boolean isEqual = false;
             return (ANI_OK == env->Reference_StrictEquals(callbackRef, obj->ref, &isEqual)) && isEqual;
         });
@@ -86,7 +87,7 @@ void InputMethodClientImpl::RegisterListener(std::string const &type, callbackTy
         IMSA_HILOGD("%{public}s is already registered", type.c_str());
         return;
     }
-    cbVec.emplace_back(std::make_unique<CallbackObjects>(cb, callbackRef));
+    cbVec.emplace_back(std::make_shared<CallbackHolder>(cb, callbackRef));
     IMSA_HILOGI("Registered success type: %{public}s", type.c_str());
 }
 
@@ -121,7 +122,7 @@ void InputMethodClientImpl::UnRegisterListener(std::string const &type, taihe::o
         return;
     }
 
-    const auto pred = [env, targetRef = guard.get()](std::unique_ptr<CallbackObjects> &obj) {
+    const auto pred = [env, targetRef = guard.get()](const std::shared_ptr<CallbackObjects> &obj) {
         ani_boolean is_equal = false;
         return (ANI_OK == env->Reference_StrictEquals(targetRef, obj->ref, &is_equal)) && is_equal;
     };
@@ -135,12 +136,18 @@ void InputMethodClientImpl::UnRegisterListener(std::string const &type, taihe::o
     }
 }
 
+std::vector<std::shared_ptr<CallbackObjects>> InputMethodClientImpl::GetCallbacks(const std::string &type)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    const auto iter = jsCbMap_.find(type);
+    return iter == jsCbMap_.end() ? std::vector<std::shared_ptr<CallbackObjects>> {} : iter->second;
+}
+
 void InputMethodClientImpl::OnAttachOptionsChanged(const AttachOptions &attachOptions)
 {
     IMSA_HILOGD("OnAttachOptionsChanged requestKeyboardReason:%{public}d.", attachOptions.requestKeyboardReason);
     std::string type = "attachOptionsDidChange";
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_[type];
+    auto cbVec = GetCallbacks(type);
     for (auto &cb : cbVec) {
         auto &func = std::get<taihe::callback<void(AttachOptions_t const&)>>(cb->callback);
         func(CommonConvert::NativeAttachOptionsToAni(attachOptions));

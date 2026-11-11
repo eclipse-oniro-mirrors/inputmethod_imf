@@ -16,6 +16,7 @@
 
 #include "global.h"
 #include "native_inputmethod_types.h"
+#include "native_object_registry.h"
 #include "string_utils.h"
 
 #ifdef __cplusplus
@@ -24,7 +25,8 @@ extern "C" {
 using namespace OHOS::MiscServices;
 InputMethod_TextConfig *OH_TextConfig_Create(void)
 {
-    return new (std::nothrow) InputMethod_TextConfig();
+    return NativeObjectRegistry<InputMethod_TextConfig>::GetInstance().Register(
+        new (std::nothrow) InputMethod_TextConfig());
 }
 void OH_TextConfig_Destroy(InputMethod_TextConfig *config)
 {
@@ -33,13 +35,18 @@ void OH_TextConfig_Destroy(InputMethod_TextConfig *config)
         return;
     }
 
-    delete config;
+    NativeObjectRegistry<InputMethod_TextConfig>::GetInstance().Destroy(config);
 }
 InputMethod_ErrorCode OH_TextConfig_SetInputType(InputMethod_TextConfig *config, InputMethod_TextInputType inputType)
 {
     if (config == nullptr) {
         IMSA_HILOGE("config is nullptr");
         return IME_ERR_NULL_POINTER;
+    }
+    auto lease = NativeObjectRegistry<InputMethod_TextConfig>::GetInstance().Get(config);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_TextConfig is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
     }
     config->inputType = inputType;
     return IME_ERR_OK;
@@ -51,6 +58,11 @@ InputMethod_ErrorCode OH_TextConfig_SetEnterKeyType(
         IMSA_HILOGE("config is nullptr");
         return IME_ERR_NULL_POINTER;
     }
+    auto lease = NativeObjectRegistry<InputMethod_TextConfig>::GetInstance().Get(config);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_TextConfig is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
+    }
 
     config->enterKeyType = enterKeyType;
     return IME_ERR_OK;
@@ -60,6 +72,11 @@ InputMethod_ErrorCode OH_TextConfig_SetPreviewTextSupport(InputMethod_TextConfig
     if (config == nullptr) {
         IMSA_HILOGE("config is nullptr");
         return IME_ERR_NULL_POINTER;
+    }
+    auto lease = NativeObjectRegistry<InputMethod_TextConfig>::GetInstance().Get(config);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_TextConfig is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
     }
     config->previewTextSupported = supported;
     return IME_ERR_OK;
@@ -71,6 +88,11 @@ InputMethod_ErrorCode OH_TextConfig_SetSelection(InputMethod_TextConfig *config,
         IMSA_HILOGE("config is nullptr");
         return IME_ERR_NULL_POINTER;
     }
+    auto lease = NativeObjectRegistry<InputMethod_TextConfig>::GetInstance().Get(config);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_TextConfig is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
+    }
     config->selectionStart = start;
     config->selectionEnd = end;
     return IME_ERR_OK;
@@ -80,6 +102,11 @@ InputMethod_ErrorCode OH_TextConfig_SetWindowId(InputMethod_TextConfig *config, 
     if (config == nullptr) {
         IMSA_HILOGE("config is nullptr");
         return IME_ERR_NULL_POINTER;
+    }
+    auto lease = NativeObjectRegistry<InputMethod_TextConfig>::GetInstance().Get(config);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_TextConfig is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
     }
 
     config->windowId = windowId;
@@ -92,6 +119,11 @@ InputMethod_ErrorCode OH_TextConfig_SetPlaceholder(InputMethod_TextConfig *confi
     if (config == nullptr) {
         IMSA_HILOGE("config is nullptr");
         return IME_ERR_NULL_POINTER;
+    }
+    auto lease = NativeObjectRegistry<InputMethod_TextConfig>::GetInstance().Get(config);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_TextConfig is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
     }
     if (length <= 0 || placeholder == nullptr) {
         config->placeholderLength = ENDING_SYMBOL_SIZE;
@@ -141,6 +173,11 @@ InputMethod_ErrorCode OH_TextConfig_SetAbilityName(InputMethod_TextConfig *confi
         IMSA_HILOGE("config is nullptr");
         return IME_ERR_NULL_POINTER;
     }
+    auto lease = NativeObjectRegistry<InputMethod_TextConfig>::GetInstance().Get(config);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_TextConfig is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
+    }
     if (length <= 0 || abilityName == nullptr) {
         config->abilityNameLength = ENDING_SYMBOL_SIZE;
         config->abilityName[0] = UTF16_ENDING_SYMBOL;
@@ -188,6 +225,11 @@ InputMethod_ErrorCode OH_TextConfig_SetConsumeKeyEvents(InputMethod_TextConfig *
         IMSA_HILOGE("config is nullptr");
         return IME_ERR_NULL_POINTER;
     }
+    auto lease = NativeObjectRegistry<InputMethod_TextConfig>::GetInstance().Get(config);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_TextConfig is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
+    }
     config->consumeKeyEvents = consumeKeyEvents;
     return IME_ERR_OK;
 }
@@ -197,6 +239,11 @@ InputMethod_ErrorCode OH_TextConfig_GetInputType(InputMethod_TextConfig *config,
     if (config == nullptr) {
         IMSA_HILOGE("config is nullptr");
         return IME_ERR_NULL_POINTER;
+    }
+    auto lease = NativeObjectRegistry<InputMethod_TextConfig>::GetInstance().Get(config);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_TextConfig is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
     }
     if (inputType == nullptr) {
         IMSA_HILOGE("inputType is nullptr");
@@ -213,6 +260,11 @@ InputMethod_ErrorCode OH_TextConfig_GetEnterKeyType(
         IMSA_HILOGE("config is nullptr");
         return IME_ERR_NULL_POINTER;
     }
+    auto lease = NativeObjectRegistry<InputMethod_TextConfig>::GetInstance().Get(config);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_TextConfig is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
+    }
     if (enterKeyType == nullptr) {
         IMSA_HILOGE("enterKeyType is nullptr");
         return IME_ERR_NULL_POINTER;
@@ -226,6 +278,11 @@ InputMethod_ErrorCode OH_TextConfig_IsPreviewTextSupported(InputMethod_TextConfi
     if (config == nullptr) {
         IMSA_HILOGE("config is nullptr");
         return IME_ERR_NULL_POINTER;
+    }
+    auto lease = NativeObjectRegistry<InputMethod_TextConfig>::GetInstance().Get(config);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_TextConfig is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
     }
     if (supported == nullptr) {
         IMSA_HILOGE("supported is nullptr");
@@ -241,9 +298,20 @@ InputMethod_ErrorCode OH_TextConfig_GetCursorInfo(InputMethod_TextConfig *config
         IMSA_HILOGE("config is nullptr");
         return IME_ERR_NULL_POINTER;
     }
+    auto lease = NativeObjectRegistry<InputMethod_TextConfig>::GetInstance().Get(config);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_TextConfig is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
+    }
     if (cursorInfo == nullptr) {
         IMSA_HILOGE("cursorInfo is nullptr");
         return IME_ERR_NULL_POINTER;
+    }
+    auto view = std::shared_ptr<InputMethod_CursorInfo>(lease, &config->cursorInfo);
+    auto lifetime = NativeObjectRegistry<InputMethod_TextConfig>::GetInstance().GetLifetime(config);
+    if (!NativeObjectRegistry<InputMethod_CursorInfo>::GetInstance().RegisterView(view, lifetime)) {
+        IMSA_HILOGE("TextConfig was retired before its view could be returned.");
+        return IME_ERR_PARAMCHECK;
     }
     *cursorInfo = &config->cursorInfo;
     return IME_ERR_OK;
@@ -256,9 +324,20 @@ InputMethod_ErrorCode OH_TextConfig_GetTextAvoidInfo(
         IMSA_HILOGE("config is nullptr");
         return IME_ERR_NULL_POINTER;
     }
+    auto lease = NativeObjectRegistry<InputMethod_TextConfig>::GetInstance().Get(config);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_TextConfig is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
+    }
     if (avoidInfo == nullptr) {
         IMSA_HILOGE("avoidInfo is nullptr");
         return IME_ERR_NULL_POINTER;
+    }
+    auto view = std::shared_ptr<InputMethod_TextAvoidInfo>(lease, &config->avoidInfo);
+    auto lifetime = NativeObjectRegistry<InputMethod_TextConfig>::GetInstance().GetLifetime(config);
+    if (!NativeObjectRegistry<InputMethod_TextAvoidInfo>::GetInstance().RegisterView(view, lifetime)) {
+        IMSA_HILOGE("TextConfig was retired before its view could be returned.");
+        return IME_ERR_PARAMCHECK;
     }
     *avoidInfo = &config->avoidInfo;
     return IME_ERR_OK;
@@ -269,6 +348,11 @@ InputMethod_ErrorCode OH_TextConfig_GetSelection(InputMethod_TextConfig *config,
     if (config == nullptr) {
         IMSA_HILOGE("config is nullptr");
         return IME_ERR_NULL_POINTER;
+    }
+    auto lease = NativeObjectRegistry<InputMethod_TextConfig>::GetInstance().Get(config);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_TextConfig is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
     }
     if (start == nullptr) {
         IMSA_HILOGE("start is nullptr");
@@ -289,6 +373,11 @@ InputMethod_ErrorCode OH_TextConfig_GetWindowId(InputMethod_TextConfig *config, 
         IMSA_HILOGE("config is nullptr");
         return IME_ERR_NULL_POINTER;
     }
+    auto lease = NativeObjectRegistry<InputMethod_TextConfig>::GetInstance().Get(config);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_TextConfig is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
+    }
     if (windowId == nullptr) {
         IMSA_HILOGE("windowId is nullptr");
         return IME_ERR_NULL_POINTER;
@@ -303,6 +392,11 @@ InputMethod_ErrorCode OH_TextConfig_GetPlaceholder(InputMethod_TextConfig *confi
     if (config == nullptr) {
         IMSA_HILOGE("config is nullptr");
         return IME_ERR_NULL_POINTER;
+    }
+    auto lease = NativeObjectRegistry<InputMethod_TextConfig>::GetInstance().Get(config);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_TextConfig is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
     }
     if (length == nullptr) {
         IMSA_HILOGE("length is nullptr");
@@ -341,6 +435,11 @@ InputMethod_ErrorCode OH_TextConfig_GetAbilityName(InputMethod_TextConfig *confi
         IMSA_HILOGE("config is nullptr");
         return IME_ERR_NULL_POINTER;
     }
+    auto lease = NativeObjectRegistry<InputMethod_TextConfig>::GetInstance().Get(config);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_TextConfig is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
+    }
     if (length == nullptr) {
         IMSA_HILOGE("length is nullptr");
         return IME_ERR_NULL_POINTER;
@@ -376,6 +475,11 @@ InputMethod_ErrorCode OH_TextConfig_GetConsumeKeyEvents(InputMethod_TextConfig *
     if (config == nullptr) {
         IMSA_HILOGE("config is nullptr");
         return IME_ERR_NULL_POINTER;
+    }
+    auto lease = NativeObjectRegistry<InputMethod_TextConfig>::GetInstance().Get(config);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_TextConfig is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
     }
     if (consumeKeyEvents == nullptr) {
         IMSA_HILOGE("supported is nullptr");

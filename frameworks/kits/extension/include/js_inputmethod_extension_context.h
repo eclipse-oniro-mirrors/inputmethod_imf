@@ -16,7 +16,9 @@
 #ifndef ABILITY_RUNTIME_JS_INPUTMETHOD_EXTENSION_CONTEXT_H
 #define ABILITY_RUNTIME_JS_INPUTMETHOD_EXTENSION_CONTEXT_H
 
+#include <functional>
 #include <memory>
+#include <mutex>
 
 #include "ability_connect_callback.h"
 #include "event_handler.h"
@@ -38,19 +40,27 @@ public:
     void OnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int resultCode) override;
     // this function need to execute in main thread.
     void CallJsFailed(int32_t errorCode);
-    void SetJsConnectionObject(napi_value jsConnectionObject);
+    bool SetJsConnectionObject(napi_value jsConnectionObject);
+    bool IsClosed();
 
 private:
+    static void OnEnvCleanup(void *data);
+    bool PostCompletion(const std::function<void()> &task, const char *name);
     void HandleOnAbilityConnectDone(const AppExecFwk::ElementName &element, const sptr<IRemoteObject> &remoteObject,
         int resultCode);
     void HandleOnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int resultCode);
     void ReleaseConnection();
-    void HandleOnAbilityDisconnect(const AppExecFwk::ElementName &element);
+    void RemoveConnection();
+    void RemoveConnectionRecord();
 
 private:
     napi_env env_;
     napi_ref jsConnectionObject_ = nullptr;
     std::shared_ptr<AppExecFwk::EventHandler> handler_ = nullptr;
+    std::mutex dispatchMutex_;
+    bool closing_ = false;
+    bool cleanupRegistered_ = false;
+    sptr<JSInputMethodExtensionConnection> cleanupOwner_;
 };
 
 struct ConnectionKey {

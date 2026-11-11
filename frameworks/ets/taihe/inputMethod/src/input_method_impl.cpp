@@ -100,8 +100,16 @@ void InputMethodImpl::UnRegisterListener(std::string const &type,
 void InputMethodImpl::OnAttachmentDidFail(AttachFailureReason reason)
 {
     IMSA_HILOGD("reason: %{public}d.", reason);
-    std::lock_guard<std::mutex> lock(jsCbsLock_);
-    auto &cbVec = jsCbMap_[ATTACH_FAIL_CB_EVENT_TYPE];
+    std::vector<taihe::callback<void(AttachFailureReason_t data)>> cbVec;
+    {
+        std::lock_guard<std::mutex> lock(jsCbsLock_);
+        const auto iter = jsCbMap_.find(ATTACH_FAIL_CB_EVENT_TYPE);
+        if (iter == jsCbMap_.end()) {
+            return;
+        }
+        cbVec = iter->second;
+    }
+    // Invoke an owning snapshot so callbacks can change subscriptions.
     for (auto &cb : cbVec) {
         AttachFailureReason_t tmpReason = EnumConvert::ConvertAttachFailureReason(reason);
         cb(tmpReason);

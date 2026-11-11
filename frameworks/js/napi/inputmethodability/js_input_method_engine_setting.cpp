@@ -563,6 +563,11 @@ napi_value JsInputMethodEngineSetting::CreatePanel(napi_env env, napi_callback_i
     auto exec = [ctxt](AsyncCall::Context *ctx) {
         auto ret = InputMethodAbility::GetInstance().CreatePanel(ctxt->context, ctxt->panelInfo, ctxt->panel);
         ctxt->SetErrorCode(ret);
+        if (ret != ErrorCode::NO_ERROR) {
+            ctxt->SetErrorMessage("Failed to create panel. Only one panel of each type can be registered; reuse or "
+                "destroy the existing panel before creating another. Check native logs for the panel type and "
+                "creation failure reason.");
+        }
         CHECK_RETURN_VOID(ret == ErrorCode::NO_ERROR, "JsInputMethodEngineSetting CreatePanel failed!");
         ctxt->SetState(napi_ok);
     };
@@ -606,7 +611,8 @@ napi_value JsInputMethodEngineSetting::DestroyPanel(napi_env env, napi_callback_
         status = napi_unwrap(env, argv[0], (void **)(&jsPanel));
         CHECK_RETURN((status == napi_ok) && (jsPanel != nullptr), "failed to unwrap JsPanel!", status);
         ctxt->panel = jsPanel->GetNative();
-        CHECK_RETURN((ctxt->panel != nullptr), "panel is nullptr!", napi_invalid_arg);
+        PARAM_CHECK_RETURN(
+            env, ctxt->panel != nullptr, "The panel has already been destroyed.", TYPE_NONE, napi_invalid_arg);
         return status;
     };
 
@@ -616,9 +622,12 @@ napi_value JsInputMethodEngineSetting::DestroyPanel(napi_env env, napi_callback_
         CHECK_RETURN((ctxt->panel != nullptr), "panel is nullptr!", napi_generic_failure);
         auto errCode = InputMethodAbility::GetInstance().DestroyPanel(ctxt->panel);
         if (errCode != ErrorCode::NO_ERROR) {
+            ctxt->SetErrorCode(errCode);
+            ctxt->SetErrorMessage("Failed to destroy panel; its registration and wrapper are retained for retry.");
             IMSA_HILOGE("DestroyPanel failed, errCode: %{public}d!", errCode);
             return napi_generic_failure;
         }
+        // Keep the legacy native snapshot for cached operations, not a live window or a newer panel's registration.
         ctxt->panel = nullptr;
         return napi_ok;
     };

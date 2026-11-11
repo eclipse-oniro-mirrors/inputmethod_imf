@@ -1206,6 +1206,7 @@ public:
     int32_t OnExecTextInteraction(const std::string &text);
 
 private:
+    friend class InputMethodQueries;
     friend class MockInputMethodSystemAbilityProxy;
     friend class ImeEventMonitorManagerImpl;
     friend class InputClientServiceImpl;
@@ -1301,9 +1302,16 @@ private:
     public:
         explicit QueueGuard(const std::string &name);
         ~QueueGuard();
+        bool IsReady() const
+        {
+            return ready_;
+        }
+        QueueGuard(const QueueGuard &) = delete;
+        QueueGuard &operator=(const QueueGuard &) = delete;
 
     private:
-        bool needPop_;
+        CtrlEventInfo info_;
+        bool ready_ = false;
     };
 
     std::shared_ptr<ControllerListener> controllerListener_;

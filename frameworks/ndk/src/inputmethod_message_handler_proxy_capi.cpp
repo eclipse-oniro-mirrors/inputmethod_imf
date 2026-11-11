@@ -15,10 +15,12 @@
 
 #include "global.h"
 #include "native_inputmethod_types.h"
+#include "native_object_registry.h"
 using namespace OHOS::MiscServices;
 InputMethod_MessageHandlerProxy *OH_MessageHandlerProxy_Create(void)
 {
-    return new (std::nothrow) InputMethod_MessageHandlerProxy();
+    return NativeObjectRegistry<InputMethod_MessageHandlerProxy>::GetInstance().Register(
+        new (std::nothrow) InputMethod_MessageHandlerProxy());
 }
 
 void OH_MessageHandlerProxy_Destroy(InputMethod_MessageHandlerProxy *proxy)
@@ -27,7 +29,7 @@ void OH_MessageHandlerProxy_Destroy(InputMethod_MessageHandlerProxy *proxy)
         IMSA_HILOGE("proxy is nullptr");
         return;
     }
-    delete proxy;
+    NativeObjectRegistry<InputMethod_MessageHandlerProxy>::GetInstance().Destroy(proxy);
 }
 
 InputMethod_ErrorCode OH_MessageHandlerProxy_SetOnTerminatedFunc(
@@ -37,13 +39,18 @@ InputMethod_ErrorCode OH_MessageHandlerProxy_SetOnTerminatedFunc(
         IMSA_HILOGE("proxy is nullptr");
         return IME_ERR_NULL_POINTER;
     }
+    auto handler = NativeObjectRegistry<InputMethod_MessageHandlerProxy>::GetInstance().Get(proxy);
+    if (handler == nullptr) {
+        IMSA_HILOGE("Message handler is unregistered or destroyed.");
+        return IME_ERR_PARAMCHECK;
+    }
 
     if (onTerminatedFunc == nullptr) {
         IMSA_HILOGE("onTerminatedFunc is nullptr");
         return IME_ERR_NULL_POINTER;
     }
 
-    proxy->onTerminatedFunc = onTerminatedFunc;
+    handler->onTerminatedFunc.store(onTerminatedFunc);
     return IME_ERR_OK;
 }
 
@@ -54,11 +61,16 @@ InputMethod_ErrorCode OH_MessageHandlerProxy_GetOnTerminatedFunc(
         IMSA_HILOGE("proxy is nullptr");
         return IME_ERR_NULL_POINTER;
     }
+    auto handler = NativeObjectRegistry<InputMethod_MessageHandlerProxy>::GetInstance().Get(proxy);
+    if (handler == nullptr) {
+        IMSA_HILOGE("Message handler is unregistered or destroyed.");
+        return IME_ERR_PARAMCHECK;
+    }
     if (onTerminatedFunc == nullptr) {
         IMSA_HILOGE("onTerminatedFunc is nullptr");
         return IME_ERR_NULL_POINTER;
     }
-    *onTerminatedFunc = proxy->onTerminatedFunc;
+    *onTerminatedFunc = handler->onTerminatedFunc.load();
     return IME_ERR_OK;
 }
 
@@ -69,13 +81,18 @@ InputMethod_ErrorCode OH_MessageHandlerProxy_SetOnMessageFunc(
         IMSA_HILOGE("proxy is nullptr");
         return IME_ERR_NULL_POINTER;
     }
+    auto handler = NativeObjectRegistry<InputMethod_MessageHandlerProxy>::GetInstance().Get(proxy);
+    if (handler == nullptr) {
+        IMSA_HILOGE("Message handler is unregistered or destroyed.");
+        return IME_ERR_PARAMCHECK;
+    }
 
     if (onMessageFunc == nullptr) {
         IMSA_HILOGE("onMessageFunc is nullptr");
         return IME_ERR_NULL_POINTER;
     }
 
-    proxy->onMessageFunc = onMessageFunc;
+    handler->onMessageFunc.store(onMessageFunc);
     return IME_ERR_OK;
 }
 
@@ -86,10 +103,15 @@ InputMethod_ErrorCode OH_MessageHandlerProxy_GetOnMessageFunc(
         IMSA_HILOGE("proxy is nullptr");
         return IME_ERR_NULL_POINTER;
     }
+    auto handler = NativeObjectRegistry<InputMethod_MessageHandlerProxy>::GetInstance().Get(proxy);
+    if (handler == nullptr) {
+        IMSA_HILOGE("Message handler is unregistered or destroyed.");
+        return IME_ERR_PARAMCHECK;
+    }
     if (onMessageFunc == nullptr) {
         IMSA_HILOGE("onMessageFunc is nullptr");
         return IME_ERR_NULL_POINTER;
     }
-    *onMessageFunc = proxy->onMessageFunc;
+    *onMessageFunc = handler->onMessageFunc.load();
     return IME_ERR_OK;
 }

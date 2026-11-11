@@ -90,7 +90,7 @@ napi_value JsPanel::JsNew(napi_env env, napi_callback_info info)
         IMSA_HILOGD("jsPanel finalize.");
         auto *jsPanel = reinterpret_cast<JsPanel *>(data);
         CHECK_RETURN_VOID(jsPanel != nullptr, "finalize nullptr!");
-        jsPanel->GetNative() = nullptr;
+        jsPanel->SetNative(nullptr);
         delete jsPanel;
         jsPanel = nullptr;
     };
@@ -122,6 +122,10 @@ void JsPanel::SetNative(const std::shared_ptr<InputMethodPanel> &panel)
 
 std::shared_ptr<InputMethodPanel> JsPanel::GetNative()
 {
+    if (inputMethodPanel_ != nullptr && inputMethodPanel_->IsDestroyed()) {
+        IMSA_HILOGW("A destroyed panel is being reused. Legacy cached operations do not recreate its window; "
+                    "create and use a new panel for window operations.");
+    }
     return inputMethodPanel_;
 }
 
@@ -138,14 +142,17 @@ napi_value JsPanel::SetUiContent(napi_env env, napi_callback_info info)
         PanelDealQueue::Wait(ctxt->info);
         if (ctxt->inputMethodPanel == nullptr) {
             IMSA_HILOGE("inputMethodPanel is nullptr!");
-            PanelDealQueue::Pop();
+            ctxt->SetErrorCode(ErrorCode::ERROR_IME);
+            ctxt->SetErrorMessage("The panel has been destroyed or is unavailable.");
+            ctxt->Cleanup();
             return napi_generic_failure;
         }
         auto code = ctxt->inputMethodPanel->SetUiContent(ctxt->path, env, ctxt->contentStorage);
-        PanelDealQueue::Pop();
-        if (code == ErrorCode::ERROR_PARAMETER_CHECK_FAILED) {
+        ctxt->Cleanup();
+        if (code != ErrorCode::NO_ERROR) {
             ctxt->SetErrorCode(code);
-            ctxt->SetErrorMessage("path should be a path to specific page.");
+            ctxt->SetErrorMessage(code == ErrorCode::ERROR_PARAMETER_CHECK_FAILED
+                ? "path should be a path to specific page." : "Failed to set panel content or transparency.");
             return napi_generic_failure;
         }
         return napi_ok;
@@ -172,7 +179,8 @@ napi_status JsPanel::CheckSetUiContentParams(napi_env env, size_t argc, std::sha
         CHECK_RETURN(status == napi_ok, "get valueType failed!", status);
         if (valueType == napi_object) {
             napi_ref storage = nullptr;
-            napi_create_reference(env, argv[1], 1, &storage);
+            status = napi_create_reference(env, argv[1], 1, &storage);
+            CHECK_RETURN(status == napi_ok, "Failed to retain panel content storage.", status);
             auto contentStorage = (storage == nullptr) ? nullptr
                                                         : std::shared_ptr<NativeReference>(
                                                                 reinterpret_cast<NativeReference *>(storage));
@@ -180,7 +188,7 @@ napi_status JsPanel::CheckSetUiContentParams(napi_env env, size_t argc, std::sha
         }
     }
     ctxt->info = { std::chrono::system_clock::now(), JsEvent::SET_UI_CONTENT };
-    PanelDealQueue::Push(ctxt->info);
+    ctxt->LineUp();
     return napi_ok;
 }
 
@@ -197,7 +205,7 @@ napi_value JsPanel::Resize(napi_env env, napi_callback_info info)
         PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[1], ctxt->height) == napi_ok,
             "height type must be number!", TYPE_NONE, status);
         ctxt->info = { std::chrono::system_clock::now(), JsEvent::RESIZE };
-        PanelDealQueue::Push(ctxt->info);
+        ctxt->LineUp();
         return napi_ok;
     };
 
@@ -205,12 +213,14 @@ napi_value JsPanel::Resize(napi_env env, napi_callback_info info)
         PanelDealQueue::Wait(ctxt->info);
         if (ctxt->inputMethodPanel == nullptr) {
             IMSA_HILOGE("inputMethodPanel_ is nullptr!");
-            PanelDealQueue::Pop();
+            ctxt->SetErrorCode(ErrorCode::ERROR_IME);
+            ctxt->SetErrorMessage("The panel has been destroyed or is unavailable.");
+            ctxt->Cleanup();
             return;
         }
         ctxt->inputMethodPanel->hasSetSize_.store(true);
         auto code = ctxt->inputMethodPanel->Resize(ctxt->width, ctxt->height);
-        PanelDealQueue::Pop();
+        ctxt->Cleanup();
         if (code == ErrorCode::NO_ERROR) {
             ctxt->SetState(napi_ok);
             return;
@@ -236,7 +246,7 @@ napi_value JsPanel::MoveTo(napi_env env, napi_callback_info info)
         PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[1], ctxt->y) == napi_ok, "y type must be number",
             TYPE_NONE, status);
         ctxt->info = { std::chrono::system_clock::now(), JsEvent::MOVE_TO };
-        PanelDealQueue::Push(ctxt->info);
+        ctxt->LineUp();
         return napi_ok;
     };
 
@@ -246,13 +256,15 @@ napi_value JsPanel::MoveTo(napi_env env, napi_callback_info info)
         PanelDealQueue::PrintIfTimeout(start, ctxt->info);
         if (ctxt->inputMethodPanel == nullptr) {
             IMSA_HILOGE("inputMethodPanel_ is nullptr!");
-            PanelDealQueue::Pop();
+            ctxt->SetErrorCode(ErrorCode::ERROR_IME);
+            ctxt->SetErrorMessage("The panel has been destroyed or is unavailable.");
+            ctxt->Cleanup();
             return;
         }
         ctxt->inputMethodPanel->hasSetSize_.store(true);
         auto code = ctxt->inputMethodPanel->MoveTo(ctxt->x, ctxt->y);
-        PanelDealQueue::Pop();
-        if (code == ErrorCode::ERROR_PARAMETER_CHECK_FAILED) {
+        ctxt->Cleanup();
+        if (code != ErrorCode::NO_ERROR) {
             ctxt->SetErrorCode(code);
             return;
         }
@@ -294,19 +306,20 @@ napi_value JsPanel::GetDisplayId(napi_env env, napi_callback_info info)
     auto ctxt = std::make_shared<PanelContentContext>(env, info);
     auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
         ctxt->info = { std::chrono::system_clock::now(), JsEvent::GET_DISPLAYID };
-        PanelDealQueue::Push(ctxt->info);
+        ctxt->LineUp();
         return napi_ok;
     };
     auto exec = [ctxt](AsyncCall::Context *ctx) {
         PanelDealQueue::Wait(ctxt->info);
         if (ctxt->inputMethodPanel == nullptr) {
             IMSA_HILOGE("inputMethodPanel_ is nullptr!");
+            ctxt->SetErrorMessage("The panel has been destroyed or is unavailable.");
             ctxt->SetErrorCode(ErrorCode::ERROR_IME);
-            PanelDealQueue::Pop();
+            ctxt->Cleanup();
             return;
         }
         auto ret = ctxt->inputMethodPanel->GetDisplayId(ctxt->displayId);
-        PanelDealQueue::Pop();
+        ctxt->Cleanup();
         if (ret != ErrorCode::NO_ERROR) {
             IMSA_HILOGE("failed get displayId!");
             ctxt->SetErrorCode(ret);
@@ -335,23 +348,25 @@ napi_value JsPanel::Show(napi_env env, napi_callback_info info)
     auto ctxt = std::make_shared<PanelContentContext>(env, info);
     auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
         ctxt->info = { std::chrono::system_clock::now(), JsEvent::SHOW };
-        PanelDealQueue::Push(ctxt->info);
+        ctxt->LineUp();
         return napi_ok;
     };
     auto exec = [ctxt](AsyncCall::Context *ctx) {
         PanelDealQueue::Wait(ctxt->info);
         if (ctxt->inputMethodPanel == nullptr) {
             IMSA_HILOGE("inputMethodPanel is nullptr!");
-            PanelDealQueue::Pop();
+            ctxt->SetErrorCode(ErrorCode::ERROR_IME);
+            ctxt->SetErrorMessage("The panel has been destroyed or is unavailable.");
+            ctxt->Cleanup();
             return;
         }
         auto code = InputMethodAbility::GetInstance().ShowPanel(ctxt->inputMethodPanel);
         if (code == ErrorCode::NO_ERROR) {
             ctxt->SetState(napi_ok);
-            PanelDealQueue::Pop();
+            ctxt->Cleanup();
             return;
         }
-        PanelDealQueue::Pop();
+        ctxt->Cleanup();
         ctxt->SetErrorCode(code);
     };
     ctxt->SetAction(std::move(input));
@@ -367,18 +382,20 @@ napi_value JsPanel::Hide(napi_env env, napi_callback_info info)
     
     auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
         ctxt->info = { std::chrono::system_clock::now(), JsEvent::HIDE };
-        PanelDealQueue::Push(ctxt->info);
+        ctxt->LineUp();
         return napi_ok;
     };
     auto exec = [ctxt](AsyncCall::Context *ctx) {
         PanelDealQueue::Wait(ctxt->info);
         if (ctxt->inputMethodPanel == nullptr) {
             IMSA_HILOGE("inputMethodPanel is nullptr!");
-            PanelDealQueue::Pop();
+            ctxt->SetErrorCode(ErrorCode::ERROR_IME);
+            ctxt->SetErrorMessage("The panel has been destroyed or is unavailable.");
+            ctxt->Cleanup();
             return;
         }
         auto code = InputMethodAbility::GetInstance().HidePanel(ctxt->inputMethodPanel);
-        PanelDealQueue::Pop();
+        ctxt->Cleanup();
         if (code == ErrorCode::NO_ERROR) {
             ctxt->SetState(napi_ok);
             return;
@@ -404,7 +421,8 @@ napi_value JsPanel::ChangeFlag(napi_env env, napi_callback_info info)
     PARAM_CHECK_RETURN(env, status == napi_ok, "flag type must be PanelFlag!", TYPE_NONE, nullptr);
     auto inputMethodPanel = UnwrapPanel(env, thisVar);
     if (inputMethodPanel == nullptr) {
-        IMSA_HILOGE("inputMethodPanel is nullptr!");
+        JsUtils::ThrowException(env, JsUtils::Convert(ErrorCode::ERROR_IME),
+            "The panel has been destroyed or is unavailable.", TYPE_NONE);
         return nullptr;
     }
     PARAM_CHECK_RETURN(env,
@@ -412,12 +430,17 @@ napi_value JsPanel::ChangeFlag(napi_env env, napi_callback_info info)
             panelFlag == PanelFlag::FLG_CANDIDATE_COLUMN),
         "flag type must be one of PanelFlag!", TYPE_NONE, nullptr);
     JsEventInfo eventInfo = { std::chrono::system_clock::now(), JsEvent::CHANGE_PANEL_FLAG };
-    PanelDealQueue::Push(eventInfo);
-    PanelDealQueue::Wait(eventInfo);
+    PanelDealQueue::TaskGuard task(eventInfo);
+    task.Wait();
     inputMethodPanel->hasSetSize_.store(true);
     auto ret = inputMethodPanel->ChangePanelFlag(PanelFlag(panelFlag));
-    PanelDealQueue::Pop();
-    CHECK_RETURN(ret == ErrorCode::NO_ERROR, "failed to ChangePanelFlag!", nullptr);
+    task.Finish();
+    // Preserve changeFlag's non-throwing delivery of native operation failures.
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("Failed to change panel flag to %{public}d, native error: %{public}d. "
+                    "Check the panel state and cached layout dimensions.",
+            panelFlag, ret);
+    }
     return nullptr;
 }
 
@@ -435,7 +458,8 @@ napi_value JsPanel::SetPrivacyMode(napi_env env, napi_callback_info info)
     CHECK_RETURN(status == napi_ok, "failed to get isPrivacyMode!", nullptr);
     auto inputMethodPanel = UnwrapPanel(env, thisVar);
     if (inputMethodPanel == nullptr) {
-        IMSA_HILOGE("inputMethodPanel is nullptr!");
+        JsUtils::ThrowException(env, JsUtils::Convert(ErrorCode::ERROR_IME),
+            "The panel has been destroyed or is unavailable.", TYPE_NONE);
         return nullptr;
     }
     auto ret = inputMethodPanel->SetPrivacyMode(isPrivacyMode);
@@ -443,7 +467,11 @@ napi_value JsPanel::SetPrivacyMode(napi_env env, napi_callback_info info)
         JsUtils::ThrowException(env, JsUtils::Convert(ErrorCode::ERROR_STATUS_PERMISSION_DENIED),
             " ohos.permission.PRIVACY_WINDOW permission denied", TYPE_NONE);
     }
-    CHECK_RETURN(ret == ErrorCode::NO_ERROR, "failed to SetPrivacyMode!", nullptr);
+    if (ret != ErrorCode::NO_ERROR && ret != static_cast<int32_t>(WMError::WM_ERROR_INVALID_PERMISSION)) {
+        JsUtils::ThrowException(env,
+            JsUtils::Convert(ret == ErrorCode::ERROR_IME ? ret : ErrorCode::ERROR_WINDOW_MANAGER),
+            "failed to SetPrivacyMode!", TYPE_NONE);
+    }
     return nullptr;
 }
 
@@ -466,7 +494,8 @@ napi_value JsPanel::Subscribe(napi_env env, napi_callback_info info)
     std::shared_ptr<PanelListenerImpl> observer = PanelListenerImpl::GetInstance();
     auto inputMethodPanel = UnwrapPanel(env, thisVar);
     if (inputMethodPanel == nullptr) {
-        IMSA_HILOGE("inputMethodPanel is nullptr!");
+        JsUtils::ThrowException(env, JsUtils::Convert(ErrorCode::ERROR_IME),
+            "The panel has been destroyed or is unavailable.", TYPE_NONE);
         return nullptr;
     }
     // 1 means the second param callback.
@@ -510,7 +539,8 @@ napi_value JsPanel::UnSubscribe(napi_env env, napi_callback_info info)
     std::shared_ptr<PanelListenerImpl> observer = PanelListenerImpl::GetInstance();
     auto inputMethodPanel = UnwrapPanel(env, thisVar);
     if (inputMethodPanel == nullptr) {
-        IMSA_HILOGE("inputMethodPanel is nullptr!");
+        JsUtils::ThrowException(env, JsUtils::Convert(ErrorCode::ERROR_IME),
+            "The panel has been destroyed or is unavailable.", TYPE_NONE);
         return nullptr;
     }
     observer->RemoveInfo(type, inputMethodPanel->windowId_);
@@ -654,10 +684,12 @@ napi_value JsPanel::AdjustPanelRect(napi_env env, napi_callback_info info)
         if (!IsEnhancedAdjust(env, argv, argc)) {
             CHECK_RETURN(CheckParam(env, argc, argv, ctxt) == napi_ok, "check param", napi_generic_failure);
         } else {
+            RESULT_CHECK_RETURN(env, ctxt->inputMethodPanel != nullptr, JsUtils::Convert(ErrorCode::ERROR_IME),
+                "The panel has been destroyed or is unavailable.", TYPE_NONE, napi_generic_failure);
             CHECK_RETURN(CheckEnhancedParam(env, argc, argv, ctxt) == napi_ok, "check param", napi_generic_failure);
         }
         ctxt->info = { std::chrono::system_clock::now(), JsEvent::ADJUST_PANEL_RECT };
-        PanelDealQueue::Push(ctxt->info);
+        ctxt->LineUp();
         return napi_ok;
     };
 
@@ -665,7 +697,9 @@ napi_value JsPanel::AdjustPanelRect(napi_env env, napi_callback_info info)
         PanelDealQueue::Wait(ctxt->info);
         if (ctxt->inputMethodPanel == nullptr) {
             IMSA_HILOGE("inputMethodPanel_ is nullptr!");
-            PanelDealQueue::Pop();
+            ctxt->SetErrorCode(ErrorCode::ERROR_IME);
+            ctxt->SetErrorMessage("The panel has been destroyed or is unavailable.");
+            ctxt->Cleanup();
             return;
         }
         ctxt->inputMethodPanel->hasSetSize_.store(true);
@@ -674,7 +708,7 @@ napi_value JsPanel::AdjustPanelRect(napi_env env, napi_callback_info info)
         } else {
             AdjustEnhancedLayoutParam(ctxt);
         }
-        PanelDealQueue::Pop();
+        ctxt->Cleanup();
     };
     ctxt->SetAction(std::move(input));
     // 2 means JsAPI:adjustPanelRect has 2 params at most
@@ -699,7 +733,8 @@ napi_value JsPanel::UpdatePanelRectSync(napi_env env, napi_callback_info info)
 
     auto panel = UnwrapPanel(env, thisVar);
     if (panel == nullptr) {
-        IMSA_HILOGE("inputMethodPanel is nullptr!");
+        JsUtils::ThrowException(env, JsUtils::Convert(ErrorCode::ERROR_IME),
+            "The panel has been destroyed or is unavailable.", TYPE_NONE);
         return JsUtil::Const::Null(env);
     }
 
@@ -715,13 +750,13 @@ napi_value JsPanel::UpdatePanelRectSync(napi_env env, napi_callback_info info)
         }
     }
     JsEventInfo eventInfo = { std::chrono::system_clock::now(), JsEvent::UPDATE_PANEL_RECT_SYNC };
-    PanelDealQueue::Push(eventInfo);
-    PanelDealQueue::Wait(eventInfo);
+    PanelDealQueue::TaskGuard task(eventInfo);
+    task.Wait();
     panel->hasSetSize_.store(true);
     int32_t ret = isEnhancedCall
         ? panel->AdjustPanelRect(ctxt->panelFlag, ctxt->enhancedLayoutParams, ctxt->hotAreas, false)
         : panel->AdjustPanelRect(ctxt->panelFlag, ctxt->layoutParams, true, true, false);
-    PanelDealQueue::Pop();
+    task.Finish();
     if (ret == ErrorCode::ERROR_PARAMETER_CHECK_FAILED) {
         JsUtils::ThrowException(env, JsUtils::Convert(ErrorCode::ERROR_PARAMETER_CHECK_FAILED),
             isEnhancedCall ? "width limit:[0, displayWidth], avoidHeight limit:[0, 70 percent of displayHeight]!"
@@ -740,7 +775,8 @@ napi_value JsPanel::UpdateRegion(napi_env env, napi_callback_info info)
 {
     auto ctxt = std::make_shared<PanelContentContext>(env, info);
     auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
-        PARAM_CHECK_RETURN(env, ctxt->inputMethodPanel != nullptr, "panel is null", TYPE_NONE, napi_generic_failure);
+        RESULT_CHECK_RETURN(env, ctxt->inputMethodPanel != nullptr, JsUtils::Convert(ErrorCode::ERROR_IME),
+            "The panel has been destroyed or is unavailable.", TYPE_NONE, napi_generic_failure);
         RESULT_CHECK_RETURN(env, ctxt->inputMethodPanel->GetPanelType() == PanelType::SOFT_KEYBOARD,
             JsUtils::Convert(ErrorCode::ERROR_INVALID_PANEL_TYPE), "only used for SOFT_KEYBOARD panel", TYPE_NONE,
             napi_generic_failure);
@@ -750,14 +786,16 @@ napi_value JsPanel::UpdateRegion(napi_env env, napi_callback_info info)
         PARAM_CHECK_RETURN(env, JsHotArea::Read(env, argv[0], ctxt->hotArea), "failed to convert inputRegion",
             TYPE_NONE, napi_generic_failure);
         ctxt->info = { std::chrono::system_clock::now(), JsEvent::UPDATE_REGION };
-        PanelDealQueue::Push(ctxt->info);
+        ctxt->LineUp();
         return napi_ok;
     };
     auto exec = [ctxt](AsyncCall::Context *ctx) {
         PanelDealQueue::Wait(ctxt->info);
         if (ctxt->inputMethodPanel == nullptr) {
             IMSA_HILOGE("inputMethodPanel_ is nullptr!");
-            PanelDealQueue::Pop();
+            ctxt->SetErrorCode(ErrorCode::ERROR_IME);
+            ctxt->SetErrorMessage("The panel has been destroyed or is unavailable.");
+            ctxt->Cleanup();
             return;
         }
         ctxt->inputMethodPanel->hasSetSize_.store(true);
@@ -771,7 +809,7 @@ napi_value JsPanel::UpdateRegion(napi_env env, napi_callback_info info)
             ctxt->SetErrorMessage("only used for fixed or floating panel");
         }
         ctxt->SetErrorCode(code);
-        PanelDealQueue::Pop();
+        ctxt->Cleanup();
     };
     ctxt->SetAction(std::move(input));
     // 1 means JsAPI:updateRegion has 1 params at most
@@ -907,10 +945,10 @@ napi_value JsPanel::SetImmersiveMode(napi_env env, napi_callback_info info)
         immersiveMode == static_cast<int32_t>(ImmersiveMode::DARK_IMMERSIVE)),
         "immersiveMode type must be ImmersiveMode and can not be IMMERSIVE", TYPE_NONE, retVal);
     JsEventInfo eventInfo = { std::chrono::system_clock::now(), JsEvent::SET_IMMERSIVE_MODE };
-    PanelDealQueue::Push(eventInfo);
-    PanelDealQueue::Wait(eventInfo);
+    PanelDealQueue::TaskGuard task(eventInfo);
+    task.Wait();
     auto ret = panel->SetImmersiveMode(ImmersiveMode(immersiveMode));
-    PanelDealQueue::Pop();
+    task.Finish();
     RESULT_CHECK_RETURN(env, ret == ErrorCode::NO_ERROR, JsUtils::Convert(ret), "", TYPE_NONE, retVal);
     return retVal;
 }
@@ -933,10 +971,10 @@ napi_value JsPanel::SetImmersiveEffect(napi_env env, napi_callback_info info)
     auto panel = UnwrapPanel(env, thisVar);
     RESULT_CHECK_RETURN(env, panel != nullptr, JsUtils::Convert(ErrorCode::ERROR_IME), "", TYPE_NONE, retVal);
     JsEventInfo eventInfo = { std::chrono::system_clock::now(), JsEvent::SET_IMMERSIVE_EFFECT };
-    PanelDealQueue::Push(eventInfo);
-    PanelDealQueue::Wait(eventInfo);
+    PanelDealQueue::TaskGuard task(eventInfo);
+    task.Wait();
     auto ret = panel->SetImmersiveEffect(immersiveEffect);
-    PanelDealQueue::Pop();
+    task.Finish();
     RESULT_CHECK_RETURN(env, ret == ErrorCode::NO_ERROR, JsUtils::Convert(ret), "", TYPE_NONE, retVal);
     return retVal;
 }
@@ -949,10 +987,10 @@ napi_value JsPanel::GetImmersiveMode(napi_env env, napi_callback_info info)
     auto panel = UnwrapPanel(env, thisVar);
     RESULT_CHECK_RETURN(env, panel != nullptr, JsUtils::Convert(ErrorCode::ERROR_IME), "", TYPE_NONE, retVal);
     JsEventInfo eventInfo = { std::chrono::system_clock::now(), JsEvent::GET_IMMERSIVE_MODE };
-    PanelDealQueue::Push(eventInfo);
-    PanelDealQueue::Wait(eventInfo);
+    PanelDealQueue::TaskGuard task(eventInfo);
+    task.Wait();
     auto immersiveMode = panel->GetImmersiveMode();
-    PanelDealQueue::Pop();
+    task.Finish();
     napi_value jsImmersiveMode = nullptr;
     IMF_CALL(napi_create_int32(env, static_cast<int32_t>(immersiveMode), &jsImmersiveMode));
     return jsImmersiveMode;
@@ -962,7 +1000,8 @@ napi_value JsPanel::SetKeepScreenOn(napi_env env, napi_callback_info info)
 {
     auto ctxt = std::make_shared<PanelContentContext>(env, info);
     auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
-        PARAM_CHECK_RETURN(env, ctxt->inputMethodPanel != nullptr, "panel is null", TYPE_NONE, napi_generic_failure);
+        RESULT_CHECK_RETURN(env, ctxt->inputMethodPanel != nullptr, JsUtils::Convert(ErrorCode::ERROR_IME),
+            "The panel has been destroyed or is unavailable.", TYPE_NONE, napi_generic_failure);
         PARAM_CHECK_RETURN(env, argc > 0, "at least one parameters is required", TYPE_NONE, napi_generic_failure);
         PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, argv[0], ctxt->isKeepScreenOn),
             "isKeepScreenOn type must be boolean!", TYPE_NONE, napi_generic_failure);
@@ -971,6 +1010,8 @@ napi_value JsPanel::SetKeepScreenOn(napi_env env, napi_callback_info info)
     auto exec = [ctxt](AsyncCall::Context *ctx) {
         if (ctxt->inputMethodPanel == nullptr) {
             IMSA_HILOGE("inputMethodPanel_ is nullptr!");
+            ctxt->SetErrorCode(ErrorCode::ERROR_IME);
+            ctxt->SetErrorMessage("The panel has been destroyed or is unavailable.");
             return;
         }
         auto ret = ctxt->inputMethodPanel->SetKeepScreenOn(ctxt->isKeepScreenOn);
@@ -998,8 +1039,8 @@ napi_value JsPanel::SetShadow(napi_env env, napi_callback_info info)
     auto panel = UnwrapPanel(env, thisVar);
     RESULT_CHECK_RETURN(env, panel != nullptr, JsUtils::Convert(ErrorCode::ERROR_IME), "", TYPE_NONE, retVal);
     JsEventInfo eventInfo = { std::chrono::system_clock::now(), JsEvent::SET_SHADOW };
-    PanelDealQueue::Push(eventInfo);
-    PanelDealQueue::Wait(eventInfo);
+    PanelDealQueue::TaskGuard task(eventInfo);
+    task.Wait();
     Shadow shadow;
     PARAM_CHECK_RETURN(env, argc == 4, "four parameters is required!", TYPE_NONE, JsUtil::Const::Null(env));
     PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, argv[0], shadow.radius), "radius covert failed!", TYPE_NONE,
@@ -1011,7 +1052,7 @@ napi_value JsPanel::SetShadow(napi_env env, napi_callback_info info)
     PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, argv[3], shadow.offsetY), "offsetY covert failed!", TYPE_NONE,
         JsUtil::Const::Null(env));
     auto ret = panel->SetShadow(shadow);
-    PanelDealQueue::Pop();
+    task.Finish();
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("failed to setShadow!");
         RESULT_CHECK_RETURN(env, ret == ErrorCode::NO_ERROR, JsUtils::Convert(ret), "", TYPE_NONE, retVal);
@@ -1036,25 +1077,28 @@ napi_value JsPanel::GetSystemPanelCurrentInsets(napi_env env, napi_callback_info
 {
     auto ctxt = std::make_shared<PanelContentContext>(env, info);
     auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
-        PARAM_CHECK_RETURN(env, ctxt->inputMethodPanel != nullptr, "panel is null", TYPE_NONE, napi_generic_failure);
+        RESULT_CHECK_RETURN(env, ctxt->inputMethodPanel != nullptr, JsUtils::Convert(ErrorCode::ERROR_IME),
+            "The panel has been destroyed or is unavailable.", TYPE_NONE, napi_generic_failure);
         PARAM_CHECK_RETURN(env, argc > 0, "at least one parameters is required", TYPE_NONE, napi_generic_failure);
         uint32_t displayId = 0;
         PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[0], displayId) == napi_ok, "failed to get displayId",
             TYPE_NONE, napi_generic_failure);
         ctxt->displayId = static_cast<uint64_t>(displayId);
         ctxt->info = { std::chrono::system_clock::now(), JsEvent::GET_SYSTEM_PANEL_CURRENT_INSETS };
-        PanelDealQueue::Push(ctxt->info);
+        ctxt->LineUp();
         return napi_ok;
     };
     auto exec = [ctxt](AsyncCall::Context *ctx) {
         PanelDealQueue::Wait(ctxt->info);
         if (ctxt->inputMethodPanel == nullptr) {
             IMSA_HILOGE("inputMethodPanel_ is nullptr!");
-            PanelDealQueue::Pop();
+            ctxt->SetErrorCode(ErrorCode::ERROR_IME);
+            ctxt->SetErrorMessage("The panel has been destroyed or is unavailable.");
+            ctxt->Cleanup();
             return napi_generic_failure;
         }
         auto ret = ctxt->inputMethodPanel->GetSystemPanelCurrentInsets(ctxt->displayId, ctxt->systemPanelInsets);
-        PanelDealQueue::Pop();
+        ctxt->Cleanup();
         if (ret == ErrorCode::NO_ERROR) {
             ctxt->SetState(napi_ok);
             return napi_ok;
@@ -1103,23 +1147,26 @@ napi_value JsPanel::SetSystemPanelButtonColor(napi_env env, napi_callback_info i
     auto ctxt = std::make_shared<PanelContentContext>(env, info);
     auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
         PARAM_CHECK_RETURN(env, argc >= 2, "at least two parameters is required", TYPE_NONE, napi_generic_failure);
-        PARAM_CHECK_RETURN(env, ctxt->inputMethodPanel != nullptr, "panel is null", TYPE_NONE, napi_generic_failure);
+        RESULT_CHECK_RETURN(env, ctxt->inputMethodPanel != nullptr, JsUtils::Convert(ErrorCode::ERROR_IME),
+            "The panel has been destroyed or is unavailable.", TYPE_NONE, napi_generic_failure);
         if (CheckButtonColor(env, ctxt, argv) != napi_ok) {
             return napi_generic_failure;
         }
         ctxt->info = { std::chrono::system_clock::now(), JsEvent::SET_SYSTEM_PANEL_BUTTON_COLOR };
-        PanelDealQueue::Push(ctxt->info);
+        ctxt->LineUp();
         return napi_ok;
     };
     auto exec = [ctxt](AsyncCall::Context *ctx) {
         PanelDealQueue::Wait(ctxt->info);
         if (ctxt->inputMethodPanel == nullptr) {
             IMSA_HILOGE("inputMethodPanel_ is nullptr!");
-            PanelDealQueue::Pop();
+            ctxt->SetErrorCode(ErrorCode::ERROR_IME);
+            ctxt->SetErrorMessage("The panel has been destroyed or is unavailable.");
+            ctxt->Cleanup();
             return napi_generic_failure;
         }
         auto ret = ctxt->inputMethodPanel->SetSystemPanelButtonColor(ctxt->fillColor, ctxt->backgroundColor);
-        PanelDealQueue::Pop();
+        ctxt->Cleanup();
         if (ret == ErrorCode::NO_ERROR) {
             ctxt->SetState(napi_ok);
             return napi_ok;

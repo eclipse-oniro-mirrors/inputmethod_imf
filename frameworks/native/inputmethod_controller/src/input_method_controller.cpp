@@ -30,6 +30,7 @@
 #include "input_data_channel_service_impl.h"
 #include "input_method_agent_proxy.h"
 #include "input_method_property.h"
+#include "input_method_queries.h"
 #include "input_method_status.h"
 #include "input_method_system_ability_proxy.h"
 #include "input_method_tools.h"
@@ -420,24 +421,24 @@ int32_t InputMethodController::Attach(
     return Attach(listener, isShowKeyboard, textConfig, type);
 }
 
-InputMethodController::QueueGuard::QueueGuard(const std::string &name) : needPop_(true)
+InputMethodController::QueueGuard::QueueGuard(const std::string &name)
+    : info_ { std::chrono::steady_clock::now(), name }
 {
-    CtrlEventInfo info = { std::chrono::steady_clock::now(), name };
-    if (!ctrlEventQueue_.Push(info)) {
-        needPop_ = false;
+    if (!ctrlEventQueue_.Push(info_)) {
         IMSA_HILOGE("push %{public}s failed, queue size:%{public}zu", name.c_str(), ctrlEventQueue_.Size());
         return;
     }
-    if (!ctrlEventQueue_.Wait(info)) {
+    ready_ = ctrlEventQueue_.Wait(info_);
+    if (!ready_) {
         IMSA_HILOGE("%{public}s wait timeout, queue size:%{public}zu", name.c_str(), ctrlEventQueue_.Size());
+        ctrlEventQueue_.Remove(info_);
     }
 }
 InputMethodController::QueueGuard::~QueueGuard()
 {
-    if (!needPop_) {
-        return;
+    if (ready_) {
+        ctrlEventQueue_.Pop(info_);
     }
-    ctrlEventQueue_.Pop();
 }
 
 int32_t InputMethodController::GetClientType(ClientType &type)
@@ -529,6 +530,9 @@ int32_t InputMethodController::AttachExec(sptr<OnTextChangedListener> listener, 
     const TextConfig &textConfig, ClientType type)
 {
     QueueGuard guard(__func__);
+    if (!guard.IsReady()) {
+        return ErrorCode::ERROR_CLIENT_ADD_FAILED;
+    }
     IMSA_HILOGI("isShowKeyboard %{public}d.", attachOptions.isShowKeyboard);
     InputMethodSyncTrace tracer("InputMethodController Attach with textConfig trace.");
     if (IsValidTextConfig(textConfig) != ErrorCode::NO_ERROR) {
@@ -693,8 +697,9 @@ int32_t InputMethodController::Close()
 
 int32_t InputMethodController::Close(int32_t clientSessionId)
 {
-    {
-        QueueGuard guard(__func__);
+    QueueGuard guard(__func__);
+    if (!guard.IsReady()) {
+        return ErrorCode::ERROR_CLIENT_ADD_FAILED;
     }
     if (IsBound()) {
         IMSA_HILOGI("start, clientSessionId: %{public}d.", clientSessionId);
@@ -826,16 +831,35 @@ int32_t InputMethodController::GetInputMethodConfig(OHOS::AppExecFwk::ElementNam
 std::shared_ptr<Property> InputMethodController::GetCurrentInputMethod(int32_t userId)
 {
     InputMethodSyncTrace tracer("IMC_GetCurrentInputMethod");
-    IMSA_HILOGD("InputMethodController::GetCurrentInputMethod start.");
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
-        IMSA_HILOGE("proxy is nullptr!");
+        IMSA_HILOGE("IMSA proxy is null; cannot query the current input method.");
         return nullptr;
     }
-    Property propertyData;
-    proxy->GetCurrentInputMethod(userId, propertyData);
-    auto property = std::make_shared<Property>(propertyData);
-    return property;
+    Property property;
+    auto ret = proxy->GetCurrentInputMethod(userId, property);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("Current input method query failed: %{public}d; returning the legacy result object. "
+                    "Use InputMethodQueries when the error status is required.",
+            ret);
+    }
+    return std::make_shared<Property>(property);
+}
+
+int32_t InputMethodQueries::GetCurrent(InputMethodController &controller, Property &property, int32_t userId)
+{
+    InputMethodSyncTrace tracer("IMC_GetCurrentInputMethod");
+    IMSA_HILOGD("InputMethodController::GetCurrentInputMethod start.");
+    auto proxy = controller.GetSystemAbilityProxy();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("proxy is nullptr!");
+        return ErrorCode::ERROR_SERVICE_START_FAILED;
+    }
+    auto ret = proxy->GetCurrentInputMethod(userId, property);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetCurrentInputMethod failed: %{public}d", ret);
+    }
+    return ret;
 }
 
 int32_t InputMethodController::GetSoftKeyboardInfo(int32_t userId, BoundImeInfo &imeInfo)
@@ -851,16 +875,35 @@ int32_t InputMethodController::GetSoftKeyboardInfo(int32_t userId, BoundImeInfo 
 std::shared_ptr<SubProperty> InputMethodController::GetCurrentInputMethodSubtype(int32_t userId)
 {
     InputMethodSyncTrace tracer("IMC_GetCurrentInputMethodSubtype");
-    IMSA_HILOGD("InputMethodController::GetCurrentInputMethodSubtype start.");
     auto proxy = GetSystemAbilityProxy();
     if (proxy == nullptr) {
-        IMSA_HILOGE("proxy is nullptr!");
+        IMSA_HILOGE("IMSA proxy is null; cannot query the current input method subtype.");
         return nullptr;
     }
-    SubProperty subPropertyData;
-    proxy->GetCurrentInputMethodSubtype(subPropertyData, userId);
-    auto subProperty = std::make_shared<SubProperty>(subPropertyData);
-    return subProperty;
+    SubProperty property;
+    auto ret = proxy->GetCurrentInputMethodSubtype(property, userId);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("Current input method subtype query failed: %{public}d; returning the legacy result object. "
+                    "Use InputMethodQueries when the error status is required.",
+            ret);
+    }
+    return std::make_shared<SubProperty>(property);
+}
+
+int32_t InputMethodQueries::GetCurrentSubtype(InputMethodController &controller, SubProperty &property, int32_t userId)
+{
+    InputMethodSyncTrace tracer("IMC_GetCurrentInputMethodSubtype");
+    IMSA_HILOGD("InputMethodController::GetCurrentInputMethodSubtype start.");
+    auto proxy = controller.GetSystemAbilityProxy();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("proxy is nullptr!");
+        return ErrorCode::ERROR_SERVICE_START_FAILED;
+    }
+    auto ret = proxy->GetCurrentInputMethodSubtype(property, userId);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetCurrentInputMethodSubtype failed: %{public}d", ret);
+    }
+    return ret;
 }
 
 bool InputMethodController::IsDefaultImeSet(int32_t userId)
@@ -1310,17 +1353,24 @@ int32_t InputMethodController::DispatchKeyEvent(std::shared_ptr<MMI::KeyEvent> k
         }
     }
     KeyEventInfo keyEventInfo = { std::chrono::system_clock::now(), keyEvent };
-    keyEventQueue_.Push(keyEventInfo);
+    if (!keyEventQueue_.Push(keyEventInfo)) {
+        IMSA_HILOGE("Key event queue is full.");
+        return ErrorCode::ERROR_CLIENT_ADD_FAILED;
+    }
     InputMethodSyncTrace tracer("DispatchKeyEvent trace");
-    keyEventQueue_.Wait(keyEventInfo);
+    if (!keyEventQueue_.Wait(keyEventInfo)) {
+        keyEventQueue_.Remove(keyEventInfo);
+        IMSA_HILOGE("Key event queue wait timed out.");
+        return ErrorCode::ERROR_CLIENT_ADD_FAILED;
+    }
     if (HandlePttSpaceKeyEventBlock(keyEvent, callback)) {
         // Report the immediate consumed result synchronously, but release the queue first so callback re-entry is safe.
-        keyEventQueue_.Pop();
+        keyEventQueue_.Pop(keyEventInfo);
         callback(keyEvent, true);
         return ErrorCode::NO_ERROR;
     }
     int32_t ret = DispatchKeyEventInner(keyEvent, callback);
-    keyEventQueue_.Pop();
+    keyEventQueue_.Pop(keyEventInfo);
     int64_t endTime = duration_cast<milliseconds>(system_clock::now().time_since_epoch()).count();
     if (endTime - startTime > DISPATCH_KEYBOARD_TIME_OUT) {
         IMSA_HILOGW("DispatchKeyEvent timeout: [%{public}" PRId64 ", %{public}" PRId64 "].", startTime, endTime);

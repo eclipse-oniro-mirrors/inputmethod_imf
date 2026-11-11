@@ -635,6 +635,7 @@ HWTEST_F(InputMethodPanelAdjustTest, testAdjustEnhancedPanelRect_016, TestSize.L
     PanelInfo panelInfo;
     panelInfo.panelType = SOFT_KEYBOARD;
     InputMethodPanelAdjustTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     DisplaySize display;
     ASSERT_EQ(InputMethodPanelAdjustTest::GetDisplaySize(display), ErrorCode::NO_ERROR);
     PanelFlag panelFlag = PanelFlag::FLG_FIXED;
@@ -671,6 +672,7 @@ HWTEST_F(InputMethodPanelAdjustTest, testAdjustEnhancedPanelRect_017, TestSize.L
     PanelInfo panelInfo;
     panelInfo.panelType = SOFT_KEYBOARD;
     InputMethodPanelAdjustTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     DisplaySize display;
     ASSERT_EQ(InputMethodPanelAdjustTest::GetDisplaySize(display), ErrorCode::NO_ERROR);
     PanelFlag panelFlag = PanelFlag::FLG_FIXED;
@@ -712,6 +714,7 @@ HWTEST_F(InputMethodPanelAdjustTest, testAdjustEnhancedPanelRect_018, TestSize.L
     PanelInfo panelInfo;
     panelInfo.panelType = SOFT_KEYBOARD;
     InputMethodPanelAdjustTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     DisplaySize display;
     ASSERT_EQ(InputMethodPanelAdjustTest::GetDisplaySize(display), ErrorCode::NO_ERROR);
     PanelFlag panelFlag = PanelFlag::FLG_FLOATING;
@@ -1018,6 +1021,7 @@ HWTEST_F(InputMethodPanelAdjustTest, testSetImmersiveEffect_005, TestSize.Level0
     PanelInfo panelInfo;
     panelInfo.panelType = SOFT_KEYBOARD;
     InputMethodPanelAdjustTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     inputMethodPanel->immersiveMode_ = ImmersiveMode::IMMERSIVE;
 
     DisplaySize display;
@@ -1061,6 +1065,7 @@ HWTEST_F(InputMethodPanelAdjustTest, testSetImmersiveEffect_006, TestSize.Level0
     PanelInfo panelInfo;
     panelInfo.panelType = SOFT_KEYBOARD;
     InputMethodPanelAdjustTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     inputMethodPanel->immersiveMode_ = ImmersiveMode::IMMERSIVE;
 
     DisplaySize display;
@@ -1110,6 +1115,7 @@ HWTEST_F(InputMethodPanelAdjustTest, testSetImmersiveEffect_007, TestSize.Level0
     PanelInfo panelInfo;
     panelInfo.panelType = SOFT_KEYBOARD;
     InputMethodPanelAdjustTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     inputMethodPanel->immersiveMode_ = ImmersiveMode::IMMERSIVE;
 
     DisplaySize display;
@@ -1158,6 +1164,7 @@ HWTEST_F(InputMethodPanelAdjustTest, testSetImmersiveEffect_008, TestSize.Level0
     PanelInfo panelInfo;
     panelInfo.panelType = SOFT_KEYBOARD;
     InputMethodPanelAdjustTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     inputMethodPanel->immersiveMode_ = ImmersiveMode::IMMERSIVE;
 
     DisplaySize display;
@@ -1168,7 +1175,6 @@ HWTEST_F(InputMethodPanelAdjustTest, testSetImmersiveEffect_008, TestSize.Level0
     LayoutParams layoutParams = { .landscapeRect = landscapeRect, .portraitRect = portraitRect };
     auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    AccessScope scope(currentImeTokenId_, currentImeUid_);
     ret = inputMethodPanel->ShowPanel(Trigger::IME_APP);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 
@@ -1195,6 +1201,7 @@ HWTEST_F(InputMethodPanelAdjustTest, testSetImmersiveEffect_009, TestSize.Level0
     PanelInfo panelInfo;
     panelInfo.panelType = SOFT_KEYBOARD;
     InputMethodPanelAdjustTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     inputMethodPanel->immersiveMode_ = ImmersiveMode::IMMERSIVE;
 
     DisplaySize display;
@@ -1212,7 +1219,6 @@ HWTEST_F(InputMethodPanelAdjustTest, testSetImmersiveEffect_009, TestSize.Level0
     HotAreas hotAreas;
     auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, params, hotAreas, false);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    AccessScope scope(currentImeTokenId_, currentImeUid_);
     ret = inputMethodPanel->ShowPanel(Trigger::IME_APP);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 
@@ -1389,6 +1395,7 @@ HWTEST_F(InputMethodPanelAdjustTest, testAdjustLayoutWithoutScb_001, TestSize.Le
     PanelInfo panelInfo;
     panelInfo.panelType = SOFT_KEYBOARD;
     InputMethodPanelAdjustTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     inputMethodPanel->isScbEnable_ = false;
     DisplaySize display;
     ASSERT_EQ(InputMethodPanelAdjustTest::GetDisplaySize(display), ErrorCode::NO_ERROR);
@@ -1456,6 +1463,7 @@ HWTEST_F(InputMethodPanelAdjustTest, testAdjustLayoutWithoutScb_004, TestSize.Le
     PanelInfo panelInfo;
     panelInfo.panelType = SOFT_KEYBOARD;
     InputMethodPanelAdjustTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     inputMethodPanel->isScbEnable_ = false;
     bool expectedPortrait = inputMethodPanel->IsDisplayPortrait();
     DisplaySize display;
@@ -1484,6 +1492,7 @@ HWTEST_F(InputMethodPanelAdjustTest, testShowPanelWithAdjustWithoutScb_001, Test
     panelInfo.panelType = SOFT_KEYBOARD;
     panelInfo.panelFlag = FLG_FIXED;
     InputMethodPanelAdjustTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     inputMethodPanel->isScbEnable_ = false;
     DisplaySize display;
     ASSERT_EQ(InputMethodPanelAdjustTest::GetDisplaySize(display), ErrorCode::NO_ERROR);
@@ -1498,7 +1507,6 @@ HWTEST_F(InputMethodPanelAdjustTest, testShowPanelWithAdjustWithoutScb_001, Test
     // Simulate orientation change: set isPortrait_ to opposite of current state
     bool currentPortrait = inputMethodPanel->IsDisplayPortrait();
     inputMethodPanel->isPortrait_ = !currentPortrait;
-    AccessScope scope(currentImeTokenId_, currentImeUid_);
     // ShowPanel should detect orientation mismatch and re-adjust
     ret = inputMethodPanel->ShowPanel(Trigger::IME_APP);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
@@ -1569,6 +1577,7 @@ HWTEST_F(InputMethodPanelAdjustTest, testAdjustLayoutWithoutScb_005, TestSize.Le
     PanelInfo panelInfo;
     panelInfo.panelType = SOFT_KEYBOARD;
     InputMethodPanelAdjustTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     inputMethodPanel->isScbEnable_ = false;
     DisplaySize display;
     ASSERT_EQ(InputMethodPanelAdjustTest::GetDisplaySize(display), ErrorCode::NO_ERROR);
@@ -1604,6 +1613,7 @@ HWTEST_F(InputMethodPanelAdjustTest, testAdjustPanelRectWithoutScb_Floating, Tes
     PanelInfo panelInfo;
     panelInfo.panelType = SOFT_KEYBOARD;
     InputMethodPanelAdjustTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     inputMethodPanel->isScbEnable_ = false;
     DisplaySize display;
     ASSERT_EQ(InputMethodPanelAdjustTest::GetDisplaySize(display), ErrorCode::NO_ERROR);

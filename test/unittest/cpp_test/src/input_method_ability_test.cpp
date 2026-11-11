@@ -460,7 +460,7 @@ HWTEST_F(InputMethodAbilityTest, testExitCurrentInputType, TestSize.Level0)
     IdentityCheckerMock::SetBundleName("");
     auto ret = inputMethodAbility_.ExitCurrentInputType();
     EXPECT_EQ(ret, ErrorCode::ERROR_NOT_DEFAULT_IME);
-    IdentityCheckerMock::SetBundleName("TddUtil::currentBundleNameMock_");
+    IdentityCheckerMock::SetBundleName(TddUtil::currentBundleNameMock_);
 
     InputMethodAbilityTest::GetIMCDetachIMA();
     IdentityCheckerMock::SetBundleNameValid(true);
@@ -723,7 +723,13 @@ HWTEST_F(InputMethodAbilityTest, testStartInputBeforeCreatePanel, TestSize.Level
         EXPECT_TRUE(InputMethodAbilityTest::showKeyboard_);
     }
     imc_->Close();
-    inputMethodAbility_.DestroyPanel(softKeyboardPanel);
+    {
+        // WMS requires the creating token when destroying the panel window.
+        AccessScope scope(currentImeTokenId_, currentImeUid_);
+        ASSERT_EQ(ErrorCode::NO_ERROR, inputMethodAbility_.DestroyPanel(softKeyboardPanel));
+        EXPECT_TRUE(softKeyboardPanel->IsDestroyed());
+        EXPECT_FALSE(inputMethodAbility_.panels_.Find(SOFT_KEYBOARD).first);
+    }
 }
 
 /**
@@ -3659,6 +3665,7 @@ HWTEST_F(InputMethodAbilityTest, testOnClientInactive_002, TestSize.Level0)
 HWTEST_F(InputMethodAbilityTest, testOnClientInactive_003, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbility testOnClientInactive_003 START");
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     auto &ima = InputMethodAbilityTest::inputMethodAbility_;
     auto savedListener = ima.imeListener_;
     ima.panels_.Clear();
@@ -3667,9 +3674,13 @@ HWTEST_F(InputMethodAbilityTest, testOnClientInactive_003, TestSize.Level0)
     PanelInfo info;
     info.panelType = SOFT_KEYBOARD;
     info.panelFlag = FLG_FIXED;
-    ASSERT_EQ(ima.CreatePanel(nullptr, info, panel), ErrorCode::NO_ERROR);
-    ima.OnClientInactive(nullptr);
-    EXPECT_TRUE(ima.GetBindClientInfo().name.empty());
+    auto ret = ima.CreatePanel(nullptr, info, panel);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    if (ret == ErrorCode::NO_ERROR) {
+        ima.OnClientInactive(nullptr);
+        EXPECT_TRUE(ima.GetBindClientInfo().name.empty());
+        EXPECT_EQ(ima.DestroyPanel(panel), ErrorCode::NO_ERROR);
+    }
     ima.imeListener_ = savedListener;
     ima.panels_.Clear();
 }
@@ -3682,6 +3693,7 @@ HWTEST_F(InputMethodAbilityTest, testOnClientInactive_003, TestSize.Level0)
 HWTEST_F(InputMethodAbilityTest, testOnClientInactive_004, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbility testOnClientInactive_004 START");
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     auto &ima = InputMethodAbilityTest::inputMethodAbility_;
     auto savedListener = ima.imeListener_;
     ima.panels_.Clear();
@@ -3690,9 +3702,13 @@ HWTEST_F(InputMethodAbilityTest, testOnClientInactive_004, TestSize.Level0)
     PanelInfo info;
     info.panelType = SOFT_KEYBOARD;
     info.panelFlag = FLG_FLOATING;
-    ASSERT_EQ(ima.CreatePanel(nullptr, info, panel), ErrorCode::NO_ERROR);
-    ima.OnClientInactive(nullptr);
-    EXPECT_TRUE(ima.GetBindClientInfo().name.empty());
+    auto ret = ima.CreatePanel(nullptr, info, panel);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    if (ret == ErrorCode::NO_ERROR) {
+        ima.OnClientInactive(nullptr);
+        EXPECT_TRUE(ima.GetBindClientInfo().name.empty());
+        EXPECT_EQ(ima.DestroyPanel(panel), ErrorCode::NO_ERROR);
+    }
     ima.imeListener_ = savedListener;
     ima.panels_.Clear();
 }
@@ -3705,6 +3721,7 @@ HWTEST_F(InputMethodAbilityTest, testOnClientInactive_004, TestSize.Level0)
 HWTEST_F(InputMethodAbilityTest, testOnClientInactive_005, TestSize.Level0)
 {
     IMSA_HILOGI("InputMethodAbility testOnClientInactive_005 START");
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     auto &ima = InputMethodAbilityTest::inputMethodAbility_;
     auto savedListener = ima.imeListener_;
     ima.panels_.Clear();
@@ -3712,9 +3729,13 @@ HWTEST_F(InputMethodAbilityTest, testOnClientInactive_005, TestSize.Level0)
     std::shared_ptr<InputMethodPanel> panel;
     PanelInfo info;
     info.panelType = STATUS_BAR;
-    ASSERT_EQ(ima.CreatePanel(nullptr, info, panel), ErrorCode::NO_ERROR);
-    ima.OnClientInactive(nullptr);
-    EXPECT_TRUE(ima.GetBindClientInfo().name.empty());
+    auto ret = ima.CreatePanel(nullptr, info, panel);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    if (ret == ErrorCode::NO_ERROR) {
+        ima.OnClientInactive(nullptr);
+        EXPECT_TRUE(ima.GetBindClientInfo().name.empty());
+        EXPECT_EQ(ima.DestroyPanel(panel), ErrorCode::NO_ERROR);
+    }
     ima.imeListener_ = savedListener;
     ima.panels_.Clear();
 }

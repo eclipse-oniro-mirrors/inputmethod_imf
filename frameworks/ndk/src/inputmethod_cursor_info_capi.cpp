@@ -14,19 +14,23 @@
  */
 #include "global.h"
 #include "native_inputmethod_types.h"
+#include "native_object_registry.h"
+
+using namespace OHOS::MiscServices;
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 InputMethod_CursorInfo *OH_CursorInfo_Create(double left, double top, double width, double height)
 {
-    return new (std::nothrow) InputMethod_CursorInfo({ left, top, width, height });
+    return NativeObjectRegistry<InputMethod_CursorInfo>::GetInstance().Register(
+        new (std::nothrow) InputMethod_CursorInfo({ left, top, width, height }));
 }
 void OH_CursorInfo_Destroy(InputMethod_CursorInfo *cursorInfo)
 {
     if (cursorInfo == nullptr) {
         return;
     }
-    delete cursorInfo;
+    NativeObjectRegistry<InputMethod_CursorInfo>::GetInstance().Destroy(cursorInfo);
 }
 
 InputMethod_ErrorCode OH_CursorInfo_SetRect(
@@ -35,6 +39,11 @@ InputMethod_ErrorCode OH_CursorInfo_SetRect(
     if (cursorInfo == nullptr) {
         IMSA_HILOGE("cursorInfo is nullptr");
         return IME_ERR_NULL_POINTER;
+    }
+    auto lease = NativeObjectRegistry<InputMethod_CursorInfo>::GetInstance().Get(cursorInfo);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_CursorInfo is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
     }
     cursorInfo->left = left;
     cursorInfo->top = top;
@@ -49,6 +58,11 @@ InputMethod_ErrorCode OH_CursorInfo_GetRect(
     if (cursorInfo == nullptr) {
         IMSA_HILOGE("cursorInfo is nullptr");
         return IME_ERR_NULL_POINTER;
+    }
+    auto lease = NativeObjectRegistry<InputMethod_CursorInfo>::GetInstance().Get(cursorInfo);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_CursorInfo is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
     }
     if (left == nullptr || top == nullptr || width == nullptr || height == nullptr) {
         IMSA_HILOGE("invalid parameter");

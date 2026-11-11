@@ -1675,32 +1675,34 @@ napi_value JsTextInputClientEngine::SendMessage(napi_env env, napi_callback_info
 {
     auto ctxt = std::make_shared<SendMessageContext>();
     auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
-        PARAM_CHECK_RETURN(env, argc > 0, "at least one parameter is required!", TYPE_NONE, napi_generic_failure);
-        PARAM_CHECK_RETURN(env, JsUtil::GetType(env, argv[0]) == napi_string, "msgId",
-            TYPE_STRING, napi_generic_failure);
-        CHECK_RETURN(JsUtils::GetValue(env, argv[0], ctxt->arrayBuffer.msgId) == napi_ok,
-            "msgId covert failed!", napi_generic_failure);
-        ctxt->arrayBuffer.jsArgc = argc;
-        // 1 means first param msgId.
-        if (argc > 1) {
-            bool isArryBuffer = false;
-            //  1 means second param msgParam index.
-            CHECK_RETURN(napi_is_arraybuffer(env, argv[1], &isArryBuffer) == napi_ok,
-                "napi_is_arraybuffer failed!", napi_generic_failure);
-            PARAM_CHECK_RETURN(env, isArryBuffer, "msgParam", TYPE_ARRAY_BUFFER, napi_generic_failure);
-            CHECK_RETURN(JsUtils::GetValue(env, argv[1], ctxt->arrayBuffer.msgParam) == napi_ok,
-                "msgParam covert failed!", napi_generic_failure);
+        auto status = ctxt->ReadMessage(env, argc, argv);
+        if (status != napi_ok) {
+            return status;
         }
-        PARAM_CHECK_RETURN(env, ArrayBuffer::IsSizeValid(ctxt->arrayBuffer),
-            "msgId limit 256B and msgParam limit 128KB.", TYPE_NONE, napi_generic_failure);
         ctxt->info = { std::chrono::system_clock::now(), ctxt->arrayBuffer };
-        messageHandlerQueue_.Push(ctxt->info);
+        ctxt->queued = messageHandlerQueue_.Push(ctxt->info);
+        if (!ctxt->queued) {
+            ctxt->SetErrorCode(ErrorCode::ERROR_MESSAGE_HANDLER);
+            ctxt->SetErrorMessage("The SendMessage queue is full; the operation was not executed.");
+            return napi_ok;
+        }
+        ctxt->SetCleanup([info = ctxt->info]() {
+            messageHandlerQueue_.Remove(info);
+        });
         return napi_ok;
     };
     auto exec = [ctxt](AsyncCall::Context *ctx) {
-        messageHandlerQueue_.Wait(ctxt->info);
+        if (!ctxt->queued) {
+            return;
+        }
+        if (!messageHandlerQueue_.Wait(ctxt->info)) {
+            ctxt->SetErrorCode(ErrorCode::ERROR_MESSAGE_HANDLER);
+            ctxt->SetErrorMessage("Timed out waiting for SendMessage; the operation was not executed.");
+            ctxt->Cleanup();
+            return;
+        }
         int32_t code = InputMethodAbility::GetInstance().SendMessage(ctxt->arrayBuffer);
-        messageHandlerQueue_.Pop();
+        ctxt->Cleanup();
         if (code == ErrorCode::NO_ERROR) {
             ctxt->status = napi_ok;
             ctxt->SetState(ctxt->status);

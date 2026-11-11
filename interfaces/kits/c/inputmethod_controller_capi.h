@@ -49,6 +49,10 @@ extern "C" {
 /**
  * @brief Attach application to the input method service.
  *
+ * Serialize Controller and InputMethodProxy operations. A concurrent or callback-reentrant C session
+ * operation is rejected with IME_ERR_IMCLIENT before it can affect the current session.
+ * This guard is not a general thread-safety guarantee for native, ArkTS, or service-side operations.
+ *
  * @param textEditorProxy Represents a pointer to an {@link InputMethod_TextEditorProxy} instance.
  *     The caller needs to manage the lifecycle of textEditorProxy.
  *     If the call succeeds, caller cannot release textEditorProxy until the next attach or detach call.
@@ -56,10 +60,13 @@ extern "C" {
  *     The options when attaching input method.
  * @param inputMethodProxy Represents a pointer to an {@link OH_InputMethod_InputMethodProxy} instance.
  *     Lifecycle is mantianed until the next attach or detach call.
+ * options must be a live AttachOptions handle.
+ * An unregistered or expired value handle returns IME_ERR_PARAMCHECK.
+ * Native session task admission failure or wait timeout returns IME_ERR_IMCLIENT without executing that task.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
  *     {@link IME_ERR_PARAMCHECK} - parameter check failed.
- *     {@link IME_ERR_IMCLIENT} - input method client error.
+ *     {@link IME_ERR_IMCLIENT} - input method client error, or a concurrent/reentrant C session operation.
  *     {@link IME_ERR_IMMS} - input method manager service error.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
@@ -79,10 +86,13 @@ InputMethod_ErrorCode OH_InputMethodController_Attach(InputMethod_TextEditorProx
  *     The options when attaching input method.
  * @param inputMethodProxy Represents a pointer to an {@link InputMethod_InputMethodProxy} instance.
  *     Lifecycle is mantianed until the next attach or detach call.
+ * options must be a live AttachOptions handle.
+ * An unregistered or expired value handle returns IME_ERR_PARAMCHECK.
+ * Native session task admission failure or wait timeout returns IME_ERR_IMCLIENT without executing that task.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
  *     {@link IME_ERR_PARAMCHECK} - parameter check failed.
- *     {@link IME_ERR_IMCLIENT} - input method client error.
+ *     {@link IME_ERR_IMCLIENT} - input method client error, or a concurrent/reentrant C session operation.
  *     {@link IME_ERR_IMMS} - input method manager service error.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
@@ -97,9 +107,12 @@ InputMethod_ErrorCode OH_InputMethodController_AttachWithUIContext(ArkUI_Context
  *
  * @param inputMethodProxy Represents a pointer to an {@link OH_InputMethod_InputMethodProxy} instance.
  *     The inputMethodProxy is obtained from {@link OH_InputMethodController_Attach}.
+ * Native session task admission failure or wait timeout returns IME_ERR_IMCLIENT without executing that task.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
- *     {@link IME_ERR_IMCLIENT} - input method client error.
+ *     {@link IME_ERR_PARAMCHECK} - inputMethodProxy does not match the current proxy.
+ *     {@link IME_ERR_DETACHED} - no input method client is attached.
+ *     {@link IME_ERR_IMCLIENT} - input method client error, or a concurrent/reentrant C session operation.
  *     {@link IME_ERR_IMMS} - input method manager service error.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
