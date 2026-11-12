@@ -441,7 +441,7 @@ void InputMethodPanelTest::TestShowPanel(const std::shared_ptr<InputMethodPanel>
     ASSERT_NE(panel, nullptr);
     // set tokenId and uid as current ime
     AccessScope scope(currentImeTokenId_, currentImeUid_);
-    auto ret = panel->ShowPanel(Trigger::IME_APP);
+    auto ret = panel->ShowPanel();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 }
 
@@ -742,27 +742,27 @@ HWTEST_F(InputMethodPanelTest, testShowPanel, TestSize.Level0)
     panelInfo.panelType = SOFT_KEYBOARD;
     panelInfo.panelFlag = FLG_FIXED;
     // 0、not create panel, show panel failed.
-    auto ret = inputMethodPanel->ShowPanel(Trigger::IME_APP);
+    auto ret = inputMethodPanel->ShowPanel();
     EXPECT_EQ(ret, ErrorCode::ERROR_IMA_NULLPTR);
 
     // 1 create panel, show success
     AccessScope scope(currentImeTokenId_, currentImeUid_);
     ret = inputMethodPanel->CreatePanel(nullptr, panelInfo);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    ret = inputMethodPanel->ShowPanel(Trigger::IME_APP);
+    ret = inputMethodPanel->ShowPanel();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 
     auto statusListener = std::make_shared<InputMethodPanelTest::PanelStatusListenerImpl>();
     EXPECT_TRUE(statusListener != nullptr);
     std::string type = "show";
     inputMethodPanel->SetPanelStatusListener(statusListener, type);
-    ret = inputMethodPanel->ShowPanel(Trigger::IME_APP);
+    ret = inputMethodPanel->ShowPanel();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 
     // 2、show floating type panel.
     ret = inputMethodPanel->ChangePanelFlag(PanelFlag::FLG_FLOATING);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    ret = inputMethodPanel->ShowPanel(Trigger::IME_APP);
+    ret = inputMethodPanel->ShowPanel();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 
     ret = inputMethodPanel->DestroyPanel();
@@ -772,7 +772,7 @@ HWTEST_F(InputMethodPanelTest, testShowPanel, TestSize.Level0)
     panelInfo.panelType = STATUS_BAR;
     ret = inputMethodPanel->CreatePanel(nullptr, panelInfo);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
-    ret = inputMethodPanel->ShowPanel(Trigger::IME_APP);
+    ret = inputMethodPanel->ShowPanel();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     ret = inputMethodPanel->HidePanel();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
@@ -2462,7 +2462,7 @@ HWTEST_F(InputMethodPanelTest, testSetImmersiveMode, TestSize.Level0)
     AccessScope scope(currentImeTokenId_, currentImeUid_);
     auto ret = inputMethodPanel->CreatePanel(nullptr, panelInfo);
     EXPECT_EQ(ErrorCode::NO_ERROR, ret);
-    ret = inputMethodPanel->ShowPanel(Trigger::IME_APP);
+    ret = inputMethodPanel->ShowPanel();
     EXPECT_EQ(ErrorCode::NO_ERROR, ret);
 
     ret = inputMethodPanel->SetImmersiveMode(ImmersiveMode::NONE_IMMERSIVE);
@@ -2496,7 +2496,7 @@ HWTEST_F(InputMethodPanelTest, testGetImmersiveMode, TestSize.Level0)
     AccessScope scope(currentImeTokenId_, currentImeUid_);
     auto ret = inputMethodPanel->CreatePanel(nullptr, panelInfo);
     EXPECT_EQ(ErrorCode::NO_ERROR, ret);
-    ret = inputMethodPanel->ShowPanel(Trigger::IME_APP);
+    ret = inputMethodPanel->ShowPanel();
     EXPECT_EQ(ErrorCode::NO_ERROR, ret);
 
     ret = inputMethodPanel->SetImmersiveMode(ImmersiveMode::NONE_IMMERSIVE);
@@ -3892,7 +3892,7 @@ HWTEST_F(InputMethodPanelTest, testShowKeyboardToWms_ModeChanged, TestSize.Level
     ret = inputMethodPanel->SetImmersiveMode(ImmersiveMode::DARK_IMMERSIVE);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 
-    ret = inputMethodPanel->ShowPanel(Trigger::IME_APP);
+    ret = inputMethodPanel->ShowPanel();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 
     ret = inputMethodPanel->HidePanel();

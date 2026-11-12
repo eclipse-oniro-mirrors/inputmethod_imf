@@ -74,7 +74,7 @@ public:
     int32_t ChangePanelFlag(PanelFlag panelFlag);
     PanelType GetPanelType();
     PanelFlag GetPanelFlag();
-    int32_t ShowPanel(Trigger trigger, uint32_t windowId = 0);
+    int32_t ShowPanel(uint32_t windowId = 0);
     int32_t HidePanel();
     int32_t SizeChange(const WindowSize &size);
     WindowSize GetKeyboardSize();
@@ -261,8 +261,6 @@ private:
     void NotifySoftKeyBoardInfoChanged(PanelFlag panelFlag, InputWindowStatus status);
     int32_t SetHotAreasOnAdjust(HotAreas hotAreas);
     int32_t UpdatePanelFLagToWindow(PanelFlag panelFlag);
-    bool NeedAdjustPanelRect();
-    void AddAdjustPanelRect();
 
     sptr<OHOS::Rosen::Window> window_ = nullptr;
     sptr<OHOS::Rosen::WindowOption> winOption_ = nullptr;
@@ -330,7 +328,6 @@ private:
     std::mutex parseParamsMutex_;
     std::mutex panelStatusChangeMutex_;
 
-    std::atomic<bool> hasSetSize_ { false };
     std::atomic<bool> isExternalAdjusting_ { false };
 
     bool isPortrait_ { true };

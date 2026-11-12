@@ -218,7 +218,6 @@ napi_value JsPanel::Resize(napi_env env, napi_callback_info info)
             ctxt->Cleanup();
             return;
         }
-        ctxt->inputMethodPanel->hasSetSize_.store(true);
         auto code = ctxt->inputMethodPanel->Resize(ctxt->width, ctxt->height);
         ctxt->Cleanup();
         if (code == ErrorCode::NO_ERROR) {
@@ -261,7 +260,6 @@ napi_value JsPanel::MoveTo(napi_env env, napi_callback_info info)
             ctxt->Cleanup();
             return;
         }
-        ctxt->inputMethodPanel->hasSetSize_.store(true);
         auto code = ctxt->inputMethodPanel->MoveTo(ctxt->x, ctxt->y);
         ctxt->Cleanup();
         if (code != ErrorCode::NO_ERROR) {
@@ -432,7 +430,6 @@ napi_value JsPanel::ChangeFlag(napi_env env, napi_callback_info info)
     JsEventInfo eventInfo = { std::chrono::system_clock::now(), JsEvent::CHANGE_PANEL_FLAG };
     PanelDealQueue::TaskGuard task(eventInfo);
     task.Wait();
-    inputMethodPanel->hasSetSize_.store(true);
     auto ret = inputMethodPanel->ChangePanelFlag(PanelFlag(panelFlag));
     task.Finish();
     // Preserve changeFlag's non-throwing delivery of native operation failures.
@@ -702,7 +699,6 @@ napi_value JsPanel::AdjustPanelRect(napi_env env, napi_callback_info info)
             ctxt->Cleanup();
             return;
         }
-        ctxt->inputMethodPanel->hasSetSize_.store(true);
         if (!ctxt->isEnhancedCall) {
             AdjustLayoutParam(ctxt);
         } else {
@@ -752,7 +748,6 @@ napi_value JsPanel::UpdatePanelRectSync(napi_env env, napi_callback_info info)
     JsEventInfo eventInfo = { std::chrono::system_clock::now(), JsEvent::UPDATE_PANEL_RECT_SYNC };
     PanelDealQueue::TaskGuard task(eventInfo);
     task.Wait();
-    panel->hasSetSize_.store(true);
     int32_t ret = isEnhancedCall
         ? panel->AdjustPanelRect(ctxt->panelFlag, ctxt->enhancedLayoutParams, ctxt->hotAreas, false)
         : panel->AdjustPanelRect(ctxt->panelFlag, ctxt->layoutParams, true, true, false);
@@ -798,7 +793,6 @@ napi_value JsPanel::UpdateRegion(napi_env env, napi_callback_info info)
             ctxt->Cleanup();
             return;
         }
-        ctxt->inputMethodPanel->hasSetSize_.store(true);
         int32_t code = ctxt->inputMethodPanel->UpdateRegion(ctxt->hotArea);
         if (code == ErrorCode::NO_ERROR) {
             ctxt->SetState(napi_ok);

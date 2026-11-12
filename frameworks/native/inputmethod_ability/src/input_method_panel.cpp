@@ -17,7 +17,6 @@
 
 #include <tuple>
 
-#include "panel_deal_queue.h"
 #include "color_parser.h"
 #include "display_info.h"
 #include "dm_common.h"
@@ -1486,7 +1485,7 @@ PanelFlag InputMethodPanel::GetPanelFlag()
     return panelFlag_;
 }
 
-int32_t InputMethodPanel::ShowPanel(Trigger trigger, uint32_t windowId)
+int32_t InputMethodPanel::ShowPanel(uint32_t windowId)
 {
     IMSA_HILOGD("InputMethodPanel start.");
     WaitSetUIContent();
@@ -1500,17 +1499,6 @@ int32_t InputMethodPanel::ShowPanel(Trigger trigger, uint32_t windowId)
         }
         IMSA_HILOGI("panel already shown.");
         return ErrorCode::NO_ERROR;
-    }
-    if (trigger == Trigger::IMF) {
-        if (NeedAdjustPanelRect()) {
-            JsEventInfo info = { std::chrono::system_clock::now(), JsEvent::ADD_ADJUST_PANEL_RECT };
-            PanelDealQueue::TaskGuard task(info);
-            if (!task.Wait()) {
-                IMSA_HILOGW("Panel adjustment wait timed out; continuing show.");
-            }
-            AddAdjustPanelRect();
-            task.Finish();
-        }
     }
     bool isPortrait = IsDisplayPortrait();
     if (!isScbEnable_ && hasAdjustWithoutScb_ && isPortrait != isPortrait_) {
@@ -1529,28 +1517,6 @@ int32_t InputMethodPanel::ShowPanel(Trigger trigger, uint32_t windowId)
         PanelStatusChangeToImc(InputWindowStatus::SHOW, window_->GetRect());
     }
     return ErrorCode::NO_ERROR;
-}
-
-bool InputMethodPanel::NeedAdjustPanelRect()
-{
-    if (panelType_ != PanelType::SOFT_KEYBOARD || panelFlag_ == FLG_CANDIDATE_COLUMN) {
-        return false;
-    }
-    return !hasSetSize_.load();
-}
-
-void InputMethodPanel::AddAdjustPanelRect()
-{
-    if (NeedAdjustPanelRect()) {
-        auto enhancedParams = GetEnhancedLayoutParams();
-        LayoutParams layoutParams = { enhancedParams.landscape.rect, enhancedParams.portrait.rect };
-        if (layoutParams.landscapeRect.height_ == 0 && layoutParams.portraitRect.height_ == 0) {
-            layoutParams.landscapeRect.height_ = 1;
-            layoutParams.portraitRect.height_ = 1;
-        }
-        auto result = AdjustPanelRect(panelFlag_, layoutParams, true, false, true);
-        IMSA_HILOGI("AdjustPanelRect result: %{public}d", result);
-    }
 }
 
 int32_t InputMethodPanel::ShowKeyboardToWms(uint32_t windowId)
