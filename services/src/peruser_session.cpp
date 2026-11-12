@@ -33,6 +33,8 @@
 #include "numkey_apps_manager.h"
 #include "on_demand_start_stop_sa.h"
 #include "os_account_adapter.h"
+#include "parameter.h"
+#include "parameters.h"
 #include "res_sched_adapter.h"
 #include "scene_board_judgement.h"
 #include "system_ability_definition.h"
@@ -96,6 +98,20 @@ PerUserSession::PerUserSession(int32_t userId, const std::shared_ptr<AppExecFwk:
 PerUserSession::~PerUserSession()
 {
     RemoveAllTask();
+}
+
+uint32_t PerUserSession::GetImeStartTimeout()
+{
+    static uint32_t timeout = []() {
+        uint32_t value = system::GetUintParameter<uint32_t>(IME_START_TIME_KEY, INVALID_TIME);
+        if (value == INVALID_TIME) {
+            IMSA_HILOGW("invalid ime start time 0, use default %{public}u ms.", MAX_IME_START_TIME);
+            return static_cast<uint32_t>(MAX_IME_START_TIME);
+        }
+        IMSA_HILOGW("use %{public}u ms ime start timeout.", value);
+        return value;
+    }();
+    return timeout;
 }
 
 void PerUserSession::SetImeUsageCallbacks(ImeUsageCallback onBind, ImeUsageCallback onUnbind)

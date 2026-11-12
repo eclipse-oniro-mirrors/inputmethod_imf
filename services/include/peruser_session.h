@@ -253,6 +253,12 @@ private:
 #else
     static const int MAX_IME_START_TIME = 1500;
 #endif
+    //default ime start timeout (ms) when const_inputmethod.ime_start_time is not set
+    static constexpr uint32_t INVALID_TIME = 0;
+    static constexpr const char *IME_START_TIME_KEY = "const.inputmethod.ime_start_time";
+    //get ime start timeout, read const.inputmethod.ime_start_time once and cache the result
+    static uint32_t GetImeStartTimeout();
+
     static const int MAX_NOTIFY_TIME = 10; //10ms
     std::mutex resetLock;
     std::map<TimeLimitType, ResetManager> managers_;
@@ -417,7 +423,7 @@ private:
     void NotifyInputStop(uint64_t displayId, InputStopScene scene, bool isRealIme);
     std::mutex imeStartLock_;
 
-    BlockData<bool> isImeStarted_{ MAX_IME_START_TIME, false };
+    BlockData<bool> isImeStarted_{ GetImeStartTimeout(), false };
     std::mutex focusedClientLock_;
 
     std::atomic<bool> isSwitching_ = false;
