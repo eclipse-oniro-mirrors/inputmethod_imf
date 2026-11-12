@@ -16,6 +16,7 @@
 #define TAIHE_INPUT_METHOD_CONTROLLER_IMPL_H
 #include <cstdint>
 #include <map>
+#include <memory>
 #include <mutex>
 #include <string>
 #include <vector>
@@ -75,8 +76,9 @@ public:
     void OnSelectByMovement(int32_t direction) override;
 
 private:
+    std::vector<std::shared_ptr<CallbackObject>> GetCallbacks(const std::string &type);
     std::mutex mutex_;
-    std::map<std::string, std::vector<std::unique_ptr<CallbackObject>>> jsCbMap_;
+    std::map<std::string, std::vector<std::shared_ptr<CallbackObject>>> jsCbMap_;
     static std::mutex controllerMutex_;
     static std::shared_ptr<InputMethodControllerImpl> controller_;
     static const std::set<std::string> TEXT_EVENT_TYPE;

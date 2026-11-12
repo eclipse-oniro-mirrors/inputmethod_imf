@@ -198,6 +198,7 @@ int32_t InputMethodAbility::RegisterInAppProxyIme(const RegisterOptions &options
         return ret;
     }
     isProxyIme_.store(true);
+    isInAppIme_.store(true);
     return ErrorCode::NO_ERROR;
 }
 
@@ -219,12 +220,8 @@ int32_t InputMethodAbility::UnregisterInAppProxyIme()
 
 int32_t InputMethodAbility::HideCustomKeyboardSelf()
 {
-    auto channel = GetInputDataChannelProxy();
-    if (channel == nullptr) {
-        return ErrorCode::ERROR_CLIENT_NULL_POINTER;
-    }
-    auto ret = HideKeyboard(Trigger::IME_APP, 0);
-    return ret == ErrorCode::ERROR_CLIENT_NULL_POINTER ? ret : ErrorCode::NO_ERROR;
+    IMSA_HILOGE("run in!");
+    return NotifyKeyboardStatusWithoutPanel(KeyboardStatus::HIDE, Trigger::IME_APP);
 }
 
 int32_t InputMethodAbility::BindImeMirror()
@@ -671,11 +668,32 @@ int32_t InputMethodAbility::ShowKeyboardImplWithoutLock(int32_t cmdId)
     }
     isShowAfterCreate_.store(true);
     IMSA_HILOGI("panel not create.");
-    auto channel = GetInputDataChannelProxy();
-    if (channel != nullptr) {
-        channel->SendKeyboardStatus(static_cast<int32_t>(KeyboardStatus::SHOW));
-    }
+    NotifyKeyboardStatusWithoutPanel(KeyboardStatus::SHOW, Trigger::IMF);
     imeListener->OnKeyboardStatus(true);
+    return ErrorCode::NO_ERROR;
+}
+
+int32_t InputMethodAbility::NotifyKeyboardStatusWithoutPanel(
+    KeyboardStatus status, Trigger trigger, uint32_t sessionId, int32_t clientSessionId)
+{
+    auto channel = GetInputDataChannelProxy();
+    if (channel == nullptr) {
+        IMSA_HILOGE("channel is nullptr.");
+        return ErrorCode::ERROR_CLIENT_NULL_POINTER;
+    }
+    if (!isInAppIme_) {
+        channel->SendKeyboardStatus(static_cast<int32_t>(status));
+        return ErrorCode::NO_ERROR;
+    }
+    PanelStatusInfo info;
+    info.sessionId = sessionId;
+    info.clientSessionId = clientSessionId;
+    info.inputType = GetInputType();
+    info.keyboardType = KeyboardType::TYPE_CUSTOM;
+    info.trigger = trigger;
+    info.visible = status == KeyboardStatus::SHOW ? true : false;
+    PanelStatusInfoInner inner = InputMethodTools::GetInstance().PanelStatusInfoToInner(info);
+    channel->NotifyPanelStatusInfo(inner);
     return ErrorCode::NO_ERROR;
 }
 
@@ -1335,9 +1353,11 @@ int32_t InputMethodAbility::CreatePanel(const std::shared_ptr<AbilityRuntime::Co
     auto panelHeightCallback = [this](uint32_t panelHeight, PanelFlag panelFlag) {
         NotifyKeyboardHeight(panelHeight, panelFlag);
     };
+    bool creationAttempted = false;
     auto flag = panels_.ComputeIfAbsent(panelInfo.panelType,
-        [panelHeightCallback, &panelInfo, &context, &inputMethodPanel](
+        [panelHeightCallback, &panelInfo, &context, &inputMethodPanel, &creationAttempted](
             const PanelType &panelType, std::shared_ptr<InputMethodPanel> &panel) {
+            creationAttempted = true;
             inputMethodPanel = std::make_shared<InputMethodPanel>();
             inputMethodPanel->SetPanelHeightCallback(panelHeightCallback);
             auto ret = inputMethodPanel->CreatePanel(context, panelInfo);
@@ -1345,9 +1365,14 @@ int32_t InputMethodAbility::CreatePanel(const std::shared_ptr<AbilityRuntime::Co
                 panel = inputMethodPanel;
                 return true;
             }
+            IMSA_HILOGE("Native panel creation failed, panelType: %{public}d, ret: %{public}d", panelType, ret);
             inputMethodPanel = nullptr;
             return false;
         });
+    if (!flag && !creationAttempted) {
+        IMSA_HILOGE("Panel type %{public}d is already registered; reuse or destroy the existing panel first.",
+            panelInfo.panelType);
+    }
     if (flag && isShowAfterCreate_.load() && panelInfo.panelType == SOFT_KEYBOARD &&
         panelInfo.panelFlag != FLG_CANDIDATE_COLUMN) {
         isShowAfterCreate_.store(false);
@@ -1367,12 +1392,15 @@ int32_t InputMethodAbility::DestroyPanel(const std::shared_ptr<InputMethodPanel>
         IMSA_HILOGE("panel is nullptr!");
         return ErrorCode::ERROR_BAD_PARAMETERS;
     }
-    auto ret = inputMethodPanel->DestroyPanel();
+    auto ret = inputMethodPanel->DestroyPanelWithStatus();
     if (ret == ErrorCode::NO_ERROR) {
         PanelType panelType = inputMethodPanel->GetPanelType();
-        panels_.Erase(panelType);
+        panels_.EraseIf(
+            [panelType, &inputMethodPanel](const PanelType &type, std::shared_ptr<InputMethodPanel> &registered) {
+                return type == panelType && registered == inputMethodPanel;
+            });
     }
-    return ret;
+    return ret == ErrorCode::ERROR_WINDOW_MANAGER ? ErrorCode::ERROR_OPERATE_PANEL : ret;
 }
 
 int32_t InputMethodAbility::ShowPanel(const std::shared_ptr<InputMethodPanel> &inputMethodPanel)
@@ -1543,10 +1571,7 @@ int32_t InputMethodAbility::HideKeyboard(Trigger trigger, uint32_t sessionId, in
     }
     IMSA_HILOGI("panel is not created.");
     imeListener->OnKeyboardStatus(false);
-    auto channel = GetInputDataChannelProxy();
-    if (channel != nullptr) {
-        channel->SendKeyboardStatus(static_cast<int32_t>(KeyboardStatus::HIDE));
-    }
+    NotifyKeyboardStatusWithoutPanel(KeyboardStatus::HIDE, trigger, sessionId, clientSessionId);
     auto controlChannel = GetInputControlChannel();
     if (controlChannel != nullptr && trigger == Trigger::IME_APP) {
         controlChannel->HideKeyboardSelf();

@@ -243,10 +243,13 @@ private:
     void ConfigurationUpdate(Rosen::DisplayId displayId);
     void NotifyInputStartToClients(InputStartScene scene, bool isShowKeyboard = true);
     void NotifyInputStopToClients();
+    int32_t NotifyKeyboardStatusWithoutPanel(
+        KeyboardStatus status, Trigger trigger, uint32_t sessionId = 0, int32_t clientSessionId = -1);
 
     ConcurrentMap<PanelType, std::shared_ptr<InputMethodPanel>> panels_ {};
     std::atomic_bool isBound_ { false };
     std::atomic_bool isProxyIme_{ false };
+    std::atomic_bool isInAppIme_{ false };
     std::atomic<PttSpaceTrackingState> pttSpaceTrackingState_ { PttSpaceTrackingState::IDLE };
 
     sptr<IInputMethodCore> coreStub_ { nullptr };

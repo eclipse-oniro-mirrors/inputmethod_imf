@@ -16,6 +16,7 @@
 #include "input_method_tools.h"
 
 #include <gtest/gtest.h>
+#include "message_parcel.h"
 
 using namespace testing::ext;
 namespace OHOS {
@@ -221,6 +222,178 @@ HWTEST_F(InputMethodToolsTest, GetInstance_Singleton, TestSize.Level0)
     auto &inst1 = InputMethodTools::GetInstance();
     auto &inst2 = InputMethodTools::GetInstance();
     EXPECT_EQ(&inst1, &inst2);
+}
+
+// PanelStatusInfoToInner copies keyboardType
+HWTEST_F(InputMethodToolsTest, PanelStatusInfoToInner_KeyboardType_001, TestSize.Level0)
+{
+    IMSA_HILOGI("PanelStatusInfoToInner_KeyboardType_001 begin");
+    PanelStatusInfo info;
+    info.keyboardType = KeyboardType::TYPE_CUSTOM;
+    info.panelInfo.panelType = PanelType::SOFT_KEYBOARD;
+    info.panelInfo.panelFlag = PanelFlag::FLG_FIXED;
+    info.inputType = InputType::CAMERA_INPUT;
+    info.visible = true;
+    info.trigger = Trigger::IMF;
+    info.sessionId = 5;
+    info.clientSessionId = 10;
+
+    auto result = InputMethodTools::GetInstance().PanelStatusInfoToInner(info);
+    EXPECT_EQ(result.keyboardType, KeyboardType::TYPE_CUSTOM);
+    EXPECT_EQ(result.panelInfo.panelType, PanelType::SOFT_KEYBOARD);
+    EXPECT_EQ(result.panelInfo.panelFlag, PanelFlag::FLG_FIXED);
+    EXPECT_EQ(result.inputType, InputType::CAMERA_INPUT);
+    EXPECT_TRUE(result.visible);
+    EXPECT_EQ(result.trigger, Trigger::IMF);
+    EXPECT_EQ(result.sessionId, 5u);
+    EXPECT_EQ(result.clientSessionId, 10);
+}
+
+// InnerToPanelStatusInfo copies keyboardType
+HWTEST_F(InputMethodToolsTest, InnerToPanelStatusInfo_KeyboardType_001, TestSize.Level0)
+{
+    IMSA_HILOGI("InnerToPanelStatusInfo_KeyboardType_001 begin");
+    PanelStatusInfoInner inner;
+    inner.keyboardType = KeyboardType::TYPE_CUSTOM;
+    inner.panelInfo.panelType = PanelType::SOFT_KEYBOARD;
+    inner.panelInfo.panelFlag = PanelFlag::FLG_FIXED;
+    inner.inputType = InputType::CAMERA_INPUT;
+    inner.visible = true;
+    inner.trigger = Trigger::IMF;
+    inner.sessionId = 5;
+    inner.clientSessionId = 10;
+
+    auto result = InputMethodTools::GetInstance().InnerToPanelStatusInfo(inner);
+    EXPECT_EQ(result.keyboardType, KeyboardType::TYPE_CUSTOM);
+    EXPECT_EQ(result.panelInfo.panelType, PanelType::SOFT_KEYBOARD);
+    EXPECT_EQ(result.panelInfo.panelFlag, PanelFlag::FLG_FIXED);
+    EXPECT_EQ(result.inputType, InputType::CAMERA_INPUT);
+    EXPECT_TRUE(result.visible);
+    EXPECT_EQ(result.trigger, Trigger::IMF);
+    EXPECT_EQ(result.sessionId, 5u);
+    EXPECT_EQ(result.clientSessionId, 10);
+}
+
+// PanelStatusInfo round-trip with keyboardType
+HWTEST_F(InputMethodToolsTest, PanelStatusInfo_KeyboardType_RoundTrip, TestSize.Level0)
+{
+    IMSA_HILOGI("PanelStatusInfo_KeyboardType_RoundTrip begin");
+    PanelStatusInfo original;
+    original.keyboardType = KeyboardType::TYPE_CUSTOM;
+    original.panelInfo.panelType = PanelType::SOFT_KEYBOARD;
+    original.panelInfo.panelFlag = PanelFlag::FLG_FIXED;
+    original.inputType = InputType::CAMERA_INPUT;
+    original.visible = true;
+    original.trigger = Trigger::IMF;
+    original.sessionId = 5;
+    original.clientSessionId = 10;
+
+    auto inner = InputMethodTools::GetInstance().PanelStatusInfoToInner(original);
+    EXPECT_EQ(inner.keyboardType, KeyboardType::TYPE_CUSTOM);
+    auto result = InputMethodTools::GetInstance().InnerToPanelStatusInfo(inner);
+    EXPECT_EQ(result.keyboardType, KeyboardType::TYPE_CUSTOM);
+    EXPECT_EQ(result.panelInfo.panelType, PanelType::SOFT_KEYBOARD);
+    EXPECT_EQ(result.panelInfo.panelFlag, PanelFlag::FLG_FIXED);
+    EXPECT_EQ(result.inputType, InputType::CAMERA_INPUT);
+    EXPECT_TRUE(result.visible);
+    EXPECT_EQ(result.trigger, Trigger::IMF);
+    EXPECT_EQ(result.sessionId, 5u);
+    EXPECT_EQ(result.clientSessionId, 10);
+}
+
+// PanelStatusInfoToInner with TYPE_PANEL keyboardType
+HWTEST_F(InputMethodToolsTest, PanelStatusInfoToInner_KeyboardType_002, TestSize.Level0)
+{
+    IMSA_HILOGI("PanelStatusInfoToInner_KeyboardType_002 begin");
+    PanelStatusInfo info;
+    info.keyboardType = KeyboardType::TYPE_PANEL;
+    info.panelInfo.panelType = PanelType::SOFT_KEYBOARD;
+    info.panelInfo.panelFlag = PanelFlag::FLG_FIXED;
+    info.inputType = InputType::NONE;
+    info.visible = false;
+    info.trigger = Trigger::END;
+    info.sessionId = 0;
+    info.clientSessionId = -1;
+
+    auto result = InputMethodTools::GetInstance().PanelStatusInfoToInner(info);
+    EXPECT_EQ(result.keyboardType, KeyboardType::TYPE_PANEL);
+}
+
+// PanelStatusInfoInner ReadFromParcel with valid keyboardType (TYPE_CUSTOM)
+HWTEST_F(InputMethodToolsTest, PanelStatusInfoInner_ReadFromParcel_ValidKeyboardType, TestSize.Level0)
+{
+    IMSA_HILOGI("PanelStatusInfoInner_ReadFromParcel_ValidKeyboardType begin");
+    MessageParcel parcel;
+    parcel.WriteInt32(static_cast<int32_t>(KeyboardType::TYPE_CUSTOM));
+    PanelInfo panelInfo;
+    panelInfo.panelType = PanelType::SOFT_KEYBOARD;
+    panelInfo.panelFlag = PanelFlag::FLG_FIXED;
+    parcel.WriteParcelable(&panelInfo);
+    parcel.WriteInt32(static_cast<int32_t>(InputType::NONE));
+    parcel.WriteBool(true);
+    parcel.WriteInt32(static_cast<int32_t>(Trigger::IMF));
+    parcel.WriteUint32(5);
+    parcel.WriteInt32(10);
+    parcel.RewindRead(0);
+
+    PanelStatusInfoInner inner;
+    EXPECT_TRUE(inner.ReadFromParcel(parcel));
+    EXPECT_EQ(inner.keyboardType, KeyboardType::TYPE_CUSTOM);
+}
+
+// PanelStatusInfoInner ReadFromParcel with invalid keyboardType (negative)
+HWTEST_F(InputMethodToolsTest, PanelStatusInfoInner_ReadFromParcel_InvalidKeyboardType, TestSize.Level0)
+{
+    IMSA_HILOGI("PanelStatusInfoInner_ReadFromParcel_InvalidKeyboardType begin");
+    MessageParcel parcel;
+    parcel.WriteInt32(-1);
+    parcel.RewindRead(0);
+
+    PanelStatusInfoInner inner;
+    EXPECT_FALSE(inner.ReadFromParcel(parcel));
+}
+
+// PanelStatusInfoInner ReadFromParcel with keyboardType out of range (too large)
+HWTEST_F(InputMethodToolsTest, PanelStatusInfoInner_ReadFromParcel_KeyboardTypeTooLarge, TestSize.Level0)
+{
+    IMSA_HILOGI("PanelStatusInfoInner_ReadFromParcel_KeyboardTypeTooLarge begin");
+    MessageParcel parcel;
+    parcel.WriteInt32(static_cast<int32_t>(KeyboardType::TYPE_END) + 1);
+    parcel.RewindRead(0);
+
+    PanelStatusInfoInner inner;
+    EXPECT_FALSE(inner.ReadFromParcel(parcel));
+}
+
+// PanelStatusInfoInner Marshalling/Unmarshalling round-trip with keyboardType
+HWTEST_F(InputMethodToolsTest, PanelStatusInfoInner_KeyboardType_ParcelRoundTrip, TestSize.Level0)
+{
+    IMSA_HILOGI("PanelStatusInfoInner_KeyboardType_ParcelRoundTrip begin");
+    PanelStatusInfoInner original;
+    original.keyboardType = KeyboardType::TYPE_CUSTOM;
+    original.panelInfo.panelType = PanelType::SOFT_KEYBOARD;
+    original.panelInfo.panelFlag = PanelFlag::FLG_FIXED;
+    original.inputType = InputType::CAMERA_INPUT;
+    original.visible = true;
+    original.trigger = Trigger::IMF;
+    original.sessionId = 5;
+    original.clientSessionId = 10;
+
+    MessageParcel parcel;
+    EXPECT_TRUE(original.Marshalling(parcel));
+    parcel.RewindRead(0);
+
+    PanelStatusInfoInner *result = PanelStatusInfoInner::Unmarshalling(parcel);
+    ASSERT_NE(result, nullptr);
+    EXPECT_EQ(result->keyboardType, KeyboardType::TYPE_CUSTOM);
+    EXPECT_EQ(result->panelInfo.panelType, PanelType::SOFT_KEYBOARD);
+    EXPECT_EQ(result->panelInfo.panelFlag, PanelFlag::FLG_FIXED);
+    EXPECT_EQ(result->inputType, InputType::CAMERA_INPUT);
+    EXPECT_TRUE(result->visible);
+    EXPECT_EQ(result->trigger, Trigger::IMF);
+    EXPECT_EQ(result->sessionId, 5u);
+    EXPECT_EQ(result->clientSessionId, 10);
+    delete result;
 }
 } // namespace MiscServices
 } // namespace OHOS

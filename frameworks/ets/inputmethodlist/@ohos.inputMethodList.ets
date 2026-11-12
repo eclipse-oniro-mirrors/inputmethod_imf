@@ -108,7 +108,9 @@ export struct InputMethodListDialog {
         break;
       }
     }
-    this.inputMethods.splice(index, 1);
+    if (index >= 0) {
+      this.inputMethods.splice(index, 1);
+    }
     this.inputMethods.unshift(this.defaultInputMethod as inputMethod.InputMethodProperty);
     this.currentSub = inputMethod.getCurrentInputMethodSubtype();
     console.info(`${TAG} defaultInput: ${JSON.stringify(this.defaultInputMethod)}`);
@@ -187,7 +189,9 @@ export struct InputMethodListDialog {
     this.listItemRadius = NORMAL_ITEM_RADIUS;
     this.imageRadius = BIG_IMAGE_RADIUS;
     try {
-      this.getDefaultInputMethodSubType();
+      this.getDefaultInputMethodSubType().catch((err: Error) => {
+        console.error(`${TAG} getDefaultInputMethodSubType failed, err = ${JSON.stringify(err)}`);
+      });
       let inputMethodAbility = inputMethodEngine.getInputMethodAbility();
       inputMethodAbility!.onKeyboardHide(() => {
         this.controller!.close();
@@ -376,36 +380,47 @@ export struct InputMethodListDialog {
   }
 
   async switchMethod(inputProperty: inputMethod.InputMethodProperty): Promise<void> {
-    if (this.currentInputMethod && this.currentInputMethod!.name !== inputProperty.name && inputProperty != null &&
-      inputProperty != undefined) {
-      let subTypes = await inputMethod.getSetting().listInputMethodSubtype(inputProperty);
-      if (subTypes.length <= 0) {
-        console.error(`${TAG} subTypes is empty`);
-        return;
-      }
-      inputMethod.switchCurrentInputMethodAndSubtype(inputProperty, subTypes[0], (err, result) => {
-        if (result) {
-          this.currentInputMethod = inputProperty;
+    try {
+      if (this.currentInputMethod && this.currentInputMethod!.name !== inputProperty.name && inputProperty != null &&
+        inputProperty != undefined) {
+        let subTypes = await inputMethod.getSetting().listInputMethodSubtype(inputProperty);
+        if (subTypes.length <= 0) {
+          console.error(`${TAG} subTypes is empty`);
+          return;
         }
+        let switched = await inputMethod.switchCurrentInputMethodAndSubtype(inputProperty, subTypes[0]);
+        if (!switched) {
+          console.error(`${TAG} switchMethod failed`);
+          return;
+        }
+        this.currentInputMethod = inputProperty;
+        this.currentSub = subTypes[0];
         this.controller!.close();
-      })
+      }
+    } catch (err) {
+      console.error(`${TAG} switchMethod failed, err = ${JSON.stringify(err)}`);
     }
   }
 
-  switchMethodSub(inputSub: InputMethodSubtype): void {
-    if (this.currentInputMethod && this.defaultInputMethod) {
-      if (this.currentInputMethod!.name !== this.defaultInputMethod!.name) {
-        inputMethod.switchCurrentInputMethodAndSubtype(this.defaultInputMethod!, inputSub, (err, result) => {
-          this.currentInputMethod = this.defaultInputMethod;
-          this.currentSub = inputSub;
-          this.controller!.close();
-        })
-      } else {
-        inputMethod.switchCurrentInputMethodSubtype(inputSub, () => {
-          this.currentSub = inputSub;
-          this.controller!.close();
-        })
+  async switchMethodSub(inputSub: InputMethodSubtype): Promise<void> {
+    try {
+      if (this.currentInputMethod && this.defaultInputMethod) {
+        let switched: boolean;
+        if (this.currentInputMethod!.name !== this.defaultInputMethod!.name) {
+          switched = await inputMethod.switchCurrentInputMethodAndSubtype(this.defaultInputMethod!, inputSub);
+        } else {
+          switched = await inputMethod.switchCurrentInputMethodSubtype(inputSub);
+        }
+        if (!switched) {
+          console.error(`${TAG} switchMethodSub failed`);
+          return;
+        }
+        this.currentInputMethod = this.defaultInputMethod;
+        this.currentSub = inputSub;
+        this.controller!.close();
       }
+    } catch (err) {
+      console.error(`${TAG} switchMethodSub failed, err = ${JSON.stringify(err)}`);
     }
   }
 }

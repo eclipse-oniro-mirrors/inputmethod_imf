@@ -27,6 +27,7 @@
 #include "ohos.inputMethodEngine.impl.hpp"
 #include "input_method_ability.h"
 #include "block_queue.h"
+#include "error_code_map.h"
 #include "sys_panel_status.h"
 
 namespace OHOS {
@@ -61,8 +62,25 @@ public:
     void RegisterListener(std::string const &type, callbackTypes &&cb, uintptr_t opq);
     void UnRegisterListener(std::string const &type, taihe::optional_view<uintptr_t> opq);
     int64_t LineUp();
+    static void CancelJob(int64_t id);
 
 private:
+    class JobGuard {
+    public:
+        explicit JobGuard(int64_t id);
+        ~JobGuard();
+        bool IsReady() const
+        {
+            return ready_;
+        }
+        void Finish();
+        JobGuard(const JobGuard &) = delete;
+        JobGuard &operator=(const JobGuard &) = delete;
+
+    private:
+        int64_t id_;
+        bool ready_ = false;
+    };
     bool IsPanelFlagValid(PanelFlag panelFlag, bool isEnhancedCalled);
     ImmersiveMode_t ConvertMode(ImmersiveMode mode);
     bool IsVaildImmersiveMode(ImmersiveMode mode);
@@ -100,8 +118,7 @@ public:
 
     void SetUiContentAsync(int64_t id, taihe::string_view path)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel(id)) {
             return;
         }
         panelImpl_->SetUiContent(id, path, nullptr);
@@ -109,8 +126,7 @@ public:
 
     void SetUiContentSync(int64_t id, taihe::string_view path)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel(id)) {
             return;
         }
         panelImpl_->SetUiContent(id, path, nullptr);
@@ -118,8 +134,7 @@ public:
 
     void SetUiContentStorage(int64_t id, ::taihe::string_view path, uintptr_t storage)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel(id)) {
             return;
         }
         ani_object obj = reinterpret_cast<ani_object>(storage);
@@ -131,8 +146,7 @@ public:
 
     void SetUiContentStorageSync(int64_t id, ::taihe::string_view path, uintptr_t storage)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel(id)) {
             return;
         }
         ani_object obj = reinterpret_cast<ani_object>(storage);
@@ -144,8 +158,7 @@ public:
 
     void ResizeAsync(int64_t id, int64_t width, int64_t height)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel(id)) {
             return;
         }
         panelImpl_->ResizeAsync(id, width, height);
@@ -153,8 +166,7 @@ public:
 
     void MoveToAsync(int64_t id, int32_t x, int32_t y)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel(id)) {
             return;
         }
         panelImpl_->MoveToAsync(id, x, y);
@@ -162,8 +174,7 @@ public:
 
     int64_t GetDisplayIdSync(int64_t id)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel(id)) {
             return 0;
         }
         return panelImpl_->GetDisplayIdSync(id);
@@ -171,8 +182,7 @@ public:
 
     void ShowAsync(int64_t id)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel(id)) {
             return;
         }
         panelImpl_->ShowAsync(id);
@@ -180,8 +190,7 @@ public:
 
     void HideAsync(int64_t id)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel(id)) {
             return;
         }
         panelImpl_->HideAsync(id);
@@ -189,8 +198,7 @@ public:
 
     void SetKeepScreenOnAsync(bool isKeepScreenOn)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel()) {
             return;
         }
         panelImpl_->SetKeepScreenOnAsync(isKeepScreenOn);
@@ -198,8 +206,7 @@ public:
 
     SystemPanelInsetsData_t GetSystemPanelCurrentInsetsAsync(int64_t id, int64_t displayId)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel(id)) {
             return SystemPanelInsetsData_t::make_type_null();
         }
         return panelImpl_->GetSystemPanelCurrentInsetsAsync(id, displayId);
@@ -208,8 +215,7 @@ public:
     void SetSystemPanelButtonColorAsync(int64_t id, FillColorData_t const& fillColor,
         BackgroundColorData_t const& backgroundColor)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel(id)) {
             return;
         }
         panelImpl_->SetSystemPanelButtonColorAsync(id, fillColor, backgroundColor);
@@ -217,8 +223,7 @@ public:
 
     void SetShadow(double radius, ::taihe::string_view color, double offsetX, double offsetY)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel()) {
             return;
         }
         panelImpl_->SetShadow(radius, color, offsetX, offsetY);
@@ -226,8 +231,7 @@ public:
 
     void StartMoving()
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel()) {
             return;
         }
         panelImpl_->StartMoving();
@@ -235,8 +239,7 @@ public:
 
     void ChangeFlag(PanelFlag_t flag)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel()) {
             return;
         }
         panelImpl_->ChangeFlag(flag);
@@ -244,8 +247,7 @@ public:
 
     void SetPrivacyMode(bool isPrivacyMode)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel()) {
             return;
         }
         panelImpl_->SetPrivacyMode(isPrivacyMode);
@@ -253,8 +255,7 @@ public:
 
     void AdjustPanelRect(PanelFlag_t flag, PanelRect_t const& rect)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel()) {
             return;
         }
         panelImpl_->AdjustPanelRect(flag, rect);
@@ -262,8 +263,7 @@ public:
 
     void AdjustPanelRectEnhanced(PanelFlag_t flag, EnhancedPanelRect_t const& rect)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel()) {
             return;
         }
         panelImpl_->AdjustPanelRectEnhanced(flag, rect);
@@ -271,8 +271,7 @@ public:
 
     void UpdatePanelRect(PanelFlag_t flag, PanelRect_t const& rect)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel()) {
             return;
         }
         panelImpl_->UpdatePanelRect(flag, rect);
@@ -280,8 +279,7 @@ public:
 
     void UpdatePanelRectEnhanced(PanelFlag_t flag, EnhancedPanelRect_t const& rect)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel()) {
             return;
         }
         panelImpl_->UpdatePanelRectEnhanced(flag, rect);
@@ -289,8 +287,7 @@ public:
 
     void UpdatePanelRectSync(PanelFlag_t flag, PanelRect_t const& rect)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel()) {
             return;
         }
         panelImpl_->UpdatePanelRect(flag, rect);
@@ -298,8 +295,7 @@ public:
 
     void UpdatePanelRectEnhancedSync(PanelFlag_t flag, EnhancedPanelRect_t const& rect)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel()) {
             return;
         }
         panelImpl_->UpdatePanelRectEnhanced(flag, rect);
@@ -307,8 +303,7 @@ public:
 
     void UpdateRegion(uintptr_t inputRegion)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel()) {
             return;
         }
         panelImpl_->UpdateRegion(inputRegion);
@@ -316,8 +311,7 @@ public:
 
     void SetImmersiveMode(ImmersiveMode_t mode)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel()) {
             return;
         }
         panelImpl_->SetImmersiveMode(mode);
@@ -325,8 +319,7 @@ public:
 
     ImmersiveMode_t GetImmersiveMode()
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel()) {
             return CommonConvert::ConvertMode(ImmersiveMode::NONE_IMMERSIVE);
         }
         return panelImpl_->GetImmersiveMode();
@@ -334,8 +327,7 @@ public:
 
     void SetImmersiveEffect(ImmersiveEffect_t const& effect)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel()) {
             return;
         }
         panelImpl_->SetImmersiveEffect(effect);
@@ -343,8 +335,7 @@ public:
 
     void OnShow(taihe::callback_view<void(UndefinedType_t const&)> callback, uintptr_t opq)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel()) {
             return;
         }
         panelImpl_->RegisterListener("show", callback, opq);
@@ -352,8 +343,7 @@ public:
 
     void OffShow(taihe::optional_view<uintptr_t> opq)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel()) {
             return;
         }
         panelImpl_->UnRegisterListener("show", opq);
@@ -361,8 +351,7 @@ public:
 
     void OnHide(taihe::callback_view<void(UndefinedType_t const&)> callback, uintptr_t opq)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel()) {
             return;
         }
         panelImpl_->RegisterListener("hide", callback, opq);
@@ -370,8 +359,7 @@ public:
 
     void OffHide(taihe::optional_view<uintptr_t> opq)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel()) {
             return;
         }
         panelImpl_->UnRegisterListener("hide", opq);
@@ -379,8 +367,7 @@ public:
 
     void OnSizeUpdate(taihe::callback_view<void(uintptr_t, KeyboardArea_t const&)> callback, uintptr_t opq)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel()) {
             return;
         }
         panelImpl_->RegisterListener("sizeUpdate", callback, opq);
@@ -388,8 +375,7 @@ public:
 
     void OffSizeUpdate(taihe::optional_view<uintptr_t> opq)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel()) {
             return;
         }
         panelImpl_->UnRegisterListener("sizeUpdate", opq);
@@ -398,8 +384,7 @@ public:
     void OnSizeChange(taihe::callback_view<void(uintptr_t, taihe::optional_view<KeyboardArea_t>)> callback,
         uintptr_t opq)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel()) {
             return;
         }
         panelImpl_->RegisterListener("sizeChange", callback, opq);
@@ -407,8 +392,7 @@ public:
 
     void OffSizeChange(taihe::optional_view<taihe::callback<void(uintptr_t, taihe::optional_view<KeyboardArea_t>)>> opq)
     {
-        if (panelImpl_ == nullptr) {
-            IMSA_HILOGE("panelImpl_ is nullptr!");
+        if (!CheckPanel()) {
             return;
         }
         panelImpl_->UnRegisterListener("sizeChange", nullptr);
@@ -418,9 +402,15 @@ public:
     {
         if (panelImpl_ == nullptr) {
             IMSA_HILOGE("panelImpl_ is nullptr!");
-            return 0;
+            // Let the operation report failure through its own completion channel.
+            return -1;
         }
         return panelImpl_->LineUp();
+    }
+
+    void CancelJob(int64_t id)
+    {
+        PanelImpl::CancelJob(id);
     }
 
     ~IMFPanelImpl();
@@ -428,6 +418,20 @@ public:
     void ReleaseNative();
 
 private:
+    bool CheckPanel(int64_t id = -1)
+    {
+        if (panelImpl_ != nullptr) {
+            return true;
+        }
+        if (id >= 0) {
+            PanelImpl::CancelJob(id);
+        }
+        IMSA_HILOGE("The panel has been destroyed or is unavailable.");
+        taihe::set_business_error(IMFErrorCode::EXCEPTION_IMENGINE,
+            "The panel has been destroyed or is unavailable.");
+        return false;
+    }
+
     std::shared_ptr<InputMethodPanel> value_;
     std::shared_ptr<PanelImpl> panelImpl_;
 };

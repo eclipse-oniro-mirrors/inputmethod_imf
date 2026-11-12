@@ -286,6 +286,36 @@ void JsKeyboardPanelManager::UnRegisterListener(napi_value callback, std::string
     }
 }
 
+void JsKeyboardPanelManager::ExecutePrivateCommand(const std::shared_ptr<SendPrivateCommandContext> &ctxt)
+{
+    if (!ctxt->queued) {
+        return;
+    }
+    if (!privateCommandQueue_.Wait(ctxt->info)) {
+        ctxt->SetErrorCode(ErrorCode::ERROR_SYSTEM_PANEL_ERROR);
+        ctxt->SetErrorMessage("Timed out waiting for SendPrivateCommand; the operation was not executed.");
+        ctxt->Cleanup();
+        return;
+    }
+    auto channel = ImeSystemCmdChannel::GetInstance();
+    if (channel == nullptr) {
+        ctxt->SetErrorCode(ErrorCode::ERROR_SYSTEM_PANEL_ERROR);
+        ctxt->SetErrorMessage("The system command channel is unavailable.");
+        ctxt->SetState(napi_generic_failure);
+        ctxt->Cleanup();
+        return;
+    }
+    ctxt->privateCommand["sys_cmd"] = 1;
+    int32_t code = channel->SendPrivateCommand(ctxt->privateCommand);
+    ctxt->Cleanup();
+    if (code == ErrorCode::NO_ERROR) {
+        ctxt->SetState(napi_ok);
+    } else {
+        IMSA_HILOGE("SendPrivateCommand failed, code: %{public}d", code);
+        ctxt->SetErrorCode(ErrorCode::ERROR_SYSTEM_PANEL_ERROR);
+    }
+}
+
 napi_value JsKeyboardPanelManager::SendPrivateCommand(napi_env env, napi_callback_info info)
 {
     auto ctxt = std::make_shared<SendPrivateCommandContext>();
@@ -304,27 +334,20 @@ napi_value JsKeyboardPanelManager::SendPrivateCommand(napi_env env, napi_callbac
                 napi_generic_failure);
         }
         ctxt->info = { std::chrono::system_clock::now(), ctxt->privateCommand };
-        privateCommandQueue_.Push(ctxt->info);
+        ctxt->queued = privateCommandQueue_.Push(ctxt->info);
+        if (!ctxt->queued) {
+            ctxt->SetErrorCode(ErrorCode::ERROR_SYSTEM_PANEL_ERROR);
+            ctxt->SetErrorMessage("The SendPrivateCommand queue is full; the operation was not executed.");
+            return napi_ok;
+        }
+        ctxt->SetCleanup([info = ctxt->info]() {
+            privateCommandQueue_.Remove(info);
+        });
         return napi_ok;
     };
     auto output = [ctxt](napi_env env, napi_value *result) -> napi_status { return napi_ok; };
     auto exec = [ctxt](AsyncCall::Context *ctx) {
-        privateCommandQueue_.Wait(ctxt->info);
-        auto channel = ImeSystemCmdChannel::GetInstance();
-        if (channel == nullptr) {
-            ctxt->SetState(napi_generic_failure);
-            privateCommandQueue_.Pop();
-            return;
-        }
-        ctxt->privateCommand["sys_cmd"] = 1;
-        int32_t code = channel->SendPrivateCommand(ctxt->privateCommand);
-        privateCommandQueue_.Pop();
-        if (code == ErrorCode::NO_ERROR) {
-            ctxt->SetState(napi_ok);
-        } else {
-            IMSA_HILOGE("SendPrivateCommand failed, code: %{public}d", code);
-            ctxt->SetErrorCode(ErrorCode::ERROR_SYSTEM_PANEL_ERROR);
-        }
+        ExecutePrivateCommand(ctxt);
     };
     ctxt->SetAction(std::move(input), std::move(output));
     // 1 means JsAPI:SendPrivateCommand has 1 params at most.

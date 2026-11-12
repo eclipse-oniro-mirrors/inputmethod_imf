@@ -55,6 +55,10 @@ public:
     Ace::UIContent *GetUIContent();
     int32_t CreatePanel(const std::shared_ptr<AbilityRuntime::Context> &context, const PanelInfo &panelInfo);
     int32_t DestroyPanel();
+    bool IsDestroyed() const
+    {
+        return panelDestroyed_.load();
+    }
 
     int32_t Resize(uint32_t width, uint32_t height);
     int32_t MoveTo(int32_t x, int32_t y);
@@ -145,6 +149,8 @@ private:
     sptr<Rosen::IOcclusionStateChangedListener> visibilityChangeListener_{ nullptr };
 
 private:
+    friend class InputMethodAbility;
+    int32_t DestroyPanelWithStatus();
     bool IsHidden();
     int32_t SetPanelProperties();
     std::string GeneratePanelName();
@@ -307,6 +313,8 @@ private:
         { UNFOLD_TOP, UNFOLD_LEFT, UNFOLD_RIGHT, COMMON_BOTTOM }
     };
     std::atomic<bool> isWaitSetUiContent_ { true };
+    std::mutex lifecycleMutex_;
+    std::atomic<bool> panelDestroyed_ { false };
     std::atomic<bool> isInEnhancedAdjust_{ false };
 
     std::mutex immersiveModeMutex_;

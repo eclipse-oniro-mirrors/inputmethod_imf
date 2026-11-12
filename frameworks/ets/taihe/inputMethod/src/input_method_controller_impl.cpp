@@ -234,7 +234,7 @@ void InputMethodControllerImpl::RegisterListener(std::string const &type, callba
     std::lock_guard<std::mutex> lock(mutex_);
     auto &cbVec = jsCbMap_[type];
     bool isDuplicate =
-        std::any_of(cbVec.begin(), cbVec.end(), [env, callbackRef](std::unique_ptr<CallbackObject> &obj) {
+        std::any_of(cbVec.begin(), cbVec.end(), [env, callbackRef](const std::shared_ptr<CallbackObject> &obj) {
             ani_boolean isEqual = false;
             return (ANI_OK == env->Reference_StrictEquals(callbackRef, obj->ref, &isEqual)) && isEqual;
         });
@@ -246,7 +246,7 @@ void InputMethodControllerImpl::RegisterListener(std::string const &type, callba
         IMSA_HILOGI("callback already registered, type: %{public}s!", type.c_str());
         return;
     }
-    cbVec.emplace_back(std::make_unique<CallbackObject>(cb, callbackRef));
+    cbVec.emplace_back(std::make_shared<CallbackObject>(cb, callbackRef));
     IMSA_HILOGI("register callback success, type: %{public}s!", type.c_str());
 }
 
@@ -265,9 +265,6 @@ void InputMethodControllerImpl::UnRegisterListener(std::string const &type, taih
     }
 
     if (!opq.has_value()) {
-        for (auto &uniquePtr : iter->second) {
-            uniquePtr->Release();
-        }
         jsCbMap_.erase(iter);
         UpdateTextPreviewState(type);
         IMSA_HILOGE("callback is nullptr!");
@@ -280,14 +277,13 @@ void InputMethodControllerImpl::UnRegisterListener(std::string const &type, taih
         return;
     }
 
-    const auto pred = [env, targetRef = guard.get()](std::unique_ptr<CallbackObject> &obj) {
+    const auto pred = [env, targetRef = guard.get()](const std::shared_ptr<CallbackObject> &obj) {
         ani_boolean is_equal = false;
         return (ANI_OK == env->Reference_StrictEquals(targetRef, obj->ref, &is_equal)) && is_equal;
     };
     auto &callbacks = iter->second;
     const auto it = std::find_if(callbacks.begin(), callbacks.end(), pred);
     if (it != callbacks.end()) {
-        it->get()->Release();
         callbacks.erase(it);
         IMSA_HILOGI("UnRegisterListener one type:%{public}s", type.c_str());
     }
@@ -298,10 +294,16 @@ void InputMethodControllerImpl::UnRegisterListener(std::string const &type, taih
     }
 }
 
-void InputMethodControllerImpl::InsertTextCallback(const std::u16string &text)
+std::vector<std::shared_ptr<CallbackObject>> InputMethodControllerImpl::GetCallbacks(const std::string &type)
 {
     std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_["insertText"];
+    const auto iter = jsCbMap_.find(type);
+    return iter == jsCbMap_.end() ? std::vector<std::shared_ptr<CallbackObject>> {} : iter->second;
+}
+
+void InputMethodControllerImpl::InsertTextCallback(const std::u16string &text)
+{
+    auto cbVec = GetCallbacks("insertText");
     for (auto &cb : cbVec) {
         auto &func = std::get<taihe::callback<void(taihe::string_view)>>(cb->callback);
         taihe::string textStr = Str16ToStr8(text);
@@ -310,8 +312,7 @@ void InputMethodControllerImpl::InsertTextCallback(const std::u16string &text)
 }
 void InputMethodControllerImpl::DeleteLeftCallback(int32_t length)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_["deleteLeft"];
+    auto cbVec = GetCallbacks("deleteLeft");
     for (auto &cb : cbVec) {
         auto &func = std::get<taihe::callback<void(int32_t)>>(cb->callback);
         func(length);
@@ -319,8 +320,7 @@ void InputMethodControllerImpl::DeleteLeftCallback(int32_t length)
 }
 void InputMethodControllerImpl::DeleteRightCallback(int32_t length)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_["deleteRight"];
+    auto cbVec = GetCallbacks("deleteRight");
     for (auto &cb : cbVec) {
         auto &func = std::get<taihe::callback<void(int32_t)>>(cb->callback);
         func(length);
@@ -328,8 +328,7 @@ void InputMethodControllerImpl::DeleteRightCallback(int32_t length)
 }
 void InputMethodControllerImpl::SendKeyboardStatusCallback(const KeyboardStatus &status)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_["sendKeyboardStatus"];
+    auto cbVec = GetCallbacks("sendKeyboardStatus");
     for (auto &cb : cbVec) {
         auto &func = std::get<taihe::callback<void(KeyboardStatus_t)>>(cb->callback);
         KeyboardStatus_t state = EnumConvert::ConvertKeyboardStatus(status);
@@ -338,8 +337,7 @@ void InputMethodControllerImpl::SendKeyboardStatusCallback(const KeyboardStatus 
 }
 void InputMethodControllerImpl::SendFunctionKeyCallback(const FunctionKey &key)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_["sendFunctionKey"];
+    auto cbVec = GetCallbacks("sendFunctionKey");
     for (auto &cb : cbVec) {
         auto &func = std::get<taihe::callback<void(FunctionKey_t const &)>>(cb->callback);
         FunctionKey_t funcKey{ .enterKeyType = EnumConvert::ConvertEnterKeyType(key.GetEnterKeyType()) };
@@ -348,8 +346,7 @@ void InputMethodControllerImpl::SendFunctionKeyCallback(const FunctionKey &key)
 }
 void InputMethodControllerImpl::MoveCursorCallback(const Direction &direction)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_["moveCursor"];
+    auto cbVec = GetCallbacks("moveCursor");
     for (auto &cb : cbVec) {
         auto &func = std::get<taihe::callback<void(Direction_t)>>(cb->callback);
         Direction_t directionType = EnumConvert::ConvertDirection(direction);
@@ -358,8 +355,7 @@ void InputMethodControllerImpl::MoveCursorCallback(const Direction &direction)
 }
 void InputMethodControllerImpl::HandleExtendActionCallback(int32_t action)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_["handleExtendAction"];
+    auto cbVec = GetCallbacks("handleExtendAction");
     for (auto &cb : cbVec) {
         auto &func = std::get<taihe::callback<void(ExtendAction_t)>>(cb->callback);
         ExtendAction_t actionType = EnumConvert::ConvertExtendAction(action);
@@ -368,8 +364,7 @@ void InputMethodControllerImpl::HandleExtendActionCallback(int32_t action)
 }
 std::u16string InputMethodControllerImpl::GetLeftTextOfCursorCallback(int32_t number)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_["getLeftTextOfCursor"];
+    auto cbVec = GetCallbacks("getLeftTextOfCursor");
     for (auto &cb : cbVec) {
         auto &func = std::get<taihe::callback<taihe::string(int32_t)>>(cb->callback);
         taihe::string s = func(number);
@@ -379,8 +374,7 @@ std::u16string InputMethodControllerImpl::GetLeftTextOfCursorCallback(int32_t nu
 }
 std::u16string InputMethodControllerImpl::GetRightTextOfCursorCallback(int32_t number)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_["getRightTextOfCursor"];
+    auto cbVec = GetCallbacks("getRightTextOfCursor");
     for (auto &cb : cbVec) {
         auto &func = std::get<taihe::callback<taihe::string(int32_t)>>(cb->callback);
         taihe::string s = func(number);
@@ -390,8 +384,7 @@ std::u16string InputMethodControllerImpl::GetRightTextOfCursorCallback(int32_t n
 }
 int32_t InputMethodControllerImpl::GetTextIndexAtCursorCallback()
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_["getTextIndexAtCursor"];
+    auto cbVec = GetCallbacks("getTextIndexAtCursor");
     for (auto &cb : cbVec) {
         auto &func = std::get<taihe::callback<int32_t()>>(cb->callback);
         return func();
@@ -401,8 +394,7 @@ int32_t InputMethodControllerImpl::GetTextIndexAtCursorCallback()
 
 int32_t InputMethodControllerImpl::SetPreviewTextCallback(const std::u16string &text, const Range &range)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_["setPreviewText"];
+    auto cbVec = GetCallbacks("setPreviewText");
     for (auto &cb : cbVec) {
         auto &func = std::get<taihe::callback<void(taihe::string_view, Range_t const &)>>(cb->callback);
         taihe::string textStr = Str16ToStr8(text);
@@ -434,8 +426,7 @@ int32_t InputMethodControllerImpl::SetPreviewTextWithStyleCallback(const std::u1
 
 void InputMethodControllerImpl::FinishTextPreviewCallback()
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_["finishTextPreview"];
+    auto cbVec = GetCallbacks("finishTextPreview");
     for (auto &cb : cbVec) {
         auto &func = std::get<taihe::callback<void(UndefinedType_t const&)>>(cb->callback);
         UndefinedType_t type = UndefinedType_t::make_undefined();
@@ -445,8 +436,7 @@ void InputMethodControllerImpl::FinishTextPreviewCallback()
 
 void InputMethodControllerImpl::OnSelectByRange(int32_t start, int32_t end)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_["selectByRange"];
+    auto cbVec = GetCallbacks("selectByRange");
     for (auto &cb : cbVec) {
         auto &func = std::get<taihe::callback<void(Range_t const &)>>(cb->callback);
         Range_t range{ .start = start, .end = end };
@@ -455,8 +445,7 @@ void InputMethodControllerImpl::OnSelectByRange(int32_t start, int32_t end)
 }
 void InputMethodControllerImpl::OnSelectByMovement(int32_t direction)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_["selectByMovement"];
+    auto cbVec = GetCallbacks("selectByMovement");
     for (auto &cb : cbVec) {
         auto &func = std::get<taihe::callback<void(Movement_t const &)>>(cb->callback);
         Movement_t movement{ .direction = EnumConvert::ConvertDirection(static_cast<Direction>(direction)) };

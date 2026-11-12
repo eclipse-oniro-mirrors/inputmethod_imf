@@ -534,6 +534,43 @@ void InputMethodPanelTest::TestAdjust()
 }
 
 /**
+ * @tc.name: AccessScope_RestoreNestedIdentity
+ * @tc.desc: A nested token/UID scope restores its caller before returning to the test runner.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, AccessScope_RestoreNestedIdentity, TestSize.Level0)
+{
+    ASSERT_GT(currentImeTokenId_, 0u);
+    ASSERT_GT(currentImeUid_, 0);
+    ASSERT_GT(privacyTokenId_, 0u);
+    auto originalTokenId = TddUtil::GetCurrentTokenID();
+    auto originalUid = getuid();
+    {
+        AccessScope outer(currentImeTokenId_, currentImeUid_);
+        EXPECT_EQ(currentImeTokenId_, TddUtil::GetCurrentTokenID());
+        EXPECT_EQ(static_cast<uid_t>(currentImeUid_), getuid());
+        {
+            AccessScope inner(privacyTokenId_, currentImeUid_);
+            EXPECT_EQ(privacyTokenId_, TddUtil::GetCurrentTokenID());
+            EXPECT_EQ(static_cast<uid_t>(currentImeUid_), getuid());
+            inner.Restore();
+            EXPECT_EQ(currentImeTokenId_, TddUtil::GetCurrentTokenID());
+            EXPECT_EQ(static_cast<uid_t>(currentImeUid_), getuid());
+            {
+                AccessScope next(privacyTokenId_, currentImeUid_);
+                inner.Restore();
+                EXPECT_EQ(privacyTokenId_, TddUtil::GetCurrentTokenID());
+                EXPECT_EQ(static_cast<uid_t>(currentImeUid_), getuid());
+            }
+        }
+        EXPECT_EQ(currentImeTokenId_, TddUtil::GetCurrentTokenID());
+        EXPECT_EQ(static_cast<uid_t>(currentImeUid_), getuid());
+    }
+    EXPECT_EQ(originalTokenId, TddUtil::GetCurrentTokenID());
+    EXPECT_EQ(originalUid, getuid());
+}
+
+/**
  * @tc.name: testCreatePanel
  * @tc.desc: Test CreatePanel.
  * @tc.type: FUNC
@@ -784,6 +821,7 @@ HWTEST_F(InputMethodPanelTest, testIsPanelShown_002, TestSize.Level0)
     panelInfo.panelType = SOFT_KEYBOARD;
     panelInfo.panelFlag = FLG_FIXED;
     InputMethodPanelTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
 
     // query panel with old info when panel changes its flag.
     auto ret = inputMethodPanel->ChangePanelFlag(PanelFlag::FLG_FLOATING);
@@ -796,6 +834,7 @@ HWTEST_F(InputMethodPanelTest, testIsPanelShown_002, TestSize.Level0)
     InputMethodPanelTest::TestIsPanelShown(panelInfo, true);
 
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
+    scope.Restore();
     InputMethodPanelTest::imc_->Close();
 }
 
@@ -1310,6 +1349,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_001, TestSize.Level0)
     panelInfo.panelType = SOFT_KEYBOARD;
     panelInfo.panelFlag = FLG_FIXED;
     InputMethodPanelTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     PanelFlag panelFlag = PanelFlag::FLG_FIXED;
     LayoutParams layoutParams;
     layoutParams.landscapeRect = { 0, 0, 0, 0 };
@@ -1317,6 +1357,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_001, TestSize.Level0)
     auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
+    scope.Restore();
     InputMethodPanelTest::imc_->Close();
     TddUtil::DestroyWindow();
 }
@@ -1435,6 +1476,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_006, TestSize.Level0)
     panelInfo.panelType = SOFT_KEYBOARD;
     panelInfo.panelFlag = FLG_FIXED;
     InputMethodPanelTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     DisplaySize displaySize;
     ASSERT_EQ(InputMethodPanelTest::GetDisplaySize(displaySize), ErrorCode::NO_ERROR);
     PanelFlag panelFlag = PanelFlag::FLG_FIXED;
@@ -1448,6 +1490,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_006, TestSize.Level0)
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     ima_.inputType_ = InputType::NONE;
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
+    scope.Restore();
     InputMethodPanelTest::imc_->Close();
     TddUtil::DestroyWindow();
 }
@@ -1522,6 +1565,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_009, TestSize.Level0)
     panelInfo.panelType = SOFT_KEYBOARD;
     panelInfo.panelFlag = FLG_FIXED;
     InputMethodPanelTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     DisplaySize displaySize;
     ASSERT_EQ(InputMethodPanelTest::GetDisplaySize(displaySize), ErrorCode::NO_ERROR);
     PanelFlag panelFlag = PanelFlag::FLG_FIXED;
@@ -1533,6 +1577,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_009, TestSize.Level0)
     auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
+    scope.Restore();
     InputMethodPanelTest::imc_->Close();
     TddUtil::DestroyWindow();
 }
@@ -1551,6 +1596,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_010, TestSize.Level0)
     panelInfo.panelType = SOFT_KEYBOARD;
     panelInfo.panelFlag = FLG_FLOATING;
     InputMethodPanelTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     PanelFlag panelFlag = PanelFlag::FLG_FLOATING;
     LayoutParams layoutParams;
     layoutParams.landscapeRect = { 0, 0, 0, 0 };
@@ -1558,6 +1604,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_010, TestSize.Level0)
     auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
+    scope.Restore();
     InputMethodPanelTest::imc_->Close();
     TddUtil::DestroyWindow();
 }
@@ -1651,6 +1698,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_014, TestSize.Level0)
     panelInfo.panelType = SOFT_KEYBOARD;
     panelInfo.panelFlag = FLG_FLOATING;
     InputMethodPanelTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     DisplaySize displaySize;
     ASSERT_EQ(InputMethodPanelTest::GetDisplaySize(displaySize), ErrorCode::NO_ERROR);
     PanelFlag panelFlag = PanelFlag::FLG_FLOATING;
@@ -1660,6 +1708,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_014, TestSize.Level0)
     auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
+    scope.Restore();
     InputMethodPanelTest::imc_->Close();
     TddUtil::DestroyWindow();
 }
@@ -1705,6 +1754,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_016, TestSize.Level0)
     panelInfo.panelType = SOFT_KEYBOARD;
     panelInfo.panelFlag = FLG_FLOATING;
     InputMethodPanelTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     DisplaySize displaySize;
     ASSERT_EQ(InputMethodPanelTest::GetDisplaySize(displaySize), ErrorCode::NO_ERROR);
     PanelFlag panelFlag = PanelFlag::FLG_FLOATING;
@@ -1716,6 +1766,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_016, TestSize.Level0)
     auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
+    scope.Restore();
     InputMethodPanelTest::imc_->Close();
     TddUtil::DestroyWindow();
 }
@@ -1734,6 +1785,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_017, TestSize.Level0)
     panelInfo.panelType = SOFT_KEYBOARD;
     panelInfo.panelFlag = FLG_FLOATING;
     InputMethodPanelTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     DisplaySize displaySize;
     ASSERT_EQ(InputMethodPanelTest::GetDisplaySize(displaySize), ErrorCode::NO_ERROR);
     PanelFlag panelFlag = PanelFlag::FLG_FLOATING;
@@ -1742,6 +1794,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_017, TestSize.Level0)
     auto ret = inputMethodPanel->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
+    scope.Restore();
     InputMethodPanelTest::imc_->Close();
     TddUtil::DestroyWindow();
 }
@@ -1787,6 +1840,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_muiltThread, TestSize.Level0)
     panelInfo.panelType = SOFT_KEYBOARD;
     panelInfo.panelFlag = FLG_FIXED;
     InputMethodPanelTest::ImaCreatePanel(panelInfo, panel_);
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     SET_THREAD_NUM(3);
     GTEST_RUN_TASK(TestAdjust);
     bool result = false;
@@ -1796,6 +1850,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustPanelRect_muiltThread, TestSize.Level0)
     }
     EXPECT_TRUE(result);
     InputMethodPanelTest::ImaDestroyPanel(panel_);
+    scope.Restore();
     InputMethodPanelTest::imc_->Close();
     TddUtil::DestroyWindow();
 }
@@ -1814,9 +1869,11 @@ HWTEST_F(InputMethodPanelTest, testAdjustKeyboard_001, TestSize.Level0)
     panelInfo.panelType = SOFT_KEYBOARD;
     panelInfo.panelFlag = FLG_FLOATING;
     InputMethodPanelTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     auto ret = inputMethodPanel->AdjustKeyboard();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
+    scope.Restore();
     InputMethodPanelTest::imc_->Close();
     TddUtil::DestroyWindow();
 }
@@ -1835,6 +1892,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustKeyboard_002, TestSize.Level0)
     panelInfo.panelType = SOFT_KEYBOARD;
     panelInfo.panelFlag = FLG_FLOATING;
     InputMethodPanelTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     DisplaySize display;
     ASSERT_EQ(InputMethodPanelTest::GetDisplaySize(display), ErrorCode::NO_ERROR);
     PanelFlag panelFlag = PanelFlag::FLG_FIXED;
@@ -1863,6 +1921,7 @@ HWTEST_F(InputMethodPanelTest, testAdjustKeyboard_002, TestSize.Level0)
     ret = inputMethodPanel->AdjustKeyboard();
     EXPECT_EQ(ret, ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
+    scope.Restore();
     InputMethodPanelTest::imc_->Close();
     TddUtil::DestroyWindow();
 }
@@ -1881,12 +1940,14 @@ HWTEST_F(InputMethodPanelTest, testAdjustKeyboard_003, TestSize.Level0)
     panelInfo.panelType = SOFT_KEYBOARD;
     panelInfo.panelFlag = FLG_FLOATING;
     InputMethodPanelTest::ImaCreatePanel(panelInfo, inputMethodPanel);
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
     auto ret = inputMethodPanel->AdjustKeyboard();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     panelInfo.panelFlag = FLG_CANDIDATE_COLUMN;
     ret = inputMethodPanel->AdjustKeyboard();
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
+    scope.Restore();
     InputMethodPanelTest::imc_->Close();
     TddUtil::DestroyWindow();
 }
@@ -2051,6 +2112,124 @@ HWTEST_F(InputMethodPanelTest, testGetCallingWindowInfo02, TestSize.Level0)
     InputMethodPanelTest::ImaDestroyPanel(inputMethodPanel);
     InputMethodPanelTest::imc_->Close();
     TddUtil::DestroyWindow();
+}
+
+class PanelContentWindow : public Rosen::Window {
+public:
+    Rosen::WMError NapiSetUIContent(const std::string &, napi_env, napi_value, BackupAndRestoreType,
+        sptr<IRemoteObject>, AppExecFwk::Ability *) override
+    {
+        ++contentCalls_;
+        return contentResult_;
+    }
+    Rosen::WMError AniSetUIContent(const std::string &, ani_env *, ani_object storage, BackupAndRestoreType,
+        sptr<IRemoteObject>, AppExecFwk::Ability *) override
+    {
+        ++contentCalls_;
+        hasStorage_ = storage != nullptr;
+        return contentResult_;
+    }
+    Rosen::WMError SetTransparent(bool transparent) override
+    {
+        EXPECT_TRUE(transparent);
+        ++transparentCalls_;
+        return transparentResult_;
+    }
+    Rosen::WMError contentResult_ = Rosen::WMError::WM_OK;
+    Rosen::WMError transparentResult_ = Rosen::WMError::WM_OK;
+    uint32_t contentCalls_ = 0;
+    uint32_t transparentCalls_ = 0;
+    bool hasStorage_ = false;
+};
+
+/**
+ * @tc.name: SetUiContent_PropagateWindowFailures
+ * @tc.desc: Content errors stop transparency; every outcome clears the pending-content flag.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, SetUiContent_PropagateWindowFailures, TestSize.Level0)
+{
+    for (auto content : { Rosen::WMError::WM_OK, Rosen::WMError::WM_ERROR_INVALID_PARAM,
+             Rosen::WMError::WM_ERROR_INVALID_PERMISSION }) {
+        for (auto transparent : { Rosen::WMError::WM_OK, Rosen::WMError::WM_ERROR_INVALID_PERMISSION }) {
+            auto panel = std::make_shared<InputMethodPanel>();
+            sptr<PanelContentWindow> window = new (std::nothrow) PanelContentWindow();
+            ASSERT_NE(nullptr, window);
+            panel->window_ = window;
+            window->contentResult_ = content;
+            window->transparentResult_ = transparent;
+            panel->isWaitSetUiContent_ = true;
+            int32_t expected = content == Rosen::WMError::WM_ERROR_INVALID_PARAM ?
+                ErrorCode::ERROR_PARAMETER_CHECK_FAILED :
+                content != Rosen::WMError::WM_OK || transparent != Rosen::WMError::WM_OK ?
+                ErrorCode::ERROR_WINDOW_MANAGER :
+                ErrorCode::NO_ERROR;
+            EXPECT_EQ(expected, panel->SetUiContent("content", nullptr, nullptr));
+            EXPECT_FALSE(panel->isWaitSetUiContent_);
+            EXPECT_EQ(1, window->contentCalls_);
+            EXPECT_EQ(content == Rosen::WMError::WM_OK ? 1 : 0, window->transparentCalls_);
+        }
+    }
+}
+
+/**
+ * @tc.name: SetUiContentAni_PropagateWindowFailures
+ * @tc.desc: ANI content preserves parameter and WMS errors with and without a storage object.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, SetUiContentAni_PropagateWindowFailures, TestSize.Level0)
+{
+    // The window fake does not dereference the opaque ANI environment or storage.
+    int32_t opaqueEnv = 0;
+    auto env = reinterpret_cast<ani_env *>(&opaqueEnv);
+    for (auto storage : { static_cast<ani_object>(nullptr), reinterpret_cast<ani_object>(&opaqueEnv) }) {
+        for (auto content : { Rosen::WMError::WM_OK, Rosen::WMError::WM_ERROR_INVALID_PARAM,
+                 Rosen::WMError::WM_ERROR_INVALID_PERMISSION }) {
+            for (auto transparent : { Rosen::WMError::WM_OK, Rosen::WMError::WM_ERROR_INVALID_PERMISSION }) {
+                auto panel = std::make_shared<InputMethodPanel>();
+                sptr<PanelContentWindow> window = new (std::nothrow) PanelContentWindow();
+                ASSERT_NE(nullptr, window);
+                panel->window_ = window;
+                window->contentResult_ = content;
+                window->transparentResult_ = transparent;
+                panel->isWaitSetUiContent_ = true;
+                int32_t expected = content == Rosen::WMError::WM_ERROR_INVALID_PARAM ?
+                    ErrorCode::ERROR_PARAMETER_CHECK_FAILED :
+                    content != Rosen::WMError::WM_OK || transparent != Rosen::WMError::WM_OK ?
+                    ErrorCode::ERROR_WINDOW_MANAGER :
+                    ErrorCode::NO_ERROR;
+                EXPECT_EQ(expected, panel->SetUiContentAni("content", env, storage));
+                EXPECT_FALSE(panel->isWaitSetUiContent_);
+                EXPECT_EQ(1, window->contentCalls_);
+                EXPECT_EQ(content == Rosen::WMError::WM_OK ? 1 : 0, window->transparentCalls_);
+                EXPECT_EQ(storage != nullptr, window->hasStorage_);
+            }
+        }
+    }
+}
+
+/**
+ * @tc.name: SetUiContent_ClearPendingOnInvalidState
+ * @tc.desc: Missing windows or ANI environments clear pending state without invoking WMS.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, SetUiContent_ClearPendingOnInvalidState, TestSize.Level0)
+{
+    auto panel = std::make_shared<InputMethodPanel>();
+    panel->isWaitSetUiContent_ = true;
+    EXPECT_EQ(ErrorCode::ERROR_NULL_POINTER, panel->SetUiContent("content", nullptr, nullptr));
+    EXPECT_FALSE(panel->isWaitSetUiContent_);
+    panel->isWaitSetUiContent_ = true;
+    EXPECT_EQ(ErrorCode::ERROR_NULL_POINTER, panel->SetUiContentAni("content", nullptr, nullptr));
+    EXPECT_FALSE(panel->isWaitSetUiContent_);
+    sptr<PanelContentWindow> window = new (std::nothrow) PanelContentWindow();
+    ASSERT_NE(nullptr, window);
+    panel->window_ = window;
+    panel->isWaitSetUiContent_ = true;
+    EXPECT_EQ(ErrorCode::ERROR_NULL_POINTER, panel->SetUiContentAni("content", nullptr, nullptr));
+    EXPECT_FALSE(panel->isWaitSetUiContent_);
+    EXPECT_EQ(0, window->contentCalls_);
+    EXPECT_EQ(0, window->transparentCalls_);
 }
 
 /**

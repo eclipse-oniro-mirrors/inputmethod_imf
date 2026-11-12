@@ -84,6 +84,9 @@ typedef int32_t (*OH_MessageHandlerProxy_OnMessageFunc)(InputMethod_MessageHandl
     const char16_t msgId[], size_t msgIdLength, const uint8_t *msgParam, size_t msgParamLength);
 
 /**
+ * Set callbacks before registering the handler. Serialize replacement and destruction.
+ * In-flight callbacks may still use the previous function; destruction does not drain callbacks.
+ *
  * @brief Create a new {@link InputMethod_MessageHandlerProxy} instance.
  *
  * @return If the creation succeeds, a pointer to the newly created {@link InputMethod_MessageHandlerProxy}
@@ -94,6 +97,8 @@ InputMethod_MessageHandlerProxy *OH_MessageHandlerProxy_Create(void);
 
 /**
  * @brief Destroy a {@link InputMethod_MessageHandlerProxy} instance.
+ * Revokes the handle for new accesses. A callback that already acquired the handler may finish.
+ * This call does not wait for callbacks. Clear the caller's pointer after destruction; do not reuse it.
  *
  * @param proxy The {@link InputMethod_MessageHandlerProxy} instance to be destroyed.
  * @since 16
@@ -109,6 +114,7 @@ void OH_MessageHandlerProxy_Destroy(InputMethod_MessageHandlerProxy *proxy);
  * will be set.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the handler is unregistered or destroyed.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 16
@@ -125,6 +131,7 @@ InputMethod_ErrorCode OH_MessageHandlerProxy_SetOnTerminatedFunc(
  * will be get.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the handler is unregistered or destroyed.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 16
@@ -141,6 +148,7 @@ InputMethod_ErrorCode OH_MessageHandlerProxy_GetOnTerminatedFunc(
  * will be set.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the handler is unregistered or destroyed.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 16
@@ -157,6 +165,7 @@ InputMethod_ErrorCode OH_MessageHandlerProxy_SetOnMessageFunc(
  * will be get.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the handler is unregistered or destroyed.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 16

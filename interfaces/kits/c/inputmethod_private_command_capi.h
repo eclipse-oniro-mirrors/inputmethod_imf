@@ -46,6 +46,12 @@ extern "C" {
  *
  * The private command between text editor and input method.
  *
+ * Use only a live handle created by this API or a borrowed handle supplied by the framework.
+ * Destroy only independently created objects. Callback objects and TextConfig child views are borrowed.
+ * Accessors reject unregistered or expired handles with IME_ERR_PARAMCHECK; NULL keeps its existing error.
+ * Lifetime checks do not make object fields thread-safe or identify every stale address after address reuse.
+ * Clear pointers after destruction and do not retain callback objects beyond the callback.
+ *
  * @since 12
  */
 typedef struct InputMethod_PrivateCommand InputMethod_PrivateCommand;
@@ -63,6 +69,10 @@ InputMethod_PrivateCommand *OH_PrivateCommand_Create(char key[], size_t keyLengt
 /**
  * @brief Destroy a {@link InputMethod_PrivateCommand} instance.
  *
+ * Only independently created objects can be destroyed. A framework callback supplies
+ * a borrowed object; do not destroy it, even during the callback. Destruction
+ * of a borrowed or unregistered object is rejected and logged.
+ *
  * @param command Represents a pointer to an {@link InputMethod_PrivateCommand} instance which will be destroyed.
  * @since 12
  */
@@ -75,6 +85,7 @@ void OH_PrivateCommand_Destroy(InputMethod_PrivateCommand *command);
  * @param keyLength Represents key length.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 12
@@ -87,6 +98,7 @@ InputMethod_ErrorCode OH_PrivateCommand_SetKey(InputMethod_PrivateCommand *comma
  * @param value Represents bool data value.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 12
@@ -99,6 +111,7 @@ InputMethod_ErrorCode OH_PrivateCommand_SetBoolValue(InputMethod_PrivateCommand 
  * @param value Represents integer data value.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 12
@@ -112,6 +125,7 @@ InputMethod_ErrorCode OH_PrivateCommand_SetIntValue(InputMethod_PrivateCommand *
  * @param valueLength Represents the length of string data value.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 12
@@ -127,6 +141,7 @@ InputMethod_ErrorCode OH_PrivateCommand_SetStrValue(
  * @param keyLength Represents key length.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 12
@@ -141,6 +156,7 @@ InputMethod_ErrorCode OH_PrivateCommand_GetKey(
  * value.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 12
@@ -154,6 +170,7 @@ InputMethod_ErrorCode OH_PrivateCommand_GetValueType(
  * @param value Represents bool data value.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  *     {@link IME_ERR_QUERY_FAILED} - query failed, no bool value in command.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
@@ -167,6 +184,7 @@ InputMethod_ErrorCode OH_PrivateCommand_GetBoolValue(InputMethod_PrivateCommand 
  * @param value Represents integer data value.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  *     {@link IME_ERR_QUERY_FAILED} - query failed, no integer value in command.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
@@ -181,6 +199,7 @@ InputMethod_ErrorCode OH_PrivateCommand_GetIntValue(InputMethod_PrivateCommand *
  * @param valueLength Represents the length of string data value.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  *     {@link IME_ERR_QUERY_FAILED} - query failed, no string value in command.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.

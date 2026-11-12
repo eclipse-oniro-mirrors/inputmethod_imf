@@ -55,6 +55,11 @@ constexpr uint64_t WAIT_IMF_ADJUST = 1000;
 int32_t InputMethodPanel::CreatePanel(
     const std::shared_ptr<AbilityRuntime::Context> &context, const PanelInfo &panelInfo)
 {
+    std::unique_lock<std::mutex> lifecycleLock(lifecycleMutex_, std::try_to_lock);
+    if (!lifecycleLock.owns_lock()) {
+        IMSA_HILOGE("Panel creation or destruction is already in progress.");
+        return ErrorCode::ERROR_OPERATE_PANEL;
+    }
     IMSA_HILOGD(
         "start, type/flag: %{public}d/%{public}d.", static_cast<int32_t>(panelType_), static_cast<int32_t>(panelFlag_));
     panelType_ = panelInfo.panelType;
@@ -83,6 +88,7 @@ int32_t InputMethodPanel::CreatePanel(
         IMSA_HILOGI("destroy window end, wmError is %{public}d.", wmError);
         return ErrorCode::ERROR_OPERATE_PANEL;
     }
+    panelDestroyed_ = false;
     windowId_ = window_->GetWindowId();
     IMSA_HILOGI("success, type/flag/windowId: %{public}d/%{public}d/%{public}u.", static_cast<int32_t>(panelType_),
         static_cast<int32_t>(panelFlag_), windowId_);
@@ -343,6 +349,24 @@ int32_t InputMethodPanel::SetPanelProperties()
 
 int32_t InputMethodPanel::DestroyPanel()
 {
+    // Keep the legacy best-effort result; managed panels use the status path before retiring their registration.
+    auto ret = DestroyPanelWithStatus();
+    return ret == ErrorCode::ERROR_WINDOW_MANAGER ? ErrorCode::NO_ERROR : ret;
+}
+
+int32_t InputMethodPanel::DestroyPanelWithStatus()
+{
+    std::unique_lock<std::mutex> lifecycleLock(lifecycleMutex_, std::try_to_lock);
+    if (!lifecycleLock.owns_lock()) {
+        IMSA_HILOGE("Another panel lifecycle operation is in progress; retry after it completes.");
+        return ErrorCode::ERROR_OPERATE_PANEL;
+    }
+    if (panelDestroyed_.load()) {
+        IMSA_HILOGW("Panel window %{public}u is already destroyed; skip repeated destruction. "
+                    "Create a new panel before using window operations.",
+            windowId_);
+        return ErrorCode::NO_ERROR;
+    }
     auto ret = HidePanel();
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("InputMethodPanel, hide panel failed, ret: %{public}d!", ret);
@@ -357,6 +381,13 @@ int32_t InputMethodPanel::DestroyPanel()
     }
     auto result = window_->Destroy();
     IMSA_HILOGI("destroy ret: %{public}d.", result);
+    if (result != WMError::WM_OK) {
+        IMSA_HILOGE(
+            "Window %{public}u destruction failed: %{public}d; panel is not retired. Check WMS before retrying.",
+            windowId_, result);
+        return ErrorCode::ERROR_WINDOW_MANAGER;
+    }
+    panelDestroyed_ = true;
     return ErrorCode::NO_ERROR;
 }
 
@@ -458,7 +489,7 @@ int32_t InputMethodPanel::ResizeEnhancedPanel(uint32_t width, uint32_t height)
     ret = AdjustPanelRect(panelFlag_, layoutParam, hotAreas, false);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("failed to AdjustPanelRect, ret: %{public}d!", ret);
-        return ErrorCode::ERROR_OPERATE_PANEL;
+        return ret;
     }
     std::lock_guard<std::mutex> lock(keyboardSizeLock_);
     keyboardSize_ = { width, height };
@@ -469,13 +500,14 @@ int32_t InputMethodPanel::ResizeEnhancedPanel(uint32_t width, uint32_t height)
 int32_t InputMethodPanel::ResizeWithoutAdjust(uint32_t width, uint32_t height)
 {
     if (!IsSizeValid(width, height)) {
-        IMSA_HILOGE("size is invalid!");
+        IMSA_HILOGE(
+            "Invalid panel size: %{public}u/%{public}u; check display bounds and panel type/flag.", width, height);
         return ErrorCode::ERROR_BAD_PARAMETERS;
     }
     auto ret = window_->Resize(width, height);
     if (ret != WMError::WM_OK) {
         IMSA_HILOGE("failed to resize, ret: %{public}d!", ret);
-        return ErrorCode::ERROR_OPERATE_PANEL;
+        return ErrorCode::ERROR_WINDOW_MANAGER;
     }
     std::lock_guard<std::mutex> lock(keyboardSizeLock_);
     keyboardSize_ = { width, height };
@@ -500,7 +532,7 @@ int32_t InputMethodPanel::ResizePanel(uint32_t width, uint32_t height)
     ret = AdjustPanelRect(panelFlag_, targetParams, true, true, false);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("failed to resize, ret: %{public}d!", ret);
-        return ErrorCode::ERROR_OPERATE_PANEL;
+        return ret;
     }
     std::lock_guard<std::mutex> lock(keyboardSizeLock_);
     keyboardSize_ = { width, height };
@@ -514,7 +546,7 @@ int32_t InputMethodPanel::Resize(uint32_t width, uint32_t height)
     HISTOGRAM_BOOLEAN("imekit.inputMethodEngine.panel.resize", 1);
 #endif
     if (window_ == nullptr) {
-        IMSA_HILOGE("window is nullptr!");
+        IMSA_HILOGE("Panel window is null; create a panel successfully before resizing it.");
         return ErrorCode::ERROR_NULL_POINTER;
     }
     int32_t ret = ErrorCode::NO_ERROR;
@@ -545,7 +577,7 @@ int32_t InputMethodPanel::MovePanelRect(int32_t x, int32_t y)
     }
     auto ret = AdjustPanelRect(panelFlag_, params, false, true, false);
     IMSA_HILOGI("x/y: %{public}d/%{public}d, ret = %{public}d", x, y, ret);
-    return ret == ErrorCode::NO_ERROR ? ErrorCode::NO_ERROR : ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+    return ret;
 }
 
 int32_t InputMethodPanel::MoveEnhancedPanelRect(int32_t x, int32_t y)
@@ -561,13 +593,13 @@ int32_t InputMethodPanel::MoveEnhancedPanelRect(int32_t x, int32_t y)
     auto hotAreas = GetHotAreas();
     auto ret = AdjustPanelRect(panelFlag_, params, hotAreas, false);
     IMSA_HILOGI("x/y: %{public}d/%{public}d, ret = %{public}d", x, y, ret);
-    return ret == ErrorCode::NO_ERROR ? ErrorCode::NO_ERROR : ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+    return ret;
 }
 
 int32_t InputMethodPanel::MoveTo(int32_t x, int32_t y)
 {
     if (window_ == nullptr) {
-        IMSA_HILOGE("window_ is nullptr!");
+        IMSA_HILOGE("Panel window is null; create a panel successfully before moving it.");
         return ErrorCode::ERROR_NULL_POINTER;
     }
     if (panelType_ == SOFT_KEYBOARD && panelFlag_ == FLG_FIXED) {
@@ -577,7 +609,10 @@ int32_t InputMethodPanel::MoveTo(int32_t x, int32_t y)
     if (!isScbEnable_ || window_->GetType() != WindowType::WINDOW_TYPE_INPUT_METHOD_FLOAT) {
         auto ret = window_->MoveTo(x, y);
         IMSA_HILOGI("x/y: %{public}d/%{public}d, ret = %{public}d", x, y, ret);
-        return ret == WMError::WM_ERROR_INVALID_PARAM ? ErrorCode::ERROR_PARAMETER_CHECK_FAILED : ErrorCode::NO_ERROR;
+        if (ret == WMError::WM_ERROR_INVALID_PARAM) {
+            return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
+        }
+        return ret == WMError::WM_OK ? ErrorCode::NO_ERROR : ErrorCode::ERROR_WINDOW_MANAGER;
     } else if (isInEnhancedAdjust_.load()) {
         return MoveEnhancedPanelRect(x, y);
     } else {
@@ -1325,7 +1360,7 @@ int32_t InputMethodPanel::GetAdjustInfo(PanelFlag panelFlag, FullPanelAdjustInfo
 int32_t InputMethodPanel::UpdatePanelFLagToWindow(PanelFlag panelFlag)
 {
     if (window_ == nullptr) {
-        IMSA_HILOGE("window_ is nullptr!");
+        IMSA_HILOGE("Panel window is null; create a panel successfully before updating its flag.");
         return ErrorCode::ERROR_NULL_POINTER;
     }
     WindowGravity gravity = WindowGravity::WINDOW_GRAVITY_FLOAT;
@@ -1350,7 +1385,7 @@ int32_t InputMethodPanel::UpdatePanelFLagToWindow(PanelFlag panelFlag)
             UpdatePanelFlag(panelFlag);
         }
         IMSA_HILOGI("flag: %{public}d, ret: %{public}d.", panelFlag, ret);
-        return ret == WMError::WM_OK ? ErrorCode::NO_ERROR : ErrorCode::ERROR_OPERATE_PANEL;
+        return ret == WMError::WM_OK ? ErrorCode::NO_ERROR : ErrorCode::ERROR_WINDOW_MANAGER;
     }
     return ErrorCode::NO_ERROR;
 }
@@ -1362,14 +1397,14 @@ int32_t InputMethodPanel::ChangePanelFlag(PanelFlag panelFlag)
     HISTOGRAM_ENUMERATION("imekit.inputMethodEngine.panelFlag", panelFlag, PanelFlag::FLG_CANDIDATE_COLUMN);
 #endif
     if (window_ == nullptr) {
-        IMSA_HILOGE("window_ is nullptr!");
+        IMSA_HILOGE("Panel window is null; create a panel successfully before changing its flag.");
         return ErrorCode::ERROR_NULL_POINTER;
     }
     if (panelFlag_ == panelFlag) {
         return ErrorCode::NO_ERROR;
     }
     if (panelType_ == STATUS_BAR) {
-        IMSA_HILOGE("STATUS_BAR cannot ChangePanelFlag!");
+        IMSA_HILOGE("STATUS_BAR does not support changing panel flag; keep the flag used at creation.");
         return ErrorCode::ERROR_BAD_PARAMETERS;
     }
     if (panelType_ == SOFT_KEYBOARD && panelFlag == FLG_CANDIDATE_COLUMN) {
@@ -1455,7 +1490,7 @@ int32_t InputMethodPanel::ShowPanel(uint32_t windowId)
     IMSA_HILOGD("InputMethodPanel start.");
     WaitSetUIContent();
     if (window_ == nullptr) {
-        IMSA_HILOGE("window_ is nullptr!");
+        IMSA_HILOGE("Panel window is null; create a panel successfully before showing it.");
         return ErrorCode::ERROR_IMA_NULLPTR;
     }
     if (IsShowing()) {
@@ -1487,7 +1522,7 @@ int32_t InputMethodPanel::ShowPanel(uint32_t windowId)
 int32_t InputMethodPanel::ShowKeyboardToWms(uint32_t windowId)
 {
     if (window_ == nullptr) {
-        IMSA_HILOGE("window_ is nullptr!");
+        IMSA_HILOGE("Panel window is null; create a panel successfully before showing the keyboard.");
         return ErrorCode::ERROR_IMA_NULLPTR;
     }
     auto showKeyboardMode = GetImmersiveMode();
@@ -1499,7 +1534,7 @@ int32_t InputMethodPanel::ShowKeyboardToWms(uint32_t windowId)
     auto ret = window_->ShowKeyboard(windowId, screenId, option);
     if (ret != WMError::WM_OK) {
         IMSA_HILOGE("ShowPanel error, err = %{public}d", ret);
-        return ErrorCode::ERROR_OPERATE_PANEL;
+        return ErrorCode::ERROR_WINDOW_MANAGER;
     }
 
     auto currentMode = GetImmersiveMode();
@@ -1518,13 +1553,13 @@ int32_t InputMethodPanel::ShowKeyboardToWms(uint32_t windowId)
 int32_t InputMethodPanel::SetTextFieldAvoidInfo(double positionY, double height)
 {
     if (window_ == nullptr) {
-        IMSA_HILOGE("window_ is nullptr!");
+        IMSA_HILOGE("Panel window is null; create a panel successfully before setting text field avoidance.");
         return ErrorCode::ERROR_NULL_POINTER;
     }
     auto ret = window_->SetTextFieldAvoidInfo(positionY, height);
     if (ret != WMError::WM_OK) {
         IMSA_HILOGE("SetTextFieldAvoidInfo error, err: %{public}d!", ret);
-        return ErrorCode::ERROR_OPERATE_PANEL;
+        return ErrorCode::ERROR_WINDOW_MANAGER;
     }
     return ErrorCode::NO_ERROR;
 }
@@ -1533,7 +1568,7 @@ int32_t InputMethodPanel::HidePanel()
 {
     IMSA_HILOGD("InputMethodPanel start");
     if (window_ == nullptr) {
-        IMSA_HILOGE("window_ is nullptr!");
+        IMSA_HILOGE("Panel window is null; create a panel successfully before hiding it.");
         return ErrorCode::ERROR_NULL_POINTER;
     }
     if (IsHidden()) {
@@ -1547,7 +1582,7 @@ int32_t InputMethodPanel::HidePanel()
     }
     if (ret != WMError::WM_OK) {
         IMSA_HILOGE("HidePanel error, err: %{public}d!", ret);
-        return ErrorCode::ERROR_OPERATE_PANEL;
+        return ErrorCode::ERROR_WINDOW_MANAGER;
     }
     IMSA_HILOGI("success, type/flag: %{public}d/%{public}d.", static_cast<int32_t>(panelType_),
         static_cast<int32_t>(panelFlag_));
@@ -1611,7 +1646,7 @@ int32_t InputMethodPanel::SetPrivacyMode(bool isPrivacyMode)
 #endif
     IMSA_HILOGD("isPrivacyMode: %{public}d.", isPrivacyMode);
     if (window_ == nullptr) {
-        IMSA_HILOGE("window_ is nullptr!");
+        IMSA_HILOGE("Panel window is null; create a panel successfully before setting privacy mode.");
         return ErrorCode::ERROR_NULL_POINTER;
     }
     auto ret = window_->SetPrivacyMode(isPrivacyMode);
@@ -1730,7 +1765,8 @@ int32_t InputMethodPanel::SetUiContent(
     const std::string &contentInfo, napi_env env, std::shared_ptr<NativeReference> storage)
 {
     if (window_ == nullptr) {
-        IMSA_HILOGE("window_ is nullptr, can not SetUiContent!");
+        IMSA_HILOGE("Panel window is null; create a panel successfully before setting UI content.");
+        isWaitSetUiContent_ = false;
         return ErrorCode::ERROR_NULL_POINTER;
     }
     WMError ret = WMError::WM_OK;
@@ -1739,20 +1775,29 @@ int32_t InputMethodPanel::SetUiContent(
     } else {
         ret = window_->NapiSetUIContent(contentInfo, env, storage->GetNapiValue());
     }
-    WMError wmError = window_->SetTransparent(true);
-    if (isWaitSetUiContent_) {
+    if (ret != WMError::WM_OK) {
         isWaitSetUiContent_ = false;
+        IMSA_HILOGE("NapiSetUIContent failed: %{public}d.", ret);
+        return ret == WMError::WM_ERROR_INVALID_PARAM ? ErrorCode::ERROR_PARAMETER_CHECK_FAILED
+                                                    : ErrorCode::ERROR_WINDOW_MANAGER;
     }
+    WMError wmError = window_->SetTransparent(true);
+    isWaitSetUiContent_ = false;
     IMSA_HILOGI("SetTransparent ret: %{public}u.", wmError);
-    IMSA_HILOGI("NapiSetUIContent ret: %{public}d.", ret);
-    return ret == WMError::WM_ERROR_INVALID_PARAM ? ErrorCode::ERROR_PARAMETER_CHECK_FAILED : ErrorCode::NO_ERROR;
+    return wmError == WMError::WM_OK ? ErrorCode::NO_ERROR : ErrorCode::ERROR_WINDOW_MANAGER;
 }
 
 int32_t InputMethodPanel::SetUiContentAni(
     const std::string &contentInfo, ani_env* env, ani_object storage)
 {
-    if (window_ == nullptr || env == nullptr) {
-        IMSA_HILOGE("window_ or env is nullptr, can not SetUiContentAni!");
+    if (window_ == nullptr) {
+        IMSA_HILOGE("Panel window is null; create a panel successfully before setting UI content.");
+        isWaitSetUiContent_ = false;
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    if (env == nullptr) {
+        IMSA_HILOGE("env is nullptr, can not SetUiContentAni!");
+        isWaitSetUiContent_ = false;
         return ErrorCode::ERROR_NULL_POINTER;
     }
     WMError ret = WMError::WM_OK;
@@ -1761,13 +1806,16 @@ int32_t InputMethodPanel::SetUiContentAni(
     } else {
         ret = window_->AniSetUIContent(contentInfo, env, storage);
     }
-    WMError wmError = window_->SetTransparent(true);
-    if (isWaitSetUiContent_) {
+    if (ret != WMError::WM_OK) {
         isWaitSetUiContent_ = false;
+        IMSA_HILOGE("AniSetUIContent failed: %{public}d.", ret);
+        return ret == WMError::WM_ERROR_INVALID_PARAM ? ErrorCode::ERROR_PARAMETER_CHECK_FAILED
+                                                    : ErrorCode::ERROR_WINDOW_MANAGER;
     }
+    WMError wmError = window_->SetTransparent(true);
+    isWaitSetUiContent_ = false;
     IMSA_HILOGI("SetTransparent ret: %{public}u.", wmError);
-    IMSA_HILOGI("AniSetUIContent ret: %{public}d.", ret);
-    return ret == WMError::WM_ERROR_INVALID_PARAM ? ErrorCode::ERROR_PARAMETER_CHECK_FAILED : ErrorCode::NO_ERROR;
+    return wmError == WMError::WM_OK ? ErrorCode::NO_ERROR : ErrorCode::ERROR_WINDOW_MANAGER;
 }
 
 Ace::UIContent *InputMethodPanel::GetUIContent()

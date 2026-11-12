@@ -42,12 +42,15 @@
 
 #include <memory>
 #include <mutex>
+#include <queue>
 #include <string>
+#include <thread>
 #include <unordered_map>
 #include <utility>
 #include <vector>
 
 #include "application_info.h"
+#include "block_queue.h"
 #include "combination_key.h"
 #include "display_adapter.h"
 #include "event_runner.h"
@@ -80,6 +83,7 @@ void ResetMockScreenLock();
 #include "input_method_engine_listener_impl.h"
 #include "itypes_util.h"
 #include "keyboard_event.h"
+#include "nocopyable.h"
 #include "ipc_skeleton.h"
 #include "os_account_manager.h"
 #include "tdd_util.h"
@@ -1519,6 +1523,307 @@ HWTEST_F(InputMethodPrivateMemberTest, BranchCoverage002, TestSize.Level0)
 }
 
 /**
+ * @tc.name: BlockQueue_OwnedPopAndTimeout
+ * @tc.desc: A timed-out request cannot consume the preceding request.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPrivateMemberTest, BlockQueue_OwnedPopAndTimeout, TestSize.Level0)
+{
+    BlockQueue<int> queue(0);
+    int front = -1;
+    EXPECT_FALSE(queue.GetFront(front));
+    EXPECT_EQ(-1, front);
+    EXPECT_FALSE(queue.IsReady(1));
+    EXPECT_FALSE(queue.Pop(1));
+    EXPECT_FALSE(queue.Remove(1));
+    queue.Pop();
+
+    queue.Push(1);
+    queue.Push(2);
+    queue.Push(3);
+    EXPECT_TRUE(queue.GetFront(front));
+    EXPECT_EQ(1, front);
+    EXPECT_TRUE(queue.IsReady(1));
+    EXPECT_TRUE(queue.Wait(1));
+    EXPECT_FALSE(queue.IsReady(2));
+    EXPECT_FALSE(queue.Pop(2));
+    EXPECT_FALSE(queue.Wait(2));
+    EXPECT_TRUE(queue.Remove(2));
+    EXPECT_FALSE(queue.Remove(2));
+    EXPECT_TRUE(queue.Pop(1));
+    EXPECT_TRUE(queue.IsReady(3));
+    EXPECT_TRUE(queue.Pop(3));
+    EXPECT_FALSE(queue.GetFront(front));
+    EXPECT_FALSE(queue.Wait(3));
+    EXPECT_TRUE(queue.Push(4));
+    queue.Pop();
+    EXPECT_EQ(0, queue.Size());
+}
+
+/**
+ * @tc.name: BlockQueue_RemoveFirstMatch
+ * @tc.desc: Removing the head only cancels the first matching request.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPrivateMemberTest, BlockQueue_RemoveFirstMatch, TestSize.Level0)
+{
+    BlockQueue<int> queue(0);
+    queue.Push(1);
+    queue.Push(2);
+    queue.Push(1);
+    EXPECT_TRUE(queue.Remove(1));
+    EXPECT_TRUE(queue.IsReady(2));
+    EXPECT_TRUE(queue.Pop(2));
+    EXPECT_TRUE(queue.IsReady(1));
+    EXPECT_TRUE(queue.Remove(1));
+    EXPECT_FALSE(queue.IsReady(1));
+    EXPECT_FALSE(queue.Remove(1));
+}
+
+/**
+ * @tc.name: BlockQueue_WaitAfterHeadRemoval
+ * @tc.desc: Removing the head allows the next waiting request to proceed.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPrivateMemberTest, BlockQueue_WaitAfterHeadRemoval, TestSize.Level0)
+{
+    BlockQueue<int> queue(5000);
+    queue.Push(1);
+    queue.Push(2);
+    bool ready = false;
+    std::thread waiter([&queue, &ready]() {
+        ready = queue.Wait(2);
+    });
+    EXPECT_TRUE(queue.Remove(1));
+    waiter.join();
+    EXPECT_TRUE(ready);
+    EXPECT_TRUE(queue.Pop(2));
+}
+
+/**
+ * @tc.name: BlockQueue_RejectFullQueue
+ * @tc.desc: Admission failure does not change the head or prevent later admission.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPrivateMemberTest, BlockQueue_RejectFullQueue, TestSize.Level0)
+{
+    BlockQueue<int> queue(0, 1);
+    EXPECT_TRUE(queue.Push(1));
+    EXPECT_FALSE(queue.Push(2));
+    EXPECT_EQ(1, queue.Size());
+    EXPECT_TRUE(queue.IsReady(1));
+    EXPECT_TRUE(queue.Remove(1));
+    EXPECT_TRUE(queue.Push(2));
+    EXPECT_TRUE(queue.Pop(2));
+    BlockQueue<int> disabledQueue(0, 0);
+    EXPECT_FALSE(disabledQueue.Push(1));
+    EXPECT_EQ(0, disabledQueue.Size());
+}
+
+template <typename T>
+class QueueFailureScope {
+    DISALLOW_COPY_AND_MOVE(QueueFailureScope);
+
+public:
+    QueueFailureScope(BlockQueue<T> &queue, size_t capacity) : queue_(queue)
+    {
+        std::lock_guard<std::mutex> lock(queue_.queuesMutex_);
+        previousTimeout_ = queue_.timeout_;
+        previousCapacity_ = queue_.maxQueueSize_;
+        previousEntries_.swap(queue_.queues_);
+        queue_.timeout_ = 0;
+        queue_.maxQueueSize_ = capacity;
+    }
+    ~QueueFailureScope()
+    {
+        std::lock_guard<std::mutex> lock(queue_.queuesMutex_);
+        previousEntries_.swap(queue_.queues_);
+        queue_.timeout_ = previousTimeout_;
+        queue_.maxQueueSize_ = previousCapacity_;
+    }
+
+private:
+    BlockQueue<T> &queue_;
+    uint32_t previousTimeout_;
+    size_t previousCapacity_;
+    std::queue<T> previousEntries_;
+};
+
+/**
+ * @tc.name: ControllerSession_QueueFailurePreservesHead
+ * @tc.desc: Attach and Close reject full queues or wait timeouts without consuming an earlier operation.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPrivateMemberTest, ControllerSession_QueueFailurePreservesHead, TestSize.Level0)
+{
+    sptr<InputMethodController> controller = new (std::nothrow) InputMethodController();
+    ASSERT_NE(nullptr, controller);
+    auto &queue = InputMethodController::ctrlEventQueue_;
+    ASSERT_EQ(0, queue.Size());
+    for (size_t capacity : { 1, 2 }) {
+        SCOPED_TRACE(capacity);
+        QueueFailureScope<InputMethodController::CtrlEventInfo> scope(queue, capacity);
+        InputMethodController::CtrlEventInfo head { {}, "head" };
+        ASSERT_TRUE(queue.Push(head));
+        EXPECT_EQ(ErrorCode::ERROR_CLIENT_ADD_FAILED,
+            controller->Attach(nullptr, AttachOptions {}, TextConfig {}, ClientType::JS));
+        EXPECT_EQ(1, queue.Size());
+        EXPECT_TRUE(queue.IsReady(head));
+        EXPECT_EQ(ErrorCode::ERROR_CLIENT_ADD_FAILED, controller->Close());
+        EXPECT_EQ(1, queue.Size());
+        EXPECT_TRUE(queue.IsReady(head));
+        EXPECT_EQ(nullptr, controller->GetTextListener());
+        EXPECT_FALSE(controller->IsBound());
+    }
+}
+
+/**
+ * @tc.name: DispatchKeyEvent_QueueFailurePreservesHead
+ * @tc.desc: Full queues and wait timeouts return a client error without invoking the key-event callback.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPrivateMemberTest, DispatchKeyEvent_QueueFailurePreservesHead, TestSize.Level0)
+{
+    sptr<InputMethodController> controller = new (std::nothrow) InputMethodController();
+    ASSERT_NE(nullptr, controller);
+    auto event = MMI::KeyEvent::Create();
+    ASSERT_NE(nullptr, event);
+    auto &queue = controller->keyEventQueue_;
+    for (size_t capacity : { 1, 2 }) {
+        SCOPED_TRACE(capacity);
+        QueueFailureScope<InputMethodController::KeyEventInfo> scope(queue, capacity);
+        InputMethodController::KeyEventInfo head { {}, nullptr };
+        ASSERT_TRUE(queue.Push(head));
+        bool callbackCalled = false;
+        auto callback = [&callbackCalled](std::shared_ptr<MMI::KeyEvent> &, bool) {
+            callbackCalled = true;
+        };
+        EXPECT_EQ(ErrorCode::ERROR_CLIENT_ADD_FAILED, controller->DispatchKeyEvent(event, callback));
+        EXPECT_FALSE(callbackCalled);
+        EXPECT_EQ(1, queue.Size());
+        EXPECT_TRUE(queue.IsReady(head));
+    }
+}
+
+class SwitchQueueSessionScope {
+public:
+    static constexpr int32_t userId = 98765;
+    SwitchQueueSessionScope() : session_(std::make_shared<PerUserSession>(userId, nullptr))
+    {
+        auto &manager = UserSessionManager::GetInstance();
+        std::lock_guard<std::mutex> lock(manager.userSessionsLock_);
+        auto it = manager.userSessions_.find(userId);
+        if (it != manager.userSessions_.end()) {
+            previous_ = it->second;
+        }
+        manager.userSessions_[userId] = session_;
+        session_->GetSwitchQueue().timeout_ = 0;
+    }
+    ~SwitchQueueSessionScope()
+    {
+        auto &manager = UserSessionManager::GetInstance();
+        std::lock_guard<std::mutex> lock(manager.userSessionsLock_);
+        if (previous_ != nullptr) {
+            manager.userSessions_[userId] = previous_;
+        } else {
+            manager.userSessions_.erase(userId);
+        }
+    }
+    std::shared_ptr<PerUserSession> session_;
+
+private:
+    std::shared_ptr<PerUserSession> previous_;
+};
+
+/**
+ * @tc.name: OnSwitchInputMethod_TimeoutRetiresOnlyOwnRequest
+ * @tc.desc: A non-head or missing request times out without executing or consuming another switch.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPrivateMemberTest, OnSwitchInputMethod_TimeoutRetiresOnlyOwnRequest, TestSize.Level0)
+{
+    SwitchQueueSessionScope scope;
+    auto &queue = scope.session_->GetSwitchQueue();
+    SwitchInfo head { {}, "head", "" };
+    SwitchInfo timedOut { {}, "timedOut", "" };
+    SwitchInfo next { {}, "next", "" };
+    ASSERT_TRUE(queue.Push(head));
+    ASSERT_TRUE(queue.Push(timedOut));
+    ASSERT_TRUE(queue.Push(next));
+    EXPECT_EQ(ErrorCode::ERROR_SWITCH_IME, service_->OnSwitchInputMethod(scope.userId, timedOut, SwitchTrigger::IMSA));
+    EXPECT_EQ(2, queue.Size());
+    EXPECT_TRUE(queue.IsReady(head));
+    EXPECT_EQ(ErrorCode::ERROR_SWITCH_IME, service_->OnSwitchInputMethod(scope.userId, timedOut, SwitchTrigger::IMSA));
+    EXPECT_EQ(2, queue.Size());
+    EXPECT_TRUE(queue.Pop(head));
+    EXPECT_TRUE(queue.IsReady(next));
+}
+
+/**
+ * @tc.name: OnStartInputType_TimeoutRetiresOnlyOwnRequest
+ * @tc.desc: Input-type switch timeout preserves the preceding switch regardless of permission-check mode.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPrivateMemberTest, OnStartInputType_TimeoutRetiresOnlyOwnRequest, TestSize.Level0)
+{
+    SwitchQueueSessionScope scope;
+    auto &queue = scope.session_->GetSwitchQueue();
+    SwitchInfo head { {}, "head", "" };
+    SwitchInfo timedOut { {}, "timedOut", "" };
+    ASSERT_TRUE(queue.Push(head));
+    for (bool checkPermission : { false, true }) {
+        ASSERT_TRUE(queue.Push(timedOut));
+        EXPECT_EQ(ErrorCode::ERROR_SWITCH_IME, service_->OnStartInputType(scope.userId, timedOut, checkPermission));
+        EXPECT_EQ(1, queue.Size());
+        EXPECT_TRUE(queue.IsReady(head));
+    }
+}
+
+/**
+ * @tc.name: SwitchToDefaultIme_RejectFullQueue
+ * @tc.desc: Failed queue admission does not run or retire the current head request.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SwitchToDefaultIme_RejectFullQueue, TestSize.Level0)
+{
+    SwitchQueueSessionScope scope;
+    auto &queue = scope.session_->GetSwitchQueue();
+    SwitchInfo head { {}, "head", "" };
+    ASSERT_TRUE(queue.Push(head));
+    queue.maxQueueSize_ = 1;
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    auto previousDefault = inquirer.systemConfig_.defaultInputMethod;
+    inquirer.systemConfig_.defaultInputMethod = "test.default/extension";
+    EXPECT_EQ(ErrorCode::ERROR_SWITCH_IME, service_->SwitchToDefaultIme(scope.userId));
+    EXPECT_EQ(1, queue.Size());
+    EXPECT_TRUE(queue.IsReady(head));
+    inquirer.systemConfig_.defaultInputMethod = previousDefault;
+}
+
+/**
+ * @tc.name: SwitchByCondition_RejectFullQueue
+ * @tc.desc: Conditional subtype switches return the switch error without consuming the queued request.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPrivateMemberTest, SwitchByCondition_RejectFullQueue, TestSize.Level0)
+{
+    SwitchQueueSessionScope scope;
+    auto &queue = scope.session_->GetSwitchQueue();
+    SwitchInfo head { {}, "head", "" };
+    ASSERT_TRUE(queue.Push(head));
+    queue.maxQueueSize_ = 1;
+    auto info = std::make_shared<ImeInfo>();
+    SubProperty subtype;
+    subtype.name = "test.ime";
+    subtype.id = "test.subtype";
+    subtype.mode = "upper";
+    info->subProps.push_back(subtype);
+    EXPECT_EQ(ErrorCode::ERROR_SWITCH_IME, service_->SwitchByCondition(Condition::UPPER, info, scope.userId));
+    EXPECT_EQ(1, queue.Size());
+    EXPECT_TRUE(queue.IsReady(head));
+}
+
+/**
  * @tc.name: BranchCoverage003
  * @tc.desc: BranchCoverage
  * @tc.type: FUNC
@@ -2572,13 +2877,13 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_TestStartStylusIme, TestSize.Level0)
 
     // started, same textField -> NO_ERROR
     ImeIdentification stylusIme{ "stylusBundle", "stylusSub" };
+    InputTypeManager::GetInstance().inputTypes_.insert_or_assign(InputType::STYLUS_INPUT, stylusIme);
     InputTypeManager::GetInstance().Set(true, stylusIme);
     clientInfo.isNotifyInputStart = false;
     ret = service_->StartStylusIme(INVALID_USER_ID, clientInfo);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
 
     // started, diff textField, stylus ime already current -> NO_ERROR
-    InputTypeManager::GetInstance().inputTypes_.insert_or_assign(InputType::STYLUS_INPUT, stylusIme);
     clientInfo.isNotifyInputStart = true;
     ret = service_->StartStylusIme(INVALID_USER_ID, clientInfo);
     EXPECT_EQ(ret, ErrorCode::NO_ERROR);
@@ -3063,7 +3368,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnRegisterProxyIme, TestSi
 
 /**
  * @tc.name: PerUserSession_OnRegisterProxyIme_InAppProxyImeSkipRebind
- * @tc.desc: When current binding is INAPP_PROXY_IME, OnRegisterProxyIme skips PROXY_IME rebind.
+ * @tc.desc: When current binding is INAPP_PROXY_IME and uid is COL_PROXY_IME, OnRegisterProxyIme skips rebind.
  * @tc.type: FUNC
  * @tc.require:
  */
@@ -3073,7 +3378,7 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnRegisterProxyIme_InAppPr
     auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
     uint64_t displayId = ImfCommonConst::DEFAULT_DISPLAY_ID;
     int32_t pid = 10;
-    int32_t uid = 100;
+    int32_t uid = static_cast<int32_t>(ImfCommonConst::COL_PROXY_IME);
     // set up a current client whose bindImeData is INAPP_PROXY_IME
     auto group = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
     sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
@@ -3098,6 +3403,42 @@ HWTEST_F(InputMethodPrivateMemberTest, PerUserSession_OnRegisterProxyIme_InAppPr
     ASSERT_NE(clientInfo, nullptr);
     ASSERT_NE(clientInfo->bindImeData, nullptr);
     EXPECT_TRUE(clientInfo->bindImeData->IsInAppIme());
+}
+
+/**
+ * @tc.name: PerUserSession_OnRegisterProxyIme_InAppImeUsed_RejectNonProxyUid
+ * @tc.desc: When in-app IME is used and uid is not COL_PROXY_IME,
+ * OnRegisterProxyIme rejects with ERROR_EX_UNSUPPORTED_OPERATION.
+ * @tc.type: FUNC
+ */
+HWTEST_F(
+    InputMethodPrivateMemberTest, PerUserSession_OnRegisterProxyIme_InAppImeUsed_RejectNonProxyUid, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPrivateMemberTest::PerUserSession_OnRegisterProxyIme_InAppImeUsed_RejectNonProxyUid "
+                "start.");
+    auto userSession = std::make_shared<PerUserSession>(MAIN_USER_ID, nullptr);
+    uint64_t displayId = ImfCommonConst::DEFAULT_DISPLAY_ID;
+    int32_t pid = 10;
+    int32_t uid = 100; // not COL_PROXY_IME
+    // set up a current client whose bindImeData is INAPP_PROXY_IME
+    auto group = std::make_shared<ClientGroup>(DEFAULT_DISPLAY_ID, nullptr);
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+    group->SetCurrentClient(client);
+    auto info = std::make_shared<InputClientInfo>();
+    info->client = client;
+    info->bindImeData = std::make_shared<BindImeData>(pid, ImeType::INAPP_PROXY_IME);
+    group->mapClients_.insert_or_assign(client->AsObject(), info);
+    userSession->clientGroupMap_.insert_or_assign(ImfCommonConst::DEFAULT_DISPLAY_GROUP_ID, group);
+    auto core = new (std::nothrow) InputMethodCoreServiceImpl();
+    auto agent = new (std::nothrow) InputMethodAgentServiceImpl();
+    ASSERT_NE(core, nullptr);
+    ASSERT_NE(agent, nullptr);
+    // in-app IME is used and uid is not COL_PROXY_IME → rejected
+    auto ret = userSession->OnRegisterProxyIme(displayId, core, agent->AsObject(), pid, uid);
+    EXPECT_EQ(ret, ErrorCode::ERROR_EX_UNSUPPORTED_OPERATION);
+    // proxy IME data is NOT added (early return before AddProxyImeData)
+    EXPECT_EQ(userSession->proxyImeData_[displayId].size(), 0);
 }
 
 /**

@@ -24,6 +24,7 @@
 #include "mock_input_method_system_ability_proxy.h"
 #include "mock_iremote_object.h"
 #include "native_inputmethod_types.h"
+#include "native_object_registry.h"
 #include "native_text_changed_listener.h"
 #include "text_editor_proxy_manager.h"
 
@@ -151,6 +152,121 @@ HWTEST_F(NativeTextChangedListenerTest, CallbackIsNullTest_001, TestSize.Level1)
     EXPECT_EQ(ErrorCode::ERROR_NULL_POINTER, listener->ReceivePrivateCommand(privateCommand));
     EXPECT_EQ(ErrorCode::ERROR_NULL_POINTER, listener->SetPreviewText(u"", Range({ 0, 0 })));
     OH_TextEditorProxy_Destroy(textEditor);
+}
+
+/**
+ * @tc.name: ReceivePrivateCommand_BorrowedLifetime
+ * @tc.desc: Callback commands cannot be destroyed and become invalid after callback return despite a storage lease.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeTextChangedListenerTest, ReceivePrivateCommand_BorrowedLifetime, TestSize.Level0)
+{
+    auto proxy = OH_TextEditorProxy_Create();
+    ASSERT_NE(nullptr, proxy);
+    static std::shared_ptr<InputMethod_PrivateCommand> saved;
+    saved.reset();
+    EXPECT_EQ(IME_ERR_OK,
+        OH_TextEditorProxy_SetReceivePrivateCommandFunc(
+            proxy, [](InputMethod_TextEditorProxy *, InputMethod_PrivateCommand **commands, size_t size) {
+                EXPECT_EQ(1, size);
+                if (size != 1) {
+                    return -1;
+                }
+                saved = NativeObjectRegistry<InputMethod_PrivateCommand>::GetInstance().Get(commands[0]);
+                OH_PrivateCommand_Destroy(commands[0]);
+                bool value = false;
+                const char *key = nullptr;
+                size_t length = 0;
+                EXPECT_EQ(IME_ERR_OK, OH_PrivateCommand_GetBoolValue(commands[0], &value));
+                EXPECT_TRUE(value);
+                EXPECT_EQ(IME_ERR_OK, OH_PrivateCommand_GetKey(commands[0], &key, &length));
+                EXPECT_EQ("key", std::string(key, length));
+                return 7;
+            }));
+    sptr<NativeTextChangedListener> listener = new (std::nothrow) NativeTextChangedListener(proxy);
+    ASSERT_NE(nullptr, listener);
+    std::unordered_map<std::string, PrivateDataValue> commands {
+        {"key", true}
+    };
+    EXPECT_EQ(7, listener->ReceivePrivateCommand(commands));
+    bool value = false;
+    EXPECT_EQ(IME_ERR_PARAMCHECK, OH_PrivateCommand_GetBoolValue(saved.get(), &value));
+    EXPECT_FALSE(value);
+    saved.reset();
+    OH_TextEditorProxy_Destroy(proxy);
+}
+
+/**
+ * @tc.name: ReceivePrivateCommand_EmptyCommand
+ * @tc.desc: An empty command list still dispatches once and preserves the callback result.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeTextChangedListenerTest, ReceivePrivateCommand_EmptyCommand, TestSize.Level0)
+{
+    auto proxy = OH_TextEditorProxy_Create();
+    ASSERT_NE(nullptr, proxy);
+    EXPECT_EQ(IME_ERR_OK,
+        OH_TextEditorProxy_SetReceivePrivateCommandFunc(
+            proxy, [](InputMethod_TextEditorProxy *, InputMethod_PrivateCommand **, size_t size) {
+                EXPECT_EQ(0, size);
+                return -1;
+            }));
+    sptr<NativeTextChangedListener> listener = new (std::nothrow) NativeTextChangedListener(proxy);
+    ASSERT_NE(nullptr, listener);
+    EXPECT_EQ(-1, listener->ReceivePrivateCommand({}));
+    OH_TextEditorProxy_Destroy(proxy);
+}
+
+/**
+ * @tc.name: GetTextIndexAtCursor_CallbackReplacement
+ * @tc.desc: A callback can replace itself and the replacement is used only on the next dispatch.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeTextChangedListenerTest, GetTextIndexAtCursor_CallbackReplacement, TestSize.Level0)
+{
+    auto proxy = OH_TextEditorProxy_Create();
+    ASSERT_NE(nullptr, proxy);
+    EXPECT_EQ(
+        IME_ERR_OK, OH_TextEditorProxy_SetGetTextIndexAtCursorFunc(proxy, [](InputMethod_TextEditorProxy *editor) {
+            EXPECT_EQ(
+                IME_ERR_OK, OH_TextEditorProxy_SetGetTextIndexAtCursorFunc(editor, [](InputMethod_TextEditorProxy *) {
+                    return 9;
+                }));
+            return 7;
+        }));
+    sptr<NativeTextChangedListener> listener = new (std::nothrow) NativeTextChangedListener(proxy);
+    ASSERT_NE(nullptr, listener);
+    EXPECT_EQ(7, listener->GetTextIndexAtCursor());
+    EXPECT_EQ(9, listener->GetTextIndexAtCursor());
+    OH_TextEditorProxy_Destroy(proxy);
+    EXPECT_EQ(0, listener->GetTextIndexAtCursor());
+}
+
+/**
+ * @tc.name: GetLeftTextOfCursor_DestroyDuringCallback
+ * @tc.desc: In-flight text dispatch retains the editor while destruction prevents later dispatch.
+ * @tc.type: FUNC
+ */
+HWTEST_F(NativeTextChangedListenerTest, GetLeftTextOfCursor_DestroyDuringCallback, TestSize.Level0)
+{
+    auto proxy = OH_TextEditorProxy_Create();
+    ASSERT_NE(nullptr, proxy);
+    std::weak_ptr<InputMethod_TextEditorProxy> storage = TextEditorProxyManager::GetInstance().GetWeak(proxy);
+    EXPECT_EQ(IME_ERR_OK,
+        OH_TextEditorProxy_SetGetLeftTextOfCursorFunc(
+            proxy, [](InputMethod_TextEditorProxy *editor, int32_t, char16_t *text, size_t *length) {
+                OH_TextEditorProxy_Destroy(editor);
+                EXPECT_NE(nullptr, editor->getLeftTextOfCursorFunc.load());
+                EXPECT_EQ(IME_ERR_NULL_POINTER, OH_TextEditorProxy_SetCallbackInMainThread(editor, true));
+                text[0] = u'a';
+                text[1] = u'b';
+                *length = 2;
+            }));
+    sptr<NativeTextChangedListener> listener = new (std::nothrow) NativeTextChangedListener(proxy);
+    ASSERT_NE(nullptr, listener);
+    EXPECT_EQ(u"ab", listener->GetLeftTextOfCursor(2));
+    EXPECT_TRUE(storage.expired());
+    EXPECT_EQ(u"", listener->GetLeftTextOfCursor(2));
 }
 
 void GetTextConfig(InputMethod_TextEditorProxy *proxy, InputMethod_TextConfig *config) { }

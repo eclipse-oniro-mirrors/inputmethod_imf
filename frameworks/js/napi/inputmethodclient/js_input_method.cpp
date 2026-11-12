@@ -20,6 +20,7 @@
 #include "input_method_controller.h"
 #include "input_method_property.h"
 #include "input_method_utils.h"
+#include "input_method_queries.h"
 #include "inputmethod_trace.h"
 #include "js_callback_handler.h"
 #include "js_util.h"
@@ -332,17 +333,18 @@ napi_value JsInputMethod::GetCurrentInputMethod(napi_env env, napi_callback_info
             TYPE_NONE, JsUtil::Const::Null(env));
         PARAM_CHECK_RETURN(env, userId >= 0, "userId invalid!", TYPE_NONE, JsUtil::Const::Null(env));
     }
-    auto instance = InputMethodController::GetInstance();
-    if (instance == nullptr) {
-        IMSA_HILOGE("input method controller is nullptr!");
+    Property property;
+    auto instance = OHOS::MiscServices::InputMethodController::GetInstance();
+    auto ret = instance == nullptr ? ErrorCode::ERROR_SERVICE_START_FAILED :
+        InputMethodQueries::GetCurrent(*instance, property, userId);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("failed to get current input method: %{public}d", ret);
+        if (argc > 0) {
+            JsUtils::ThrowException(env, JsUtils::Convert(ret), "failed to get current input method!", TYPE_NONE);
+        }
         return JsUtil::Const::Null(env);
     }
-    std::shared_ptr<Property> property = instance->GetCurrentInputMethod(userId);
-    if (property == nullptr) {
-        IMSA_HILOGE("current input method is nullptr!");
-        return JsUtil::Const::Null(env);
-    }
-    return GetJsInputMethodProperty(env, *property);
+    return GetJsInputMethodProperty(env, property);
 }
 
 napi_value JsInputMethod::GetCurrentInputMethodSubtype(napi_env env, napi_callback_info info)
@@ -359,17 +361,19 @@ napi_value JsInputMethod::GetCurrentInputMethodSubtype(napi_env env, napi_callba
         PARAM_CHECK_RETURN(env, userId >= 0, "userId invalid!", TYPE_NONE, JsUtil::Const::Null(env));
     }
 
-    auto instance = InputMethodController::GetInstance();
-    if (instance == nullptr) {
-        IMSA_HILOGE("input method controller is nullptr!");
+    SubProperty subProperty;
+    auto instance = OHOS::MiscServices::InputMethodController::GetInstance();
+    auto ret = instance == nullptr ? ErrorCode::ERROR_SERVICE_START_FAILED :
+        InputMethodQueries::GetCurrentSubtype(*instance, subProperty, userId);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("failed to get current input method subtype: %{public}d", ret);
+        if (argc > 0) {
+            JsUtils::ThrowException(env, JsUtils::Convert(ret),
+                "failed to get current input method subtype!", TYPE_NONE);
+        }
         return JsUtil::Const::Null(env);
     }
-    std::shared_ptr<SubProperty> subProperty = instance->GetCurrentInputMethodSubtype(userId);
-    if (subProperty == nullptr) {
-        IMSA_HILOGE("current input method subtype is nullptr!");
-        return JsUtil::Const::Null(env);
-    }
-    return GetJsInputMethodSubProperty(env, *subProperty);
+    return GetJsInputMethodSubProperty(env, subProperty);
 }
 
 napi_value JsInputMethod::GetDefaultInputMethod(napi_env env, napi_callback_info info)
@@ -388,16 +392,20 @@ napi_value JsInputMethod::GetDefaultInputMethod(napi_env env, napi_callback_info
     auto instance = InputMethodController::GetInstance();
     if (instance == nullptr) {
         IMSA_HILOGE("input method controller is nullptr!");
+        JsUtils::ThrowException(env, JsUtils::Convert(ErrorCode::ERROR_SERVICE_START_FAILED),
+            "failed to get default input method!", TYPE_NONE);
         return JsUtil::Const::Null(env);
     }
     std::shared_ptr<Property> property;
     int32_t ret = instance->GetDefaultInputMethod(property, userId);
-    if (property == nullptr) {
-        IMSA_HILOGE("default input method is nullptr!");
-        return JsUtil::Const::Null(env);
-    }
     if (ret != ErrorCode::NO_ERROR) {
         JsUtils::ThrowException(env, JsUtils::Convert(ret), "failed to get default input method!", TYPE_NONE);
+        return JsUtil::Const::Null(env);
+    }
+    if (property == nullptr) {
+        IMSA_HILOGE("default input method is nullptr!");
+        JsUtils::ThrowException(env, JsUtils::Convert(ErrorCode::ERROR_EX_NULL_POINTER),
+            "default input method is nullptr!", TYPE_NONE);
         return JsUtil::Const::Null(env);
     }
     return GetJsInputMethodProperty(env, *property);

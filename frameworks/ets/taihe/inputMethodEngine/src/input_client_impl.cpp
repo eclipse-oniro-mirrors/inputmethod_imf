@@ -684,12 +684,22 @@ ohos::inputMethodEngine::AttachOptionsCallback InputClientImpl::GetAttachOptions
 void InputClientImpl::OnAttachOptionsDidChange(
     taihe::callback_view<void(AttachOptions_t const&)> callback, uintptr_t opq)
 {
-    InputMethodClientImpl::GetInstance()->RegisterListener("attachOptionsDidChange", callback, opq);
+    auto engine = InputMethodClientImpl::GetInstance();
+    if (engine == nullptr) {
+        IMSA_HILOGE("Cannot subscribe attachOptionsDidChange: listener initialization failed.");
+        return;
+    }
+    engine->RegisterListener("attachOptionsDidChange", callback, opq);
 }
 
 void InputClientImpl::OffAttachOptionsDidChange(taihe::optional_view<uintptr_t> opq)
 {
-    InputMethodClientImpl::GetInstance()->UnRegisterListener("attachOptionsDidChange", opq);
+    auto engine = InputMethodClientImpl::GetInstance();
+    if (engine == nullptr) {
+        IMSA_HILOGE("Cannot unsubscribe attachOptionsDidChange: listener initialization failed.");
+        return;
+    }
+    engine->UnRegisterListener("attachOptionsDidChange", opq);
 }
 }
 }

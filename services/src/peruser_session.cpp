@@ -1288,6 +1288,13 @@ int32_t PerUserSession::OnRegisterProxyIme(
     uint64_t displayId, const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent, int32_t pid, int32_t uid)
 {
     IMSA_HILOGD("displayId: %{public}" PRIu64 ", pid: %{public}d, uid: %{public}d", displayId, pid, uid);
+    auto clientInfo = GetCurrentClientInfo(displayId);
+    bool inAppImeUsed = clientInfo != nullptr && clientInfo->bindImeData != nullptr &&
+                        clientInfo->bindImeData->IsInAppIme();
+    if (inAppImeUsed && uid != ImfCommonConst::COL_PROXY_IME) {
+        IMSA_HILOGE("in_app ime is used, pid/uid:%{public}d/%{public}d is not allowed to register", pid, uid);
+        return ErrorCode::ERROR_EX_UNSUPPORTED_OPERATION;
+    }
     auto lastImeData = GetProxyImeData(displayId);
     if (lastImeData != nullptr && lastImeData->core != nullptr && core != nullptr &&
         lastImeData->core->AsObject() != core->AsObject()) {
@@ -1297,12 +1304,11 @@ int32_t PerUserSession::OnRegisterProxyIme(
     if (newImeData == nullptr) {
         return ErrorCode::ERROR_BAD_PARAMETERS;
     }
-    auto clientInfo = GetCurrentClientInfo(displayId);
-    if (clientInfo == nullptr) {
+    if (inAppImeUsed) {
+        IMSA_HILOGI("in_app ime is used, skip proxy ime pid/uid:%{public}d/%{public}d rebind", pid, uid);
         return ErrorCode::NO_ERROR;
     }
-    if (clientInfo->bindImeData != nullptr && clientInfo->bindImeData->IsInAppIme()) {
-        IMSA_HILOGI("current binding is INAPP_PROXY_IME, skip PROXY_IME rebind");
+    if (clientInfo == nullptr) {
         return ErrorCode::NO_ERROR;
     }
     if (!IsSameIme(clientInfo->bindImeData, newImeData)) {

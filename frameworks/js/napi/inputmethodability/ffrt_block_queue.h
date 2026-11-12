@@ -15,7 +15,9 @@
 
 #ifndef OHOS_INPUTMETHOD_FFRT_BLOCK_QUEUE_H
 #define OHOS_INPUTMETHOD_FFRT_BLOCK_QUEUE_H
+#include <chrono>
 #include <queue>
+#include <utility>
 
 #include "ffrt.h"
 
@@ -32,20 +34,63 @@ public:
     void Pop()
     {
         std::unique_lock<ffrt::mutex> lock(queuesMutex_);
+        if (queues_.empty()) {
+            return;
+        }
         queues_.pop();
         cv_.notify_all();
+    }
+
+    bool Pop(const T &data)
+    {
+        std::unique_lock<ffrt::mutex> lock(queuesMutex_);
+        if (queues_.empty() || !(data == queues_.front())) {
+            return false;
+        }
+        queues_.pop();
+        cv_.notify_all();
+        return true;
+    }
+
+    bool Remove(const T &data)
+    {
+        std::unique_lock<ffrt::mutex> lock(queuesMutex_);
+        std::queue<T> remaining;
+        bool removed = false;
+        while (!queues_.empty()) {
+            if (!removed && data == queues_.front()) {
+                removed = true;
+            } else {
+                remaining.push(std::move(queues_.front()));
+            }
+            queues_.pop();
+        }
+        queues_.swap(remaining);
+        if (removed) {
+            cv_.notify_all();
+        }
+        return removed;
     }
 
     void Push(const T &data)
     {
         std::unique_lock<ffrt::mutex> lock(queuesMutex_);
         queues_.push(data);
+        cv_.notify_all();
     }
 
-    void Wait(const T &data)
+    bool Wait(const T &data)
     {
         std::unique_lock<ffrt::mutex> lock(queuesMutex_);
-        cv_.wait_for(lock, std::chrono::milliseconds(timeout_), [&data, this]() { return data == queues_.front(); });
+        return cv_.wait_for(lock, std::chrono::milliseconds(timeout_), [&data, this]() {
+            return !queues_.empty() && data == queues_.front();
+        });
+    }
+
+    bool IsReady(const T &data)
+    {
+        std::unique_lock<ffrt::mutex> lock(queuesMutex_);
+        return !queues_.empty() && data == queues_.front();
     }
 
     bool GetFront(T &data)
