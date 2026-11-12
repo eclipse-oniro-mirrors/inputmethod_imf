@@ -615,21 +615,34 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_SwitchByCombinationKey_006, TestSize.L
             std::this_thread::sleep_for(std::chrono::milliseconds(pollintervalMs));
         }
     };
+    auto resetSessionForStartInputServiceFail = [session]() {
+        if (session == nullptr) {
+            return;
+        }
+        session->RemoveRealImeData();
+        session->runningIme_ = "fakeNotRunningIme";
+        session->firstStartNeedRetry_.store(false);
+    };
     // english->chinese
     waitImeStartLock();
+    resetSessionForStartInputServiceFail();
     auto ret = service_->SwitchByCombinationKey(KeyboardEvent::SHIFT_RIGHT_MASK);
     if (ret == ErrorCode::ERROR_TRY_IME_START_FAILED) {
         waitImeStartLock();
+        resetSessionForStartInputServiceFail();
         ret = service_->SwitchByCombinationKey(KeyboardEvent::SHIFT_RIGHT_MASK);
     }
-    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_REBOOT_OLD_IME_NOT_STOP);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_IME_CONNECT_FAILED);
     // lower->upper
+    waitImeStartLock();
+    resetSessionForStartInputServiceFail();
     ret = service_->SwitchByCombinationKey(KeyboardEvent::CAPS_MASK);
     if (ret == ErrorCode::ERROR_TRY_IME_START_FAILED) {
         waitImeStartLock();
+        resetSessionForStartInputServiceFail();
         ret = service_->SwitchByCombinationKey(KeyboardEvent::CAPS_MASK);
     }
-    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_REBOOT_OLD_IME_NOT_STOP);
+    EXPECT_EQ(ret, ErrorCode::ERROR_IMSA_IME_CONNECT_FAILED);
     ResetMockScreenLock();
 }
 

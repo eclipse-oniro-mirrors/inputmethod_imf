@@ -2552,6 +2552,118 @@ HWTEST_F(ImeUsageEventCacherTest, FileStore_EmptyWorkPath, TestSize.Level0)
     EXPECT_FALSE(store->IsReady());
 }
 
+// ==================== FileStore: invalid workPath (path validation) ====================
+
+/**
+ * @tc.name: ImeUsageFileStore_RelativeWorkPath
+ * @tc.desc: ImeUsageFileStore with relative workPath (not absolute) is not ready
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, FileStore_RelativeWorkPath, TestSize.Level0)
+{
+    auto store = std::make_unique<ImeUsageFileStore>("relative/path");
+    EXPECT_FALSE(store->IsReady());
+}
+
+/**
+ * @tc.name: ImeUsageFileStore_TraversalWorkPath
+ * @tc.desc: ImeUsageFileStore with workPath containing "../" is not ready
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, FileStore_TraversalWorkPath, TestSize.Level0)
+{
+    auto store = std::make_unique<ImeUsageFileStore>("/data/test/../traversal");
+    EXPECT_FALSE(store->IsReady());
+}
+
+/**
+ * @tc.name: ImeUsageFileStore_DotSlashWorkPath
+ * @tc.desc: ImeUsageFileStore with workPath containing "./" is not ready
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, FileStore_DotSlashWorkPath, TestSize.Level0)
+{
+    auto store = std::make_unique<ImeUsageFileStore>("/data/test/./sub");
+    EXPECT_FALSE(store->IsReady());
+}
+
+/**
+ * @tc.name: ImeUsageFileStore_OverlongWorkPath
+ * @tc.desc: ImeUsageFileStore with workPath exceeding MAX_PATH_LEN is not ready
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, FileStore_OverlongWorkPath, TestSize.Level0)
+{
+    // Build a path longer than 4096 characters
+    std::string longPath = "/data/test/";
+    while (longPath.size() <= 4096) {
+        longPath += "aaaaaaaaaa";
+    }
+    auto store = std::make_unique<ImeUsageFileStore>(longPath);
+    EXPECT_FALSE(store->IsReady());
+}
+
+/**
+ * @tc.name: ImeUsageFileStore_LoadEventsInvalidFilePath
+ * @tc.desc: LoadEvents returns false when eventsFilePath_ contains traversal segment
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, FileStore_LoadEventsInvalidFilePath, TestSize.Level0)
+{
+    std::string testDir = "/data/test/ime_usage_file_store_valid";
+    std::string filePath = testDir + "/ime_usage_events.json";
+    std::remove(filePath.c_str());
+    auto store = std::make_unique<ImeUsageFileStore>(testDir);
+    ASSERT_TRUE(store->IsReady());
+    // Tamper with eventsFilePath_ to simulate an invalid path
+    store->eventsFilePath_ = "/data/test/../traversal/ime_usage_events.json";
+    std::vector<ImeUsageEventRow> events;
+    int64_t nextId = 0;
+    uint64_t lastReportTime = 0;
+    bool ret = store->LoadEvents(events, nextId, lastReportTime);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.name: ImeUsageFileStore_LoadEventsRelativeFilePath
+ * @tc.desc: LoadEvents returns false when eventsFilePath_ is not absolute
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, FileStore_LoadEventsRelativeFilePath, TestSize.Level0)
+{
+    std::string testDir = "/data/test/ime_usage_file_store_valid2";
+    std::string filePath = testDir + "/ime_usage_events.json";
+    std::remove(filePath.c_str());
+    auto store = std::make_unique<ImeUsageFileStore>(testDir);
+    ASSERT_TRUE(store->IsReady());
+    // Set to a relative path
+    store->eventsFilePath_ = "relative/ime_usage_events.json";
+    std::vector<ImeUsageEventRow> events;
+    int64_t nextId = 0;
+    uint64_t lastReportTime = 0;
+    bool ret = store->LoadEvents(events, nextId, lastReportTime);
+    EXPECT_FALSE(ret);
+}
+
+/**
+ * @tc.name: ImeUsageFileStore_WriteEventsInvalidFilePath
+ * @tc.desc: WriteEvents returns false when eventsFilePath_ contains traversal segment
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, FileStore_WriteEventsInvalidFilePath, TestSize.Level0)
+{
+    std::string testDir = "/data/test/ime_usage_file_store_valid3";
+    std::string filePath = testDir + "/ime_usage_events.json";
+    std::remove(filePath.c_str());
+    auto store = std::make_unique<ImeUsageFileStore>(testDir);
+    ASSERT_TRUE(store->IsReady());
+    // Tamper with eventsFilePath_ to simulate an invalid path
+    store->eventsFilePath_ = "/data/test/../traversal/ime_usage_events.json";
+    std::vector<ImeUsageEventRow> events;
+    bool ret = store->WriteEvents(events, 1, 0);
+    EXPECT_FALSE(ret);
+}
+
 // ==================== FileStore: load empty file ====================
 
 /**
