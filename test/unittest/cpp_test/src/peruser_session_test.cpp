@@ -3041,7 +3041,9 @@ HWTEST_F(PerUserSessionTest, TestClearModalStateByImePid_001, TestSize.Level0)
     ASSERT_NE(session_->modalAppsByImePid_.find(TEST_PID), session_->modalAppsByImePid_.end());
     session_->ClearModalStateByImePid(TEST_PID);
     EXPECT_EQ(session_->modalAppsByImePid_.find(TEST_PID), session_->modalAppsByImePid_.end());
-=======
+}
+
+/**
  * @tc.name: TestGetImeStartTimeout_NonZero_001
  * @tc.desc: Test GetImeStartTimeout returns a non-zero timeout value
  * @tc.type: FUNC

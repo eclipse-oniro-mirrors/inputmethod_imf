@@ -1751,7 +1751,7 @@ int32_t InputMethodAbility::IsPanelShown(const PanelInfo &panelInfo, bool &isSho
 
 void InputMethodAbility::OnClientInactive(const sptr<IRemoteObject> &channel, bool skipHidePanel)
 {
-    IMSA_HILOGI("client inactive.");
+    IMSA_HILOGI("client inactive, skipHidePanel: %{public}d.", skipHidePanel);
     ResetPttKeyEventTracking();
     auto imeListener = GetImeListener();
     if (imeListener != nullptr) {
@@ -1762,43 +1762,37 @@ void InputMethodAbility::OnClientInactive(const sptr<IRemoteObject> &channel, bo
         IMSA_HILOGE("failed to create channel proxy!");
         return;
     }
-    if (skipHidePanel) {
-        // Focus shifts to an IME-owned floating window, keep all panels visible and only tear down binding metadata.
-        ClearDataChannel(channel);
-        ClearAttachOptions();
-        ClearBindClientInfo();
-        return;
+    // skipHidePanel: focus shifts to an IME-owned modal window, keep all panels visible, only tear down metadata.
+    if (!skipHidePanel) {
+        auto panel = GetSoftKeyboardPanel();
+        bool needNotifyHide = panel == nullptr || (panel->GetPanelFlag() != PanelFlag::FLG_FIXED);
+        if (imeListener != nullptr && needNotifyHide) {
+            imeListener->OnKeyboardStatus(false);
+        }
+        panels_.ForEach([this, &channelProxy](const PanelType &panelType, const std::shared_ptr<InputMethodPanel> &panel) {
+            if (panel == nullptr ||
+                (panelType == PanelType::SOFT_KEYBOARD && panel->GetPanelFlag() == PanelFlag::FLG_FIXED)) {
+                return false;
+            }
+            auto ret = panel->HidePanel();
+            if (ret != ErrorCode::NO_ERROR) {
+                IMSA_HILOGE("failed, ret: %{public}d", ret);
+                return false;
+            }
+            PanelStatusInfo info;
+            info.panelInfo.panelType = panel->GetPanelType();
+            info.panelInfo.panelFlag = panel->GetPanelFlag();
+            info.visible = false;
+            info.trigger = Trigger::IME_APP;
+            NotifyPanelStatusInfo(info, channelProxy);
+            // finish previewing text when soft keyboard hides
+            if (panel->GetPanelType() == PanelType::SOFT_KEYBOARD) {
+                AsyncIpcCallBack callback = [](int32_t code, const ResponseData &data) {};
+                FinishTextPreview(callback);
+            }
+            return false;
+        });
     }
-    auto panel = GetSoftKeyboardPanel();
-    bool needNotifyHide = panel == nullptr || (panel->GetPanelFlag() != PanelFlag::FLG_FIXED);
-    if (imeListener != nullptr && needNotifyHide) {
-        imeListener->OnKeyboardStatus(false);
-    }
-    panels_.ForEach([this, &channelProxy](const PanelType &panelType, const std::shared_ptr<InputMethodPanel> &panel) {
-        if (panel == nullptr) {
-            return false;
-        }
-        if (panelType == PanelType::SOFT_KEYBOARD && panel->GetPanelFlag() == PanelFlag::FLG_FIXED) {
-            return false;
-        }
-        auto ret = panel->HidePanel();
-        if (ret != ErrorCode::NO_ERROR) {
-            IMSA_HILOGE("failed, ret: %{public}d", ret);
-            return false;
-        }
-        PanelStatusInfo info;
-        info.panelInfo.panelType = panel->GetPanelType();
-        info.panelInfo.panelFlag = panel->GetPanelFlag();
-        info.visible = false;
-        info.trigger = Trigger::IME_APP;
-        NotifyPanelStatusInfo(info, channelProxy);
-        // finish previewing text when soft keyboard hides
-        if (panel->GetPanelType() == PanelType::SOFT_KEYBOARD) {
-            AsyncIpcCallBack callback = [](int32_t code, const ResponseData &data) {};
-            FinishTextPreview(callback);
-        }
-        return false;
-    });
     // cannot clear inputAttribute，otherwise it will affect hicar
     ClearDataChannel(channel);
     ClearAttachOptions();
