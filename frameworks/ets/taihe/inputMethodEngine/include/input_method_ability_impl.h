@@ -49,11 +49,19 @@ public:
     bool IsCallbackRegistered(const std::string &type) override;
 
 private:
+    struct CallbackHolder final : CallbackObjects {
+        using CallbackObjects::CallbackObjects;
+        ~CallbackHolder()
+        {
+            Release();
+        }
+    };
+    std::vector<std::shared_ptr<CallbackObjects>> GetCallbacks(const std::string &type);
     static ani_vm* GetAniVm(ani_env* env);
     static ani_env* GetAniEnv(ani_vm* vm);
     static ani_env* AttachAniEnv(ani_vm* vm);
     std::mutex mutex_;
-    std::map<std::string, std::vector<std::unique_ptr<CallbackObjects>>> jsCbMap_;
+    std::map<std::string, std::vector<std::shared_ptr<CallbackObjects>>> jsCbMap_;
     static std::mutex engineMutex_;
     static std::shared_ptr<InputMethodAbilityImpl> inputMethodEngine_;
     static ani_env* env_;

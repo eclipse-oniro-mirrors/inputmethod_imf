@@ -21,6 +21,14 @@ namespace MiscServices {
 
 bool PanelStatusInfoInner::ReadFromParcel(Parcel &in)
 {
+    int32_t keyboardTypeData = in.ReadInt32();
+    if (keyboardTypeData < static_cast<int32_t>(KeyboardType::TYPE_START) ||
+        keyboardTypeData > static_cast<int32_t>(KeyboardType::TYPE_END)) {
+        IMSA_HILOGE("Invalid keyboardType value: %{public}d", keyboardTypeData);
+        return false;
+    }
+    keyboardType = static_cast<KeyboardType>(keyboardTypeData);
+
     std::unique_ptr<PanelInfo> panelDataInfo(in.ReadParcelable<PanelInfo>());
     if (panelDataInfo == nullptr) {
         return false;
@@ -204,6 +212,10 @@ ArrayBuffer *ArrayBuffer::Unmarshalling(Parcel &in)
 // LCOV_EXCL_START
 bool PanelStatusInfoInner::Marshalling(Parcel &out) const
 {
+    if (!out.WriteInt32(static_cast<int32_t>(keyboardType))) {
+        return false;
+    }
+
     if (!out.WriteParcelable(&panelInfo)) {
         return false;
     }
@@ -425,6 +437,10 @@ bool ResponseDataInner::ReadFromParcel(Parcel &in)
             RichTextData richTextData;
             uint32_t spanCount = in.ReadUint32();
             IMSA_HILOGD("RICH_TEXT_TYPE unmarshalling, spanCount: %{public}u", spanCount);
+            if (spanCount > MAX_RICH_TEXT_SPAN_COUNT) {
+                IMSA_HILOGE("spanCount exceeds limit: %{public}u", spanCount);
+                return false;
+            }
             for (uint32_t i = 0; i < spanCount; i++) {
                 RichTextSpan span;
                 span.type = static_cast<SpanType>(in.ReadUint32());
@@ -508,6 +524,10 @@ bool RichTextDataInner::ReadFromParcel(Parcel &in)
 {
     uint32_t spanCount = in.ReadUint32();
     IMSA_HILOGD("RichTextDataInner read, spanCount: %{public}u", spanCount);
+    if (spanCount > MAX_RICH_TEXT_SPAN_COUNT) {
+        IMSA_HILOGE("spanCount exceeds limit: %{public}u", spanCount);
+        return false;
+    }
     for (uint32_t i = 0; i < spanCount; i++) {
         RichTextSpan span;
         span.type = static_cast<SpanType>(in.ReadUint32());

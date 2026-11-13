@@ -33,6 +33,8 @@
 #include "numkey_apps_manager.h"
 #include "on_demand_start_stop_sa.h"
 #include "os_account_adapter.h"
+#include "parameter.h"
+#include "parameters.h"
 #include "res_sched_adapter.h"
 #include "scene_board_judgement.h"
 #include "system_ability_definition.h"
@@ -97,6 +99,20 @@ PerUserSession::PerUserSession(int32_t userId, const std::shared_ptr<AppExecFwk:
 PerUserSession::~PerUserSession()
 {
     RemoveAllTask();
+}
+
+uint32_t PerUserSession::GetImeStartTimeout()
+{
+    static uint32_t timeout = []() {
+        uint32_t value = system::GetUintParameter<uint32_t>(IME_START_TIME_KEY, INVALID_TIME);
+        if (value == INVALID_TIME) {
+            IMSA_HILOGW("invalid ime start time 0, use default %{public}u ms.", MAX_IME_START_TIME);
+            return static_cast<uint32_t>(MAX_IME_START_TIME);
+        }
+        IMSA_HILOGW("use %{public}u ms ime start timeout.", value);
+        return value;
+    }();
+    return timeout;
 }
 
 void PerUserSession::SetImeUsageCallbacks(ImeUsageCallback onBind, ImeUsageCallback onUnbind)
@@ -1336,6 +1352,13 @@ int32_t PerUserSession::OnRegisterProxyIme(
     uint64_t displayId, const sptr<IInputMethodCore> &core, const sptr<IRemoteObject> &agent, int32_t pid, int32_t uid)
 {
     IMSA_HILOGD("displayId: %{public}" PRIu64 ", pid: %{public}d, uid: %{public}d", displayId, pid, uid);
+    auto clientInfo = GetCurrentClientInfo(displayId);
+    bool inAppImeUsed = clientInfo != nullptr && clientInfo->bindImeData != nullptr &&
+                        clientInfo->bindImeData->IsInAppIme();
+    if (inAppImeUsed && uid != ImfCommonConst::COL_PROXY_IME) {
+        IMSA_HILOGE("in_app ime is used, pid/uid:%{public}d/%{public}d is not allowed to register", pid, uid);
+        return ErrorCode::ERROR_EX_UNSUPPORTED_OPERATION;
+    }
     auto lastImeData = GetProxyImeData(displayId);
     if (lastImeData != nullptr && lastImeData->core != nullptr && core != nullptr &&
         lastImeData->core->AsObject() != core->AsObject()) {
@@ -1345,12 +1368,11 @@ int32_t PerUserSession::OnRegisterProxyIme(
     if (newImeData == nullptr) {
         return ErrorCode::ERROR_BAD_PARAMETERS;
     }
-    auto clientInfo = GetCurrentClientInfo(displayId);
-    if (clientInfo == nullptr) {
+    if (inAppImeUsed) {
+        IMSA_HILOGI("in_app ime is used, skip proxy ime pid/uid:%{public}d/%{public}d rebind", pid, uid);
         return ErrorCode::NO_ERROR;
     }
-    if (clientInfo->bindImeData != nullptr && clientInfo->bindImeData->IsInAppIme()) {
-        IMSA_HILOGI("current binding is INAPP_PROXY_IME, skip PROXY_IME rebind");
+    if (clientInfo == nullptr) {
         return ErrorCode::NO_ERROR;
     }
     if (!IsSameIme(clientInfo->bindImeData, newImeData)) {

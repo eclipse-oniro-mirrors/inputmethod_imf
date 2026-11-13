@@ -49,6 +49,12 @@ extern "C" {
  *
  * The configuration of the text editor.
  *
+ * Use only a live handle created by this API or a borrowed handle supplied by the framework.
+ * Destroy only independently created objects. Callback objects and TextConfig child views are borrowed.
+ * Accessors reject unregistered or expired handles with IME_ERR_PARAMCHECK; NULL keeps its existing error.
+ * Lifetime checks do not make object fields thread-safe or identify every stale address after address reuse.
+ * Clear pointers after destruction and do not retain callback objects beyond the callback.
+ *
  * @since 12
  */
 typedef struct InputMethod_TextConfig InputMethod_TextConfig;
@@ -64,6 +70,10 @@ InputMethod_TextConfig *OH_TextConfig_Create(void);
 /**
  * @brief Destroy a {@link InputMethod_TextConfig} instance.
  *
+ * Only independently created objects can be destroyed. A framework callback supplies
+ * a borrowed object; do not destroy it, even during the callback. Destruction
+ * of a borrowed or unregistered object is rejected and logged.
+ *
  * @param config Represents a pointer to an {@link InputMethod_TextConfig} instance which will be destroyed.
  * @since 12
  */
@@ -76,6 +86,7 @@ void OH_TextConfig_Destroy(InputMethod_TextConfig *config);
  * @param inputType The text input type of text Editor, which is defined in {@link InputMethod_TextInputType}.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 12
@@ -88,6 +99,7 @@ InputMethod_ErrorCode OH_TextConfig_SetInputType(InputMethod_TextConfig *config,
  * @param enterKeyType The enter key type of text Editor, which is defined in {@link InputMethod_EnterKeyType}.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 12
@@ -101,6 +113,7 @@ InputMethod_ErrorCode OH_TextConfig_SetEnterKeyType(
  * @param supported Indicates whether the preview text is supported.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 12
@@ -114,6 +127,7 @@ InputMethod_ErrorCode OH_TextConfig_SetPreviewTextSupport(InputMethod_TextConfig
  * @param end The end position of selection.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 12
@@ -126,6 +140,7 @@ InputMethod_ErrorCode OH_TextConfig_SetSelection(InputMethod_TextConfig *config,
  * @param windowId The window ID of the application currently bound to the input method.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 12
@@ -145,6 +160,7 @@ InputMethod_ErrorCode OH_TextConfig_SetWindowId(InputMethod_TextConfig *config, 
  *      3) If the <b>length</b> exceeds 256, the placeholder text will be truncated.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 20
@@ -159,12 +175,13 @@ InputMethod_ErrorCode OH_TextConfig_SetPlaceholder(InputMethod_TextConfig *confi
  * @param abilityName Pointer to a UTF-16 encoded double-byte string. If a null pointer is passed, the ability name is
  *     an empty string.
  * @param length Number of elements in the memory to which <b>abilityName</b> points, including the null character of
-*      the double-byte string.
+ *      the double-byte string.
  *     1) If <b>length</b> is <b>0</b>, the ability name is an empty string.
  *     2) The maximum number of UTF-16 encoded characters is 128, and the last element must be a null character.
  *     3) If the <b>length</b> exceeds 128, the placeholder text will be truncated.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 20
@@ -179,6 +196,7 @@ InputMethod_ErrorCode OH_TextConfig_SetAbilityName(InputMethod_TextConfig *confi
  * @param consumeKeyEvents Indicates whether the editor supports consuming key events.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 26.0.0
@@ -193,7 +211,7 @@ InputMethod_ErrorCode OH_TextConfig_SetConsumeKeyEvents(InputMethod_TextConfig *
  *     The text input type of text Editor
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
- *     {@link IME_ERR_PARAMCHECK} - parameter check failed.
+ *     {@link IME_ERR_PARAMCHECK} - parameter check failed, or the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 12
@@ -207,6 +225,7 @@ InputMethod_ErrorCode OH_TextConfig_GetInputType(InputMethod_TextConfig *config,
  *     Indicates the enter key type of text Editor
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 12
@@ -220,6 +239,7 @@ InputMethod_ErrorCode OH_TextConfig_GetEnterKeyType(
  * @param supported Indicates whether the preview text is supported.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 12
@@ -230,8 +250,12 @@ InputMethod_ErrorCode OH_TextConfig_IsPreviewTextSupported(InputMethod_TextConfi
  *
  * @param config Represents a pointer to an {@link InputMethod_TextConfig} instance which will be get from.
  * @param cursorInfo Represents a pointer to an {@link InputMethod_CursorInfo} instance.
+ *     The output is a borrowed, mutable view of the cursor info embedded in config; no allocation is made.
+ *     Do not destroy or free this view. Changes through the view update config.
+ *     It is valid only while config is valid, and only during the callback for a callback-provided config.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 12
@@ -243,8 +267,12 @@ InputMethod_ErrorCode OH_TextConfig_GetCursorInfo(InputMethod_TextConfig *config
  *
  * @param config Indicates the text configuration.
  * @param avoidInfo Indicates the text avoid information.
+ *     The output is a borrowed, mutable view of the text avoid info embedded in config; no allocation is made.
+ *     Do not destroy or free this view. Changes through the view update config.
+ *     It is valid only while config is valid, and only during the callback for a callback-provided config.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  *@since 12
@@ -260,6 +288,7 @@ InputMethod_ErrorCode OH_TextConfig_GetTextAvoidInfo(
  * @param end Represents selection end position.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 12
@@ -273,6 +302,7 @@ InputMethod_ErrorCode OH_TextConfig_GetSelection(InputMethod_TextConfig *config,
  * @param windowId The window ID of the application currently bound to the input method.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 12
@@ -295,7 +325,7 @@ InputMethod_ErrorCode OH_TextConfig_GetWindowId(InputMethod_TextConfig *config, 
  *        placeholder text, and an error will be return.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
- *     {@link IME_ERR_PARAMCHECK} - parameter check failed.
+ *     {@link IME_ERR_PARAMCHECK} - parameter check failed, or the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 20
@@ -319,7 +349,7 @@ InputMethod_ErrorCode OH_TextConfig_GetPlaceholder(InputMethod_TextConfig *confi
  *        name, and an error will be return.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
- *     {@link IME_ERR_PARAMCHECK} - parameter check failed.
+ *     {@link IME_ERR_PARAMCHECK} - parameter check failed, or the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 20
@@ -334,6 +364,7 @@ InputMethod_ErrorCode OH_TextConfig_GetAbilityName(InputMethod_TextConfig *confi
  * @param consumeKeyEvents Indicates Indicates whether the editor supports consuming key events.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 26.0.0

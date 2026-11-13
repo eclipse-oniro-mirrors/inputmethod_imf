@@ -13,9 +13,10 @@
  * limitations under the License.
  */
 #include "input_method_controller.h"
-#include "native_message_handler_callback.h"
 #include "native_inputmethod_types.h"
 #include "native_inputmethod_utils.h"
+#include "native_message_handler_callback.h"
+#include "native_session_guard.h"
 #include "string_ex.h"
 #ifdef __cplusplus
 extern "C" {
@@ -24,17 +25,17 @@ using namespace OHOS;
 using namespace OHOS::MiscServices;
 constexpr size_t INVALID_MSG_ID_SIZE = 256; // 256B
 constexpr size_t INVALID_MSG_PARAM_SIZE = 128 * 1024; // 128KB
-static int32_t IsValidMessageHandlerProxy(InputMethod_MessageHandlerProxy *messageHandler)
+static int32_t IsValidMessageHandlerProxy(const std::shared_ptr<InputMethod_MessageHandlerProxy> &messageHandler)
 {
     if (messageHandler == nullptr) {
         IMSA_HILOGE("messageHandler is nullptr");
         return IME_ERR_OK;
     }
-    if (messageHandler->onTerminatedFunc == nullptr) {
+    if (messageHandler->onTerminatedFunc.load() == nullptr) {
         IMSA_HILOGE("onTerminatedFunc is nullptr");
         return IME_ERR_NULL_POINTER;
     }
-    if (messageHandler->onMessageFunc == nullptr) {
+    if (messageHandler->onMessageFunc.load() == nullptr) {
         IMSA_HILOGE("onMessageFunc is nullptr");
         return IME_ERR_NULL_POINTER;
     }
@@ -43,6 +44,11 @@ static int32_t IsValidMessageHandlerProxy(InputMethod_MessageHandlerProxy *messa
 
 InputMethod_ErrorCode OH_InputMethodProxy_ShowKeyboard(InputMethod_InputMethodProxy *inputMethodProxy)
 {
+    NativeSessionGuard sessionGuard;
+    if (!sessionGuard.IsAcquired()) {
+        IMSA_HILOGE("Concurrent or reentrant C session operation rejected; wait for the current operation to finish.");
+        return IME_ERR_IMCLIENT;
+    }
     auto errCode = IsValidInputMethodProxy(inputMethodProxy);
     if (errCode != IME_ERR_OK) {
         IMSA_HILOGE("invalid state, errCode=%{public}d", errCode);
@@ -59,6 +65,11 @@ InputMethod_ErrorCode OH_InputMethodProxy_ShowKeyboard(InputMethod_InputMethodPr
 InputMethod_ErrorCode OH_InputMethodProxy_ShowTextInput(
     InputMethod_InputMethodProxy *inputMethodProxy, InputMethod_AttachOptions *options)
 {
+    NativeSessionGuard sessionGuard;
+    if (!sessionGuard.IsAcquired()) {
+        IMSA_HILOGE("Concurrent or reentrant C session operation rejected; wait for the current operation to finish.");
+        return IME_ERR_IMCLIENT;
+    }
     auto errCode = IsValidInputMethodProxy(inputMethodProxy);
     if (errCode != IME_ERR_OK) {
         IMSA_HILOGE("invalid state, errCode=%{public}d", errCode);
@@ -66,7 +77,12 @@ InputMethod_ErrorCode OH_InputMethodProxy_ShowTextInput(
     }
 
     if (options == nullptr) {
-        IMSA_HILOGE("options is nullptr");
+        IMSA_HILOGE("options is null; create AttachOptions with OH_AttachOptions_Create before ShowTextInput.");
+        return IME_ERR_NULL_POINTER;
+    }
+    auto lease = NativeObjectRegistry<InputMethod_AttachOptions>::GetInstance().Get(options);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_AttachOptions is unregistered or no longer valid.");
         return IME_ERR_PARAMCHECK;
     }
 
@@ -84,6 +100,11 @@ InputMethod_ErrorCode OH_InputMethodProxy_ShowTextInput(
 
 InputMethod_ErrorCode OH_InputMethodProxy_HideKeyboard(InputMethod_InputMethodProxy *inputMethodProxy)
 {
+    NativeSessionGuard sessionGuard;
+    if (!sessionGuard.IsAcquired()) {
+        IMSA_HILOGE("Concurrent or reentrant C session operation rejected; wait for the current operation to finish.");
+        return IME_ERR_IMCLIENT;
+    }
     auto errCode = IsValidInputMethodProxy(inputMethodProxy);
     if (errCode != IME_ERR_OK) {
         IMSA_HILOGE("invalid state, errCode=%{public}d", errCode);
@@ -99,6 +120,11 @@ InputMethod_ErrorCode OH_InputMethodProxy_HideKeyboard(InputMethod_InputMethodPr
 InputMethod_ErrorCode OH_InputMethodProxy_NotifySelectionChange(
     InputMethod_InputMethodProxy *inputMethodProxy, char16_t text[], size_t length, int start, int end)
 {
+    NativeSessionGuard sessionGuard;
+    if (!sessionGuard.IsAcquired()) {
+        IMSA_HILOGE("Concurrent or reentrant C session operation rejected; wait for the current operation to finish.");
+        return IME_ERR_IMCLIENT;
+    }
     auto errCode = IsValidInputMethodProxy(inputMethodProxy);
     if (errCode != IME_ERR_OK) {
         IMSA_HILOGE("invalid state, errCode=%{public}d", errCode);
@@ -123,6 +149,11 @@ InputMethod_ErrorCode OH_InputMethodProxy_NotifySelectionChange(
 InputMethod_ErrorCode OH_InputMethodProxy_NotifyConfigurationChange(InputMethod_InputMethodProxy *inputMethodProxy,
     InputMethod_EnterKeyType enterKey, InputMethod_TextInputType textType)
 {
+    NativeSessionGuard sessionGuard;
+    if (!sessionGuard.IsAcquired()) {
+        IMSA_HILOGE("Concurrent or reentrant C session operation rejected; wait for the current operation to finish.");
+        return IME_ERR_IMCLIENT;
+    }
     auto errCode = IsValidInputMethodProxy(inputMethodProxy);
     if (errCode != IME_ERR_OK) {
         IMSA_HILOGE("invalid state, errCode=%{public}d", errCode);
@@ -142,6 +173,11 @@ InputMethod_ErrorCode OH_InputMethodProxy_NotifyConfigurationChange(InputMethod_
 InputMethod_ErrorCode OH_InputMethodProxy_NotifyCursorUpdate(
     InputMethod_InputMethodProxy *inputMethodProxy, InputMethod_CursorInfo *cursorInfo)
 {
+    NativeSessionGuard sessionGuard;
+    if (!sessionGuard.IsAcquired()) {
+        IMSA_HILOGE("Concurrent or reentrant C session operation rejected; wait for the current operation to finish.");
+        return IME_ERR_IMCLIENT;
+    }
     auto errCode = IsValidInputMethodProxy(inputMethodProxy);
     if (errCode != IME_ERR_OK) {
         IMSA_HILOGE("invalid state, errCode=%{public}d", errCode);
@@ -150,6 +186,11 @@ InputMethod_ErrorCode OH_InputMethodProxy_NotifyCursorUpdate(
     if (cursorInfo == nullptr) {
         IMSA_HILOGE("cursorInfo is nullptr");
         return IME_ERR_NULL_POINTER;
+    }
+    auto lease = NativeObjectRegistry<InputMethod_CursorInfo>::GetInstance().Get(cursorInfo);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_CursorInfo is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
     }
     CursorInfo info;
     info.left = cursorInfo->left;
@@ -167,6 +208,11 @@ InputMethod_ErrorCode OH_InputMethodProxy_NotifyCursorUpdate(
 InputMethod_ErrorCode OH_InputMethodProxy_SendPrivateCommand(
     InputMethod_InputMethodProxy *inputMethodProxy, InputMethod_PrivateCommand *privateCommand[], size_t size)
 {
+    NativeSessionGuard sessionGuard;
+    if (!sessionGuard.IsAcquired()) {
+        IMSA_HILOGE("Concurrent or reentrant C session operation rejected; wait for the current operation to finish.");
+        return IME_ERR_IMCLIENT;
+    }
     auto errCode = IsValidInputMethodProxy(inputMethodProxy);
     if (errCode != IME_ERR_OK) {
         IMSA_HILOGE("invalid state, errCode=%{public}d", errCode);
@@ -188,7 +234,12 @@ InputMethod_ErrorCode OH_InputMethodProxy_SendPrivateCommand(
             IMSA_HILOGE("privateCommand[%zu] is nullptr", i);
             return IME_ERR_NULL_POINTER;
         }
-        command.emplace(privateCommand[i]->key, privateCommand[i]->value);
+        auto value = NativeObjectRegistry<InputMethod_PrivateCommand>::GetInstance().Get(privateCommand[i]);
+        if (value == nullptr) {
+            IMSA_HILOGE("Private command at index %{public}zu is unregistered or expired.", i);
+            return IME_ERR_PARAMCHECK;
+        }
+        command.emplace(value->key, value->value);
     }
     auto instance = InputMethodController::GetInstance();
     if (instance == nullptr) {
@@ -201,6 +252,11 @@ InputMethod_ErrorCode OH_InputMethodProxy_SendPrivateCommand(
 InputMethod_ErrorCode OH_InputMethodProxy_SendMessage(InputMethod_InputMethodProxy *inputMethodProxy,
     const char16_t *msgId, size_t msgIdLength, const uint8_t *msgParam, size_t msgParamLength)
 {
+    NativeSessionGuard sessionGuard;
+    if (!sessionGuard.IsAcquired()) {
+        IMSA_HILOGE("Concurrent or reentrant C session operation rejected; wait for the current operation to finish.");
+        return IME_ERR_IMCLIENT;
+    }
     auto errCode = IsValidInputMethodProxy(inputMethodProxy);
     if (errCode != IME_ERR_OK) {
         IMSA_HILOGE("invalid state, errCode=%{public}d", errCode);
@@ -230,12 +286,22 @@ InputMethod_ErrorCode OH_InputMethodProxy_SendMessage(InputMethod_InputMethodPro
 InputMethod_ErrorCode OH_InputMethodProxy_RecvMessage(
     InputMethod_InputMethodProxy *inputMethodProxy, InputMethod_MessageHandlerProxy *messageHandler)
 {
+    NativeSessionGuard sessionGuard;
+    if (!sessionGuard.IsAcquired()) {
+        IMSA_HILOGE("Concurrent or reentrant C session operation rejected; wait for the current operation to finish.");
+        return IME_ERR_IMCLIENT;
+    }
     auto errCode = IsValidInputMethodProxy(inputMethodProxy);
     if (errCode != IME_ERR_OK) {
         IMSA_HILOGE("invalid state, errCode=%{public}d", errCode);
         return errCode;
     }
-    if (IsValidMessageHandlerProxy(messageHandler) != IME_ERR_OK) {
+    auto handler = NativeObjectRegistry<InputMethod_MessageHandlerProxy>::GetInstance().Get(messageHandler);
+    if (messageHandler != nullptr && handler == nullptr) {
+        IMSA_HILOGE("Message handler is unregistered or destroyed.");
+        return IME_ERR_PARAMCHECK;
+    }
+    if (IsValidMessageHandlerProxy(handler) != IME_ERR_OK) {
         IMSA_HILOGE("invalid messageHandler");
         return IME_ERR_NULL_POINTER;
     }

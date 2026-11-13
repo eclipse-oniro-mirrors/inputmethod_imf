@@ -14,6 +14,9 @@
  */
 #include "global.h"
 #include "native_inputmethod_types.h"
+#include "native_object_registry.h"
+
+using namespace OHOS::MiscServices;
 
 #ifdef __cplusplus
 extern "C" {
@@ -21,13 +24,15 @@ extern "C" {
 
 InputMethod_AttachOptions *OH_AttachOptions_Create(bool showKeyboard)
 {
-    return new (std::nothrow) InputMethod_AttachOptions({ showKeyboard });
+    return NativeObjectRegistry<InputMethod_AttachOptions>::GetInstance().Register(
+        new (std::nothrow) InputMethod_AttachOptions({ showKeyboard }));
 }
 
 InputMethod_AttachOptions *OH_AttachOptions_CreateWithRequestKeyboardReason(
     bool showKeyboard, InputMethod_RequestKeyboardReason requestKeyboardReason)
 {
-    return new (std::nothrow) InputMethod_AttachOptions({ showKeyboard, requestKeyboardReason });
+    return NativeObjectRegistry<InputMethod_AttachOptions>::GetInstance().Register(
+        new (std::nothrow) InputMethod_AttachOptions({ showKeyboard, requestKeyboardReason }));
 }
 
 void OH_AttachOptions_Destroy(InputMethod_AttachOptions *options)
@@ -35,7 +40,7 @@ void OH_AttachOptions_Destroy(InputMethod_AttachOptions *options)
     if (options == nullptr) {
         return;
     }
-    delete options;
+    NativeObjectRegistry<InputMethod_AttachOptions>::GetInstance().Destroy(options);
 }
 
 InputMethod_ErrorCode OH_AttachOptions_IsShowKeyboard(InputMethod_AttachOptions *options, bool *showKeyboard)
@@ -43,6 +48,11 @@ InputMethod_ErrorCode OH_AttachOptions_IsShowKeyboard(InputMethod_AttachOptions 
     if (options == nullptr) {
         IMSA_HILOGE("options is nullptr");
         return IME_ERR_NULL_POINTER;
+    }
+    auto lease = NativeObjectRegistry<InputMethod_AttachOptions>::GetInstance().Get(options);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_AttachOptions is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
     }
 
     if (showKeyboard == nullptr) {
@@ -60,6 +70,11 @@ InputMethod_ErrorCode OH_AttachOptions_GetRequestKeyboardReason(
     if (options == nullptr) {
         IMSA_HILOGE("options is nullptr");
         return IME_ERR_NULL_POINTER;
+    }
+    auto lease = NativeObjectRegistry<InputMethod_AttachOptions>::GetInstance().Get(options);
+    if (lease == nullptr) {
+        IMSA_HILOGE("InputMethod_AttachOptions is unregistered or no longer valid.");
+        return IME_ERR_PARAMCHECK;
     }
 
     if (requestKeyboardReason == nullptr) {

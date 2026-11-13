@@ -15,9 +15,11 @@
 
 #ifndef OHOS_INPUTMETHOD_BLOCK_QUEUE_H
 #define OHOS_INPUTMETHOD_BLOCK_QUEUE_H
+#include <chrono>
 #include <condition_variable>
 #include <mutex>
 #include <queue>
+#include <utility>
 
 namespace OHOS {
 namespace MiscServices {
@@ -42,6 +44,37 @@ public:
         cv_.notify_all();
     }
 
+    bool Pop(const T &data)
+    {
+        std::unique_lock<std::mutex> lock(queuesMutex_);
+        if (queues_.empty() || !(data == queues_.front())) {
+            return false;
+        }
+        queues_.pop();
+        cv_.notify_all();
+        return true;
+    }
+
+    bool Remove(const T &data)
+    {
+        std::unique_lock<std::mutex> lock(queuesMutex_);
+        std::queue<T> remaining;
+        bool removed = false;
+        while (!queues_.empty()) {
+            if (!removed && data == queues_.front()) {
+                removed = true;
+            } else {
+                remaining.push(std::move(queues_.front()));
+            }
+            queues_.pop();
+        }
+        queues_.swap(remaining);
+        if (removed) {
+            cv_.notify_all();
+        }
+        return removed;
+    }
+
     bool Push(const T &data)
     {
         std::unique_lock<std::mutex> lock(queuesMutex_);
@@ -49,6 +82,7 @@ public:
             return false;
         }
         queues_.push(data);
+        cv_.notify_all();
         return true;
     }
 
@@ -56,14 +90,14 @@ public:
     {
         std::unique_lock<std::mutex> lock(queuesMutex_);
         return cv_.wait_for(lock, std::chrono::milliseconds(timeout_), [&data, this]() {
-            return data == queues_.front();
+            return !queues_.empty() && data == queues_.front();
         });
     }
 
     bool IsReady(const T &data)
     {
         std::unique_lock<std::mutex> lock(queuesMutex_);
-        return data == queues_.front();
+        return !queues_.empty() && data == queues_.front();
     }
 
     bool GetFront(T &data)

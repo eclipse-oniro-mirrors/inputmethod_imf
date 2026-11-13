@@ -14,6 +14,7 @@
  */
 #ifndef NATIVE_INPUTMETHOD_TYPES_H
 #define NATIVE_INPUTMETHOD_TYPES_H
+#include <atomic>
 #include <string>
 #include <variant>
 
@@ -68,27 +69,27 @@ struct InputMethod_TextConfig {
 };
 
 struct InputMethod_MessageHandlerProxy {
-    OH_MessageHandlerProxy_OnTerminatedFunc onTerminatedFunc;
-    OH_MessageHandlerProxy_OnMessageFunc onMessageFunc;
+    std::atomic<OH_MessageHandlerProxy_OnTerminatedFunc> onTerminatedFunc { nullptr };
+    std::atomic<OH_MessageHandlerProxy_OnMessageFunc> onMessageFunc { nullptr };
 };
 
 struct InputMethod_TextEditorProxy {
-    OH_TextEditorProxy_GetTextConfigFunc getTextConfigFunc;
-    OH_TextEditorProxy_InsertTextFunc insertTextFunc;
-    OH_TextEditorProxy_DeleteForwardFunc deleteForwardFunc;
-    OH_TextEditorProxy_DeleteBackwardFunc deleteBackwardFunc;
-    OH_TextEditorProxy_SendKeyboardStatusFunc sendKeyboardStatusFunc;
-    OH_TextEditorProxy_SendEnterKeyFunc sendEnterKeyFunc;
-    OH_TextEditorProxy_MoveCursorFunc moveCursorFunc;
-    OH_TextEditorProxy_HandleSetSelectionFunc handleSetSelectionFunc;
-    OH_TextEditorProxy_HandleExtendActionFunc handleExtendActionFunc;
-    OH_TextEditorProxy_GetLeftTextOfCursorFunc getLeftTextOfCursorFunc;
-    OH_TextEditorProxy_GetRightTextOfCursorFunc getRightTextOfCursorFunc;
-    OH_TextEditorProxy_GetTextIndexAtCursorFunc getTextIndexAtCursorFunc;
-    OH_TextEditorProxy_ReceivePrivateCommandFunc receivePrivateCommandFunc;
-    OH_TextEditorProxy_SetPreviewTextFunc setPreviewTextFunc;
+    std::atomic<OH_TextEditorProxy_GetTextConfigFunc> getTextConfigFunc { nullptr };
+    std::atomic<OH_TextEditorProxy_InsertTextFunc> insertTextFunc { nullptr };
+    std::atomic<OH_TextEditorProxy_DeleteForwardFunc> deleteForwardFunc { nullptr };
+    std::atomic<OH_TextEditorProxy_DeleteBackwardFunc> deleteBackwardFunc { nullptr };
+    std::atomic<OH_TextEditorProxy_SendKeyboardStatusFunc> sendKeyboardStatusFunc { nullptr };
+    std::atomic<OH_TextEditorProxy_SendEnterKeyFunc> sendEnterKeyFunc { nullptr };
+    std::atomic<OH_TextEditorProxy_MoveCursorFunc> moveCursorFunc { nullptr };
+    std::atomic<OH_TextEditorProxy_HandleSetSelectionFunc> handleSetSelectionFunc { nullptr };
+    std::atomic<OH_TextEditorProxy_HandleExtendActionFunc> handleExtendActionFunc { nullptr };
+    std::atomic<OH_TextEditorProxy_GetLeftTextOfCursorFunc> getLeftTextOfCursorFunc { nullptr };
+    std::atomic<OH_TextEditorProxy_GetRightTextOfCursorFunc> getRightTextOfCursorFunc { nullptr };
+    std::atomic<OH_TextEditorProxy_GetTextIndexAtCursorFunc> getTextIndexAtCursorFunc { nullptr };
+    std::atomic<OH_TextEditorProxy_ReceivePrivateCommandFunc> receivePrivateCommandFunc { nullptr };
+    std::atomic<OH_TextEditorProxy_SetPreviewTextFunc> setPreviewTextFunc { nullptr };
     OH_InputMethod_TextEditorProxy_SetPreviewTextWithStyleFunc setPreviewTextWithStyleFunc;
-    OH_TextEditorProxy_FinishTextPreviewFunc finishTextPreviewFunc;
+    std::atomic<OH_TextEditorProxy_FinishTextPreviewFunc> finishTextPreviewFunc { nullptr };
     std::atomic_bool isCallbackInMainThread = false;
 };
 

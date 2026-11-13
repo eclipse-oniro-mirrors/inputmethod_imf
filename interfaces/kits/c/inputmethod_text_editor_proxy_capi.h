@@ -57,6 +57,10 @@ extern "C" {
 typedef struct InputMethod_TextEditorProxy InputMethod_TextEditorProxy;
 
 /**
+ * Register callbacks before attaching the editor. Serialize callback replacement and destruction.
+ * An in-flight callback may use the previous function pointer; keep its code and state valid until it returns.
+ * Updating one callback does not atomically update the entire callback set.
+ *
  * @brief Defines the function called when input method getting text config.
  *
  * You need to implement this function, set it to {@link InputMethod_TextEditorProxy} through {@link

@@ -42,9 +42,29 @@ int32_t CJGetInputMethodSetting::Subscribe(uint32_t type, void (*func)(CInputMet
         return 0;
     }
 
-    auto ret = ImeEventMonitorManagerImpl::GetInstance().RegisterImeEventListener(type, inputMethod_);
-    if (ret == ErrorCode::NO_ERROR) {
-        callback = CJLambda::Create(func);
+    decltype(callback) nextCallback;
+    decltype(callback) retiredCallback;
+    int32_t ret;
+    {
+        std::lock_guard<std::mutex> operationLock(operationMutex_);
+        nextCallback = CJLambda::Create(func);
+        bool isInitialCallback;
+        {
+            std::lock_guard<std::mutex> callbackLock(callbackMutex_);
+            isInitialCallback = !callback;
+            if (isInitialCallback) {
+                callback = nextCallback;
+            }
+        }
+        ret = ImeEventMonitorManagerImpl::GetInstance().RegisterImeEventListener(type, engine);
+        {
+            std::lock_guard<std::mutex> callbackLock(callbackMutex_);
+            if (ret == ErrorCode::NO_ERROR) {
+                callback.swap(nextCallback);
+            } else if (isInitialCallback) {
+                callback.swap(retiredCallback);
+            }
+        }
     }
     return ret;
 }
@@ -55,7 +75,8 @@ int32_t CJGetInputMethodSetting::UnSubscribe(uint32_t type)
     if (engine == nullptr) {
         return 0;
     }
-    auto ret = ImeEventMonitorManagerImpl::GetInstance().UnRegisterImeEventListener(type, inputMethod_);
+    std::lock_guard<std::mutex> operationLock(operationMutex_);
+    auto ret = ImeEventMonitorManagerImpl::GetInstance().UnRegisterImeEventListener(type, engine);
     IMSA_HILOGI("UpdateListenEventFlag, ret: %{public}d, type: %{public}d.", ret, type);
     return ret;
 }
@@ -63,22 +84,40 @@ int32_t CJGetInputMethodSetting::UnSubscribe(uint32_t type)
 void CJGetInputMethodSetting::OnImeChange(const Property &property, const SubProperty &subProperty)
 {
     IMSA_HILOGD("start");
+    decltype(callback) callbackSnapshot;
+    {
+        std::lock_guard<std::mutex> callbackLock(callbackMutex_);
+        callbackSnapshot = callback;
+    }
+    if (!callbackSnapshot) {
+        IMSA_HILOGE("IME-change callback is not ready.");
+        return;
+    }
     CInputMethodProperty prop;
     CInputMethodSubtype subProp;
     Utils::InputMethodSubProperty2C(&subProp, subProperty);
     Utils::InputMethodProperty2C(&prop, property);
-    callback(prop, subProp);
+    callbackSnapshot(prop, subProp);
 }
 
 void CJGetInputMethodSetting::OnImeChangeWithUserId(const Property &property,
     const SubProperty &subProperty, int32_t userId)
 {
     IMSA_HILOGD("start");
+    decltype(callback) callbackSnapshot;
+    {
+        std::lock_guard<std::mutex> callbackLock(callbackMutex_);
+        callbackSnapshot = callback;
+    }
+    if (!callbackSnapshot) {
+        IMSA_HILOGE("IME-change callback with user ID is not ready.");
+        return;
+    }
     CInputMethodProperty prop;
     CInputMethodSubtype subProp;
     Utils::InputMethodSubProperty2C(&subProp, subProperty);
     Utils::InputMethodProperty2C(&prop, property);
-    callback(prop, subProp);
+    callbackSnapshot(prop, subProp);
 }
 
 }

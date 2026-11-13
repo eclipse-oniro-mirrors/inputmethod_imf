@@ -72,7 +72,7 @@ struct CallbackObject {
     CallbackObject(callbackType cb, ani_ref ref) : callback(cb), ref(ref)
     {
     }
-    void Release()
+    ~CallbackObject()
     {
         taihe::env_guard guard;
         if (auto *env = guard.get_env()) {
@@ -81,6 +81,8 @@ struct CallbackObject {
             }
         }
     }
+    CallbackObject(const CallbackObject &) = delete;
+    CallbackObject &operator=(const CallbackObject &) = delete;
     callbackType callback;
     ani_ref ref;
 };

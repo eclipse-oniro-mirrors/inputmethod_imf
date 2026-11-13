@@ -32,6 +32,8 @@ public:
     MOCK_METHOD3(ShowCurrentInput, int32_t(uint64_t, uint32_t, bool));
     MOCK_METHOD5(ShowInput, int32_t(const sptr<IInputClient> &, uint32_t, uint32_t, int32_t, bool));
     MOCK_METHOD1(HideCurrentInputDeprecated, int32_t(uint32_t));
+    MOCK_METHOD2(GetCurrentInputMethodSubtype, int32_t(SubProperty &, int32_t));
+    MOCK_METHOD3(GetDefaultInputMethod, int32_t(Property &, bool, int32_t));
     MOCK_METHOD2(BindImeMirror, int32_t(const sptr<IInputMethodCore> &, const sptr<IRemoteObject> &));
     MOCK_METHOD0(UnbindImeMirror, int32_t());
     MOCK_METHOD1(RequestSystemInputCapability, int32_t(int32_t));

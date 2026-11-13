@@ -508,18 +508,14 @@ napi_value JsGetInputMethodController::UnSubscribe(napi_env env, napi_callback_i
     void *data = nullptr;
     IMF_CALL(napi_get_cb_info(env, info, &argc, argv, &thisVar, &data));
     std::string type;
-    // 1 means least param num.
-    if (argc < 1 || !JsUtil::GetValue(env, argv[0], type) ||
-        !EventChecker::IsValidEventType(EventSubscribeModule::INPUT_METHOD_CONTROLLER, type)) {
-        IMSA_HILOGE("unsubscribe failed, type: %{public}s!", type.c_str());
-        return nullptr;
-    }
+    PARAM_CHECK_RETURN(env, argc >= ARGC_ONE, "type is required!", TYPE_NONE, nullptr);
+    PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, argv[0], type), "type must be string", TYPE_NONE, nullptr);
+    PARAM_CHECK_RETURN(env, EventChecker::IsValidEventType(EventSubscribeModule::INPUT_METHOD_CONTROLLER, type),
+        "type verification failed, review the instructions and fill in the fixed values!", TYPE_NONE, nullptr);
 
-    // if the second param is not napi_function/napi_null/napi_undefined, return
-    auto paramType = JsUtil::GetType(env, argv[1]);
-    if (paramType != napi_function && paramType != napi_null && paramType != napi_undefined) {
-        return nullptr;
-    }
+    auto paramType = argc > ARGC_ONE ? JsUtil::GetType(env, argv[1]) : napi_undefined;
+    PARAM_CHECK_RETURN(env, paramType == napi_function || paramType == napi_null || paramType == napi_undefined,
+        "callback must be a function, null or undefined!", TYPE_NONE, nullptr);
     // if the second param is napi_function, delete it, else delete all
     argv[1] = paramType == napi_function ? argv[1] : nullptr;
 
@@ -746,6 +742,22 @@ bool JsGetInputMethodController::GetValue(napi_env env, napi_value in, TextConfi
     return ret;
 }
 
+void JsGetInputMethodController::QueueAttach(const std::shared_ptr<AttachContext> &ctxt, const char *operation)
+{
+    ctxt->info = { std::chrono::system_clock::now(), ctxt->attribute };
+    ctxt->queued = attachQueue_.Push(ctxt->info);
+    if (!ctxt->queued) {
+        ctxt->SetErrorCode(ErrorCode::ERROR_CONTROLLER_INVOKING_FAILED);
+        ctxt->SetErrorMessage(std::string("The ") + operation + " queue is full; the operation was not executed.");
+        return;
+    }
+    ctxt->SetCleanup([info = ctxt->info]() {
+        attachQueue_.Remove(info);
+    });
+    ctxt->textListener =
+        JsGetInputMethodTextChangedListener::GetTextListener(GetEventHandler(), ctxt->textConfig.newEditBox);
+}
+
 napi_value JsGetInputMethodController::Attach(napi_env env, napi_callback_info info)
 {
     IMSA_HILOGI("run in.");
@@ -764,14 +776,19 @@ napi_value JsGetInputMethodController::Attach(napi_env env, napi_callback_info i
         if (argc > 2) {
             JsUtil::GetValue(env, argv[2], ctxt->requestKeyboardReason);
         }
-        ctxt->info = { std::chrono::system_clock::now(), ctxt->attribute};
-        attachQueue_.Push(ctxt->info);
-        ctxt->textListener =
-            JsGetInputMethodTextChangedListener::GetTextListener(GetEventHandler(), ctxt->textConfig.newEditBox);
+        QueueAttach(ctxt, "Attach");
         return napi_ok;
     };
     auto exec = [ctxt, env](AsyncCall::Context *ctx) {
-        attachQueue_.Wait(ctxt->info);
+        if (!ctxt->queued) {
+            return;
+        }
+        if (!attachQueue_.Wait(ctxt->info)) {
+            ctxt->SetErrorCode(ErrorCode::ERROR_CONTROLLER_INVOKING_FAILED);
+            ctxt->SetErrorMessage("Timed out waiting for Attach; the operation was not executed.");
+            ctxt->Cleanup();
+            return;
+        }
         OHOS::MiscServices::AttachOptions attachOptions;
         attachOptions.isShowKeyboard = ctxt->showKeyboard;
         attachOptions.requestKeyboardReason =
@@ -781,7 +798,7 @@ napi_value JsGetInputMethodController::Attach(napi_env env, napi_callback_info i
         if (instance != nullptr) {
             status = instance->Attach(ctxt->textListener, attachOptions, ctxt->textConfig, ClientType::JS);
         }
-        attachQueue_.Pop();
+        ctxt->Cleanup();
         ctxt->SetErrorCode(status);
         CHECK_RETURN_VOID(status == ErrorCode::NO_ERROR, "attach return error!");
         ctxt->SetState(napi_ok);
@@ -816,20 +833,25 @@ napi_value JsGetInputMethodController::AttachWithUIContext(napi_env env, napi_ca
         if (argc > 2) {
             JsAttachOptions::Read(env, argv[2], ctxt->attachOptions);
         }
-        ctxt->info = { std::chrono::system_clock::now(), ctxt->attribute };
-        attachQueue_.Push(ctxt->info);
-        ctxt->textListener =
-            JsGetInputMethodTextChangedListener::GetTextListener(GetEventHandler(), ctxt->textConfig.newEditBox);
+        QueueAttach(ctxt, "AttachWithUIContext");
         return napi_ok;
     };
     auto exec = [ctxt, env](AsyncCall::Context *ctx) {
-        attachQueue_.Wait(ctxt->info);
+        if (!ctxt->queued) {
+            return;
+        }
+        if (!attachQueue_.Wait(ctxt->info)) {
+            ctxt->SetErrorCode(ErrorCode::ERROR_CONTROLLER_INVOKING_FAILED);
+            ctxt->SetErrorMessage("Timed out waiting for AttachWithUIContext; the operation was not executed.");
+            ctxt->Cleanup();
+            return;
+        }
         int32_t errCode = ErrorCode::ERROR_CLIENT_NULL_POINTER;
         auto instance = InputMethodController::GetInstance();
         if (instance != nullptr) {
             errCode = instance->Attach(ctxt->textListener, ctxt->attachOptions, ctxt->textConfig, ClientType::JS);
         }
-        attachQueue_.Pop();
+        ctxt->Cleanup();
         ctxt->SetErrorCode(errCode);
         if (errCode == ErrorCode::NO_ERROR) {
             ctxt->SetState(napi_ok);
@@ -1585,36 +1607,38 @@ napi_value JsGetInputMethodController::SendMessage(napi_env env, napi_callback_i
 {
     auto ctxt = std::make_shared<SendMessageContext>();
     auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
-        PARAM_CHECK_RETURN(env, argc > 0, "at least one parameter is required!", TYPE_NONE, napi_generic_failure);
-        PARAM_CHECK_RETURN(env, JsUtil::GetType(env, argv[0]) == napi_string, "msgId",
-            TYPE_STRING, napi_generic_failure);
-        CHECK_RETURN(JsUtils::GetValue(env, argv[0], ctxt->arrayBuffer.msgId) == napi_ok,
-            "msgId covert failed!", napi_generic_failure);
-        ctxt->arrayBuffer.jsArgc = argc;
-        // 1 means first param msgId.
-        if (argc > 1) {
-            bool isArryBuffer = false;
-            //  1 means second param msgParam index.
-            CHECK_RETURN(napi_is_arraybuffer(env, argv[1], &isArryBuffer) == napi_ok,
-                "napi_is_arraybuffer failed!", napi_generic_failure);
-            PARAM_CHECK_RETURN(env, isArryBuffer, "msgParam", TYPE_ARRAY_BUFFER, napi_generic_failure);
-            CHECK_RETURN(JsUtils::GetValue(env, argv[1], ctxt->arrayBuffer.msgParam) == napi_ok,
-                "msgParam covert failed!", napi_generic_failure);
+        auto status = ctxt->ReadMessage(env, argc, argv);
+        if (status != napi_ok) {
+            return status;
         }
-        PARAM_CHECK_RETURN(env, ArrayBuffer::IsSizeValid(ctxt->arrayBuffer),
-            "msgId limit 256B and msgParam limit 128KB.", TYPE_NONE, napi_generic_failure);
         ctxt->info = { std::chrono::system_clock::now(), ctxt->arrayBuffer };
-        messageHandlerQueue_.Push(ctxt->info);
+        ctxt->queued = messageHandlerQueue_.Push(ctxt->info);
+        if (!ctxt->queued) {
+            ctxt->SetErrorCode(ErrorCode::ERROR_MESSAGE_HANDLER);
+            ctxt->SetErrorMessage("The SendMessage queue is full; the operation was not executed.");
+            return napi_ok;
+        }
+        ctxt->SetCleanup([info = ctxt->info]() {
+            messageHandlerQueue_.Remove(info);
+        });
         return napi_ok;
     };
     auto exec = [ctxt](AsyncCall::Context *ctx) {
-        messageHandlerQueue_.Wait(ctxt->info);
+        if (!ctxt->queued) {
+            return;
+        }
+        if (!messageHandlerQueue_.Wait(ctxt->info)) {
+            ctxt->SetErrorCode(ErrorCode::ERROR_MESSAGE_HANDLER);
+            ctxt->SetErrorMessage("Timed out waiting for SendMessage; the operation was not executed.");
+            ctxt->Cleanup();
+            return;
+        }
         int32_t code = ErrorCode::ERROR_CLIENT_NULL_POINTER;
         auto instance = InputMethodController::GetInstance();
         if (instance != nullptr) {
             code = instance->SendMessage(ctxt->arrayBuffer);
         }
-        messageHandlerQueue_.Pop();
+        ctxt->Cleanup();
         if (code == ErrorCode::NO_ERROR) {
             ctxt->status = napi_ok;
             ctxt->SetState(ctxt->status);

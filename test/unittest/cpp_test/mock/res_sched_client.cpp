@@ -14,12 +14,14 @@
  */
 
 #include "res_sched_client.h"
+#include "res_sched_json_client.h"
+#include "nlohmann/json.hpp"
 
 namespace OHOS {
 namespace ResourceSchedule {
-std::mutex ResSchedClient::reportSyncEventLock_;
-int32_t ResSchedClient::reportSyncEventRet_{ 0 };
-nlohmann::json ResSchedClient::reportSyncEventReply_;
+std::mutex ResSchedJsonClient::reportSyncEventLock_;
+int32_t ResSchedJsonClient::reportSyncEventRet_{ 0 };
+nlohmann::json ResSchedJsonClient::reportSyncEventReply_;
 ResSchedClient &ResSchedClient::GetInstance()
 {
     static ResSchedClient client;
@@ -31,7 +33,13 @@ void ResSchedClient::ReportData(
 {
 }
 
-int32_t ResSchedClient::ReportSyncEvent(
+ResSchedJsonClient &ResSchedJsonClient::GetInstance()
+{
+    static ResSchedJsonClient client;
+    return client;
+}
+
+int32_t ResSchedJsonClient::ReportSyncEvent(
     const uint32_t resType, const int64_t value, const nlohmann::json &payload, nlohmann::json &reply)
 {
     std::lock_guard<std::mutex> lock(reportSyncEventLock_);
@@ -39,13 +47,13 @@ int32_t ResSchedClient::ReportSyncEvent(
     return reportSyncEventRet_;
 }
 
-void ResSchedClient::SetReportSyncEventRet(int32_t ret)
+void ResSchedJsonClient::SetReportSyncEventRet(int32_t ret)
 {
     std::lock_guard<std::mutex> lock(reportSyncEventLock_);
     reportSyncEventRet_ = ret;
 }
 
-void ResSchedClient::SetReportSyncEventReply(const nlohmann::json &reply)
+void ResSchedJsonClient::SetReportSyncEventReply(const nlohmann::json &reply)
 {
     std::lock_guard<std::mutex> lock(reportSyncEventLock_);
     reportSyncEventReply_ = reply;

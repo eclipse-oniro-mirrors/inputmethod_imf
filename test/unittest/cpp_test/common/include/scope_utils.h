@@ -18,6 +18,7 @@
 
 #include <cinttypes>
 #include <inttypes.h>
+#include <unistd.h>
 #include "global.h"
 #include "tdd_util.h"
 namespace OHOS {
@@ -26,29 +27,40 @@ constexpr int32_t ROOT_UID = 0;
 class AccessScope {
 public:
     AccessScope(uint64_t tokenId, int32_t uid)
+        : originalTokenId_(tokenId > 0 ? TddUtil::GetCurrentTokenID() : 0), originalUid_(getuid())
     {
         IMSA_HILOGI("enter");
+        TddUtil::SetSelfUid(ROOT_UID);
         if (tokenId > 0) {
-            originalTokenId_ = TddUtil::GetCurrentTokenID();
             IMSA_HILOGI("originalTokenId_: %{public}" PRIu64, originalTokenId_);
             TddUtil::SetTestTokenID(tokenId);
         }
-        if (uid > 0) {
-            TddUtil::SetSelfUid(uid);
-        }
+        TddUtil::SetSelfUid(uid > 0 ? uid : originalUid_);
     }
     ~AccessScope()
     {
+        Restore();
+    }
+    void Restore()
+    {
+        if (restored_) {
+            return;
+        }
         IMSA_HILOGI("originalTokenId_: %{public}" PRIu64, originalTokenId_);
+        // Token restoration needs root; nested scopes must retain the caller's UID.
+        TddUtil::SetSelfUid(ROOT_UID);
         if (originalTokenId_ > 0) {
             TddUtil::SetTestTokenID(originalTokenId_);
         }
-        TddUtil::SetSelfUid(ROOT_UID);
+        TddUtil::SetSelfUid(originalUid_);
+        restored_ = true;
         IMSA_HILOGI("exit");
     }
 
 private:
     uint64_t originalTokenId_ { 0 };
+    int32_t originalUid_;
+    bool restored_ { false };
 };
 
 class TokenScope {

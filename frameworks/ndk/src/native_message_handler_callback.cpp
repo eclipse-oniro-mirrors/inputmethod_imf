@@ -19,17 +19,22 @@ namespace OHOS {
 namespace MiscServices {
 int32_t NativeMessageHandlerCallback::OnTerminated()
 {
-    if (messageHandler_ == nullptr) {
-        IMSA_HILOGE("messageHandler_ is nullptr");
+    auto handler = messageHandler_.lock();
+    if (handler != nullptr) {
+        handler = NativeObjectRegistry<InputMethod_MessageHandlerProxy>::GetInstance().Get(handler.get());
+    }
+    if (handler == nullptr) {
+        IMSA_HILOGE("Message handler is unregistered or destroyed.");
         return ErrorCode::ERROR_CLIENT_NULL_POINTER;
     }
 
-    if (messageHandler_->onTerminatedFunc == nullptr) {
+    auto callback = handler->onTerminatedFunc.load();
+    if (callback == nullptr) {
         IMSA_HILOGE("onTerminatedFunc is nullptr");
         return ErrorCode::ERROR_CLIENT_NULL_POINTER;
     }
 
-    auto ret = messageHandler_->onTerminatedFunc(messageHandler_);
+    auto ret = callback(handler.get());
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("onTerminatedFunc execute failed! ret: %{public}d", ret);
         return ErrorCode::ERROR_MESSAGE_HANDLER;
@@ -39,18 +44,23 @@ int32_t NativeMessageHandlerCallback::OnTerminated()
 
 int32_t NativeMessageHandlerCallback::OnMessage(const ArrayBuffer &arrayBuffer)
 {
-    if (messageHandler_ == nullptr) {
-        IMSA_HILOGE("messageHandler_ is nullptr");
+    auto handler = messageHandler_.lock();
+    if (handler != nullptr) {
+        handler = NativeObjectRegistry<InputMethod_MessageHandlerProxy>::GetInstance().Get(handler.get());
+    }
+    if (handler == nullptr) {
+        IMSA_HILOGE("Message handler is unregistered or destroyed.");
         return ErrorCode::ERROR_CLIENT_NULL_POINTER;
     }
 
-    if (messageHandler_->onMessageFunc == nullptr) {
+    auto callback = handler->onMessageFunc.load();
+    if (callback == nullptr) {
         IMSA_HILOGE("onMessageFunc is nullptr");
         return ErrorCode::ERROR_CLIENT_NULL_POINTER;
     }
     std::u16string msgIdStr16 = Str8ToStr16(arrayBuffer.msgId);
-    auto ret = messageHandler_->onMessageFunc(messageHandler_, msgIdStr16.c_str(), msgIdStr16.length(),
-        arrayBuffer.msgParam.data(), arrayBuffer.msgParam.size());
+    auto ret = callback(handler.get(), msgIdStr16.c_str(), msgIdStr16.length(), arrayBuffer.msgParam.data(),
+        arrayBuffer.msgParam.size());
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("onMessageFunc execute failed! ret: %{public}d", ret);
         return ErrorCode::ERROR_MESSAGE_HANDLER;

@@ -98,6 +98,12 @@ void InputMethodAbilityInterface::SetKdListener(std::shared_ptr<KeyboardListener
     InputMethodAbility::GetInstance().SetKdListener(kdListener);
 }
 
+void InputMethodAbilityInterface::SetTextInputClientListener(
+    std::shared_ptr<TextInputClientListener> textInputClientListener)
+{
+    InputMethodAbility::GetInstance().SetTextInputClientListener(textInputClientListener);
+}
+
 int32_t InputMethodAbilityInterface::SelectByRange(int32_t start, int32_t end)
 {
     return InputMethodAbility::GetInstance().SelectByRange(start, end);

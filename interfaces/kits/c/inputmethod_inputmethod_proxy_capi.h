@@ -56,13 +56,19 @@ typedef struct InputMethod_InputMethodProxy InputMethod_InputMethodProxy;
 /**
  * @brief Show keyboard.
  *
+ * Serialize Controller and InputMethodProxy operations. A concurrent or callback-reentrant C session
+ * operation is rejected with IME_ERR_IMCLIENT before it can affect the current session.
+ * This guard is not a general thread-safety guarantee for native, ArkTS, or service-side operations.
+ *
  * @param inputMethodProxy Represents a pointer to an {@link InputMethod_InputMethodProxy} instance.
  *     The inputMethodProxy is obtained from {@link OH_InputMethodController_Attach}.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
- *     {@link IME_ERR_IMCLIENT} - input method client error.
+ *     {@link IME_ERR_PARAMCHECK} - inputMethodProxy does not match the current proxy.
+ *     {@link IME_ERR_IMCLIENT} - input method client error, or a concurrent/reentrant C session operation.
  *     {@link IME_ERR_IMMS} - input method manager service error.
  *     {@link IME_ERR_DETACHED} - input method client detached.
+ *     {@link IME_ERR_EDITABLE} - the input method client is not editable; it may still be attached.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 12
@@ -74,9 +80,12 @@ InputMethod_ErrorCode OH_InputMethodProxy_ShowKeyboard(InputMethod_InputMethodPr
  * @param inputMethodProxy Represents a pointer to an {@link InputMethod_InputMethodProxy} instance.
  *     The inputMethodProxy is obtained from {@link OH_InputMethodController_Attach}.
  * @param options Represents a pointer to an {@link InputMethod_AttachOptions} instance which will be get value from.
+ * options must be a live AttachOptions handle.
+ * An unregistered or expired value handle returns IME_ERR_PARAMCHECK.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
- *     {@link IME_ERR_IMCLIENT} - input method client error.
+ *     {@link IME_ERR_PARAMCHECK} - inputMethodProxy does not match the current proxy.
+ *     {@link IME_ERR_IMCLIENT} - input method client error, or a concurrent/reentrant C session operation.
  *     {@link IME_ERR_IMMS} - input method manager service error.
  *     {@link IME_ERR_DETACHED} - input method client detached.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
@@ -92,9 +101,11 @@ InputMethod_ErrorCode OH_InputMethodProxy_ShowTextInput(
  *     The inputMethodProxy is obtained from {@link OH_InputMethodController_Attach}.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
- *     {@link IME_ERR_IMCLIENT} - input method client error.
+ *     {@link IME_ERR_PARAMCHECK} - inputMethodProxy does not match the current proxy.
+ *     {@link IME_ERR_IMCLIENT} - input method client error, or a concurrent/reentrant C session operation.
  *     {@link IME_ERR_IMMS} - input method manager service error.
  *     {@link IME_ERR_DETACHED} - input method client detached.
+ *     {@link IME_ERR_EDITABLE} - the input method client is not editable; it may still be attached.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 12
@@ -115,9 +126,10 @@ InputMethod_ErrorCode OH_InputMethodProxy_HideKeyboard(InputMethod_InputMethodPr
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
  *     {@link IME_ERR_PARAMCHECK} - parameter check failed.
- *     {@link IME_ERR_IMCLIENT} - input method client error.
+ *     {@link IME_ERR_IMCLIENT} - input method client error, or a concurrent/reentrant C session operation.
  *     {@link IME_ERR_IMMS} - input method manager service error.
  *     {@link IME_ERR_DETACHED} - input method client detached.
+ *     {@link IME_ERR_EDITABLE} - the input method client is not editable; it may still be attached.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 12
@@ -135,9 +147,10 @@ InputMethod_ErrorCode OH_InputMethodProxy_NotifySelectionChange(
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
  *     {@link IME_ERR_PARAMCHECK} - parameter check failed.
- *     {@link IME_ERR_IMCLIENT} - input method client error.
+ *     {@link IME_ERR_IMCLIENT} - input method client error, or a concurrent/reentrant C session operation.
  *     {@link IME_ERR_IMMS} - input method manager service error.
  *     {@link IME_ERR_DETACHED} - input method client detached.
+ *     {@link IME_ERR_EDITABLE} - the input method client is not editable; it may still be attached.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 12
@@ -152,12 +165,15 @@ InputMethod_ErrorCode OH_InputMethodProxy_NotifyConfigurationChange(InputMethod_
  *     The inputMethodProxy is obtained from {@link OH_InputMethodController_Attach}.
  * @param cursorInfo Represents a pointer to an {@link InputMethod_CursorInfo} instance.
  *     The cursor information.
+ * cursorInfo must be a live CursorInfo or TextConfig child view.
+ * An unregistered or expired value handle returns IME_ERR_PARAMCHECK.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
  *     {@link IME_ERR_PARAMCHECK} - parameter check failed.
- *     {@link IME_ERR_IMCLIENT} - input method client error.
+ *     {@link IME_ERR_IMCLIENT} - input method client error, or a concurrent/reentrant C session operation.
  *     {@link IME_ERR_IMMS} - input method manager service error.
  *     {@link IME_ERR_DETACHED} - input method client detached.
+ *     {@link IME_ERR_EDITABLE} - the input method client is not editable; it may still be attached.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 12
@@ -172,10 +188,12 @@ InputMethod_ErrorCode OH_InputMethodProxy_NotifyCursorUpdate(
  *     The inputMethodProxy is obtained from {@link OH_InputMethodController_Attach}.
  * @param privateCommand The private commands, which is defined in {@link InputMethod_PrivateCommand}. Max size 32KB.
  * @param size The size of privateCommand. Max is 5.
+ * Every privateCommand entry must be a live owned or callback-borrowed command.
+ * An unregistered or expired value handle returns IME_ERR_PARAMCHECK.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
  *     {@link IME_ERR_PARAMCHECK} - parameter check failed.
- *     {@link IME_ERR_IMCLIENT} - input method client error.
+ *     {@link IME_ERR_IMCLIENT} - input method client error, or a concurrent/reentrant C session operation.
  *     {@link IME_ERR_IMMS} - input method manager service error.
  *     {@link IME_ERR_DETACHED} - input method client detached.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
@@ -198,7 +216,7 @@ InputMethod_ErrorCode OH_InputMethodProxy_SendPrivateCommand(
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
  *     {@link IME_ERR_PARAMCHECK} - parameter check failed.
- *     {@link IME_ERR_IMCLIENT} - input method client error.
+ *     {@link IME_ERR_IMCLIENT} - input method client error, or a concurrent/reentrant C session operation.
  *     {@link IME_ERR_IMMS} - input method manager service error.
  *     {@link IME_ERR_DETACHED} - input method client detached.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
@@ -218,7 +236,7 @@ InputMethod_ErrorCode OH_InputMethodProxy_SendMessage(InputMethod_InputMethodPro
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
  *     {@link IME_ERR_PARAMCHECK} - parameter check failed.
- *     {@link IME_ERR_IMCLIENT} - input method client error.
+ *     {@link IME_ERR_IMCLIENT} - input method client error, or a concurrent/reentrant C session operation.
  *     {@link IME_ERR_IMMS} - input method manager service error.
  *     {@link IME_ERR_DETACHED} - input method client detached.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.

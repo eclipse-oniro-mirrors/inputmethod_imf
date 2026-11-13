@@ -555,6 +555,7 @@ interface Panel {
     OffSizeChange(opq: Optional<(size: @sts_type("window.Size") Opaque, @optional keyboardArea: Optional<KeyboardArea>) => void>): void;
 
     LineUp(): i64;
+    CancelJob(id: i64): void;
     @!sts_inject_into_interface("""
         resize(width: long, height: long): Promise<void>;
         resize(width: long, height: long, callback: AsyncCallback<void>): void;
@@ -580,84 +581,140 @@ interface Panel {
         setSystemPanelButtonColor(fillColor: string | undefined, backgroundColor: string | undefined): Promise<void>;
     """)
     @!sts_inject_into_class("""
-        resize(width: long, height: long, callback: AsyncCallback<void>): void {
-            this.resizeImpl(this.lineUp(), width, height, callback);
-        }
-        resize(width: long, height: long): Promise<void> {
-            return this.resizeImpl(this.lineUp(), width, height);
+        private async completePanelJob(id: long, operation: () => Promise<void>,
+            callback: AsyncCallback<void>): Promise<void> {
+            let error: BusinessError | null = null;
+            try {
+                await operation();
+            } catch (err) {
+                error = err as BusinessError;
+            } finally {
+                this.cancelJob(id);
+            }
+            callback(error, undefined);
         }
 
-        setUiContent(path: string): Promise<void> {
+        async resize(width: long, height: long): Promise<void> {
             let id: long = this.lineUp();
-            return new Promise<void>((resolve, reject): void => {
-                try {
-                    this.setUiContentSync(id, path);
-                    resolve(undefined);
-                } catch (err) {
-                    reject(err as BusinessError);
-                }
-            });
+            try {
+                return await this.resizeImpl(id, width, height);
+            } finally {
+                this.cancelJob(id);
+            }
         }
-        setUiContent(path: string, callback: AsyncCallback<void>): void {
+        resize(width: long, height: long, callback: AsyncCallback<void>): void {
+            let id: long = this.lineUp();
+            this.completePanelJob(id, (): Promise<void> => this.resizeImpl(id, width, height), callback);
+        }
+
+        async moveTo(x: int, y: int): Promise<void> {
+            let id: long = this.lineUp();
+            try {
+                return await this.moveToImpl(id, x, y);
+            } finally {
+                this.cancelJob(id);
+            }
+        }
+        moveTo(x: int, y: int, callback: AsyncCallback<void>): void {
+            let id: long = this.lineUp();
+            this.completePanelJob(id, (): Promise<void> => this.moveToImpl(id, x, y), callback);
+        }
+
+        async getDisplayId(): Promise<long> {
+            let id: long = this.lineUp();
+            try {
+                return await this.getDisplayIdImpl(id);
+            } finally {
+                this.cancelJob(id);
+            }
+        }
+
+        async show(): Promise<void> {
+            let id: long = this.lineUp();
+            try {
+                return await this.showImpl(id);
+            } finally {
+                this.cancelJob(id);
+            }
+        }
+        show(callback: AsyncCallback<void>): void {
+            let id: long = this.lineUp();
+            this.completePanelJob(id, (): Promise<void> => this.showImpl(id), callback);
+        }
+
+        async hide(): Promise<void> {
+            let id: long = this.lineUp();
+            try {
+                return await this.hideImpl(id);
+            } finally {
+                this.cancelJob(id);
+            }
+        }
+        hide(callback: AsyncCallback<void>): void {
+            let id: long = this.lineUp();
+            this.completePanelJob(id, (): Promise<void> => this.hideImpl(id), callback);
+        }
+
+        async getSystemPanelCurrentInsets(displayId: long): Promise<SystemPanelInsets | null> {
+            let id: long = this.lineUp();
+            try {
+                return await this.getSystemPanelCurrentInsetsImpl(id, displayId);
+            } finally {
+                this.cancelJob(id);
+            }
+        }
+
+        async setSystemPanelButtonColor(fillColor: string | undefined, backgroundColor: string | undefined): Promise<void> {
+            let id: long = this.lineUp();
+            try {
+                return await this.setSystemPanelButtonColorImpl(id, fillColor, backgroundColor);
+            } finally {
+                this.cancelJob(id);
+            }
+        }
+
+        async setUiContent(path: string): Promise<void> {
             let id: long = this.lineUp();
             try {
                 this.setUiContentSync(id, path);
-                callback(null, undefined);
-            } catch (err) {
-                callback(err as BusinessError, undefined);
+            } finally {
+                this.cancelJob(id);
             }
         }
-        setUiContent(path: string, storage: LocalStorage): Promise<void> {
+        setUiContent(path: string, callback: AsyncCallback<void>): void {
             let id: long = this.lineUp();
-            return new Promise<void>((resolve, reject): void => {
-                try {
-                    this.setUiContentStorageSync(id, path, storage);
-                    resolve(undefined);
-                } catch (err) {
-                    reject(err as BusinessError);
-                }
-            });
+            let error: BusinessError | null = null;
+            try {
+                this.setUiContentSync(id, path);
+            } catch (err) {
+                error = err as BusinessError;
+            } finally {
+                this.cancelJob(id);
+            }
+            callback(error, undefined);
         }
-        setUiContent(path: string, storage: LocalStorage, callback: AsyncCallback<void>): void {
+
+        async setUiContent(path: string, storage: LocalStorage): Promise<void> {
             let id: long = this.lineUp();
             try {
                 this.setUiContentStorageSync(id, path, storage);
-                callback(null, undefined);
-            } catch (err) {
-                callback(err as BusinessError, undefined);
+            } finally {
+                this.cancelJob(id);
             }
         }
-
-        moveTo(x: int, y: int): Promise<void> {
-            return this.moveToImpl(this.lineUp(), x, y);
-        }
-        moveTo(x: int, y: int, callback: AsyncCallback<void>): void {
-            this.moveToImpl(this.lineUp(), x, y, callback);
-        }
-
-        getDisplayId(): Promise<long> {
-            return this.getDisplayIdImpl(this.lineUp());
-        }
-
-        show(): Promise<void> {
-            return this.showImpl(this.lineUp());
-        }
-        show(callback: AsyncCallback<void>): void {
-            this.showImpl(this.lineUp(), callback);
+        setUiContent(path: string, storage: LocalStorage, callback: AsyncCallback<void>): void {
+            let id: long = this.lineUp();
+            let error: BusinessError | null = null;
+            try {
+                this.setUiContentStorageSync(id, path, storage);
+            } catch (err) {
+                error = err as BusinessError;
+            } finally {
+                this.cancelJob(id);
+            }
+            callback(error, undefined);
         }
 
-        hide(): Promise<void> {
-            return this.hideImpl(this.lineUp());
-        }
-        hide(callback: AsyncCallback<void>): void {
-            this.hideImpl(this.lineUp(), callback);
-        }
-        getSystemPanelCurrentInsets(displayId: long): Promise<SystemPanelInsets | null> {
-            return this.getSystemPanelCurrentInsetsImpl(this.lineUp(), displayId);
-        }
-        setSystemPanelButtonColor(fillColor: string | undefined, backgroundColor: string | undefined): Promise<void> {
-            return this.setSystemPanelButtonColorImpl(this.lineUp(), fillColor, backgroundColor);
-        }
     """)
 }
 

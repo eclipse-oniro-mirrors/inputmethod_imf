@@ -225,6 +225,9 @@ void ETSInputMethodExtensionContext::Destroy(ani_env *env, ani_object aniObj, an
     auto etsContext = ETSInputMethodExtensionContext::GetEtsAbilityContext(env, aniObj);
     if (etsContext == nullptr) {
         IMSA_HILOGE("null ETSInputMethodExtensionContext");
+        auto error = AbilityRuntime::EtsErrorUtil::CreateError(
+            env, AbilityRuntime::AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT);
+        AsyncCallback(env, callback, error, nullptr);
         return;
     }
     return etsContext->OnDestroy(env, aniObj, callback);
@@ -276,7 +279,11 @@ void ETSInputMethodExtensionContext::OnDestroy(ani_env *env, ani_object aniObj, 
         AsyncCallback(env, callback, aniObject, nullptr);
         return;
     }
-    AsyncCallback(env, callback, nullptr, nullptr);
+    errCode = context->TerminateAbility();
+    if (errCode != ERR_OK) {
+        aniObject = AbilityRuntime::EtsErrorUtil::CreateErrorByNativeErr(env, errCode);
+    }
+    AsyncCallback(env, callback, aniObject, nullptr);
 }
 } // namespace MiscServices
 } // namespace OHOS

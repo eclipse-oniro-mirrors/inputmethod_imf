@@ -101,6 +101,17 @@ private:
         std::shared_ptr<InputMethodPanel> inputMethodPanel = nullptr;
         std::shared_ptr<NativeReference> contentStorage = nullptr;
         JsEventInfo info;
+        void LineUp()
+        {
+            PanelDealQueue::Push(info);
+            SetCleanup([task = info]() {
+                PanelDealQueue::Remove(task);
+            });
+        }
+        void ReleaseJsResources(napi_env) override
+        {
+            contentStorage.reset();
+        }
         PanelContentContext(napi_env env, napi_callback_info info) : Context(nullptr, nullptr)
         {
             napi_value self = nullptr;

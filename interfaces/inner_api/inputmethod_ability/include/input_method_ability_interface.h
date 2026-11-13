@@ -23,6 +23,7 @@
 #include "input_method_engine_listener.h"
 #include "keyboard_listener.h"
 #include "input_method_types.h"
+#include "text_input_client_listener.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -85,6 +86,7 @@ public:
     int32_t SendFunctionKey(int32_t funcKey);
     void SetImeListener(std::shared_ptr<InputMethodEngineListener> imeListener);
     void SetKdListener(std::shared_ptr<KeyboardListener> kdListener);
+    void SetTextInputClientListener(std::shared_ptr<TextInputClientListener> textInputClientListener);
     int32_t SelectByRange(int32_t start, int32_t end);
     int32_t ExitCurrentInputType();
 

@@ -19,6 +19,7 @@
 #include "global.h"
 #include "ipc_skeleton.h"
 #include "res_sched_client.h"
+#include "res_sched_json_client.h"
 #include "system_ability_definition.h"
 
 namespace OHOS {
@@ -37,7 +38,7 @@ int32_t ResSchedAdapter::NotifyMakeImage(int32_t userId, const AAFwk::Want &want
     payload.emplace("want", wantUri);
     payload.emplace("userId", userId);
     nlohmann::json reply;
-    auto ret = ResSchedClient::GetInstance().ReportSyncEvent(resType, 0, payload, reply);
+    auto ret = ResSchedJsonClient::GetInstance().ReportSyncEvent(resType, 0, payload, reply);
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("%{public}d/%{public}s report failed:%{public}d.", userId, bundleName.c_str(), ret);
         return ret;

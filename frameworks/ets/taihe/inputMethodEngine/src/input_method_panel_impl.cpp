@@ -12,12 +12,15 @@
  * See the License for the specific language governing permissions and
  * limitations under the License.
  */
-#include <thread>
 #include "input_method_panel_impl.h"
-#include "js_utils.h"
-#include "input_method_panel_listener.h"
-#include "event_checker.h"
 #include "ani_base_context.h"
+#include "event_checker.h"
+#include "input_method_panel_listener.h"
+#include "js_utils.h"
+#include <functional>
+#include <memory>
+#include <new>
+#include <pthread.h>
 
 namespace OHOS {
 namespace MiscServices {
@@ -26,6 +29,71 @@ using WMError = OHOS::Rosen::WMError;
 constexpr int32_t MAX_WAIT_TIME = 10;
 BlockQueue<uint32_t> PanelImpl::jobQueue_{ MAX_WAIT_TIME };
 std::atomic<uint32_t> PanelImpl::jobId_{ 0 };
+
+namespace {
+bool PostPanelAdjustTask(std::function<void()> task)
+{
+    auto work = new (std::nothrow) std::function<void()>(std::move(task));
+    if (work == nullptr) {
+        IMSA_HILOGE("Failed to allocate panel adjustment task.");
+        return false;
+    }
+    pthread_attr_t attributes;
+    int32_t ret = pthread_attr_init(&attributes);
+    if (ret != 0) {
+        delete work;
+        IMSA_HILOGE("Failed to initialize panel worker attributes: %{public}d", ret);
+        return false;
+    }
+    ret = pthread_attr_setdetachstate(&attributes, PTHREAD_CREATE_DETACHED);
+    if (ret == 0) {
+        pthread_t worker;
+        ret = pthread_create(
+            &worker, &attributes,
+            [](void *data) {
+                std::unique_ptr<std::function<void()>> work(static_cast<std::function<void()> *>(data));
+                (*work)();
+                return static_cast<void *>(nullptr);
+            },
+            work);
+    }
+    if (pthread_attr_destroy(&attributes) != 0) {
+        IMSA_HILOGW("Failed to release panel worker attributes.");
+    }
+    if (ret != 0) {
+        delete work;
+        IMSA_HILOGE("Failed to start panel adjustment worker: %{public}d", ret);
+        return false;
+    }
+    return true;
+}
+} // namespace
+
+PanelImpl::JobGuard::JobGuard(int64_t id) : id_(id)
+{
+    ready_ = id >= 0 && id <= UINT32_MAX && jobQueue_.Wait(static_cast<uint32_t>(id));
+    if (!ready_) {
+        CancelJob(id);
+        id_ = -1;
+        IMSA_HILOGE("Panel task admission failed or wait timed out, id: %{public}" PRId64, id);
+        set_business_error(IMFErrorCode::EXCEPTION_WINDOW_MANAGER,
+            "Panel task was not accepted or timed out; the operation was not executed.");
+    }
+}
+
+PanelImpl::JobGuard::~JobGuard()
+{
+    CancelJob(id_);
+}
+
+void PanelImpl::JobGuard::Finish()
+{
+    if (ready_) {
+        jobQueue_.Pop(static_cast<uint32_t>(id_));
+        ready_ = false;
+        id_ = -1;
+    }
+}
 
 PanelImpl::PanelImpl()
 {
@@ -42,27 +110,28 @@ void PanelImpl::CreatePanel(uintptr_t ctx, PanelInfo_t const& info, std::shared_
     if (env == nullptr) {
         IMSA_HILOGE("env is nullptr!");
         set_business_error(IMFErrorCode::EXCEPTION_IME,
-            JsUtils::ToMessage(JsUtils::Convert(IMFErrorCode::EXCEPTION_IME)));
+            JsUtils::ToMessage(IMFErrorCode::EXCEPTION_IME));
         return;
     }
     ani_object value = reinterpret_cast<ani_object>(ctx);
     if (value == nullptr) {
         set_business_error(IMFErrorCode::EXCEPTION_PARAMCHECK,
-            JsUtils::ToMessage(JsUtils::Convert(IMFErrorCode::EXCEPTION_PARAMCHECK)));
+            JsUtils::ToMessage(IMFErrorCode::EXCEPTION_PARAMCHECK));
         return;
     }
     std::shared_ptr<AbilityRuntime::Context> context = OHOS::AbilityRuntime::GetStageModeContext(env, value);
     if (context == nullptr) {
         set_business_error(IMFErrorCode::EXCEPTION_PARAMCHECK,
-            JsUtils::ToMessage(JsUtils::Convert(IMFErrorCode::EXCEPTION_PARAMCHECK)));
+            JsUtils::ToMessage(IMFErrorCode::EXCEPTION_PARAMCHECK));
         return;
     }
     PanelInfo panelInfo = CommonConvert::AniConvertPanelInfoToNative(info);
     auto ret = InputMethodAbility::GetInstance().CreatePanel(context, panelInfo, panel);
     if (ret != ErrorCode::NO_ERROR) {
-        IMSA_HILOGE("CreatePanel failed!");
+        IMSA_HILOGE("CreatePanel failed, panelType: %{public}d, ret: %{public}d", panelInfo.panelType, ret);
         set_business_error(IMFErrorCode::EXCEPTION_IME,
-            JsUtils::ToMessage(JsUtils::Convert(IMFErrorCode::EXCEPTION_IME)));
+            JsUtils::ToMessage(IMFErrorCode::EXCEPTION_IME) + " Failed to create panel. Reuse or destroy any existing "
+                "panel of this type before creating another. Check native logs for the creation failure reason.");
         return;
     }
     if (panel != nullptr) {
@@ -75,20 +144,21 @@ void PanelImpl::CreatePanel(uintptr_t ctx, PanelInfo_t const& info, std::shared_
 
 SystemPanelInsetsData_t PanelImpl::GetSystemPanelCurrentInsetsAsync(int64_t id, int64_t displayId)
 {
-    if (!jobQueue_.Wait(static_cast<int64_t>(id))) {
-        IMSA_HILOGW("wait timeout id: %{public}" PRId64 "", id);
+    JobGuard job(id);
+    if (!job.IsReady()) {
+        return SystemPanelInsetsData_t::make_type_null();
     }
     if (inputMethodPanel_ == nullptr) {
         IMSA_HILOGE("panel is nullptr!");
         set_business_error(JsUtils::Convert(ErrorCode::ERROR_IME),
             JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IME)));
-        jobQueue_.Pop();
+        job.Finish();
         return SystemPanelInsetsData_t::make_type_null();
     }
     uint64_t tmpId = static_cast<uint64_t>(displayId);
     SystemPanelInsets insets = {0, 0, 0};
     auto code = inputMethodPanel_->GetSystemPanelCurrentInsets(tmpId, insets);
-    jobQueue_.Pop();
+    job.Finish();
     if (code != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("GetSystemPanelCurrentInsets failed!");
         set_business_error(JsUtils::Convert(code), JsUtils::ToMessage(JsUtils::Convert(code)));
@@ -102,14 +172,15 @@ SystemPanelInsetsData_t PanelImpl::GetSystemPanelCurrentInsetsAsync(int64_t id, 
 void PanelImpl::SetSystemPanelButtonColorAsync(int64_t id, FillColorData_t const& fillColor,
     BackgroundColorData_t const& backgroundColor)
 {
-    if (!jobQueue_.Wait(static_cast<int64_t>(id))) {
-        IMSA_HILOGW("wait timeout id: %{public}" PRId64 "", id);
+    JobGuard job(id);
+    if (!job.IsReady()) {
+        return;
     }
     if (inputMethodPanel_ == nullptr) {
         IMSA_HILOGE("panel is nullptr!");
         set_business_error(JsUtils::Convert(ErrorCode::ERROR_IME),
             JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IME)));
-        jobQueue_.Pop();
+        job.Finish();
         return;
     }
     std::string tmpFillColor = "";
@@ -120,11 +191,11 @@ void PanelImpl::SetSystemPanelButtonColorAsync(int64_t id, FillColorData_t const
         IMSA_HILOGE("fillColor or backgroundColor is empty!");
         set_business_error(IMFErrorCode::EXCEPTION_PARAMCHECK,
             JsUtils::ToMessage(IMFErrorCode::EXCEPTION_PARAMCHECK));
-        jobQueue_.Pop();
+        job.Finish();
         return;
     }
     auto code = inputMethodPanel_->SetSystemPanelButtonColor(tmpFillColor, tmpBackgroundColor);
-    jobQueue_.Pop();
+    job.Finish();
     if (code != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("SetSystemPanelButtonColor failed!");
         set_business_error(JsUtils::Convert(code), JsUtils::ToMessage(JsUtils::Convert(code)));
@@ -136,19 +207,20 @@ void PanelImpl::SetSystemPanelButtonColorAsync(int64_t id, FillColorData_t const
 void PanelImpl::SetShadow(double radius, ::taihe::string_view color, double offsetX, double offsetY)
 {
     int64_t id = LineUp();
-    if (!jobQueue_.Wait(static_cast<int64_t>(id))) {
-        IMSA_HILOGW("wait timeout id: %{public}" PRId64 "", id);
+    JobGuard job(id);
+    if (!job.IsReady()) {
+        return;
     }
     if (inputMethodPanel_ == nullptr) {
         IMSA_HILOGE("panel is nullptr!");
         set_business_error(JsUtils::Convert(ErrorCode::ERROR_IME),
             JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IME)));
-        jobQueue_.Pop();
+        job.Finish();
         return;
     }
     Shadow shadow = CommonConvert::AniConvertShadowToNative(radius, color, offsetX, offsetY);
     auto code = inputMethodPanel_->SetShadow(shadow);
-    jobQueue_.Pop();
+    job.Finish();
     if (code != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("SetShadow failed!");
         set_business_error(JsUtils::Convert(code), JsUtils::ToMessage(JsUtils::Convert(code)));
@@ -224,16 +296,17 @@ bool PanelImpl::ParseUpdateRegionParam(std::vector<Rosen::Rect> &hotArea, uintpt
 void PanelImpl::UpdateRegion(uintptr_t inputRegion)
 {
     int64_t id = LineUp();
-    if (!jobQueue_.Wait(static_cast<int64_t>(id))) {
-        IMSA_HILOGW("wait timeout id: %{public}" PRId64 "", id);
+    JobGuard job(id);
+    if (!job.IsReady()) {
+        return;
     }
     std::vector<Rosen::Rect> hotArea;
     if (!ParseUpdateRegionParam(hotArea, inputRegion)) {
-        jobQueue_.Pop();
+        job.Finish();
         return;
     }
     int32_t code = inputMethodPanel_->UpdateRegion(hotArea);
-    jobQueue_.Pop();
+    job.Finish();
     if (code == ErrorCode::NO_ERROR) {
         IMSA_HILOGI("UpdateRegion success!");
         return;
@@ -254,81 +327,108 @@ void PanelImpl::UpdateRegion(uintptr_t inputRegion)
 void PanelImpl::AdjustPanelRect(PanelFlag_t flag, PanelRect_t const& rect)
 {
     int64_t id = LineUp();
-    if (!jobQueue_.Wait(id)) {
-        IMSA_HILOGW("wait timeout id: %{public}" PRId64 "", id);
+    auto job = std::make_shared<JobGuard>(id);
+    if (!job->IsReady()) {
+        return;
     }
     LayoutParams layoutParams;
     if (!PrepareAdjustPanelRect(flag, rect, layoutParams)) {
-        jobQueue_.Pop();
+        job->Finish();
         return;
     }
     std::weak_ptr<PanelImpl> weakThis = shared_from_this();
-    auto task = [weakThis, panelFlag = static_cast<PanelFlag>(flag.get_value()), layoutParams]() {
+    auto task = [weakThis, job, panelFlag = static_cast<PanelFlag>(flag.get_value()), layoutParams]() {
         auto self = weakThis.lock();
         if (self == nullptr || self->inputMethodPanel_ == nullptr) {
+            IMSA_HILOGW("Panel released before queued adjustment; cancelling this task.");
             return;
         }
         int32_t ret = self->inputMethodPanel_->AdjustPanelRect(panelFlag, layoutParams, true, true, false);
-        self->jobQueue_.Pop();
-        self->HandleAdjustPanelRectResult(ret);
+        job->Finish();
+        if (ret != ErrorCode::NO_ERROR) {
+            // This worker has no ANI environment or synchronous error channel.
+            IMSA_HILOGE("Asynchronous panel adjustment failed: %{public}d", ret);
+        }
     };
-    std::thread obj(task);
-    obj.detach();
+    if (!PostPanelAdjustTask(std::move(task))) {
+        set_business_error(IMFErrorCode::EXCEPTION_WINDOW_MANAGER,
+            "Failed to start the panel adjustment task; the operation was not executed.");
+        return;
+    }
     IMSA_HILOGI("AdjustPanelRect task posted to async thread");
 }
 
 void PanelImpl::AdjustPanelRectEnhanced(PanelFlag_t flag, EnhancedPanelRect_t const& rect)
 {
+    int64_t id = LineUp();
+    auto job = std::make_shared<JobGuard>(id);
+    if (!job->IsReady()) {
+        return;
+    }
     EnhancedLayoutParams enhancedLayoutParams;
     HotAreas hotAreas;
     if (!PrepareAdjustPanelRectEnhanced(flag, rect, enhancedLayoutParams, hotAreas)) {
-        jobQueue_.Pop();
+        job->Finish();
         return;
     }
     std::weak_ptr<PanelImpl> weakThis = shared_from_this();
-    auto task = [weakThis, panelFlag = static_cast<PanelFlag>(flag.get_value()), enhancedLayoutParams, hotAreas]() {
+    auto task = [weakThis, job, panelFlag = static_cast<PanelFlag>(flag.get_value()), enhancedLayoutParams,
+                    hotAreas]() {
         auto self = weakThis.lock();
         if (self == nullptr || self->inputMethodPanel_ == nullptr) {
+            IMSA_HILOGW("Panel released before queued adjustment; cancelling this task.");
             return;
         }
         int32_t ret = self->inputMethodPanel_->AdjustPanelRect(panelFlag, enhancedLayoutParams, hotAreas,
             false);
-        self->jobQueue_.Pop();
-        self->HandleAdjustPanelRectResult(ret);
+        job->Finish();
+        if (ret != ErrorCode::NO_ERROR) {
+            // This worker has no ANI environment or synchronous error channel.
+            IMSA_HILOGE("Asynchronous panel adjustment failed: %{public}d", ret);
+        }
     };
-    std::thread obj(task);
-    obj.detach();
+    if (!PostPanelAdjustTask(std::move(task))) {
+        set_business_error(IMFErrorCode::EXCEPTION_WINDOW_MANAGER,
+            "Failed to start the panel adjustment task; the operation was not executed.");
+        return;
+    }
     IMSA_HILOGI("AdjustPanelRectEnhanced task posted to async thread");
 }
 
 void PanelImpl::UpdatePanelRect(PanelFlag_t flag, PanelRect_t const& rect)
 {
     int64_t id = LineUp();
-    if (!jobQueue_.Wait(id)) {
-        IMSA_HILOGW("wait timeout id: %{public}" PRId64 "", id);
+    JobGuard job(id);
+    if (!job.IsReady()) {
+        return;
     }
     LayoutParams layoutParams;
     if (!PrepareAdjustPanelRect(flag, rect, layoutParams)) {
-        jobQueue_.Pop();
+        job.Finish();
         return;
     }
     int32_t ret = inputMethodPanel_->AdjustPanelRect(static_cast<PanelFlag>(flag.get_value()), layoutParams, true,
         true, false);
-    jobQueue_.Pop();
+    job.Finish();
     HandleAdjustPanelRectResult(ret);
 }
 
 void PanelImpl::UpdatePanelRectEnhanced(PanelFlag_t flag, EnhancedPanelRect_t const& rect)
 {
+    int64_t id = LineUp();
+    JobGuard job(id);
+    if (!job.IsReady()) {
+        return;
+    }
     EnhancedLayoutParams enhancedLayoutParams;
     HotAreas hotAreas;
     if (!PrepareAdjustPanelRectEnhanced(flag, rect, enhancedLayoutParams, hotAreas)) {
-        jobQueue_.Pop();
+        job.Finish();
         return;
     }
     int32_t ret = inputMethodPanel_->AdjustPanelRect(static_cast<PanelFlag>(flag.get_value()), enhancedLayoutParams,
         hotAreas, false);
-    jobQueue_.Pop();
+    job.Finish();
     HandleAdjustPanelRectResult(ret);
 }
 
@@ -407,19 +507,20 @@ void PanelImpl::HandleAdjustPanelRectResult(int32_t ret)
 
 int64_t PanelImpl::GetDisplayIdSync(int64_t id)
 {
-    if (!jobQueue_.Wait(static_cast<int64_t>(id))) {
-        IMSA_HILOGW("wait timeout id: %{public}" PRId64 "", id);
+    JobGuard job(id);
+    if (!job.IsReady()) {
+        return 0;
     }
     uint64_t displayId = 0;
     if (inputMethodPanel_ == nullptr) {
         IMSA_HILOGE("panel is nullptr!");
         set_business_error(JsUtils::Convert(ErrorCode::ERROR_IME),
             JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IME)));
-        jobQueue_.Pop();
+        job.Finish();
         return static_cast<int64_t>(displayId);
     }
     auto ret = inputMethodPanel_->GetDisplayId(displayId);
-    jobQueue_.Pop();
+    job.Finish();
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("failed get displayId!");
         set_business_error(JsUtils::Convert(ret), JsUtils::ToMessage(JsUtils::Convert(ret)));
@@ -438,18 +539,19 @@ int64_t PanelImpl::GetDisplayIdSync(int64_t id)
 ImmersiveMode_t PanelImpl::GetImmersiveMode()
 {
     int64_t id = LineUp();
-    if (!jobQueue_.Wait(static_cast<int64_t>(id))) {
-        IMSA_HILOGW("wait timeout id: %{public}" PRId64 "", id);
+    JobGuard job(id);
+    if (!job.IsReady()) {
+        return CommonConvert::ConvertMode(ImmersiveMode::NONE_IMMERSIVE);
     }
     if (inputMethodPanel_ == nullptr) {
         IMSA_HILOGE("panel is nullptr!");
         set_business_error(JsUtils::Convert(ErrorCode::ERROR_IME),
             JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IME)));
-        jobQueue_.Pop();
+        job.Finish();
         return CommonConvert::ConvertMode(ImmersiveMode::NONE_IMMERSIVE);
     }
     auto immersiveMode = inputMethodPanel_->GetImmersiveMode();
-    jobQueue_.Pop();
+    job.Finish();
     IMSA_HILOGI("get Immersive mode success!");
     return CommonConvert::ConvertMode(immersiveMode);
 }
@@ -467,14 +569,15 @@ bool PanelImpl::IsVaildImmersiveMode(ImmersiveMode mode)
 void PanelImpl::SetImmersiveMode(ImmersiveMode_t mode)
 {
     int64_t id = LineUp();
-    if (!jobQueue_.Wait(static_cast<int64_t>(id))) {
-        IMSA_HILOGW("wait timeout id: %{public}" PRId64 "", id);
+    JobGuard job(id);
+    if (!job.IsReady()) {
+        return;
     }
     if (inputMethodPanel_ == nullptr) {
         IMSA_HILOGE("panel is nullptr!");
         set_business_error(JsUtils::Convert(ErrorCode::ERROR_IME),
             JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IME)));
-        jobQueue_.Pop();
+        job.Finish();
         return;
     }
     ImmersiveMode immersiveMode = static_cast<ImmersiveMode>(mode.get_value());
@@ -482,11 +585,11 @@ void PanelImpl::SetImmersiveMode(ImmersiveMode_t mode)
         IMSA_HILOGE("immersiveMode type must be ImmersiveMode and can not be IMMERSIVE");
         set_business_error(IMFErrorCode::EXCEPTION_PARAMCHECK,
             JsUtils::ToMessage(IMFErrorCode::EXCEPTION_PARAMCHECK));
-        jobQueue_.Pop();
+        job.Finish();
         return;
     }
     auto ret = inputMethodPanel_->SetImmersiveMode(immersiveMode);
-    jobQueue_.Pop();
+    job.Finish();
     if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("SetImmersiveMode failed!");
         set_business_error(JsUtils::Convert(ret), JsUtils::ToMessage(JsUtils::Convert(ret)));
@@ -511,7 +614,8 @@ void PanelImpl::SetPrivacyMode(bool isPrivacyMode)
         return;
     } else if (ret != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("failed to SetPrivacyMode!");
-        set_business_error(JsUtils::Convert(ret), JsUtils::ToMessage(JsUtils::Convert(ret)));
+        int32_t code = ret == ErrorCode::ERROR_IME ? ret : ErrorCode::ERROR_WINDOW_MANAGER;
+        set_business_error(JsUtils::Convert(code), JsUtils::ToMessage(JsUtils::Convert(code)));
         return;
     }
     IMSA_HILOGI("set Privacy mode success!");
@@ -537,19 +641,20 @@ void PanelImpl::ChangeFlag(PanelFlag_t flag)
 
 void PanelImpl::MoveToAsync(int64_t id, int32_t x, int32_t y)
 {
-    if (!jobQueue_.Wait(static_cast<int64_t>(id))) {
-        IMSA_HILOGW("wait timeout id: %{public}" PRId64 "", id);
+    JobGuard job(id);
+    if (!job.IsReady()) {
+        return;
     }
     if (inputMethodPanel_ == nullptr) {
         IMSA_HILOGE("panel is nullptr!");
         set_business_error(JsUtils::Convert(ErrorCode::ERROR_IME),
             JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IME)));
-        jobQueue_.Pop();
+        job.Finish();
         return;
     }
     auto code = inputMethodPanel_->MoveTo(x, y);
-    jobQueue_.Pop();
-    if (code == ErrorCode::ERROR_PARAMETER_CHECK_FAILED) {
+    job.Finish();
+    if (code != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("moveTo failed!");
         set_business_error(JsUtils::Convert(code), JsUtils::ToMessage(JsUtils::Convert(code)));
         return;
@@ -559,18 +664,19 @@ void PanelImpl::MoveToAsync(int64_t id, int32_t x, int32_t y)
 
 void PanelImpl::ResizeAsync(int64_t id, int64_t width, int64_t height)
 {
-    if (!jobQueue_.Wait(static_cast<int64_t>(id))) {
-        IMSA_HILOGW("wait timeout id: %{public}" PRId64 "", id);
+    JobGuard job(id);
+    if (!job.IsReady()) {
+        return;
     }
     if (inputMethodPanel_ == nullptr) {
         IMSA_HILOGE("panel is nullptr!");
         set_business_error(JsUtils::Convert(ErrorCode::ERROR_IME),
             JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IME)));
-        jobQueue_.Pop();
+        job.Finish();
         return;
     }
     auto code = inputMethodPanel_->Resize(static_cast<uint32_t>(width), static_cast<uint32_t>(height));
-    jobQueue_.Pop();
+    job.Finish();
     if (code != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("Resize failed!");
         set_business_error(JsUtils::Convert(code), JsUtils::ToMessage(JsUtils::Convert(code)));
@@ -581,14 +687,15 @@ void PanelImpl::ResizeAsync(int64_t id, int64_t width, int64_t height)
 
 void PanelImpl::SetUiContent(int64_t id, taihe::string_view path, ani_object storage)
 {
-    if (!jobQueue_.Wait(static_cast<int64_t>(id))) {
-        IMSA_HILOGW("wait timeout id: %{public}" PRId64 "", id);
+    JobGuard job(id);
+    if (!job.IsReady()) {
+        return;
     }
     if (inputMethodPanel_ == nullptr) {
         IMSA_HILOGE("panel is nullptr!");
         set_business_error(JsUtils::Convert(ErrorCode::ERROR_IME),
             JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IME)));
-        jobQueue_.Pop();
+        job.Finish();
         return;
     }
     ani_env *env = taihe::get_env();
@@ -596,12 +703,12 @@ void PanelImpl::SetUiContent(int64_t id, taihe::string_view path, ani_object sto
         IMSA_HILOGE("env is nullptr!");
         set_business_error(JsUtils::Convert(ErrorCode::ERROR_IME),
             JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IME)));
-        jobQueue_.Pop();
+        job.Finish();
         return;
     }
     std::string contentInfo = std::string(path);
     auto code = inputMethodPanel_->SetUiContentAni(contentInfo, env, storage);
-    jobQueue_.Pop();
+    job.Finish();
     if (code == ErrorCode::ERROR_PARAMETER_CHECK_FAILED) {
         IMSA_HILOGE("path should be a path to specific page.");
         set_business_error(JsUtils::Convert(code), JsUtils::ToMessage(JsUtils::Convert(code)));
@@ -616,18 +723,19 @@ void PanelImpl::SetUiContent(int64_t id, taihe::string_view path, ani_object sto
 
 void PanelImpl::HideAsync(int64_t id)
 {
-    if (!jobQueue_.Wait(static_cast<int64_t>(id))) {
-        IMSA_HILOGW("wait timeout id: %{public}" PRId64 "", id);
+    JobGuard job(id);
+    if (!job.IsReady()) {
+        return;
     }
     if (inputMethodPanel_ == nullptr) {
         IMSA_HILOGE("panel is nullptr!");
         set_business_error(JsUtils::Convert(ErrorCode::ERROR_IME),
             JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IME)));
-        jobQueue_.Pop();
+        job.Finish();
         return;
     }
     auto code = InputMethodAbility::GetInstance().HidePanel(inputMethodPanel_);
-    jobQueue_.Pop();
+    job.Finish();
     if (code != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("Hide failed!");
         set_business_error(JsUtils::Convert(code), JsUtils::ToMessage(JsUtils::Convert(code)));
@@ -638,18 +746,19 @@ void PanelImpl::HideAsync(int64_t id)
 
 void PanelImpl::ShowAsync(int64_t id)
 {
-    if (!jobQueue_.Wait(static_cast<int64_t>(id))) {
-        IMSA_HILOGW("wait timeout id: %{public}" PRId64 "", id);
+    JobGuard job(id);
+    if (!job.IsReady()) {
+        return;
     }
     if (inputMethodPanel_ == nullptr) {
         IMSA_HILOGE("panel is nullptr!");
         set_business_error(JsUtils::Convert(ErrorCode::ERROR_IME),
             JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IME)));
-        jobQueue_.Pop();
+        job.Finish();
         return;
     }
     auto code = InputMethodAbility::GetInstance().ShowPanel(inputMethodPanel_);
-    jobQueue_.Pop();
+    job.Finish();
     if (code != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("Show failed!");
         set_business_error(JsUtils::Convert(code), JsUtils::ToMessage(JsUtils::Convert(code)));
@@ -678,19 +787,20 @@ void PanelImpl::SetKeepScreenOnAsync(bool isKeepScreenOn)
 void PanelImpl::SetImmersiveEffect(ImmersiveEffect_t const& effect)
 {
     int64_t id = LineUp();
-    if (!jobQueue_.Wait(static_cast<int64_t>(id))) {
-        IMSA_HILOGW("wait timeout id: %{public}" PRId64 "", id);
+    JobGuard job(id);
+    if (!job.IsReady()) {
+        return;
     }
     if (inputMethodPanel_ == nullptr) {
         IMSA_HILOGE("panel is nullptr!");
         set_business_error(JsUtils::Convert(ErrorCode::ERROR_IME),
             JsUtils::ToMessage(JsUtils::Convert(ErrorCode::ERROR_IME)));
-        jobQueue_.Pop();
+        job.Finish();
         return;
     }
     ImmersiveEffect result = CommonConvert::AniConvertEffectToNative(effect);
     auto code = inputMethodPanel_->SetImmersiveEffect(result);
-    jobQueue_.Pop();
+    job.Finish();
     if (code != ErrorCode::NO_ERROR) {
         IMSA_HILOGE("SetImmersiveEffect failed!");
         set_business_error(JsUtils::Convert(code), JsUtils::ToMessage(JsUtils::Convert(code)));
@@ -751,10 +861,20 @@ void PanelImpl::UnRegisterListener(std::string const &type, taihe::optional_view
     inputMethodPanel_->ClearPanelListener(type);
 }
 
+void PanelImpl::CancelJob(int64_t id)
+{
+    if (id >= 0 && id <= UINT32_MAX) {
+        jobQueue_.Remove(static_cast<uint32_t>(id));
+    }
+}
+
 int64_t PanelImpl::LineUp()
 {
     uint32_t id = ++jobId_;
-    jobQueue_.Push(id);
+    if (!jobQueue_.Push(id)) {
+        IMSA_HILOGE("Panel task queue is full; task %{public}u was not enqueued.", id);
+        return -1;
+    }
     return static_cast<int64_t>(id);
 }
 

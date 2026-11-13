@@ -55,6 +55,10 @@ public:
     Ace::UIContent *GetUIContent();
     int32_t CreatePanel(const std::shared_ptr<AbilityRuntime::Context> &context, const PanelInfo &panelInfo);
     int32_t DestroyPanel();
+    bool IsDestroyed() const
+    {
+        return panelDestroyed_.load();
+    }
 
     int32_t Resize(uint32_t width, uint32_t height);
     int32_t MoveTo(int32_t x, int32_t y);
@@ -70,7 +74,7 @@ public:
     int32_t ChangePanelFlag(PanelFlag panelFlag);
     PanelType GetPanelType();
     PanelFlag GetPanelFlag();
-    int32_t ShowPanel(Trigger trigger, uint32_t windowId = 0);
+    int32_t ShowPanel(uint32_t windowId = 0);
     int32_t HidePanel();
     int32_t SizeChange(const WindowSize &size);
     WindowSize GetKeyboardSize();
@@ -145,6 +149,8 @@ private:
     sptr<Rosen::IOcclusionStateChangedListener> visibilityChangeListener_{ nullptr };
 
 private:
+    friend class InputMethodAbility;
+    int32_t DestroyPanelWithStatus();
     bool IsHidden();
     int32_t SetPanelProperties();
     std::string GeneratePanelName();
@@ -255,8 +261,6 @@ private:
     void NotifySoftKeyBoardInfoChanged(PanelFlag panelFlag, InputWindowStatus status);
     int32_t SetHotAreasOnAdjust(HotAreas hotAreas);
     int32_t UpdatePanelFLagToWindow(PanelFlag panelFlag);
-    bool NeedAdjustPanelRect();
-    void AddAdjustPanelRect();
 
     sptr<OHOS::Rosen::Window> window_ = nullptr;
     sptr<OHOS::Rosen::WindowOption> winOption_ = nullptr;
@@ -309,6 +313,8 @@ private:
         { UNFOLD_TOP, UNFOLD_LEFT, UNFOLD_RIGHT, COMMON_BOTTOM }
     };
     std::atomic<bool> isWaitSetUiContent_ { true };
+    std::mutex lifecycleMutex_;
+    std::atomic<bool> panelDestroyed_ { false };
     std::atomic<bool> isInEnhancedAdjust_{ false };
 
     std::mutex immersiveModeMutex_;
@@ -322,7 +328,6 @@ private:
     std::mutex parseParamsMutex_;
     std::mutex panelStatusChangeMutex_;
 
-    std::atomic<bool> hasSetSize_ { false };
     std::atomic<bool> isExternalAdjusting_ { false };
 
     bool isPortrait_ { true };

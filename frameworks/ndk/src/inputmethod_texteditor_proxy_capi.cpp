@@ -50,7 +50,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_SetGetTextConfigFunc(
         return IME_ERR_NULL_POINTER;
     }
 
-    proxy->getTextConfigFunc = getTextConfigFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    lease->getTextConfigFunc.store(getTextConfigFunc);
     return IME_ERR_OK;
 }
 InputMethod_ErrorCode OH_TextEditorProxy_SetInsertTextFunc(
@@ -65,7 +70,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_SetInsertTextFunc(
         IMSA_HILOGE("insertTextFunc is nullptr");
         return IME_ERR_NULL_POINTER;
     }
-    proxy->insertTextFunc = insertTextFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    lease->insertTextFunc.store(insertTextFunc);
     return IME_ERR_OK;
 }
 
@@ -82,7 +92,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_SetDeleteForwardFunc(
         return IME_ERR_NULL_POINTER;
     }
 
-    proxy->deleteForwardFunc = deleteForwardFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    lease->deleteForwardFunc.store(deleteForwardFunc);
     return IME_ERR_OK;
 }
 
@@ -99,7 +114,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_SetDeleteBackwardFunc(
         return IME_ERR_NULL_POINTER;
     }
 
-    proxy->deleteBackwardFunc = deleteBackwardFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    lease->deleteBackwardFunc.store(deleteBackwardFunc);
     return IME_ERR_OK;
 }
 
@@ -116,7 +136,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_SetSendKeyboardStatusFunc(
         return IME_ERR_NULL_POINTER;
     }
 
-    proxy->sendKeyboardStatusFunc = sendKeyboardStatusFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    lease->sendKeyboardStatusFunc.store(sendKeyboardStatusFunc);
     return IME_ERR_OK;
 }
 
@@ -133,7 +158,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_SetSendEnterKeyFunc(
         return IME_ERR_NULL_POINTER;
     }
 
-    proxy->sendEnterKeyFunc = sendEnterKeyFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    lease->sendEnterKeyFunc.store(sendEnterKeyFunc);
     return IME_ERR_OK;
 }
 
@@ -150,7 +180,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_SetMoveCursorFunc(
         return IME_ERR_NULL_POINTER;
     }
 
-    proxy->moveCursorFunc = moveCursorFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    lease->moveCursorFunc.store(moveCursorFunc);
     return IME_ERR_OK;
 }
 
@@ -167,7 +202,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_SetHandleSetSelectionFunc(
         return IME_ERR_NULL_POINTER;
     }
 
-    proxy->handleSetSelectionFunc = handleSetSelectionFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    lease->handleSetSelectionFunc.store(handleSetSelectionFunc);
     return IME_ERR_OK;
 }
 
@@ -184,7 +224,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_SetHandleExtendActionFunc(
         return IME_ERR_NULL_POINTER;
     }
 
-    proxy->handleExtendActionFunc = handleExtendActionFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    lease->handleExtendActionFunc.store(handleExtendActionFunc);
     return IME_ERR_OK;
 }
 
@@ -201,7 +246,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_SetGetLeftTextOfCursorFunc(
         return IME_ERR_NULL_POINTER;
     }
 
-    proxy->getLeftTextOfCursorFunc = getLeftTextOfCursorFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    lease->getLeftTextOfCursorFunc.store(getLeftTextOfCursorFunc);
     return IME_ERR_OK;
 }
 InputMethod_ErrorCode OH_TextEditorProxy_SetGetRightTextOfCursorFunc(
@@ -217,7 +267,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_SetGetRightTextOfCursorFunc(
         return IME_ERR_NULL_POINTER;
     }
 
-    proxy->getRightTextOfCursorFunc = getRightTextOfCursorFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    lease->getRightTextOfCursorFunc.store(getRightTextOfCursorFunc);
     return IME_ERR_OK;
 }
 InputMethod_ErrorCode OH_TextEditorProxy_SetGetTextIndexAtCursorFunc(
@@ -233,7 +288,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_SetGetTextIndexAtCursorFunc(
         return IME_ERR_NULL_POINTER;
     }
 
-    proxy->getTextIndexAtCursorFunc = getTextIndexAtCursorFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    lease->getTextIndexAtCursorFunc.store(getTextIndexAtCursorFunc);
     return IME_ERR_OK;
 }
 
@@ -250,7 +310,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_SetReceivePrivateCommandFunc(
         return IME_ERR_NULL_POINTER;
     }
 
-    proxy->receivePrivateCommandFunc = receivePrivateCommandFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    lease->receivePrivateCommandFunc.store(receivePrivateCommandFunc);
     return IME_ERR_OK;
 }
 InputMethod_ErrorCode OH_TextEditorProxy_SetSetPreviewTextFunc(
@@ -266,7 +331,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_SetSetPreviewTextFunc(
         return IME_ERR_NULL_POINTER;
     }
 
-    proxy->setPreviewTextFunc = setPreviewTextFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    lease->setPreviewTextFunc.store(setPreviewTextFunc);
     return IME_ERR_OK;
 }
 InputMethod_ErrorCode OH_InputMethod_TextEditorProxy_SetSetPreviewTextWithStyleFunc(InputMethod_TextEditorProxy *proxy,
@@ -298,7 +368,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_SetFinishTextPreviewFunc(
         return IME_ERR_NULL_POINTER;
     }
 
-    proxy->finishTextPreviewFunc = finishTextPreviewFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    lease->finishTextPreviewFunc.store(finishTextPreviewFunc);
     return IME_ERR_OK;
 }
 
@@ -314,7 +389,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_GetGetTextConfigFunc(
         IMSA_HILOGE("getTextConfigFunc is nullptr");
         return IME_ERR_NULL_POINTER;
     }
-    *getTextConfigFunc = proxy->getTextConfigFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    *getTextConfigFunc = lease->getTextConfigFunc.load();
     return IME_ERR_OK;
 }
 
@@ -331,7 +411,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_GetInsertTextFunc(
         return IME_ERR_NULL_POINTER;
     }
 
-    *insertTextFunc = proxy->insertTextFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    *insertTextFunc = lease->insertTextFunc.load();
     return IME_ERR_OK;
 }
 InputMethod_ErrorCode OH_TextEditorProxy_GetDeleteForwardFunc(
@@ -345,7 +430,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_GetDeleteForwardFunc(
         IMSA_HILOGE("deleteForwardFunc is nullptr");
         return IME_ERR_NULL_POINTER;
     }
-    *deleteForwardFunc = proxy->deleteForwardFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    *deleteForwardFunc = lease->deleteForwardFunc.load();
     return IME_ERR_OK;
 }
 
@@ -360,7 +450,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_GetDeleteBackwardFunc(
         IMSA_HILOGE("deleteBackwardFunc is nullptr");
         return IME_ERR_NULL_POINTER;
     }
-    *deleteBackwardFunc = proxy->deleteBackwardFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    *deleteBackwardFunc = lease->deleteBackwardFunc.load();
     return IME_ERR_OK;
 }
 
@@ -375,7 +470,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_GetSendKeyboardStatusFunc(
         IMSA_HILOGE("sendKeyboardStatusFunc is nullptr");
         return IME_ERR_NULL_POINTER;
     }
-    *sendKeyboardStatusFunc = proxy->sendKeyboardStatusFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    *sendKeyboardStatusFunc = lease->sendKeyboardStatusFunc.load();
     return IME_ERR_OK;
 }
 
@@ -390,7 +490,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_GetSendEnterKeyFunc(
         IMSA_HILOGE("sendEnterKeyFunc is nullptr");
         return IME_ERR_NULL_POINTER;
     }
-    *sendEnterKeyFunc = proxy->sendEnterKeyFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    *sendEnterKeyFunc = lease->sendEnterKeyFunc.load();
     return IME_ERR_OK;
 }
 
@@ -405,7 +510,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_GetMoveCursorFunc(
         IMSA_HILOGE("moveCursorFunc is nullptr");
         return IME_ERR_NULL_POINTER;
     }
-    *moveCursorFunc = proxy->moveCursorFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    *moveCursorFunc = lease->moveCursorFunc.load();
     return IME_ERR_OK;
 }
 
@@ -420,7 +530,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_GetHandleSetSelectionFunc(
         IMSA_HILOGE("handleSetSelectionFunc is nullptr");
         return IME_ERR_NULL_POINTER;
     }
-    *handleSetSelectionFunc = proxy->handleSetSelectionFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    *handleSetSelectionFunc = lease->handleSetSelectionFunc.load();
     return IME_ERR_OK;
 }
 
@@ -435,7 +550,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_GetHandleExtendActionFunc(
         IMSA_HILOGE("handleExtendActionFunc is nullptr");
         return IME_ERR_NULL_POINTER;
     }
-    *handleExtendActionFunc = proxy->handleExtendActionFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    *handleExtendActionFunc = lease->handleExtendActionFunc.load();
     return IME_ERR_OK;
 }
 
@@ -450,7 +570,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_GetGetLeftTextOfCursorFunc(
         IMSA_HILOGE("getLeftTextOfCursorFunc is nullptr");
         return IME_ERR_NULL_POINTER;
     }
-    *getLeftTextOfCursorFunc = proxy->getLeftTextOfCursorFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    *getLeftTextOfCursorFunc = lease->getLeftTextOfCursorFunc.load();
     return IME_ERR_OK;
 }
 
@@ -465,7 +590,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_GetGetRightTextOfCursorFunc(
         IMSA_HILOGE("getRightTextOfCursorFunc is nullptr");
         return IME_ERR_NULL_POINTER;
     }
-    *getRightTextOfCursorFunc = proxy->getRightTextOfCursorFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    *getRightTextOfCursorFunc = lease->getRightTextOfCursorFunc.load();
     return IME_ERR_OK;
 }
 
@@ -480,7 +610,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_GetGetTextIndexAtCursorFunc(
         IMSA_HILOGE("getTextIndexAtCursorFunc is nullptr");
         return IME_ERR_NULL_POINTER;
     }
-    *getTextIndexAtCursorFunc = proxy->getTextIndexAtCursorFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    *getTextIndexAtCursorFunc = lease->getTextIndexAtCursorFunc.load();
     return IME_ERR_OK;
 }
 
@@ -495,7 +630,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_GetReceivePrivateCommandFunc(
         IMSA_HILOGE("receivePrivateCommandFunc is nullptr");
         return IME_ERR_NULL_POINTER;
     }
-    *receivePrivateCommandFunc = proxy->receivePrivateCommandFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    *receivePrivateCommandFunc = lease->receivePrivateCommandFunc.load();
     return IME_ERR_OK;
 }
 
@@ -510,7 +650,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_GetSetPreviewTextFunc(
         IMSA_HILOGE("setPreviewTextFunc is nullptr");
         return IME_ERR_NULL_POINTER;
     }
-    *setPreviewTextFunc = proxy->setPreviewTextFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    *setPreviewTextFunc = lease->setPreviewTextFunc.load();
     return IME_ERR_OK;
 }
 
@@ -540,7 +685,12 @@ InputMethod_ErrorCode OH_TextEditorProxy_GetFinishTextPreviewFunc(
         IMSA_HILOGE("finishTextPreviewFunc is nullptr");
         return IME_ERR_NULL_POINTER;
     }
-    *finishTextPreviewFunc = proxy->finishTextPreviewFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    *finishTextPreviewFunc = lease->finishTextPreviewFunc.load();
     return IME_ERR_OK;
 }
 
@@ -552,6 +702,11 @@ InputMethod_ErrorCode OH_TextEditorProxy_SetCallbackInMainThread(
         return IME_ERR_NULL_POINTER;
     }
     IMSA_HILOGI("isCallbackInMainThread: %{public}d", isCallbackInMainThread);
-    proxy->isCallbackInMainThread = isCallbackInMainThread;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    lease->isCallbackInMainThread = isCallbackInMainThread;
     return IME_ERR_OK;
 }

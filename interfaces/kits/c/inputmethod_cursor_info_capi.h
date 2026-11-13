@@ -43,6 +43,12 @@ extern "C"{
  *
  * The coordinates and width and height information of the cursor.
  *
+ * Use only a live handle created by this API or a borrowed handle supplied by the framework.
+ * Destroy only independently created objects. Callback objects and TextConfig child views are borrowed.
+ * Accessors reject unregistered or expired handles with IME_ERR_PARAMCHECK; NULL keeps its existing error.
+ * Lifetime checks do not make object fields thread-safe or identify every stale address after address reuse.
+ * Clear pointers after destruction and do not retain callback objects beyond the callback.
+ *
  * @since 12
  */
 typedef struct InputMethod_CursorInfo InputMethod_CursorInfo;
@@ -62,6 +68,8 @@ InputMethod_CursorInfo *OH_CursorInfo_Create(double left, double top, double wid
 
 /**
  * @brief Destroy a {@link InputMethod_CursorInfo} instance.
+ * Only independently created objects are owned by the caller. A TextConfig getter returns a borrowed view;
+ * passing that view here is rejected without releasing its parent. Do not use the pointer after destruction.
  *
  * @param cursorInfo Represents a pointer to an {@link InputMethod_CursorInfo} instance which will be destroyed.
  * @since 12
@@ -78,6 +86,7 @@ void OH_CursorInfo_Destroy(InputMethod_CursorInfo *cursorInfo);
  * @param height The height of the cursor.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 12
@@ -95,6 +104,7 @@ InputMethod_ErrorCode OH_CursorInfo_SetRect(
  * @param height The height of the cursor.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 12

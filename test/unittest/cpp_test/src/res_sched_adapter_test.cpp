@@ -22,6 +22,8 @@
 #include "global.h"
 #include "ipc_skeleton.h"
 #include "res_sched_client.h"
+#include "res_sched_json_client.h"
+#include "nlohmann/json.hpp"
 
 namespace OHOS {
 namespace MiscServices {
@@ -91,27 +93,27 @@ HWTEST_F(ResSchedAdapterTest, ResSchedAdapterTest_NotifyMakeImage, TestSize.Leve
 
     // report failed
     int32_t expectedRet = 10;
-    ResourceSchedule::ResSchedClient::SetReportSyncEventRet(expectedRet);
+    ResourceSchedule::ResSchedJsonClient::SetReportSyncEventRet(expectedRet);
     auto ret = ResSchedAdapter::NotifyMakeImage(userId, want);
     EXPECT_EQ(ret, expectedRet);
 
     // report success, reply not contain errCode;
     expectedRet = ErrorCode::NO_ERROR;
-    ResourceSchedule::ResSchedClient::SetReportSyncEventRet(expectedRet);
-    ResourceSchedule::ResSchedClient::SetReportSyncEventReply(expectedReply);
+    ResourceSchedule::ResSchedJsonClient::SetReportSyncEventRet(expectedRet);
+    ResourceSchedule::ResSchedJsonClient::SetReportSyncEventReply(expectedReply);
     ret = ResSchedAdapter::NotifyMakeImage(userId, want);
     EXPECT_EQ(ret, ErrorCode::ERROR_EX_SERVICE_SPECIFIC);
 
     // contain errCode, but not number
     expectedReply["errCode"] = "1";
-    ResourceSchedule::ResSchedClient::SetReportSyncEventReply(expectedReply);
+    ResourceSchedule::ResSchedJsonClient::SetReportSyncEventReply(expectedReply);
     ret = ResSchedAdapter::NotifyMakeImage(userId, want);
     EXPECT_EQ(ret, ErrorCode::ERROR_EX_SERVICE_SPECIFIC);
 
     // contain errCode, is number
     int32_t errcode = 124;
     expectedReply["errCode"] = errcode;
-    ResourceSchedule::ResSchedClient::SetReportSyncEventReply(expectedReply);
+    ResourceSchedule::ResSchedJsonClient::SetReportSyncEventReply(expectedReply);
     ret = ResSchedAdapter::NotifyMakeImage(userId, want);
     EXPECT_EQ(ret, errcode);
 }

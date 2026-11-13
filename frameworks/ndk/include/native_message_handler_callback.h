@@ -17,18 +17,19 @@
 #include "input_method_controller.h"
 #include "msg_handler_callback_interface.h"
 #include "native_inputmethod_types.h"
+#include "native_object_registry.h"
 namespace OHOS {
 namespace MiscServices {
 class NativeMessageHandlerCallback : public OHOS::MiscServices::MsgHandlerCallbackInterface {
 public:
     explicit NativeMessageHandlerCallback(InputMethod_MessageHandlerProxy *messageHandler)
-        : messageHandler_(messageHandler) {};
+        : messageHandler_(NativeObjectRegistry<InputMethod_MessageHandlerProxy>::GetInstance().Get(messageHandler)) {};
     virtual ~NativeMessageHandlerCallback() {};
     virtual int32_t OnTerminated() override;
     virtual int32_t OnMessage(const ArrayBuffer &arrayBuffer) override;
 
 private:
-    InputMethod_MessageHandlerProxy *messageHandler_;
+    std::weak_ptr<InputMethod_MessageHandlerProxy> messageHandler_;
 };
 } // namespace MiscServices
 } // namespace OHOS

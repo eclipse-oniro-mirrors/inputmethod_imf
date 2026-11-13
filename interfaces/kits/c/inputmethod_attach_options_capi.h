@@ -43,6 +43,12 @@ extern "C" {
  *
  * The options when attaching input method.
  *
+ * Use only a live handle created by this API or a borrowed handle supplied by the framework.
+ * Destroy only independently created objects. Callback objects and TextConfig child views are borrowed.
+ * Accessors reject unregistered or expired handles with IME_ERR_PARAMCHECK; NULL keeps its existing error.
+ * Lifetime checks do not make object fields thread-safe or identify every stale address after address reuse.
+ * Clear pointers after destruction and do not retain callback objects beyond the callback.
+ *
  * @since 12
  */
 typedef struct InputMethod_AttachOptions InputMethod_AttachOptions;
@@ -83,6 +89,7 @@ void OH_AttachOptions_Destroy(InputMethod_AttachOptions *options);
  *     false - no need to show keyboard.
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 12
@@ -96,6 +103,7 @@ InputMethod_ErrorCode OH_AttachOptions_IsShowKeyboard(InputMethod_AttachOptions 
  * be get value from
  * @return Returns a specific error code.
  *     {@link IME_ERR_OK} - success.
+ *     {@link IME_ERR_PARAMCHECK} - the object handle is unregistered or no longer valid.
  *     {@link IME_ERR_NULL_POINTER} - unexpected null pointer.
  * Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 16

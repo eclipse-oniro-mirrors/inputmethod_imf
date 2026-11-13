@@ -149,7 +149,7 @@ void InputMethodAbilityImpl::RegisterListener(std::string const &type, callbackT
     std::lock_guard<std::mutex> lock(mutex_);
     auto &cbVec = jsCbMap_[type];
     bool isDuplicate =
-        std::any_of(cbVec.begin(), cbVec.end(), [env, callbackRef](std::unique_ptr<CallbackObjects> &obj) {
+        std::any_of(cbVec.begin(), cbVec.end(), [env, callbackRef](const std::shared_ptr<CallbackObjects> &obj) {
             ani_boolean isEqual = false;
             return (ANI_OK == env->Reference_StrictEquals(callbackRef, obj->ref, &isEqual)) && isEqual;
         });
@@ -161,7 +161,7 @@ void InputMethodAbilityImpl::RegisterListener(std::string const &type, callbackT
         IMSA_HILOGD("%{public}s is already registered", type.c_str());
         return;
     }
-    cbVec.emplace_back(std::make_unique<CallbackObjects>(cb, callbackRef));
+    cbVec.emplace_back(std::make_shared<CallbackHolder>(cb, callbackRef));
     IMSA_HILOGI("Registered success type: %{public}s", type.c_str());
 }
 
@@ -183,7 +183,9 @@ void InputMethodAbilityImpl::UnRegisterListener(std::string const &type, taihe::
         return;
     }
 
-    std::lock_guard<std::mutex> lock(mutex_);
+    // Release removed listeners only after unlocking and any in-flight dispatch finishes.
+    std::vector<std::shared_ptr<CallbackObjects>> retired;
+    std::unique_lock<std::mutex> lock(mutex_);
     const auto iter = jsCbMap_.find(type);
     if (iter == jsCbMap_.end()) {
         IMSA_HILOGE("%{public}s is not registered", type.c_str());
@@ -191,6 +193,7 @@ void InputMethodAbilityImpl::UnRegisterListener(std::string const &type, taihe::
     }
 
     if (!opq.has_value()) {
+        retired = std::move(iter->second);
         jsCbMap_.erase(iter);
         return;
     }
@@ -201,25 +204,33 @@ void InputMethodAbilityImpl::UnRegisterListener(std::string const &type, taihe::
         return;
     }
 
-    const auto pred = [env, targetRef = guard.get()](std::unique_ptr<CallbackObjects> &obj) {
+    const auto pred = [env, targetRef = guard.get()](const std::shared_ptr<CallbackObjects> &obj) {
         ani_boolean is_equal = false;
         return (ANI_OK == env->Reference_StrictEquals(targetRef, obj->ref, &is_equal)) && is_equal;
     };
     auto &callbacks = iter->second;
     const auto it = std::find_if(callbacks.begin(), callbacks.end(), pred);
     if (it != callbacks.end()) {
+        retired.emplace_back(std::move(*it));
         callbacks.erase(it);
     }
     if (callbacks.empty()) {
         jsCbMap_.erase(iter);
     }
+    lock.unlock();
+}
+
+std::vector<std::shared_ptr<CallbackObjects>> InputMethodAbilityImpl::GetCallbacks(const std::string &type)
+{
+    std::lock_guard<std::mutex> lock(mutex_);
+    const auto iter = jsCbMap_.find(type);
+    return iter == jsCbMap_.end() ? std::vector<std::shared_ptr<CallbackObjects>> {} : iter->second;
 }
 
 void InputMethodAbilityImpl::OnKeyboardStatus(bool isShow)
 {
     std::string type = isShow ? "keyboardShow" : "keyboardHide";
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_[type];
+    auto cbVec = GetCallbacks(type);
     for (auto &cb : cbVec) {
         auto &func = std::get<taihe::callback<void(UndefinedType_t const&)>>(cb->callback);
         UndefinedType_t type = UndefinedType_t::make_undefined();
@@ -239,13 +250,15 @@ void InputMethodAbilityImpl::OnInputStart()
         IMSA_HILOGE("get env is nullptr");
         return;
     }
-    auto &cbVec = jsCbMap_["inputStart"];
+    auto cbVec = GetCallbacks("inputStart");
     for (auto &cb : cbVec) {
         auto &func = std::get<taihe::callback<void(KeyboardController_t, InputClient_t)>>(cb->callback);
         auto keyBoardController = make_holder<KeyboardControllerImpl, ohos::inputMethodEngine::KeyboardController>();
         auto textInput = make_holder<InputClientImpl, ohos::inputMethodEngine::InputClient>();
         func(std::forward<KeyboardController_t>(keyBoardController), std::forward<InputClient_t>(textInput));
     }
+    // Drop listeners removed by a callback while this thread is still attached.
+    cbVec.clear();
     if (vm_->DetachCurrentThread() != ANI_OK) {
         IMSA_HILOGE("DetachCurrentThread failed");
         return;
@@ -255,7 +268,7 @@ void InputMethodAbilityImpl::OnInputStart()
 int32_t InputMethodAbilityImpl::OnInputStop()
 {
     IMSA_HILOGI("OnInputStop start.");
-    auto &cbVec = jsCbMap_["inputStop"];
+    auto cbVec = GetCallbacks("inputStop");
     for (auto &cb : cbVec) {
         auto &func = std::get<taihe::callback<void(UndefinedType_t const&)>>(cb->callback);
         UndefinedType_t type = UndefinedType_t::make_undefined();
@@ -267,8 +280,7 @@ int32_t InputMethodAbilityImpl::OnInputStop()
 int32_t InputMethodAbilityImpl::OnDiscardTypingText()
 {
     IMSA_HILOGI("DiscardTypingText start.");
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_["discardTypingText"];
+    auto cbVec = GetCallbacks("discardTypingText");
     for (auto &cb : cbVec) {
         auto &func = std::get<taihe::callback<void(UndefinedType_t const&)>>(cb->callback);
         UndefinedType_t type = UndefinedType_t::make_undefined();
@@ -280,8 +292,7 @@ int32_t InputMethodAbilityImpl::OnDiscardTypingText()
 void InputMethodAbilityImpl::OnSecurityChange(int32_t security)
 {
     IMSA_HILOGI("OnSecurityChange start.");
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_["securityModeChange"];
+    auto cbVec = GetCallbacks("securityModeChange");
     for (auto &cb : cbVec) {
         auto &func = std::get<taihe::callback<void(SecurityMode_t)>>(cb->callback);
         SecurityMode_t modeType = CommonConvert::ConvertSecurityMode(static_cast<SecurityMode>(security));
@@ -292,8 +303,7 @@ void InputMethodAbilityImpl::OnSecurityChange(int32_t security)
 void InputMethodAbilityImpl::OnSetCallingWindow(uint32_t windowId)
 {
     IMSA_HILOGI("OnSetCallingWindow start.");
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_["setCallingWindow"];
+    auto cbVec = GetCallbacks("setCallingWindow");
     for (auto &cb : cbVec) {
         auto &func = std::get<taihe::callback<void(int32_t)>>(cb->callback);
         int32_t wid = static_cast<int32_t>(windowId);
@@ -304,8 +314,7 @@ void InputMethodAbilityImpl::OnSetCallingWindow(uint32_t windowId)
 void InputMethodAbilityImpl::OnSetSubtype(const SubProperty &property)
 {
     IMSA_HILOGI("OnSetSubtype start.");
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_["setSubtype"];
+    auto cbVec = GetCallbacks("setSubtype");
     for (auto &cb : cbVec) {
         auto &func = std::get<taihe::callback<void(InputMethodSubtype_t const&)>>(cb->callback);
         func(TaiheConverter::ConvertSubProperty(property));
@@ -319,8 +328,7 @@ void InputMethodAbilityImpl::OnCallingDisplayIdChanged(uint64_t callingDisplayId
         IMSA_HILOGE("callingDisplayId over range!");
         return;
     }
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_["callingDisplayDidChange"];
+    auto cbVec = GetCallbacks("callingDisplayDidChange");
     for (auto &cb : cbVec) {
         auto &func = std::get<taihe::callback<void(int32_t)>>(cb->callback);
         func(static_cast<int32_t>(callingDisplayId));
@@ -331,8 +339,7 @@ void InputMethodAbilityImpl::ReceivePrivateCommand(
     const std::unordered_map<std::string, PrivateDataValue> &privateCommand)
 {
     IMSA_HILOGD("start.");
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_["privateCommand"];
+    auto cbVec = GetCallbacks("privateCommand");
     for (auto &cb : cbVec) {
         auto &func = std::get<taihe::callback<void(taihe::map_view<taihe::string, CommandDataType_t>)>>(cb->callback);
         func(CommonConvert::NativeConvertPCommandToAni(privateCommand));

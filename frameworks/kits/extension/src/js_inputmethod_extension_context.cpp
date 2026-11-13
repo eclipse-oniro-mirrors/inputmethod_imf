@@ -15,6 +15,7 @@
 
 #include "js_inputmethod_extension_context.h"
 
+#include <cinttypes>
 #include <cstdint>
 
 #include "global.h"
@@ -40,12 +41,46 @@ constexpr int32_t INDEX_ZERO = 0;
 constexpr int32_t INDEX_ONE = 1;
 constexpr int32_t INDEX_TWO = 2;
 constexpr int32_t ERROR_CODE_ONE = 1;
-constexpr int32_t ERROR_CODE_TWO = 2;
 constexpr size_t ARGC_ZERO = 0;
 constexpr size_t ARGC_ONE = 1;
 constexpr size_t ARGC_TWO = 2;
 constexpr size_t ARGC_THREE = 3;
 constexpr size_t ARGC_FOUR = 4;
+
+int64_t RegisterConnection(const AAFwk::Want &want, const sptr<JSInputMethodExtensionConnection> &connection)
+{
+    std::lock_guard<std::mutex> lock(g_connectMapMtx);
+    while (connects_.find(ConnectionKey { want, serialNumber_ }) != connects_.end()) {
+        serialNumber_ = serialNumber_ < INT64_MAX ? serialNumber_ + 1 : 0;
+    }
+    int64_t connectId = serialNumber_;
+    connects_.emplace(ConnectionKey { want, connectId }, connection);
+    serialNumber_ = serialNumber_ < INT64_MAX ? serialNumber_ + 1 : 0;
+    return connectId;
+}
+
+sptr<JSInputMethodExtensionConnection> FindConnection(int64_t connectId, AAFwk::Want &want)
+{
+    std::lock_guard<std::mutex> lock(g_connectMapMtx);
+    auto item = std::find_if(connects_.begin(), connects_.end(), [connectId](const auto &entry) {
+        return connectId == entry.first.id;
+    });
+    if (item == connects_.end()) {
+        return nullptr;
+    }
+    want = item->first.want;
+    return item->second;
+}
+
+bool ReadStartOptions(napi_env env, napi_value value, AAFwk::StartOptions &startOptions)
+{
+    napi_valuetype valueType = napi_undefined;
+    if (napi_typeof(env, value, &valueType) != napi_ok || valueType != napi_object) {
+        return false;
+    }
+    AppExecFwk::UnwrapStartOptions(env, value, startOptions);
+    return true;
+}
 
 class JsInputMethodExtensionContext final {
 public:
@@ -127,7 +162,7 @@ private:
             auto context = weak.lock();
             if (context == nullptr) {
                 IMSA_HILOGW("context is released.");
-                task->Reject(env, CreateJsError(env, ERROR_CODE_ONE, "Context is released"));
+                task->Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT));
                 delete task;
                 return;
             }
@@ -167,10 +202,7 @@ private:
             want.GetElement().GetAbilityName().c_str(), accountId);
         unwrapArgc++;
         AAFwk::StartOptions startOptions;
-        napi_valuetype valueType = napi_undefined;
-        napi_typeof(env, argv[INDEX_ONE], &valueType);
-        if (argc > ARGC_TWO && valueType == napi_object) {
-            AppExecFwk::UnwrapStartOptions(env, argv[INDEX_TWO], startOptions);
+        if (argc > ARGC_TWO && ReadStartOptions(env, argv[INDEX_TWO], startOptions)) {
             unwrapArgc++;
         }
         napi_value lastParam = argc == unwrapArgc ? nullptr : argv[unwrapArgc];
@@ -181,7 +213,7 @@ private:
             IMSA_HILOGI("startAbility start");
             auto context = weak.lock();
             if (context == nullptr) {
-                task->Reject(env, CreateJsError(env, ERROR_CODE_ONE, "Context is released"));
+                task->Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT));
                 delete task;
                 return;
             }
@@ -190,8 +222,9 @@ private:
                                   : context->StartAbilityWithAccount(want, accountId, startOptions);
             if (errcode == 0) {
                 task->Resolve(env, CreateJsUndefined(env));
+            } else {
+                task->Reject(env, CreateJsErrorByNativeErr(env, errcode));
             }
-            task->Reject(env, CreateJsError(env, errcode, "Start Ability failed."));
             delete task;
         };
         if (napi_send_event(env, asyncTask, napi_eprio_high, "ime_OnStartAbilityWithAccount") != napi_status::napi_ok) {
@@ -218,7 +251,7 @@ private:
             auto context = weak.lock();
             if (context == nullptr) {
                 IMSA_HILOGW("context is released.");
-                task->Reject(env, CreateJsError(env, ERROR_CODE_ONE, "Context is released"));
+                task->Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT));
                 delete task;
                 return;
             }
@@ -227,7 +260,7 @@ private:
             if (errcode == 0) {
                 task->Resolve(env, CreateJsUndefined(env));
             } else {
-                task->Reject(env, CreateJsError(env, errcode, "Terminate Ability failed."));
+                task->Reject(env, CreateJsErrorByNativeErr(env, errcode));
             }
             delete task;
         };
@@ -250,55 +283,39 @@ private:
             want.GetElement().GetAbilityName().c_str());
         sptr<JSInputMethodExtensionConnection> connection = new (std::nothrow) JSInputMethodExtensionConnection(env);
         CHECK_RETURN(connection != nullptr, "connection is nullptr", CreateJsUndefined(env));
-        connection->SetJsConnectionObject(argv[1]);
-        int64_t connectId = serialNumber_;
-        ConnectionKey key = { want, serialNumber_ };
-        {
-            std::lock_guard<std::mutex> lock(g_connectMapMtx);
-            connects_.emplace(key, connection);
+        if (!connection->SetJsConnectionObject(argv[1])) {
+            napi_throw(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
+            return CreateJsUndefined(env);
         }
-        if (serialNumber_ < INT64_MAX) {
-            serialNumber_++;
-        } else {
-            serialNumber_ = 0;
-        }
-        napi_value result = nullptr;
-        napi_value lastParam = nullptr;
+        int64_t connectId = RegisterConnection(want, connection);
         napi_value connectResult = nullptr;
-        std::unique_ptr<NapiAsyncTask> napiAsyncTask = CreateEmptyAsyncTask(env, lastParam, &result);
-        auto asyncTask = [weak = context_, want, connection, connectId, env, task = napiAsyncTask.get()]() {
+        if (napi_create_int64(env, connectId, &connectResult) != napi_ok) {
+            connection->CallJsFailed(ERROR_CODE_ONE);
+            return CreateJsUndefined(env);
+        }
+        auto asyncTask = [weak = context_, want, connection, connectId]() {
+            if (connection->IsClosed()) {
+                return;
+            }
             IMSA_HILOGI("OnConnectAbility start.");
             auto context = weak.lock();
             if (context == nullptr) {
                 IMSA_HILOGW("context is released.");
-                task->Reject(env, CreateJsError(env, ERROR_CODE_ONE, "Context is released"));
-                delete task;
+                connection->CallJsFailed(ERROR_CODE_ONE);
                 return;
             }
             IMSA_HILOGI("context->ConnectAbility connection: %{public}d.", static_cast<int32_t>(connectId));
             if (!context->ConnectAbility(want, connection)) {
                 connection->CallJsFailed(ERROR_CODE_ONE);
             }
-            task->Resolve(env, CreateJsUndefined(env));
-            delete task;
         };
         if (napi_send_event(env, asyncTask, napi_eprio_high, "ime_OnConnectAbility") != napi_status::napi_ok) {
-            napiAsyncTask->Reject(env, CreateJsError(env, ERROR_CODE_ONE, "send event failed"));
-        } else {
-            napiAsyncTask.release();
+            IMSA_HILOGE("Failed to schedule connection: %{public}" PRId64, connectId);
+            connection->CallJsFailed(ERROR_CODE_ONE);
         }
-        napi_create_int64(env, connectId, &connectResult);
         return connectResult;
     }
 
-    void CheckSerialNumber(int64_t &serialNumber)
-    {
-        if (serialNumber < INT64_MAX) {
-            serialNumber++;
-        } else {
-            serialNumber = 0;
-        }
-    }
     napi_value OnConnectAbilityWithAccount(napi_env env, size_t argc, napi_value *argv)
     {
         CHECK_RETURN(argc == ARGC_THREE, "not enough params!", CreateJsUndefined(env));
@@ -313,40 +330,35 @@ private:
         }
         sptr<JSInputMethodExtensionConnection> connection = new (std::nothrow) JSInputMethodExtensionConnection(env);
         CHECK_RETURN(connection != nullptr, "connection is nullptr", CreateJsUndefined(env));
-        connection->SetJsConnectionObject(argv[1]);
-        int64_t connectId = serialNumber_;
-        ConnectionKey key = { want, serialNumber_ };
-        {
-            std::lock_guard<std::mutex> lock(g_connectMapMtx);
-            connects_.emplace(key, connection);
+        if (!connection->SetJsConnectionObject(argv[INDEX_TWO])) {
+            napi_throw(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
+            return CreateJsUndefined(env);
         }
-        CheckSerialNumber(serialNumber_);
-        napi_value result = nullptr;
-        napi_value lastParam = nullptr;
+        int64_t connectId = RegisterConnection(want, connection);
         napi_value connectResult = nullptr;
-
-        std::unique_ptr<NapiAsyncTask> napiAsyncTask = CreateEmptyAsyncTask(env, lastParam, &result);
-        auto asyncTask = [weak = context_, want, accountId, connection, connectId, env, task = napiAsyncTask.get()]() {
+        if (napi_create_int64(env, connectId, &connectResult) != napi_ok) {
+            connection->CallJsFailed(ERROR_CODE_ONE);
+            return CreateJsUndefined(env);
+        }
+        auto asyncTask = [weak = context_, want, accountId, connection, connectId]() {
+            if (connection->IsClosed()) {
+                return;
+            }
             auto context = weak.lock();
             if (context == nullptr) {
                 IMSA_HILOGW("context is released.");
-                task->Reject(env, CreateJsError(env, ERROR_CODE_ONE, "Context is released"));
-                delete task;
+                connection->CallJsFailed(ERROR_CODE_ONE);
                 return;
             }
             IMSA_HILOGI("context->ConnectAbilityWithAccount connection:%{public}d.", static_cast<int32_t>(connectId));
             if (!context->ConnectAbilityWithAccount(want, accountId, connection)) {
                 connection->CallJsFailed(ERROR_CODE_ONE);
             }
-            task->Resolve(env, CreateJsUndefined(env));
-            delete task;
         };
         if (napi_send_event(env, asyncTask, napi_eprio_high, "ime_ConnectAbilityWithAccount") != napi_status::napi_ok) {
-            napiAsyncTask->Reject(env, CreateJsError(env, ERROR_CODE_ONE, "send event failed"));
-        } else {
-            napiAsyncTask.release();
+            IMSA_HILOGE("Failed to schedule connection: %{public}" PRId64, connectId);
+            connection->CallJsFailed(ERROR_CODE_ONE);
         }
-        napi_create_int64(env, connectId, &connectResult);
         return connectResult;
     }
 
@@ -357,48 +369,39 @@ private:
         CHECK_RETURN(argc == ARGC_ONE || argc == ARGC_TWO, "not enough params!", CreateJsUndefined(env));
         AAFwk::Want want;
         int64_t connectId = -1;
-        sptr<JSInputMethodExtensionConnection> connection = nullptr;
         napi_get_value_int64(env, argv[INDEX_ZERO], &connectId);
-        IMSA_HILOGI("OnDisconnectAbility connection: %{public}d.", static_cast<int32_t>(connectId));
-        {
-            std::lock_guard<std::mutex> lock(g_connectMapMtx);
-            auto item = std::find_if(connects_.begin(), connects_.end(),
-                [&connectId](const std::map<ConnectionKey, sptr<JSInputMethodExtensionConnection>>::value_type &obj) {
-                    return connectId == obj.first.id;
-                });
-            if (item != connects_.end()) {
-                // match id
-                want = item->first.want;
-                connection = item->second;
-            }
-        }
+        IMSA_HILOGI("OnDisconnectAbility connection: %{public}" PRId64 ".", connectId);
+        auto connection = FindConnection(connectId, want);
         // begin disconnect
         napi_value lastParam = argc == ARGC_ONE ? nullptr : argv[INDEX_ONE];
         napi_value result = nullptr;
         std::unique_ptr<NapiAsyncTask> napiAsyncTask = CreateEmptyAsyncTask(env, lastParam, &result);
-        auto asyncTask = [weak = context_, want, connection, env, task = napiAsyncTask.get()]() {
+        auto asyncTask = [weak = context_, want, connection, connectId, env, task = napiAsyncTask.get()]() {
             IMSA_HILOGI("OnDisconnectAbility start.");
             auto context = weak.lock();
             if (context == nullptr) {
-                IMSA_HILOGW("context is released.");
-                task->Reject(env, CreateJsError(env, ERROR_CODE_ONE, "Context is released"));
+                IMSA_HILOGW("Disconnect context is released, connection: %{public}" PRId64 ".", connectId);
+                task->Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INVALID_CONTEXT));
                 delete task;
                 return;
             }
             if (connection == nullptr) {
-                IMSA_HILOGW("connection is nullptr.");
-                task->Reject(env, CreateJsError(env, ERROR_CODE_TWO, "not found connection"));
+                IMSA_HILOGW("Disconnect connection does not exist: %{public}" PRId64 ".", connectId);
+                task->Reject(env,
+                    CreateJsError(env, static_cast<int32_t>(AbilityErrorCode::ERROR_CODE_INVALID_PARAM),
+                        "Connection does not exist or has already been disconnected."));
                 delete task;
                 return;
             }
             IMSA_HILOGI("context->DisconnectAbility.");
             auto errcode = context->DisconnectAbility(want, connection);
-            errcode == 0 ? task->Resolve(env, CreateJsUndefined(env))
-                         : task->Reject(env, CreateJsError(env, errcode, "Disconnect Ability failed."));
+            errcode == 0 ? task->Resolve(env, CreateJsUndefined(env)) :
+                           task->Reject(env, CreateJsErrorByNativeErr(env, errcode));
             delete task;
         };
         if (napi_send_event(env, asyncTask, napi_eprio_high, "ime_OnDisconnectAbility") != napi_status::napi_ok) {
-            napiAsyncTask->Reject(env, CreateJsError(env, ERROR_CODE_ONE, "send event failed"));
+            IMSA_HILOGE("Failed to schedule disconnect, connection: %{public}" PRId64 ".", connectId);
+            napiAsyncTask->Reject(env, CreateJsError(env, AbilityErrorCode::ERROR_CODE_INNER));
         } else {
             napiAsyncTask.release();
         }
@@ -490,21 +493,51 @@ napi_value CreateJsInputMethodExtensionContext(napi_env env, std::shared_ptr<Inp
     return objValue;
 }
 
-JSInputMethodExtensionConnection::JSInputMethodExtensionConnection(napi_env env) : env_(env),
-    handler_(std::make_shared<AppExecFwk::EventHandler>(AppExecFwk::EventRunner::GetMainEventRunner()))
+JSInputMethodExtensionConnection::JSInputMethodExtensionConnection(napi_env env)
+    : env_(env), handler_(AppExecFwk::EventHandler::Current())
 {
 }
 
 JSInputMethodExtensionConnection::~JSInputMethodExtensionConnection() = default;
 
+bool JSInputMethodExtensionConnection::IsClosed()
+{
+    std::lock_guard<std::mutex> lock(dispatchMutex_);
+    return closing_;
+}
+
+bool JSInputMethodExtensionConnection::PostCompletion(const std::function<void()> &task, const char *name)
+{
+    std::lock_guard<std::mutex> lock(dispatchMutex_);
+    if (closing_) {
+        return false;
+    }
+    if (handler_ != nullptr && handler_->PostTask(task, name, 0, AppExecFwk::EventQueue::Priority::VIP)) {
+        return true;
+    }
+    if (napi_send_event(env_, task, napi_eprio_high, name) == napi_ok) {
+        return true;
+    }
+    closing_ = true;
+    IMSA_HILOGE("Failed to deliver %{public}s; the env cleanup hook retains the JS connection reference.", name);
+    return false;
+}
+
+void JSInputMethodExtensionConnection::OnEnvCleanup(void *data)
+{
+    sptr<JSInputMethodExtensionConnection> connection = static_cast<JSInputMethodExtensionConnection *>(data);
+    {
+        std::lock_guard<std::mutex> lock(connection->dispatchMutex_);
+        connection->closing_ = true;
+        connection->cleanupRegistered_ = false;
+    }
+    connection->RemoveConnection();
+}
+
 void JSInputMethodExtensionConnection::OnAbilityConnectDone(const AppExecFwk::ElementName &element,
     const sptr<IRemoteObject> &remoteObject, int resultCode)
 {
     IMSA_HILOGI("OnAbilityConnectDone start, resultCode: %{public}d.", resultCode);
-    if (handler_ == nullptr) {
-        IMSA_HILOGI("handler_ is nullptr.");
-        return;
-    }
     wptr<JSInputMethodExtensionConnection> connection = this;
     auto task = [connection, element, remoteObject, resultCode]() {
         sptr<JSInputMethodExtensionConnection> connectionSptr = connection.promote();
@@ -514,15 +547,27 @@ void JSInputMethodExtensionConnection::OnAbilityConnectDone(const AppExecFwk::El
         }
         connectionSptr->HandleOnAbilityConnectDone(element, remoteObject, resultCode);
     };
-    handler_->PostTask(task, "OnAbilityConnectDone", 0, AppExecFwk::EventQueue::Priority::VIP);
+    if (!PostCompletion(task, "ime_OnAbilityConnectDone")) {
+        RemoveConnectionRecord();
+    }
 }
 
 void JSInputMethodExtensionConnection::HandleOnAbilityConnectDone(const AppExecFwk::ElementName &element,
     const sptr<IRemoteObject> &remoteObject, int resultCode)
 {
+    if (IsClosed()) {
+        return;
+    }
     IMSA_HILOGI("HandleOnAbilityConnectDone start, resultCode:%{public}d.", resultCode);
-    // wrap ElementName
     JsUtil::ScopeGuard scopeGuard(env_);
+    if (resultCode != ERR_OK || remoteObject == nullptr) {
+        CallJsFailed(ERROR_CODE_ONE);
+        return;
+    }
+    if (jsConnectionObject_ == nullptr) {
+        return;
+    }
+    // wrap ElementName
     napi_value napiElementName = OHOS::AppExecFwk::WrapElementName(env_, element);
 
     // wrap RemoteObject
@@ -559,10 +604,6 @@ void JSInputMethodExtensionConnection::HandleOnAbilityConnectDone(const AppExecF
 void JSInputMethodExtensionConnection::OnAbilityDisconnectDone(const AppExecFwk::ElementName &element, int resultCode)
 {
     IMSA_HILOGI("OnAbilityDisconnectDone start, resultCode: %{public}d.", resultCode);
-    if (handler_ == nullptr) {
-        IMSA_HILOGI("handler_ is nullptr.");
-        return;
-    }
     wptr<JSInputMethodExtensionConnection> connection = this;
     auto task = [connection, element, resultCode]() {
         sptr<JSInputMethodExtensionConnection> connectionSptr = connection.promote();
@@ -572,91 +613,115 @@ void JSInputMethodExtensionConnection::OnAbilityDisconnectDone(const AppExecFwk:
         }
         connectionSptr->HandleOnAbilityDisconnectDone(element, resultCode);
     };
-    handler_->PostTask(task, "OnAbilityDisconnectDone", 0, AppExecFwk::EventQueue::Priority::VIP);
+    if (!PostCompletion(task, "ime_OnAbilityDisconnectDone")) {
+        RemoveConnectionRecord();
+    }
 }
 
 void JSInputMethodExtensionConnection::HandleOnAbilityDisconnectDone(const AppExecFwk::ElementName &element,
     int resultCode)
 {
+    if (IsClosed()) {
+        return;
+    }
     IMSA_HILOGI("HandleOnAbilityDisconnectDone start, resultCode:%{public}d.", resultCode);
     JsUtil::ScopeGuard scopeGuard(env_);
     napi_value napiElementName = OHOS::AppExecFwk::WrapElementName(env_, element);
     napi_value argv[] = { napiElementName };
     if (jsConnectionObject_ == nullptr) {
         IMSA_HILOGE("jsConnectionObject_ is nullptr!");
+        RemoveConnection();
         return;
     }
     napi_value obj = nullptr;
     if (napi_get_reference_value(env_, jsConnectionObject_, &obj) != napi_ok) {
         IMSA_HILOGE("failed to get jsConnectionObject_!");
+        RemoveConnection();
         return;
     }
     if (obj == nullptr) {
         IMSA_HILOGE("failed to get object!");
+        RemoveConnection();
         return;
     }
     napi_value method = nullptr;
-    napi_get_named_property(env_, obj, "onDisconnect", &method);
-    if (method == nullptr) {
+    napi_status status = napi_get_named_property(env_, obj, "onDisconnect", &method);
+    RemoveConnection();
+    if (status != napi_ok || method == nullptr) {
         IMSA_HILOGE("failed to get onDisconnect from object!");
         return;
     }
-    // release connect
-    HandleOnAbilityDisconnect(element);
     IMSA_HILOGI("OnAbilityDisconnectDone CallFunction success.");
     napi_value callResult = nullptr;
     napi_call_function(env_, obj, method, ARGC_ONE, argv, &callResult);
 }
 
-void JSInputMethodExtensionConnection::HandleOnAbilityDisconnect(const AppExecFwk::ElementName &element)
+void JSInputMethodExtensionConnection::RemoveConnection()
 {
-    std::string bundleName = element.GetBundleName();
-    std::string abilityName = element.GetAbilityName();
+    RemoveConnectionRecord();
+    ReleaseConnection();
+}
+
+void JSInputMethodExtensionConnection::RemoveConnectionRecord()
+{
     {
         std::lock_guard<std::mutex> lock(g_connectMapMtx);
         IMSA_HILOGI("OnAbilityDisconnectDone connects_.size: %{public}zu.", connects_.size());
         auto item = std::find_if(connects_.begin(), connects_.end(),
-            [bundleName, abilityName](
-                const std::map<ConnectionKey, sptr<JSInputMethodExtensionConnection>>::value_type &obj) {
-                return (bundleName == obj.first.want.GetBundle()) &&
-                       (abilityName == obj.first.want.GetElement().GetAbilityName());
+            [this](const auto &obj) {
+                return obj.second.GetRefPtr() == this;
             });
         if (item != connects_.end()) {
-            // match bundleName && abilityName
-            if (item->second != nullptr) {
-                item->second->ReleaseConnection();
-            }
             connects_.erase(item);
             IMSA_HILOGI("OnAbilityDisconnectDone erase connects_.size: %{public}zu.", connects_.size());
         }
     }
 }
 
-void JSInputMethodExtensionConnection::SetJsConnectionObject(napi_value jsConnectionObject)
+bool JSInputMethodExtensionConnection::SetJsConnectionObject(napi_value jsConnectionObject)
 {
-    napi_create_reference(env_, jsConnectionObject, 1, &jsConnectionObject_);
+    if (napi_create_reference(env_, jsConnectionObject, 1, &jsConnectionObject_) != napi_ok) {
+        IMSA_HILOGE("Failed to retain ConnectOptions.");
+        return false;
+    }
+    if (napi_add_env_cleanup_hook(env_, OnEnvCleanup, this) != napi_ok) {
+        napi_delete_reference(env_, jsConnectionObject_);
+        jsConnectionObject_ = nullptr;
+        IMSA_HILOGE("Failed to register connection cleanup.");
+        return false;
+    }
+    cleanupRegistered_ = true;
+    cleanupOwner_ = this;
+    return true;
 }
 
 void JSInputMethodExtensionConnection::CallJsFailed(int32_t errorCode)
 {
+    if (IsClosed()) {
+        return;
+    }
     IMSA_HILOGI("CallJsFailed start");
     if (jsConnectionObject_ == nullptr) {
         IMSA_HILOGE("jsConnectionObject_ is nullptr!");
+        RemoveConnection();
         return;
     }
     napi_value obj = nullptr;
     if (napi_get_reference_value(env_, jsConnectionObject_, &obj) != napi_ok) {
         IMSA_HILOGE("failed to get jsConnectionObject_!");
+        RemoveConnection();
         return;
     }
     if (obj == nullptr) {
         IMSA_HILOGE("failed to get object.");
+        RemoveConnection();
         return;
     }
 
     napi_value method = nullptr;
-    napi_get_named_property(env_, obj, "onFailed", &method);
-    if (method == nullptr) {
+    napi_status status = napi_get_named_property(env_, obj, "onFailed", &method);
+    RemoveConnection();
+    if (status != napi_ok || method == nullptr) {
         IMSA_HILOGE("failed to get onFailed from object!");
         return;
     }
@@ -671,12 +736,21 @@ void JSInputMethodExtensionConnection::CallJsFailed(int32_t errorCode)
 
 void JSInputMethodExtensionConnection::ReleaseConnection()
 {
+    sptr<JSInputMethodExtensionConnection> keepAlive = this;
+    std::lock_guard<std::mutex> lock(dispatchMutex_);
+    closing_ = true;
     IMSA_HILOGD("ReleaseConnection");
+    if (cleanupRegistered_) {
+        napi_remove_env_cleanup_hook(env_, OnEnvCleanup, this);
+        cleanupRegistered_ = false;
+    }
     if (jsConnectionObject_ != nullptr) {
-        napi_delete_reference(env_, jsConnectionObject_);
-        env_ = nullptr;
+        if (napi_delete_reference(env_, jsConnectionObject_) != napi_ok) {
+            IMSA_HILOGE("Failed to release ConnectOptions.");
+        }
         jsConnectionObject_ = nullptr;
     }
+    cleanupOwner_ = nullptr;
 }
 } // namespace AbilityRuntime
 } // namespace OHOS

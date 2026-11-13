@@ -71,6 +71,7 @@ struct AttachContext : public AsyncCall::Context {
     int32_t requestKeyboardReason = 0;
     TextConfig textConfig;
     AttachInfo info;
+    bool queued = false;
     uint32_t windowId = 0;
     AttachOptions attachOptions = { true, false, RequestKeyboardReason::NONE };
     AttachContext() : Context(nullptr, nullptr){};
@@ -284,6 +285,7 @@ private:
     static std::shared_ptr<AppExecFwk::EventHandler> GetEventHandler();
     static bool IsTextPreviewSupported();
     static bool GetWindowIdFromUIContext(napi_env env, napi_value jsObject, uint32_t &windowId);
+    static void QueueAttach(const std::shared_ptr<AttachContext> &ctxt, const char *operation);
     static const std::set<std::string> TEXT_EVENT_TYPE;
     static constexpr int32_t MAX_TIMEOUT = 2500;
     struct UvEntry {

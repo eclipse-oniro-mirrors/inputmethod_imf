@@ -37,15 +37,6 @@ class ResSchedClient {
 public:
     static ResSchedClient &GetInstance();
     void ReportData(uint32_t resType, int64_t value, const std::unordered_map<std::string, std::string> &mapPayload);
-    int32_t ReportSyncEvent(
-        const uint32_t resType, const int64_t value, const nlohmann::json &payload, nlohmann::json &reply);
-    static void SetReportSyncEventRet(int32_t ret);
-    static void SetReportSyncEventReply(const nlohmann::json &reply);
-
-private:
-    static std::mutex reportSyncEventLock_;
-    static int32_t reportSyncEventRet_;
-    static nlohmann::json reportSyncEventReply_;
 };
 } // namespace ResourceSchedule
 } // namespace OHOS

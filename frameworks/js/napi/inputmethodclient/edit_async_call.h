@@ -15,6 +15,8 @@
 #ifndef EDIT_ASYN_CALL_H
 #define EDIT_ASYN_CALL_H
 
+#include <atomic>
+
 #include "async_call.h"
 namespace OHOS {
 namespace MiscServices {
@@ -25,18 +27,24 @@ public:
     virtual ~EditAsyncCall(){};
 
 private:
-    void CallImpl(napi_env env, AsyncContext *context, const std::string &resourceName) override
+    void CallImpl(napi_env env, const std::shared_ptr<AsyncContext> &context, const std::string &resourceName) override
     {
         if (context == nullptr || context->ctx == nullptr) {
             IMSA_HILOGE("context is nullptr!");
             return;
         }
-        auto cb = [env, context, resourceName]() -> void {
-            auto task = [env, context]() -> void { AsyncCall::OnComplete(env, context->ctx->GetState(), context); };
-            auto handler = context->ctx->GetHandler();
-            if (handler != nullptr) {
-                handler->PostTask(task, "IMF_" + resourceName + "_EDIT", 0, AppExecFwk::EventQueue::Priority::VIP);
+        auto completed = std::make_shared<std::atomic<bool>>(false);
+        std::weak_ptr<AsyncContext> weakContext = context;
+        auto cb = [env, weakContext, completed, resourceName]() -> void {
+            if (completed->exchange(true)) {
+                IMSA_HILOGE("Ignoring repeated %{public}s completion.", resourceName.c_str());
+                return;
             }
+            auto context = weakContext.lock();
+            if (context == nullptr) {
+                return;
+            }
+            CompleteOnJsThread(env, context, context->ctx->GetState());
         };
         AsyncCall::OnExecuteAsync(env, context, cb);
     }

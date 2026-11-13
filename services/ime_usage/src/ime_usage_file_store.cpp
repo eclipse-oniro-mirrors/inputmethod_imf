@@ -177,12 +177,22 @@ struct EventsFileJson : public Serializable {
         return SetValue(node, KEY_EVENTS, rows);
     }
 };
+
+// Validate a file path: non-empty + delegate traversal/absolute checks to FileOperator::IsValidPath.
+bool IsValidFilePath(const std::string &path)
+{
+    if (path.empty()) {
+        IMSA_HILOGE("path is empty");
+        return false;
+    }
+    return FileOperator::IsValidPath(path);
+}
 } // namespace
 
 ImeUsageFileStore::ImeUsageFileStore(const std::string &workPath)
 {
-    if (workPath.empty()) {
-        IMSA_HILOGE("workPath is empty");
+    if (!IsValidFilePath(workPath)) {
+        IMSA_HILOGE("invalid workPath");
         return;
     }
     if (!EnsureDirectoryExist(workPath)) {
@@ -199,8 +209,8 @@ ImeUsageFileStore::ImeUsageFileStore(const std::string &workPath)
 
 bool ImeUsageFileStore::EnsureDirectoryExist(const std::string &path)
 {
-    if (path.empty()) {
-        IMSA_HILOGE("path is empty");
+    if (!IsValidFilePath(path)) {
+        IMSA_HILOGE("invalid path");
         return false;
     }
     if (access(path.c_str(), F_OK) == 0) {
@@ -226,8 +236,8 @@ bool ImeUsageFileStore::EnsureDirectoryExist(const std::string &path)
 
 bool ImeUsageFileStore::LoadEvents(std::vector<ImeUsageEventRow> &events, int64_t &nextId, uint64_t &lastReportTime)
 {
-    if (!IsReady()) {
-        IMSA_HILOGE("not ready");
+    if (!IsReady() || !IsValidFilePath(eventsFilePath_)) {
+        IMSA_HILOGE("not ready or invalid eventsFilePath_");
         return false;
     }
     events.clear();
@@ -252,6 +262,14 @@ bool ImeUsageFileStore::LoadEvents(std::vector<ImeUsageEventRow> &events, int64_
         // Rename the corrupt file instead of deleting it, so that lastReportTime
         // and event data can potentially be recovered manually if needed.
         std::string backupPath = eventsFilePath_ + ".corrupt";
+        if (!IsValidFilePath(backupPath)) {
+            IMSA_HILOGE("invalid backupPath, removing corrupt file instead");
+            std::remove(eventsFilePath_.c_str());
+            events.clear();
+            nextId = 1;
+            lastReportTime = 0;
+            return true;
+        }
         std::remove(backupPath.c_str());
         if (std::rename(eventsFilePath_.c_str(), backupPath.c_str()) != 0) {
             // If rename fails (e.g., cross-device), fall back to removal.
