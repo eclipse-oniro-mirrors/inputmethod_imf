@@ -38,6 +38,7 @@
 #include "input_method_core_service_impl.h"
 #include "input_method_property.h"
 #include "input_method_types.h"
+#include "parameters.h"
 #include "tdd_util.h"
 
 using namespace testing::ext;
@@ -2947,6 +2948,67 @@ HWTEST_F(PerUserSessionTest, testOnRegisterInAppProxyIme_004, TestSize.Level0)
     auto core = iface_cast<IInputMethodCore>(coreStub->AsObject());
     sptr<IRemoteObject> agent = agentStub->AsObject();
     EXPECT_EQ(session_->OnRegisterInAppProxyIme(TEST_PID, TEST_UID, {}, core, agent), ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: TestGetImeStartTimeout_NonZero_001
+ * @tc.desc: Test GetImeStartTimeout returns a non-zero timeout value
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetImeStartTimeout_NonZero_001, TestSize.Level0)
+{
+    auto timeout = PerUserSession::GetImeStartTimeout();
+    EXPECT_NE(timeout, 0u);
+}
+
+/**
+ * @tc.name: TestGetImeStartTimeout_Consistent_001
+ * @tc.desc: Test GetImeStartTimeout returns the same value across multiple calls (static caching)
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetImeStartTimeout_Consistent_001, TestSize.Level0)
+{
+    auto first = PerUserSession::GetImeStartTimeout();
+    auto second = PerUserSession::GetImeStartTimeout();
+    EXPECT_EQ(first, second);
+}
+
+/**
+ * @tc.name: TestGetImeStartTimeout_MatchesMemberInit_001
+ * @tc.desc: Test isImeStarted_ member is initialized with the GetImeStartTimeout result
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetImeStartTimeout_MatchesMemberInit_001, TestSize.Level0)
+{
+    ASSERT_NE(session_, nullptr);
+    EXPECT_EQ(session_->isImeStarted_.INTERVAL, PerUserSession::GetImeStartTimeout());
+}
+
+/**
+ * @tc.name: TestGetImeStartTimeout_ReadsSystemParam_001
+ * @tc.desc: Test GetImeStartTimeout reads the system parameter with zero-guard fallback to MAX_IME_START_TIME
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetImeStartTimeout_ReadsSystemParam_001, TestSize.Level0)
+{
+    uint32_t paramValue = system::GetUintParameter<uint32_t>(PerUserSession::IME_START_TIME_KEY,
+        PerUserSession::INVALID_TIME);
+    uint32_t expected = (paramValue == 0) ? static_cast<uint32_t>(PerUserSession::MAX_IME_START_TIME) : paramValue;
+    EXPECT_EQ(PerUserSession::GetImeStartTimeout(), expected);
+}
+
+/**
+ * @tc.name: TestGetImeStartTimeout_FallbackWhenUnset_001
+ * @tc.desc: Test GetImeStartTimeout falls back to MAX_IME_START_TIME when the system parameter is not set
+ * @tc.type: FUNC
+ */
+HWTEST_F(PerUserSessionTest, TestGetImeStartTimeout_FallbackWhenUnset_001, TestSize.Level0)
+{
+    std::string rawValue = system::GetParameter(PerUserSession::IME_START_TIME_KEY, "");
+    if (rawValue.empty()) {
+        EXPECT_EQ(PerUserSession::GetImeStartTimeout(),
+            static_cast<uint32_t>(PerUserSession::MAX_IME_START_TIME));
+    }
 }
 } // namespace MiscServices
 } // namespace OHOS
