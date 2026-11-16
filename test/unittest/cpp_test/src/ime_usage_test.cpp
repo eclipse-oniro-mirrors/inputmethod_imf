@@ -20,6 +20,7 @@
 #include <memory>
 #include <string>
 #include <unistd.h>
+#include <sys/stat.h>
 #include <vector>
 
 #include "ime_usage_common.h"
@@ -2732,6 +2733,104 @@ HWTEST_F(ImeUsageEventCacherTest, FileStore_LoadCorruptJson, TestSize.Level0)
     EXPECT_EQ(access(backupPath.c_str(), F_OK), 0);
     // Cleanup
     std::remove(backupPath.c_str());
+}
+
+/**
+ * @tc.name: ImeUsageFileStore_LoadCorruptJsonExistingBackup
+ * @tc.desc: LoadEvents with corrupt JSON removes stale .corrupt backup before renaming
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, FileStore_LoadCorruptJsonExistingBackup, TestSize.Level0)
+{
+    std::string testDir = "/data/test/ime_usage_file_store_corrupt_backup";
+    std::string filePath = testDir + "/ime_usage_events.json";
+    std::string backupPath = filePath + ".corrupt";
+    std::remove(filePath.c_str());
+    std::remove(backupPath.c_str());
+    auto store = std::make_unique<ImeUsageFileStore>(testDir);
+    ASSERT_TRUE(store->IsReady());
+
+    // Create a stale backup file
+    FILE *fb = fopen(backupPath.c_str(), "w");
+    ASSERT_NE(fb, nullptr);
+    fputs("stale backup content", fb);
+    fclose(fb);
+
+    // Write corrupt JSON
+    FILE *f = fopen(filePath.c_str(), "w");
+    ASSERT_NE(f, nullptr);
+    fputs("{ corrupt json !!! }", f);
+    fclose(f);
+
+    std::vector<ImeUsageEventRow> events;
+    int64_t nextId = 0;
+    uint64_t lastReportTime = 42;
+    bool ret = store->LoadEvents(events, nextId, lastReportTime);
+    EXPECT_TRUE(ret);
+    EXPECT_TRUE(events.empty());
+    EXPECT_EQ(nextId, 1);
+    EXPECT_EQ(lastReportTime, 0u);
+    // Original removed via rename;
+    EXPECT_NE(access(filePath.c_str(), F_OK), 0);
+    EXPECT_EQ(access(backupPath.c_str(), F_OK), 0);
+
+    // Backup must contain the new corrupt JSON, not the stale content
+    FILE *fr = fopen(backupPath.c_str(), "r");
+    ASSERT_NE(fr, nullptr);
+    char buf[128] = { 0 };
+    size_t n = fread(buf, 1, sizeof(buf) - 1, fr);
+    fclose(fr);
+    EXPECT_EQ(n, strlen("{ corrupt json !!! }"));
+    EXPECT_STREQ(buf, "{ corrupt json !!! }");
+    // Cleanup
+    std::remove(backupPath.c_str());
+}
+
+/**
+ * @tc.name: ImeUsageFileStore_LoadCorruptJsonRemoveFails
+ * @tc.desc: LoadEvents logs and falls back to removal when backup remove/rename both fail
+ * @tc.type: FUNC
+ */
+HWTEST_F(ImeUsageEventCacherTest, FileStore_LoadCorruptJsonRemoveFails, TestSize.Level0)
+{
+    std::string testDir = "/data/test/ime_usage_file_store_corrupt_rmfail";
+    std::string filePath = testDir + "/ime_usage_events.json";
+    std::string backupPath = filePath + ".corrupt";
+    std::remove(filePath.c_str());
+    auto store = std::make_unique<ImeUsageFileStore>(testDir);
+    ASSERT_TRUE(store->IsReady());
+
+    // Put a non-empty directory at backupPath: std::remove fails on it (cannot remove
+    // a non-empty dir), exercising RemoveFileIfExists's failure-log branch; the
+    // subsequent std::rename also fails (target is a non-empty dir), exercising the
+    // fallback branch that removes the corrupt original file.
+    ASSERT_EQ(mkdir(backupPath.c_str(), 0755), 0);
+    std::string innerPath = backupPath + "/stale";
+    FILE *fi = fopen(innerPath.c_str(), "w");
+    ASSERT_NE(fi, nullptr);
+    fputs("x", fi);
+    fclose(fi);
+ 
+    // Write corrupt JSON
+    FILE *f = fopen(filePath.c_str(), "w");
+    ASSERT_NE(f, nullptr);
+    fputs("{ corrupt json !!! }", f);
+    fclose(f);
+ 
+    std::vector<ImeUsageEventRow> events;
+    int64_t nextId = 0;
+    uint64_t lastReportTime = 42;
+    bool ret = store->LoadEvents(events, nextId, lastReportTime);
+    EXPECT_TRUE(ret);
+    EXPECT_TRUE(events.empty());
+    EXPECT_EQ(nextId, 1);
+    EXPECT_EQ(lastReportTime, 0u);
+    // rename failed (target is a non-empty dir): fallback removed the corrupt original
+    EXPECT_NE(access(filePath.c_str(), F_OK), 0);
+ 
+    // Cleanup
+    std::remove(innerPath.c_str());
+    rmdir(backupPath.c_str());
 }
 
 // ==================== DataHelper: WriteEvents failure rollback paths ====================

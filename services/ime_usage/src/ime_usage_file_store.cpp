@@ -187,6 +187,15 @@ bool IsValidFilePath(const std::string &path)
     }
     return FileOperator::IsValidPath(path);
 }
+
+// Remove a file, tolerating ENOENT (treated as success) and logging other failures.
+void RemoveFileIfExists(const std::string &path)
+{
+    if (std::remove(path.c_str()) == 0 || errno == ENOENT) {
+        return;
+    }
+    IMSA_HILOGE("remove %{public}s failed, errno=%{public}d", path.c_str(), errno);
+}
 } // namespace
 
 ImeUsageFileStore::ImeUsageFileStore(const std::string &workPath)
@@ -264,16 +273,20 @@ bool ImeUsageFileStore::LoadEvents(std::vector<ImeUsageEventRow> &events, int64_
         std::string backupPath = eventsFilePath_ + ".corrupt";
         if (!IsValidFilePath(backupPath)) {
             IMSA_HILOGE("invalid backupPath, removing corrupt file instead");
-            std::remove(eventsFilePath_.c_str());
+            RemoveFileIfExists(eventsFilePath_);
             events.clear();
             nextId = 1;
             lastReportTime = 0;
             return true;
         }
-        std::remove(backupPath.c_str());
+        RemoveFileIfExists(backupPath);
         if (std::rename(eventsFilePath_.c_str(), backupPath.c_str()) != 0) {
             // If rename fails (e.g., cross-device), fall back to removal.
-            std::remove(eventsFilePath_.c_str());
+            IMSA_HILOGW("rename corrupt file to %{public}s failed, errno=%{public}d, fallback to removal",
+                backupPath.c_str(), errno);
+            RemoveFileIfExists(eventsFilePath_);
+        } else {
+            IMSA_HILOGW("backed up corrupt events file to %{public}s", backupPath.c_str());
         }
         events.clear();
         nextId = 1;
