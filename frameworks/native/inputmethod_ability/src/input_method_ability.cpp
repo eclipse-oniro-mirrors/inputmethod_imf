@@ -1763,19 +1763,23 @@ void InputMethodAbility::OnClientInactive(const sptr<IRemoteObject> &channel, bo
         return;
     }
     // skipHidePanel: focus shifts to an IME-owned modal window, keep all panels visible, only tear down metadata.
-    if (!skipHidePanel) {
-        auto panel = GetSoftKeyboardPanel();
-        bool needNotifyHide = panel == nullptr || (panel->GetPanelFlag() != PanelFlag::FLG_FIXED);
-        if (imeListener != nullptr && needNotifyHide) {
-            imeListener->OnKeyboardStatus(false);
-        }
-        panels_.ForEach([this, &channelProxy](const PanelType &panelType, const std::shared_ptr<InputMethodPanel> &panel) {
+    if (skipHidePanel) {
+        ClearDataChannel(channel);
+        ClearAttachOptions();
+        ClearBindClientInfo();
+        return;
+    }
+    auto panel = GetSoftKeyboardPanel();
+    if (imeListener != nullptr && (panel == nullptr || (panel->GetPanelFlag() != PanelFlag::FLG_FIXED))) {
+        imeListener->OnKeyboardStatus(false);
+    }
+    panels_.ForEach(
+        [this, &channelProxy](const PanelType &panelType, const std::shared_ptr<InputMethodPanel> &panel) {
             if (panel == nullptr ||
                 (panelType == PanelType::SOFT_KEYBOARD && panel->GetPanelFlag() == PanelFlag::FLG_FIXED)) {
                 return false;
             }
-            auto ret = panel->HidePanel();
-            if (ret != ErrorCode::NO_ERROR) {
+            if (auto ret = panel->HidePanel(); ret != ErrorCode::NO_ERROR) {
                 IMSA_HILOGE("failed, ret: %{public}d", ret);
                 return false;
             }
@@ -1785,14 +1789,11 @@ void InputMethodAbility::OnClientInactive(const sptr<IRemoteObject> &channel, bo
             info.visible = false;
             info.trigger = Trigger::IME_APP;
             NotifyPanelStatusInfo(info, channelProxy);
-            // finish previewing text when soft keyboard hides
             if (panel->GetPanelType() == PanelType::SOFT_KEYBOARD) {
-                AsyncIpcCallBack callback = [](int32_t code, const ResponseData &data) {};
-                FinishTextPreview(callback);
+                FinishTextPreview([](int32_t, const ResponseData &) {});
             }
             return false;
         });
-    }
     // cannot clear inputAttribute，otherwise it will affect hicar
     ClearDataChannel(channel);
     ClearAttachOptions();
