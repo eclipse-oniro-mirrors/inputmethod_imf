@@ -92,4 +92,5 @@ interface OHOS.MiscServices.IInputMethodSystemAbility {
     void RequestSystemInputCapability([in] int type);
     void RegisterInAppProxyIme([in] RegisterOptions options, [in] IInputMethodCore core, [in] IRemoteObject agent);
     void UnregisterInAppProxyIme();
+    void NotifyImeModalWindowStateChanged([in] String bundleName, [in] int state);
 }

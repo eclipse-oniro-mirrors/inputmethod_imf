@@ -78,10 +78,11 @@ public:
 
 class TaskImsaOnClientInactive : public Task {
 public:
-    explicit TaskImsaOnClientInactive(sptr<IRemoteObject> channel) : Task(TASK_TYPE_IMSA_CLIENT_INACTIVE)
+    explicit TaskImsaOnClientInactive(sptr<IRemoteObject> channel, bool skipHidePanel = false)
+        : Task(TASK_TYPE_IMSA_CLIENT_INACTIVE)
     {
-        auto func = [channel]() {
-            InputMethodAbility::GetInstance().OnClientInactive(channel);
+        auto func = [channel, skipHidePanel]() {
+            InputMethodAbility::GetInstance().OnClientInactive(channel, skipHidePanel);
         };
         actions_.emplace_back(std::make_unique<Action>(func));
     }

@@ -171,5 +171,11 @@ Ace::UIContent *InputMethodExtensionContext::GetUIContent()
     IMSA_HILOGD("success");
     return uiContent;
 }
+
+int32_t InputMethodExtensionContext::NotifyImeModalWindowStateChanged(const std::string &bundleName, int32_t state)
+{
+    IMSA_HILOGI("%{public}s start, bundleName: %{public}s, state: %{public}d.", __func__, bundleName.c_str(), state);
+    return InputMethodAbility::GetInstance().NotifyImeModalWindowStateChanged(bundleName, state);
+}
 } // namespace AbilityRuntime
 } // namespace OHOS

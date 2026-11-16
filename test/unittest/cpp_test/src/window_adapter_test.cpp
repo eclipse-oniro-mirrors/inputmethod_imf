@@ -254,5 +254,22 @@ HWTEST_F(WindowAdapterTest, WindowAdapter_GetDisplayGroupId_WithInvalidDisplayId
     EXPECT_NE(ret, ErrorCode::NO_ERROR);
 }
 
+/**
+ * @tc.name: WindowAdapter_GetFocusedWindowInfo
+ * @tc.desc: GetFocusedWindowInfo returns nullptr in non-SCB build; only verifies no crash in SCB build
+ * @tc.type: FUNC
+ */
+HWTEST_F(WindowAdapterTest, WindowAdapter_GetFocusedWindowInfo, TestSize.Level0)
+{
+    IMSA_HILOGI("WindowAdapterTest::WindowAdapter_GetFocusedWindowInfo START");
+#ifdef SCENE_BOARD_ENABLE
+    // displayId 99999 does not exist -> isFound false -> nullptr (covers "not found" branch)
+    auto notFoundInfo = WindowAdapter::GetFocusedWindowInfo(99999, WindowAdapterTest::userId_);
+    EXPECT_EQ(notFoundInfo, nullptr);
+#else
+    auto info = WindowAdapter::GetFocusedWindowInfo(DEFAULT_DISPLAY_ID, WindowAdapterTest::userId_);
+    EXPECT_EQ(info, nullptr);
+#endif
+}
 } // namespace MiscServices
 } // namespace OHOS

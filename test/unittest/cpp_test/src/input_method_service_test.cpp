@@ -1047,5 +1047,105 @@ HWTEST_F(InputMethodServiceTest, RequestSystemInputCapability_Translation_NotAtt
     EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_BOUND);
     UserSessionManager::GetInstance().userSessions_.clear();
 }
+
+/**
+ * @tc.name: testNotifyImeModalWindowStateChanged_001
+ * @tc.desc: NotifyImeModalWindowStateChanged null session / non-current ime / normal path
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodServiceTest, testNotifyImeModalWindowStateChanged_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testNotifyImeModalWindowStateChanged_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    int32_t userId = TddUtil::GetCurrentUserId();
+    UserSessionManager::GetInstance().userSessions_.clear();
+
+    // session is nullptr
+    EXPECT_EQ(imsa->NotifyImeModalWindowStateChanged("com.test.modal", 0), ErrorCode::ERROR_NULL_POINTER);
+
+    // session exists but real ime pid differs from calling pid
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    sptr<IInputMethodCore> mockCore = new (std::nothrow) InputMethodCoreServiceImpl();
+    sptr<IRemoteObject> mockAgent = new (std::nothrow) InputMethodAgentServiceImpl();
+    auto imeData = std::make_shared<ImeData>(mockCore, mockAgent, nullptr, IPCSkeleton::GetCallingPid() + 1);
+    imeData->imeStatus = ImeStatus::READY;
+    session->realImeData_ = imeData;
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+    EXPECT_EQ(imsa->NotifyImeModalWindowStateChanged("com.test.modal", 0), ErrorCode::ERROR_NOT_IME);
+
+    // real ime pid matches calling pid, enters OnNotifyImeModalWindowStateChanged
+    imeData->pid = IPCSkeleton::GetCallingPid();
+    EXPECT_EQ(imsa->NotifyImeModalWindowStateChanged("com.test.modal", 0), ErrorCode::NO_ERROR);
+
+    UserSessionManager::GetInstance().userSessions_.clear();
+}
+
+/**
+ * @tc.name: testRequestHideInput_ModalAppSkipHide_001
+ * @tc.desc: RequestHideInput skips hide when caller is an ime modal app and real ime is bound
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodServiceTest, testRequestHideInput_ModalAppSkipHide_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testRequestHideInput_ModalAppSkipHide_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetFocused(false);
+    IdentityCheckerMock::SetPermission(true);
+    IdentityCheckerMock::SetBundleName("com.test.modal");
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+
+    int32_t userId = TddUtil::GetCurrentUserId();
+    UserSessionManager::GetInstance().userSessions_.clear();
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+
+    // register modal app + bind a current client to real ime
+    session->OnNotifyImeModalWindowStateChanged(IPCSkeleton::GetCallingPid(), "com.test.modal", 0);
+    auto group = std::make_shared<ClientGroup>(0, nullptr);
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+    group->currentClient_ = client;
+    auto info = std::make_shared<InputClientInfo>();
+    info->bindImeData = std::make_shared<BindImeData>(IPCSkeleton::GetCallingPid(), ImeType::IME);
+    group->mapClients_.insert_or_assign(client->AsObject(), info);
+    session->clientGroupMap_.insert_or_assign(0, group);
+
+    EXPECT_EQ(imsa->RequestHideInput(0, 0, false, -1), ErrorCode::NO_ERROR);
+
+    UserSessionManager::GetInstance().userSessions_.clear();
+    IdentityCheckerMock::ResetParam();
+}
+
+/**
+ * @tc.name: testRequestHideInput_ModalAppNotRegistered_001
+ * @tc.desc: RequestHideInput proceeds hide when caller is not an ime modal app
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodServiceTest, testRequestHideInput_ModalAppNotRegistered_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testRequestHideInput_ModalAppNotRegistered_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetFocused(false);
+    IdentityCheckerMock::SetPermission(true);
+    IdentityCheckerMock::SetBundleName("com.test.modal");
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+
+    int32_t userId = TddUtil::GetCurrentUserId();
+    UserSessionManager::GetInstance().userSessions_.clear();
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+
+    // no modal app registered, IsImeModalApp returns false, hide proceeds
+    EXPECT_EQ(imsa->RequestHideInput(0, 0, false, -1), ErrorCode::NO_ERROR);
+
+    UserSessionManager::GetInstance().userSessions_.clear();
+    IdentityCheckerMock::ResetParam();
+}
 } // namespace MiscServices
 } // namespace OHOS

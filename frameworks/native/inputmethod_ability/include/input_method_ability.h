@@ -104,7 +104,7 @@ public:
     int32_t GetSecurityMode(int32_t &security);
     int32_t OnSecurityChange(int32_t security);
     int32_t OnConnectSystemCmd(const sptr<IRemoteObject> &channel);
-    void OnClientInactive(const sptr<IRemoteObject> &channel);
+    void OnClientInactive(const sptr<IRemoteObject> &channel, bool skipHidePanel = false);
     void NotifyKeyboardHeight(uint32_t panelHeight, PanelFlag panelFlag);
     int32_t SendPrivateCommand(const std::unordered_map<std::string, PrivateDataValue> &privateCommand,
         bool validateDefaultIme = true) override;
@@ -132,6 +132,7 @@ public:
     void RemoveDeathRecipient();
     void SetConfigurationUpdate(std::function<void(Rosen::DisplayId displayId)> configurationUpdate);
     Ace::UIContent *GetSoftKeyboardUIContent();
+    int32_t NotifyImeModalWindowStateChanged(const std::string &bundleName, int32_t state);
 
 public:
     /* called from TaskManager worker thread */

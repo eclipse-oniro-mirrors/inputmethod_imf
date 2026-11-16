@@ -122,6 +122,7 @@ public:
     int32_t GetCallingUserId();
     int32_t GetCallingUserId(int32_t &outputUserId, int32_t inputUserId = -1);
     int32_t ExecTextInteraction(const std::string &text) override;
+    ErrCode NotifyImeModalWindowStateChanged(const std::string &bundleName, int32_t state) override;
 
 protected:
     void OnStart() override;

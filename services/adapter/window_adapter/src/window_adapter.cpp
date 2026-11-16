@@ -234,6 +234,42 @@ int32_t WindowAdapter::GetAllFocusWindowInfos(std::vector<FocusChangeInfo> &focu
     return ErrorCode::NO_ERROR;
 }
 
+sptr<OHOS::Rosen::WindowInfo> WindowAdapter::GetFocusedWindowInfo(uint64_t displayId, int32_t userId)
+{
+#ifdef SCENE_BOARD_ENABLE
+    std::unordered_map<uint64_t, uint64_t> displayGroupIds;
+    std::vector<FocusChangeInfo> focusWindowInfos;
+    GetAllDisplayGroupInfos(displayGroupIds, focusWindowInfos, userId);
+    int32_t focusWindowId = 0;
+    bool isFound = false;
+    for (const auto &focusInfo : focusWindowInfos) {
+        if (focusInfo.realDisplayId_ == displayId) {
+            focusWindowId = focusInfo.windowId_;
+            isFound = true;
+            break;
+        }
+    }
+    if (!isFound) {
+        IMSA_HILOGE("not found focused window, displayId: %{public}" PRIu64, displayId);
+        return nullptr;
+    }
+    std::vector<sptr<WindowInfo>> windowInfos;
+    if (!ListWindowInfo(windowInfos, userId)) {
+        return nullptr;
+    }
+    for (const auto &windowInfo : windowInfos) {
+        if (windowInfo != nullptr && windowInfo->windowMetaInfo.windowId == focusWindowId) {
+            return windowInfo;
+        }
+    }
+    IMSA_HILOGE("not found window info, windowId: %{public}d", focusWindowId);
+    return nullptr;
+#else
+    IMSA_HILOGE("capability not supported");
+    return nullptr;
+#endif
+}
+
 int32_t WindowAdapter::GetDisplayGroupId(uint64_t displayId, int32_t userId, uint64_t &displayGroupId)
 {
     IMSA_HILOGD("userId %{public}d, by displayId run in:%{public}" PRIu64 ".", userId, displayId);

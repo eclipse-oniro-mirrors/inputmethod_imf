@@ -114,9 +114,9 @@ ErrCode InputMethodCoreServiceImpl::IsPanelShown(const PanelInfo &panelInfo, boo
     return InputMethodAbility::GetInstance().IsPanelShown(panelInfo, isShown);
 }
 // LCOV_EXCL_START
-ErrCode InputMethodCoreServiceImpl::OnClientInactive(const sptr<IRemoteObject> &channel)
+ErrCode InputMethodCoreServiceImpl::OnClientInactive(const sptr<IRemoteObject> &channel, bool skipHidePanel)
 {
-    auto task = std::make_shared<TaskImsaOnClientInactive>(channel);
+    auto task = std::make_shared<TaskImsaOnClientInactive>(channel, skipHidePanel);
     TaskManager::GetInstance().PostTask(task);
     return ERR_OK;
 }

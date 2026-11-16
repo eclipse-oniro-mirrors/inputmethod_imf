@@ -235,6 +235,10 @@ public:
     // Returns the service-side snapshot of the ACTIVE current client bound to a real IME.
     // This reuses focus state maintained by PerUserSession and does not synchronously query WMS.
     bool GetFocusedRealImeClient(FocusedRealImeClientSnapshot &snapshot);
+    // Modal window lifecycle launched from within the input method application.
+    int32_t OnNotifyImeModalWindowStateChanged(pid_t imePid, const std::string &bundleName, int32_t state);
+    bool IsImeModalApp(const std::string &bundleName);
+    bool IsCurrentBoundRealIme();
 
 private:
     struct ResetManager {
@@ -277,7 +281,8 @@ private:
     int AddClientInfo(sptr<IRemoteObject> inputClient, const InputClientInfo &clientInfo);
     int32_t RemoveClient(const sptr<IInputClient> &client, const std::shared_ptr<ClientGroup> &clientGroup,
         const DetachOptions &options);
-    void DeactivateClient(const sptr<IInputClient> &client, const std::shared_ptr<ClientGroup> &clientGroup);
+    void DeactivateClient(
+        const sptr<IInputClient> &client, const std::shared_ptr<ClientGroup> &clientGroup, bool skipHidePanel = false);
     std::shared_ptr<InputClientInfo> GetCurrentClientInfo(uint64_t displayId = DEFAULT_DISPLAY_ID);
     std::shared_ptr<ClientGroup> GetClientGroup(uint64_t displayId);
     std::shared_ptr<ClientGroup> GetClientGroup(sptr<IRemoteObject> client);
@@ -302,6 +307,7 @@ private:
     std::shared_ptr<ImeData> GetMirrorImeData(pid_t pid);
     void RemoveMirrorImeData(pid_t pid);
     void RemoveImeData(pid_t pid);
+    void ClearModalStateByImePid(pid_t imePid);
     std::shared_ptr<ImeData> GetImeData(pid_t pid, ImeType type);
     std::shared_ptr<ImeData> GetImeData(const std::shared_ptr<BindImeData> &bindImeData);
     int32_t FillImeData(sptr<IInputMethodCore> core, sptr<IRemoteObject> agent, pid_t pid, ImeType type,
@@ -484,6 +490,8 @@ private:
     std::mutex realImeDataLock_;
     std::shared_ptr<ImeData> realImeData_{ nullptr };
     std::atomic<bool> firstStartNeedRetry_ { true };
+    std::mutex modalStateLock_;
+    std::unordered_map<pid_t, std::unordered_set<std::string>> modalAppsByImePid_;
 
     std::mutex imageTimeoutTaskLock_;
     std::atomic<bool> disconnectedByRss_{ false };

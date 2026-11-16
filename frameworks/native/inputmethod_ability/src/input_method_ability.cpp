@@ -1749,9 +1749,9 @@ int32_t InputMethodAbility::IsPanelShown(const PanelInfo &panelInfo, bool &isSho
     return ErrorCode::NO_ERROR;
 }
 
-void InputMethodAbility::OnClientInactive(const sptr<IRemoteObject> &channel)
+void InputMethodAbility::OnClientInactive(const sptr<IRemoteObject> &channel, bool skipHidePanel)
 {
-    IMSA_HILOGI("client inactive.");
+    IMSA_HILOGI("client inactive, skipHidePanel: %{public}d.", skipHidePanel);
     ResetPttKeyEventTracking();
     auto imeListener = GetImeListener();
     if (imeListener != nullptr) {
@@ -1762,36 +1762,38 @@ void InputMethodAbility::OnClientInactive(const sptr<IRemoteObject> &channel)
         IMSA_HILOGE("failed to create channel proxy!");
         return;
     }
+    // skipHidePanel: focus shifts to an IME-owned modal window, keep all panels visible, only tear down metadata.
+    if (skipHidePanel) {
+        ClearDataChannel(channel);
+        ClearAttachOptions();
+        ClearBindClientInfo();
+        return;
+    }
     auto panel = GetSoftKeyboardPanel();
-    bool needNotifyHide = panel == nullptr || (panel->GetPanelFlag() != PanelFlag::FLG_FIXED);
-    if (imeListener != nullptr && needNotifyHide) {
+    if (imeListener != nullptr && (panel == nullptr || (panel->GetPanelFlag() != PanelFlag::FLG_FIXED))) {
         imeListener->OnKeyboardStatus(false);
     }
-    panels_.ForEach([this, &channelProxy](const PanelType &panelType, const std::shared_ptr<InputMethodPanel> &panel) {
-        if (panel == nullptr) {
+    panels_.ForEach(
+        [this, &channelProxy](const PanelType &panelType, const std::shared_ptr<InputMethodPanel> &panel) {
+            if (panel == nullptr ||
+                (panelType == PanelType::SOFT_KEYBOARD && panel->GetPanelFlag() == PanelFlag::FLG_FIXED)) {
+                return false;
+            }
+            if (auto ret = panel->HidePanel(); ret != ErrorCode::NO_ERROR) {
+                IMSA_HILOGE("failed, ret: %{public}d", ret);
+                return false;
+            }
+            PanelStatusInfo info;
+            info.panelInfo.panelType = panel->GetPanelType();
+            info.panelInfo.panelFlag = panel->GetPanelFlag();
+            info.visible = false;
+            info.trigger = Trigger::IME_APP;
+            NotifyPanelStatusInfo(info, channelProxy);
+            if (panel->GetPanelType() == PanelType::SOFT_KEYBOARD) {
+                FinishTextPreview([](int32_t, const ResponseData &) {});
+            }
             return false;
-        }
-        if (panelType == PanelType::SOFT_KEYBOARD && panel->GetPanelFlag() == PanelFlag::FLG_FIXED) {
-            return false;
-        }
-        auto ret = panel->HidePanel();
-        if (ret != ErrorCode::NO_ERROR) {
-            IMSA_HILOGE("failed, ret: %{public}d", ret);
-            return false;
-        }
-        PanelStatusInfo info;
-        info.panelInfo.panelType = panel->GetPanelType();
-        info.panelInfo.panelFlag = panel->GetPanelFlag();
-        info.visible = false;
-        info.trigger = Trigger::IME_APP;
-        NotifyPanelStatusInfo(info, channelProxy);
-        // finish previewing text when soft keyboard hides
-        if (panel->GetPanelType() == PanelType::SOFT_KEYBOARD) {
-            AsyncIpcCallBack callback = [](int32_t code, const ResponseData &data) {};
-            FinishTextPreview(callback);
-        }
-        return false;
-    });
+        });
     // cannot clear inputAttribute，otherwise it will affect hicar
     ClearDataChannel(channel);
     ClearAttachOptions();
@@ -2335,6 +2337,16 @@ Ace::UIContent *InputMethodAbility::GetSoftKeyboardUIContent()
         return nullptr;
     }
     return panel->GetUIContent();
+}
+
+int32_t InputMethodAbility::NotifyImeModalWindowStateChanged(const std::string &bundleName, int32_t state)
+{
+    auto proxy = GetImsaProxy();
+    if (proxy == nullptr) {
+        IMSA_HILOGE("imsa proxy is nullptr!");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    return proxy->NotifyImeModalWindowStateChanged(bundleName, state);
 }
 } // namespace MiscServices
 } // namespace OHOS

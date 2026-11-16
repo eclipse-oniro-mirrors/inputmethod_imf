@@ -23,6 +23,9 @@
 #include "want.h"
 #include "ui_content.h"
 
+#include <cstdint>
+#include <string>
+
 namespace OHOS {
 namespace AbilityRuntime {
 /**
@@ -120,6 +123,18 @@ public:
     ErrCode TerminateAbility();
 
     Ace::UIContent *GetUIContent();
+
+    /**
+     * @brief Notifies the IMF service of the lifecycle state of a modal window
+     *        launched from within the input method application. The IMF service
+     *        stores the bundle name by the calling IME process and cleans it up
+     *        once the IME process exits.
+     *
+     * @param bundleName Indicates the bundle name of the modal window application.
+     * @param state Indicates the modal window state: 0 - created, 1 - destroyed.
+     * @return errCode ERR_OK on success, others on failure.
+     */
+    int32_t NotifyImeModalWindowStateChanged(const std::string &bundleName, int32_t state);
 
     using SelfType = InputMethodExtensionContext;
     static const size_t CONTEXT_TYPE_ID;
