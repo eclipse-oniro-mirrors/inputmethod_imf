@@ -70,6 +70,10 @@ InputMethod_ErrorCode IsValidInputMethodProxy(const InputMethod_InputMethodProxy
 static InputMethod_ErrorCode GetInputMethodProxy(InputMethod_TextEditorProxy *textEditor)
 {
     std::lock_guard<std::mutex> guard(g_textEditorProxyMapMutex);
+    if (TextEditorProxyManager::GetInstance().GetWeak(textEditor).expired()) {
+        IMSA_HILOGE("TextEditorProxy was destroyed before attach.");
+        return IME_ERR_IMCLIENT;
+    }
     if (g_inputMethodProxy != nullptr && textEditor == g_inputMethodProxy->textEditor) {
         return IME_ERR_OK;
     }
@@ -192,9 +196,11 @@ static InputMethod_ErrorCode PerformAttach(InputMethod_TextEditorProxy *textEdit
     OHOS::sptr<NativeTextChangedListener> listener = nullptr;
     {
         std::lock_guard<std::mutex> guard(g_textEditorProxyMapMutex);
-        if (g_inputMethodProxy != nullptr) {
-            listener = g_inputMethodProxy->listener;
+        if (g_inputMethodProxy == nullptr || g_inputMethodProxy->textEditor != textEditorProxy) {
+            IMSA_HILOGE("TextEditorProxy is no longer current; attach cancelled.");
+            return IME_ERR_IMCLIENT;
         }
+        listener = g_inputMethodProxy->listener;
     }
     int32_t err = controller->Attach(listener, attachOptions, textConfig, ClientType::CAPI);
     if (err != ErrorCode::NO_ERROR) {
@@ -202,11 +208,14 @@ static InputMethod_ErrorCode PerformAttach(InputMethod_TextEditorProxy *textEdit
     }
     {
         std::lock_guard<std::mutex> guard(g_textEditorProxyMapMutex);
-        if (g_inputMethodProxy == nullptr || g_inputMethodProxy->textEditor != textEditorProxy) {
+        if (g_inputMethodProxy == nullptr || g_inputMethodProxy->listener != listener) {
             IMSA_HILOGE("Attach failed, g_inputMethodProxy has been updated by other thread");
             return IME_ERR_IMCLIENT;
         }
-        g_inputMethodProxy->attached = true;
+        g_inputMethodProxy->attached = g_inputMethodProxy->textEditor != nullptr;
+        if (!g_inputMethodProxy->attached) {
+            IMSA_HILOGW("TextEditorProxy was destroyed during attach. Call OH_InputMethodController_Detach.");
+        }
         *inputMethodProxy = g_inputMethodProxy;
     }
     return IME_ERR_OK;
@@ -325,6 +334,19 @@ void ClearInputMethodProxy(void)
         IMSA_HILOGI("g_inputMethodProxy is detached");
         g_inputMethodProxy->attached = false;
     }
+}
+
+void DestroyTextEditorProxy(InputMethod_TextEditorProxy *textEditor)
+{
+    std::lock_guard<std::mutex> guard(g_textEditorProxyMapMutex);
+    if (g_inputMethodProxy != nullptr && g_inputMethodProxy->textEditor == textEditor) {
+        if (g_inputMethodProxy->attached) {
+            IMSA_HILOGW("TextEditorProxy destroyed before detach. Call OH_InputMethodController_Detach first.");
+        }
+        g_inputMethodProxy->textEditor = nullptr;
+        g_inputMethodProxy->attached = false;
+    }
+    TextEditorProxyManager::GetInstance().Unregister(textEditor);
 }
 
 InputMethod_ErrorCode OH_InputMethodController_Detach(InputMethod_InputMethodProxy *inputMethodProxy)

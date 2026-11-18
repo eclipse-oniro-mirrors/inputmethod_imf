@@ -14,6 +14,7 @@
  */
 #include "global.h"
 #include "native_inputmethod_types.h"
+#include "native_inputmethod_utils.h"
 #include "text_editor_proxy_manager.h"
 
 using namespace OHOS::MiscServices;
@@ -34,7 +35,7 @@ void OH_TextEditorProxy_Destroy(InputMethod_TextEditorProxy *proxy)
         IMSA_HILOGE("proxy is nullptr");
         return;
     }
-    TextEditorProxyManager::GetInstance().Unregister(proxy);
+    DestroyTextEditorProxy(proxy);
 }
 
 InputMethod_ErrorCode OH_TextEditorProxy_SetGetTextConfigFunc(
@@ -352,7 +353,12 @@ InputMethod_ErrorCode OH_InputMethod_TextEditorProxy_SetSetPreviewTextWithStyleF
         return IME_ERR_NULL_POINTER;
     }
 
-    proxy->setPreviewTextWithStyleFunc = setPreviewTextWithStyleFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    lease->setPreviewTextWithStyleFunc.store(setPreviewTextWithStyleFunc);
     return IME_ERR_OK;
 }
 InputMethod_ErrorCode OH_TextEditorProxy_SetFinishTextPreviewFunc(
@@ -670,7 +676,12 @@ InputMethod_ErrorCode OH_InputMethod_TextEditorProxy_GetSetPreviewTextWithStyleF
         IMSA_HILOGE("setPreviewTextWithStyleFunc is nullptr");
         return IME_ERR_NULL_POINTER;
     }
-    *setPreviewTextWithStyleFunc = proxy->setPreviewTextWithStyleFunc;
+    auto lease = TextEditorProxyManager::GetInstance().GetWeak(proxy).lock();
+    if (lease == nullptr) {
+        IMSA_HILOGE("TextEditorProxy is unregistered or destroyed.");
+        return IME_ERR_NULL_POINTER;
+    }
+    *setPreviewTextWithStyleFunc = lease->setPreviewTextWithStyleFunc.load();
     return IME_ERR_OK;
 }
 

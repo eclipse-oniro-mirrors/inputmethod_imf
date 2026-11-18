@@ -482,6 +482,7 @@ InputMethod_ErrorCode OH_TextEditorProxy_SetSetPreviewTextFunc(
  * @brief Set function {@link OH_InputMethod_TextEditorProxy_SetPreviewTextWithStyleFunc} into
  * {@link InputMethod_TextEditorProxy}.
  *
+ * @return {@link IME_ERR_OK} on success, or {@link IME_ERR_NULL_POINTER} for a null argument or invalid proxy handle.
  * @since 26.1.0
  */
 InputMethod_ErrorCode OH_InputMethod_TextEditorProxy_SetSetPreviewTextWithStyleFunc(
@@ -709,6 +710,7 @@ InputMethod_ErrorCode OH_TextEditorProxy_GetSetPreviewTextFunc(
  * @brief Get function {@link OH_InputMethod_TextEditorProxy_SetPreviewTextWithStyleFunc} from
  * {@link InputMethod_TextEditorProxy}.
  *
+ * @return {@link IME_ERR_OK} on success, or {@link IME_ERR_NULL_POINTER} for a null argument or invalid proxy handle.
  * @since 26.1.0
  */
 InputMethod_ErrorCode OH_InputMethod_TextEditorProxy_GetSetPreviewTextWithStyleFunc(

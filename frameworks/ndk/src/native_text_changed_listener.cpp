@@ -303,16 +303,25 @@ int32_t NativeTextChangedListener::SetPreviewTextWithStyle(
         return ErrorCode::ERROR_NULL_POINTER;
     }
 
-    if (proxy->setPreviewTextWithStyleFunc == nullptr) {
+    auto callback = proxy->setPreviewTextWithStyleFunc.load();
+    if (callback == nullptr) {
         IMSA_HILOGE("setPreviewTextWithStyleFunc is nullptr");
         return ErrorCode::NO_ERROR;
     }
-    OH_InputMethod_PreviewTextStyle cStyle {};
-    cStyle.underlineStyle = static_cast<OH_InputMethod_UnderlineStyle>(style.underlineStyle);
-    cStyle.underlineColor = style.underlineColor;
-    cStyle.hasUnderlineColor = style.hasUnderlineColor;
-    return proxy->setPreviewTextWithStyleFunc(
-        proxy.get(), text.c_str(), static_cast<uint32_t>(text.length()), range.start, range.end, &cStyle);
+
+    NativeObjectScope<OH_InputMethod_PreviewTextStyle> borrowedStyle;
+    auto cStyle = borrowedStyle.Get();
+    if (cStyle == nullptr) {
+        IMSA_HILOGE("Failed to allocate callback preview text style.");
+        return ErrorCode::ERROR_NULL_POINTER;
+    }
+    {
+        std::lock_guard<std::mutex> lock(cStyle->attributesMutex_);
+        cStyle->underlineStyle = static_cast<OH_InputMethod_UnderlineStyle>(style.underlineStyle);
+        cStyle->underlineColor = style.underlineColor;
+        cStyle->hasUnderlineColor = style.hasUnderlineColor;
+    }
+    return callback(proxy.get(), text.c_str(), static_cast<uint32_t>(text.length()), range.start, range.end, cStyle);
 }
 
 void NativeTextChangedListener::FinishTextPreview()

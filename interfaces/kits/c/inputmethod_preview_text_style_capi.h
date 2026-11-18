@@ -48,7 +48,8 @@ extern "C" {
  *
  * The actual members of this structure are defined internally and are not exposed. New members may be added
  * internally in the future without breaking compatibility. Use {@link OH_InputMethod_PreviewTextStyle_Create}
- * to create an instance, the setter function to write properties, and the getter functions to read properties.
+ * to create a writable instance. A style passed to an editor callback is borrowed and can be read with the
+ * getter functions during that callback.
  *
  * @since 26.1.0
  */
@@ -66,7 +67,7 @@ OH_InputMethod_PreviewTextStyle *OH_InputMethod_PreviewTextStyle_Create(void);
 /**
  * @brief Destroy a {@link OH_InputMethod_PreviewTextStyle} instance.
  *
- * @param style Represents a pointer to an {@link OH_InputMethod_PreviewTextStyle} instance which will be destroyed.
+ * @param style Represents a pointer to an instance returned by {@link OH_InputMethod_PreviewTextStyle_Create}.
  * @since 26.1.0
  */
 void OH_InputMethod_PreviewTextStyle_Destroy(OH_InputMethod_PreviewTextStyle *style);
@@ -78,7 +79,7 @@ void OH_InputMethod_PreviewTextStyle_Destroy(OH_InputMethod_PreviewTextStyle *st
  * @param underlineStyle Represents the underline style of preview text.
  * @return Returns a specific error code.
  *     <br>{@link IME_ERR_OK} - success.
- *     <br>{@link IME_ERR_NULL_POINTER} - unexpected null pointer.
+ *     <br>{@link IME_ERR_NULL_POINTER} - unexpected null pointer or invalid style handle.
  *     <br>Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 26.1.0
  */
@@ -92,7 +93,7 @@ InputMethod_ErrorCode OH_InputMethod_PreviewTextStyle_SetUnderlineStyle(
  * @param underlineColor Represents the underline color of preview text.
  * @return Returns a specific error code.
  *     <br>{@link IME_ERR_OK} - success.
- *     <br>{@link IME_ERR_NULL_POINTER} - unexpected null pointer.
+ *     <br>{@link IME_ERR_NULL_POINTER} - unexpected null pointer or invalid style handle.
  *     <br>Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 26.1.0
  */
@@ -106,7 +107,7 @@ InputMethod_ErrorCode OH_InputMethod_PreviewTextStyle_SetUnderlineColor(
  * @param underlineStyle Represents a pointer to the underline style of preview text.
  * @return Returns a specific error code.
  *     <br>{@link IME_ERR_OK} - success.
- *     <br>{@link IME_ERR_NULL_POINTER} - unexpected null pointer.
+ *     <br>{@link IME_ERR_NULL_POINTER} - unexpected null pointer or invalid style handle.
  *     <br>Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 26.1.0
  */
@@ -120,7 +121,7 @@ InputMethod_ErrorCode OH_InputMethod_PreviewTextStyle_GetUnderlineStyle(
  * @param underlineColor Represents a pointer to the underline color of preview text.
  * @return Returns a specific error code.
  *     <br>{@link IME_ERR_OK} - success.
- *     <br>{@link IME_ERR_NULL_POINTER} - unexpected null pointer.
+ *     <br>{@link IME_ERR_NULL_POINTER} - unexpected null pointer or invalid style handle.
  *     <br>Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 26.1.0
  */
@@ -134,7 +135,7 @@ InputMethod_ErrorCode OH_InputMethod_PreviewTextStyle_GetUnderlineColor(
  * @param hasUnderlineColor Indicates whether the underline color is set.
  * @return Returns a specific error code.
  *     <br>{@link IME_ERR_OK} - success.
- *     <br>{@link IME_ERR_NULL_POINTER} - unexpected null pointer.
+ *     <br>{@link IME_ERR_NULL_POINTER} - unexpected null pointer or invalid style handle.
  *     <br>Specific error codes can be referenced {@link InputMethod_ErrorCode}.
  * @since 26.1.0
  */

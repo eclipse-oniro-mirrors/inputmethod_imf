@@ -71,13 +71,16 @@ bool PostPanelAdjustTask(std::function<void()> task)
 
 PanelImpl::JobGuard::JobGuard(int64_t id) : id_(id)
 {
-    ready_ = id >= 0 && id <= UINT32_MAX && jobQueue_.Wait(static_cast<uint32_t>(id));
+    ready_ = id >= 0 && id <= UINT32_MAX;
     if (!ready_) {
         CancelJob(id);
         id_ = -1;
-        IMSA_HILOGE("Panel task admission failed or wait timed out, id: %{public}" PRId64, id);
-        set_business_error(IMFErrorCode::EXCEPTION_WINDOW_MANAGER,
-            "Panel task was not accepted or timed out; the operation was not executed.");
+        IMSA_HILOGE("Panel task admission failed, id: %{public}" PRId64, id);
+        return;
+    }
+    if (!jobQueue_.Wait(static_cast<uint32_t>(id))) {
+        IMSA_HILOGW(
+            "Panel task timed out waiting for execution order; continuing this operation, id: %{public}" PRId64, id);
     }
 }
 
@@ -89,7 +92,9 @@ PanelImpl::JobGuard::~JobGuard()
 void PanelImpl::JobGuard::Finish()
 {
     if (ready_) {
-        jobQueue_.Pop(static_cast<uint32_t>(id_));
+        if (!jobQueue_.Pop(static_cast<uint32_t>(id_))) {
+            CancelJob(id_);
+        }
         ready_ = false;
         id_ = -1;
     }
