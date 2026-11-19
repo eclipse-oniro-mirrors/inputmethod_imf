@@ -1428,8 +1428,8 @@ napi_status JsTextInputClientEngine::GetPreviewTextWithStyleParam(
         return napi_generic_failure;
     }
     // 2 means parameter of style<PreviewTextStyle>
-    PARAM_CHECK_RETURN(env, JsUtil::GetType(env, argv[2]) == napi_object, "style type must be PreviewTextStyle!", TYPE_NONE,
-        napi_generic_failure);
+    PARAM_CHECK_RETURN(env, JsUtil::GetType(env, argv[2]) == napi_object, "style type must be PreviewTextStyle!",
+        TYPE_NONE, napi_generic_failure);
  
     // 2 means parameter of style<PreviewTextStyle>
     return ParsePreviewTextStyle(env, argv[2], ctxt.style);
@@ -1440,8 +1440,8 @@ napi_status JsTextInputClientEngine::ParsePreviewTextStyle(napi_env env, napi_va
     napi_value value = nullptr;
     // 2 means parameter of style<PreviewTextStyle>
     napi_get_named_property(env, argv, "underlineStyle", &value);
-    PARAM_CHECK_RETURN(env, !JsUtil::GetValue(env, value, style.underlineStyle), "underlineStyle covert failed!", TYPE_NONE,
-        napi_generic_failure);
+    PARAM_CHECK_RETURN(env, !JsUtil::GetValue(env, value, style.underlineStyle), "underlineStyle covert failed!",
+        TYPE_NONE, napi_generic_failure);
     // 2 means parameter of style<PreviewTextStyle>
     napi_get_named_property(env, argv, "underlineColor", &value);
     style.hasUnderlineColor = JsUtil::GetValue(env, value, style.underlineColor);
