@@ -1422,18 +1422,15 @@ napi_status JsTextInputClientEngine::GetPreviewTextWithStyleParam(
     napi_env env, size_t argc, napi_value *argv, SetPreviewTextWithStyleContext &ctxt)
 {
     // 3 means JsAPI:setPreviewTextWithStyle needs 3 params, argv[2] is style object.
-    if (argc < 3) {
-        IMSA_HILOGE("at least three parameters is required!");
-        return napi_generic_failure;
-    }
+    PARAM_CHECK_RETURN(env, argc >= 3, "at least three parameters is required!", TYPE_NONE, napi_generic_failure);
+ 
     if (GetPreviewTextParam(env, argc, argv, ctxt.text, ctxt.range) != napi_ok) {
         return napi_generic_failure;
     }
     // 2 means parameter of style<PreviewTextStyle>
-    if (JsUtil::GetType(env, argv[2]) != napi_object) {
-        IMSA_HILOGE("style type must be PreviewTextStyle!");
-        return napi_generic_failure;
-    }
+    PARAM_CHECK_RETURN(env, JsUtil::GetType(env, argv[2]) == napi_object, "style type must be PreviewTextStyle!", TYPE_NONE,
+        napi_generic_failure);
+ 
     // 2 means parameter of style<PreviewTextStyle>
     return ParsePreviewTextStyle(env, argv[2], ctxt.style);
 }
@@ -1443,10 +1440,8 @@ napi_status JsTextInputClientEngine::ParsePreviewTextStyle(napi_env env, napi_va
     napi_value value = nullptr;
     // 2 means parameter of style<PreviewTextStyle>
     napi_get_named_property(env, argv, "underlineStyle", &value);
-    if (!JsUtil::GetValue(env, value, style.underlineStyle)) {
-        IMSA_HILOGE("underlineStyle covert failed!");
-        return napi_generic_failure;
-    }
+    PARAM_CHECK_RETURN(env, !JsUtil::GetValue(env, value, style.underlineStyle), "underlineStyle covert failed!", TYPE_NONE,
+        napi_generic_failure);
     // 2 means parameter of style<PreviewTextStyle>
     napi_get_named_property(env, argv, "underlineColor", &value);
     style.hasUnderlineColor = JsUtil::GetValue(env, value, style.underlineColor);
