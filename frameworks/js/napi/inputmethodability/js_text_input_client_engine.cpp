@@ -1440,7 +1440,7 @@ napi_status JsTextInputClientEngine::ParsePreviewTextStyle(napi_env env, napi_va
     napi_value value = nullptr;
     // 2 means parameter of style<PreviewTextStyle>
     napi_get_named_property(env, argv, "underlineStyle", &value);
-    PARAM_CHECK_RETURN(env, !JsUtil::GetValue(env, value, style.underlineStyle), "underlineStyle covert failed!",
+    PARAM_CHECK_RETURN(env, JsUtil::GetValue(env, value, style.underlineStyle), "underlineStyle covert failed!",
         TYPE_NONE, napi_generic_failure);
     // 2 means parameter of style<PreviewTextStyle>
     napi_get_named_property(env, argv, "underlineColor", &value);
