@@ -260,7 +260,10 @@ private:
     void UpdatePanelFlag(PanelFlag newPanelFlag);
     void NotifySoftKeyBoardInfoChanged(PanelFlag panelFlag, InputWindowStatus status);
     int32_t SetHotAreasOnAdjust(HotAreas hotAreas);
+    void LogUpdateRegionResult(bool isPortrait, const HotAreas &hotAreas,
+        const Rosen::KeyboardTouchHotAreas &wmsHotAreas);
     int32_t UpdatePanelFLagToWindow(PanelFlag panelFlag);
+    void AdjustDetachedLayoutParams(PanelFlag previousFlag, LayoutParams &layoutParams);
 
     sptr<OHOS::Rosen::Window> window_ = nullptr;
     sptr<OHOS::Rosen::WindowOption> winOption_ = nullptr;

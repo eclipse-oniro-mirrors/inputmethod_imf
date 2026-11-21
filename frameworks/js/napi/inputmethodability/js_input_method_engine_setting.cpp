@@ -167,13 +167,16 @@ napi_value JsInputMethodEngineSetting::GetJsPanelFlagProperty(napi_env env)
     napi_value flagFixed = nullptr;
     napi_value flagFloating = nullptr;
     napi_value flagCandidate = nullptr;
+    napi_value flagDetached = nullptr;
     IMF_CALL(napi_create_int32(env, static_cast<int32_t>(PanelFlag::FLG_FIXED), &flagFixed));
     IMF_CALL(napi_create_int32(env, static_cast<int32_t>(PanelFlag::FLG_FLOATING), &flagFloating));
     IMF_CALL(napi_create_int32(env, static_cast<int32_t>(PanelFlag::FLG_CANDIDATE_COLUMN), &flagCandidate));
+    IMF_CALL(napi_create_int32(env, static_cast<int32_t>(PanelFlag::FLG_DETACHED), &flagDetached));
     IMF_CALL(napi_create_object(env, &panelFlag));
     IMF_CALL(napi_set_named_property(env, panelFlag, "FLG_FIXED", flagFixed));
     IMF_CALL(napi_set_named_property(env, panelFlag, "FLG_FLOATING", flagFloating));
     IMF_CALL(napi_set_named_property(env, panelFlag, "FLAG_CANDIDATE", flagCandidate));
+    IMF_CALL(napi_set_named_property(env, panelFlag, "FLAG_DETACHED", flagDetached));
     return panelFlag;
 }
 

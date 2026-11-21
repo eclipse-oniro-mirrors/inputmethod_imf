@@ -29,7 +29,11 @@ copy_taihe_idl("copy_keyboardPanelManager_idl") {
 
 ohos_taihe("run_taihe") {
   taihe_generated_file_path = "$taihe_generated_file_path"
-  deps = [ ":copy_keyboardPanelManager_idl" ]
+  deps = [ 
+    ":copy_keyboardPanelManager_idl",
+    "${inputmethod_path}/frameworks/ets/taihe/inputMethod:copy_panel_taihe",
+  ]
+  
   outputs = [
     "$taihe_generated_file_path/src/ohos.inputMethodSystemPanelManager.ani.cpp",
     "$taihe_generated_file_path/src/ohos.inputMethodSystemPanelManager.abi.c",

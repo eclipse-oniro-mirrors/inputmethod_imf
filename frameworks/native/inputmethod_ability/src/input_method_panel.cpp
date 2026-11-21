@@ -549,6 +549,13 @@ int32_t InputMethodPanel::Resize(uint32_t width, uint32_t height)
         IMSA_HILOGE("Panel window is null; create a panel successfully before resizing it.");
         return ErrorCode::ERROR_NULL_POINTER;
     }
+    if (panelType_ == PanelType::SOFT_KEYBOARD && panelFlag_ == PanelFlag::FLG_DETACHED) {
+        DisplaySize displaySize;
+        if (GetDisplaySize(displaySize) == ErrorCode::NO_ERROR) {
+            width = static_cast<uint32_t>(displaySize.portrait.width);
+            IMSA_HILOGI("FLG_DETACHED resize width overridden to displayWidth: %{public}u.", width);
+        }
+    }
     int32_t ret = ErrorCode::NO_ERROR;
     if (!isScbEnable_ || window_->GetType() != WindowType::WINDOW_TYPE_INPUT_METHOD_FLOAT) {
         ret = ResizeWithoutAdjust(width, height);
@@ -606,6 +613,10 @@ int32_t InputMethodPanel::MoveTo(int32_t x, int32_t y)
         IMSA_HILOGE("FLG_FIXED panel can not moveTo!");
         return ErrorCode::NO_ERROR;
     }
+    if (panelType_ == SOFT_KEYBOARD && panelFlag_ == FLG_DETACHED) {
+        IMSA_HILOGI("FLG_DETACHED panel moveTo ignores x, only y takes effect");
+        x = 0;
+    }
     if (!isScbEnable_ || window_->GetType() != WindowType::WINDOW_TYPE_INPUT_METHOD_FLOAT) {
         auto ret = window_->MoveTo(x, y);
         IMSA_HILOGI("x/y: %{public}d/%{public}d, ret = %{public}d", x, y, ret);
@@ -630,7 +641,8 @@ int32_t InputMethodPanel::StartMoving()
         return ErrorCode::ERROR_IME;
     }
     if (panelType_ == PanelType::SOFT_KEYBOARD &&
-        !(panelFlag_ == FLG_FLOATING || panelFlag_ == FLG_CANDIDATE_COLUMN)) {
+        !(panelFlag_ == FLG_FLOATING || panelFlag_ == FLG_CANDIDATE_COLUMN ||
+            panelFlag_ == FLG_DETACHED)) {
         IMSA_HILOGE("invalid panel flag: %{public}d", panelFlag_);
         return ErrorCode::ERROR_INVALID_PANEL_FLAG;
     }
@@ -854,8 +866,8 @@ void InputMethodPanel::UpdateLayoutInfo(PanelFlag panelFlag, const LayoutParams 
         SetEnhancedLayoutParams(enhancedParams);
     } else {
         EnhancedLayoutParams enhancedLayoutParams = { .isFullScreen = false,
-            .portrait = { .rect = params.portraitRect },
-            .landscape = { .rect = params.landscapeRect } };
+            .portrait = { .rect = wmsParams.PortraitKeyboardRect_ },
+            .landscape = { .rect = wmsParams.LandscapeKeyboardRect_ } };
         SetEnhancedLayoutParams(enhancedLayoutParams);
     }
     isInEnhancedAdjust_.store(isEnhanced);
@@ -937,6 +949,10 @@ int32_t InputMethodPanel::RectifyRect(bool isFullScreen, EnhancedLayoutParam &la
         layoutParam.rect = { ORIGIN_POS_X, ORIGIN_POS_Y, displaySize.width, displaySize.height };
         layoutParam.panelRect = layoutParam.rect;
         return ErrorCode::NO_ERROR;
+    }
+    if (panelFlag == PanelFlag::FLG_DETACHED) {
+        layoutParam.rect.width_ = displaySize.width;
+        layoutParam.rect.posX_ = ORIGIN_POS_X;
     }
     if (!IsRectValid(layoutParam.rect, displaySize)) {
         return ErrorCode::ERROR_PARAMETER_CHECK_FAILED;
@@ -1164,8 +1180,9 @@ int32_t InputMethodPanel::UpdateRegion(std::vector<Rosen::Rect> region)
         IMSA_HILOGE("not soft keyboard panel: %{public}d", panelType_);
         return ErrorCode::ERROR_INVALID_PANEL_TYPE;
     }
-    if (panelFlag_ != PanelFlag::FLG_FIXED && panelFlag_ != PanelFlag::FLG_FLOATING) {
-        IMSA_HILOGE("flag not fixed or floating: %{public}d", panelFlag_);
+    if (panelFlag_ != PanelFlag::FLG_FIXED && panelFlag_ != PanelFlag::FLG_FLOATING &&
+        panelFlag_ != PanelFlag::FLG_DETACHED) {
+        IMSA_HILOGE("flag not fixed, floating or detached: %{public}d", panelFlag_);
         return ErrorCode::ERROR_INVALID_PANEL_FLAG;
     }
     FullPanelAdjustInfo adjustInfo;
@@ -1190,6 +1207,13 @@ int32_t InputMethodPanel::UpdateRegion(std::vector<Rosen::Rect> region)
         return ErrorCode::ERROR_WINDOW_MANAGER;
     }
     SetHotAreas(hotAreas);
+    LogUpdateRegionResult(isPortrait, hotAreas, wmsHotAreas);
+    return ErrorCode::NO_ERROR;
+}
+
+void InputMethodPanel::LogUpdateRegionResult(bool isPortrait, const HotAreas &hotAreas,
+    const Rosen::KeyboardTouchHotAreas &wmsHotAreas)
+{
     if (isPortrait) {
         IMSA_HILOGI("success, portrait: %{public}s, wmsHotAreas, portraitKeyboardHotAreas_: %{public}s, "
                     "portraitPanelHotAreas_:%{public}s", HotArea::ToString(hotAreas.portrait.keyboardHotArea).c_str(),
@@ -1202,7 +1226,6 @@ int32_t InputMethodPanel::UpdateRegion(std::vector<Rosen::Rect> region)
             HotArea::ToString(wmsHotAreas.landscapeKeyboardHotAreas_).c_str(),
             HotArea::ToString(wmsHotAreas.landscapePanelHotAreas_).c_str());
     }
-    return ErrorCode::NO_ERROR;
 }
 
 int32_t InputMethodPanel::InitAdjustInfo()
@@ -1300,6 +1323,10 @@ void InputMethodPanel::ParseParam(PanelFlag panelFlag, const PanelAdjustInfo &ad
     } else {
         // floating keyboard rect
         keyboardRect = inputRect;
+        if (panelFlag == PanelFlag::FLG_DETACHED) {
+            keyboardRect.width_ = displaySize.width;
+            keyboardRect.posX_ = ORIGIN_POS_X;
+        }
         // floating panel rect
         panelRect.width_ = keyboardRect.width_ + static_cast<uint32_t>(adjustInfo.left + adjustInfo.right);
         panelRect.height_ = keyboardRect.height_ + static_cast<uint32_t>(adjustInfo.top + adjustInfo.bottom);
@@ -1319,6 +1346,8 @@ std::tuple<std::vector<std::string>, std::vector<std::string>> InputMethodPanel:
         flag = "fix";
     } else if (panelFlag == PanelFlag::FLG_FLOATING) {
         flag = "floating";
+    } else if (panelFlag == PanelFlag::FLG_DETACHED) {
+        flag = "detached";
     }
     if (IsDisplayUnfolded()) {
         foldStatus = "foldable";
@@ -1410,12 +1439,16 @@ int32_t InputMethodPanel::ChangePanelFlag(PanelFlag panelFlag)
     if (panelType_ == SOFT_KEYBOARD && panelFlag == FLG_CANDIDATE_COLUMN) {
         PanelStatusChangeToImc(InputWindowStatus::HIDE, { 0, 0, 0, 0 }, true);
     }
+    auto previousFlag = panelFlag_;
     auto result = UpdatePanelFLagToWindow(panelFlag);
     if (result != ErrorCode::NO_ERROR) {
         return result;
     }
     auto enhancedParams = GetEnhancedLayoutParams();
     LayoutParams layoutParams = { enhancedParams.landscape.rect, enhancedParams.portrait.rect };
+    if (panelFlag == FLG_DETACHED) {
+        AdjustDetachedLayoutParams(previousFlag, layoutParams);
+    }
     auto ret = AdjustPanelRect(panelFlag, layoutParams, true, true, false);
     if (ret == ErrorCode::NO_ERROR) {
         UpdatePanelFlag(panelFlag);
@@ -1423,6 +1456,28 @@ int32_t InputMethodPanel::ChangePanelFlag(PanelFlag panelFlag)
     InputMethodAbility::GetInstance().NotifyPanelStatus(true, panelFlag);
     IMSA_HILOGI("flag: %{public}d, ret: %{public}d.", panelFlag, ret);
     return ret == ErrorCode::NO_ERROR ? ErrorCode::NO_ERROR : ErrorCode::ERROR_OPERATE_PANEL;
+}
+
+void InputMethodPanel::AdjustDetachedLayoutParams(PanelFlag previousFlag, LayoutParams &layoutParams)
+{
+    DisplaySize displaySize;
+    auto ret = GetDisplaySize(displaySize);
+    if (ret != ErrorCode::NO_ERROR) {
+        IMSA_HILOGE("GetDisplaySize failed, detached width not overridden!");
+        return;
+    }
+    layoutParams.landscapeRect.width_ = displaySize.landscape.width;
+    layoutParams.portraitRect.width_ = displaySize.portrait.width;
+    // FIXED panel position is determined by gravity, rect.posY is invalid;
+    // keep the keyboard bottom-anchored so the position is unchanged after switching to detached.
+    if (previousFlag == FLG_FIXED) {
+        layoutParams.portraitRect.posY_ = static_cast<int32_t>(
+            SafeSubtract(displaySize.portrait.height, layoutParams.portraitRect.height_));
+        layoutParams.landscapeRect.posY_ = static_cast<int32_t>(
+            SafeSubtract(displaySize.landscape.height, layoutParams.landscapeRect.height_));
+    }
+    IMSA_HILOGI("detached panel width override, portrait/landscape: %{public}u/%{public}u",
+        displaySize.portrait.width, displaySize.landscape.width);
 }
 
 void InputMethodPanel::UpdatePanelFlag(PanelFlag newPanelFlag)
@@ -2170,10 +2225,17 @@ bool InputMethodPanel::IsSizeValid(
     float ratio = panelType_ == PanelType::SOFT_KEYBOARD && panelFlag == PanelFlag::FLG_FIXED ?
         FIXED_SOFT_KEYBOARD_PANEL_RATIO :
         NON_FIXED_SOFT_KEYBOARD_PANEL_RATIO;
-    if (static_cast<float>(height) > displayHeight * ratio || static_cast<int32_t>(width) > displayWidth) {
-        IMSA_HILOGE("param is invalid, defaultDisplay height: %{public}d, defaultDisplay width %{public}d, target "
-                    "height: %{public}u, target width: %{public}u!",
-            displayHeight, displayWidth, height, width);
+    if (static_cast<float>(height) > displayHeight * ratio) {
+        IMSA_HILOGE("height is invalid, defaultDisplay height: %{public}d, target height: %{public}u!",
+            displayHeight, height);
+        return false;
+    }
+    if (panelFlag == PanelFlag::FLG_DETACHED) {
+        return true;
+    }
+    if (static_cast<int32_t>(width) > displayWidth) {
+        IMSA_HILOGE("width is invalid, defaultDisplay width: %{public}d, target width: %{public}u!",
+            displayWidth, width);
         return false;
     }
     return true;
@@ -2811,8 +2873,8 @@ int32_t InputMethodPanel::GetSystemPanelCurrentInsets(uint64_t displayId, System
         IMSA_HILOGE("invalid panel type!");
         return ErrorCode::ERROR_INVALID_PANEL_TYPE;
     }
-    if (panelFlag_ == PanelFlag::FLG_CANDIDATE_COLUMN) {
-        IMSA_HILOGE("panelFlag_ is candidate column");
+    if (panelFlag_ == PanelFlag::FLG_CANDIDATE_COLUMN || panelFlag_ == PanelFlag::FLG_DETACHED) {
+        IMSA_HILOGE("panelFlag_ is invalid: %{public}d", static_cast<int32_t>(panelFlag_));
         return ErrorCode::ERROR_INVALID_PANEL_FLAG;
     }
     auto specifyDisplay = Rosen::DisplayManager::GetInstance().GetDisplayById(displayId);

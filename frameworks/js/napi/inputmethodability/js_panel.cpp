@@ -425,7 +425,7 @@ napi_value JsPanel::ChangeFlag(napi_env env, napi_callback_info info)
     }
     PARAM_CHECK_RETURN(env,
         (panelFlag == PanelFlag::FLG_FIXED || panelFlag == PanelFlag::FLG_FLOATING ||
-            panelFlag == PanelFlag::FLG_CANDIDATE_COLUMN),
+            panelFlag == PanelFlag::FLG_CANDIDATE_COLUMN || panelFlag == PanelFlag::FLG_DETACHED),
         "flag type must be one of PanelFlag!", TYPE_NONE, nullptr);
     JsEventInfo eventInfo = { std::chrono::system_clock::now(), JsEvent::CHANGE_PANEL_FLAG };
     PanelDealQueue::TaskGuard task(eventInfo);
@@ -618,9 +618,10 @@ bool JsPanel::IsPanelFlagValid(napi_env env, PanelFlag panelFlag, bool isEnhance
 {
     bool isValid = false;
     if (InputMethodAbility::GetInstance().IsDefaultIme()) {
-        isValid = panelFlag == FLG_FIXED || panelFlag == FLG_FLOATING || panelFlag == FLG_CANDIDATE_COLUMN;
+        isValid = panelFlag == FLG_FIXED || panelFlag == FLG_FLOATING || panelFlag == FLG_CANDIDATE_COLUMN ||
+            panelFlag == FLG_DETACHED;
     } else {
-        isValid = panelFlag == FLG_FIXED || panelFlag == FLG_FLOATING;
+        isValid = panelFlag == FLG_FIXED || panelFlag == FLG_FLOATING || panelFlag == FLG_DETACHED;
     }
     IMSA_HILOGD("flag: %{public}d, isEnhanced: %{public}d, isValid: %{public}d", panelFlag, isEnhancedCalled, isValid);
     if (!isEnhancedCalled) {
@@ -629,7 +630,7 @@ bool JsPanel::IsPanelFlagValid(napi_env env, PanelFlag panelFlag, bool isEnhance
         RESULT_CHECK_RETURN(env, isValid, JsUtils::Convert(ErrorCode::ERROR_INVALID_PANEL_FLAG),
             "param flag should be FIXED or FLOATING", TYPE_NONE, false);
     }
-    return true;
+    return isValid;
 }
 
 napi_status JsPanel::ParsePanelFlag(napi_env env, napi_value *argv, PanelFlag &panelFlag, bool isEnhancedCalled)

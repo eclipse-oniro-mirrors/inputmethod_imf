@@ -3075,6 +3075,31 @@ HWTEST_F(InputMethodPanelTest, testGetSystemPanelInsets4, TestSize.Level0)
 }
 
 /**
+ * @tc.name: testGetSystemPanelInsetsDetached
+ * @tc.desc: Test GetSystemPanelInsets returns ERROR_INVALID_PANEL_FLAG for FLG_DETACHED.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testGetSystemPanelInsetsDetached, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testGetSystemPanelInsetsDetached start.");
+
+    AccessScope scope(currentImeTokenId_, currentImeUid_);
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = PanelType::SOFT_KEYBOARD;
+    panelInfo.panelFlag = PanelFlag::FLG_DETACHED;
+    auto ret = inputMethodPanel->CreatePanel(nullptr, panelInfo);
+
+    SystemPanelInsets panelInsets = {0, 0, 0};
+    uint64_t displayId = 0;
+    inputMethodPanel->GetDisplayId(displayId);
+    ret = inputMethodPanel->GetSystemPanelCurrentInsets(displayId, panelInsets);
+    EXPECT_EQ(ret, ErrorCode::ERROR_INVALID_PANEL_FLAG);
+
+    InputMethodPanelTest::DestroyPanel(inputMethodPanel);
+}
+
+/**
  * @tc.name: testGetSystemPanelInsets5
  * @tc.desc: Test GetSystemPanelInsets.
  * @tc.type: FUNC
@@ -4064,6 +4089,363 @@ HWTEST_F(InputMethodPanelTest, TestOnVisibilityChange_InvalidState, TestSize.Lev
     InputMethodPanelTest::ImaDestroyPanel(panel);
     InputMethodPanelTest::imc_->Close();
     TddUtil::DestroyWindow();
+}
+
+/**
+ * @tc.name: testPanelFlagDetachedValue
+ * @tc.desc: Test FLG_DETACHED enum value is 3 and FLG_NONE is 4.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testPanelFlagDetachedValue, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testPanelFlagDetachedValue start.");
+    EXPECT_EQ(static_cast<int32_t>(PanelFlag::FLG_DETACHED), 3);
+    EXPECT_EQ(static_cast<int32_t>(PanelFlag::FLG_NONE), 4);
+}
+
+/**
+ * @tc.name: testChangePanelFlagDetached
+ * @tc.desc: Test ChangePanelFlag with FLG_DETACHED.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testChangePanelFlagDetached, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testChangePanelFlagDetached start.");
+    AccessScope scope(InputMethodPanelTest::currentImeTokenId_, InputMethodPanelTest::currentImeUid_);
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+
+    // not CreatePanel, ChangePanelFlag failed
+    auto ret = inputMethodPanel->ChangePanelFlag(PanelFlag::FLG_DETACHED);
+    EXPECT_EQ(ret, ErrorCode::ERROR_NULL_POINTER);
+
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FIXED;
+    ret = inputMethodPanel->CreatePanel(nullptr, panelInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    // ChangePanelFlag to FLG_DETACHED
+    ret = inputMethodPanel->ChangePanelFlag(PanelFlag::FLG_DETACHED);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_EQ(inputMethodPanel->GetPanelFlag(), PanelFlag::FLG_DETACHED);
+
+    // ChangePanelFlag back to FLG_FIXED
+    ret = inputMethodPanel->ChangePanelFlag(PanelFlag::FLG_FIXED);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_EQ(inputMethodPanel->GetPanelFlag(), PanelFlag::FLG_FIXED);
+
+    inputMethodPanel->DestroyPanel();
+
+    // STATUS_BAR panel cannot ChangePanelFlag to FLG_DETACHED
+    PanelInfo statusBarInfo;
+    statusBarInfo.panelType = STATUS_BAR;
+    statusBarInfo.panelFlag = FLG_FIXED;
+    ret = inputMethodPanel->CreatePanel(nullptr, statusBarInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ret = inputMethodPanel->ChangePanelFlag(PanelFlag::FLG_DETACHED);
+    EXPECT_EQ(ret, ErrorCode::ERROR_BAD_PARAMETERS);
+
+    inputMethodPanel->DestroyPanel();
+}
+
+/**
+ * @tc.name: testChangePanelFlagDetachedKeepsPosition
+ * @tc.desc: Test FIXED to DETACHED switch keeps keyboard bottom anchored (position unchanged).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testChangePanelFlagDetachedKeepsPosition, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testChangePanelFlagDetachedKeepsPosition start.");
+    AccessScope scope(InputMethodPanelTest::currentImeTokenId_, InputMethodPanelTest::currentImeUid_);
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FIXED;
+    auto ret = inputMethodPanel->CreatePanel(nullptr, panelInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    auto defaultDisplay = Rosen::DisplayManager::GetInstance().GetDefaultDisplay();
+    ASSERT_TRUE(defaultDisplay != nullptr);
+    int32_t width = defaultDisplay->GetWidth();
+    int32_t height = defaultDisplay->GetHeight();
+    uint32_t keyboardHeight = static_cast<uint32_t>(height * FIXED_SOFT_KEYBOARD_PANEL_RATIO - 1);
+    ret = inputMethodPanel->Resize(static_cast<uint32_t>(width), keyboardHeight);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    ret = inputMethodPanel->ChangePanelFlag(PanelFlag::FLG_DETACHED);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    EXPECT_EQ(inputMethodPanel->GetPanelFlag(), PanelFlag::FLG_DETACHED);
+
+    // keyboard should stay bottom-anchored: posY + height == display height
+    auto layoutParams = inputMethodPanel->GetKeyboardLayoutParams();
+    if (width < height) {
+        EXPECT_EQ(layoutParams.PortraitKeyboardRect_.width_, static_cast<uint32_t>(width));
+        EXPECT_EQ(layoutParams.PortraitKeyboardRect_.posY_ +
+                static_cast<int32_t>(layoutParams.PortraitKeyboardRect_.height_),
+            height);
+    } else {
+        EXPECT_EQ(layoutParams.LandscapeKeyboardRect_.width_, static_cast<uint32_t>(width));
+        EXPECT_EQ(layoutParams.LandscapeKeyboardRect_.posY_ +
+                static_cast<int32_t>(layoutParams.LandscapeKeyboardRect_.height_),
+            height);
+    }
+
+    ret = inputMethodPanel->DestroyPanel();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+}
+
+/**
+ * @tc.name: testDetachedPanelStartMovingSuccess
+ * @tc.desc: Test StartMoving succeeds for FLG_DETACHED (detached panel supports startMoving).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testDetachedPanelStartMovingSuccess, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testDetachedPanelStartMovingSuccess start.");
+    AccessScope scope(InputMethodPanelTest::currentImeTokenId_, InputMethodPanelTest::currentImeUid_);
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FIXED;
+    auto ret = inputMethodPanel->CreatePanel(nullptr, panelInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    ret = inputMethodPanel->ChangePanelFlag(PanelFlag::FLG_DETACHED);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    // StartMoving should succeed for FLG_DETACHED (detached panel supports drag mode)
+    ret = inputMethodPanel->StartMoving();
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    inputMethodPanel->DestroyPanel();
+}
+
+/**
+ * @tc.name: testUpdateRegionDetached
+ * @tc.desc: Test UpdateRegion works for FLG_DETACHED and rejects FLG_CANDIDATE_COLUMN.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testUpdateRegionDetached, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testUpdateRegionDetached start.");
+    AccessScope scope(InputMethodPanelTest::currentImeTokenId_, InputMethodPanelTest::currentImeUid_);
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FIXED;
+    auto ret = inputMethodPanel->CreatePanel(nullptr, panelInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    // FLG_DETACHED should allow UpdateRegion
+    ret = inputMethodPanel->ChangePanelFlag(PanelFlag::FLG_DETACHED);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    std::vector<Rosen::Rect> region = { { 0, 0, 100, 100 } };
+    ret = inputMethodPanel->UpdateRegion(region);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    // FLG_CANDIDATE_COLUMN should reject UpdateRegion
+    ret = inputMethodPanel->ChangePanelFlag(PanelFlag::FLG_CANDIDATE_COLUMN);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+    ret = inputMethodPanel->UpdateRegion(region);
+    EXPECT_EQ(ret, ErrorCode::ERROR_INVALID_PANEL_FLAG);
+
+    inputMethodPanel->DestroyPanel();
+}
+
+/**
+ * @tc.name: testMoveToDetachedIgnoresX
+ * @tc.desc: Test MoveTo ignores x for FLG_DETACHED (only y takes effect).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testMoveToDetachedIgnoresX, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testMoveToDetachedIgnoresX start.");
+    AccessScope scope(InputMethodPanelTest::currentImeTokenId_, InputMethodPanelTest::currentImeUid_);
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FLOATING;
+    auto ret = inputMethodPanel->CreatePanel(nullptr, panelInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    ret = inputMethodPanel->ChangePanelFlag(PanelFlag::FLG_DETACHED);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    // MoveTo with non-zero x should succeed (x silently ignored internally)
+    ret = inputMethodPanel->MoveTo(500, 300);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    inputMethodPanel->DestroyPanel();
+}
+
+/**
+ * @tc.name: testGetScreenStatusDetached
+ * @tc.desc: Test GetScreenStatus returns "detached" for FLG_DETACHED.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testGetScreenStatusDetached, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testGetScreenStatusDetached start.");
+    AccessScope scope(InputMethodPanelTest::currentImeTokenId_, InputMethodPanelTest::currentImeUid_);
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FIXED;
+    auto ret = inputMethodPanel->CreatePanel(nullptr, panelInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    ret = inputMethodPanel->ChangePanelFlag(PanelFlag::FLG_DETACHED);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    auto [lanPanel, porPanel] = inputMethodPanel->GetScreenStatus(PanelFlag::FLG_DETACHED);
+    ASSERT_FALSE(lanPanel.empty());
+    EXPECT_EQ(lanPanel[0], "detached");
+    ASSERT_FALSE(porPanel.empty());
+    EXPECT_EQ(porPanel[0], "detached");
+
+    inputMethodPanel->DestroyPanel();
+}
+
+/**
+ * @tc.name: testUpdatePanelRectDetachedWithHotZone
+ * @tc.desc: Test UpdateRegion (hot zone) works with FLG_DETACHED after AdjustPanelRect (AC-7.5).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testUpdatePanelRectDetachedWithHotZone, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testUpdatePanelRectDetachedWithHotZone start.");
+    AccessScope scope(InputMethodPanelTest::currentImeTokenId_, InputMethodPanelTest::currentImeUid_);
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FIXED;
+    auto ret = inputMethodPanel->CreatePanel(nullptr, panelInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    ret = inputMethodPanel->ChangePanelFlag(PanelFlag::FLG_DETACHED);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    // UpdateRegion (hot zone) should succeed for FLG_DETACHED
+    std::vector<Rosen::Rect> hotArea = { { 0, 0, 100, 100 } };
+    ret = inputMethodPanel->UpdateRegion(hotArea);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    inputMethodPanel->DestroyPanel();
+}
+
+/**
+ * @tc.name: testUpdatePanelRectFixedWithHotZoneRegression
+ * @tc.desc: Test UpdateRegion (hot zone) works for FLG_FIXED (AC-7.6 regression).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testUpdatePanelRectFixedWithHotZoneRegression, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testUpdatePanelRectFixedWithHotZoneRegression start.");
+    AccessScope scope(InputMethodPanelTest::currentImeTokenId_, InputMethodPanelTest::currentImeUid_);
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FIXED;
+    auto ret = inputMethodPanel->CreatePanel(nullptr, panelInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    // UpdateRegion (hot zone) should succeed for FLG_FIXED (existing behavior)
+    std::vector<Rosen::Rect> hotArea = { { 0, 0, 100, 100 } };
+    ret = inputMethodPanel->UpdateRegion(hotArea);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    inputMethodPanel->DestroyPanel();
+}
+
+/**
+ * @tc.name: testUpdatePanelRectFloatingWithHotZoneRegression
+ * @tc.desc: Test UpdateRegion (hot zone) works for FLG_FLOATING (AC-7.7 regression).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testUpdatePanelRectFloatingWithHotZoneRegression, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testUpdatePanelRectFloatingWithHotZoneRegression start.");
+    AccessScope scope(InputMethodPanelTest::currentImeTokenId_, InputMethodPanelTest::currentImeUid_);
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FLOATING;
+    auto ret = inputMethodPanel->CreatePanel(nullptr, panelInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    // UpdateRegion (hot zone) should succeed for FLG_FLOATING (existing behavior)
+    std::vector<Rosen::Rect> hotArea = { { 0, 0, 100, 100 } };
+    ret = inputMethodPanel->UpdateRegion(hotArea);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    inputMethodPanel->DestroyPanel();
+}
+
+/**
+ * @tc.name: testResizeDetachedWidthOverride
+ * @tc.desc: Test Resize overrides width to displayWidth for FLG_DETACHED (non-display-width param silently ignored).
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testResizeDetachedWidthOverride, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testResizeDetachedWidthOverride start.");
+    AccessScope scope(InputMethodPanelTest::currentImeTokenId_, InputMethodPanelTest::currentImeUid_);
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FIXED;
+    auto ret = inputMethodPanel->CreatePanel(nullptr, panelInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    ret = inputMethodPanel->ChangePanelFlag(PanelFlag::FLG_DETACHED);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    // Resize with non-display-width should succeed (width silently overridden to displayWidth)
+    auto defaultDisplay = Rosen::DisplayManager::GetInstance().GetDefaultDisplay();
+    ASSERT_TRUE(defaultDisplay != nullptr);
+    int32_t displayWidth = defaultDisplay->GetWidth();
+    int32_t displayHeight = defaultDisplay->GetHeight();
+    int32_t nonDisplayWidth = displayWidth + 500;
+    int32_t newHeight = static_cast<int32_t>(displayHeight * NON_FIXED_SOFT_KEYBOARD_PANEL_RATIO * 0.8);
+    ret = inputMethodPanel->Resize(nonDisplayWidth, newHeight);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    inputMethodPanel->DestroyPanel();
+}
+
+/**
+ * @tc.name: testUpdatePanelRectDetachedRectifyRectWidthOverride
+ * @tc.desc: Test AdjustPanelRect RectifyRect overrides width for FLG_DETACHED.
+ * @tc.type: FUNC
+ */
+HWTEST_F(InputMethodPanelTest, testUpdatePanelRectDetachedRectifyRectWidthOverride, TestSize.Level0)
+{
+    IMSA_HILOGI("InputMethodPanelTest::testUpdatePanelRectDetachedRectifyRectWidthOverride start.");
+    AccessScope scope(InputMethodPanelTest::currentImeTokenId_, InputMethodPanelTest::currentImeUid_);
+    auto inputMethodPanel = std::make_shared<InputMethodPanel>();
+    PanelInfo panelInfo;
+    panelInfo.panelType = SOFT_KEYBOARD;
+    panelInfo.panelFlag = FLG_FIXED;
+    auto ret = inputMethodPanel->CreatePanel(nullptr, panelInfo);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    ret = inputMethodPanel->ChangePanelFlag(PanelFlag::FLG_DETACHED);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    // AdjustPanelRect with non-display-width rect should succeed
+    // (width silently overridden to displayWidth in RectifyRect)
+    auto defaultDisplay = Rosen::DisplayManager::GetInstance().GetDefaultDisplay();
+    ASSERT_TRUE(defaultDisplay != nullptr);
+    int32_t displayWidth = defaultDisplay->GetWidth();
+    int32_t displayHeight = defaultDisplay->GetHeight();
+    int32_t nonDisplayWidth = displayWidth + 500;
+    int32_t newHeight = static_cast<int32_t>(displayHeight * NON_FIXED_SOFT_KEYBOARD_PANEL_RATIO * 0.8);
+    Rosen::Rect rect = { 0, 0, static_cast<uint32_t>(nonDisplayWidth), static_cast<uint32_t>(newHeight) };
+    LayoutParams layoutParams = { .landscapeRect = rect, .portraitRect = rect };
+    ret = inputMethodPanel->AdjustPanelRect(PanelFlag::FLG_DETACHED, layoutParams, true, true, false);
+    EXPECT_EQ(ret, ErrorCode::NO_ERROR);
+
+    inputMethodPanel->DestroyPanel();
 }
 } // namespace MiscServices
 } // namespace OHOS

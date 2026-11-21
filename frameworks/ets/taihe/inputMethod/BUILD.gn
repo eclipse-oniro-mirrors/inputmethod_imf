@@ -40,7 +40,10 @@ copy_taihe_idl("inputMethod_taihe") {
 
 ohos_taihe("run_taihe") {
   taihe_generated_file_path = "$taihe_generated_file_path"
-  deps = [ ":inputMethod_taihe" ]
+  deps = [ 
+    ":inputMethod_taihe", 
+    ":copy_panel_taihe" 
+  ]
   outputs = [
     "$taihe_generated_file_path/src/ohos.inputMethod.ani.cpp",
     "$taihe_generated_file_path/src/ohos.inputMethod.abi.c",
