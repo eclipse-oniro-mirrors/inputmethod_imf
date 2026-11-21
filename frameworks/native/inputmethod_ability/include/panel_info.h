@@ -31,6 +31,7 @@ enum PanelFlag {
     FLG_FIXED = 0,
     FLG_FLOATING,
     FLG_CANDIDATE_COLUMN,
+    FLG_DETACHED,
     FLG_NONE,
 };
 

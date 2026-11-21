@@ -247,9 +247,10 @@ bool PanelImpl::IsPanelFlagValid(PanelFlag panelFlag, bool isEnhancedCalled)
 {
     bool isValid = false;
     if (InputMethodAbility::GetInstance().IsDefaultIme()) {
-        isValid = panelFlag == FLG_FIXED || panelFlag == FLG_FLOATING || panelFlag == FLG_CANDIDATE_COLUMN;
+        isValid = panelFlag == FLG_FIXED || panelFlag == FLG_FLOATING || panelFlag == FLG_CANDIDATE_COLUMN ||
+            panelFlag == FLG_DETACHED;
     } else {
-        isValid = panelFlag == FLG_FIXED || panelFlag == FLG_FLOATING;
+        isValid = panelFlag == FLG_FIXED || panelFlag == FLG_FLOATING || panelFlag == FLG_DETACHED;
     }
     IMSA_HILOGD("flag: %{public}d, isEnhanced: %{public}d, isValid: %{public}d", panelFlag, isEnhancedCalled, isValid);
     if (!isEnhancedCalled && !isValid) {

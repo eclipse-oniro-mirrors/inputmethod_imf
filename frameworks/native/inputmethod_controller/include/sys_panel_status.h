@@ -47,7 +47,7 @@ struct SysPanelStatus : public Parcelable {
         inputType = static_cast<InputType>(inputTypeData);
 
         flag = in.ReadInt32();
-        if (flag < static_cast<int32_t>(FLG_FIXED) || flag > static_cast<int32_t>(FLG_CANDIDATE_COLUMN)) {
+        if (flag < static_cast<int32_t>(FLG_FIXED) || flag > static_cast<int32_t>(FLG_DETACHED)) {
             return false;
         }
 

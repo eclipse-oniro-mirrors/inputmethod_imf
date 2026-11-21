@@ -199,6 +199,8 @@ PanelFlag_t EtsKeyboardPanelManager::ConvertPanelFlag(int32_t flag)
             return PanelFlag_t::key_t::FLAG_FLOATING;
         case PanelFlag::FLG_CANDIDATE_COLUMN:
             return PanelFlag_t::key_t::FLAG_CANDIDATE;
+        case PanelFlag::FLG_DETACHED:
+            return PanelFlag_t::key_t::FLAG_FIXED;
         default:
             IMSA_HILOGW("ConvertPanelFlag: unknown panel flag %{public}d, returning FLAG_FIXED", flag);
             return PanelFlag_t::key_t::FLAG_FIXED;

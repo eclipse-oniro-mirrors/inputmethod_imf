@@ -17,7 +17,8 @@
 enum PanelFlag: i32 {
     FLAG_FIXED = 0,
     FLAG_FLOATING = 1,
-    FLAG_CANDIDATE = 2
+    FLAG_CANDIDATE = 2,
+    FLAG_DETACHED = 3
 }
 
 enum PanelType: i32 {
