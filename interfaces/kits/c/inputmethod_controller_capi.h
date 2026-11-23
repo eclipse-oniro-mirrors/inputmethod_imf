@@ -72,7 +72,7 @@ extern "C" {
  * @syscap SystemCapability.MiscServices.InputMethodFramework
  * @since 26.1.0
  */
-InputMethod_ErrorCode OH_InputMethodController_InjectText(const char *text, size_t textLen);
+InputMethod_ErrorCode OH_InputMethodController_InjectText(const char *text, uint32_t textLen);
 
 /**
  * @brief Attach application to the input method service.
