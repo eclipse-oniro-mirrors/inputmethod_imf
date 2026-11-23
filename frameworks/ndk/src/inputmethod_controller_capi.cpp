@@ -40,7 +40,7 @@ struct InputMethod_InputMethodProxy {
     bool attached = false;
 };
 
-InputMethod_ErrorCode OH_InputMethodController_InjectText(const char *text, size_t textLen)
+InputMethod_ErrorCode OH_InputMethodController_InjectText(const char *text, uint32_t textLen)
 {
     if (text == nullptr || textLen > ImfCommonConst::MAX_INJECT_TEXT_SIZE) {
         return IME_ERR_PARAMCHECK;
