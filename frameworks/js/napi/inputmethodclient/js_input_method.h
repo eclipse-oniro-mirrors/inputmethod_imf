@@ -54,11 +54,28 @@ struct SwitchInputMethodContext : public AsyncCall::Context {
     }
 };
 
+struct InjectTextContext : public AsyncCall::Context {
+    std::string text;
+    InjectTextContext() : Context(nullptr, nullptr){};
+    InjectTextContext(InputAction input, OutputAction output) : Context(std::move(input), std::move(output)){};
+    
+    napi_status operator()(napi_env env, napi_value *result) override
+    {
+        if (status_ != napi_ok) {
+            output_ = nullptr;
+            return status_;
+        }
+        return Context::operator()(env, result);
+    }
+};
+
 class JsInputMethod : public ImcInnerListener {
 public:
     JsInputMethod() = default;
     ~JsInputMethod() = default;
     static napi_value Init(napi_env env, napi_value exports);
+    static napi_value InjectText(napi_env env, napi_callback_info info);
+    static napi_value InjectTextSync(napi_env env, napi_callback_info info);
     static napi_value SwitchInputMethod(napi_env env, napi_callback_info info);
     static napi_value SwitchCurrentInputMethodSubtype(napi_env env, napi_callback_info info);
     static napi_value SwitchCurrentInputMethodAndSubtype(napi_env env, napi_callback_info info);

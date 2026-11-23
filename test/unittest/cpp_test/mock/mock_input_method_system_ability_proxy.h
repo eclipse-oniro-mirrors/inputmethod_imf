@@ -38,6 +38,7 @@ public:
     MOCK_METHOD0(UnbindImeMirror, int32_t());
     MOCK_METHOD1(RequestSystemInputCapability, int32_t(int32_t));
     MOCK_METHOD2(GetCurrentInputMethod, int32_t(int32_t, Property &));
+    MOCK_METHOD1(InjectText, int32_t(const std::string &));
 };
 } // namespace MiscServices
 } // namespace OHOS

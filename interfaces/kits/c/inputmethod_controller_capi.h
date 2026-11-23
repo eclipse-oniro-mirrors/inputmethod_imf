@@ -47,6 +47,34 @@
 extern "C" {
 #endif /* __cplusplus */
 /**
+ * @brief Sends text to the currently focused, editable text box bound to the input method application.
+ * Use this API for cross-application text input in PC Stage applications. Password text boxes are supported.
+ * Success means the request was sent, not that the target finished editing. No target content is read.
+ * Unlike the ArkTS asynchronous API, this API returns a sending error code synchronously.
+ * It blocks the calling thread and can affect UI interaction on the main thread; use it with care.
+ * The target follows the current input focus; there is no default text or caller-selected target.
+ * Only PC devices are supported; cross-platform applications, atomic services, and widgets are not supported.
+ * Empty text is sent after the same permission and target checks. No additional encoding validation is performed.
+ * Do not log sensitive text.
+ *
+ * @permission ohos.permission.CONTROL_DEVICE or ohos.permission.OPERATE_TEXT_ACROSS_APPLICATION
+ * @param text Required non-null pointer to UTF-8 text, with at least textLen readable bytes.
+ *     The caller owns the buffer and must keep it valid until this function returns, then may release it.
+ * @param textLen Required byte length, from 0 to 512, excluding a trailing terminator. No default value.
+ * @return Returns a sending result from {@link InputMethod_ErrorCode}.
+ *     <br>{@link IME_ERR_OK} (0) - request sent successfully, without editing completion confirmation.
+ *     <br>{@link IME_ERR_PARAMCHECK} (401) - text is null or textLen exceeds 512.
+ *     <br>{@link IME_ERR_PERMISSION_DENIED} (201) - neither required permission is granted.
+ *     <br>{@link IME_ERR_UNSUPPORTED} (801) - device not supported.
+ *     <br>{@link IME_ERR_IMCLIENT} (12800003) - no valid focused and bound target, or target invalidated.
+ *     <br>{@link IME_ERR_EDITABLE} (12800016) - target is not editable.
+ *     <br>{@link IME_ERR_IMMS} (12800008) - service unavailable or request sending failed.
+ * @syscap SystemCapability.MiscServices.InputMethodFramework
+ * @since 26.1.0
+ */
+InputMethod_ErrorCode OH_InputMethodController_InjectText(const char *text, size_t textLen);
+
+/**
  * @brief Attach application to the input method service.
  *
  * Serialize Controller and InputMethodProxy operations. A concurrent or callback-reentrant C session

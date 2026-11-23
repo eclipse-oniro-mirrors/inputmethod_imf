@@ -1,5 +1,5 @@
 /*
- * Copyright (c) 2021 Huawei Device Co., Ltd.
+ * Copyright (c) 2021-2026 Huawei Device Co., Ltd.
  * Licensed under the Apache License, Version 2.0 (the "License");
  * you may not use this file except in compliance with the License.
  * You may obtain a copy of the License at
@@ -34,9 +34,61 @@ std::mutex JsInputMethod::jsCbsLock_;
 std::unordered_map<std::string, std::vector<std::shared_ptr<JSCallbackObject>>> JsInputMethod::jsCbs_;
 constexpr size_t ARGC_ONE = 1;
 constexpr size_t ARGC_TWO = 2;
+
+napi_value JsInputMethod::InjectText(napi_env env, napi_callback_info info)
+{
+    InputMethodSyncTrace tracer("JsInputMethod_InjectText");
+    auto ctxt = std::make_shared<InjectTextContext>();
+    auto input = [ctxt](napi_env env, size_t argc, napi_value *argv, napi_value self) -> napi_status {
+        PARAM_CHECK_RETURN(env, argc > 0, "at least one parameter is required!", TYPE_NONE, napi_generic_failure);
+        PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[0], ctxt->text) == napi_ok, "text type must be string!",
+            TYPE_NONE, napi_generic_failure);
+        PARAM_CHECK_RETURN(env, ctxt->text.size() <= ImfCommonConst::MAX_INJECT_TEXT_SIZE,
+            "text is out of range!", TYPE_NONE, napi_generic_failure);
+        return napi_ok;
+    };
+    auto exec = [ctxt](AsyncCall::Context *ctx) {
+        int32_t ret = ErrorCode::ERROR_IMSA_NULLPTR;
+        auto instance = InputMethodController::GetInstance();
+        if (instance != nullptr) {
+            ret = instance->ExecTextInteraction(ctxt->text);
+        }
+        ctxt->SetErrorCode(ret);
+        CHECK_RETURN_VOID(ret == ErrorCode::NO_ERROR, "failed to inject text!");
+        ctxt->SetState(napi_ok);
+    };
+    ctxt->SetAction(std::move(input));
+    // 2 means JsAPI:injectText has 2 params at most, including the optional callback.
+    AsyncCall asyncCall(env, info, ctxt, 1);
+    return asyncCall.Call(env, exec, "injectText");
+}
+
+napi_value JsInputMethod::InjectTextSync(napi_env env, napi_callback_info info)
+{
+    InputMethodSyncTrace tracer("JsInputMethod_InjectTextSync");
+    size_t argc = 1;
+    napi_value argv[1] = { nullptr };
+    IMF_CALL(napi_get_cb_info(env, info, &argc, argv, nullptr, nullptr));
+    PARAM_CHECK_RETURN(env, argc > 0, "at least one parameter is required!", TYPE_NONE, JsUtil::Const::Null(env));
+    std::string text;
+    PARAM_CHECK_RETURN(env, JsUtils::GetValue(env, argv[0], text) == napi_ok, "text type must be string!", TYPE_NONE,
+        JsUtil::Const::Null(env));
+    PARAM_CHECK_RETURN(env, text.size() <= ImfCommonConst::MAX_INJECT_TEXT_SIZE, "text is out of range!",
+        TYPE_NONE, JsUtil::Const::Null(env));
+    auto instance = InputMethodController::GetInstance();
+    int32_t ret = instance == nullptr ? ErrorCode::ERROR_IMSA_NULLPTR : instance->ExecTextInteraction(text);
+    if (ret != ErrorCode::NO_ERROR) {
+        JsUtils::ThrowException(env, JsUtils::Convert(ret), "failed to inject text!", TYPE_NONE);
+        return JsUtil::Const::Null(env);
+    }
+    return JsUtil::Const::Undefined(env);
+}
+
 napi_value JsInputMethod::Init(napi_env env, napi_value exports)
 {
     napi_property_descriptor descriptor[] = {
+        DECLARE_NAPI_FUNCTION("injectText", InjectText),
+        DECLARE_NAPI_FUNCTION("injectTextSync", InjectTextSync),
         DECLARE_NAPI_FUNCTION("switchInputMethod", SwitchInputMethod),
         DECLARE_NAPI_FUNCTION("getCurrentInputMethod", GetCurrentInputMethod),
         DECLARE_NAPI_FUNCTION("getCurrentInputMethodSubtype", GetCurrentInputMethodSubtype),

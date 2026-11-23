@@ -975,6 +975,79 @@ HWTEST_F(InputMethodPrivateMemberTest, SA_IsPanelShown_AccountLocalIdFailed, Tes
     EXPECT_EQ(ret, ErrorCode::ERROR_ACCOUNT_LOCALID_FAILED);
 }
 
+class InjectTextIdentityChecker : public IdentityCheckerMock {
+public:
+    bool controlDevice = false;
+    bool operateText = false;
+    bool HasPermission(uint32_t tokenId, const std::string &permission) override
+    {
+        if (permission == "ohos.permission.CONTROL_DEVICE") {
+            return controlDevice;
+        }
+        return permission == "ohos.permission.OPERATE_TEXT_ACROSS_APPLICATION" && operateText;
+    }
+};
+
+HWTEST_F(InputMethodPrivateMemberTest, SA_InjectText_PermissionOr, TestSize.Level0)
+{
+    sptr<InputMethodSystemAbility> imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    auto checker = std::make_shared<InjectTextIdentityChecker>();
+    imsa->identityChecker_ = checker;
+    auto &inquirer = ImeInfoInquirer::GetInstance();
+    const bool wasPcMode = inquirer.IsPcMode();
+    inquirer.SetPcMode(true);
+    for (int permissions = 0; permissions < 4; ++permissions) {
+        checker->controlDevice = (permissions & 1) != 0;
+        checker->operateText = (permissions & 2) != 0;
+        for (size_t length : { 0u, 1u, 512u }) {
+            auto result = imsa->ExecTextInteraction(std::string(length, 'a'));
+#ifdef IMF_INJECT_TEXT_ENABLE
+            // Feature build: either permission grants access.
+            const bool granted = permissions != 0;
+#else
+            // Legacy build checks CONTROL_DEVICE only: operateText alone is denied.
+            const bool granted = (permissions & 1) != 0;
+#endif
+            if (!granted) {
+                EXPECT_EQ(result, ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
+            } else {
+                // Session absent -> USER_SESSION_NOT_FOUND; session present but no client
+                // bound -> PerUserSession reports ERROR_CLIENT_NULL_POINTER.
+                EXPECT_TRUE(result == ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND ||
+                    result == ErrorCode::ERROR_CLIENT_NULL_POINTER);
+            }
+        }
+    }
+#ifdef IMF_INJECT_TEXT_ENABLE
+    EXPECT_EQ(imsa->ExecTextInteraction(std::string(513, 'a')), ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+#else
+    // No size check in this build config: the 513-byte text reaches the session path
+    // and PerUserSession reports ERROR_CLIENT_NULL_POINTER (no bound client).
+    EXPECT_EQ(imsa->ExecTextInteraction(std::string(513, 'a')), ErrorCode::ERROR_CLIENT_NULL_POINTER);
+#endif
+    // The new permission must not broaden the legacy CLI entry.
+    checker->controlDevice = false;
+    checker->operateText = true;
+#ifdef IMF_INJECT_TEXT_ENABLE
+    // Feature build ORs the two permissions, so operateText alone does grant access;
+    // the call proceeds to the session path.
+    auto widened = imsa->ExecTextInteraction("text");
+    EXPECT_TRUE(widened == ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND ||
+        widened == ErrorCode::ERROR_CLIENT_NULL_POINTER);
+#else
+    // Legacy build checks CONTROL_DEVICE only.
+    EXPECT_EQ(imsa->ExecTextInteraction("text"), ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
+#endif
+    imsa->identityChecker_ = nullptr;
+    EXPECT_EQ(imsa->ExecTextInteraction(""), ErrorCode::ERROR_NULL_POINTER);
+    inquirer.SetPcMode(false);
+    // ERROR_DEVICE_UNSUPPORTED is the controller-layer value; the SA-side API never returns
+    // it, and with identityChecker_ nulled the entry check fails first.
+    EXPECT_EQ(imsa->ExecTextInteraction("text"), ErrorCode::ERROR_NULL_POINTER);
+    inquirer.SetPcMode(wasPcMode);
+}
+
 /**
  * @tc.name: SA_ExecTextInteraction_IdentityCheckerNull
  * @tc.desc: identityChecker_ is nullptr, return ERROR_NULL_POINTER.

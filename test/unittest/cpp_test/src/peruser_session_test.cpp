@@ -767,7 +767,7 @@ HWTEST_F(PerUserSessionTest, TestOnHideSoftKeyBoardSelf_TriggersOnImeUnbind_001,
 HWTEST_F(PerUserSessionTest, TestExecTextInteraction_NoClient_001, TestSize.Level0)
 {
     auto ret = session_->ExecTextInteraction("text");
-    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NOT_BOUND);
+    EXPECT_EQ(ret, ErrorCode::ERROR_CLIENT_NULL_POINTER);
 }
 
 /**

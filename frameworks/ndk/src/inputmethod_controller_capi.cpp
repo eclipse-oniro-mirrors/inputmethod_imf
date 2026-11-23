@@ -40,6 +40,19 @@ struct InputMethod_InputMethodProxy {
     bool attached = false;
 };
 
+InputMethod_ErrorCode OH_InputMethodController_InjectText(const char *text, size_t textLen)
+{
+    if (text == nullptr || textLen > ImfCommonConst::MAX_INJECT_TEXT_SIZE) {
+        return IME_ERR_PARAMCHECK;
+    }
+    auto controller = InputMethodController::GetInstance();
+    if (controller == nullptr) {
+        return IME_ERR_IMMS;
+    }
+    auto ret = controller->ExecTextInteraction(std::string(text, textLen));
+    return ErrorCodeConvert(ret);
+}
+
 InputMethod_InputMethodProxy *g_inputMethodProxy = nullptr;
 std::mutex g_textEditorProxyMapMutex;
 

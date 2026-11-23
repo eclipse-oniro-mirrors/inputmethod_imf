@@ -32,6 +32,19 @@ using namespace ohos::inputMethod;
 using namespace ohos::InputMethodSubtype;
 using namespace OHOS::MiscServices;
 namespace {
+void InjectTextSync(string_view text)
+{
+    if (text.size() > ImfCommonConst::MAX_INJECT_TEXT_SIZE) {
+        taihe::set_business_error(EXCEPTION_PARAMCHECK, "Text exceeds 512 bytes.");
+        return;
+    }
+    const std::string content(text.data(), text.size());
+    const int32_t code = InputMethodImpl::InjectText(content);
+    if (code != 0) {
+        taihe::set_business_error(JsUtils::Convert(code), JsUtils::ToMessage(JsUtils::Convert(code)));
+    }
+}
+
 InputMethodSetting GetSetting()
 {
     // The parameters in the make_holder function should be of the same type
@@ -331,6 +344,7 @@ void OffAttachmentDidFail(taihe::optional_view<taihe::callback<void(AttachFailur
 } // namespace
 
 TH_EXPORT_CPP_API_GetSetting(GetSetting);
+TH_EXPORT_CPP_API_InjectTextSync(InjectTextSync);
 TH_EXPORT_CPP_API_GetController(GetController);
 TH_EXPORT_CPP_API_GetDefaultInputMethod(GetDefaultInputMethod);
 TH_EXPORT_CPP_API_GetDefaultInputMethodByUserId(GetDefaultInputMethodByUserId);

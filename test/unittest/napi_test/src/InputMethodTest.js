@@ -17,6 +17,33 @@ import inputMethod from '@ohos.inputMethod'
 import {describe, beforeAll, beforeEach, afterEach, afterAll, it, expect} from 'deccjsunit/index'
 
 describe('InputMethodTest', function () {
+
+  // Valid byte lengths must reach the service. This smoke test does not assert target delivery.
+  it('injectText_valid_byte_lengths', 0, async function (done) {
+    const texts = ['', 'a', 'a'.repeat(512), '中'.repeat(170) + 'ab', 'a\u0000b', '\uD800'];
+    const serviceErrors = [201, 801, 12800003, 12800008];
+    for (const text of texts) {
+      try {
+        expect(inputMethod.injectTextSync(text)).assertEqual(undefined);
+      } catch (error) {
+        expect(serviceErrors.indexOf(error.code) >= 0).assertTrue();
+      }
+      let promise;
+      try {
+        promise = inputMethod.injectText(text);
+      } catch (error) {
+        expect(false).assertTrue();
+      }
+      expect(typeof promise.then).assertEqual('function');
+      try {
+        expect(await promise).assertEqual(undefined);
+      } catch (error) {
+        expect(serviceErrors.indexOf(error.code) >= 0).assertTrue();
+      }
+    }
+    done();
+  });
+
   beforeAll(function () {
     console.info('beforeAll called');
     propertyBeforeSwitch = inputMethod.getCurrentInputMethod();

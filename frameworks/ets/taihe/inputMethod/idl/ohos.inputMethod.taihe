@@ -398,6 +398,9 @@ function SwitchCurrentInputMethodSubtypeSync(target: InputMethodSubtype): bool;
 
 function SetSimpleKeyboardEnabled(enable: bool): void;
 
+@gen_promise("injectText")
+function InjectTextSync(text: String): void;
+
 @gen_async("switchCurrentInputMethodAndSubtype")
 @gen_promise("switchCurrentInputMethodAndSubtype")
 function SwitchCurrentInputMethodAndSubtypeSync(inputMethodProperty: InputMethodProperty, inputMethodSubtype: InputMethodSubtype): bool;

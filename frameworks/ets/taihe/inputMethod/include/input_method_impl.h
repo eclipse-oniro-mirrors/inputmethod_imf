@@ -33,6 +33,7 @@ public:
     InputMethodImpl() = default;
     ~InputMethodImpl() = default;
     static std::shared_ptr<InputMethodImpl> GetInstance();
+    static int32_t InjectText(const std::string &text);
     void RegisterListener(std::string const &type, taihe::callback_view<void(AttachFailureReason_t data)> callback);
     void UnRegisterListener(std::string const &type,
         taihe::optional_view<taihe::callback<void(AttachFailureReason_t data)>> callback);

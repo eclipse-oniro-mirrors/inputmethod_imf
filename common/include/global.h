@@ -162,6 +162,7 @@ constexpr uint32_t COL_PROXY_IME = 5521;
 constexpr uint32_t AI_PROXY_IME = 7101;
 constexpr int32_t DEFAULT_USER_ID = -1;
 constexpr int32_t START_USER_ID = 100;
+constexpr uint32_t MAX_INJECT_TEXT_SIZE = 512;
 }; // namespace ImfCommonConst
 
 static constexpr HiviewDFX::HiLogLabel g_SMALL_SERVICES_LABEL = { LOG_CORE, 0xD001C10, "ImsaKit" };
