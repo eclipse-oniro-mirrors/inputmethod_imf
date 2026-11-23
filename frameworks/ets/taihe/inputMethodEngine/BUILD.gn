@@ -42,6 +42,7 @@ copy_taihe_idl("inputMethodEngine_taihe") {
 ohos_taihe("run_taihe") {
   taihe_generated_file_path = "$taihe_generated_file_path"
   deps = [ ":inputMethodEngine_taihe" ]
+  use_ats = true
   outputs = [
     "$taihe_generated_file_path/src/ohos.inputMethodEngine.ani.cpp",
     "$taihe_generated_file_path/src/ohos.inputMethodEngine.abi.c",
@@ -135,7 +136,7 @@ taihe_shared_library("inputmethod_engine_taihe_native") {
 
 generate_static_abc("inputmethod_engine_abc") {
   base_url = "$taihe_generated_file_path"
-  files = [ "$taihe_generated_file_path/@ohos.inputMethodEngine.ets" ]
+  files = [ "$taihe_generated_file_path/@ohos.inputMethodEngine.ats" ]
   is_boot_abc = "True"
   device_dst_file = "/system/framework/inputmethod_engine_abc.abc"
   dependencies = [ ":run_taihe" ]
@@ -151,7 +152,7 @@ ohos_prebuilt_etc("inputmethod_engine_etc") {
 
 generate_static_abc("inputmethod_extraconfig_abc") {
   base_url = "$taihe_generated_file_path"
-  files = [ "$taihe_generated_file_path/@ohos.inputMethod.ExtraConfig.ets" ]
+  files = [ "$taihe_generated_file_path/@ohos.inputMethod.ExtraConfig.ats" ]
   is_boot_abc = "True"
   device_dst_file = "/system/framework/inputmethod_extraconfig_abc.abc"
   dependencies = [ ":run_taihe" ]

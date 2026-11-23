@@ -20,8 +20,8 @@ import window from '@ohos.window';
 import { LocalStorage } from '@ohos.arkui.stateManagement';
 import { BusinessError, AsyncCallback, Callback } from '@ohos.base';
 """)
-@!sts_inject_into_module("import * as ohos_InputMethodSubtype from './@ohos.InputMethodSubtype';")
-@!sts_inject_into_module("import { KeyEvent as InputKeyEvent } from './@ohos.multimodalInput.keyEvent.ets';")
+@!sts_inject_into_module("import * as ohos_InputMethodSubtype from './@ohos.InputMethodSubtype.ats';")
+@!sts_inject_into_module("import { KeyEvent as InputKeyEvent } from './@ohos.multimodalInput.keyEvent.ats';")
 
 from ohos.InputMethodSubtype use InputMethodSubtype;
 from ohos.multimodalInput.keyEvent use KeyEvent as InputKeyEvent;
