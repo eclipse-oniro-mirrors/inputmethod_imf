@@ -75,6 +75,7 @@ public:
     static void StartApp(const std::string &bundleName);
     static void StopApp(const std::string &bundleName);
     static void ClickApp();
+    static bool SwipeUp();
     static bool WaitTaskEmpty();
     static std::string currentBundleNameMock_;
     class WindowManager {
