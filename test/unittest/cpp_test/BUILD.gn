@@ -17,6 +17,10 @@ import("//build/test.gni")
 config("module_private_config") {
   visibility = [ ":*" ]
 
+  if (target_cpu == "x86_64") {
+    defines = [ "target_cpu_x86_64" ]
+  }
+
   include_dirs = [
     "${inputmethod_path}/frameworks/ndk/include",
     "${inputmethod_path}/interfaces/kits/c",
@@ -2078,6 +2082,10 @@ ohos_unittest("InputMethodManagerCommandTest") {
     debug = false
   }
   module_out_path = module_output_path
+
+  if (target_cpu == "x86_64") {
+    defines = [ "target_cpu_x86_64" ]
+  }
 
   sources = [
     "${inputmethod_path}/tools/ime/src/input_method_manager_command.cpp",

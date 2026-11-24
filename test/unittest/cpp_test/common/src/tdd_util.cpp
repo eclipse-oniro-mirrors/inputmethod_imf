@@ -594,6 +594,75 @@ void TddUtil::ClickApp()
     usleep(WAIT_CLICK_COMPLETE); // ensure click complete
 }
 
+namespace {
+struct SwipePoint {
+    int32_t x;
+    int32_t yStart;
+    int32_t yEnd;
+};
+
+bool BuildSwipeCmd(const SwipePoint &point, std::string &cmd)
+{
+    cmd = "uinput -T -m ";
+    cmd.append(std::to_string(point.x))
+        .append(" ")
+        .append(std::to_string(point.yStart))
+        .append(" ")
+        .append(std::to_string(point.x))
+        .append(" ")
+        .append(std::to_string(point.yEnd))
+        .append(" 300");
+    return true;
+}
+}
+
+bool TddUtil::SwipeUp()
+{
+    constexpr int32_t QUERY_DISPLAY_TIMES = 3;
+    constexpr int32_t SWIPE_TIMES = 3;
+    constexpr int32_t MIN_SCREEN_SIZE = 2;
+    int32_t width = 0;
+    int32_t height = 0;
+    for (int32_t i = 0; i < QUERY_DISPLAY_TIMES; i++) {
+        auto displayInfo = Rosen::DisplayManagerLite::GetInstance().GetDefaultDisplay();
+        if (displayInfo != nullptr) {
+            width = displayInfo->GetWidth();
+            height = displayInfo->GetHeight();
+            if (width >= MIN_SCREEN_SIZE && height >= MIN_SCREEN_SIZE) {
+                break;
+            }
+        }
+        usleep(WAIT_CLICK_COMPLETE);
+    }
+    std::vector<SwipePoint> points;
+    if (width >= MIN_SCREEN_SIZE && height >= MIN_SCREEN_SIZE) {
+        SwipePoint point{ width / 2, height * 4 / 5, height / 8 };
+        points.push_back(point);
+    } else {
+        SwipePoint large{ 540, 1440, 180 };
+        SwipePoint medium{ 360, 960, 120 };
+        SwipePoint small{ 400, 600, 100 };
+        SwipePoint minimal{ 200, 300, 60 };
+        points.push_back(large);
+        points.push_back(medium);
+        points.push_back(small);
+        points.push_back(minimal);
+    }
+    bool ret = false;
+    for (const auto &point : points) {
+        std::string cmd;
+        BuildSwipeCmd(point, cmd);
+        for (int32_t i = 0; i < SWIPE_TIMES; i++) {
+            std::string result;
+            auto execRet = TddUtil::ExecuteCmd(cmd, result);
+            ret = ret || execRet;
+            usleep(WAIT_CLICK_COMPLETE);
+        }
+    }
+    IMSA_HILOGI("SwipeUp ret = %{public}d", ret);
+    return ret;
+}
+
 bool TddUtil::WaitTaskEmpty()
 {
     return BlockRetry(WAIT_TASK_EMPTY_INTERVAL, WAIT_TASK_EMPTY_TIMES, []() {

@@ -25,6 +25,7 @@
 #include <sys/time.h>
 #include <unistd.h>
 
+#include <atomic>
 #include <condition_variable>
 #include <cstdint>
 #include <sstream>
@@ -183,7 +184,7 @@ public:
     static ClientShowStatistics clientShowStatistics_;
     static ImeStartInputStatistics imeStartInputStatistics_;
     static BaseTextOperationStatistics baseTextOperationStatistics_;
-    static int32_t multiThreadExecTotalNum_;
+    static std::atomic<int32_t> multiThreadExecTotalNum_;
     static std::shared_ptr<HiSysEventListener> watcher_;
 
 private:
@@ -570,7 +571,7 @@ ClientAttachStatistics ImfHiSysEventReporterTest::clientAttachStatistics_;
 ClientShowStatistics ImfHiSysEventReporterTest::clientShowStatistics_;
 ImeStartInputStatistics ImfHiSysEventReporterTest::imeStartInputStatistics_;
 BaseTextOperationStatistics ImfHiSysEventReporterTest::baseTextOperationStatistics_;
-int32_t ImfHiSysEventReporterTest::multiThreadExecTotalNum_{ 0 };
+std::atomic<int32_t> ImfHiSysEventReporterTest::multiThreadExecTotalNum_{ 0 };
 std::shared_ptr<HiSysEventListener> ImfHiSysEventReporterTest::watcher_;
 
 /**

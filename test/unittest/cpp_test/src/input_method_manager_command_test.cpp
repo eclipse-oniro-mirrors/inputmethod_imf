@@ -253,7 +253,7 @@ HWTEST_F(InputMethodManagerCommandTest, ExeCmd_012, TestSize.Level1)
     EXPECT_TRUE(ret);
     ret = TddUtil::ExecuteCmd("power-shell setmode 602", result);
     EXPECT_TRUE(ret);
-    ret = TddUtil::ExecuteCmd("uinput -T -m 300 720 300 360 200", result);
+    ret = TddUtil::SwipeUp();
     EXPECT_TRUE(ret);
     sleep(1);
     ret = TddUtil::ExecuteCmd("ime -s com.example.newTestIme", result);

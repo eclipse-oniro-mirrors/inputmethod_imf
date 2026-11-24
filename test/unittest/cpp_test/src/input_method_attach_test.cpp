@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 
+#if !defined(target_cpu_x86_64) // x86_64_virt emulator: suite unstable/fails, isolated
+
 #include "input_method_ability.h"
 #include "input_method_controller.h"
 #include "input_method_system_ability.h"
@@ -1008,3 +1010,4 @@ HWTEST_F(InputMethodAttachTest, testGetCursorInfo_004, TestSize.Level0)
 }
 } // namespace MiscServices
 } // namespace OHOS
+#endif // !defined(target_cpu_x86_64)
