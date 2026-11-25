@@ -14,8 +14,8 @@
  */
 
 @!sts_inject_into_module("import {ElementName} from 'bundleManager.ElementName';")
-@!sts_inject_into_module("import * as ohos_InputMethodSubtype from './@ohos.InputMethodSubtype';")
-@!sts_inject_into_module("import * as ohos_inputMethodEngine from './@ohos.inputMethodEngine';")
+@!sts_inject_into_module("import * as ohos_InputMethodSubtype from './@ohos.InputMethodSubtype.ats';")
+@!sts_inject_into_module("import * as ohos_inputMethodEngine from './@ohos.inputMethodEngine.ats';")
 
 @!sts_inject_into_module("""
 import { Callback } from '@ohos.base';

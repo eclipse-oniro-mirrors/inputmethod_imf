@@ -33,7 +33,7 @@ ohos_taihe("run_taihe") {
     ":copy_keyboardPanelManager_idl",
     "${inputmethod_path}/frameworks/ets/taihe/inputMethod:copy_panel_taihe",
   ]
-  
+  use_ats = true
   outputs = [
     "$taihe_generated_file_path/src/ohos.inputMethodSystemPanelManager.ani.cpp",
     "$taihe_generated_file_path/src/ohos.inputMethodSystemPanelManager.abi.c",
@@ -93,7 +93,7 @@ taihe_shared_library("imf_syspanel_mgr_taihe_native") {
 generate_static_abc("inputmethod_systempanelmanager_abc") {
   base_url = "$taihe_generated_file_path"
   files =
-      [ "$taihe_generated_file_path/@ohos.inputMethodSystemPanelManager.ets" ]
+      [ "$taihe_generated_file_path/@ohos.inputMethodSystemPanelManager.ats" ]
   is_boot_abc = "True"
   device_dst_file = "/system/framework/inputmethod_systempanelmanager_abc.abc"
   dependencies = [ ":run_taihe" ]

@@ -18,8 +18,8 @@ import("//build/ohos.gni")
 generate_static_abc("inputmethod_extension_ability_ani") {
   base_url = "./"
   files = [
-    "./@ohos.InputMethodExtensionAbility.ets",
-    "./@ohos.InputMethodExtensionContext.ets",
+    "./@ohos.InputMethodExtensionAbility.ats",
+    "./@ohos.InputMethodExtensionContext.ats",
   ]
 
   is_boot_abc = "True"

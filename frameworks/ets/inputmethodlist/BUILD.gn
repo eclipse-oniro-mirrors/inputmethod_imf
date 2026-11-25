@@ -16,7 +16,7 @@ import("//build/ohos.gni")
 
 generate_static_abc("inputmethod_dialog_ets_abc") {
   base_url = "./"
-  files = [ "./@ohos.inputMethodList.ets" ]
+  files = [ "./@ohos.inputMethodList.ats" ]
   ui_enable = "True"
   is_boot_abc = "True"
   device_dst_file = "/system/framework/inputmethod_dialog_ets_abc.abc"
