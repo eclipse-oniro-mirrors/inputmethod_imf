@@ -37,6 +37,7 @@ group("fuzztest") {
     "inputmethodability_fuzzer:fuzztest",
     "inputmethodabilitytwo_fuzzer:fuzztest",
     "inputmethodabilitythree_fuzzer:fuzztest",
+    "inputmethodabilitypreview_fuzzer:fuzztest",
     "inputmethodcontroller_fuzzer:fuzztest",
     "inputmethodcontrollertwo_fuzzer:fuzztest",
     "inputmethodcontrollerthree_fuzzer:fuzztest",
