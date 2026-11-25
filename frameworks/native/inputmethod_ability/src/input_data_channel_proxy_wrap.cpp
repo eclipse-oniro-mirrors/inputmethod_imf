@@ -337,15 +337,16 @@ int32_t InputDataChannelProxyWrap::HandleMsg(uint64_t msgId, const ResponseInfo 
     }
     IMSA_HILOGD("msg info id: %{public}" PRIu64 " event code: %{public}d sync: %{public}d code: %{public}d",
          msgId, it->second->eventCode, it->second->syncBlockData != nullptr, rspInfo.dealRet_);
-    if (it->second->syncBlockData != nullptr) {
-        it->second->syncBlockData->SetValue(rspInfo);
+    auto handler = it->second;
+    rspHandlers_.erase(it);
+    if (handler->syncBlockData != nullptr) {
+        handler->syncBlockData->SetValue(rspInfo);
     }
-    if (it->second->asyncCallback != nullptr) {
-        it->second->asyncCallback(rspInfo.dealRet_, rspInfo.data_);
+    if (handler->asyncCallback != nullptr) {
+        handler->asyncCallback(rspInfo.dealRet_, rspInfo.data_);
     }
     int64_t now = duration_cast<milliseconds>(steady_clock::now().time_since_epoch()).count();
-    ReportBaseTextOperation(it->second->eventCode, rspInfo.dealRet_, now - it->second->reportStartTime);
-    rspHandlers_.erase(it);
+    ReportBaseTextOperation(handler->eventCode, rspInfo.dealRet_, now - handler->reportStartTime);
     return ErrorCode::NO_ERROR;
 }
 
