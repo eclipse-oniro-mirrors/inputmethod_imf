@@ -192,7 +192,7 @@ int32_t FoldStatusAdapter::ConvertDisplayMode(Rosen::FoldDisplayMode displayMode
     //   FULL(1)        → EXPAND(3)   M态
     //   MAIN(2)        → FOLD(2)     F态
     //   SUB(3)         → IME unavailable, skip
-    //   COORDINATION(4)→ EXPAND(3)   M态 (双屏同显)
+    //   COORDINATION(4)→ EXPAND(3)   M态
     //   GLOBAL_FULL(5) → G(4)        G态
     //   V_MAIN(6)      → IME unavailable, skip
     //   N_MAIN(7)      → N(5)        N态
