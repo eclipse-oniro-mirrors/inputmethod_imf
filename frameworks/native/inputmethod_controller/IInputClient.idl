@@ -27,7 +27,7 @@ interface OHOS.MiscServices.IInputClient {
     void OnInputReady([in] IRemoteObject agent, [in] BindImeInfo imeInfo);
     [oneway] void OnInputStop([in] boolean isStopInactiveClient, [in] IRemoteObject object, [in] boolean isSendKeyboardStatus, [in] boolean isStopByMultiPreemptInProc);
     [oneway] void OnInputStopAsync([in] boolean isStopInactiveClient, [in] boolean isSendKeyboardStatus, [in] boolean isStopByMultiPreemptInProc);
-    void OnSwitchInput([in] Property property, [in] SubProperty subProperty, [in] int userId);
+    [oneway] void OnSwitchInput([in] Property property, [in] SubProperty subProperty, [in] int userId);
     void OnPanelStatusChange([in] unsigned int status, [in] ImeWindowInfo info);
     void NotifyInputStart([in] InputStartInfo inputStartInfo);
     void NotifyInputStop([in] InputStopInfo inputStopInfo);
