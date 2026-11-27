@@ -97,6 +97,7 @@ void TestSendMessage(FuzzedDataProvider &provider)
 {
     ArrayBuffer arrayBuffer;
     arrayBuffer.jsArgc = provider.ConsumeIntegral<size_t>();
+    // 32 is the max length for msgId to cover short identifier scenarios
     arrayBuffer.msgId = provider.ConsumeRandomLengthString(32);
     size_t paramLen = provider.ConsumeIntegralInRange<size_t>(0, 256);
     for (size_t i = 0; i < paramLen; i++) {
@@ -109,6 +110,7 @@ void TestRecvMessage(FuzzedDataProvider &provider)
 {
     ArrayBuffer arrayBuffer;
     arrayBuffer.jsArgc = provider.ConsumeIntegral<size_t>();
+    // 32 is the max length for msgId to cover short identifier scenarios
     arrayBuffer.msgId = provider.ConsumeRandomLengthString(32);
     size_t paramLen = provider.ConsumeIntegralInRange<size_t>(0, 256);
     for (size_t i = 0; i < paramLen; i++) {
