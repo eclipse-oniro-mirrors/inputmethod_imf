@@ -23,6 +23,7 @@ extern "C"{
 #endif /* __cplusplus */
 InputMethod_ErrorCode IsValidInputMethodProxy(const InputMethod_InputMethodProxy *inputMethodProxy);
 void ClearInputMethodProxy(void);
+void DestroyTextEditorProxy(InputMethod_TextEditorProxy *textEditor);
 #ifdef __cplusplus
 }
 #endif /* __cplusplus */

@@ -617,11 +617,16 @@ int32_t SetPreviewTextWithStyleCb(InputMethod_TextEditorProxy *proxy,
     const OH_InputMethod_PreviewTextStyle *style)
 {
     g_setPreviewTextWithStyleCallCount++;
-    if (style != nullptr) {
-        g_lastReceivedUnderlineStyle = static_cast<int32_t>(style->underlineStyle);
-        g_lastReceivedUnderlineColor = style->underlineColor;
-        g_lastReceivedHasUnderlineColor = style->hasUnderlineColor;
-    }
+    auto styleHandle = const_cast<OH_InputMethod_PreviewTextStyle *>(style);
+    OH_InputMethod_UnderlineStyle underlineStyle = OH_INPUTMETHOD_UNDERLINE_STYLE_NONE;
+    uint32_t underlineColor = 0;
+    bool hasUnderlineColor = false;
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethod_PreviewTextStyle_GetUnderlineStyle(styleHandle, &underlineStyle));
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethod_PreviewTextStyle_GetUnderlineColor(styleHandle, &underlineColor));
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethod_PreviewTextStyle_HasUnderlineColor(styleHandle, &hasUnderlineColor));
+    g_lastReceivedUnderlineStyle = static_cast<int32_t>(underlineStyle);
+    g_lastReceivedUnderlineColor = underlineColor;
+    g_lastReceivedHasUnderlineColor = hasUnderlineColor;
     return ErrorCode::NO_ERROR;
 }
 
@@ -689,6 +694,67 @@ HWTEST_F(NativeTextChangedListenerTest, SetPreviewTextWithStyle_WithStyleFunc_00
     EXPECT_EQ(g_lastReceivedUnderlineColor.load(), 0x00FF0000U);
     EXPECT_TRUE(g_lastReceivedHasUnderlineColor.load());
     OH_TextEditorProxy_Destroy(textEditor);
+}
+
+HWTEST_F(NativeTextChangedListenerTest, SetPreviewTextWithStyle_BorrowedLifetime, TestSize.Level0)
+{
+    auto proxy = OH_TextEditorProxy_Create();
+    ASSERT_NE(nullptr, proxy);
+    static std::shared_ptr<OH_InputMethod_PreviewTextStyle> callbackStyle;
+    callbackStyle.reset();
+    EXPECT_EQ(IME_ERR_OK,
+        OH_InputMethod_TextEditorProxy_SetSetPreviewTextWithStyleFunc(proxy,
+            [](InputMethod_TextEditorProxy *, const char16_t *, uint32_t, int32_t, int32_t,
+                const OH_InputMethod_PreviewTextStyle *style) -> int32_t {
+                auto styleHandle = const_cast<OH_InputMethod_PreviewTextStyle *>(style);
+                callbackStyle = NativeObjectRegistry<OH_InputMethod_PreviewTextStyle>::GetInstance().Get(styleHandle);
+                if (callbackStyle == nullptr) {
+                    return ErrorCode::ERROR_NULL_POINTER;
+                }
+                OH_InputMethod_PreviewTextStyle_Destroy(styleHandle);
+                bool hasUnderlineColor = false;
+                EXPECT_EQ(
+                    IME_ERR_OK, OH_InputMethod_PreviewTextStyle_HasUnderlineColor(styleHandle, &hasUnderlineColor));
+                EXPECT_TRUE(hasUnderlineColor);
+                return ErrorCode::NO_ERROR;
+            }));
+    sptr<NativeTextChangedListener> listener = new (std::nothrow) NativeTextChangedListener(proxy);
+    ASSERT_NE(nullptr, listener);
+    PreviewTextStyleInner style {};
+    style.hasUnderlineColor = true;
+    EXPECT_EQ(ErrorCode::NO_ERROR, listener->SetPreviewTextWithStyle(u"text", { 0, 0 }, style));
+    EXPECT_NE(nullptr, callbackStyle);
+    bool hasUnderlineColor = false;
+    EXPECT_EQ(IME_ERR_NULL_POINTER,
+        OH_InputMethod_PreviewTextStyle_HasUnderlineColor(callbackStyle.get(), &hasUnderlineColor));
+    EXPECT_FALSE(hasUnderlineColor);
+    callbackStyle.reset();
+    OH_TextEditorProxy_Destroy(proxy);
+}
+
+HWTEST_F(NativeTextChangedListenerTest, PreviewTextStyle_RejectInvalidHandles, TestSize.Level0)
+{
+    OH_InputMethod_PreviewTextStyle unregistered;
+    auto style = OH_InputMethod_PreviewTextStyle_Create();
+    ASSERT_NE(nullptr, style);
+    auto lease = NativeObjectRegistry<OH_InputMethod_PreviewTextStyle>::GetInstance().Get(style);
+    OH_InputMethod_PreviewTextStyle_Destroy(style);
+    ASSERT_NE(nullptr, lease);
+
+    for (auto invalid : { &unregistered, lease.get() }) {
+        OH_InputMethod_UnderlineStyle underlineStyle = OH_INPUTMETHOD_UNDERLINE_STYLE_DASHED;
+        uint32_t underlineColor = 0xFFFF0000;
+        bool hasUnderlineColor = true;
+        EXPECT_EQ(IME_ERR_NULL_POINTER,
+            OH_InputMethod_PreviewTextStyle_SetUnderlineStyle(invalid, OH_INPUTMETHOD_UNDERLINE_STYLE_SOLID));
+        EXPECT_EQ(IME_ERR_NULL_POINTER, OH_InputMethod_PreviewTextStyle_SetUnderlineColor(invalid, underlineColor));
+        EXPECT_EQ(IME_ERR_NULL_POINTER, OH_InputMethod_PreviewTextStyle_GetUnderlineStyle(invalid, &underlineStyle));
+        EXPECT_EQ(IME_ERR_NULL_POINTER, OH_InputMethod_PreviewTextStyle_GetUnderlineColor(invalid, &underlineColor));
+        EXPECT_EQ(IME_ERR_NULL_POINTER, OH_InputMethod_PreviewTextStyle_HasUnderlineColor(invalid, &hasUnderlineColor));
+        EXPECT_EQ(OH_INPUTMETHOD_UNDERLINE_STYLE_DASHED, underlineStyle);
+        EXPECT_EQ(0xFFFF0000U, underlineColor);
+        EXPECT_TRUE(hasUnderlineColor);
+    }
 }
 
 /**

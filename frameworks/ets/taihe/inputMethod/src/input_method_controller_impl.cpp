@@ -407,8 +407,7 @@ int32_t InputMethodControllerImpl::SetPreviewTextCallback(const std::u16string &
 int32_t InputMethodControllerImpl::SetPreviewTextWithStyleCallback(const std::u16string &text, const Range &range,
     const PreviewTextStyleInner &style)
 {
-    std::lock_guard<std::mutex> lock(mutex_);
-    auto &cbVec = jsCbMap_["setPreviewTextWithStyle"];
+    auto cbVec = GetCallbacks("setPreviewTextWithStyle");
     for (auto &cb : cbVec) {
         auto &func = std::get<taihe::callback<void(taihe::string_view, Range_t const &,
             ::ohos::inputMethodEngine::PreviewTextStyle const &)>>(cb->callback);

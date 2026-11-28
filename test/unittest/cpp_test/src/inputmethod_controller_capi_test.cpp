@@ -13,6 +13,8 @@
  * limitations under the License.
  */
 #include "inputmethod_controller_capi_test.h"
+
+#include <memory>
 #include <thread>
 
 #include "global.h"
@@ -1149,6 +1151,8 @@ static void CheckTextEditorCallbackAccessors(InputMethod_TextEditorProxy *proxy,
     check(OH_TextEditorProxy_SetReceivePrivateCommandFunc, OH_TextEditorProxy_GetReceivePrivateCommandFunc,
         ReceivePrivateCommandFunc);
     check(OH_TextEditorProxy_SetSetPreviewTextFunc, OH_TextEditorProxy_GetSetPreviewTextFunc, SetPreviewTextFunc);
+    check(OH_InputMethod_TextEditorProxy_SetSetPreviewTextWithStyleFunc,
+        OH_InputMethod_TextEditorProxy_GetSetPreviewTextWithStyleFunc, SetPreviewTextWithStyleFunc);
     check(OH_TextEditorProxy_SetFinishTextPreviewFunc, OH_TextEditorProxy_GetFinishTextPreviewFunc,
         FinishTextPreviewFunc);
     EXPECT_EQ(expected, OH_TextEditorProxy_SetCallbackInMainThread(proxy, true));
@@ -1163,6 +1167,9 @@ HWTEST_F(InputMethodControllerCapiTest, TextEditorCallbacks_RoundTrip, TestSize.
 {
     auto proxy = OH_TextEditorProxy_Create();
     ASSERT_NE(nullptr, proxy);
+    auto callback = SetPreviewTextWithStyleFunc;
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethod_TextEditorProxy_GetSetPreviewTextWithStyleFunc(proxy, &callback));
+    EXPECT_EQ(nullptr, callback);
     CheckTextEditorCallbackAccessors(proxy, IME_ERR_OK);
     OH_TextEditorProxy_Destroy(proxy);
 }
@@ -2155,6 +2162,47 @@ HWTEST_F(InputMethodControllerCapiTest, Attach_CancelWhenEditorDestroyedInCallba
     EXPECT_EQ(nullptr, cancelled);
     EXPECT_TRUE(TextEditorProxyManager::GetInstance().GetWeak(editor).expired());
     EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Detach(result));
+}
+
+HWTEST_F(InputMethodControllerCapiTest, InputMethodProxy_RejectCallsAfterAttachedEditorIsDestroyed, TestSize.Level0)
+{
+    std::unique_ptr<InputMethod_TextEditorProxy, decltype(&OH_TextEditorProxy_Destroy)> editor(
+        OH_TextEditorProxy_Create(), OH_TextEditorProxy_Destroy);
+    ASSERT_NE(nullptr, editor);
+    ConstructTextEditorProxy(editor.get());
+    auto editorLease = TextEditorProxyManager::GetInstance().GetWeak(editor.get()).lock();
+    ASSERT_NE(nullptr, editorLease);
+
+    InputMethod_InputMethodProxy *proxy = nullptr;
+    ASSERT_EQ(IME_ERR_OK, OH_InputMethodController_Attach(editor.get(), attachOptions_, &proxy));
+    EXPECT_CALL(*systemAbilityProxyMock_, ShowCurrentInputDeprecated(_, _)).WillOnce(Return(ErrorCode::NO_ERROR));
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethodProxy_ShowKeyboard(proxy));
+
+    editor.reset();
+    EXPECT_EQ(IME_ERR_DETACHED, OH_InputMethodProxy_ShowKeyboard(proxy));
+    EXPECT_CALL(*systemAbilityProxyMock_, ReleaseInput(_, _, _)).WillOnce(Return(ErrorCode::NO_ERROR));
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Detach(proxy));
+    EXPECT_TRUE(Mock::VerifyAndClearExpectations(systemAbilityProxyMock_.GetRefPtr()));
+}
+
+HWTEST_F(InputMethodControllerCapiTest, Attach_AllowsDetachAfterEditorIsDestroyedInStartInput, TestSize.Level0)
+{
+    std::unique_ptr<InputMethod_TextEditorProxy, decltype(&OH_TextEditorProxy_Destroy)> editor(
+        OH_TextEditorProxy_Create(), OH_TextEditorProxy_Destroy);
+    ASSERT_NE(nullptr, editor);
+    ConstructTextEditorProxy(editor.get());
+    EXPECT_CALL(*systemAbilityProxyMock_, StartInput(_, _, _)).WillOnce(InvokeWithoutArgs([&editor]() {
+        editor.reset();
+        return ErrorCode::NO_ERROR;
+    }));
+
+    InputMethod_InputMethodProxy *proxy = nullptr;
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Attach(editor.get(), attachOptions_, &proxy));
+    EXPECT_CALL(*systemAbilityProxyMock_, ShowCurrentInputDeprecated(_, _)).Times(0);
+    EXPECT_EQ(IME_ERR_DETACHED, OH_InputMethodProxy_ShowKeyboard(proxy));
+    EXPECT_CALL(*systemAbilityProxyMock_, ReleaseInput(_, _, _)).WillOnce(Return(ErrorCode::NO_ERROR));
+    EXPECT_EQ(IME_ERR_OK, OH_InputMethodController_Detach(proxy));
+    EXPECT_TRUE(Mock::VerifyAndClearExpectations(systemAbilityProxyMock_.GetRefPtr()));
 }
 
 /**

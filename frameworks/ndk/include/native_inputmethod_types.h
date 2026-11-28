@@ -15,6 +15,7 @@
 #ifndef NATIVE_INPUTMETHOD_TYPES_H
 #define NATIVE_INPUTMETHOD_TYPES_H
 #include <atomic>
+#include <mutex>
 #include <string>
 #include <variant>
 
@@ -48,6 +49,7 @@ struct InputMethod_TextAvoidInfo {
 };
 
 struct OH_InputMethod_PreviewTextStyle {
+    std::mutex attributesMutex_;
     OH_InputMethod_UnderlineStyle underlineStyle = OH_INPUTMETHOD_UNDERLINE_STYLE_NONE;
     uint32_t underlineColor = 0;
     bool hasUnderlineColor = false;
@@ -88,7 +90,7 @@ struct InputMethod_TextEditorProxy {
     std::atomic<OH_TextEditorProxy_GetTextIndexAtCursorFunc> getTextIndexAtCursorFunc { nullptr };
     std::atomic<OH_TextEditorProxy_ReceivePrivateCommandFunc> receivePrivateCommandFunc { nullptr };
     std::atomic<OH_TextEditorProxy_SetPreviewTextFunc> setPreviewTextFunc { nullptr };
-    OH_InputMethod_TextEditorProxy_SetPreviewTextWithStyleFunc setPreviewTextWithStyleFunc;
+    std::atomic<OH_InputMethod_TextEditorProxy_SetPreviewTextWithStyleFunc> setPreviewTextWithStyleFunc { nullptr };
     std::atomic<OH_TextEditorProxy_FinishTextPreviewFunc> finishTextPreviewFunc { nullptr };
     std::atomic_bool isCallbackInMainThread = false;
 };

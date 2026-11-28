@@ -14,12 +14,16 @@
  */
 #include "global.h"
 #include "native_inputmethod_types.h"
+#include "native_object_registry.h"
+
+using namespace OHOS::MiscServices;
 #ifdef __cplusplus
 extern "C" {
 #endif /* __cplusplus */
 OH_InputMethod_PreviewTextStyle *OH_InputMethod_PreviewTextStyle_Create(void)
 {
-    return new (std::nothrow) OH_InputMethod_PreviewTextStyle();
+    return NativeObjectRegistry<OH_InputMethod_PreviewTextStyle>::GetInstance().Register(
+        new (std::nothrow) OH_InputMethod_PreviewTextStyle());
 }
 
 void OH_InputMethod_PreviewTextStyle_Destroy(OH_InputMethod_PreviewTextStyle *style)
@@ -27,7 +31,7 @@ void OH_InputMethod_PreviewTextStyle_Destroy(OH_InputMethod_PreviewTextStyle *st
     if (style == nullptr) {
         return;
     }
-    delete style;
+    NativeObjectRegistry<OH_InputMethod_PreviewTextStyle>::GetInstance().Destroy(style);
 }
 
 InputMethod_ErrorCode OH_InputMethod_PreviewTextStyle_SetUnderlineStyle(
@@ -37,7 +41,13 @@ InputMethod_ErrorCode OH_InputMethod_PreviewTextStyle_SetUnderlineStyle(
         IMSA_HILOGE("style is nullptr");
         return IME_ERR_NULL_POINTER;
     }
-    style->underlineStyle = underlineStyle;
+    auto lease = NativeObjectRegistry<OH_InputMethod_PreviewTextStyle>::GetInstance().Get(style);
+    if (lease == nullptr) {
+        IMSA_HILOGE("PreviewTextStyle is unregistered or no longer valid.");
+        return IME_ERR_NULL_POINTER;
+    }
+    std::lock_guard<std::mutex> lock(lease->attributesMutex_);
+    lease->underlineStyle = underlineStyle;
     return IME_ERR_OK;
 }
 
@@ -48,7 +58,13 @@ InputMethod_ErrorCode OH_InputMethod_PreviewTextStyle_GetUnderlineStyle(
         IMSA_HILOGE("invalid parameter");
         return IME_ERR_NULL_POINTER;
     }
-    *underlineStyle = style->underlineStyle;
+    auto lease = NativeObjectRegistry<OH_InputMethod_PreviewTextStyle>::GetInstance().Get(style);
+    if (lease == nullptr) {
+        IMSA_HILOGE("PreviewTextStyle is unregistered or no longer valid.");
+        return IME_ERR_NULL_POINTER;
+    }
+    std::lock_guard<std::mutex> lock(lease->attributesMutex_);
+    *underlineStyle = lease->underlineStyle;
     return IME_ERR_OK;
 }
 
@@ -59,8 +75,14 @@ InputMethod_ErrorCode OH_InputMethod_PreviewTextStyle_SetUnderlineColor(
         IMSA_HILOGE("style is nullptr");
         return IME_ERR_NULL_POINTER;
     }
-    style->underlineColor = underlineColor;
-    style->hasUnderlineColor = true;
+    auto lease = NativeObjectRegistry<OH_InputMethod_PreviewTextStyle>::GetInstance().Get(style);
+    if (lease == nullptr) {
+        IMSA_HILOGE("PreviewTextStyle is unregistered or no longer valid.");
+        return IME_ERR_NULL_POINTER;
+    }
+    std::lock_guard<std::mutex> lock(lease->attributesMutex_);
+    lease->underlineColor = underlineColor;
+    lease->hasUnderlineColor = true;
     return IME_ERR_OK;
 }
 
@@ -71,7 +93,13 @@ InputMethod_ErrorCode OH_InputMethod_PreviewTextStyle_GetUnderlineColor(
         IMSA_HILOGE("invalid parameter");
         return IME_ERR_NULL_POINTER;
     }
-    *underlineColor = style->underlineColor;
+    auto lease = NativeObjectRegistry<OH_InputMethod_PreviewTextStyle>::GetInstance().Get(style);
+    if (lease == nullptr) {
+        IMSA_HILOGE("PreviewTextStyle is unregistered or no longer valid.");
+        return IME_ERR_NULL_POINTER;
+    }
+    std::lock_guard<std::mutex> lock(lease->attributesMutex_);
+    *underlineColor = lease->underlineColor;
     return IME_ERR_OK;
 }
 
@@ -82,7 +110,13 @@ InputMethod_ErrorCode OH_InputMethod_PreviewTextStyle_HasUnderlineColor(
         IMSA_HILOGE("invalid parameter");
         return IME_ERR_NULL_POINTER;
     }
-    *hasUnderlineColor = style->hasUnderlineColor;
+    auto lease = NativeObjectRegistry<OH_InputMethod_PreviewTextStyle>::GetInstance().Get(style);
+    if (lease == nullptr) {
+        IMSA_HILOGE("PreviewTextStyle is unregistered or no longer valid.");
+        return IME_ERR_NULL_POINTER;
+    }
+    std::lock_guard<std::mutex> lock(lease->attributesMutex_);
+    *hasUnderlineColor = lease->hasUnderlineColor;
     return IME_ERR_OK;
 }
 #ifdef __cplusplus
