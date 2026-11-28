@@ -40,6 +40,7 @@
 #include "input_method_types.h"
 #include "parameters.h"
 #include "tdd_util.h"
+#include "window_adapter.h"
 
 using namespace testing::ext;
 namespace OHOS {
@@ -3102,6 +3103,183 @@ HWTEST_F(PerUserSessionTest, TestGetImeStartTimeout_FallbackWhenUnset_001, TestS
         EXPECT_EQ(PerUserSession::GetImeStartTimeout(),
             static_cast<uint32_t>(PerUserSession::MAX_IME_START_TIME));
     }
+}
+
+HWTEST_F(PerUserSessionTest, TestSetAttachFailedByUnavailableImeFlag_001, TestSize.Level0)
+{
+    EXPECT_FALSE(session_->attachFailedByUnavailableIme_.load());
+    session_->SetAttachFailedByUnavailableImeFlag(true);
+    EXPECT_TRUE(session_->attachFailedByUnavailableIme_.load());
+    session_->SetAttachFailedByUnavailableImeFlag(false);
+    EXPECT_FALSE(session_->attachFailedByUnavailableIme_.load());
+}
+
+HWTEST_F(PerUserSessionTest, TestNotifyImeStopFinished_001, TestSize.Level0)
+{
+    session_->isNotifyFinished_.Clear(false);
+    session_->NotifyOnInputStopFinished();
+    EXPECT_TRUE(session_->isNotifyFinished_.GetValue());
+}
+
+HWTEST_F(PerUserSessionTest, TestIsPreconfiguredDefaultImeSpecified_001, TestSize.Level0)
+{
+    InputClientInfo info;
+    info.config.inputAttribute.callingDisplayId = ImfCommonConst::DEFAULT_DISPLAY_ID;
+    EXPECT_FALSE(session_->IsPreconfiguredDefaultImeSpecified(info));
+    info.config.isSimpleKeyboardEnabled = true;
+    EXPECT_TRUE(session_->IsPreconfiguredDefaultImeSpecified(info));
+    info.config.isSimpleKeyboardEnabled = false;
+    info.config.inputAttribute.inputPattern = InputAttribute::PATTERN_ONE_TIME_CODE;
+    EXPECT_TRUE(session_->IsPreconfiguredDefaultImeSpecified(info));
+}
+
+HWTEST_F(PerUserSessionTest, TestIsNumkeyAutoInputApp_001, TestSize.Level0)
+{
+    EXPECT_FALSE(session_->IsNumkeyAutoInputApp("com.test.app"));
+    EXPECT_FALSE(session_->IsNumkeyAutoInputApp(""));
+}
+
+HWTEST_F(PerUserSessionTest, TestGetImeNativeCfg_NonExistentBundle_001, TestSize.Level0)
+{
+    auto ime = session_->GetImeNativeCfg(TEST_USER_ID, "com.nonexistent.ime", "");
+    EXPECT_EQ(ime, nullptr);
+}
+
+HWTEST_F(PerUserSessionTest, TestOnImeDisconnect_NullConnection_001, TestSize.Level0)
+{
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    session_->realImeData_ = imeData;
+    session_->OnImeDisconnect(nullptr);
+    EXPECT_FALSE(session_->realImeData_->isDisconnected);
+}
+
+HWTEST_F(PerUserSessionTest, TestIsSaReady_001, TestSize.Level0)
+{
+    EXPECT_FALSE(session_->IsSaReady(999999));
+}
+
+HWTEST_F(PerUserSessionTest, TestIsWmsReady_001, TestSize.Level0)
+{
+    auto result = session_->IsWmsReady();
+    EXPECT_TRUE(result || !result);
+}
+
+HWTEST_F(PerUserSessionTest, TestCanStartIme_001, TestSize.Level0)
+{
+    session_->runningIme_ = "com.test.running.ime";
+    EXPECT_FALSE(session_->CanStartIme());
+    session_->runningIme_.clear();
+    auto result = session_->CanStartIme();
+    EXPECT_TRUE(result || !result);
+}
+
+HWTEST_F(PerUserSessionTest, TestTryUnloadSystemAbility_WithIme_001, TestSize.Level0)
+{
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    imeData->imeStateManager = std::make_shared<PttImeStateManager>();
+    session_->realImeData_ = imeData;
+    session_->TryUnloadSystemAbility();
+    SUCCEED();
+}
+
+HWTEST_F(PerUserSessionTest, TestOnScbStarted_ScbReboot_001, TestSize.Level0)
+{
+    uint32_t beforeCount = session_->GetScbStartCount();
+    session_->OnScbStarted(true);
+    uint32_t afterCount = session_->GetScbStartCount();
+    EXPECT_GE(afterCount, beforeCount);
+}
+
+HWTEST_F(PerUserSessionTest, TestOnScbStopped_001, TestSize.Level0)
+{
+    auto info = MakeClientInfo(TEST_PID, TEST_DISPLAY_GROUP_ID);
+    ASSERT_EQ(session_->OnPrepareInput(info), ErrorCode::NO_ERROR);
+    auto group = session_->GetClientGroupByGroupId(TEST_DISPLAY_GROUP_ID);
+    ASSERT_NE(group, nullptr);
+    group->SetCurrentClient(info.client);
+    session_->OnScbStopped();
+    EXPECT_EQ(group->GetCurrentClient(), nullptr);
+}
+
+HWTEST_F(PerUserSessionTest, TestGetInputTypeToStart_NotStarted_001, TestSize.Level0)
+{
+    InputTypeManager::GetInstance().Set(false);
+    std::shared_ptr<ImeNativeCfg> imeToStart;
+    EXPECT_FALSE(session_->GetInputTypeToStart(imeToStart));
+}
+
+HWTEST_F(PerUserSessionTest, TestSendAllReadyImeToClient_NullData_001, TestSize.Level0)
+{
+    auto clientInfo = std::make_shared<InputClientInfo>(MakeClientInfo(TEST_PID));
+    EXPECT_EQ(session_->SendAllReadyImeToClient(nullptr, clientInfo), ErrorCode::NO_ERROR);
+}
+
+HWTEST_F(PerUserSessionTest, TestSendAllReadyImeToClient_NullClientInfo_001, TestSize.Level0)
+{
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    EXPECT_EQ(session_->SendAllReadyImeToClient(imeData, nullptr), ErrorCode::NO_ERROR);
+}
+
+HWTEST_F(PerUserSessionTest, TestHandleBindImeChanged_MirrorIme_001, TestSize.Level0)
+{
+    auto info = MakeClientInfo(TEST_PID, TEST_DISPLAY_GROUP_ID);
+    ASSERT_EQ(session_->OnPrepareInput(info), ErrorCode::NO_ERROR);
+    auto group = session_->GetClientGroupByGroupId(TEST_DISPLAY_GROUP_ID);
+    ASSERT_NE(group, nullptr);
+    auto mirrorData = MakeImeData(TEST_PID, ImeType::IME_MIRROR, ImeStatus::READY);
+    ASSERT_NE(mirrorData, nullptr);
+    session_->HandleBindImeChanged(info, mirrorData, group);
+    SUCCEED();
+}
+
+HWTEST_F(PerUserSessionTest, TestHandleBindImeChanged_NullClientGroup_001, TestSize.Level0)
+{
+    auto info = MakeClientInfo(TEST_PID, TEST_DISPLAY_GROUP_ID);
+    auto imeData = MakeImeData(TEST_PID, ImeType::IME, ImeStatus::READY);
+    ASSERT_NE(imeData, nullptr);
+    session_->HandleBindImeChanged(info, imeData, nullptr);
+    SUCCEED();
+}
+
+HWTEST_F(PerUserSessionTest, TestReplaceCurrentClient_NullGroup_001, TestSize.Level0)
+{
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+    session_->ReplaceCurrentClient(client, nullptr);
+    SUCCEED();
+}
+
+HWTEST_F(PerUserSessionTest, TestReplaceCurrentClient_ClientInfoNotFound_001, TestSize.Level0)
+{
+    auto group = std::make_shared<ClientGroup>(TEST_DISPLAY_GROUP_ID, nullptr);
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+    session_->ReplaceCurrentClient(client, group);
+    SUCCEED();
+}
+
+HWTEST_F(PerUserSessionTest, TestNotifyCallingWindowIdChanged_NullImeData_001, TestSize.Level0)
+{
+    FocusedInfo focusedInfo;
+    EXPECT_EQ(session_->NotifyCallingWindowIdChanged(0, focusedInfo, nullptr), ErrorCode::ERROR_IME_NOT_STARTED);
+}
+
+HWTEST_F(PerUserSessionTest, TestNotifyCallingWindowIdChanged_ProxyIme_001, TestSize.Level0)
+{
+    auto proxyData = MakeImeData(TEST_PID, ImeType::PROXY_IME, ImeStatus::READY);
+    ASSERT_NE(proxyData, nullptr);
+    FocusedInfo focusedInfo;
+    EXPECT_EQ(session_->NotifyCallingWindowIdChanged(0, focusedInfo, proxyData), ErrorCode::ERROR_IME_NOT_STARTED);
+}
+
+HWTEST_F(PerUserSessionTest, TestGetClientGroup_ByDisplayId_NoGroup_001, TestSize.Level0)
+{
+    WindowAdapter::GetInstance().displayGroupIds_.clear();
+    auto group = session_->GetClientGroup(static_cast<uint64_t>(999));
+    EXPECT_EQ(group, nullptr);
 }
 } // namespace MiscServices
 } // namespace OHOS

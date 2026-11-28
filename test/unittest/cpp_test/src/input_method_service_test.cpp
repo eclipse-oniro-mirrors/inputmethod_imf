@@ -47,6 +47,7 @@
 #include "tdd_util.h"
 #include "scene_board_judgement.h"
 #include "ime_enabled_info_manager.h"
+#include "exam_mode_manager.h"
 
 namespace OHOS {
 namespace MiscServices {
@@ -1147,6 +1148,678 @@ HWTEST_F(InputMethodServiceTest, testRequestHideInput_ModalAppNotRegistered_001,
     EXPECT_EQ(imsa->RequestHideInput(0, 0, false, -1), ErrorCode::NO_ERROR);
 
     UserSessionManager::GetInstance().userSessions_.clear();
+    IdentityCheckerMock::ResetParam();
+}
+
+HWTEST_F(InputMethodServiceTest, testIsCapacitySupport_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testIsCapacitySupport_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    bool isSupport = false;
+    EXPECT_EQ(imsa->IsCapacitySupport(-1, isSupport), ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+    EXPECT_EQ(imsa->IsCapacitySupport(static_cast<int32_t>(CapacityType::END), isSupport),
+        ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+}
+
+HWTEST_F(InputMethodServiceTest, testIsCapacitySupport_002, TestSize.Level1)
+{
+    IMSA_HILOGI("testIsCapacitySupport_002 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    bool isSupport = false;
+    EXPECT_EQ(imsa->IsCapacitySupport(static_cast<int32_t>(CapacityType::IMMERSIVE_EFFECT), isSupport), ERR_OK);
+    EXPECT_EQ(imsa->IsCapacitySupport(static_cast<int32_t>(CapacityType::SYSTEM_PANEL), isSupport), ERR_OK);
+    EXPECT_EQ(imsa->IsCapacitySupport(static_cast<int32_t>(CapacityType::DISABLE_IMMERSIVE_MODE), isSupport), ERR_OK);
+    EXPECT_EQ(imsa->IsCapacitySupport(static_cast<int32_t>(CapacityType::SUPPORT_PC_MODE), isSupport), ERR_OK);
+    EXPECT_EQ(imsa->IsCapacitySupport(static_cast<int32_t>(CapacityType::DISABLE_PC_MODE_IMMERSIVE_MODE), isSupport),
+        ERR_OK);
+    EXPECT_EQ(imsa->IsCapacitySupport(static_cast<int32_t>(CapacityType::IS_PC_MODE), isSupport), ERR_OK);
+}
+
+HWTEST_F(InputMethodServiceTest, testIsCurrentIme_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testIsCurrentIme_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    UserSessionManager::GetInstance().userSessions_.clear();
+    bool resultValue = true;
+    EXPECT_EQ(imsa->IsCurrentIme(resultValue), ERR_OK);
+    EXPECT_FALSE(resultValue);
+}
+
+HWTEST_F(InputMethodServiceTest, testIsInputMethodExtension_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testIsInputMethodExtension_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    bool resultValue = false;
+    EXPECT_EQ(imsa->IsInputMethodExtension(resultValue), ERR_OK);
+}
+
+HWTEST_F(InputMethodServiceTest, testIsInputTypeSupported_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testIsInputTypeSupported_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    bool resultValue = false;
+    EXPECT_EQ(imsa->IsInputTypeSupported(static_cast<int32_t>(InputType::SECURITY_INPUT), resultValue), ERR_OK);
+}
+
+HWTEST_F(InputMethodServiceTest, testGetSecurityMode_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testGetSecurityMode_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetBundleName("com.test.ime");
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    int32_t userId = TddUtil::GetCurrentUserId();
+    UserSessionManager::GetInstance().userSessions_.clear();
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+    FullImeInfoManager::GetInstance().fullImeInfos_.erase(userId);
+    int32_t security = -1;
+    EXPECT_EQ(imsa->GetSecurityMode(security), ErrorCode::ERROR_NOT_IME);
+    UserSessionManager::GetInstance().userSessions_.clear();
+    IdentityCheckerMock::ResetParam();
+}
+
+HWTEST_F(InputMethodServiceTest, testGetSecurityMode_002, TestSize.Level1)
+{
+    IMSA_HILOGI("testGetSecurityMode_002 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetBundleName("com.test.ime");
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    int32_t userId = TddUtil::GetCurrentUserId();
+    FullImeInfo fullImeInfo;
+    fullImeInfo.prop.name = "com.test.ime";
+    fullImeInfo.tokenId = IPCSkeleton::GetCallingTokenID();
+    FullImeInfoManager::GetInstance().fullImeInfos_[userId].push_back(fullImeInfo);
+    int32_t security = -1;
+    EXPECT_EQ(imsa->GetSecurityMode(security), ErrorCode::NO_ERROR);
+    EXPECT_EQ(security, static_cast<int32_t>(SecurityMode::BASIC));
+    FullImeInfoManager::GetInstance().fullImeInfos_.erase(userId);
+    IdentityCheckerMock::ResetParam();
+}
+
+HWTEST_F(InputMethodServiceTest, testSetEDCDefaultInputMethod_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testSetEDCDefaultInputMethod_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    EXPECT_EQ(imsa->SetEDCDefaultInputMethod(""), ErrorCode::ERROR_PARAMETER_CHECK_FAILED);
+}
+
+HWTEST_F(InputMethodServiceTest, testSetEDCDefaultInputMethod_002, TestSize.Level1)
+{
+    IMSA_HILOGI("testSetEDCDefaultInputMethod_002 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    imsa->identityChecker_ = nullptr;
+    EXPECT_EQ(imsa->SetEDCDefaultInputMethod("com.test.edc.ime"), ErrorCode::ERROR_NULL_POINTER);
+}
+
+HWTEST_F(InputMethodServiceTest, testSetEDCDefaultInputMethod_003, TestSize.Level1)
+{
+    IMSA_HILOGI("testSetEDCDefaultInputMethod_003 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetNativeSa(false);
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    EXPECT_EQ(imsa->SetEDCDefaultInputMethod("com.test.edc.ime"), ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+    IdentityCheckerMock::ResetParam();
+}
+
+HWTEST_F(InputMethodServiceTest, testExecTextInteraction_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testExecTextInteraction_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    imsa->identityChecker_ = nullptr;
+    EXPECT_EQ(imsa->ExecTextInteraction("test"), ErrorCode::ERROR_NULL_POINTER);
+}
+
+HWTEST_F(InputMethodServiceTest, testExecTextInteraction_002, TestSize.Level1)
+{
+    IMSA_HILOGI("testExecTextInteraction_002 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetPermission(false);
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    EXPECT_EQ(imsa->ExecTextInteraction("test"), ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
+    IdentityCheckerMock::ResetParam();
+}
+
+HWTEST_F(InputMethodServiceTest, testExecTextInteraction_003, TestSize.Level1)
+{
+    IMSA_HILOGI("testExecTextInteraction_003 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetPermission(true);
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    UserSessionManager::GetInstance().userSessions_.clear();
+    EXPECT_EQ(imsa->ExecTextInteraction("test"), ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND);
+    IdentityCheckerMock::ResetParam();
+}
+
+HWTEST_F(InputMethodServiceTest, testIsPttGestureAvailable_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testIsPttGestureAvailable_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    sptr<IRemoteObject> channel = nullptr;
+    bool resultValue = false;
+    EXPECT_EQ(imsa->IsPttGestureAvailable(channel, resultValue), ErrorCode::ERROR_BAD_PARAMETERS);
+}
+
+HWTEST_F(InputMethodServiceTest, testIsPttGestureAvailable_002, TestSize.Level1)
+{
+    IMSA_HILOGI("testIsPttGestureAvailable_002 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    sptr<IRemoteObject> channel = new (std::nothrow) InputMethodAgentServiceImpl();
+    ASSERT_NE(channel, nullptr);
+    bool resultValue = true;
+    EXPECT_EQ(imsa->IsPttGestureAvailable(channel, resultValue), ERR_OK);
+    EXPECT_FALSE(resultValue);
+}
+
+HWTEST_F(InputMethodServiceTest, testGetSoftKeyboardInfo_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testGetSoftKeyboardInfo_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    imsa->identityChecker_ = nullptr;
+    BoundImeInfo imeInfo;
+    EXPECT_EQ(imsa->GetSoftKeyboardInfo(0, imeInfo), ErrorCode::ERROR_NULL_POINTER);
+}
+
+HWTEST_F(InputMethodServiceTest, testGetSoftKeyboardInfo_002, TestSize.Level1)
+{
+    IMSA_HILOGI("testGetSoftKeyboardInfo_002 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetSystemApp(false);
+    IdentityCheckerMock::SetNativeSa(false);
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    BoundImeInfo imeInfo;
+    EXPECT_EQ(imsa->GetSoftKeyboardInfo(0, imeInfo), ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+    IdentityCheckerMock::ResetParam();
+}
+
+HWTEST_F(InputMethodServiceTest, testNotifyInputStart_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testNotifyInputStart_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    int32_t userId = TddUtil::GetCurrentUserId();
+    UserSessionManager::GetInstance().userSessions_.clear();
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+    InputStartInfo inputStartInfo;
+    EXPECT_EQ(imsa->NotifyInputStart(inputStartInfo), ErrorCode::ERROR_NOT_CURRENT_IME);
+    UserSessionManager::GetInstance().userSessions_.clear();
+    IdentityCheckerMock::ResetParam();
+}
+
+HWTEST_F(InputMethodServiceTest, testNotifyInputStop_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testNotifyInputStop_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    int32_t userId = TddUtil::GetCurrentUserId();
+    UserSessionManager::GetInstance().userSessions_.clear();
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+    InputStopInfo inputStopInfo;
+    EXPECT_EQ(imsa->NotifyInputStop(inputStopInfo), ErrorCode::ERROR_NOT_CURRENT_IME);
+    UserSessionManager::GetInstance().userSessions_.clear();
+    IdentityCheckerMock::ResetParam();
+}
+
+HWTEST_F(InputMethodServiceTest, testNotifySoftKeyBoardInfoChanged_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testNotifySoftKeyBoardInfoChanged_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    int32_t userId = TddUtil::GetCurrentUserId();
+    UserSessionManager::GetInstance().userSessions_.clear();
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+    BoundImeInfo oldImeInfo;
+    BoundImeInfo newImeInfo;
+    EXPECT_EQ(imsa->NotifySoftKeyBoardInfoChanged(oldImeInfo, newImeInfo), ErrorCode::ERROR_NOT_CURRENT_IME);
+    UserSessionManager::GetInstance().userSessions_.clear();
+    IdentityCheckerMock::ResetParam();
+}
+
+HWTEST_F(InputMethodServiceTest, testReleaseInput_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testReleaseInput_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    EXPECT_EQ(imsa->ReleaseInput(nullptr, 0, 0), ErrorCode::ERROR_CLIENT_NULL_POINTER);
+}
+
+HWTEST_F(InputMethodServiceTest, testReleaseInput_002, TestSize.Level1)
+{
+    IMSA_HILOGI("testReleaseInput_002 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    UserSessionManager::GetInstance().userSessions_.clear();
+    sptr<IInputClient> client = new (std::nothrow) InputClientServiceImpl();
+    ASSERT_NE(client, nullptr);
+    EXPECT_EQ(imsa->ReleaseInput(client, 0, 0), ErrorCode::ERROR_NULL_POINTER);
+}
+
+HWTEST_F(InputMethodServiceTest, testIncreaseAttachCount_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testIncreaseAttachCount_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    UserSessionManager::GetInstance().userSessions_.clear();
+    imsa->IncreaseAttachCount();
+    SUCCEED();
+}
+
+HWTEST_F(InputMethodServiceTest, testDecreaseAttachCount_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testDecreaseAttachCount_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    UserSessionManager::GetInstance().userSessions_.clear();
+    imsa->DecreaseAttachCount();
+    SUCCEED();
+}
+
+HWTEST_F(InputMethodServiceTest, testPostPttDialogTask_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testPostPttDialogTask_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    auto savedHandler = InputMethodSystemAbility::serviceHandler_;
+    InputMethodSystemAbility::serviceHandler_ = nullptr;
+    imsa->PostPttDialogTask(0);
+    InputMethodSystemAbility::serviceHandler_ = savedHandler;
+    SUCCEED();
+}
+
+HWTEST_F(InputMethodServiceTest, testInitConnect_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testInitConnect_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    UserSessionManager::GetInstance().userSessions_.clear();
+    EXPECT_EQ(imsa->InitConnect(), ErrorCode::ERROR_NULL_POINTER);
+}
+
+HWTEST_F(InputMethodServiceTest, testInitConnect_002, TestSize.Level1)
+{
+    IMSA_HILOGI("testInitConnect_002 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    int32_t userId = TddUtil::GetCurrentUserId();
+    UserSessionManager::GetInstance().userSessions_.clear();
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+    EXPECT_EQ(imsa->InitConnect(), ErrorCode::ERROR_NOT_CURRENT_IME);
+    UserSessionManager::GetInstance().userSessions_.clear();
+    IdentityCheckerMock::ResetParam();
+}
+
+HWTEST_F(InputMethodServiceTest, testGetCurrentInputMethod_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testGetCurrentInputMethod_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    int32_t userId = TddUtil::GetCurrentUserId();
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.erase(userId);
+    FullImeInfoManager::GetInstance().fullImeInfos_.erase(userId);
+    Property prop;
+    EXPECT_EQ(imsa->GetCurrentInputMethod(userId, prop), ErrorCode::ERROR_NULL_POINTER);
+}
+
+HWTEST_F(InputMethodServiceTest, testGetCurrentInputMethodSubtype_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testGetCurrentInputMethodSubtype_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    int32_t userId = TddUtil::GetCurrentUserId();
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.erase(userId);
+    FullImeInfoManager::GetInstance().fullImeInfos_.erase(userId);
+    SubProperty subProp;
+    EXPECT_EQ(imsa->GetCurrentInputMethodSubtype(subProp, userId), ErrorCode::ERROR_NULL_POINTER);
+}
+
+HWTEST_F(InputMethodServiceTest, testCheckEnableAndSwitchPermission_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testCheckEnableAndSwitchPermission_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetNativeSa(false);
+    IdentityCheckerMock::SetSystemApp(false);
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    EXPECT_EQ(imsa->CheckEnableAndSwitchPermission(), ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+    IdentityCheckerMock::ResetParam();
+}
+
+HWTEST_F(InputMethodServiceTest, testCheckEnableAndSwitchPermission_002, TestSize.Level1)
+{
+    IMSA_HILOGI("testCheckEnableAndSwitchPermission_002 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetSystemApp(true);
+    IdentityCheckerMock::SetPermission(false);
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    EXPECT_EQ(imsa->CheckEnableAndSwitchPermission(), ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
+    IdentityCheckerMock::ResetParam();
+}
+
+HWTEST_F(InputMethodServiceTest, testCheckEnableAndSwitchPermission_003, TestSize.Level1)
+{
+    IMSA_HILOGI("testCheckEnableAndSwitchPermission_003 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetSystemApp(true);
+    IdentityCheckerMock::SetPermission(true);
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    EXPECT_EQ(imsa->CheckEnableAndSwitchPermission(), ErrorCode::NO_ERROR);
+    IdentityCheckerMock::ResetParam();
+}
+
+HWTEST_F(InputMethodServiceTest, testCheckSwitchPermission_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testCheckSwitchPermission_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    int32_t userId = TddUtil::GetCurrentUserId();
+    SwitchInfo switchInfo = { std::chrono::system_clock::now(), "com.test.ime", "" };
+    EXPECT_EQ(imsa->CheckSwitchPermission(userId, switchInfo, SwitchTrigger::IMSA), ErrorCode::NO_ERROR);
+    IdentityCheckerMock::ResetParam();
+}
+
+HWTEST_F(InputMethodServiceTest, testCheckSwitchPermission_002, TestSize.Level1)
+{
+    IMSA_HILOGI("testCheckSwitchPermission_002 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetNativeSa(true);
+    IdentityCheckerMock::SetSystemApp(true);
+    IdentityCheckerMock::SetPermission(true);
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    int32_t userId = TddUtil::GetCurrentUserId();
+    SwitchInfo switchInfo = { std::chrono::system_clock::now(), "com.test.ime", "" };
+    EXPECT_EQ(imsa->CheckSwitchPermission(userId, switchInfo, SwitchTrigger::NATIVE_SA), ErrorCode::NO_ERROR);
+    IdentityCheckerMock::ResetParam();
+}
+
+HWTEST_F(InputMethodServiceTest, testCheckSwitchPermission_003, TestSize.Level1)
+{
+    IMSA_HILOGI("testCheckSwitchPermission_003 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetSystemApp(false);
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    int32_t userId = TddUtil::GetCurrentUserId();
+    SwitchInfo switchInfo = { std::chrono::system_clock::now(), "com.test.ime", "" };
+    EXPECT_EQ(imsa->CheckSwitchPermission(userId, switchInfo, SwitchTrigger::SYSTEM_APP),
+        ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+    IdentityCheckerMock::ResetParam();
+}
+
+HWTEST_F(InputMethodServiceTest, testCheckSwitchPermission_004, TestSize.Level1)
+{
+    IMSA_HILOGI("testCheckSwitchPermission_004 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetSystemApp(true);
+    IdentityCheckerMock::SetPermission(false);
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    int32_t userId = TddUtil::GetCurrentUserId();
+    SwitchInfo switchInfo = { std::chrono::system_clock::now(), "com.test.ime", "" };
+    EXPECT_EQ(imsa->CheckSwitchPermission(userId, switchInfo, SwitchTrigger::SYSTEM_APP),
+        ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
+    IdentityCheckerMock::ResetParam();
+}
+
+HWTEST_F(InputMethodServiceTest, testCheckSwitchPermission_005, TestSize.Level1)
+{
+    IMSA_HILOGI("testCheckSwitchPermission_005 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetSystemApp(true);
+    IdentityCheckerMock::SetPermission(true);
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    int32_t userId = TddUtil::GetCurrentUserId();
+    SwitchInfo switchInfo = { std::chrono::system_clock::now(), "com.test.ime", "" };
+    EXPECT_EQ(imsa->CheckSwitchPermission(userId, switchInfo, SwitchTrigger::SYSTEM_APP), ErrorCode::NO_ERROR);
+    IdentityCheckerMock::ResetParam();
+}
+
+HWTEST_F(InputMethodServiceTest, testCheckSwitchPermission_006, TestSize.Level1)
+{
+    IMSA_HILOGI("testCheckSwitchPermission_006 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetPermission(true);
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    int32_t userId = TddUtil::GetCurrentUserId();
+    SwitchInfo switchInfo = { std::chrono::system_clock::now(), "com.test.ime", "" };
+    EXPECT_EQ(imsa->CheckSwitchPermission(userId, switchInfo, SwitchTrigger::CURRENT_IME), ErrorCode::NO_ERROR);
+    IdentityCheckerMock::ResetParam();
+}
+
+HWTEST_F(InputMethodServiceTest, testCheckSwitchPermission_007, TestSize.Level1)
+{
+    IMSA_HILOGI("testCheckSwitchPermission_007 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetPermission(false);
+    IdentityCheckerMock::SetBundleNameValid(false);
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    int32_t userId = TddUtil::GetCurrentUserId();
+    UserSessionManager::GetInstance().userSessions_.clear();
+    ImeEnabledInfoManager::GetInstance().imeEnabledCfg_.erase(userId);
+    SwitchInfo switchInfo = { std::chrono::system_clock::now(), "com.test.ime", "" };
+    EXPECT_EQ(imsa->CheckSwitchPermission(userId, switchInfo, SwitchTrigger::CURRENT_IME),
+        ErrorCode::ERROR_STATUS_PERMISSION_DENIED);
+    IdentityCheckerMock::ResetParam();
+}
+
+HWTEST_F(InputMethodServiceTest, testIsSwitchingAllow_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testIsSwitchingAllow_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    ExamModeManager::GetInstance().SetExamMode(false);
+    EXPECT_TRUE(imsa->IsSwitchingAllow(0, "com.test.ime"));
+}
+
+HWTEST_F(InputMethodServiceTest, testIsSwitchingAllow_002, TestSize.Level1)
+{
+    IMSA_HILOGI("testIsSwitchingAllow_002 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    ExamModeManager::GetInstance().SetExamMode(true);
+    EXPECT_FALSE(imsa->IsSwitchingAllow(0, "com.non.sys.ime"));
+    ExamModeManager::GetInstance().SetExamMode(false);
+}
+
+HWTEST_F(InputMethodServiceTest, testIsOneTimeCodeInput_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testIsOneTimeCodeInput_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    InputClientInfo clientInfo;
+    clientInfo.config.inputAttribute.inputPattern = InputAttribute::PATTERN_PASSWORD;
+    EXPECT_TRUE(imsa->IsOneTimeCodeInput(clientInfo));
+}
+
+HWTEST_F(InputMethodServiceTest, testIsOneTimeCodeInput_002, TestSize.Level1)
+{
+    IMSA_HILOGI("testIsOneTimeCodeInput_002 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    InputClientInfo clientInfo;
+    clientInfo.config.inputAttribute.inputPattern = InputAttribute::PATTERN_ONE_TIME_CODE;
+    EXPECT_TRUE(imsa->IsOneTimeCodeInput(clientInfo));
+}
+
+HWTEST_F(InputMethodServiceTest, testIsOneTimeCodeInput_003, TestSize.Level1)
+{
+    IMSA_HILOGI("testIsOneTimeCodeInput_003 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    InputClientInfo clientInfo;
+    EXPECT_FALSE(imsa->IsOneTimeCodeInput(clientInfo));
+}
+
+HWTEST_F(InputMethodServiceTest, testSwitchToDefaultIme_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testSwitchToDefaultIme_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = "";
+    EXPECT_EQ(imsa->SwitchToDefaultIme(TddUtil::GetCurrentUserId()), ErrorCode::ERROR_IMSA_GET_IME_INFO_FAILED);
+}
+
+HWTEST_F(InputMethodServiceTest, testSwitchToDefaultIme_002, TestSize.Level1)
+{
+    IMSA_HILOGI("testSwitchToDefaultIme_002 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = "com.default.ime/ServiceExtAbility";
+    UserSessionManager::GetInstance().userSessions_.clear();
+    EXPECT_EQ(imsa->SwitchToDefaultIme(TddUtil::GetCurrentUserId()), ErrorCode::ERROR_NULL_POINTER);
+}
+
+HWTEST_F(InputMethodServiceTest, testSwitchToPreviousIme_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testSwitchToPreviousIme_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    ExamModeManager::GetInstance().ClearPreviousIme();
+    EXPECT_EQ(imsa->SwitchToPreviousIme(TddUtil::GetCurrentUserId()), ErrorCode::NO_ERROR);
+}
+
+HWTEST_F(InputMethodServiceTest, testSwitchToPreviousIme_002, TestSize.Level1)
+{
+    IMSA_HILOGI("testSwitchToPreviousIme_002 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    ExamModeManager::GetInstance().SavePreviousIme("com.previous.ime", "subName");
+    UserSessionManager::GetInstance().userSessions_.clear();
+    EXPECT_EQ(imsa->SwitchToPreviousIme(TddUtil::GetCurrentUserId()), ErrorCode::ERROR_NULL_POINTER);
+    ExamModeManager::GetInstance().ClearPreviousIme();
+}
+
+HWTEST_F(InputMethodServiceTest, testHandleEDCInputMethodInstall_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testHandleEDCInputMethodInstall_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = "";
+    imsa->HandleEDCInputMethodInstall(0, "com.test.edc.ime");
+    SUCCEED();
+}
+
+HWTEST_F(InputMethodServiceTest, testHandleEDCInputMethodRemove_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testHandleEDCInputMethodRemove_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    ImeInfoInquirer::GetInstance().systemConfig_.defaultInputMethod = "";
+    imsa->HandleEDCInputMethodRemove(0, "com.test.edc.ime");
+    SUCCEED();
+}
+
+HWTEST_F(InputMethodServiceTest, testGetCurrentImeInfoForHiSysEvent_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testGetCurrentImeInfoForHiSysEvent_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    UserSessionManager::GetInstance().userSessions_.clear();
+    auto imeInfo = imsa->GetCurrentImeInfoForHiSysEvent(TddUtil::GetCurrentUserId());
+    EXPECT_EQ(imeInfo.first, 0);
+}
+
+HWTEST_F(InputMethodServiceTest, testGetCurrentImeInfoForHiSysEvent_002, TestSize.Level1)
+{
+    IMSA_HILOGI("testGetCurrentImeInfoForHiSysEvent_002 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    int32_t userId = TddUtil::GetCurrentUserId();
+    auto session = std::make_shared<PerUserSession>(userId, nullptr);
+    UserSessionManager::GetInstance().userSessions_[userId] = session;
+    auto imeInfo = imsa->GetCurrentImeInfoForHiSysEvent(userId);
+    EXPECT_EQ(imeInfo.first, 0);
+    EXPECT_TRUE(imeInfo.second.empty());
+    UserSessionManager::GetInstance().userSessions_.clear();
+}
+
+HWTEST_F(InputMethodServiceTest, testIsPanelShown_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testIsPanelShown_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    imsa->identityChecker_ = nullptr;
+    PanelInfo panelInfo;
+    bool isShown = false;
+    EXPECT_EQ(imsa->IsPanelShown(panelInfo, isShown), ErrorCode::ERROR_NULL_POINTER);
+}
+
+HWTEST_F(InputMethodServiceTest, testIsPanelShown_002, TestSize.Level1)
+{
+    IMSA_HILOGI("testIsPanelShown_002 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetSystemApp(false);
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    PanelInfo panelInfo;
+    bool isShown = false;
+    EXPECT_EQ(imsa->IsPanelShown(panelInfo, isShown), ErrorCode::ERROR_STATUS_SYSTEM_PERMISSION);
+    IdentityCheckerMock::ResetParam();
+}
+
+HWTEST_F(InputMethodServiceTest, testIsPanelShown_displayId_001, TestSize.Level1)
+{
+    IMSA_HILOGI("testIsPanelShown_displayId_001 TEST START");
+    auto imsa = new (std::nothrow) InputMethodSystemAbility();
+    ASSERT_NE(imsa, nullptr);
+    IdentityCheckerMock::ResetParam();
+    IdentityCheckerMock::SetSystemApp(true);
+    imsa->identityChecker_ = std::make_shared<IdentityCheckerMock>();
+    PanelInfo panelInfo;
+    bool isShown = false;
+    auto ret = imsa->IsPanelShown(static_cast<uint64_t>(0), panelInfo, isShown);
+    EXPECT_TRUE(ret == ErrorCode::ERROR_ACCOUNT_LOCALID_FAILED || ret == ErrorCode::ERROR_IMSA_USER_SESSION_NOT_FOUND);
     IdentityCheckerMock::ResetParam();
 }
 } // namespace MiscServices
